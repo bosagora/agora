@@ -13,6 +13,7 @@
 
 # Executables
 *.exe
+build/
 
 # DUB
 .dub
@@ -22,3 +23,11 @@ docs/
 
 # Code coverage
 *.lst
+*-test-library
+*-test-application
+
+# Code coverage
+*.lst
+
+# Emacs
+*~
