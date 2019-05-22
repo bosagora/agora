@@ -6,11 +6,23 @@ dist: xenial
 # I gave up trying to install libsodium
 sudo: required
 
+# We need a fairly recent compiler for SCP
+# Namely one with N4387 fixed
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-9
+
 env:
-  - SODIUM_VERSION=1.0.17
+  - PATH=$HOME/bin/:$PATH LIBRARY_PATH=/usr/local/lib/:$LIBRARY_PATH SODIUM_VERSION=1.0.17
 
 # No way to install the apt package, so...
 before_install:
+  - mkdir -p $HOME/bin/
+  - ln -s `which gcc-9` $HOME/bin/gcc # /usr/bin/gcc-9
+  - ln -s `which g++-9` $HOME/bin/g++ # /usr/bin/g++-9
   - pushd $HOME
   - wget https://github.com/jedisct1/libsodium/releases/download/${SODIUM_VERSION}/libsodium-${SODIUM_VERSION}.tar.gz
   - tar xvfz libsodium-${SODIUM_VERSION}.tar.gz
@@ -25,7 +37,14 @@ script:
   - dub test --compiler=${DC}
 
 # Latest version of DMD/GDC/LDC
-d:
-  - dmd
-#  - gdc # Too old, doesn't support bitblob
-  - ldc
+matrix:
+  include:
+    - d: dmd
+    - d: ldc
+    - addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gdc-9
+      env: DC=gdc-9 PATH=$HOME/bin/:$PATH SODIUM_VERSION=1.0.17
