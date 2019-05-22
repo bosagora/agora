@@ -1,0 +1,18 @@
+{
+	"name": "constrictor",
+	"description": "Node implementation for BOA CoinNet",
+
+    "license": "MIT",
+	"authors": [
+		"Mathias 'Geod24' Lang"
+	],
+	"copyright": "Copyright © 2019, BOS Platform Foundation Korea",
+
+    "targetType": "executable",
+    "targetPath": "build",
+
+    "dependencies": {
+        "dyaml": "~>0.7.1",
+        "vibe-d": "~>0.8.5"
+    }
+}
