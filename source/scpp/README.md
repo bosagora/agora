@@ -1,7 +1,7 @@
 # Stellar Consensus Protocol code
 
 This code has been extracted from [stellar-core](https://github.com/stellar/stellar-core).
-It is built as a dependency to `constrictor`, and bindings are written in [the D Programming Language](https://dlang.org/) to interact with it.
+It is built as a dependency of `agora`, and bindings are written in [the D Programming Language](https://dlang.org/) to interact with it.
 
 The path of each file matches the path in `stellar-core` relative to the root of the git repository, in order to make comparison and updating simpler.
 Files in `extra` are extra C++ files added to the build (e.g. to instantiate templates so the D side can use it).
