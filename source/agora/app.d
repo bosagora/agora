@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Entry point for Constrictor node
+    Entry point for Agora node
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module constrictor.app;
+module agora.app;
 
 void main()
 {
