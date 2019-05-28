@@ -43,8 +43,6 @@ matrix:
     - d: ldc
     - addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages:
             - gdc-9
       env: DC=gdc-9 PATH=$HOME/bin/:$PATH SODIUM_VERSION=1.0.17
