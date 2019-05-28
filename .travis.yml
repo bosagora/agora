@@ -13,25 +13,18 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
+      - libsodium-dev
       - g++-9
 
 env:
-  - PATH=$HOME/bin/:$PATH LIBRARY_PATH=/usr/local/lib/:$LIBRARY_PATH SODIUM_VERSION=1.0.17
+  - PATH=$HOME/bin/:$PATH
 
 # No way to install the apt package, so...
 before_install:
+  - apt search libsodium
   - mkdir -p $HOME/bin/
   - ln -s `which gcc-9` $HOME/bin/gcc # /usr/bin/gcc-9
   - ln -s `which g++-9` $HOME/bin/g++ # /usr/bin/g++-9
-  - pushd $HOME
-  - wget https://github.com/jedisct1/libsodium/releases/download/${SODIUM_VERSION}/libsodium-${SODIUM_VERSION}.tar.gz
-  - tar xvfz libsodium-${SODIUM_VERSION}.tar.gz
-  - cd libsodium-${SODIUM_VERSION}
-  - ./configure
-  - make -j4
-  - sudo make install
-  - sudo ldconfig # Refresh cache
-  - popd
 
 script:
   - dub test --compiler=${DC}
@@ -46,5 +39,6 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
+            - libsodium-dev
             - gdc-9
-      env: DC=gdc-9 PATH=$HOME/bin/:$PATH SODIUM_VERSION=1.0.17
+      env: DC=gdc-9 PATH=$HOME/bin/:$PATH
