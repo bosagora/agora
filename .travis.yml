@@ -1,5 +1,13 @@
 language: d
 
+d:
+  - dmd
+  - ldc
+
+os:
+  - linux
+  - osx
+
 # We need a fairly recent compiler for SCP
 # Namely one with N4387 fixed
 addons:
@@ -15,9 +23,10 @@ env:
 
 # No way to install the apt package, so...
 before_install:
-  - mkdir -p $HOME/bin/
-  - ln -s `which gcc-9` $HOME/bin/gcc # /usr/bin/gcc-9
-  - ln -s `which g++-9` $HOME/bin/g++ # /usr/bin/g++-9
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then brew install libsodium; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then mkdir -p $HOME/bin/; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which gcc-9` $HOME/bin/gcc; fi # /usr/bin/gcc-9
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which g++-9` $HOME/bin/g++; fi # /usr/bin/g++-9
 
 script:
   - dub test --compiler=${DC}
@@ -25,9 +34,8 @@ script:
 # Latest version of DMD/GDC/LDC
 matrix:
   include:
-    - d: dmd
-    - d: ldc
-    - addons:
+    - os: linux
+      addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
