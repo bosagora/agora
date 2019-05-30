@@ -1,11 +1,5 @@
 language: d
 
-# Trusty is Travis' default but reached EOL 2019-04-30
-dist: xenial
-
-# I gave up trying to install libsodium
-sudo: required
-
 # We need a fairly recent compiler for SCP
 # Namely one with N4387 fixed
 addons:
@@ -21,7 +15,6 @@ env:
 
 # No way to install the apt package, so...
 before_install:
-  - apt search libsodium
   - mkdir -p $HOME/bin/
   - ln -s `which gcc-9` $HOME/bin/gcc # /usr/bin/gcc-9
   - ln -s `which g++-9` $HOME/bin/g++ # /usr/bin/g++-9
