@@ -39,7 +39,6 @@ opaque_vec<> XDRToOpaque(const stellar::SCPQuorumSet& param)
     return xdr::xdr_to_opaque(param);
 }
 
-
 #define PUSHBACKINST1(T) template void push_back<T, xvector<T>>(xvector<T>&, T&);
 #define PUSHBACKINST2(T, VT) template void push_back<T, VT>(VT&, T&);
 #define PUSHBACKINST3(T, V) template void push_back<T, V<T>>(V<T>&, T&);

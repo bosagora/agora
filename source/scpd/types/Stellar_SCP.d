@@ -26,10 +26,14 @@ extern(C++, `stellar`):
 
 alias Value = opaque_vec!();
 
+static assert(Value.sizeof == 24);
+
 struct SCPBallot {
   uint32_t counter;
   Value value;
 }
+
+static assert(SCPBallot.sizeof == 32);
 
 enum SCPStatementType : int32_t {
   SCP_ST_PREPARE = 0,
@@ -43,6 +47,8 @@ struct SCPNomination {
     xvector!(Value) votes;
     xvector!(Value) accepted;
 }
+
+static assert(SCPNomination.sizeof == 80);
 
 struct SCPStatement {
 
@@ -63,6 +69,9 @@ struct SCPStatement {
             uint32_t nC;
             uint32_t nH;
         }
+
+        static assert(_prepare_t.sizeof == 88);
+
         static struct _confirm_t {
             SCPBallot ballot;
             uint32_t nPrepared;
@@ -70,11 +79,16 @@ struct SCPStatement {
             uint32_t nH;
             Hash quorumSetHash;
         }
+
+        static assert(_confirm_t.sizeof == 80);
+
         static struct _externalize_t {
             SCPBallot commit;
             uint32_t nH;
             Hash commitQuorumSetHash;
         }
+
+        static assert(_externalize_t.sizeof == 72);
 
         //using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
         //private:
@@ -140,16 +154,22 @@ struct SCPStatement {
     _pledges_t pledges;
 }
 
+static assert(SCPStatement.sizeof == 144);
+
 struct SCPEnvelope {
   SCPStatement statement;
   Signature signature;
 }
+
+static assert(SCPEnvelope.sizeof == 168);
 
 struct SCPQuorumSet {
     uint32_t threshold;
     xvector!(PublicKey) validators;
     xvector!(SCPQuorumSet) innerSets;
 }
+
+static assert(SCPQuorumSet.sizeof == 56);
 
 /// From SCPDriver, here for convenience
 public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;

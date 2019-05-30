@@ -112,7 +112,7 @@ template<> struct xdr_traits<::stellar::SignerKeyType>
 
 struct PublicKey {
   using _xdr_case_type = xdr::xdr_traits<PublicKeyType>::case_type;
-private:
+/*private:*/  // BPFK note: cannot be private as we require runtime layout checks
   _xdr_case_type type_;
   union {
     uint256 ed25519_;

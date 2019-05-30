@@ -18,6 +18,7 @@ namespace stellar
  */
 class ByteSlice
 {
+  public: // BPFK note: cannot be private as we require runtime layout checks
     void const* mData;
     size_t const mSize;
 
