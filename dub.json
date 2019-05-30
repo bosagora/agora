@@ -37,6 +37,16 @@
     ],
     "lflags": [ "-lsodium", "-lstdc++" ],
 
+    "configurations": [
+        {
+            "name": "unittest",
+            "sourceFiles": [
+                "source/scpp/build/DSizeChecks.o",
+                "source/scpp/build/DLayoutChecks.o"
+            ]
+        }
+    ],
+
     "dependencies": {
         "bitblob": "~>1.1.1",
         "dyaml": "~>0.7.1",

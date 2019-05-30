@@ -229,7 +229,7 @@ struct SCPStatement {
     };
 
     using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
-  private:
+/*  private:*/  // BPFK note: cannot be private as we require runtime layout checks
     _xdr_case_type type_;
     union {
       _prepare_t prepare_;

@@ -63,7 +63,7 @@ public opaque_vec!() XDRToOpaque (const ref SCPQuorumSet arg);
 //public opaque_vec!() xdr_to_opaque(T...)(const ref T arg);
 
 extern(C++, `stellar`)
- {
+{
     public uint256 sha256(const ref ByteSlice bin);
 
     public struct ByteSlice
