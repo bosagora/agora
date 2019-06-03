@@ -28,8 +28,7 @@ extern(C++, `stellar`):
 // Since BitBlob has the same memory layout,
 // we can just swap it, and get a much more D-friendly interface.
 
-/// alias Hash = opaque_array!32;
-alias Hash = BitBlob!256;
+alias Hash = opaque_array!32;
 /// alias uint256 = opaque_array!32;
 alias uint256 = Hash;
 
