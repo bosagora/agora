@@ -25,6 +25,9 @@ import std.meta;
 import vibe.data.json;
 
 import scpd.Cpp;
+import scpd.Util;
+
+import geod24.bitblob;
 
 
 extern(C++, xdr):
@@ -88,34 +91,14 @@ class xdr_wrong_union : logic_error
 
 extern(D) static immutable XDR_MAX_LEN = 0xffff_fffc;
 
-//struct xarray(T, uint32_t N) { public array!(T, N) data; alias data this; }
-struct xarray(T, uint32_t N)
+///
+struct opaque_array(uint32_t N = XDR_MAX_LEN)
 {
-    array!(T, N) base;
+    BitBlob!(N * 8) base;
     alias base this;
-
-extern(D):
-    string toString() const @trusted
-    {
-        string ret = "[ ";
-        foreach (idx, ref entry; base)
-        {
-            ret ~= entry.serializeToJsonString();
-            if ((idx + 1) != base.length)
-                ret ~= ", ";
-        }
-        ret ~= " ]";
-        return ret;
-    }
-
-    static typeof(this) fromString(string src) @safe
-    {
-        auto array = src.deserializeJson!(T[N]);
-        return cast(typeof(this))(array);
-    }
+    mixin ForwardCtors!base;
 }
-alias opaque_array(uint32_t N = XDR_MAX_LEN) = xarray!(uint8_t, N);
-//class opaque_array(uint32_t N = XDR_MAX_LEN) : xarray!(uint8_t, N) {}
+
 
 ///alias xvector(T, uint32_t N = XDR_MAX_LEN) = vector!(T);
 alias opaque_vec(uint32_t N = XDR_MAX_LEN) = xvector!(uint8_t, N);
