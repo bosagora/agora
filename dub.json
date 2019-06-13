@@ -1,12 +1,12 @@
 {
-	"name": "agora",
-	"description": "Node implementation for BOA CoinNet",
+    "name": "agora",
+    "description": "Node implementation for BOA CoinNet",
 
     "license": "MIT",
-	"authors": [
-		"Mathias 'Geod24' Lang"
-	],
-	"copyright": "Copyright © 2019, BOS Platform Foundation Korea",
+    "authors": [
+        "Mathias 'Geod24' Lang"
+    ],
+    "copyright": "Copyright © 2019, BOS Platform Foundation Korea",
 
     "targetType": "executable",
     "targetPath": "build",
@@ -37,6 +37,8 @@
     ],
     "lflags": [ "-lsodium", "-lstdc++" ],
 
+    "mainSourceFile": "source/agora/app.d",
+
     "configurations": [
         {
             "name": "unittest",
@@ -48,8 +50,10 @@
     ],
 
     "dependencies": {
+        "base32": "~>0.1.0",
         "bitblob": "~>1.1.1",
         "dyaml": "~>0.7.1",
+        "libsodiumd": "~>0.0.1",
         "vibe-d": "~>0.8.5"
     }
 }
