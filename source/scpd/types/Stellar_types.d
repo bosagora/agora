@@ -49,6 +49,8 @@ enum SignerKeyType : int32_t {
 }
 
 /// Modified to suits scpd's needs
+/// Note: should only be used within this package
+package(scpd)
 struct PublicKey {
     extern(D) this(const(char)[] str) @safe pure nothrow @nogc
     {
