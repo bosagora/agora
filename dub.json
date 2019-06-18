@@ -54,6 +54,7 @@
         "bitblob": "~>1.1.1",
         "dyaml": "~>0.7.1",
         "libsodiumd": "~>0.0.1",
+        "localrest": "~>0.0.1",
         "vibe-d": "~>0.8.5"
     }
 }
