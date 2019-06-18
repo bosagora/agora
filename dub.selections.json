@@ -11,6 +11,7 @@
 		"libasync": "0.8.4",
 		"libevent": "2.0.2+2.0.16",
 		"libsodiumd": "0.0.1+1.0.7",
+		"localrest": "0.0.1",
 		"memutils": "0.4.13",
 		"mir-linux-kernel": "1.0.1",
 		"openssl": "1.1.6+1.0.1g",

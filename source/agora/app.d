@@ -26,6 +26,10 @@ import vibe.core.core;
 import std.getopt;
 import std.stdio;
 
+/// Workaround for issue likely related to dub #225,
+/// expects a main() function and invokes it after unittesting.
+version (unittest) void main () { } else:
+
 /// Application entry point
 private int main (string[] args)
 {
