@@ -1,0 +1,45 @@
+[submodule "base32"]
+	path = submodules/base32
+	url = https://github.com/e10s/d-base32.git
+[submodule "bitblob"]
+	path = submodules/bitblob
+	url = https://github.com/Geod24/bitblob.git
+[submodule "diet-ng"]
+	path = submodules/diet-ng
+	url = https://github.com/rejectedsoftware/diet-ng.git
+[submodule "dyaml"]
+	path = submodules/dyaml
+	url = https://github.com/dlang-community/D-YAML.git
+[submodule "eventcore"]
+	path = submodules/eventcore
+	url = https://github.com/vibe-d/eventcore.git
+[submodule "libsodiumd"]
+	path = submodules/libsodiumd
+	url = https://github.com/Geod24/libsodiumd.git
+[submodule "localrest"]
+	path = submodules/localrest
+	url = https://github.com/Geod24/localrest.git
+[submodule "memutils"]
+	path = submodules/memutils
+	url = https://github.com/etcimon/memutils.git
+[submodule "mir-linux-kernel"]
+	path = submodules/mir-linux-kernel
+	url = https://github.com/libmir/mir-linux-kernel.git
+[submodule "openssl"]
+	path = submodules/openssl
+	url = https://github.com/D-Programming-Deimos/openssl.git
+[submodule "stdx-allocator"]
+	path = submodules/stdx-allocator
+	url = https://github.com/dlang-community/stdx-allocator.git
+[submodule "taggedalgebraic"]
+	path = submodules/taggedalgebraic
+	url = https://github.com/s-ludwig/taggedalgebraic.git
+[submodule "tinyendian"]
+	path = submodules/tinyendian
+	url = https://github.com/dlang-community/tinyendian.git
+[submodule "vibe-core"]
+	path = submodules/vibe-core
+	url = https://github.com/vibe-d/vibe-core.git
+[submodule "vibe.d"]
+	path = submodules/vibe.d
+	url = https://github.com/bpfkorea/vibe.d.git

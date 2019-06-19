@@ -50,11 +50,11 @@
     ],
 
     "dependencies": {
-        "base32": "~>0.1.0",
-        "bitblob": "~>1.1.1",
-        "dyaml": "~>0.7.1",
-        "libsodiumd": "~>0.0.1",
-        "localrest": "~>0.0.1",
-        "vibe-d": "~>0.8.5"
+        "base32":           { "path": "submodules/base32/", "version": "*" },
+        "bitblob":          { "path": "submodules/bitblob/", "version": "*" },
+        "dyaml":            { "path": "submodules/dyaml/", "version": "*" },
+        "libsodiumd":       { "path": "submodules/libsodiumd/", "version": "*" },
+        "localrest":        { "path": "submodules/localrest/", "version": "*" },
+        "vibe-d":           { "path": "submodules/vibe.d/", "version": "*" }
     }
 }

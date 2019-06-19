@@ -29,7 +29,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which g++-9` $HOME/bin/g++; fi # /usr/bin/g++-9
 
 script:
-  - dub test --compiler=${DC}
+  - dub test --skip-registry=all --compiler=${DC}
 
 # Latest version of DMD/GDC/LDC
 matrix:
