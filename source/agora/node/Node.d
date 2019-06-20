@@ -52,7 +52,7 @@ public class Node (Network) : API
     public this (const Config config)
     {
         this.config = config;
-        this.network = new Network(config.node, config.network);
+        this.network = new Network(config.node, config.network, config.dns_seeds);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }

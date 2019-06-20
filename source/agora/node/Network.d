@@ -66,9 +66,12 @@ public class NetworkManager
     /// but never added again if they're already in known_addresses
     protected Set!Address todo_addresses;
 
+    /// DNS seeds
+    private const(string)[] dns_seeds;
+
 
     /// Ctor
-    public this (in NodeConfig node_config, in string[] peers)
+    public this (in NodeConfig node_config, in string[] peers, in string[] dns_seeds)
     in { assert(peers.length > 0, "No network option found"); }
     do {
         this.node_config = node_config;
@@ -78,12 +81,20 @@ public class NetworkManager
         // the node communicating with itself
         this.banned_addresses.put(
             format("http://%s:%s", this.node_config.address, this.node_config.port));
+
+        this.dns_seeds = dns_seeds;
     }
 
     /// try to discover the network until we found
     /// all the validator nodes from our quorum set.
     public void discover ()
     {
+        if (this.dns_seeds.length > 0)
+        {
+            logInfo("Resolving DNS from %s", this.dns_seeds);
+            this.addAddresses(resolveDNSSeeds(this.dns_seeds));
+        }
+
         logInfo("Discovering from %s", this.todo_addresses.byKey());
 
         while (!this.allPeersConnected())
@@ -242,3 +253,58 @@ public class NetworkManager
 
 // check up to 10 addresses at once
 private immutable MaxConnectingAddresses = 10;
+
+/*******************************************************************************
+
+    Resolves IPs out of a list of DNS seeds
+
+    Params:
+        addresses = the set of DNS seeds
+
+    Returns:
+        The resolved set of IPs
+
+*******************************************************************************/
+
+private Set!Address resolveDNSSeeds (in string[] dns_seeds)
+{
+    import std.conv;
+    import std.string;
+    import std.socket : getAddressInfo, AddressFamily, ProtocolType;
+
+    Set!Address resolved_ips;
+
+    foreach (host; dns_seeds)
+    try
+    {
+        logInfo("DNS: contacting seed '%s'..", host);
+        foreach (addr_info; getAddressInfo(host))
+        {
+            logTrace("DNS: checking address %s", addr_info);
+            if (addr_info.family != AddressFamily.INET &&
+                addr_info.family != AddressFamily.INET6)
+            {
+                logTrace("DNS: rejected non-IP family %s", addr_info.family);
+                continue;
+            }
+
+            // we only support TCP for now
+            if (addr_info.protocol != ProtocolType.TCP)
+            {
+                logTrace("DNS: rejected non-TCP node %s", addr_info);
+                continue;
+            }
+
+            // if the port is set to zero, assume default Boa port
+            auto ip = addr_info.address.to!string.replace(":0", ":2826");
+            logInfo("DNS: accepted IP %s", ip);
+            resolved_ips.put(ip);
+        }
+    }
+    catch (Exception ex)
+    {
+        logError("Error contacting DNS seed: %s", ex.message);
+    }
+
+    return resolved_ips;
+}

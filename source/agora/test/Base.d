@@ -59,9 +59,9 @@ public class TestNetworkManager : NetworkManager
     public TestAPI[PublicKey] apis;
 
     /// Ctor
-    public this (NodeConfig config, in string[] peers)
+    public this (NodeConfig config, in string[] peers, in string[] dns_seeds)
     {
-        super(config, peers);
+        super(config, peers, dns_seeds);
         // NetworkManager assumes IP are used but we use pubkey
         this.banned_addresses.put(config.key_pair.address.toString());
     }
@@ -262,7 +262,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 
 
         auto net = new NetworkT(NodeConfig.init, node_configs.map!(
-            c => c.key_pair.address.toString()).array);
+            c => c.key_pair.address.toString()).array, null);
 
         // Workaround https://issues.dlang.org/show_bug.cgi?id=20002
         TestNetworkManager base_net = net;

@@ -53,8 +53,11 @@ public struct Config
     /// The administrator interface config
     public AdminConfig admin;
 
-    /// The list of IPs / DNSes for use with network discovery
+    /// The list of IPs for use with network discovery
     public immutable string[] network;
+
+    /// The list of DNS FQDN seeds for use with network discovery
+    public immutable string[] dns_seeds;
 
     /// The quorum slice config
     public immutable QuorumConfig[] quorums;
@@ -217,6 +220,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
     {
         node : parseNodeConfig(root["node"]),
         network : assumeUnique(parseSequence("network")),
+        dns_seeds : assumeUnique(parseSequence("dns")),
         quorums : assumeUnique(parseQuorumSection(root["quorum"]))
     };
 
