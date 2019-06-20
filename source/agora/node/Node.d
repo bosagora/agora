@@ -16,7 +16,9 @@ module agora.node.Node;
 import agora.common.API;
 import agora.common.Config;
 import agora.common.crypto.Key;
+import agora.common.Data;
 import agora.node.Network;
+
 
 import vibe.d;
 
@@ -89,4 +91,10 @@ public class Node : API
 
         return config;
     }
+
+    /// PUT: /message
+    public void setMessage(Hash hash)
+    {
+        // message process
+    } 
 }

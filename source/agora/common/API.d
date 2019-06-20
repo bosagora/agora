@@ -17,9 +17,6 @@ import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Set;
 
-import scpd.types.Stellar_SCP;
-import scpd.types.Stellar_types;
-
 import vibe.data.json;
 import vibe.web.rest;
 
@@ -90,4 +87,20 @@ public interface API
     ***************************************************************************/
 
     public PublicConfig getPublicConfig();
+
+    /***************************************************************************
+
+        Send message to this node
+
+        Parameter: 
+            hash message
+
+
+        API:
+            PUT /message
+
+    ***************************************************************************/
+
+    public void setMessage(Hash hash);
+
 }
