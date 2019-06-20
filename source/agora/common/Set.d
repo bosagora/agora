@@ -26,13 +26,13 @@ import core.stdc.string;
 struct Set (T)
 {
     ///
-    bool[][T] _set;
+    bool[T] _set;
     alias _set this;
 
     /// Put an element in the set
     public void put ( T key )
     {
-        this._set[key] = [];
+        this._set[key] = true;
     }
 
     /// Remove an element from the set
