@@ -57,6 +57,9 @@ network:
   # Supported value: IPv4, IPv6
   - http://192.168.1.42:2828
   - http://192.168.0.44:2828
+dns:
+  # Supported value: FQDN seed
+  - seed.bosagora.io
 
 ################################################################################
 ##                               Quorum slices                                ##
