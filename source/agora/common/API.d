@@ -47,7 +47,23 @@ public struct PublicConfig
     public bool is_validator;
 }
 
-/// API
+/*******************************************************************************
+
+    Define the API a full node exposes to the world
+
+    A full node:
+    - Can connect to any node and request data about the blockchain & network
+    - Accepts external connections and send them blockchain/network data
+    - Store the data it receives on disk
+    - Can catch up with the network when found lagging behind
+    - Validates the data it receives
+    - Receives, stores and forwards transactions (but drop them after a timeout)
+    - Does not participate in consensus
+
+   In essence, a full node provides much of the basic functionality needed
+   to verify the blockchain while lacking the ability to create new blocks.
+
+*******************************************************************************/
 @path("/")
 public interface API
 {
