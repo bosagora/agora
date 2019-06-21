@@ -33,7 +33,7 @@ import std.format;
 import std.random;
 
 // check up to 10 addresses at once
-const MaxConnectingAddresses = 10;
+private immutable MaxConnectingAddresses = 10;
 
 /// Note: cases which need to be handled:
 /// - node disconnnects during discovery => we should re-try it later (if we need more IPs)
