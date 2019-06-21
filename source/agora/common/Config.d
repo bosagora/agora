@@ -30,28 +30,6 @@ import std.getopt;
 import std.range;
 import std.traits;
 
-/// Verifies the config is in a valid state.
-/// This function should be called both after parsing a config file,
-/// or after manually constructing a config file.
-public void verifyConfigFile ( Config config )
-{
-    // ensure a quorum doesn't contain a public key of this node (self-reference)
-    Set!PublicKey all_validators;
-    getAllValidators(config.quorums, all_validators);
-    enforce(config.node.key_pair.address !in all_validators,
-        format("Cannot have our own key as a validator node: %s", config.node.key_pair.address));
-}
-
-// extract the set of all validators as configured in the quorum config
-public void getAllValidators ( in QuorumConfig[] quorums,
-    ref Set!PublicKey result )
-{
-    foreach (quorum; quorums)
-    {
-        result.fill(quorum.nodes);
-        getAllValidators(quorum.quorums, result);
-    }
-}
 
 /// Command-line arguments
 public struct CommandLine
@@ -211,8 +189,6 @@ public Config parseConfigFile (CommandLine cmdln)
 
     enforce(conf.quorums.length != 0);
     logInfo("Quorum set: %s", conf.quorums);
-
-    verifyConfigFile(conf);
 
     return conf;
 }
