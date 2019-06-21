@@ -99,9 +99,6 @@ class TestNodeRegistry : TestRegistry
 ///
 unittest
 {
-    import core.thread;
-    import std.stdio;
-
     scope registry = new TestNodeRegistry;
     auto keys = registry.makeTestNetwork(
         NetworkTopology.Simple,
