@@ -41,7 +41,9 @@ private immutable MaxConnectingAddresses = 10;
 class Network
 {
     /// Config instance
-    private const Config config;
+    private const NodeConfig node_config;
+    ///
+    private const string[] peers;
 
     /// The configured quorum set validators
     private Set!PublicKey expected_validators;
@@ -69,27 +71,28 @@ class Network
 
 
     /// Ctor
-    public this ( Config config )
+    public this (in NodeConfig node_config, in string[] peers)
     {
-        this.config = config;
+        this.node_config = node_config;
+        this.peers = peers;
 
         // add our own IP to the list of banned IPs to avoid
         // the node communicating with itself
         this.banned_addresses.put(
-            format("http://%s:%s", this.config.node.address, this.config.node.port));
+            format("http://%s:%s", this.node_config.address, this.node_config.port));
     }
 
     /// try to discover the network until we found
     /// all the validator nodes from our quorum set.
     public void discover ()
     {
-        logInfo("Discovering from %s", this.config.network);
-        this.addAddresses(Set!Address.from(this.config.network));
+        logInfo("Discovering from %s", this.peers);
+        this.addAddresses(Set!Address.from(this.peers));
 
         while (!this.allQuorumNodesFound())
         {
             this.connectNextAddresses();
-            sleep(this.config.node.retry_delay.msecs);
+            sleep(this.node_config.retry_delay.msecs);
         }
 
         logInfo("Discovery reached. %s quorum validators connected out of %s.",
@@ -102,7 +105,7 @@ class Network
             while (!this.listenerLimitReached())
             {
                 this.connectNextAddresses();
-                sleep(this.config.node.retry_delay.msecs);
+                sleep(this.node_config.retry_delay.msecs);
             }
         });
     }
@@ -121,7 +124,7 @@ class Network
 
         logInfo("IP %s: Establishing connection..", address);
         auto node = new RemoteNode(address, new RestInterfaceClient!API(address),
-            this.config.node.retry_delay.msecs);
+            this.node_config.retry_delay.msecs);
 
         node.getReady(
             (net_info) { this.addAddresses(net_info.addresses); },
@@ -224,7 +227,7 @@ class Network
 
     private bool listenerLimitReached ( )
     {
-        return this.listeners.length >= this.config.node.max_listeners;
+        return this.listeners.length >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
