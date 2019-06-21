@@ -123,7 +123,7 @@ class Network
         this.connecting_addresses.put(address);
 
         logInfo("IP %s: Establishing connection..", address);
-        auto node = new RemoteNode(address, new RestInterfaceClient!API(address),
+        auto node = new RemoteNode(address, this.getClient(address),
             this.node_config.retry_delay.msecs);
 
         node.getReady(
@@ -237,5 +237,26 @@ class Network
             this.allQuorumNodesFound()
                 ? NetworkState.Complete : NetworkState.Incomplete,
             this.known_addresses);
+    }
+
+    /***************************************************************************
+
+        Instantiates a client object implementing `API`
+
+        This function simply returns a client object implementing `API`.
+        In the default implementation, this returns a `RestInterfaceClient`.
+        However, it can be overriden in test code to return an in-memory client.
+
+        Params:
+          address = The address (IPv4, IPv6, hostname) of this node
+
+        Returns:
+          An object to communicate with the node at `address`
+
+    ***************************************************************************/
+
+    protected API getClient (Address address)
+    {
+        return new RestInterfaceClient!API(address);
     }
 }
