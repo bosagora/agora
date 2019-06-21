@@ -40,15 +40,10 @@ class TestNodeRegistry : TestRegistry
         if (tid != tid.init)
             return new RemoteAPI!(API)(tid);
 
-        switch (name)
-        {
-        case "normal":
-            auto api = RemoteAPI!API.spawn!Node(config);
-            std.concurrency.register(id, api.tid());
-            return api;
-        default:
-            assert(0, name);
-        }
+        // First instantiation of the API object, spawns a thread
+        auto api = RemoteAPI!API.spawn!Node(config);
+        std.concurrency.register(id, api.tid());
+        return api;
     }
 
     /// Wait a certain time until the nodes have reached discovery
@@ -100,9 +95,6 @@ class TestNodeRegistry : TestRegistry
 unittest
 {
     scope registry = new TestNodeRegistry;
-    auto keys = registry.makeTestNetwork(
-        NetworkTopology.Simple,
-        [ "normal", "normal", "normal", "normal" ]);
-
+    auto keys = registry.makeTestNetwork(NetworkTopology.Simple, 4);
     registry.waitUntilConnected();
 }

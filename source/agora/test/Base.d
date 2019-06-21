@@ -157,13 +157,7 @@ public enum NetworkTopology
     Params:
         registry = The registry to populate.
         topology = Network topology to adopt
-        nodes = "Name" of the nodes to instantiate.
-                For example, to test basic liveness / safety guarantee,
-                one might want to include an ill-behaved node in the registry.
-                How such an ill-behaved node will behave is defined by
-                `registry.factory(nodes[idx])`.
-                The number of entry required is defined by the topology and must
-                match exactly.
+        nodes    = Number of nodes to instantiated
 
     Returns:
         The set of public key added to the node
@@ -171,12 +165,12 @@ public enum NetworkTopology
 *******************************************************************************/
 
 public const(PublicKey)[] makeTestNetwork (
-    TestRegistry registry, NetworkTopology topology, in string[] nodes)
+    TestRegistry registry, NetworkTopology topology, size_t nodes)
 {
     import std.algorithm;
     import std.array;
 
-    assert(nodes.length >= 2, "Creating a network require at least 2 nodes");
+    assert(nodes >= 2, "Creating a network require at least 2 nodes");
 
     // each port must be unique
     __gshared ushort last_used_port = 0xB0A;
@@ -188,7 +182,7 @@ public const(PublicKey)[] makeTestNetwork (
         immutable(KeyPair)[] key_pairs;
         NodeConfig[] node_configs;
 
-        foreach (idx; 0 .. nodes.length)
+        foreach (idx; 0 .. nodes)
         {
             key_pairs ~= KeyPair.random;
 
@@ -207,7 +201,7 @@ public const(PublicKey)[] makeTestNetwork (
 
         // Nodes will have self as validator, but it doesn't matter
         // since we just ignore it
-        foreach (idx; 0 .. nodes.length)
+        foreach (idx; 0 .. nodes)
         {
             // note: cannot add our own key as a validator (there is a safety check)
             // todo: add this check in the unittests
@@ -235,7 +229,7 @@ public const(PublicKey)[] makeTestNetwork (
 
         foreach (idx, ref conf; configs)
         {
-            registry.register(conf, nodes[idx]);
+            registry.register(conf, "normal");
         }
 
         return key_pairs.map!(a => a.address).array;
