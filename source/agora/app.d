@@ -39,11 +39,20 @@ version (unittest) void main () { } else:
 private int main (string[] args)
 {
     CommandLine cmdln;
-    auto help = parseCommandLine(cmdln, args);
-    if (help.helpWanted)
+
+    try
     {
-        defaultGetoptPrinter("The Agora node", help.options);
-        return 0;
+        auto help = parseCommandLine(cmdln, args);
+        if (help.helpWanted)
+        {
+            defaultGetoptPrinter("The Agora node", help.options);
+            return 0;
+        }
+    }
+    catch (Exception ex)
+    {
+        writefln("Error parsing command-line arguments '%(%s %)': %s", args,
+            ex.message);
     }
 
     try
