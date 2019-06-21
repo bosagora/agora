@@ -177,8 +177,11 @@ public Config parseConfigFile (CommandLine cmdln)
 
     Node root = Loader.fromFile(cmdln.config_path).load();
 
-    enforce("network" in root && root["network"].isSequence,
-        "The 'network' section is mandatory and must specify at least one peer");
+    if (auto node = "network" in root)
+        enforce(root["network"] == NodeID.sequence,
+                "`network` section must be a section");
+    else
+        throw new Exception("The 'network' section is mandatory and must specify at least one peer");
 
     string[] network;
     foreach (string address; root["network"])
