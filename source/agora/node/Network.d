@@ -20,9 +20,6 @@ import agora.common.Data;
 import agora.common.Set;
 import agora.node.RemoteNode;
 
-import libsodium.crypto_sign_ed25519;
-import libsodium.randombytes;
-
 import vibe.core.core;
 import vibe.core.log;
 import vibe.web.rest;
