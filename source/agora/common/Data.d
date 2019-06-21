@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Defines data types used by the node and shared over the network
+    Defines common data types used by the node
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -13,5 +13,14 @@
 
 module agora.common.Data;
 
-///
+import geod24.bitblob;
+
+
+/// An array of const characters
+public alias cstring = const(char)[];
+
+/// 256 bits hash type, binary compatible with Stellar's definition
+public alias Hash = BitBlob!256;
+
+/// A network address
 public alias Address = string;
