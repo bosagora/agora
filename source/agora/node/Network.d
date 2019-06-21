@@ -77,8 +77,6 @@ class Network
         // the node communicating with itself
         this.banned_addresses.put(
             format("http://%s:%s", this.config.node.address, this.config.node.port));
-
-        getAllValidators(this.config.quorums, this.expected_validators);
     }
 
     /// try to discover the network until we found

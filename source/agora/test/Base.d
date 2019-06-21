@@ -223,8 +223,6 @@ public const(PublicKey)[] makeTestNetwork (
                 logging : LoggingConfig(LogLevel.none)
             };
 
-            verifyConfigFile(conf);
-
             configs ~= conf;
         }
 
