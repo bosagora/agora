@@ -147,8 +147,46 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
             &cmdline.config_check);
 }
 
-/// Parse the config file
+/// Thrown when parsing the config fails
+class ConfigException : Exception
+{
+    ///
+    @nogc @safe pure nothrow public this ( string msg, string file = __FILE__,
+        size_t line = __LINE__ )
+    {
+        super(msg, file, line);
+    }
+}
+
+/*******************************************************************************
+
+    Parses the config file and returns a Config instance.
+
+    Params:
+        cmdlnd = command-line arguments (containing the path to the config)
+
+    Throws:
+        ConfigException if parsing the config file failed.
+
+    Returns:
+        Config instance
+
+*******************************************************************************/
+
 public Config parseConfigFile (CommandLine cmdln)
+{
+    try
+    {
+        return parseConfigFileImpl(cmdln);
+    }
+    catch (Exception ex)
+    {
+        throw new ConfigException(ex.msg, ex.file, ex.line);
+    }
+}
+
+/// ditto
+private Config parseConfigFileImpl (CommandLine cmdln)
 {
     import std.conv;
     import dyaml;

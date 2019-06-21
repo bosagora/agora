@@ -46,26 +46,35 @@ private int main (string[] args)
         return 0;
     }
 
-    auto config = parseConfigFile(cmdln);
-    if (cmdln.config_check)
+    try
     {
-        writefln("Config file '%s' succesfully parsed.", cmdln.config_path);
-        return 0;
+        auto config = parseConfigFile(cmdln);
+        if (cmdln.config_check)
+        {
+            writefln("Config file '%s' succesfully parsed.", cmdln.config_path);
+            return 0;
+        }
+
+        setLogLevel(config.logging.log_level);
+        logTrace("Config is: %s", config);
+
+        auto settings = new HTTPServerSettings(config.node.address);
+        settings.port = config.node.port;
+        auto router = new URLRouter();
+
+        auto node = new Node!Network(config);
+        router.registerRestInterface(node);
+        runTask( { node.start(); });
+
+        logInfo("About to listen to HTTP: %s", settings.port);
+        listenHTTP(settings, router);
+
+        return runEventLoop();
     }
-
-    setLogLevel(config.logging.log_level);
-    logTrace("Config is: %s", config);
-
-    auto settings = new HTTPServerSettings(config.node.address);
-    settings.port = config.node.port;
-    auto router = new URLRouter();
-
-    auto node = new Node!Network(config);
-    router.registerRestInterface(node);
-    runTask( { node.start(); });
-
-    logInfo("About to listen to HTTP: %s", settings.port);
-    listenHTTP(settings, router);
-
-    return runEventLoop();
+    catch (ConfigException ex)
+    {
+        writefln("Failed to parse config file '%s'. Error: %s",
+            cmdln.config_path, ex.message);
+        return 1;
+    }
 }
