@@ -24,11 +24,10 @@ version (unittest):
 
 import agora.common.API;
 import agora.common.Config;
+import agora.common.Data;
 import agora.common.crypto.Key;
 import agora.node.Network;
 import agora.node.Node;
-
-import vibe.core.log;
 
 import std.array;
 import std.algorithm.iteration;
@@ -36,37 +35,75 @@ import std.exception;
 import std.format;
 
 
-///
-public abstract class TestRegistry
+/*******************************************************************************
+
+    Base class for `Network` used in unittests
+
+    The `Network` class is the mean used to communicate with other nodes.
+    In regular build, it does network communication, but in unittests it should
+    not do IO (or appear not to).
+
+    In the current design, all nodes should be instantiated upfront,
+    registered via `std.concurrency.register`, and located by `getClient`.
+
+*******************************************************************************/
+
+public class TestNetwork : Network
 {
-@safe:
+    static import std.concurrency;
+    import geod24.LocalRest;
 
-    /// Map of pubkey to nodes
-    protected API[PublicKey] registry;
+    /// 'Owning' reference to the nodes returned by `createNewNode` to avoid
+    /// eager garbage collection
+    private TestAPI[] apis;
 
-
-    /***************************************************************************
-
-        Factory method, map node names to instances
-
-        Should either `assert` or `throw` if the identifier can't be matched,
-        it should never return `null`.
-
-        Params:
-            key  = The key to use for this node
-            name = Identifier describind the node to instantiate
-
-        Returns:
-            An non-`null` instance of an `API`
-
-    ***************************************************************************/
-
-    protected abstract API factory (Config config, string name);
+    /// Ctor
+    public this (NodeConfig config, in string[] peers)
+    {
+        super(config, peers);
+    }
 
     ///
-    public void register (Config config, string name)
+    protected final override API getClient (Address address)
     {
-        this.registry[config.node.key_pair.address] = this.factory(config, name);
+        auto tid = std.concurrency.locate(address);
+        if (tid == tid.init)
+        {
+            assert(0, "Trying to access node at address '" ~ address ~
+                   "' without first creating it");
+        }
+        return new RemoteAPI!API(tid);
+    }
+
+    /// Initialize a new node
+    protected TestAPI createNewNode (Address address, Config conf)
+    {
+        auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetwork)(conf);
+        std.concurrency.register(address, api.tid());
+        return api;
+    }
+}
+
+/// Temporary hack to work around the inability to do 'start' from main
+public interface TestAPI : API
+{
+    ///
+    public abstract void start();
+}
+
+/// Ditto
+public final class TestNode (Net) : Node!(Net), TestAPI
+{
+    ///
+    public this (const Config config)
+    {
+        super(config);
+    }
+
+    ///
+    public override void start ()
+    {
+        super.start();
     }
 }
 
@@ -95,10 +132,10 @@ public enum NetworkTopology
 
     This function's only usage is to create the network topology.
     The actual behavior of the nodes that are part of the network is decided
-    by the `TestRegistry` implementation and the `nodes` present.
+    by the `TestNetwork` implementation.
 
     Params:
-        registry = The registry to populate.
+        NetworkT = Type of `Network` to instantiate
         topology = Network topology to adopt
         nodes    = Number of nodes to instantiated
 
@@ -107,16 +144,13 @@ public enum NetworkTopology
 
 *******************************************************************************/
 
-public Network makeTestNetwork (
-    TestRegistry registry, NetworkTopology topology, size_t nodes)
+public NetworkT makeTestNetwork (NetworkT : TestNetwork)
+    (NetworkTopology topology, size_t nodes)
 {
     import std.algorithm;
     import std.array;
 
     assert(nodes >= 2, "Creating a network require at least 2 nodes");
-
-    // each port must be unique
-    __gshared ushort last_used_port = 0xB0A;
 
     final switch (topology)
     {
@@ -132,13 +166,9 @@ public Network makeTestNetwork (
             NodeConfig node_conf =
             {
                 key_pair : key_pairs[idx],
-                address : "127.0.0.1",
-                port : last_used_port,
-                is_validator : true,
                 retry_delay : 100, // msecs
             };
 
-            last_used_port += 2;  // safest to skip more than one
             node_configs ~= node_conf;
         }
 
@@ -161,22 +191,22 @@ public Network makeTestNetwork (
             Config conf =
             {
                 node : node_configs[idx],
-                quorums : [all_quorums],
-                network : assumeUnique(other_configs.map!(
-                    a => format("http://%s:%s", a.address, a.port)).array),
-                logging : LoggingConfig(LogLevel.none)
+                network : assumeUnique(other_pairs.map!(k => k.address.toString()).array),
             };
 
             configs ~= conf;
         }
 
+
+        auto net = new NetworkT(NodeConfig.init, node_configs.map!(
+            c => c.key_pair.address.toString()).array);
         foreach (idx, ref conf; configs)
         {
-            registry.register(conf, "normal");
+            net.apis ~= net.createNewNode(node_configs[idx].key_pair.address.toString(), conf);
         }
 
-        return new Network(NodeConfig.init, node_configs.map!(
-            c => format("http://%s:%d", c.address, c.port)).array);
+        net.apis.each!(a => a.start());
+        return net;
 
     case NetworkTopology.Balanced:
     case NetworkTopology.Tiered:

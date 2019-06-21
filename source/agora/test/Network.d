@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.common.API;
 import agora.common.Config;
+import agora.common.Data;
 import agora.common.crypto.Key;
 import agora.node.Network;
 import agora.node.Node;
@@ -28,23 +29,12 @@ import std.format;
 
 
 ///
-class TestNodeRegistry : TestRegistry
+private final class Network : TestNetwork
 {
-    ///
-    public override API factory (Config config, string name) @trusted
+    /// Ctor
+    public this (NodeConfig config, in string[] peers)
     {
-        static import std.concurrency;
-        import geod24.LocalRest;
-
-        string id = config.node.key_pair.address.toString();
-        auto tid = std.concurrency.locate(id);
-        if (tid != tid.init)
-            return new RemoteAPI!(API)(tid);
-
-        // First instantiation of the API object, spawns a thread
-        auto api = RemoteAPI!API.spawn!(Node!Network)(config);
-        std.concurrency.register(id, api.tid());
-        return api;
+        super(config, peers);
     }
 
     /// Wait a certain time until the nodes have reached discovery
@@ -62,11 +52,10 @@ class TestNodeRegistry : TestRegistry
 
         foreach (_; 0 .. attempts)
         {
-            foreach (key, api; this.registry)
+            foreach (key, api; this.peers)
             try
             {
-                auto net_info = api.getNetworkInfo();
-                if (net_info.state == NetworkState.Complete)
+                if (api.net_info.state == NetworkState.Complete)
                     fully_discovered[key] = true;
             }
             catch (Exception ex)
@@ -87,15 +76,14 @@ class TestNodeRegistry : TestRegistry
 
         assert(fully_discovered.length == count,
                format("Got %s/%s discovered nodes. Missing nodes: %s",
-                   fully_discovered.length, count,
-                   this.registry.byKey.filter!(a => !(a in fully_discovered))));
+                   fully_discovered.length, count, this.todo_addresses));
     }
 }
 
 ///
 unittest
 {
-    scope registry = new TestNodeRegistry;
-    auto network = registry.makeTestNetwork(NetworkTopology.Simple, 4);
-    registry.waitUntilConnected(4);
+    auto network = makeTestNetwork!Network(NetworkTopology.Simple, 4);
+    network.discover();
+    network.waitUntilConnected(4);
 }
