@@ -17,7 +17,9 @@ import agora.common.API;
 import agora.common.Config;
 import agora.common.crypto.Key;
 
-import vibe.d;
+import vibe.core.log;
+import vibe.data.json;
+import vibe.web.rest;
 
 
 /*******************************************************************************
@@ -53,21 +55,6 @@ public class Node (Network) : API
         this.network = new Network(config.node, config.network);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
-
-        setLogLevel(config.logging.log_level);
-        logTrace("Config is: %s", config);
-
-        auto router = new URLRouter();
-        router.registerRestInterface(this);
-
-        // initial task
-        runTask( { this.start(); });
-
-        auto settings = new HTTPServerSettings(config.node.address);
-        settings.port = config.node.port;
-
-        logInfo("About to listen to HTTP: %s", settings.port);
-        listenHTTP(settings, router);
     }
 
     /// The first task method, loading from disk, node discovery, etc

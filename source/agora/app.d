@@ -23,6 +23,10 @@ import agora.node.Network;
 import agora.node.Node;
 
 import vibe.core.core;
+import vibe.core.log;
+import vibe.http.router;
+import vibe.http.server;
+import vibe.web.rest;
 
 import std.getopt;
 import std.stdio;
@@ -49,6 +53,19 @@ private int main (string[] args)
         return 0;
     }
 
+    setLogLevel(config.logging.log_level);
+    logTrace("Config is: %s", config);
+
+    auto settings = new HTTPServerSettings(config.node.address);
+    settings.port = config.node.port;
+    auto router = new URLRouter();
+
     auto node = new Node!Network(config);
+    router.registerRestInterface(node);
+    runTask( { node.start(); });
+
+    logInfo("About to listen to HTTP: %s", settings.port);
+    listenHTTP(settings, router);
+
     return runEventLoop();
 }
