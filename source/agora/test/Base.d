@@ -1,6 +1,13 @@
 /*******************************************************************************
 
-    Contains the Node unittests.
+    Contains utilities to be used by tests to easily set up test environments
+
+    Since our business code is decoupled from our network code,
+    thanks to the `vibe.web.rest` generator, we can fairly naturally make
+    unittests for network behavior.
+    By using the `localrest` library, we assign each node to a thread and use
+    an RPC-style approach to call functions.
+    This is non-deterministic, but models a real-life behaviour better.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
