@@ -20,8 +20,6 @@ import agora.common.Data;
 import agora.node.Network;
 import vibe.d;
 
-import std.stdio;
-
 /// Ditto
 public class Node : API
 {
