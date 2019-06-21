@@ -16,9 +16,11 @@ module agora.node.Node;
 import agora.common.API;
 import agora.common.Config;
 import agora.common.crypto.Key;
+import agora.common.Data;
 import agora.node.Network;
-
 import vibe.d;
+
+import std.stdio;
 
 /// Ditto
 public class Node : API
@@ -88,5 +90,11 @@ public class Node : API
         };
 
         return config;
+    }
+
+    /// PUT: /hash_message
+    public void setHashMessage(Hash msg) 
+    {
+        this.network.receiveMessage(msg);
     }
 }

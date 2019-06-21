@@ -20,6 +20,8 @@ import agora.common.Data;
 import agora.common.Set;
 import agora.node.RemoteNode;
 
+import agora.protocol.GossipProtocol;
+
 import vibe.core.core;
 import vibe.core.log;
 import vibe.web.rest;
@@ -67,6 +69,7 @@ class Network
     /// but never added again if they're already in known_addresses
     private Set!Address todo_addresses;
 
+    private GossipProtocol gossip_protocol;
 
     /// Ctor
     public this ( Config config )
@@ -80,6 +83,8 @@ class Network
 
         getAllValidators(this.config.quorums, this.expected_validators);
         enforce(this.expected_validators.length != 0);
+
+        this.gossip_protocol = new GossipProtocol(this);
     }
 
     /// try to discover the network until we found
@@ -237,5 +242,22 @@ class Network
             this.allQuorumNodesFound()
                 ? NetworkState.Complete : NetworkState.Incomplete,
             this.known_addresses);
+    }
+
+    /// Processes messages received from local nodes.
+    public void receiveMessage(Hash msg) {
+        this.gossip_protocol.receiveMessage(msg);
+    }
+
+    /// Send a message only to the node passed by the filter delegate.
+    public void sendMessage(Hash msg, bool delegate(Address) filter = null) {
+        if (filter == null) {
+            filter = (Address) { return true; };
+        }
+        foreach(node; this.listeners) {
+            if (filter(node.address)) {
+                node.sendMessage(msg);
+            }
+        }
     }
 }

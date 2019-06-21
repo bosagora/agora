@@ -33,7 +33,7 @@ import std.random;
 class RemoteNode
 {
     /// Address of the node we're interacting with (for logging)
-    private const Address address;
+    public const Address address;
 
     /// Caller's retry delay
     /// TODO: This should be done at the client object level,
@@ -148,4 +148,9 @@ class RemoteNode
             return false;
         }
     }
-}
+
+    /// Send a message
+    public void sendMessage(Hash msg) {
+        this.api.setHashMessage(msg);
+    }
+}   
