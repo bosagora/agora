@@ -21,7 +21,6 @@ import agora.common.Set;
 
 import vibe.core.core;
 import vibe.core.log;
-import vibe.web.rest;
 
 import core.time;
 
@@ -40,7 +39,7 @@ class RemoteNode
     private const Config config;
 
     /// API client to the node
-    private RestInterfaceClient!API api;
+    private API api;
 
     /// The public configuration as retrieved by getPublicConfig()
     public PublicConfig pub_conf;
@@ -53,8 +52,7 @@ class RemoteNode
 
 
     /// Constructor
-    public this ( Address address, RestInterfaceClient!API api,
-        const Config config )
+    public this ( Address address, API api, const Config config )
     {
         this.address = address;
         this.api = api;
