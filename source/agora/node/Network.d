@@ -124,7 +124,7 @@ class Network
 
         logInfo("IP %s: Establishing connection..", address);
         auto node = new RemoteNode(address, new RestInterfaceClient!API(address),
-            this.config);
+            this.config.node.retry_delay.msecs);
 
         node.getReady(
             (net_info) { this.addAddresses(net_info.addresses); },

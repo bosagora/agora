@@ -35,8 +35,10 @@ class RemoteNode
     /// Address of the node we're interacting with (for logging)
     private const Address address;
 
-    /// Config instance
-    private const Config config;
+    /// Caller's retry delay
+    /// TODO: This should be done at the client object level,
+    /// so whatever implements `API` should be handling this
+    private const Duration retry_delay;
 
     /// API client to the node
     private API api;
@@ -50,13 +52,12 @@ class RemoteNode
     /// Current network info state as retrieved by getNetworkInfo()
     public NetworkInfo net_info;
 
-
     /// Constructor
-    public this ( Address address, API api, const Config config )
+    public this ( Address address, API api, Duration retry_delay )
     {
         this.address = address;
         this.api = api;
-        this.config = config;
+        this.retry_delay = retry_delay;
     }
 
     /// Try connecting to the node, call onReceivedNetworkInfoDg() whenever
@@ -68,19 +69,16 @@ class RemoteNode
         while (!this.getPublicKey())
         {
             logInfo("IP %s: Couldn't retrieve public key. Will retry in %s..",
-                this.address,
-                this.config.node.retry_delay.msecs);
-            sleep(this.config.node.retry_delay.msecs);
+                this.address, this.retry_delay);
+            sleep(this.retry_delay);
         }
 
         while (!this.getPublicConfig())
         {
             logInfo("IP %s (Key: %s): Couldn't retrieve configuration. " ~
                 "Will retry in %s..",
-                this.address,
-                this.key,
-                this.config.node.retry_delay.msecs);
-            sleep(this.config.node.retry_delay.msecs);
+                this.address, this.key, this.retry_delay);
+            sleep(this.retry_delay);
         }
 
         onClientConnectedDg(this);
@@ -98,10 +96,8 @@ class RemoteNode
                 break;
 
             logInfo("IP %s (Key: %s): Peer info is incomplete. Retrying in %s..",
-                this.address,
-                this.key,
-                this.config.node.retry_delay.msecs);
-            sleep(this.config.node.retry_delay.msecs);
+                this.address, this.key, this.retry_delay);
+            sleep(this.retry_delay);
         }
     }
 
