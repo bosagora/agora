@@ -92,7 +92,7 @@ class TestNodeRegistry : TestRegistry
             format("Got %s/%s discovered nodes. Missing nodes: %s",
                 fully_discovered.length,
                 this.registry.length,
-                this.registry.byKey.filter!(a => !!(a in fully_discovered))));
+                this.registry.byKey.filter!(a => !(a in fully_discovered))));
     }
 }
 
