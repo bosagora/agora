@@ -79,7 +79,6 @@ class Network
             format("http://%s:%s", this.config.node.address, this.config.node.port));
 
         getAllValidators(this.config.quorums, this.expected_validators);
-        enforce(this.expected_validators.length != 0);
     }
 
     /// try to discover the network until we found
