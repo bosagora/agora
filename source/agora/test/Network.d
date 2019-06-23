@@ -38,12 +38,12 @@ class TestNodeRegistry : TestRegistry
         string id = config.node.key_pair.address.toString();
         auto tid = std.concurrency.locate(id);
         if (tid != tid.init)
-            return new RemoteAPI!(API, Node)(tid);
+            return new RemoteAPI!(API)(tid);
 
         switch (name)
         {
         case "normal":
-            auto api = new RemoteAPI!(API, Node)(config);
+            auto api = RemoteAPI!API.spawn!Node(config);
             std.concurrency.register(id, api.tid());
             return api;
         default:
