@@ -18,6 +18,7 @@ version (unittest):
 import agora.common.API;
 import agora.common.Config;
 import agora.common.crypto.Key;
+import agora.node.Network;
 import agora.node.Node;
 import agora.test.Base;
 
@@ -41,7 +42,7 @@ class TestNodeRegistry : TestRegistry
             return new RemoteAPI!(API)(tid);
 
         // First instantiation of the API object, spawns a thread
-        auto api = RemoteAPI!API.spawn!Node(config);
+        auto api = RemoteAPI!API.spawn!(Node!Network)(config);
         std.concurrency.register(id, api.tid());
         return api;
     }
