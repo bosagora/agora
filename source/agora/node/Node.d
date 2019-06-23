@@ -16,12 +16,23 @@ module agora.node.Node;
 import agora.common.API;
 import agora.common.Config;
 import agora.common.crypto.Key;
-import agora.node.Network;
 
 import vibe.d;
 
-/// Ditto
-public class Node : API
+
+/*******************************************************************************
+
+    Implementation of the Node API
+
+    This class implement the business code of the node.
+    Communication with the other nodes is handled by the `Network` class.
+
+    Params:
+      Network = Type of the class handling network communication
+                `agora.node.Network.Network` or a derivative is expected.
+
+*******************************************************************************/
+public class Node (Network) : API
 {
 @trusted:
 
