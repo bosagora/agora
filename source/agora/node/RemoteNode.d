@@ -111,7 +111,7 @@ class RemoteNode
         }
         catch (Exception ex)
         {
-            logError(ex.msg);
+            logError(ex.message);
             return false;
         }
     }
@@ -126,7 +126,7 @@ class RemoteNode
         }
         catch (Exception ex)
         {
-            logError(ex.msg);
+            logError(ex.message);
             return false;
         }
     }
@@ -144,7 +144,7 @@ class RemoteNode
         }
         catch (Exception ex)
         {
-            logError(ex.msg);
+            logError(ex.message);
             return false;
         }
     }
