@@ -70,7 +70,8 @@ class Network
 
     /// Ctor
     public this (in NodeConfig node_config, in string[] peers)
-    {
+    in { assert(peers.length > 0, "No network option found"); }
+    do {
         this.node_config = node_config;
         this.addAddresses(Set!Address.from(peers));
 
