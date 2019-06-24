@@ -48,7 +48,9 @@ class TestNodeRegistry : TestRegistry
 
     /// Wait a certain time until the nodes have reached discovery
     /// If after 10 query attempts they still all haven't discovered => assert
-    public void waitUntilConnected ( )
+    /// Params:
+    ///   count = Expected number of nodes
+    public void waitUntilConnected (size_t count)
     {
         import core.thread;
         import std.stdio;
@@ -72,22 +74,20 @@ class TestNodeRegistry : TestRegistry
             }
 
             // we're done
-            if (fully_discovered.length == this.registry.length)
-                break;
+            if (fully_discovered.length == count)
+                return;
 
             // try again
             auto sleep_time = 1.seconds;  // should be enough time
             writefln("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
-                fully_discovered.length,
-                this.registry.length);
+                fully_discovered.length, count);
             Thread.sleep(sleep_time);
         }
 
-        enforce(fully_discovered.length == this.registry.length,
-            format("Got %s/%s discovered nodes. Missing nodes: %s",
-                fully_discovered.length,
-                this.registry.length,
-                this.registry.byKey.filter!(a => !(a in fully_discovered))));
+        assert(fully_discovered.length == count,
+               format("Got %s/%s discovered nodes. Missing nodes: %s",
+                   fully_discovered.length, count,
+                   this.registry.byKey.filter!(a => !(a in fully_discovered))));
     }
 }
 
@@ -96,5 +96,5 @@ unittest
 {
     scope registry = new TestNodeRegistry;
     auto keys = registry.makeTestNetwork(NetworkTopology.Simple, 4);
-    registry.waitUntilConnected();
+    registry.waitUntilConnected(4);
 }
