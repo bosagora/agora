@@ -148,4 +148,25 @@ class RemoteNode
             return false;
         }
     }
+
+    /***************************************************************************
+
+        Send a message
+
+        Params:
+          msg = the message to send
+
+    ***************************************************************************/
+
+    public void sendMessage(Hash msg) @trusted
+    {
+        try
+        {
+            this.api.setMessage(msg);
+        }
+        catch (Exception ex)
+        {
+            logError(ex.message);
+        }
+    }
 }

@@ -272,6 +272,23 @@ public class NetworkManager
         static import vibe.core.core;
         vibe.core.core.sleep(dur);
     }
+
+    /***************************************************************************
+
+        Sends the message to all the listeners.
+
+        Params:
+          msg = the message to send
+
+    ***************************************************************************/
+
+    public void sendMessage(Hash msg) @safe
+    {
+        foreach (ref node; this.peers)
+        {
+            node.sendMessage(msg);
+        }
+    }
 }
 
 // check up to 10 addresses at once
