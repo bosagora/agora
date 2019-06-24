@@ -50,7 +50,6 @@ public class Node (Network) : API
     public this (const Config config)
     {
         this.config = config;
-        enforce(this.config.network.length > 0, "No network option found");
         this.network = new Network(config.node, config.network);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
