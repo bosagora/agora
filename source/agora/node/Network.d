@@ -100,7 +100,7 @@ class Network
         // start validating and voting on the blockchain
         runTask(()
         {
-            while (!this.listenerLimitReached())
+            while (!this.peerLimitReached())
             {
                 this.connectNextAddresses();
                 sleep(this.node_config.retry_delay.msecs);
@@ -131,18 +131,10 @@ class Network
 
     private void onNodeConnected ( RemoteNode node )
     {
-        // known validator
-        if (node.key in this.expected_validators)
-        {
-            logInfo("Established connection with a quorum validator: %s",
-                    node.key);
-            this.validators[node.key] = node;
-        }
-        else if (!this.listenerLimitReached())
-        {
-            logInfo("Established connection with listener: %s", node.key);
-            this.listeners[node.key] = node;
-        }
+        if (this.peerLimitReached())
+            return;
+        logInfo("Established new connection with peer: %s", node.key);
+        this.validators[node.key] = this.listeners[node.key] = node;
     }
 
     /// Received new set of addresses, put them in the todo & known IP list
@@ -218,7 +210,7 @@ class Network
         return this.validators.length >= this.expected_validators.length;
     }
 
-    private bool listenerLimitReached ( )
+    private bool peerLimitReached ( )
     {
         return this.listeners.length >= this.node_config.max_listeners;
     }
