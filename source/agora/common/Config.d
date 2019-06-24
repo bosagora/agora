@@ -156,7 +156,7 @@ public Config parseConfigFile (CommandLine cmdln)
     Node root = Loader.fromFile(cmdln.config_path).load();
 
     if (auto node = "network" in root)
-        enforce(root["network"] == NodeID.sequence,
+        enforce(root["network"].type == NodeType.sequence,
                 "`network` section must be a section");
     else
         throw new Exception("The 'network' section is mandatory and must specify at least one peer");
