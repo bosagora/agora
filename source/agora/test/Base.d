@@ -36,39 +36,8 @@ import std.exception;
 import std.format;
 
 
-/*******************************************************************************
-
-    Node registry / set
-
-    This interface exposes basic functions to add, remove, and contact nodes.
-
-    Each node maintains and requires a registry of nodes they know about.
-    Among those nodes, some might not be trusted, some might be disabled, etc...
-    As the result, the set of nodes in this registry might not be a quorum,
-    but a larger set. It might also be a quorum, or a slice of it.
-    Modifications of a set might affect dependent sets.
-
-*******************************************************************************/
-
-public interface INodeSet
-{
-@safe:
-
-    /// Add the key & address to the node set
-    public void add (PublicKey key, string address);
-
-    /// Remove the key from the set
-    public void remove (PublicKey key);
-
-    /// Get the API of the specified key (or null if it doesn't exist)
-    public API getAPI (PublicKey key);
-
-    /// Get the array of all APIs
-    public API[] getAllAPIs ( );
-}
-
 ///
-public abstract class TestRegistry : INodeSet
+public abstract class TestRegistry
 {
 @safe:
 
@@ -101,18 +70,18 @@ public abstract class TestRegistry : INodeSet
     }
 
     ///
-    public override void add (PublicKey key, string address)
+    public void add (PublicKey key, string address)
     {
         assert(key in this.registry);
     }
 
     ///
-    public override void remove (PublicKey key)
+    public void remove (PublicKey key)
     {
     }
 
     ///
-    public override API getAPI (PublicKey key)
+    public API getAPI (PublicKey key)
     {
         if (auto api = key in this.registry)
             return *api;
@@ -121,7 +90,7 @@ public abstract class TestRegistry : INodeSet
     }
 
     ///
-    public override API[] getAllAPIs ( )
+    public API[] getAllAPIs ( )
     {
         return this.registry.byValue.array;
     }
