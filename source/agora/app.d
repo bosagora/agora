@@ -19,6 +19,7 @@
 module agora.app;
 
 import agora.common.Config;
+import agora.node.Network;
 import agora.node.Node;
 
 import vibe.core.core;
@@ -48,6 +49,6 @@ private int main (string[] args)
         return 0;
     }
 
-    auto node = new Node(config);
+    auto node = new Node!Network(config);
     return runEventLoop();
 }
