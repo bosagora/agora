@@ -17,11 +17,9 @@ import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Set;
 
-import scpd.types.Stellar_SCP;
-import scpd.types.Stellar_types;
-
 import vibe.data.json;
 import vibe.web.rest;
+import vibe.http.common;
 
 /// The network state (completed when sufficient validators are connected to)
 enum NetworkState
@@ -106,4 +104,29 @@ public interface API
     ***************************************************************************/
 
     public PublicConfig getPublicConfig();
+
+    /***************************************************************************
+
+        Returns:
+            Return true if the node has this message.
+
+        API:
+            GET /hasMessage
+
+    ***************************************************************************/
+
+    @method(HTTPMethod.GET)
+    public bool hasMessage(Hash msg);
+
+    /***************************************************************************
+
+        Returns:
+            Return true if this message was first received.
+
+        API:
+            PUT /message
+
+    ***************************************************************************/
+
+    public bool setMessage(Hash msg);
 }

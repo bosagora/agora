@@ -16,6 +16,10 @@ module agora.node.Node;
 import agora.common.API;
 import agora.common.Config;
 import agora.common.crypto.Key;
+import agora.common.Data;
+import agora.node.Network;
+
+import agora.node.GossipProtocol;
 
 import vibe.core.log;
 import vibe.data.json;
@@ -47,12 +51,15 @@ public class Node (Network) : API
     /// Reusable exception object
     private RestException exception;
 
+    /// Procedure of peer-to-peer communication  
+    private GossipProtocol gossip;
 
     /// Ctor
     public this (const Config config)
     {
         this.config = config;
         this.network = new Network(config.node, config.network, config.dns_seeds);
+        this.gossip = new GossipProtocol(this.network);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
@@ -85,5 +92,31 @@ public class Node (Network) : API
         };
 
         return config;
+    }
+
+    /***************************************************************************
+
+        Receive a message.
+
+        API:
+            PUT /message
+
+        Returns:
+            Return true if this message was first received at this node.
+
+        Params:
+          msg = the message received
+
+    ***************************************************************************/
+
+    public override bool setMessage(Hash msg) @safe
+    {
+        return this.gossip.receiveMessage(msg);
+    }
+
+    /// GET: /hasMessage
+    public override bool hasMessage(Hash msg) @safe
+    {
+        return this.gossip.hasMessage(msg);
     }
 }
