@@ -42,8 +42,6 @@ class Network
 {
     /// Config instance
     private const NodeConfig node_config;
-    ///
-    private const string[] peers;
 
     /// The configured quorum set validators
     private Set!PublicKey expected_validators;
@@ -74,7 +72,7 @@ class Network
     public this (in NodeConfig node_config, in string[] peers)
     {
         this.node_config = node_config;
-        this.peers = peers;
+        this.addAddresses(Set!Address.from(peers));
 
         // add our own IP to the list of banned IPs to avoid
         // the node communicating with itself
@@ -86,8 +84,7 @@ class Network
     /// all the validator nodes from our quorum set.
     public void discover ()
     {
-        logInfo("Discovering from %s", this.peers);
-        this.addAddresses(Set!Address.from(this.peers));
+        logInfo("Discovering from %s", this.known_addresses.byKey());
 
         while (!this.allQuorumNodesFound())
         {
