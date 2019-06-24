@@ -134,13 +134,8 @@ class Network
         // known validator
         if (node.key in this.expected_validators)
         {
-            // sanity check: must be a validator node
-            enforce(node.pub_conf.is_validator,
-                format("Node '%s' is part of our quorum slice, but it is " ~
-                       "not a validator node!", node.key));
-
             logInfo("Established connection with a quorum validator: %s",
-                node.key);
+                    node.key);
             this.validators[node.key] = node;
         }
         else if (!this.listenerLimitReached())
