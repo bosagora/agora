@@ -164,7 +164,7 @@ public enum NetworkTopology
 
 *******************************************************************************/
 
-public const(PublicKey)[] makeTestNetwork (
+public Network makeTestNetwork (
     TestRegistry registry, NetworkTopology topology, size_t nodes)
 {
     import std.algorithm;
@@ -232,7 +232,8 @@ public const(PublicKey)[] makeTestNetwork (
             registry.register(conf, "normal");
         }
 
-        return key_pairs.map!(a => a.address).array;
+        return new Network(NodeConfig.init, node_configs.map!(
+            c => format("http://%s:%d", c.address, c.port)).array);
 
     case NetworkTopology.Balanced:
     case NetworkTopology.Tiered:

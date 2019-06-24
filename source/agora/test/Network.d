@@ -96,6 +96,6 @@ class TestNodeRegistry : TestRegistry
 unittest
 {
     scope registry = new TestNodeRegistry;
-    auto keys = registry.makeTestNetwork(NetworkTopology.Simple, 4);
+    auto network = registry.makeTestNetwork(NetworkTopology.Simple, 4);
     registry.waitUntilConnected(4);
 }
