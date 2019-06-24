@@ -68,32 +68,6 @@ public abstract class TestRegistry
     {
         this.registry[config.node.key_pair.address] = this.factory(config, name);
     }
-
-    ///
-    public void add (PublicKey key, string address)
-    {
-        assert(key in this.registry);
-    }
-
-    ///
-    public void remove (PublicKey key)
-    {
-    }
-
-    ///
-    public API getAPI (PublicKey key)
-    {
-        if (auto api = key in this.registry)
-            return *api;
-
-        return null;
-    }
-
-    ///
-    public API[] getAllAPIs ( )
-    {
-        return this.registry.byValue.array;
-    }
 }
 
 /// Describes a network topology for testing purpose
