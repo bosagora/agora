@@ -43,14 +43,8 @@ class Network
     /// Config instance
     private const NodeConfig node_config;
 
-    /// The configured quorum set validators
-    private Set!PublicKey expected_validators;
-
-    /// The connected validator nodes
-    private RemoteNode[PublicKey] validators;
-
-    /// The connected listener nodes
-    private RemoteNode[PublicKey] listeners;
+    /// The connected nodes
+    private RemoteNode[PublicKey] peers;
 
     /// The addresses currently establishing connections to.
     /// The number of connecting addresses should not
@@ -87,14 +81,13 @@ class Network
     {
         logInfo("Discovering from %s", this.known_addresses.byKey());
 
-        while (!this.allQuorumNodesFound())
+        while (!this.allPeersConnected())
         {
             this.connectNextAddresses();
             sleep(this.node_config.retry_delay.msecs);
         }
 
-        logInfo("Discovery reached. %s quorum validators connected out of %s.",
-            this.validators.length, this.expected_validators.length);
+        logInfo("Discovery reached. %s peers connected.", this.peers.length);
 
         // the rest can be done asynchronously as we can already
         // start validating and voting on the blockchain
@@ -134,7 +127,7 @@ class Network
         if (this.peerLimitReached())
             return;
         logInfo("Established new connection with peer: %s", node.key);
-        this.validators[node.key] = this.listeners[node.key] = node;
+        this.peers[node.key] = node;
     }
 
     /// Received new set of addresses, put them in the todo & known IP list
@@ -205,21 +198,21 @@ class Network
     }
 
     ///
-    private bool allQuorumNodesFound ( )
+    private bool allPeersConnected ( )
     {
-        return this.validators.length >= this.expected_validators.length;
+        return this.todo_addresses.length == 0;
     }
 
     private bool peerLimitReached ( )
     {
-        return this.listeners.length >= this.node_config.max_listeners;
+        return this.peers.length >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
     public NetworkInfo getNetworkInfo ()
     {
         return NetworkInfo(
-            this.allQuorumNodesFound()
+            this.allPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
             this.known_addresses);
     }
