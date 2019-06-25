@@ -44,22 +44,22 @@ class Network
     private const NodeConfig node_config;
 
     /// The connected nodes
-    private RemoteNode[PublicKey] peers;
+    protected RemoteNode[PublicKey] peers;
 
     /// The addresses currently establishing connections to.
     /// The number of connecting addresses should not
     /// exceed MaxConnectingAddresses too much.
-    private Set!Address connecting_addresses;
+    protected Set!Address connecting_addresses;
 
     /// Addresses we won't connect to anymore
-    private Set!Address banned_addresses;
+    protected Set!Address banned_addresses;
 
     /// All known addresses so far
-    private Set!Address known_addresses;
+    protected Set!Address known_addresses;
 
     /// Addresses are added and removed here,
     /// but never added again if they're already in known_addresses
-    private Set!Address todo_addresses;
+    protected Set!Address todo_addresses;
 
 
     /// Ctor
