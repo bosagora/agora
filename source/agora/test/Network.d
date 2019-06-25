@@ -52,10 +52,10 @@ private final class Network : TestNetwork
 
         foreach (_; 0 .. attempts)
         {
-            foreach (key, api; this.peers)
+            foreach (key, api; this.apis)
             try
             {
-                if (api.net_info.state == NetworkState.Complete)
+                if (api.getNetworkInfo().state == NetworkState.Complete)
                     fully_discovered[key] = true;
             }
             catch (Exception ex)
@@ -84,6 +84,5 @@ private final class Network : TestNetwork
 unittest
 {
     auto network = makeTestNetwork!Network(NetworkTopology.Simple, 4);
-    network.discover();
     network.waitUntilConnected(4);
 }
