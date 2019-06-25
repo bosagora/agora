@@ -137,9 +137,9 @@ class RemoteNode
     {
         try
         {
+            this.net_info = this.api.getNetworkInfo();
             logInfo("IP %s: Received network info %s", this.address,
                 net_info);
-            this.net_info = this.api.getNetworkInfo();
             return true;
         }
         catch (Exception ex)
