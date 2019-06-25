@@ -201,10 +201,14 @@ public NetworkT makeTestNetwork (NetworkT : TestNetwork)
 
         auto net = new NetworkT(NodeConfig.init, node_configs.map!(
             c => c.key_pair.address.toString()).array);
+
+        // Workaround https://issues.dlang.org/show_bug.cgi?id=20002
+        TestNetwork base_net = net;
+
         foreach (idx, ref conf; configs)
         {
             const address = node_configs[idx].key_pair.address;
-            net.apis[address] = net.createNewNode(address.toString(), conf);
+            net.apis[address] = base_net.createNewNode(address.toString(), conf);
         }
 
         net.apis.each!(a => a.start());
