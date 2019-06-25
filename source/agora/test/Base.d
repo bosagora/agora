@@ -53,9 +53,10 @@ public class TestNetwork : Network
     static import std.concurrency;
     import geod24.LocalRest;
 
-    /// 'Owning' reference to the nodes returned by `createNewNode` to avoid
-    /// eager garbage collection
-    private TestAPI[] apis;
+    /// Used by the unittests in order to directly interact with the nodes,
+    /// without trying to handshake or do any automatic network discovery.
+    /// Also kept here to avoid any eager garbage collection.
+    public TestAPI[PublicKey] apis;
 
     /// Ctor
     public this (NodeConfig config, in string[] peers)
@@ -202,7 +203,8 @@ public NetworkT makeTestNetwork (NetworkT : TestNetwork)
             c => c.key_pair.address.toString()).array);
         foreach (idx, ref conf; configs)
         {
-            net.apis ~= net.createNewNode(node_configs[idx].key_pair.address.toString(), conf);
+            const address = node_configs[idx].key_pair.address;
+            net.apis[address] = net.createNewNode(address.toString(), conf);
         }
 
         net.apis.each!(a => a.start());
