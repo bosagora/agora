@@ -79,7 +79,7 @@ class Network
     /// all the validator nodes from our quorum set.
     public void discover ()
     {
-        logInfo("Discovering from %s", this.known_addresses.byKey());
+        logInfo("Discovering from %s", this.todo_addresses.byKey());
 
         while (!this.allPeersConnected())
         {
