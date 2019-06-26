@@ -21,7 +21,7 @@ import agora.test.Base;
 unittest
 {
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestNetwork(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
     assert(network.getDiscoveredNodes().length == NodeCount);
 }
