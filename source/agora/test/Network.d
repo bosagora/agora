@@ -21,5 +21,6 @@ import agora.test.Base;
 unittest
 {
     auto network = makeTestNetwork!TestNetwork(NetworkTopology.Simple, 4);
+    network.start();
     network.waitUntilConnected(4);
 }

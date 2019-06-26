@@ -86,6 +86,20 @@ public class TestNetwork : Network
 
     /***************************************************************************
 
+        Start each of the nodes
+
+        Params:
+            count = Expected number of nodes
+
+    ***************************************************************************/
+
+    public void start ()
+    {
+        this.apis.each!(a => a.start());
+    }
+
+    /***************************************************************************
+
         Wait until the nodes have reached discovery.
         If after 10 query attempts they haven't connected
         to each other, throw an exception.
@@ -260,7 +274,6 @@ public NetworkT makeTestNetwork (NetworkT : TestNetwork)
             net.apis[address] = base_net.createNewNode(address.toString(), conf);
         }
 
-        net.apis.each!(a => a.start());
         return net;
 
     case NetworkTopology.Balanced:
