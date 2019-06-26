@@ -89,6 +89,9 @@ public struct NodeConfig
 
     /// Number of msecs to wait before retrying failed connections
     public long retry_delay = 3000;
+
+    /// Path to the data directory to store metadata and blockchain data
+    public string data_dir;
 }
 
 /// Admin API config

@@ -37,6 +37,8 @@ node:
   # Private seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
   # Public address:  GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
   seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  # Path to the data directory (if the path doesn't exist it will be created)
+  data_dir: .cache
 
 ################################################################################
 ##                          Administrative interface                          ##

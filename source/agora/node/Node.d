@@ -15,6 +15,7 @@ module agora.node.Node;
 
 import agora.common.API;
 import agora.common.Config;
+import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.node.Network;
@@ -56,7 +57,9 @@ public class Node (Network) : API
     public this (const Config config)
     {
         this.config = config;
-        this.network = new Network(config.node, config.network, config.dns_seeds);
+        this.network = new Network(config.node, config.network,
+            config.dns_seeds,
+            this.getMetadata(config.node.data_dir));
         this.gossip = new GossipProtocol(this.network);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
@@ -67,6 +70,9 @@ public class Node (Network) : API
     {
         logInfo("Doing network discovery..");
         this.network.discover();
+
+        logInfo("Dumping metadata..");
+        this.network.dumpMetadata();
     }
 
     /// GET /public_key
@@ -116,5 +122,28 @@ public class Node (Network) : API
     public override bool hasMessage(Hash msg) @safe
     {
         return this.gossip.hasMessage(msg);
+    }
+
+    /***************************************************************************
+
+        Reads the metadata from the provided disk path.
+
+        Subclasses can override this method and return
+        a Metadata object which loads/dumps data in memory
+        rather than on disk, to avoid I/O (e.g. for unittesting)
+
+        Note: not exposed in the API.
+
+        Params:
+            data_dir = path to the data directory
+
+        Returns:
+            the metadata loaded from disk
+
+    ***************************************************************************/
+
+    protected Metadata getMetadata (string data_dir) @system
+    {
+        return new DiskMetadata(data_dir);
     }
 }
