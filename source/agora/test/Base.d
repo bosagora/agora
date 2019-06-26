@@ -83,6 +83,55 @@ public class TestNetwork : Network
         std.concurrency.register(address, api.tid());
         return api;
     }
+
+    /***************************************************************************
+
+        Wait until the nodes have reached discovery.
+        If after 10 query attempts they haven't connected
+        to each other, throw an exception.
+
+        Params:
+            count = Expected number of nodes
+
+    ***************************************************************************/
+
+    public void waitUntilConnected (size_t count)
+    {
+        import core.thread;
+        import std.stdio;
+
+        const attempts = 10;
+
+        bool[PublicKey] fully_discovered;
+
+        foreach (_; 0 .. attempts)
+        {
+            foreach (key, api; this.apis)
+            try
+            {
+                if (api.getNetworkInfo().state == NetworkState.Complete)
+                    fully_discovered[key] = true;
+            }
+            catch (Exception ex)
+            {
+                // just continue
+            }
+
+            // we're done
+            if (fully_discovered.length == count)
+                return;
+
+            // try again
+            auto sleep_time = 1.seconds;  // should be enough time
+            writefln("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
+                fully_discovered.length, count);
+            Thread.sleep(sleep_time);
+        }
+
+        assert(fully_discovered.length == count,
+               format("Got %s/%s discovered nodes. Missing nodes: %s",
+                   fully_discovered.length, count, this.todo_addresses));
+    }
 }
 
 /// Temporary hack to work around the inability to do 'start' from main
