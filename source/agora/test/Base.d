@@ -100,13 +100,15 @@ public class TestNetwork : Network
 
     /***************************************************************************
 
-        Wait until the nodes have reached discovery.
-        If after 10 query attempts they haven't connected
-        to each other, throw an exception.
+        Keep polling and waiting for nodes to all reach discovery,
+        up to 10 attempts and a sleep time between each attempt;
+
+        Returns:
+            the public keys of the nodes which reached discovery
 
     ***************************************************************************/
 
-    public void waitUntilConnected ()
+    public PublicKey[] getDiscoveredNodes ()
     {
         import core.thread;
         import std.stdio;
@@ -130,7 +132,7 @@ public class TestNetwork : Network
 
             // we're done
             if (fully_discovered.length == this.apis.length)
-                return;
+                break;
 
             // try again
             auto sleep_time = 1.seconds;  // should be enough time
@@ -139,9 +141,7 @@ public class TestNetwork : Network
             Thread.sleep(sleep_time);
         }
 
-        assert(fully_discovered.length == count,
-               format("Got %s/%s discovered nodes. Missing nodes: %s",
-                   fully_discovered.length, this.apis.length, this.todo_addresses));
+        return fully_discovered.byKey.array;
     }
 }
 
