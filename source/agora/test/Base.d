@@ -104,12 +104,9 @@ public class TestNetwork : Network
         If after 10 query attempts they haven't connected
         to each other, throw an exception.
 
-        Params:
-            count = Expected number of nodes
-
     ***************************************************************************/
 
-    public void waitUntilConnected (size_t count)
+    public void waitUntilConnected ()
     {
         import core.thread;
         import std.stdio;
@@ -132,19 +129,19 @@ public class TestNetwork : Network
             }
 
             // we're done
-            if (fully_discovered.length == count)
+            if (fully_discovered.length == this.apis.length)
                 return;
 
             // try again
             auto sleep_time = 1.seconds;  // should be enough time
             writefln("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
-                fully_discovered.length, count);
+                fully_discovered.length, this.apis.length);
             Thread.sleep(sleep_time);
         }
 
         assert(fully_discovered.length == count,
                format("Got %s/%s discovered nodes. Missing nodes: %s",
-                   fully_discovered.length, count, this.todo_addresses));
+                   fully_discovered.length, this.apis.length, this.todo_addresses));
     }
 }
 
