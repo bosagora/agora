@@ -37,9 +37,9 @@ import std.format;
 
 /*******************************************************************************
 
-    Base class for `Network` used in unittests
+    Base class for `NetworkManager` used in unittests
 
-    The `Network` class is the mean used to communicate with other nodes.
+    The `NetworkManager` class is the mean used to communicate with other nodes.
     In regular build, it does network communication, but in unittests it should
     not do IO (or appear not to).
 
@@ -48,7 +48,7 @@ import std.format;
 
 *******************************************************************************/
 
-public class TestNetwork : Network
+public class TestNetworkManager : NetworkManager
 {
     static import std.concurrency;
     import geod24.LocalRest;
@@ -79,7 +79,7 @@ public class TestNetwork : Network
     /// Initialize a new node
     protected TestAPI createNewNode (Address address, Config conf)
     {
-        auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetwork)(conf);
+        auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetworkManager)(conf);
         std.concurrency.register(address, api.tid());
         return api;
     }
@@ -193,10 +193,10 @@ public enum NetworkTopology
 
     This function's only usage is to create the network topology.
     The actual behavior of the nodes that are part of the network is decided
-    by the `TestNetwork` implementation.
+    by the `TestNetworkManager` implementation.
 
     Params:
-        NetworkT = Type of `Network` to instantiate
+        NetworkT = Type of `NetworkManager` to instantiate
         topology = Network topology to adopt
         nodes    = Number of nodes to instantiated
 
@@ -205,7 +205,7 @@ public enum NetworkTopology
 
 *******************************************************************************/
 
-public NetworkT makeTestNetwork (NetworkT : TestNetwork)
+public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
     (NetworkTopology topology, size_t nodes)
 {
     import std.algorithm;
@@ -263,7 +263,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetwork)
             c => c.key_pair.address.toString()).array);
 
         // Workaround https://issues.dlang.org/show_bug.cgi?id=20002
-        TestNetwork base_net = net;
+        TestNetworkManager base_net = net;
 
         foreach (idx, ref conf; configs)
         {

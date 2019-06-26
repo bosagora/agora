@@ -1,6 +1,15 @@
 /*******************************************************************************
 
-    Contains the code used for peer-to-peer network discovery.
+    Expose facilities used by the `Node` to communicate with the network
+
+    The `NetworkManager` is responsible for managing the view of the network
+    that a `Node` has.
+    Things such as peer blacklisting, prioritization (which peer is contacted
+    first when a message has to be sent), etc... are handled here.
+
+    In unittests, one can replace a `NetworkManager` with a `TestNetworkManager`
+    which provides a different client type (see `getClient`) in order to enable
+    in-memory network communication.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -32,13 +41,9 @@ import std.exception;
 import std.format;
 import std.random;
 
-// check up to 10 addresses at once
-private immutable MaxConnectingAddresses = 10;
 
-/// Note: cases which need to be handled:
-/// - node disconnnects during discovery => we should re-try it later (if we need more IPs)
-/// - new node connects at a random time during discovery => we should ask for its peers
-class Network
+/// Ditto
+public class NetworkManager
 {
     /// Config instance
     private const NodeConfig node_config;
@@ -234,3 +239,6 @@ class Network
         return new RestInterfaceClient!API(address);
     }
 }
+
+// check up to 10 addresses at once
+private immutable MaxConnectingAddresses = 10;
