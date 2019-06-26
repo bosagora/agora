@@ -108,11 +108,6 @@ class Network
         if (this.isAddressBanned(address))
             return;
 
-        if (address in this.connecting_addresses)
-            return;
-
-        this.connecting_addresses.put(address);
-
         logInfo("IP %s: Establishing connection..", address);
         auto node = new RemoteNode(address, this.getClient(address),
             this.node_config.retry_delay.msecs);
@@ -179,6 +174,7 @@ class Network
             if (!this.isAddressBanned(address) &&
                 address !in this.connecting_addresses)
             {
+                this.connecting_addresses.put(address);
                 runTask(() { this.tryConnecting(address); });
             }
         }
