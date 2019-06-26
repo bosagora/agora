@@ -25,6 +25,8 @@ version (unittest):
 import agora.common.API;
 import agora.common.Config;
 import agora.common.Data;
+import agora.common.Metadata;
+import agora.common.Set;
 import agora.common.crypto.Key;
 import agora.node.Network;
 import agora.node.Node;
@@ -66,9 +68,9 @@ public class TestNetworkManager : NetworkManager
     public this () { super(); }
 
     /// ditto
-    public this (NodeConfig config, in string[] peers, in string[] dns_seeds)
+    public this (NodeConfig config, in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
-        super(config, peers, dns_seeds);
+        super(config, peers, dns_seeds, metadata);
         // NetworkManager assumes IP are used but we use pubkey
         this.banned_addresses.put(config.key_pair.address.toString());
     }
@@ -170,14 +172,21 @@ public interface TestAPI : API
 {
     ///
     public abstract void start();
+
+    ///
+    public abstract void metaAddPeer(string peer);
 }
 
 /// Ditto
-public final class TestNode (Net) : Node!(Net), TestAPI
+public final class TestNode (Net) : Node!Net, TestAPI
 {
+    /// The metadata used for the tests
+    MemMetadata mem_metadata;
+
     ///
-    public this (const Config config)
+    public this (Config config)
     {
+        this.mem_metadata = new MemMetadata;
         super(config);
     }
 
@@ -185,6 +194,18 @@ public final class TestNode (Net) : Node!(Net), TestAPI
     public override void start ()
     {
         super.start();
+    }
+
+    /// Used by the node
+    public override Metadata getMetadata (string _unused) @system
+    {
+        return this.mem_metadata;
+    }
+
+    /// Used by unittests
+    public override void metaAddPeer (Address peer)
+    {
+        this.mem_metadata.peers.put(peer);
     }
 }
 
@@ -219,6 +240,7 @@ public enum NetworkTopology
         NetworkT = Type of `NetworkManager` to instantiate
         topology = Network topology to adopt
         nodes    = Number of nodes to instantiated
+        configure_network = whether to set up the peers in the config
 
     Returns:
         The set of public key added to the node
@@ -226,7 +248,7 @@ public enum NetworkTopology
 *******************************************************************************/
 
 public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
-    (NetworkTopology topology, size_t nodes)
+    (NetworkTopology topology, size_t nodes, bool configure_network = true)
 {
     import std.algorithm;
     import std.array;
@@ -277,7 +299,9 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             Config conf =
             {
                 node : node_configs[idx],
-                network : assumeUnique(other_pairs.map!(k => k.address.toString()).array),
+                network : configure_network
+                    ? assumeUnique(other_pairs.map!(k => k.address.toString()).array)
+                    : null,
             };
 
             configs ~= conf;

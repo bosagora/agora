@@ -26,6 +26,7 @@ import agora.common.API;
 import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.Data;
+import agora.common.Metadata;
 import agora.common.Set;
 import agora.node.RemoteNode;
 
@@ -64,25 +65,25 @@ public class NetworkManager
     /// but never added again if they're already in known_addresses
     protected Set!Address todo_addresses;
 
+    ///
+    private Metadata metadata;
+
+    /// Initial seed peers
+    const(string)[] seed_peers;
+
     /// DNS seeds
     private const(string)[] dns_seeds;
-
 
     /// no-op. for use with unittests only
     version (unittest) public this () { }
 
     /// Ctor
-    public this (in NodeConfig node_config, in string[] peers, in string[] dns_seeds)
-    in { assert(peers.length > 0, "No network option found"); }
-    do {
+    public this (in NodeConfig node_config, in string[] peers,
+        in string[] dns_seeds, Metadata metadata)
+    {
         this.node_config = node_config;
-        this.addAddresses(Set!Address.from(peers));
-
-        // add our own IP to the list of banned IPs to avoid
-        // the node communicating with itself
-        this.banned_addresses.put(
-            format("http://%s:%s", this.node_config.address, this.node_config.port));
-
+        this.metadata = metadata;
+        this.seed_peers = peers;
         this.dns_seeds = dns_seeds;
     }
 
@@ -90,10 +91,27 @@ public class NetworkManager
     /// all the validator nodes from our quorum set.
     public void discover ()
     {
-        if (this.dns_seeds.length > 0)
+        // add our own IP to the list of banned IPs to avoid
+        // the node communicating with itself
+        this.banned_addresses.put(
+            format("http://%s:%s", this.node_config.address, this.node_config.port));
+
+        assert(this.metadata !is null, "Metadata is null");
+        this.metadata.load();
+
+        // if we have peers in the metadata, use them
+        if (this.metadata.peers.length > 0)
         {
-            logInfo("Resolving DNS from %s", this.dns_seeds);
-            this.addAddresses(resolveDNSSeeds(this.dns_seeds));
+            this.addAddresses(this.metadata.peers);
+        }
+        else
+        {
+            // add the IP seeds
+            this.addAddresses(Set!Address.from(this.seed_peers));
+
+            // add the DNS seeds
+            if (this.dns_seeds.length > 0)
+                this.addAddresses(resolveDNSSeeds(this.dns_seeds));
         }
 
         logInfo("Discovering from %s", this.todo_addresses.byKey());
@@ -118,6 +136,12 @@ public class NetworkManager
         });
     }
 
+    /// Dump the metadata
+    public void dumpMetadata ( )
+    {
+        this.metadata.dump();
+    }
+
     /// Attempt connecting with the given address
     private void tryConnecting ( Address address )
     {
@@ -140,6 +164,7 @@ public class NetworkManager
             return;
         logInfo("Established new connection with peer: %s", node.key);
         this.peers[node.key] = node;
+        this.metadata.peers.put(node.address);
     }
 
     /// Received new set of addresses, put them in the todo & known IP list
