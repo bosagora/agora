@@ -58,6 +58,9 @@ public class TestNetworkManager : NetworkManager
     /// Also kept here to avoid any eager garbage collection.
     public TestAPI[PublicKey] apis;
 
+    /// Workaround compiler bug that triggers in `std.concurrency`
+    protected __gshared std.concurrency.Tid[string] tbn;
+
     /// Ctor
     public this (NodeConfig config, in string[] peers, in string[] dns_seeds)
     {
@@ -69,20 +72,17 @@ public class TestNetworkManager : NetworkManager
     ///
     protected final override API getClient (Address address)
     {
-        auto tid = std.concurrency.locate(address);
-        if (tid == tid.init)
-        {
-            assert(0, "Trying to access node at address '" ~ address ~
-                   "' without first creating it");
-        }
-        return new RemoteAPI!API(tid);
+        if (auto ptr = address in tbn)
+            return new RemoteAPI!API(*ptr);
+        assert(0, "Trying to access node at address '" ~ address ~
+               "' without first creating it");
     }
 
     /// Initialize a new node
     protected TestAPI createNewNode (Address address, Config conf)
     {
         auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetworkManager)(conf);
-        std.concurrency.register(address, api.tid());
+        tbn[address] = api.tid();
         return api;
     }
 
