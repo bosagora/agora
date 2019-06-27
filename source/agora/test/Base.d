@@ -62,6 +62,8 @@ public class TestNetworkManager : NetworkManager
     public this (NodeConfig config, in string[] peers)
     {
         super(config, peers);
+        // NetworkManager assumes IP are used but we use pubkey
+        this.banned_addresses.put(config.key_pair.address.toString());
     }
 
     ///
