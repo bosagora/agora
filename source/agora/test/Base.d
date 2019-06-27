@@ -63,6 +63,9 @@ public class TestNetworkManager : NetworkManager
     protected __gshared std.concurrency.Tid[string] tbn;
 
     /// Ctor
+    public this () { super(); }
+
+    /// ditto
     public this (NodeConfig config, in string[] peers, in string[] dns_seeds)
     {
         super(config, peers, dns_seeds);
@@ -280,9 +283,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             configs ~= conf;
         }
 
-
-        auto net = new NetworkT(NodeConfig.init, node_configs.map!(
-            c => c.key_pair.address.toString()).array, null);
+        auto net = new NetworkT();
 
         // Workaround https://issues.dlang.org/show_bug.cgi?id=20002
         TestNetworkManager base_net = net;

@@ -45,7 +45,7 @@ import std.random;
 public class NetworkManager
 {
     /// Config instance
-    private const NodeConfig node_config;
+    private const NodeConfig node_config = NodeConfig.init;
 
     /// The connected nodes
     protected RemoteNode[PublicKey] peers;
@@ -67,6 +67,9 @@ public class NetworkManager
     /// DNS seeds
     private const(string)[] dns_seeds;
 
+
+    /// no-op. for use with unittests only
+    version (unittest) public this () { }
 
     /// Ctor
     public this (in NodeConfig node_config, in string[] peers, in string[] dns_seeds)
