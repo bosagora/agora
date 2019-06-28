@@ -193,15 +193,22 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 
     Node root = Loader.fromFile(cmdln.config_path).load();
 
-    if (auto node = "network" in root)
-        enforce(root["network"].type == NodeType.sequence,
-                "`network` section must be a section");
-    else
-        throw new Exception("The 'network' section is mandatory and must specify at least one peer");
+    string[] parseSequence ( string section )
+    {
+        if (auto node = section in root)
+            enforce(root[section].type == NodeType.sequence,
+                format("`%s` section must be a sequence", section));
+        else
+            throw new Exception(
+                format("The '%s' section is mandatory and must " ~
+                    "specify at least one item", section));
 
-    string[] network;
-    foreach (string address; root["network"])
-        network ~= address;
+        string[] result;
+        foreach (string item; root[section])
+            result ~= item;
+
+        return result;
+    }
 
     enforce("node" in root, "The 'node' section is required");
     enforce("quorum" in root, "The 'quorum' section is required");
@@ -209,7 +216,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
     Config conf =
     {
         node : parseNodeConfig(root["node"]),
-        network : assumeUnique(network),
+        network : assumeUnique(parseSequence("network")),
         quorums : assumeUnique(parseQuorumSection(root["quorum"]))
     };
 
