@@ -52,6 +52,7 @@ public class TestNetworkManager : NetworkManager
 {
     static import std.concurrency;
     import geod24.LocalRest;
+    import core.time;
 
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
@@ -145,6 +146,20 @@ public class TestNetworkManager : NetworkManager
 
         return fully_discovered.byKey.array;
     }
+
+    /// This is a hack
+    protected override void runTask ( void delegate() dg)
+    {
+        static import geod24.LocalRest;
+        geod24.LocalRest.runTask(dg);
+    }
+
+    /// Ditto
+    protected override void wait (Duration dur)
+    {
+        static import geod24.LocalRest;
+        geod24.LocalRest.sleep(dur);
+    }
 }
 
 /// Temporary hack to work around the inability to do 'start' from main
@@ -212,6 +227,11 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 {
     import std.algorithm;
     import std.array;
+
+    // We know we're in the main thread
+    // Vibe.d messes with the scheduler - reset it
+    static import std.concurrency;
+    std.concurrency.scheduler = null;
 
     assert(nodes >= 2, "Creating a network require at least 2 nodes");
 
