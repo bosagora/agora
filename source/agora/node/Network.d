@@ -29,7 +29,6 @@ import agora.common.Data;
 import agora.common.Set;
 import agora.node.RemoteNode;
 
-import vibe.core.core;
 import vibe.core.log;
 import vibe.web.rest;
 
@@ -100,19 +99,19 @@ public class NetworkManager
         while (!this.allPeersConnected())
         {
             this.connectNextAddresses();
-            sleep(this.node_config.retry_delay.msecs);
+            this.wait(this.node_config.retry_delay.msecs);
         }
 
         logInfo("Discovery reached. %s peers connected.", this.peers.length);
 
         // the rest can be done asynchronously as we can already
         // start validating and voting on the blockchain
-        runTask(()
+        this.runTask(()
         {
             while (!this.peerLimitReached())
             {
                 this.connectNextAddresses();
-                sleep(this.node_config.retry_delay.msecs);
+                this.wait(this.node_config.retry_delay.msecs);
             }
         });
     }
@@ -191,7 +190,7 @@ public class NetworkManager
                 address !in this.connecting_addresses)
             {
                 this.connecting_addresses.put(address);
-                runTask(() { this.tryConnecting(address); });
+                this.runTask(() { this.tryConnecting(address); });
             }
         }
     }
@@ -248,6 +247,30 @@ public class NetworkManager
     protected API getClient (Address address)
     {
         return new RestInterfaceClient!API(address);
+    }
+
+    /***************************************************************************
+
+        Run an asynchronous task
+
+        This is needed to support testing via `LocalRest`.
+        It should not be in `NetworkManager`.
+        However this is currently the place that uses it.
+        When we build a good enough abstraction, this can be removed.
+
+    ***************************************************************************/
+
+    protected void runTask ( void delegate() dg)
+    {
+        static import vibe.core.core;
+        vibe.core.core.runTask(dg);
+    }
+
+    /// Ditto
+    protected void wait (Duration dur)
+    {
+        static import vibe.core.core;
+        vibe.core.core.sleep(dur);
     }
 }
 
