@@ -68,14 +68,14 @@ class RemoteNode
     {
         while (!this.getPublicKey())
         {
-            logInfo("IP %s: Couldn't retrieve public key. Will retry in %s..",
+            logInfo("[%s] Couldn't retrieve public key. Will retry in %s..",
                 this.address, this.retry_delay);
             sleep(this.retry_delay);
         }
 
         while (!this.getPublicConfig())
         {
-            logInfo("IP %s (Key: %s): Couldn't retrieve configuration. " ~
+            logInfo("[%s] (%s): Couldn't retrieve configuration. " ~
                 "Will retry in %s..",
                 this.address, this.key, this.retry_delay);
             sleep(this.retry_delay);
@@ -95,7 +95,7 @@ class RemoteNode
             if (this.net_info.state == NetworkState.Complete)
                 break;
 
-            logInfo("IP %s (Key: %s): Peer info is incomplete. Retrying in %s..",
+            logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
                 this.address, this.key, this.retry_delay);
             sleep(this.retry_delay);
         }
@@ -138,7 +138,7 @@ class RemoteNode
         try
         {
             this.net_info = this.api.getNetworkInfo();
-            logInfo("IP %s: Received network info %s", this.address,
+            logInfo("[%s]: Received network info %s", this.address,
                 net_info);
             return true;
         }

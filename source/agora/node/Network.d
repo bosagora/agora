@@ -124,7 +124,7 @@ public class NetworkManager
         if (this.isAddressBanned(address))
             return;
 
-        logInfo("IP %s: Establishing connection..", address);
+        logInfo("Establishing connection with %s...", address);
         auto node = new RemoteNode(address, this.getClient(address),
             this.node_config.retry_delay.msecs);
 
