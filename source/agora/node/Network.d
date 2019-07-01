@@ -51,8 +51,7 @@ public class NetworkManager
     protected RemoteNode[PublicKey] peers;
 
     /// The addresses currently establishing connections to.
-    /// The number of connecting addresses should not
-    /// exceed MaxConnectingAddresses too much.
+    /// Used to prevent connecting to the same address twice.
     protected Set!Address connecting_addresses;
 
     /// Addresses we won't connect to anymore
@@ -165,19 +164,7 @@ public class NetworkManager
         if (this.todo_addresses.length == 0)
             return;
 
-        // connection limit reached
-        if (this.connecting_addresses.length >= MaxConnectingAddresses)
-            return;
-
-        // this should never assert, unless vibe.d starts another thread..
-        assert(this.connecting_addresses.length < MaxConnectingAddresses);
-
-        // max new addresses to connect to
-        size_t free_connections = MaxConnectingAddresses -
-            this.connecting_addresses.length;
-
-        auto random_addresses = this.todo_addresses.pickRandom(
-            free_connections);
+        auto random_addresses = this.todo_addresses.pickRandom();
 
         logInfo("Connecting to next set of addresses: %s",
             random_addresses);
@@ -290,9 +277,6 @@ public class NetworkManager
         }
     }
 }
-
-// check up to 10 addresses at once
-private immutable MaxConnectingAddresses = 10;
 
 /*******************************************************************************
 
