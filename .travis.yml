@@ -19,6 +19,22 @@ matrix:
     - d: dmd-nightly
     - d: ldc-latest-ci
   fast_finish: true
+  include:
+    - d: gdc
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libsodium-dev
+            - gdc-9
+            - libsqlite3-dev
+      script:
+        - dub test --skip-registry=all --compiler=gdc-9
+        - rdmd --compiler=gdc-9 ./tests/runner.d gdc-9
+        - dub build --skip-registry=all --compiler=gdc-9
+      env: DC=gdc-9 PATH=$HOME/bin/:$PATH PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
 
 # `brew install` is the slowest thing ever on OSX
 # It takes at least 6 minutes to run
