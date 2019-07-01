@@ -23,7 +23,7 @@ unittest
     import std.algorithm;
     import std.format;
 
-    const NodeCount = 4;
+    const NodeCount = 16;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
     assert(network.getDiscoveredNodes().length == NodeCount);
