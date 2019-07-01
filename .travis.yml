@@ -31,16 +31,3 @@ before_install:
 script:
   - dub build --skip-registry=all --compiler=${DC}
   - dub test --skip-registry=all --compiler=${DC}
-
-# Latest version of DMD/GDC/LDC
-matrix:
-  include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - libsodium-dev
-            - gdc-9
-      env: DC=gdc-9 PATH=$HOME/bin/:$PATH
