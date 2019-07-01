@@ -81,10 +81,24 @@ private void fillFrom ( T ) ( ref T[] buffer, Set!T input )
         buffer[idx++] = address;
 }
 
-/// Pick random 'count' elements from the input set,
-/// and return an array of the elements (not very memory-efficient)
-public T[] pickRandom (T) ( Set!T input, size_t count )
+/**
+    Return an array of unique elements from the input set in
+    a randomly distributed order.
+
+    Params:
+        T     = the element type of the set
+        input = the input set
+        count = the number of elements to return,
+                if set to zero then input.length is implied
+
+    Returns:
+        a randomly distributed array of $count elements
+*/
+public T[] pickRandom (T) ( Set!T input, size_t count = 0 )
 {
+    if (count == 0)
+        count = input.length;
+
     static T[] buffer;
     buffer.fillFrom(input);
 
@@ -109,6 +123,10 @@ unittest
     auto randoms = set.pickRandom(5);
     sort(randoms);
     assert(randoms.uniq.count == 5);
+
+    auto full = set.pickRandom();
+    sort(full);
+    assert(full.uniq.count == set.length);
 }
 
 /**
