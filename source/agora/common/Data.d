@@ -24,3 +24,6 @@ public alias Hash = BitBlob!256;
 
 /// A network address
 public alias Address = string;
+
+/// The type of a signature
+public alias Signature = BitBlob!256;
