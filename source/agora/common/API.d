@@ -103,7 +103,7 @@ public interface API
 
     ***************************************************************************/
 
-    public PublicConfig getPublicConfig();
+    public PublicConfig getPublicConfig ();
 
     /***************************************************************************
 
@@ -116,7 +116,7 @@ public interface API
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
-    public bool hasMessage(Hash msg);
+    public bool hasMessage (Hash msg);
 
     /***************************************************************************
 
@@ -128,5 +128,5 @@ public interface API
 
     ***************************************************************************/
 
-    public bool setMessage(Hash msg);
+    public bool setMessage (Hash msg);
 }
