@@ -22,6 +22,8 @@ import agora.common.Data;
 import agora.common.Hash;
 import agora.common.crypto.Key;
 
+import std.algorithm;
+
 
 /*******************************************************************************
 
@@ -149,4 +151,171 @@ public struct Input
         hashPart(this.previous, dg);
         hashPart(this.index, dg);
     }
+}
+
+/*******************************************************************************
+
+    Checks whether the transaction is coinbase
+
+    Params:
+        tx = Type of `Transaction`
+
+    Return:
+        Return true if this transaction is a coinbase
+
+*******************************************************************************/
+
+public bool isCoinbaseTx (Transaction tx)
+{
+    return tx.inputs.length == 1 && tx.inputs[0] == Input.init;
+}
+
+/*******************************************************************************
+
+    Creates a new coinbase transaction
+
+    Params:
+        address = The public key that can redeem this output
+        value = The initial value
+
+    Return:
+        Return coinbase transation
+
+*******************************************************************************/
+
+public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
+{
+    return Transaction(
+        [Input(Hash.init, 0)],
+        [Output(value, address)]
+    );
+}
+
+/*******************************************************************************
+
+    Get sum of `Input`
+
+    Params:
+        tx = `Transaction`
+        findOutput = delegate for finding `Output`
+
+    Return:
+        Sum of `Input` in the `Transaction`
+
+*******************************************************************************/
+
+public Amount getSumInput (Transaction tx, Output* delegate (Hash hash, size_t index) findOutput)
+{
+    return tx.inputs.map!(a => findOutput(a.previous, a.index)).filter!(a => a !is null).map!(a => a.value).sum();
+}
+
+/*******************************************************************************
+
+    Get sum of `Output`
+
+    Params:
+        tx = `Transaction`
+
+    Return:
+        Sum of `Output` in the `Transaction`
+
+*******************************************************************************/
+
+public long getSumOutput (Transaction tx)
+{
+    return tx.outputs.map!(a => a.value).sum();
+}
+
+/*******************************************************************************
+
+    Get result of transaction verification
+
+    Params:
+        tx = `Transaction`
+        findOutput = delegate for finding `Output`
+
+    Return:
+        Return true if this transaction is verified.
+
+*******************************************************************************/
+
+public bool verifyData (Transaction tx, Output* delegate (Hash hash, size_t index) findOutput)
+{
+    if (tx.inputs.length == 0)
+        return false;
+
+    if (tx.outputs.length == 0)
+        return false;
+
+    if (tx.isCoinbaseTx())
+    {
+        return true;
+    }
+    else
+    {
+        if (tx.getSumOutput() > tx.getSumInput(findOutput))
+            return false;
+        else
+            return true;
+    }
+}
+
+/// verify transaction data
+unittest
+{
+    import std.format;
+
+    Transaction[Hash] storage;
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    // Creates the first transaction.
+    Transaction previousTx = newCoinbaseTX(key_pairs[0].address, 100);
+
+    // Save
+    Hash previousHash = hashFull(previousTx);
+    storage[previousHash] = previousTx;
+
+    // Creates the second transaction.
+    Transaction secondTx = Transaction(
+        [
+            Input(previousHash, 0)
+        ],
+        [
+            Output(50, key_pairs[1].address)
+        ]
+    );
+
+    // delegate for finding `Output`
+    auto findOutput = (Hash hash, size_t index)
+        {
+            if (auto tx = hash in storage)
+            {
+                if (index < tx.outputs.length)
+                {
+                    return &tx.outputs[index];
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                return null;
+            }
+        };
+
+    // It is validated. (the sum of `Output` < the sum of `Input`)
+    assert(secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+
+    secondTx.outputs ~= Output(50, key_pairs[2].address);
+
+    // It is validated. (the sum of `Output` == the sum of `Input`)
+    assert(secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+
+    secondTx.outputs ~= Output(50, key_pairs[3].address);
+
+    // It isn't validated. (the sum of `Output` > the sum of `Input`)
+    assert(!secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+
 }
