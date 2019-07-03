@@ -17,6 +17,7 @@ os:
 cache:
   directories:
     - $HOME/Library/Caches/Homebrew
+    - /usr/local/Homebrew
 
 # We need a fairly recent compiler for SCP
 # Namely one with N4387 fixed
