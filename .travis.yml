@@ -8,6 +8,15 @@ os:
   - linux
   - osx
 
+# `brew install` is the slowest thing ever on OSX
+# It takes at least 6 minutes to run
+# Note: The cache should be cleaned up from time to time,
+# as older packages will persist, but given the frequency
+# of release this is not an immediate concern
+cache:
+  directories:
+    - $HOME/Library/Caches/Homebrew
+
 # We need a fairly recent compiler for SCP
 # Namely one with N4387 fixed
 addons:
