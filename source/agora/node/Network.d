@@ -265,11 +265,11 @@ public class NetworkManager
         Sends the message to all the listeners.
 
         Params:
-          msg = the message to send
+            msg = the message to send
 
     ***************************************************************************/
 
-    public void sendMessage(Hash msg) @safe
+    public void sendMessage (Hash msg) @safe
     {
         foreach (ref node; this.peers)
         {

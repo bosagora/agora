@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains the code used for peer-to-peer communication.
+    Contains the code used for receiving, caching, and propagating messages.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -16,13 +16,25 @@ module agora.node.GossipProtocol;
 import agora.common.Data;
 import agora.node.Network;
 
-/// Procedure of peer-to-peer communication
-class GossipProtocol 
+/// Ditto
+public class GossipProtocol
 {
+    /// Network manager for propagating the received message
     private NetworkManager network;
-    private bool[Hash] receivedMsgCache;
 
-    /// Ctor
+    /// Contains the message cache
+    private bool[Hash] msg_cache;
+
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            network = the network manager used for message propagation
+
+    ***************************************************************************/
+
     public this (NetworkManager network)
     {
         this.network = network;
@@ -30,42 +42,41 @@ class GossipProtocol
 
     /***************************************************************************
 
-        If this is the first time this message was received, propagate it to the network.
-        
+        If this is the first time this message was received,
+        propagate it to the network.
+
+        Params:
+            msg = the received message
+
         Returns:
            true if this message is new and not a duplicate of a previous message
 
-        Params:
-          msg = the received message
-
     ***************************************************************************/
 
-    public bool receiveMessage(Hash msg) @safe
+    public bool receiveMessage (Hash msg) @safe
     {
         if (this.hasMessage(msg))
             return false;
 
-        receivedMsgCache[msg] = true;
+        this.msg_cache[msg] = true;
         this.network.sendMessage(msg);
         return true;
     }
 
-
     /***************************************************************************
 
         Check if this message is in the message cache.
-        
+
+        Params:
+            msg = the received message
+
         Returns:
             Return true if this message was a message already received.
 
-        Params:
-          msg = the received message
-
     ***************************************************************************/
 
-    public bool hasMessage(Hash msg) @safe
+    public bool hasMessage (Hash msg) @safe
     {
-        return (msg in receivedMsgCache) !is null;
+        return (msg in this.msg_cache) !is null;
     }
-
 }
