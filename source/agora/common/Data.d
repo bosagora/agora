@@ -26,4 +26,12 @@ public alias Hash = BitBlob!256;
 public alias Address = string;
 
 /// The type of a signature
-public alias Signature = BitBlob!256;
+public alias Signature = BitBlob!512;
+
+unittest
+{
+    // Check that our type match libsodium's definition
+    import libsodium;
+
+    static assert(Signature.sizeof == crypto_sign_ed25519_BYTES);
+}
