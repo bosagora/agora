@@ -40,8 +40,6 @@ import vibe.web.rest;
 *******************************************************************************/
 public class Node (Network) : API
 {
-@trusted:
-
     /// Config instance
     private const Config config;
 
@@ -72,19 +70,19 @@ public class Node (Network) : API
     }
 
     /// GET /public_key
-    public override PublicKey getPublicKey ()
+    public override PublicKey getPublicKey () pure nothrow @safe @nogc
     {
         return this.config.node.key_pair.address;
     }
 
     /// GET: /network_info
-    public override NetworkInfo getNetworkInfo ()
+    public override NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
     {
         return this.network.getNetworkInfo();
     }
 
     /// GET: /public_config
-    public override PublicConfig getPublicConfig()
+    public override PublicConfig getPublicConfig() pure nothrow @safe @nogc
     {
         PublicConfig config =
         {

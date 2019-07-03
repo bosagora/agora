@@ -183,31 +183,31 @@ public class NetworkManager
     }
 
     ///
-    private void banAddress ( Address address )
+    private void banAddress ( Address address ) nothrow @safe
     {
         logInfo("Banned address: %s", address);
         this.banned_addresses.put(address);
     }
 
     /// Return true if this address was already visited
-    private bool isAddressBanned ( Address address )
+    private bool isAddressBanned ( Address address )  pure nothrow @safe @nogc
     {
         return !!(address in this.banned_addresses);
     }
 
     ///
-    private bool allPeersConnected ( )
+    private bool allPeersConnected ( )  pure nothrow @safe @nogc
     {
         return this.todo_addresses.length == 0;
     }
 
-    private bool peerLimitReached ( )
+    private bool peerLimitReached ( )  pure nothrow @safe @nogc
     {
         return this.peers.length >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
-    public NetworkInfo getNetworkInfo ()
+    public NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
     {
         return NetworkInfo(
             this.allPeersConnected()
