@@ -14,6 +14,7 @@
 module agora.node.GossipProtocol;
 
 import agora.common.Data;
+import agora.common.Set;
 import agora.node.Network;
 
 /// Ditto
@@ -23,7 +24,7 @@ public class GossipProtocol
     private NetworkManager network;
 
     /// Contains the message cache
-    private bool[Hash] msg_cache;
+    private Set!Hash msg_cache;
 
 
     /***************************************************************************
@@ -58,7 +59,7 @@ public class GossipProtocol
         if (this.hasMessage(msg))
             return false;
 
-        this.msg_cache[msg] = true;
+        this.msg_cache.put(msg);
         this.network.sendMessage(msg);
         return true;
     }
