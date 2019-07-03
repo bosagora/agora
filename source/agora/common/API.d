@@ -1,6 +1,28 @@
 /*******************************************************************************
 
-    Contains the REST API interface.
+    Definitions of the nodes (full node & validator) APIs
+
+    Two kinds of nodes exist: full nodes, and validators.
+    A full node follows the network as a passive actor, but does validation
+    on the data it receives, and can forward that data to other nodes.
+    A validator is a full node which participates in consensus.
+
+    An `API` is used as an interface to communicate with a node.
+    As such, a class that implements `API` exists (in `agora.node.Node`),
+    and in order to communicate with other nodes, it holds an `API` for
+    each of those nodes.
+
+    `API` are defined as D interfaces, following what is done in Vibe.d.
+    Those interfaces can be read by a generator to build a client or a server.
+    One such generator is Vibe.d's `vibe.web.rest`. `RestInterfaceClient`
+    allows to query a REST API, while `registerRestInterface` will route queries
+    and deserialize parameters according to the interface's definition.
+
+    Another generator which we use for unittests is "LocalRest".
+    It allows to start a node per thread, and uses `std.concurrency`
+    to do message passing between nodes.
+
+    Lastly, we plan to implement a generator which works directly on TCP/IP.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
