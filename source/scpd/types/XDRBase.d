@@ -30,7 +30,7 @@ import scpd.Util;
 import geod24.bitblob;
 
 
-extern(C++, xdr):
+extern(C++, `xdr`):
 
 pragma(inline, true)
 uint size32(size_t s)
