@@ -21,17 +21,6 @@ import scpd.types.XDRBase;
 
 import geod24.bitblob;
 
-extern(C++, `stellar`):
-
-// While the following two declaration were originally done
-// using opaque_array, it is much easier to use BitBlob.
-// Since BitBlob has the same memory layout,
-// we can just swap it, and get a much more D-friendly interface.
-
-alias Hash = opaque_array!32;
-/// alias uint256 = opaque_array!32;
-alias uint256 = Hash;
-
 enum CryptoKeyType : int32_t {
   KEY_TYPE_ED25519 = 0,
   KEY_TYPE_PRE_AUTH_TX = 1,
@@ -47,6 +36,17 @@ enum SignerKeyType : int32_t {
   SIGNER_KEY_TYPE_PRE_AUTH_TX = CryptoKeyType.KEY_TYPE_PRE_AUTH_TX,
   SIGNER_KEY_TYPE_HASH_X = CryptoKeyType.KEY_TYPE_HASH_X,
 }
+
+extern(C++, `stellar`):
+
+// While the following two declaration were originally done
+// using opaque_array, it is much easier to use BitBlob.
+// Since BitBlob has the same memory layout,
+// we can just swap it, and get a much more D-friendly interface.
+
+alias Hash = opaque_array!32;
+/// alias uint256 = opaque_array!32;
+alias uint256 = Hash;
 
 /// Modified to suits scpd's needs
 /// Note: should only be used within this package
