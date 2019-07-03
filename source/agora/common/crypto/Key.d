@@ -16,9 +16,7 @@ module agora.common.crypto.Key;
 import agora.common.crypto.Crc16;
 
 import geod24.bitblob;
-
 import base32;
-
 import libsodium;
 
 import std.exception;
