@@ -13,6 +13,7 @@
 
 module agora.common.crypto.Key;
 
+import agora.common.Data;
 import agora.common.crypto.Crc16;
 
 import geod24.bitblob;
@@ -21,8 +22,27 @@ import libsodium;
 
 import std.exception;
 
-// Can't let them have the same type
-static assert(PublicKey.Width != SecretKey.Width);
+
+/// Simple signature example
+unittest
+{
+    import std.string : representation;
+
+    KeyPair kp = KeyPair.random();
+    Signature sign = kp.secret.sign("Hello World".representation);
+    assert(kp.address.verify(sign, "Hello World".representation));
+
+    // Message can't be changed
+    assert(!kp.address.verify(sign, "Hello World?".representation));
+
+    // Another keypair won't verify it
+    KeyPair other = KeyPair.random();
+    assert(!other.address.verify(sign, "Hello World".representation));
+
+    // Signature can't be changed
+    sign[].ptr[0] = sign[].ptr[0] ? 0 : 1;
+    assert(!kp.address.verify(sign, "Hello World".representation));
+}
 
 /// A structure to hold a secret key + public key + seed
 /// Can be constructed from a seed
@@ -40,13 +60,13 @@ public struct KeyPair
 
 
     /// Constructor accepting only 3 arguments
-    private this (typeof(KeyPair.tupleof) args)
+    private this (typeof(KeyPair.tupleof) args) pure nothrow @safe @nogc
     {
         this.tupleof = args;
     }
 
     /// Create a keypair from a `Seed`
-    public static KeyPair fromSeed (Seed seed)
+    public static KeyPair fromSeed (Seed seed) nothrow @nogc
     {
         SecretKey sk;
         PublicKey pk;
@@ -55,8 +75,15 @@ public struct KeyPair
         return KeyPair(pk, sk, seed);
     }
 
+    ///
+    unittest
+    {
+        immutable seedStr = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
+        KeyPair kp = KeyPair.fromSeed(Seed.fromString(seedStr));
+    }
+
     /// Generate a new, random, keypair
-    public static KeyPair random ()
+    public static KeyPair random () @nogc
     {
         SecretKey sk;
         PublicKey pk;
@@ -73,17 +100,17 @@ public struct KeyPair
 /// Represent a public key / address
 public struct PublicKey
 {
-    /*private*/ BitBlob!(crypto_sign_PUBLICKEYBYTES * 8) data;
+    /*private*/ BitBlob!(crypto_sign_ed25519_PUBLICKEYBYTES * 8) data;
     alias data this;
 
     /// Constructor accepting only 1 argument
-    private this (typeof(PublicKey.tupleof) args)
+    private this (typeof(PublicKey.tupleof) args) pure nothrow @safe @nogc
     {
         this.tupleof = args;
     }
 
     /// Uses Stellar's representation instead of hex
-    @trusted public string toString () const
+    public string toString () const @trusted
     {
         ubyte[1 + PublicKey.Width + 2] bin;
         bin[0] = VersionByte.AccountID;
@@ -93,7 +120,7 @@ public struct PublicKey
     }
 
     /// Make sure the sink overload of BitBlob is not picked
-    @trusted public void toString (scope void delegate(const(char)[]) sink) const
+    public void toString (scope void delegate(const(char)[]) sink) const @trusted
     {
         ubyte[1 + PublicKey.Width + 2] bin;
         bin[0] = VersionByte.AccountID;
@@ -102,8 +129,21 @@ public struct PublicKey
         Base32.encode(bin, sink);
     }
 
+    ///
+    unittest
+    {
+        immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+        PublicKey pubkey = PublicKey.fromString(address);
+
+        import std.array : appender;
+        import std.format : formattedWrite;
+        auto writer = appender!string();
+        writer.formattedWrite("%s", pubkey);
+        assert(writer.data() == address);
+    }
+
     /// Create a Public key from Stellar's string representation
-    @trusted public static PublicKey fromString (scope const(char)[] str)
+    public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         const bin = Base32.decode(str);
         assert(bin.length == 1 + PublicKey.Width + 2);
@@ -112,17 +152,32 @@ public struct PublicKey
         return PublicKey(typeof(this.data)(bin[1 .. $ - 2]));
     }
 
-    /// Expose verification capability
-    public const(ubyte)[] verify (scope const(ubyte)[] msg) const
+    ///
+    unittest
     {
-        if (msg.length < crypto_sign_ed25519_BYTES)
-            return null;
+        immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+        PublicKey pubkey = PublicKey.fromString(address);
+        assert(pubkey.toString() == address);
+    }
 
-        ubyte[] res = new ubyte[](msg.length - crypto_sign_ed25519_BYTES);
-        size_t reslen;
-        if (crypto_sign_ed25519_open(res.ptr, &reslen, msg.ptr, msg.length, this.data[].ptr) != 0)
-            return null;
-        return res[0 .. reslen];
+    /***************************************************************************
+
+        Verify that a signature matches a given message
+
+        Params:
+          signature = The signature of `msg` matching `this` public key.
+          msg = The signed message. Should not include the signature.
+
+        Returns:
+          `true` iff the signature is valid
+
+    ***************************************************************************/
+
+    public bool verify (Signature signature, scope const(ubyte)[] msg) const nothrow @nogc
+    {
+        return 0 ==
+            crypto_sign_ed25519_verify_detached(
+                signature[].ptr, msg.ptr, msg.length, this.data[].ptr);
     }
 }
 
@@ -131,6 +186,8 @@ public struct PublicKey
 /// this does not expose any Stellar serialization shenanigans.
 public struct SecretKey
 {
+    nothrow @nogc:
+
     /*private*/ BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) data;
     alias data this;
 
@@ -140,21 +197,33 @@ public struct SecretKey
         this.tupleof = args;
     }
 
-    /// Expose signing capability
-    public const(ubyte)[] sign (scope const(ubyte)[] msg) const
+    /***************************************************************************
+
+        Signs a message with this private key
+
+        Params:
+          msg = The message to sign
+
+        Returns:
+          The signature of `msg` using `this`
+
+    ***************************************************************************/
+
+    public Signature sign (scope const(ubyte)[] msg) const
     {
-        ubyte[] res = new ubyte[](crypto_sign_ed25519_BYTES + msg.length);
-        size_t reslen;
-        if (crypto_sign_ed25519(res.ptr, &reslen, msg.ptr, msg.length, this.data[].ptr) != 0)
+        Signature result;
+        // The second argument, `siglen_p`, a pointer to the length of the
+        // signature, is always set to `64U` and supports `null`
+        if (crypto_sign_ed25519_detached(result[].ptr, null, msg.ptr, msg.length, this.data[].ptr) != 0)
             assert(0);
-        return res[0 .. reslen];
+        return result;
     }
 }
 
 /// A Stellar seed
 public struct Seed
 {
-    /*private*/ BitBlob!(crypto_sign_SEEDBYTES * 8) data;
+    /*private*/ BitBlob!(crypto_sign_ed25519_SEEDBYTES * 8) data;
     alias data this;
 
     /// Constructor accepting only 1 argument
@@ -212,4 +281,20 @@ public enum VersionByte : ubyte
     /// Used for encoded stellar hashX signer keys.
     /// Base32-encodes to 'X...'
 	HashX = 23 << 3,
+}
+
+// Test with a stable keypair
+// We cannot actually test the content of the signature since it includes
+// random data, so it changes every time
+unittest
+{
+    immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+    immutable seed    = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
+
+    KeyPair kp = KeyPair.fromSeed(Seed.fromString(seed));
+    assert(kp.address.toString() == address);
+
+    import std.string : representation;
+    Signature sig = kp.secret.sign("Hello World".representation);
+    assert(kp.address.verify(sig, "Hello World".representation));
 }
