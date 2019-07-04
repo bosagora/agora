@@ -18,6 +18,7 @@ import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Data;
+import agora.common.Transaction;
 import agora.node.Network;
 
 import agora.node.GossipProtocol;
@@ -100,25 +101,25 @@ public class Node (Network) : API
 
     /***************************************************************************
 
-        Receive a message.
+        Receive a transaction.
 
         API:
-            PUT /message
+            PUT /transaction
 
         Params:
-          msg = the message received
+            tx = the received transaction
 
     ***************************************************************************/
 
-    public override void setMessage(Hash msg) @safe
+    public override void putTransaction (Transaction tx) @safe
     {
-        this.gossip.receiveMessage(msg);
+        this.gossip.receiveTransaction(tx);
     }
 
-    /// GET: /hasMessage
-    public override bool hasMessage(Hash msg) @safe
+    /// GET: /hasTransactionHash
+    public override bool hasTransactionHash (Hash tx) @safe
     {
-        return this.gossip.hasMessage(msg);
+        return this.gossip.hasTransactionHash(tx);
     }
 
     /***************************************************************************

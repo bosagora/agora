@@ -18,6 +18,7 @@ import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Set;
+import agora.common.Transaction;
 
 import vibe.core.core;
 import vibe.core.log;
@@ -151,18 +152,18 @@ class RemoteNode
 
     /***************************************************************************
 
-        Send a message
+        Send a transaction
 
         Params:
-          msg = the message to send
+            tx = the transaction to send
 
     ***************************************************************************/
 
-    public void sendMessage(Hash msg) @trusted
+    public void sendTransaction (Transaction tx) @trusted
     {
         try
         {
-            this.api.setMessage(msg);
+            this.api.putTransaction(tx);
         }
         catch (Exception ex)
         {
