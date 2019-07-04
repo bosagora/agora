@@ -50,7 +50,7 @@ public class Node (Network) : API
     /// Reusable exception object
     private RestException exception;
 
-    /// Procedure of peer-to-peer communication  
+    /// Procedure of peer-to-peer communication
     private GossipProtocol gossip;
 
     /// Ctor
