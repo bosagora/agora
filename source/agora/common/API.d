@@ -120,13 +120,10 @@ public interface API
 
     /***************************************************************************
 
-        Returns:
-            Return true if this message was first received.
-
         API:
             PUT /message
 
     ***************************************************************************/
 
-    public bool setMessage (Hash msg);
+    public void setMessage (Hash msg);
 }

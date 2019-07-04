@@ -49,19 +49,15 @@ public class GossipProtocol
         Params:
             msg = the received message
 
-        Returns:
-           true if this message is new and not a duplicate of a previous message
-
     ***************************************************************************/
 
-    public bool receiveMessage (Hash msg) @safe
+    public void receiveMessage (Hash msg) @safe
     {
         if (this.hasMessage(msg))
-            return false;
+            return;
 
         this.msg_cache.put(msg);
         this.network.sendMessage(msg);
-        return true;
     }
 
     /***************************************************************************
