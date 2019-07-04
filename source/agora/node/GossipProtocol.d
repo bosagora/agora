@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains the code used for receiving, caching, and propagating messages.
+    Contains the code used for receiving, caching, and propagating transactions.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -14,17 +14,19 @@
 module agora.node.GossipProtocol;
 
 import agora.common.Data;
+import agora.common.Hash;
 import agora.common.Set;
+import agora.common.Transaction;
 import agora.node.Network;
 
 /// Ditto
 public class GossipProtocol
 {
-    /// Network manager for propagating the received message
+    /// Network manager for propagating received transactions
     private NetworkManager network;
 
-    /// Contains the message cache
-    private Set!Hash msg_cache;
+    /// Contains the transaction cache
+    private Transaction[Hash] tx_cache;
 
 
     /***************************************************************************
@@ -32,7 +34,7 @@ public class GossipProtocol
         Constructor
 
         Params:
-            network = the network manager used for message propagation
+            network = the network manager used for transaction propagation
 
     ***************************************************************************/
 
@@ -43,37 +45,38 @@ public class GossipProtocol
 
     /***************************************************************************
 
-        If this is the first time this message was received,
+        If this is the first time this transaction was received,
         propagate it to the network.
 
         Params:
-            msg = the received message
+            tx = the received transaction
 
     ***************************************************************************/
 
-    public void receiveMessage (Hash msg) @safe
+    public void receiveTransaction (Transaction tx) @safe
     {
-        if (this.hasMessage(msg))
+        auto tx_hash = hashFull(tx);
+        if (this.hasTransactionHash(tx_hash))
             return;
 
-        this.msg_cache.put(msg);
-        this.network.sendMessage(msg);
+        this.tx_cache[tx_hash] = tx;
+        this.network.sendTransaction(tx);
     }
 
     /***************************************************************************
 
-        Check if this message is in the message cache.
+        Check if this transaction is in the transaction cache.
 
         Params:
-            msg = the received message
+            tx = the received transaction
 
         Returns:
-            Return true if this message was a message already received.
+            Return true if this transaction was a transaction already received.
 
     ***************************************************************************/
 
-    public bool hasMessage (Hash msg) @safe
+    public bool hasTransactionHash (Hash hash) @safe
     {
-        return (msg in this.msg_cache) !is null;
+        return (hash in this.tx_cache) !is null;
     }
 }

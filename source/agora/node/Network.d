@@ -28,6 +28,7 @@ import agora.common.Config;
 import agora.common.Data;
 import agora.common.Metadata;
 import agora.common.Set;
+import agora.common.Transaction;
 import agora.node.RemoteNode;
 
 import vibe.core.log;
@@ -290,18 +291,18 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Sends the message to all the listeners.
+        Sends the transaction to all the listeners.
 
         Params:
-            msg = the message to send
+            tx = the transaction to send
 
     ***************************************************************************/
 
-    public void sendMessage (Hash msg) @safe
+    public void sendTransaction (Transaction tx) @safe
     {
         foreach (ref node; this.peers)
         {
-            node.sendMessage(msg);
+            node.sendTransaction(tx);
         }
     }
 }

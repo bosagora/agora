@@ -16,6 +16,7 @@ module agora.common.API;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Set;
+import agora.common.Transaction;
 
 import vibe.data.json;
 import vibe.web.rest;
@@ -108,22 +109,22 @@ public interface API
     /***************************************************************************
 
         Returns:
-            Return true if the node has this message.
+            Return true if the node has this transaction hash.
 
         API:
-            GET /hasMessage
+            GET /hasTransactionHash
 
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
-    public bool hasMessage (Hash msg);
+    public bool hasTransactionHash (Hash tx);
 
     /***************************************************************************
 
         API:
-            PUT /message
+            PUT /transaction
 
     ***************************************************************************/
 
-    public void setMessage (Hash msg);
+    public void putTransaction (Transaction tx);
 }

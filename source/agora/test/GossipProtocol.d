@@ -16,6 +16,8 @@ module agora.test.GossipProtocol;
 version (unittest):
 
 import agora.common.Data;
+import agora.common.Hash;
+import agora.common.Transaction;
 import agora.test.Base;
 
 ///
@@ -27,14 +29,19 @@ unittest
     network.start();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
-    Hash h1 = sha512Of("Message No. 1");
-    auto n1 = network.apis.values[0];
+    Transaction tx =
+    {
+        [Input(hashFull("Message No. 1"))],
+        [Output(100)]
+    };
 
-    n1.setMessage(h1);
+    Hash tx_hash = hashFull(tx);
+    auto node_1 = network.apis.values[0];
+    node_1.putTransaction(tx);
 
-    // Check hasMessage
+    // Check hasTransactionHash
     foreach (key, ref node; network.apis)
     {
-        assert(node.hasMessage(h1));
+        assert(node.hasTransactionHash(tx_hash));
     }
 }
