@@ -105,17 +105,14 @@ public class Node (Network) : API
         API:
             PUT /message
 
-        Returns:
-            Return true if this message was first received at this node.
-
         Params:
           msg = the message received
 
     ***************************************************************************/
 
-    public override bool setMessage(Hash msg) @safe
+    public override void setMessage(Hash msg) @safe
     {
-        return this.gossip.receiveMessage(msg);
+        this.gossip.receiveMessage(msg);
     }
 
     /// GET: /hasMessage
