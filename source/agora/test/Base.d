@@ -288,11 +288,6 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             // todo: add this check in the unittests
             auto other_pairs = key_pairs[0 .. idx] ~ key_pairs[idx + 1 .. $];
 
-            QuorumConfig all_quorums =
-            {
-                nodes : other_pairs.map!(a => a.address).array
-            };
-
             // connect to other node's IPs, not ourselves!
             auto other_configs = node_configs[0 .. idx] ~ node_configs[idx + 1 .. $];
 
