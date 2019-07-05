@@ -15,6 +15,7 @@ module agora.common.crypto.Key;
 
 import agora.common.Data;
 import agora.common.crypto.Crc16;
+import agora.common.Hash;
 
 import geod24.bitblob;
 import base32;
@@ -158,6 +159,37 @@ public struct PublicKey
         immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
         PublicKey pubkey = PublicKey.fromString(address);
         assert(pubkey.toString() == address);
+    }
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        dg(this.data[]);
+    }
+
+    ///
+    unittest
+    {
+        immutable address =
+            `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+        PublicKey pubkey = PublicKey.fromString(address);
+
+        () nothrow @safe @nogc
+        {
+            auto hash = hashFull(pubkey);
+            auto exp_hash = Hash("0xdb3b785e31c05c9383f498aa12a5c054fcb6f99b2" ~
+                "0bf7ff25fdb24d5fe6d1bb5768f1821de9d5d31faa7ebafc79837ba32dc4" ~
+                "774bffea9918411d0c4c8ac403c");
+            assert(hash == exp_hash);
+        }();
     }
 
     /***************************************************************************
