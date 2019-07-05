@@ -19,6 +19,7 @@
 module agora.common.Transaction;
 
 import agora.common.Data;
+import agora.common.Hash;
 import agora.common.crypto.Key;
 
 
@@ -54,6 +55,36 @@ public struct Transaction
 
     /// The list of newly created outputs to put in the UTXO
     public Output[] outputs;
+
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        foreach (input; this.inputs)
+            hashPart(input, dg);
+
+        foreach (output; this.outputs)
+            hashPart(output, dg);
+    }
+}
+
+///
+nothrow @safe @nogc unittest
+{
+    Transaction tx;
+    auto hash = hashFull(tx);
+    auto exp_hash = Hash("0xcee29bfe1a706fd555b748145b683a904bb04e9344648913" ~
+        "5358eeaf31105ed219541ff717e2868a614758e140472f9172d2522585fdc6c6035" ~
+        "90142f7026a78");
+    assert(hash == exp_hash);
 }
 
 /*******************************************************************************
@@ -73,6 +104,22 @@ public struct Output
     /// The public key that can redeem this output (A = pubkey)
     /// Note that in Bitcoin, this is an address (the double hash of a pubkey)
     public PublicKey address;
+
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.value, dg);
+        hashPart(this.address, dg);
+    }
 }
 
 /// The input of the transaction, which spends a previously received `Output`
@@ -86,4 +133,20 @@ public struct Input
 
     /// A signature that should be verified using the `previous[index].address` public key
     public Signature signature;
+
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.previous, dg);
+        hashPart(this.index, dg);
+    }
 }
