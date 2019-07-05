@@ -252,6 +252,11 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 {
     import std.algorithm;
     import std.array;
+    import vibe.core.log;
+
+    // by default emit only errors during unittests.
+    // can be re-set by calling code.
+    setLogLevel(LogLevel.error);
 
     // We know we're in the main thread
     // Vibe.d messes with the scheduler - reset it
