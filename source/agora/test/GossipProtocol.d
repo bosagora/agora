@@ -27,7 +27,7 @@ unittest
     network.start();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
-    Hash h1 = sha256Of("Message No. 1");
+    Hash h1 = sha512Of("Message No. 1");
     auto n1 = network.apis.values[0];
 
     // Return true if this message was first received at this node.
