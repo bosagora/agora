@@ -19,8 +19,8 @@ import geod24.bitblob;
 /// An array of const characters
 public alias cstring = const(char)[];
 
-/// 256 bits hash type, binary compatible with Stellar's definition
-public alias Hash = BitBlob!256;
+/// 512 bits hash type computed via `BLAKE2b`
+public alias Hash = BitBlob!512;
 
 /// A network address
 public alias Address = string;
@@ -34,4 +34,5 @@ unittest
     import libsodium;
 
     static assert(Signature.sizeof == crypto_sign_ed25519_BYTES);
+    static assert(Hash.sizeof == crypto_generichash_BYTES_MAX);
 }
