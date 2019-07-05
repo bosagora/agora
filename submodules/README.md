@@ -14,7 +14,7 @@ This data can also be gathered by running `git submodules`.
 | dyaml            | v0.8.0       |              |          |
 | eventcore        | v0.8.42      |              |          |
 | libsodiumd       | 0.0.1+1.0.7  |       Y      |     Y    |
-| localrest        | 0.0.1        |       Y      |     Y    |
+| localrest        | 0.2.0        |       Y      |     Y    |
 | memutils         | 0.4.13       |              |          |
 | mir-linux-kernel | 1.0.1        |              |          |
 | openssl          | 1.1.6+1.0.1g |              |          |
