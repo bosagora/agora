@@ -111,6 +111,31 @@ public class Ledger
         this.ledger ~= block;
         this.last_block = &this.ledger[$ - 1];
     }
+
+
+    /***************************************************************************
+
+        Find a transaction in the ledger
+
+        Params:
+            tx_hash = the hash of transation
+
+        Return:
+            Return transaction if found. Return null otherwise.
+
+    ***************************************************************************/
+
+    public inout(Transaction)* findTransaction (Hash tx_hash) inout @safe
+    {
+        foreach (ref block; this.ledger)
+        {
+            if (block.header.tx_hash == tx_hash)
+            {
+                return &block.tx;
+            }
+        }
+        return null;
+    }
 }
 
 ///
