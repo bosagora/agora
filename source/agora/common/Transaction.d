@@ -165,7 +165,7 @@ public struct Input
 
 *******************************************************************************/
 
-public bool isCoinbaseTx (Transaction tx)
+public bool isCoinbaseTx (Transaction tx) nothrow pure @safe @nogc
 {
     return tx.inputs.length == 1 && tx.inputs[0] == Input.init;
 }
@@ -205,7 +205,7 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
 *******************************************************************************/
 
 public Amount getSumInput (Transaction tx,
-    Output* delegate (Hash hash, size_t index) findOutput)
+    Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     return tx.inputs
         .map!(a => findOutput(a.previous, a.index))
@@ -225,14 +225,14 @@ public Amount getSumInput (Transaction tx,
 
 *******************************************************************************/
 
-public long getSumOutput (Transaction tx)
+public Amount getSumOutput (Transaction tx) nothrow pure @safe @nogc
 {
     return tx.outputs.map!(a => a.value).sum();
 }
 
 /*******************************************************************************
 
-    Get result of transaction verification
+    Get result of transaction data verification
 
     Params:
         tx = `Transaction`
@@ -244,7 +244,7 @@ public long getSumOutput (Transaction tx)
 *******************************************************************************/
 
 public bool verifyData (Transaction tx,
-    Output* delegate (Hash hash, size_t index) findOutput)
+    Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     if (tx.inputs.length == 0)
         return false;
@@ -252,22 +252,12 @@ public bool verifyData (Transaction tx,
     if (tx.outputs.length == 0)
         return false;
 
-    if (tx.isCoinbaseTx())
-    {
-        return true;
-    }
-    else
-    {
-        // disallow negative amounts
-        foreach (output; tx.outputs)
-            if (output.value < 0)
-                return false;
-
-        if (tx.getSumOutput() > tx.getSumInput(findOutput))
+    // disallow negative amounts
+    foreach (output; tx.outputs)
+        if (output.value < 0)
             return false;
-        else
-            return true;
-    }
+
+    return tx.getSumOutput() <= tx.getSumInput(findOutput);
 }
 
 /// verify transaction data

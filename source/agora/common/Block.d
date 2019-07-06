@@ -115,10 +115,7 @@ public Block getGenesisBlock ()
     auto address = KeyPair.fromSeed(
         Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")).address;
 
-    auto gen_tx = Transaction(
-        [Input(Hash.init, 0, Hash.init)],
-        [Output(40_000_000, address)]
-    );
+    auto gen_tx = newCoinbaseTX(address, 40_000_000);
 
     auto header = BlockHeader(
         Hash.init, 0,

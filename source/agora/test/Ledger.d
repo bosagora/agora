@@ -15,6 +15,7 @@ module agora.test.Ledger;
 
 version (unittest):
 
+import agora.common.crypto.Key;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
@@ -36,17 +37,31 @@ unittest
 
     auto node_1 = network.apis.values[0];
     Transaction[] txes;
+    KeyPair[] key_pairs;
+
+    // same key-pair as in getGenesisBlock()
+    auto genesis_key_pair = KeyPair.fromSeed(
+        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
+
+    auto gen_block = getGenesisBlock();
+
+    // last transaction in the ledger
+    Hash last_tx_hash = hashFull(gen_block.tx);
 
     foreach (idx; 0 .. 100)
     {
         Transaction tx =
         {
-            [Input(hashFull("Message No. %s".format(idx + 1)))],
-            [Output(100)]
+            [Input(last_tx_hash, 0)],
+            [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
         };
+
+        auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
 
         node_1.putTransaction(tx);
         txes ~= tx;
+        last_tx_hash = hashFull(tx);  // we need to reference it again
     }
 
     // ensure block height is the same everywhere
