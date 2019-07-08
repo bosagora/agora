@@ -13,10 +13,13 @@
 
 module agora.node.Ledger;
 
+import agora.common.API;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
+
+import std.algorithm;
 
 /// Ditto
 public class Ledger
@@ -69,6 +72,31 @@ public class Ledger
 
     /***************************************************************************
 
+        Get the array of blocks starting from the provided block height.
+        The block at block_height is included in the array.
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+            max_blocks   = the maximum blocks to return at once
+
+        Returns:
+            the array of blocks starting from block_height,
+            up to `max_blocks`
+
+    ***************************************************************************/
+
+    public Block[] getBlocksFrom (ulong block_height, size_t max_blocks) @safe nothrow @nogc
+    {
+        assert(max_blocks > 0);
+
+        if (block_height > this.ledger.length)
+            return null;
+
+        return this.ledger[block_height .. min(block_height + max_blocks, $)];
+    }
+
+    /***************************************************************************
+
         Add a block to the ledger
 
         Params:
@@ -101,4 +129,72 @@ unittest
     ledger.receiveTransaction(tx);
     assert(ledger.getLastBlock().tx == tx);
     assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
+}
+
+/// getBlocksFrom tests
+unittest
+{
+    import agora.common.crypto.Key;
+
+    scope ledger = new Ledger;
+    assert(ledger.getLastBlock() == getGenesisBlock());
+    assert(ledger.ledger.length == 1);
+
+    void generateBlocks (size_t count)
+    {
+        foreach (_; 0 .. count)
+        {
+            auto rand_pair = KeyPair.random();
+            auto input = Input(hashFull(42));
+            input.signature = rand_pair.secret.sign(input.hashFull[]);
+            Transaction tx = { inputs : [input], outputs: [Output(100, rand_pair.address)]};
+
+            ledger.receiveTransaction(tx);
+            assert(ledger.getLastBlock().tx == tx);
+            assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
+        }
+    }
+
+    generateBlocks(2);
+    Block[] blocks = ledger.getBlocksFrom(0, 10);
+    assert(blocks[0] == getGenesisBlock());
+    assert(blocks[0].header.height == 0);
+    assert(blocks.length == 3);  // two blocks + genesis block
+
+    /// now generate 98 more blocks to make it 100 + genesis block (101 total)
+    generateBlocks(98);
+
+    assert(ledger.getLastBlock().header.height == 100);
+
+    blocks = ledger.getBlocksFrom(0, 10);
+    assert(blocks[0] == getGenesisBlock());
+    assert(blocks[0].header.height == 0);
+    assert(blocks.length == 10);
+
+    /// lower limit
+    blocks = ledger.getBlocksFrom(0, 5);
+    assert(blocks[0] == getGenesisBlock());
+    assert(blocks[0].header.height == 0);
+    assert(blocks.length == 5);
+
+    /// different indices
+    blocks = ledger.getBlocksFrom(1, 10);
+    assert(blocks[0].header.height == 1);
+    assert(blocks.length == 10);
+
+    blocks = ledger.getBlocksFrom(50, 10);
+    assert(blocks[0].header.height == 50);
+    assert(blocks.length == 10);
+
+    blocks = ledger.getBlocksFrom(95, 10);  // only 6 left from here (block 100 included)
+    assert(blocks[0].header.height == 95);
+    assert(blocks.length == 6);
+
+    blocks = ledger.getBlocksFrom(99, 10);  // only 2 left from here (ditto)
+    assert(blocks[0].header.height == 99);
+    assert(blocks.length == 2);
+
+    blocks = ledger.getBlocksFrom(100, 10);  // only 1 block available
+    assert(blocks[0].header.height == 100);
+    assert(blocks.length == 1);
 }
