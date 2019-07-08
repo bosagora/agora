@@ -99,15 +99,15 @@ public struct Block
 /*******************************************************************************
 
     Creates the genesis block.
-    Note: The output specifies a randomly-generated address,
-    later to be replaced with proper outputs.
+    The output address is currently hardcoded to a randomly generated value,
+    it will be replaced later with the proper address.
 
     Returns:
         the genesis block
 
 *******************************************************************************/
 
-public Block getGenesisBlock ( )
+public Block getGenesisBlock ()
 {
     import agora.common.crypto.Key;
 
@@ -137,16 +137,15 @@ unittest
 /*******************************************************************************
 
     Create a new block, referencing the provided previous block.
+    In the current preliminary design a block contains a single transaction.
 
     Params:
         prev_block = the previous block
         tx = the transaction that will be contained in the new block
 
-    In the current preliminary design a block contains a single transaction.
-
 *******************************************************************************/
 
-public Block makeNewBlock ( Block prev_block, Transaction tx ) @nogc nothrow @safe
+public Block makeNewBlock (Block prev_block, Transaction tx) @nogc nothrow @safe
 {
     Block block;
 

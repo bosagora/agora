@@ -19,6 +19,7 @@ import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Transaction;
+import agora.node.Ledger;
 import agora.node.Network;
 
 import agora.node.GossipProtocol;
@@ -54,6 +55,10 @@ public class Node (Network) : API
     /// Procedure of peer-to-peer communication
     private GossipProtocol gossip;
 
+    ///
+    private Ledger ledger;
+
+
     /// Ctor
     public this (const Config config)
     {
@@ -61,7 +66,8 @@ public class Node (Network) : API
         this.network = new Network(config.node, config.network,
             config.dns_seeds,
             this.getMetadata(config.node.data_dir));
-        this.gossip = new GossipProtocol(this.network);
+        this.ledger = new Ledger();
+        this.gossip = new GossipProtocol(this.network, this.ledger);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
