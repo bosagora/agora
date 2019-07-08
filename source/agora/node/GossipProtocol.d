@@ -17,6 +17,7 @@ import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Set;
 import agora.common.Transaction;
+import agora.node.Ledger;
 import agora.node.Network;
 
 /// Ditto
@@ -24,6 +25,9 @@ public class GossipProtocol
 {
     /// Network manager for propagating received transactions
     private NetworkManager network;
+
+    /// Blockchain ledger
+    private Ledger ledger;
 
     /// Contains the transaction cache
     private Transaction[Hash] tx_cache;
@@ -35,12 +39,14 @@ public class GossipProtocol
 
         Params:
             network = the network manager used for transaction propagation
+            ledger = the blockchain ledger
 
     ***************************************************************************/
 
-    public this (NetworkManager network)
+    public this (NetworkManager network, Ledger ledger)
     {
         this.network = network;
+        this.ledger = ledger;
     }
 
     /***************************************************************************
@@ -60,6 +66,7 @@ public class GossipProtocol
             return;
 
         this.tx_cache[tx_hash] = tx;
+        this.ledger.receiveTransaction(tx);
         this.network.sendTransaction(tx);
     }
 
