@@ -14,6 +14,7 @@
 module agora.common.API;
 
 import agora.common.crypto.Key;
+import agora.common.Block;
 import agora.common.Data;
 import agora.common.Set;
 import agora.common.Transaction;
@@ -136,4 +137,28 @@ public interface API
     ***************************************************************************/
 
     public ulong getBlockHeight ();
+
+
+    /***************************************************************************
+
+        Get the array of blocks starting from the provided block height.
+
+        The block at `block_height` is included in the array.
+        Note that a node is free to return less blocks than asked for.
+        However it must never return more blocks than asked for.
+
+        API:
+            GET /blocks_from
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+            max_blocks   = the maximum blocks to return at once
+
+        Returns:
+            the array of blocks starting from block_height,
+            up to `max_blocks`
+
+    ***************************************************************************/
+
+    public Block[] getBlocksFrom (ulong block_height, size_t max_blocks);
 }

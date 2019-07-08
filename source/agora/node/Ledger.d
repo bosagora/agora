@@ -197,4 +197,10 @@ unittest
     blocks = ledger.getBlocksFrom(100, 10);  // only 1 block available
     assert(blocks[0].header.height == 100);
     assert(blocks.length == 1);
+
+    // over the limit => return up to the highest block
+    assert(ledger.getBlocksFrom(0, 1000).length == 101);
+
+    // higher index than available => return nothing
+    assert(ledger.getBlocksFrom(1000, 10).length == 0);
 }

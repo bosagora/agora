@@ -14,6 +14,7 @@
 module agora.node.Node;
 
 import agora.common.API;
+import agora.common.Block;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
@@ -28,6 +29,11 @@ import vibe.core.log;
 import vibe.data.json;
 import vibe.web.rest;
 
+import std.algorithm;
+import std.exception;
+
+/// Maximum number of blocks that will be sent in a call to getBlocksFrom()
+private enum MaxBatchBlocksSent = 1000;
 
 /*******************************************************************************
 
@@ -132,6 +138,13 @@ public class Node (Network) : API
     public ulong getBlockHeight ()
     {
         return this.ledger.getLastBlock().header.height;
+    }
+
+    /// GET: /blocks_from
+    public Block[] getBlocksFrom (ulong block_height, size_t max_blocks) @safe
+    {
+        return this.ledger.getBlocksFrom(block_height,
+            min(max_blocks, MaxBatchBlocksSent));
     }
 
     /***************************************************************************
