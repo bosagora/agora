@@ -127,4 +127,13 @@ public interface API
     ***************************************************************************/
 
     public void putTransaction (Transaction tx);
+
+    /***************************************************************************
+
+        Returns:
+            the highest block height in this node's ledger
+
+    ***************************************************************************/
+
+    public ulong getBlockHeight ();
 }
