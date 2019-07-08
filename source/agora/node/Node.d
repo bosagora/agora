@@ -128,6 +128,12 @@ public class Node (Network) : API
         return this.gossip.hasTransactionHash(tx);
     }
 
+    /// GET: /block_height
+    public ulong getBlockHeight ()
+    {
+        return this.ledger.getLastBlock().header.height;
+    }
+
     /***************************************************************************
 
         Reads the metadata from the provided disk path.

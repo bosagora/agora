@@ -23,11 +23,19 @@ import agora.test.Base;
 ///
 unittest
 {
+    import std.conv;
     import std.digest.sha;
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
     assert(network.getDiscoveredNodes().length == NodeCount);
+
+    // check block height
+    foreach (key, ref node; network.apis)
+    {
+        auto block_height = node.getBlockHeight();
+        assert(block_height == 0, block_height.to!string);
+    }
 
     Transaction tx =
     {
@@ -43,5 +51,20 @@ unittest
     foreach (key, ref node; network.apis)
     {
         assert(node.hasTransactionHash(tx_hash));
+
+        auto block_height = node.getBlockHeight();
+        assert(block_height == 1, block_height.to!string);
+    }
+
+    tx.inputs[0].previous = hashFull("Message No. 2");
+    tx_hash = hashFull(tx);
+    node_1.putTransaction(tx);
+
+    // check if the node height changed
+    foreach (key, ref node; network.apis)
+    {
+        assert(node.hasTransactionHash(tx_hash));
+        auto block_height = node.getBlockHeight();
+        assert(block_height == 2, block_height.to!string);
     }
 }
