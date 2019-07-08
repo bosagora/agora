@@ -74,11 +74,11 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void addNewBlock (Block block) @safe nothrow
+    private void addNewBlock (Block block) @trusted nothrow
     {
-        auto block_hash = block.header.hashFull();
-        this.ledger[block_hash] = block;
-        this.last_block = block_hash in this.ledger;
+        // force nothrow, an exception will never be thrown here
+        scope (failure) assert(0);
+        this.last_block = &this.ledger.require(block.header.hashFull(), block);
     }
 }
 
