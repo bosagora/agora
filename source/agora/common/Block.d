@@ -95,3 +95,78 @@ public struct Block
     ///
     public Transaction tx;
 }
+
+/*******************************************************************************
+
+    Creates the genesis block.
+    Note: The output specifies a randomly-generated address,
+    later to be replaced with proper outputs.
+
+    Returns:
+        the genesis block
+
+*******************************************************************************/
+
+public Block getGenesisBlock ( )
+{
+    import agora.common.crypto.Key;
+
+    // note: not using random() as the genesis block should always be the same
+    auto address = KeyPair.fromSeed(
+        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")).address;
+
+    auto gen_tx = Transaction(
+        [Input(Hash.init, 0, Hash.init)],
+        [Output(40_000_000, address)]
+    );
+
+    auto header = BlockHeader(
+        Hash.init, 0,
+        hashFull(gen_tx));
+
+    return Block(header, gen_tx);
+}
+
+///
+unittest
+{
+    // ensure the genesis block is always the same
+    assert(getGenesisBlock() == getGenesisBlock());
+}
+
+/*******************************************************************************
+
+    Create a new block, referencing the provided previous block.
+
+    Params:
+        prev_block = the previous block
+        tx = the transaction that will be contained in the new block
+
+    In the current preliminary design a block contains a single transaction.
+
+*******************************************************************************/
+
+public Block makeNewBlock ( Block prev_block, Transaction tx ) @nogc nothrow @safe
+{
+    Block block;
+
+    block.header.prev_block = prev_block.header.hashFull();
+    block.header.height = prev_block.header.height + 1;
+    block.header.tx_hash = tx.hashFull();
+    block.tx = tx;
+
+    return block;
+}
+
+///
+unittest
+{
+    Block gen_block = getGenesisBlock();
+
+    // above parts not @safe/@nogc yet
+    () @safe @nogc nothrow
+    {
+        auto new_block = makeNewBlock(gen_block, Transaction.init);
+        assert(new_block.header.prev_block == hashFull(gen_block.header));
+    }();
+}
