@@ -170,4 +170,25 @@ class RemoteNode
             logError(ex.message);
         }
     }
+
+    /***************************************************************************
+
+        Returns:
+            the height of the node's ledger,
+            or ulong.max if the request failed
+
+    ***************************************************************************/
+
+    public ulong getBlockHeight ()
+    {
+        try
+        {
+            return this.api.getBlockHeight();
+        }
+        catch (Exception ex)
+        {
+            logError(ex.message);
+            return ulong.max;
+        }
+    }
 }
