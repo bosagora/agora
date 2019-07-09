@@ -24,11 +24,13 @@ module agora.node.Network;
 
 import agora.common.API;
 import agora.common.crypto.Key;
+import agora.common.Block;
 import agora.common.Config;
 import agora.common.Data;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Transaction;
+import agora.node.Ledger;
 import agora.node.RemoteNode;
 
 import vibe.core.log;
@@ -41,6 +43,7 @@ import std.array;
 import std.exception;
 import std.format;
 import std.random;
+import std.typecons;
 
 
 /// Ditto
@@ -135,6 +138,72 @@ public class NetworkManager
                 this.wait(this.node_config.retry_delay.msecs);
             }
         });
+    }
+
+    /***************************************************************************
+
+        Periodically retrieve the latest blocks and apply them to the
+        provided ledger.
+
+        Params:
+            ledger = the Ledger to apply received blocks to
+
+    ***************************************************************************/
+
+    public void retrieveLatestBlocks (Ledger ledger)
+    {
+        this.runTask(
+        ()
+        {
+            // periodic task
+            while (1)
+            {
+                this.getBlocksFrom(
+                    ledger.getLastBlock().header.height + 1,
+                    (blocks) { blocks.each!(block => ledger.addNewBlock(block)); });
+
+                this.wait(2.seconds);
+            }
+        });
+    }
+
+    /***************************************************************************
+
+        Retrieve blocks starting from block_height up to the highest block
+        that's available from the connected nodes.
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+
+    ***************************************************************************/
+
+    private void getBlocksFrom (ulong block_height,
+        scope void delegate(Block[]) @safe onReceivedBlocks)
+    {
+        auto node_pair = this.peers.byValue
+            .map!(node => tuple(node.getBlockHeight(), node))
+            .filter!(pair => pair[0] != ulong.max)  // request failed
+            .reduce!((a, b) => a[0] > b[0] ? a : b);
+
+        const highest_block = node_pair[0];
+        if (highest_block < block_height)
+            return;  // we're up to date
+
+        logInfo("Retrieving latest blocks..");
+        auto node = node_pair[1];
+        const MaxBlocks = 1024;
+
+        do
+        {
+            // todo: if any block fails verification, we have to try another node
+            auto blocks = node.getBlocksFrom(block_height, MaxBlocks);
+            logInfo("Received blocks [%s..%s] out of %s..", block_height,
+                block_height + blocks.length, highest_block + 1);  // genesis block
+
+            onReceivedBlocks(blocks);
+            block_height += blocks.length;
+        }
+        while (block_height < highest_block);
     }
 
     /// Dump the metadata
