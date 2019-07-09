@@ -21,8 +21,10 @@ import agora.common.Transaction;
 /// Ditto
 public class Ledger
 {
-    /// data storage for all the blocks
-    private Block[Hash] ledger;
+    /// data storage for all the blocks,
+    /// currently a single contiguous region to
+    /// improve locality of reference
+    private Block[] ledger;
 
     /// pointer to the latest block
     private Block* last_block;
@@ -78,7 +80,8 @@ public class Ledger
     {
         // force nothrow, an exception will never be thrown here
         scope (failure) assert(0);
-        this.last_block = &this.ledger.require(block.header.hashFull(), block);
+        this.ledger ~= block;
+        this.last_block = &this.ledger[$ - 1];
     }
 }
 
