@@ -31,6 +31,7 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Transaction;
 import agora.common.crypto.Key;
+import agora.node.Ledger;
 import agora.node.Network;
 import agora.node.Node;
 
@@ -127,7 +128,7 @@ public class TestNetworkManager : NetworkManager
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
-    public TestAPI[PublicKey] apis;
+    public RemoteAPI!TestAPI[PublicKey] apis;
 
     /// Workaround compiler bug that triggers in `std.concurrency`
     protected __gshared std.concurrency.Tid[string] tbn;
@@ -153,11 +154,11 @@ public class TestNetworkManager : NetworkManager
     }
 
     /// Initialize a new node
-    protected TestAPI createNewNode (Address address, Config conf)
+    protected void createNewNode (PublicKey address, Config conf)
     {
         auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetworkManager)(conf);
-        tbn[address] = api.tid();
-        return api;
+        tbn[address.toString()] = api.tid();
+        this.apis[address] = api;
     }
 
     /***************************************************************************
@@ -374,7 +375,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
         foreach (idx, ref conf; configs)
         {
             const address = node_configs[idx].key_pair.address;
-            net.apis[address] = base_net.createNewNode(address.toString(), conf);
+            base_net.createNewNode(address, conf);
         }
 
         return net;

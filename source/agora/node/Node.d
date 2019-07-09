@@ -89,6 +89,8 @@ public class Node (Network) : API
         logInfo("Doing network discovery..");
         this.network.discover();
 
+        this.network.retrieveLatestBlocks(this.ledger);
+
         logInfo("Dumping metadata..");
         this.network.dumpMetadata();
     }
