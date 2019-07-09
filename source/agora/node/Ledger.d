@@ -113,7 +113,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void addNewBlock (Block block) @trusted nothrow
+    public void addNewBlock (Block block) @trusted nothrow
     {
         // force nothrow, an exception will never be thrown here
         scope (failure) assert(0);
