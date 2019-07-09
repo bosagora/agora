@@ -28,7 +28,6 @@ unittest
     import std.algorithm;
     import std.conv;
     import std.format;
-    import std.digest.sha;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
