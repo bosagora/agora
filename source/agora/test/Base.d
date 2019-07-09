@@ -285,8 +285,6 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             node_configs ~= node_conf;
         }
 
-        // Nodes will have self as validator, but it doesn't matter
-        // since we just ignore it
         foreach (idx; 0 .. nodes)
         {
             // note: cannot add our own key as a validator (there is a safety check)
