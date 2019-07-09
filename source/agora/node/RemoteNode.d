@@ -14,6 +14,7 @@
 module agora.node.RemoteNode;
 
 import agora.common.API;
+import agora.common.Block;
 import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Data;
@@ -189,6 +190,36 @@ class RemoteNode
         {
             logError(ex.message);
             return ulong.max;
+        }
+    }
+
+    /***************************************************************************
+
+        Get the array of blocks starting from the provided block height.
+        The block at block_height is included in the array.
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+            max_blocks   = the maximum blocks to return at once
+
+        Returns:
+            the array of blocks starting from block_height,
+            up to `max_blocks`.
+
+            If the request failed, returns an empty array
+
+    ***************************************************************************/
+
+    public Block[] getBlocksFrom (ulong block_height, size_t max_blocks)
+    {
+        try
+        {
+            return this.api.getBlocksFrom(block_height, max_blocks);
+        }
+        catch (Exception ex)
+        {
+            logError(ex.message);
+            return null;
         }
     }
 }
