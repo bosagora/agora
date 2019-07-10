@@ -205,8 +205,12 @@ public struct PublicKey
 
     ***************************************************************************/
 
-    public bool verify (Signature signature, scope const(ubyte)[] msg) const nothrow @nogc
+    public bool verify (Signature signature, scope const(ubyte)[] msg)
+        const nothrow @nogc @trusted
     {
+        // The underlying function does not expose a safe interface,
+        // but we know (thanks to tests and careful inspection)
+        // that our data type match and they are unlikely to change
         return 0 ==
             crypto_sign_ed25519_verify_detached(
                 signature[].ptr, msg.ptr, msg.length, this.data[].ptr);
