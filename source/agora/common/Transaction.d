@@ -204,9 +204,13 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
 
 *******************************************************************************/
 
-public Amount getSumInput (Transaction tx, Output* delegate (Hash hash, size_t index) findOutput)
+public Amount getSumInput (Transaction tx,
+    Output* delegate (Hash hash, size_t index) findOutput)
 {
-    return tx.inputs.map!(a => findOutput(a.previous, a.index)).filter!(a => a !is null).map!(a => a.value).sum();
+    return tx.inputs
+        .map!(a => findOutput(a.previous, a.index))
+        .filter!(a => a !is null)
+        .map!(a => a.value).sum();
 }
 
 /*******************************************************************************
@@ -239,7 +243,8 @@ public long getSumOutput (Transaction tx)
 
 *******************************************************************************/
 
-public bool verifyData (Transaction tx, Output* delegate (Hash hash, size_t index) findOutput)
+public bool verifyData (Transaction tx,
+    Output* delegate (Hash hash, size_t index) findOutput)
 {
     if (tx.inputs.length == 0)
         return false;
@@ -287,23 +292,13 @@ unittest
 
     // delegate for finding `Output`
     auto findOutput = (Hash hash, size_t index)
-        {
-            if (auto tx = hash in storage)
-            {
-                if (index < tx.outputs.length)
-                {
-                    return &tx.outputs[index];
-                }
-                else
-                {
-                    return null;
-                }
-            }
-            else
-            {
-                return null;
-            }
-        };
+    {
+        if (auto tx = hash in storage)
+            if (index < tx.outputs.length)
+                return &tx.outputs[index];
+
+            return null;
+    };
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
     assert(secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
@@ -317,5 +312,4 @@ unittest
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
     assert(!secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
-
 }
