@@ -49,6 +49,9 @@ private enum MaxBatchBlocksSent = 1000;
 *******************************************************************************/
 public class Node (Network) : API
 {
+    /// Metadata instance
+    protected Metadata metadata;
+
     /// Config instance
     private const Config config;
 
@@ -68,10 +71,12 @@ public class Node (Network) : API
     /// Ctor
     public this (const Config config)
     {
+        this.metadata = this.getMetadata(config.node.data_dir);
+
         this.config = config;
         this.network = new Network(config.node, config.network,
             config.dns_seeds,
-            this.getMetadata(config.node.data_dir));
+            this.metadata);
         this.ledger = new Ledger();
         this.gossip = new GossipProtocol(this.network, this.ledger);
         this.exception = new RestException(

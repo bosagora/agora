@@ -180,13 +180,9 @@ public interface TestAPI : API
 /// Ditto
 public final class TestNode (Net) : Node!Net, TestAPI
 {
-    /// The metadata used for the tests
-    MemMetadata mem_metadata;
-
     ///
     public this (Config config)
     {
-        this.mem_metadata = new MemMetadata;
         super(config);
     }
 
@@ -199,13 +195,13 @@ public final class TestNode (Net) : Node!Net, TestAPI
     /// Used by the node
     public override Metadata getMetadata (string _unused) @system
     {
-        return this.mem_metadata;
+        return new MemMetadata();
     }
 
     /// Used by unittests
     public override void metaAddPeer (Address peer)
     {
-        this.mem_metadata.peers.put(peer);
+        this.metadata.peers.put(peer);
     }
 }
 
