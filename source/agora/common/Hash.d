@@ -122,7 +122,7 @@ public void hashPart (T) (scope const auto ref T record, scope HashDg state)
 
 /// Ditto
 public void hashPart () (scope const auto ref Hash record, scope HashDg state)
-    /*pure*/ nothrow @nogc @trusted
+    /*pure*/ nothrow @nogc @safe
 {
     state(record[]);
 }
