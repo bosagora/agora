@@ -42,7 +42,7 @@ addons:
       - libsqlite3-dev
 
 env:
-  - PATH=$HOME/bin/:$PATH PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
+  - PATH=$HOME/bin/:$PATH PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig" LIBRARY_PATH=/usr/local/lib/:$LIBRARY_PATH
 
 # A note about OSX:
 # Homebrew uses a massive git repository, that gets updated very frequently.
