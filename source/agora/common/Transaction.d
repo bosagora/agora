@@ -258,6 +258,11 @@ public bool verifyData (Transaction tx,
     }
     else
     {
+        // disallow negative amounts
+        foreach (output; tx.outputs)
+            if (output.value < 0)
+                return false;
+
         if (tx.getSumOutput() > tx.getSumInput(findOutput))
             return false;
         else
@@ -312,4 +317,33 @@ unittest
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
     assert(!secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+}
+
+/// negative output amounts disallowed
+unittest
+{
+    KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
+    Transaction tx_1 = newCoinbaseTX(key_pairs[0].address, 1000);
+    Hash tx_1_hash = hashFull(tx_1);
+
+    Transaction[Hash] storage;
+    storage[tx_1_hash] = tx_1;
+
+    // delegate for finding `Output`
+    auto findOutput = (Hash hash, size_t index)
+    {
+        if (auto tx = hash in storage)
+            if (index < tx.outputs.length)
+                return &tx.outputs[index];
+        return null;
+    };
+
+    // Creates the second transaction.
+    Transaction tx_2 =
+    {
+        inputs  : [Input(tx_1_hash, 0)],
+        outputs : [Output(-400_000, key_pairs[1].address)]  // oops
+    };
+
+    assert(!tx_2.verifyData(findOutput));
 }
