@@ -14,7 +14,7 @@
     Due to a language limitation (one can't overload based on return value),
     this module expose two main functions:
     - `hashFull(T)`, which returns a `Hash`
-    - `hashPart(T, HasherDg)` which does not return anything and should be used
+    - `hashPart(T, HashDg)` which does not return anything and should be used
       to accumulate data to hash.
 
     For safety reason, a data structure currently need to explicitly define
@@ -116,7 +116,7 @@ public void hashPart (T) (scope const auto ref T record, scope HashDg state)
 {
     static assert(is(typeof(T.init.computeHash(HashDg.init))),
                   "Struct `" ~ T.stringof ~
-                  "` does not implement `computeHash(scope HasherDg)` function");
+                  "` does not implement `computeHash(scope HashDg) const nothrow @nogc` function");
     record.computeHash(state);
 }
 
