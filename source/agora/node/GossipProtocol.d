@@ -65,20 +65,9 @@ public class GossipProtocol
         if (this.hasTransactionHash(tx_hash))
             return;
 
-        // delegate for finding `Output`
-        auto findOutput = (Hash hash, size_t index)
-            {
-                if (auto txn = this.ledger.findTransaction(hash))
-                    if (index < txn.outputs.length)
-                        return &txn.outputs[index];
-
-                    return null;
-            };
-
-        if (tx.verifyData(findOutput) && tx.verifySignature(findOutput))
+        if (this.ledger.acceptTransaction(tx))
         {
             this.tx_cache[tx_hash] = tx;
-            this.ledger.receiveTransaction(tx);
             this.network.sendTransaction(tx);
         }
     }
