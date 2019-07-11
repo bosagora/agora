@@ -36,30 +36,13 @@ unittest
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto node_1 = network.apis.values[0];
-    Transaction[] txes;
     KeyPair[] key_pairs;
 
     auto gen_key_pair = getGenesisKeyPair();
     auto gen_block = getGenesisBlock();
 
-    // last transaction in the ledger
-    Hash last_tx_hash = hashFull(gen_block.tx);
-
-    foreach (idx; 0 .. 100)
-    {
-        Transaction tx =
-        {
-            [Input(last_tx_hash, 0)],
-            [Output(40_000_000, gen_key_pair.address)]  // send to the same address
-        };
-
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-
-        node_1.putTransaction(tx);
-        txes ~= tx;
-        last_tx_hash = hashFull(tx);  // we need to reference it again
-    }
+    auto txes = getChainedTransactions(gen_block.tx, 100, gen_key_pair);
+    txes.each!(tx => node_1.putTransaction(tx));
 
     // ensure block height is the same everywhere
     foreach (key, ref node; network.apis)
