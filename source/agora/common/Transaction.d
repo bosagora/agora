@@ -193,6 +193,46 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
 
 /*******************************************************************************
 
+    Create a set of chained transactions, where each transaction spends the
+    entire sum of the previous transaction.
+
+    Useful for quickly generating transactions for use with unittests.
+
+    Params:
+        root = the first transaction in the chain will spend the output of
+               this transaction
+        count = the number of transactions to create
+        key_pair = the key pair used to sign transactions and to send
+                   the output to
+
+*******************************************************************************/
+
+version (unittest)
+public Transaction[] getChainedTransactions (Transaction root, size_t count,
+    KeyPair key_pair)
+{
+    Transaction[] transactions;
+    Hash last_tx_hash = hashFull(root);
+
+    foreach (idx; 0 .. count)
+    {
+        Transaction tx =
+        {
+            [Input(last_tx_hash, 0)],
+            [Output(40_000_000, key_pair.address)]  // send to the same address
+        };
+
+        auto signature = key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        last_tx_hash = hashFull(tx);
+        transactions ~= tx;
+    }
+
+    return transactions;
+}
+
+/*******************************************************************************
+
     Get sum of `Input`
 
     Params:
