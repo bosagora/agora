@@ -63,6 +63,9 @@ unittest
         ]
     );
     Hash tx1Hash = hashFull(tx1);
+
+    // Sign a transaction and assign it to the input
+    tx1.inputs[0].signature = genesis_key_pair.secret.sign(tx1Hash[]);
     node_1.putTransaction(tx1);
 
     // Check hasTransactionHash
@@ -87,6 +90,9 @@ unittest
         ]
     );
     Hash tx2Hash = hashFull(tx2);
+
+    // Sign a transaction and assign it to the input
+    tx2.inputs[0].signature = key_pairs[0].secret.sign(tx2Hash[]);
     node_1.putTransaction(tx2);
 
     // Check hasTransactionHash
@@ -111,12 +117,39 @@ unittest
         ]
     );
     Hash tx3Hash = hashFull(tx3);
+
+    // Sign a transaction and assign it to the input
+    tx3.inputs[0].signature = key_pairs[1].secret.sign(tx3Hash[]);
     node_1.putTransaction(tx3);
 
     // Check hasTransactionHash
     foreach (key, ref node; network.apis)
     {
         assert(!node.hasTransactionHash(tx3Hash));
+
+        auto block_height = node.getBlockHeight();
+        assert(block_height == 2, block_height.to!string);
+    }
+
+    // Creates the fourth transaction.
+    Transaction tx4 = Transaction(
+        [
+            Input(tx2Hash, 0)
+        ],
+        [
+            Output(20_000_000, key_pairs[2].address)
+        ]
+    );
+    Hash tx4Hash = hashFull(tx4);
+
+    // Sign a transaction and assign it to the input
+    tx4.inputs[0].signature = key_pairs[2].secret.sign(tx4Hash[]);
+    node_1.putTransaction(tx4);
+
+    // Check hasTransactionHash
+    foreach (key, ref node; network.apis)
+    {
+        assert(!node.hasTransactionHash(tx4Hash));
 
         auto block_height = node.getBlockHeight();
         assert(block_height == 2, block_height.to!string);

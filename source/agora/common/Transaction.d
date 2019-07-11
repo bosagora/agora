@@ -260,6 +260,36 @@ public bool verifyData (Transaction tx,
     return tx.getSumOutput() <= tx.getSumInput(findOutput);
 }
 
+/*******************************************************************************
+
+    Get result of signature verification
+
+    Params:
+        tx = `Transaction` to verify the signature of
+        findOutput = delegate for finding `Output`
+
+    Return:
+        Return true if this signature is verified.
+
+*******************************************************************************/
+
+public bool verifySignature (Transaction tx,
+    Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
+{
+    const Hash txHash = hashFull(tx);
+    foreach (input; tx.inputs)
+    {
+        if (auto output = findOutput(input.previous, input.index))
+        {
+            if (!output.address.verify(input.signature, txHash[]))
+                return false;
+        }
+        else
+            return false;
+    }
+    return true;
+}
+
 /// verify transaction data
 unittest
 {
@@ -336,4 +366,67 @@ unittest
     };
 
     assert(!tx_2.verifyData(findOutput));
+}
+
+/// This creates a new transaction and signs it as a publickey
+/// of the previous transaction to create and validate the input.
+unittest
+{
+    import std.format;
+
+    Transaction[Hash] storage;
+
+    immutable(KeyPair)[] key_pairs;
+    key_pairs ~= KeyPair.random();
+    key_pairs ~= KeyPair.random();
+    key_pairs ~= KeyPair.random();
+
+    // delegate for finding `Output`
+    auto findOutput = (Hash hash, size_t index)
+    {
+        if (auto tx = hash in storage)
+            if (index < tx.outputs.length)
+                return &tx.outputs[index];
+
+            return null;
+    };
+
+    // Create the first transaction.
+    Transaction genesisTx = newCoinbaseTX(key_pairs[0].address, 100_000);
+    Hash genesisHash = hashFull(genesisTx);
+    storage[genesisHash] = genesisTx;
+    genesisTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(genesisTx)[]);
+
+    // Create the second transaction.
+    Transaction tx1 = Transaction(
+        [
+            Input(genesisHash, 0)
+        ],
+        [
+            Output(1_000, key_pairs[1].address)
+        ]
+    );
+
+    // Signs the previous hash value.
+    Hash tx1Hash = hashFull(tx1);
+    tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
+    storage[tx1Hash] = tx1;
+
+    assert(tx1.verifySignature(findOutput), format("Transaction signature is not validated %s", tx1));
+
+    Transaction tx2 = Transaction(
+        [
+            Input(tx1Hash, 0)
+        ],
+        [
+            Output(1_000, key_pairs[1].address)
+        ]
+    );
+
+    Hash tx2Hash = hashFull(tx2);
+    // Sign with incorrect key
+    tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
+    storage[tx2Hash] = tx2;
+    // Signature verification must be error
+    assert(!tx2.verifySignature(findOutput), format("Transaction signature is not validated %s", tx2));
 }
