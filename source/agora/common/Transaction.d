@@ -232,7 +232,7 @@ public Amount getSumOutput (Transaction tx) nothrow pure @safe @nogc
 
 /*******************************************************************************
 
-    Get result of transaction data verification
+    Get result of transaction data and signature verification
 
     Params:
         tx = `Transaction`
@@ -243,7 +243,7 @@ public Amount getSumOutput (Transaction tx) nothrow pure @safe @nogc
 
 *******************************************************************************/
 
-public bool verifyData (Transaction tx,
+public bool verify (Transaction tx,
     Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     if (tx.inputs.length == 0)
@@ -257,37 +257,23 @@ public bool verifyData (Transaction tx,
         if (output.value < 0)
             return false;
 
-    return tx.getSumOutput() <= tx.getSumInput(findOutput);
-}
+    long sum_unspent;
 
-/*******************************************************************************
-
-    Get result of signature verification
-
-    Params:
-        tx = `Transaction` to verify the signature of
-        findOutput = delegate for finding `Output`
-
-    Return:
-        Return true if this signature is verified.
-
-*******************************************************************************/
-
-public bool verifySignature (Transaction tx,
-    Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
-{
-    const Hash txHash = hashFull(tx);
+    const tx_hash = hashFull(tx);
     foreach (input; tx.inputs)
     {
-        if (auto output = findOutput(input.previous, input.index))
-        {
-            if (!output.address.verify(input.signature, txHash[]))
-                return false;
-        }
-        else
+        // all referenced outputs must be present
+        auto output = findOutput(input.previous, input.index);
+        if (output is null)
             return false;
+
+        if (!output.address.verify(input.signature, tx_hash[]))
+            return false;
+
+        sum_unspent += output.value;
     }
-    return true;
+
+    return tx.getSumOutput() <= sum_unspent;
 }
 
 /// verify transaction data
@@ -325,18 +311,22 @@ unittest
             return null;
     };
 
+    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(50, key_pairs[2].address);
+    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(50, key_pairs[3].address);
+    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.verifyData(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(!secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
 }
 
 /// negative output amounts disallowed
@@ -365,7 +355,9 @@ unittest
         outputs : [Output(-400_000, key_pairs[1].address)]  // oops
     };
 
-    assert(!tx_2.verifyData(findOutput));
+    tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
+
+    assert(!tx_2.verify(findOutput));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -412,7 +404,7 @@ unittest
     tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage[tx1Hash] = tx1;
 
-    assert(tx1.verifySignature(findOutput), format("Transaction signature is not validated %s", tx1));
+    assert(tx1.verify(findOutput), format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
         [
@@ -428,5 +420,5 @@ unittest
     tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage[tx2Hash] = tx2;
     // Signature verification must be error
-    assert(!tx2.verifySignature(findOutput), format("Transaction signature is not validated %s", tx2));
+    assert(!tx2.verify(findOutput), format("Transaction signature is not validated %s", tx2));
 }

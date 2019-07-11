@@ -59,17 +59,7 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @trusted
     {
-        // find the previously referenced output
-        auto findOutput = (Hash hash, size_t index)
-        {
-            if (auto txn = this.findTransaction(hash))
-                if (index < txn.outputs.length)
-                    return &txn.outputs[index];
-
-                return null;
-        };
-
-        if (!tx.verifyData(findOutput) || !tx.verifySignature(findOutput))
+        if (!tx.verify(&this.findOutput))
             return false;
 
         auto block = makeNewBlock(*this.last_block, tx);
@@ -144,13 +134,14 @@ public class Ledger
 
     ***************************************************************************/
 
-    private inout(Transaction)* findTransaction (Hash tx_hash) inout @safe
+    private Output* findOutput (Hash tx_hash, size_t index) @safe
     {
         foreach (ref block; this.ledger)
         {
             if (block.header.tx_hash == tx_hash)
             {
-                return &block.tx;
+                if (index < block.tx.outputs.length)
+                    return &block.tx.outputs[index];
             }
         }
 
