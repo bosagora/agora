@@ -34,10 +34,7 @@ unittest
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    // same key-pair as in getGenesisBlock()
-    const genesis_key_pair = KeyPair.fromSeed(
-        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-
+    const gen_key_pair = getGenesisKeyPair();
     const gen_block = getGenesisBlock();
 
     // last transaction in the ledger
@@ -65,7 +62,7 @@ unittest
     Hash tx1Hash = hashFull(tx1);
 
     // Sign a transaction and assign it to the input
-    tx1.inputs[0].signature = genesis_key_pair.secret.sign(tx1Hash[]);
+    tx1.inputs[0].signature = gen_key_pair.secret.sign(tx1Hash[]);
     node_1.putTransaction(tx1);
 
     // Check hasTransactionHash

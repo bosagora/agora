@@ -39,10 +39,7 @@ unittest
     Transaction[] txes;
     KeyPair[] key_pairs;
 
-    // same key-pair as in getGenesisBlock()
-    auto genesis_key_pair = KeyPair.fromSeed(
-        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-
+    auto gen_key_pair = getGenesisKeyPair();
     auto gen_block = getGenesisBlock();
 
     // last transaction in the ledger
@@ -53,10 +50,10 @@ unittest
         Transaction tx =
         {
             [Input(last_tx_hash, 0)],
-            [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
+            [Output(40_000_000, gen_key_pair.address)]  // send to the same address
         };
 
-        auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
+        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
 
         node_1.putTransaction(tx);
