@@ -75,7 +75,7 @@ public class GossipProtocol
                     return null;
             };
 
-        if (tx.verifyData(findOutput))
+        if (tx.verifyData(findOutput) && tx.verifySignature(findOutput))
         {
             this.tx_cache[tx_hash] = tx;
             this.ledger.receiveTransaction(tx);
