@@ -59,6 +59,35 @@ With parameters: `void foobar (int p1, void* p2)`.
 Templated functions are written as `void foobar (T) (T arg)`.
 This makes functions easy to `grep` for.
 
+### Variable & Fields
+
+Note: our rules for variables & fields deviate from the official D style-guide.
+For variables and field names we use `snake_case`, and not `camelCase`. For example:
+
+```D
+struct LinkedList
+{
+    void* prevValue;   // Incorrect!!
+
+    void* prev_value;  // correct
+}
+
+void main ()
+{
+    LinkedList linkedList;  // incorrect
+
+    LinkedList linked_list; // ok
+
+    LinkedList list; // even better
+}
+```
+
+This is to allow easier visual distinction between functions and variables.
+
+In general, try not to use variable names that have too many underscores,
+as this implies the variable has many meanings, and it might even signal
+that the variable is too complex to use.
+
 ### Aggregates (`class` & `struct`)
 
 The order in which members of an aggregate are ordered is as follow:
