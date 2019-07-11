@@ -44,18 +44,37 @@ public class Ledger
 
         Called when a new transaction is received.
 
-        Creates a new block containing the transaction,
-        and adds the block to the ledger.
+        If the transaction is accepted it will be added to
+        a new block, and the block will be added to the ledger.
+
+        If the transaction is invalid, it's rejected and false is returned.
 
         Params:
             tx = the received transaction
 
+        Returns:
+            true if the transaction is valid and was added to a block
+
     ***************************************************************************/
 
-    public void receiveTransaction (Transaction tx) @trusted
+    public bool acceptTransaction (Transaction tx) @trusted
     {
+        // find the previously referenced output
+        auto findOutput = (Hash hash, size_t index)
+        {
+            if (auto txn = this.findTransaction(hash))
+                if (index < txn.outputs.length)
+                    return &txn.outputs[index];
+
+                return null;
+        };
+
+        if (!tx.verifyData(findOutput) || !tx.verifySignature(findOutput))
+            return false;
+
         auto block = makeNewBlock(*this.last_block, tx);
         this.addNewBlock(block);
+        return true;
     }
 
     /***************************************************************************
@@ -125,7 +144,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public inout(Transaction)* findTransaction (Hash tx_hash) inout @safe
+    private inout(Transaction)* findTransaction (Hash tx_hash) inout @safe
     {
         foreach (ref block; this.ledger)
         {
@@ -134,6 +153,7 @@ public class Ledger
                 return &block.tx;
             }
         }
+
         return null;
     }
 }
@@ -146,12 +166,22 @@ unittest
     scope ledger = new Ledger;
     assert(ledger.getLastBlock() == getGenesisBlock());
 
-    auto rand_pair = KeyPair.random();
-    auto input = Input(hashFull(42));
-    input.signature = rand_pair.secret.sign(input.hashFull[]);
-    Transaction tx = { inputs : [input], outputs: [ Output(100, rand_pair.address) ]};
+    // same key-pair as in getGenesisBlock()
+    const genesis_key_pair = KeyPair.fromSeed(
+        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
 
-    ledger.receiveTransaction(tx);
+    // last transaction in the ledger
+    Hash last_tx_hash = hashFull(getGenesisBlock().tx);
+    Transaction tx =
+    {
+        [Input(last_tx_hash, 0)],
+        [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
+    };
+
+    auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
+    tx.inputs[0].signature = signature;
+
+    assert(ledger.acceptTransaction(tx));
     assert(ledger.getLastBlock().tx == tx);
     assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
 }
@@ -165,18 +195,30 @@ unittest
     assert(ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
+    // same key-pair as in getGenesisBlock()
+    const genesis_key_pair = KeyPair.fromSeed(
+        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
+
+    // last transaction in the ledger
+    Hash last_tx_hash = hashFull(getGenesisBlock().tx);
+
     void generateBlocks (size_t count)
     {
         foreach (_; 0 .. count)
         {
-            auto rand_pair = KeyPair.random();
-            auto input = Input(hashFull(42));
-            input.signature = rand_pair.secret.sign(input.hashFull[]);
-            Transaction tx = { inputs : [input], outputs: [Output(100, rand_pair.address)]};
+            Transaction tx =
+            {
+                [Input(last_tx_hash, 0)],
+                [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
+            };
 
-            ledger.receiveTransaction(tx);
+            auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
+            tx.inputs[0].signature = signature;
+
+            assert(ledger.acceptTransaction(tx));
             assert(ledger.getLastBlock().tx == tx);
             assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
+            last_tx_hash = hashFull(tx);  // reference it again
         }
     }
 
