@@ -219,41 +219,31 @@ unittest
     assert(ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
-    // same key-pair as in getGenesisBlock()
-    const genesis_key_pair = KeyPair.fromSeed(
-        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
+    auto gen_key_pair = getGenesisKeyPair();
+    Transaction last_tx = getGenesisBlock().tx;
 
-    // last transaction in the ledger
-    Hash last_tx_hash = hashFull(getGenesisBlock().tx);
-
-    void generateBlocks (size_t count)
+    // each tx currently creates one block
+    void genTransactions (size_t count)
     {
-        foreach (_; 0 .. count)
-        {
-            Transaction tx =
+        auto txes = getChainedTransactions(last_tx, count, gen_key_pair);
+        txes.each!((tx)
             {
-                [Input(last_tx_hash, 0)],
-                [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
-            };
+                assert(ledger.acceptTransaction(tx));
+                assert(ledger.getLastBlock().tx == tx);
+                assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
+            });
 
-            auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-
-            assert(ledger.acceptTransaction(tx));
-            assert(ledger.getLastBlock().tx == tx);
-            assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
-            last_tx_hash = hashFull(tx);  // reference it again
-        }
+        last_tx = txes[$ - 1];
     }
 
-    generateBlocks(2);
+    genTransactions(2);
     Block[] blocks = ledger.getBlocksFrom(0, 10);
     assert(blocks[0] == getGenesisBlock());
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
 
-    /// now generate 98 more blocks to make it 100 + genesis block (101 total)
-    generateBlocks(98);
+    /// now generate 98 more txes (and blocks) to make it 100 + genesis block (101 total)
+    genTransactions(98);
 
     assert(ledger.getLastBlock().header.height == 100);
 
