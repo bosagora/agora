@@ -80,33 +80,6 @@ public Transaction[] getChainedTransactions (Transaction root, size_t count,
 
 /*******************************************************************************
 
-    Create a set of chained blocks, containing the provided transactions,
-    and linking back to the provided root block.
-    Note that the root block is not contained in the array,
-    as it's already available at the call site.
-
-    Params:
-        root = the first block in the chain
-        txes = the list of transactions to create the blocks for
-
-*******************************************************************************/
-
-public Block[] getChainedBlocks (Block root, Transaction[] txes)
-{
-    Block[] blocks;
-    Block last_block = root;
-    foreach (tx; txes)
-    {
-        // chain last block to previous last block
-        last_block = makeNewBlock(last_block, tx);
-        blocks ~= last_block;
-    }
-
-    return blocks;
-}
-
-/*******************************************************************************
-
     Base class for `NetworkManager` used in unittests
 
     The `NetworkManager` class is the mean used to communicate with other nodes.
