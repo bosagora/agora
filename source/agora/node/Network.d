@@ -242,7 +242,8 @@ public class NetworkManager
 
         node.getReady(
             (net_info) { this.addAddresses(net_info.addresses); },
-            &this.onNodeConnected);
+            &this.onNodeConnected,
+            &this.allPeersConnected);
     }
 
     private void onNodeConnected ( RemoteNode node )
