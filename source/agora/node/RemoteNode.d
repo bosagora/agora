@@ -85,13 +85,13 @@ class RemoteNode
         Try connecting to the node, call receiveNetInfo() whenever
         new network information is received, and call onNodeConnected()
         when we're ready to gossip / interact with the node.
-        allPeersConnected() is periodically called to determine if it's
+        minPeersConnected() is periodically called to determine if it's
         necessary to continuously query a node for more network info.
 
         Params:
             receiveNetInfo = delegate to call with any new network info
             onNodeConnected = delegate to call when the handshake is complete
-            allPeersConnected = will be periodically called by this method to
+            minPeersConnected = will be periodically called by this method to
                                 determine if we should keep polling the node
                                 for more network info (to connect to more nodes).
 
@@ -99,7 +99,7 @@ class RemoteNode
 
     public void getReady ( void delegate(NetworkInfo) receiveNetInfo,
         void delegate(RemoteNode) onNodeConnected,
-        bool delegate() allPeersConnected )
+        bool delegate() minPeersConnected )
     {
         while (!this.getPublicKey())
         {
@@ -118,10 +118,10 @@ class RemoteNode
 
         onNodeConnected(this);
 
-        // keep asynchronously polling for complete network info.
-        // net info is complete when the client established
-        // a connection with all the nodes in its quorum set
-        while (!allPeersConnected())
+        // keep asynchronously polling for complete network info,
+        // until complete peer info is returned or the parent
+        // node has established all necessary connections
+        while (!minPeersConnected())
         {
             // received some network info (may still be incomplete)
             if (this.getNetworkInfo())

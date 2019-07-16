@@ -75,6 +75,10 @@ public struct NodeConfig
     /// Is this a validator node
     public bool is_validator;
 
+    /// The minimum number of listeners to connect to
+    /// before discovery is considered complete
+    public size_t min_listeners = 2;
+
     /// Maximum number of listeners to connect to
     public size_t max_listeners = 10;
 
@@ -249,6 +253,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 private NodeConfig parseNodeConfig ( Node node )
 {
     auto is_validator = node["is_validator"].as!bool;
+    auto min_listeners = node["min_listeners"].as!size_t;
     auto max_listeners = node["max_listeners"].as!size_t;
     auto address = node["address"].as!string;
 
@@ -265,6 +270,7 @@ private NodeConfig parseNodeConfig ( Node node )
     NodeConfig conf =
     {
         is_validator : is_validator,
+        min_listeners : min_listeners,
         max_listeners : max_listeners,
         address : address,
         port : port,

@@ -22,6 +22,9 @@ node:
   # When validating, the `seed` of an eligible account is required
   # An eligible account has at least 4 units frozen in it
   is_validator: true
+  # Minimum number of non-validating nodes to connect to before discovery is
+  # considered complete
+  min_listeners: 2
   # Maximum number of non-validating nodes to connect to
   max_listeners: 10
   # Address to which we bind
