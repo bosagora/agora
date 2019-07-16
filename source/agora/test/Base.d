@@ -358,6 +358,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             {
                 key_pair : key_pairs[idx],
                 retry_delay : 100, // msecs
+                min_listeners : nodes - 1,
             };
 
             node_configs ~= node_conf;

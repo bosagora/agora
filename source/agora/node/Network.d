@@ -125,7 +125,7 @@ public class NetworkManager
 
         logInfo("Discovering from %s", this.todo_addresses.byKey());
 
-        while (!this.allPeersConnected())
+        while (!this.minPeersConnected())
         {
             this.connectNextAddresses();
             this.taskman.wait(this.node_config.retry_delay.msecs);
@@ -243,7 +243,7 @@ public class NetworkManager
         node.getReady(
             (net_info) { this.addAddresses(net_info.addresses); },
             &this.onNodeConnected,
-            &this.allPeersConnected);
+            &this.minPeersConnected);
     }
 
     private void onNodeConnected ( RemoteNode node )
@@ -315,9 +315,9 @@ public class NetworkManager
     }
 
     ///
-    private bool allPeersConnected ( )  pure nothrow @safe @nogc
+    private bool minPeersConnected ( )  pure nothrow @safe @nogc
     {
-        return this.todo_addresses.length == 0;
+        return this.peers.length >= this.node_config.min_listeners;
     }
 
     private bool peerLimitReached ( )  pure nothrow @safe @nogc
@@ -329,7 +329,7 @@ public class NetworkManager
     public NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
     {
         return NetworkInfo(
-            this.allPeersConnected()
+            this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
             this.known_addresses);
     }
