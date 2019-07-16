@@ -95,6 +95,11 @@ public class DiskMetadata : Metadata
     ***************************************************************************/
 
     public this ( string data_dir )
+    in
+    {
+        assert(data_dir.length > 0);
+    }
+    body
     {
         this.file_path = format("%s/%s", data_dir, "metadata.dat");
     }
