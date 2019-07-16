@@ -256,6 +256,7 @@ private NodeConfig parseNodeConfig ( Node node )
     if (auto delay = "retry_delay" in node)
         retry_delay = cast(long)(delay.as!float * 1000);
 
+    string data_dir = node["data_dir"].as!string;
     auto port = node["port"].as!ushort;
 
     string node_seed = node["seed"].as!string;
@@ -269,6 +270,7 @@ private NodeConfig parseNodeConfig ( Node node )
         port : port,
         key_pair : key_pair,
         retry_delay : retry_delay,
+        data_dir : data_dir,
     };
 
     return conf;
