@@ -247,8 +247,11 @@ public class NetworkManager
 
     private void onNodeConnected ( RemoteNode node )
     {
+        this.connecting_addresses.remove(node.address);
+
         if (this.peerLimitReached())
             return;
+
         logInfo("Established new connection with peer: %s", node.key);
         this.peers[node.key] = node;
         this.metadata.peers.put(node.address);
