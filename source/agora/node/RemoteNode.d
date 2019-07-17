@@ -19,6 +19,7 @@ import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Set;
+import agora.common.Task;
 import agora.common.Transaction;
 
 import vibe.core.core;
@@ -42,6 +43,9 @@ class RemoteNode
     /// so whatever implements `API` should be handling this
     private const Duration retry_delay;
 
+    /// Task manager
+    private TaskManager taskman;
+
     /// API client to the node
     private API api;
 
@@ -60,14 +64,17 @@ class RemoteNode
         Constructor.
 
         Params:
+            taskman = used for creating new tasks
             address = used for logging and querying by external code
             api = the API to issue the requests with
             retry_delay = the amout to wait between retrying failed requests
 
     ***************************************************************************/
 
-    public this ( Address address, API api, Duration retry_delay )
+    public this ( TaskManager taskman, Address address, API api,
+        Duration retry_delay )
     {
+        this.taskman = taskman;
         this.address = address;
         this.api = api;
         this.retry_delay = retry_delay;
