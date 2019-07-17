@@ -26,6 +26,7 @@ import agora.test.Base;
 /// Returns: the entire ledger from the provided node
 private Block[] getAllBlocks (TestAPI node)
 {
+    import std.range;
     Block[] blocks;
 
     // note: may return less than asked for, hence the loop
@@ -36,8 +37,11 @@ private Block[] getAllBlocks (TestAPI node)
         if (new_blocks.length == 0)  // no blocks left
             break;
 
+        // ensure sequential consistency
+        foreach (block; new_blocks)
+            assert(block.header.height == starting_block++);
+
         blocks ~= new_blocks;
-        starting_block = blocks[$ - 1].header.height + 1;
     }
 
     return blocks;
