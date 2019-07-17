@@ -19,6 +19,8 @@ import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
 
+import vibe.core.log;
+
 import std.algorithm;
 
 /// Ditto
@@ -106,7 +108,9 @@ public class Ledger
 
     /***************************************************************************
 
-        Add a block to the ledger
+        Add a block to the ledger.
+
+        If the block fails verification, it is not added to the ledger.
 
         Params:
             block = the block to add
@@ -117,10 +121,39 @@ public class Ledger
     {
         // force nothrow, an exception will never be thrown here
         scope (failure) assert(0);
+
+        if (!this.isValidBlock(block))
+        {
+            logDebug("Rejected block. %s", block);
+            return;
+        }
+
         this.ledger ~= block;
         this.last_block = &this.ledger[$ - 1];
     }
 
+    /***************************************************************************
+
+        Check the validity of a block.
+        Currently only the height of the block is
+        checked against the last block in the ledger.
+
+        Params:
+            block = the block to check
+
+        Returns:
+            true if the block is considered valid
+
+    ***************************************************************************/
+
+    private bool isValidBlock (Block block)
+    {
+        const expected_height = this.last_block !is null
+            ? (this.last_block.header.height + 1)
+            : 0;
+
+        return block.header.height == expected_height;
+    }
 
     /***************************************************************************
 
