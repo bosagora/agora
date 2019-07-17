@@ -23,7 +23,7 @@ reading fully qualified names, as the first CamelCase name is the module.
 Imports are organized by packages: `agora` first, dependencies second, `std` third,
 `core` last. Within packages, alphabetical order is prefered, with modules
 taking preference over packages, e.g.:
-```
+```D
 import agora.foo.Bar;
 import agora.foo.Zyx; // In alphabetical order, this would be last
 import agora.foo.pkg.Bar;
@@ -119,7 +119,7 @@ When writing documentation, we use multiple styles depending on the circumstance
    This is generally the case for fields of aggregates and getters/setters
 2) When the purpose can be trivially explained, a `/// Comment goes here` is used.
 3) Otherwise, we use a ASCII-style approach:
-```
+```D
 /********************************************************************************
 
     This is extended documentation.
@@ -148,7 +148,7 @@ Indentation in documentation is similar to that of code: 4 spaces indentation,
 one indentation level by default, one extra level per scope.
 
 When implementing an interface / `override` ing a function, one can just document it as:
-```
+```D
 public class Node : API
 {
     /// See `super.func`
@@ -178,7 +178,7 @@ the interface exposed by the method. For example, for the declaration
 `size_t foo (T) (T arg)` there is no information about what `T` is supposed to be.
 It could be a basic type, a reference type, a struct with certain members...
 One has to inspect the body which can then contains the expected dependencies:
-```d
+```D
 size_t foo (T) (T arg)
 {
     return arg.input.length;
@@ -223,7 +223,7 @@ They should be simple, short, and independent of other tests.
 They usually test a single function / symbol, or eventually a few working together.
 For example the basic key signature unittest:
 
-```d
+```D
 /// Test that `verify`  and `sign` work in concert
 unittest
 {
@@ -241,8 +241,7 @@ Those tests live in the `agora.test` package so they can be selectively
 disabled if they grow too large,  or when they don't need to be run.
 
 Following is a template for such a test:
-```d
-
+```D
 /*******************************************************************************
 
     <Test summary>
