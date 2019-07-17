@@ -237,8 +237,8 @@ public class NetworkManager
             return;
 
         logInfo("Establishing connection with %s...", address);
-        auto node = new RemoteNode(address, this.getClient(address),
-            this.node_config.retry_delay.msecs);
+        auto node = new RemoteNode(this.taskman, address,
+            this.getClient(address), this.node_config.retry_delay.msecs);
 
         node.getReady(
             (net_info) { this.addAddresses(net_info.addresses); },
