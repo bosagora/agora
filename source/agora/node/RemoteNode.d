@@ -54,7 +54,18 @@ class RemoteNode
     /// Current network info state as retrieved by getNetworkInfo()
     public NetworkInfo net_info;
 
-    /// Constructor
+
+    /***************************************************************************
+
+        Constructor.
+
+        Params:
+            address = used for logging and querying by external code
+            api = the API to issue the requests with
+            retry_delay = the amout to wait between retrying failed requests
+
+    ***************************************************************************/
+
     public this ( Address address, API api, Duration retry_delay )
     {
         this.address = address;
@@ -62,9 +73,18 @@ class RemoteNode
         this.retry_delay = retry_delay;
     }
 
-    /// Try connecting to the node, call onReceivedNetworkInfoDg() whenever
-    /// new network information is received, and call onClientConnectedDg()
-    /// when we're ready to gossip / interact with the node.
+    /***************************************************************************
+
+        Try connecting to the node, call onReceivedNetworkInfoDg() whenever
+        new network information is received, and call onClientConnectedDg()
+        when we're ready to gossip / interact with the node.
+
+        Params:
+            onReceivedNetworkInfoDg = delegate to call with any new network info
+            onClientConnectedDg = delegate to call when the handshake is complete
+
+    ***************************************************************************/
+
     public void getReady ( void delegate(NetworkInfo) onReceivedNetworkInfoDg,
         void delegate(RemoteNode) onClientConnectedDg )
     {
@@ -103,7 +123,16 @@ class RemoteNode
         }
     }
 
-    /// Get the publicly exposed config of this node
+    /***************************************************************************
+
+        Get the public config of this node, stored in the
+        `pub_conf` field if the request succeeded.
+
+        Returns:
+            true if the request succeeded
+
+    ***************************************************************************/
+
     private bool getPublicConfig ()
     {
         try
@@ -118,7 +147,16 @@ class RemoteNode
         }
     }
 
-    /// Get the public key of this node
+    /***************************************************************************
+
+        Get the public key of this node, stored in the
+        `key` field if the request succeeded.
+
+        Returns:
+            true if the request succeeded
+
+    ***************************************************************************/
+
     private bool getPublicKey ( )
     {
         try
@@ -133,8 +171,16 @@ class RemoteNode
         }
     }
 
-    /// Returns: true if the getNetworkInfo call succeeded,
-    /// however the net info may still be incomplete!
+    /***************************************************************************
+
+        Get the network info of the node, stored in the
+        `net_info` field if the request succeeded.
+
+        Returns:
+            true if the request succeeded
+
+    ***************************************************************************/
+
     private bool getNetworkInfo ()
     {
         try
