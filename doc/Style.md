@@ -4,6 +4,45 @@ This document describes the style used within Agora.
 It covers the style itself, which should be clear and unambiguous,
 as well as more design aspects on how we approach / solve problems.
 
+## Commits
+
+- A commit must be a self-contained unit of logical change.
+
+- A commit should not contain unrelated changes mixed into the same commit.
+
+- A commit should be relatively simple to review. If the commit changes
+too many files, or adds too much functionality, consider splitting it
+up into several distinct commits.
+
+- Each commit **must** compile and **must** pass all tests. Hence it is not good form to add tests and then make them pass.
+
+- The commit title and description should follow some general rules:
+
+An example good commit: https://github.com/bpfkorea/agora/commit/71e7d1cc1da314d92eb76c1d02e04f43bc83784f
+
+The commit title is: `Remove enforcement for expected_validators`
+
+This explains **what** the commit does in a short but meaningful way.
+The commit title should in general not be longer than ~80 characters.
+
+A **bad** commit message would be: `Modified Network.d`. This doesn't
+tell us anything about the contents of the commit other than which file
+was edited. And it's unnecessary, the list of modified files is in the diff of the commit itself.
+
+The description of the previously linked commit is:
+
+```
+It is a valid use case for a full node to not have any validator,
+as validators only make sense when the node itself is a validator.
+```
+
+Note how the commit explains **why** the change was made. Sometimes the
+commit message might explain the "how" in more detail if it's necessary.
+But explaining the _reason_ of the change (the **why**) is the most
+important part of the commit message.
+
+A general guide on how to write good commits is explained in this blog post: https://chris.beams.io/posts/git-commit/
+
 ## Formatting
 
 We mostly follow [the D style](https://dlang.org/dstyle.html).
@@ -155,7 +194,6 @@ public class Node : API
     public override void func () { /* ... */ }
 }
 ```
-
 
 ## Design approaches
 
