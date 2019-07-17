@@ -206,7 +206,9 @@ class RemoteNode
 
     /***************************************************************************
 
-        Send a transaction
+        Send a transaction asynchronously to the node.
+        Any errors are reported to the debugging log.
+        Note that failed requests will not be automatically retried.
 
         Params:
             tx = the transaction to send
@@ -215,14 +217,17 @@ class RemoteNode
 
     public void sendTransaction (Transaction tx) @trusted
     {
-        try
+        this.taskman.runTask(()
         {
-            this.api.putTransaction(tx);
-        }
-        catch (Exception ex)
-        {
-            logError(ex.message);
-        }
+            try
+            {
+                this.api.putTransaction(tx);
+            }
+            catch (Exception ex)
+            {
+                logDebug(ex.message);
+            }
+        });
     }
 
     /***************************************************************************
