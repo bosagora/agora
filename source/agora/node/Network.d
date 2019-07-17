@@ -29,6 +29,7 @@ import agora.common.Config;
 import agora.common.Data;
 import agora.common.Metadata;
 import agora.common.Set;
+import agora.common.Task;
 import agora.common.Transaction;
 import agora.node.Ledger;
 import agora.node.RemoteNode;
@@ -51,6 +52,9 @@ public class NetworkManager
 {
     /// Config instance
     private const NodeConfig node_config = NodeConfig.init;
+
+    /// Task manager
+    private TaskManager taskman;
 
     /// The connected nodes
     protected RemoteNode[PublicKey] peers;
@@ -85,6 +89,7 @@ public class NetworkManager
     public this (in NodeConfig node_config, in string[] peers,
         in string[] dns_seeds, Metadata metadata)
     {
+        this.taskman = this.getTaskManager();
         this.node_config = node_config;
         this.metadata = metadata;
         this.seed_peers = peers;
@@ -123,19 +128,19 @@ public class NetworkManager
         while (!this.allPeersConnected())
         {
             this.connectNextAddresses();
-            this.wait(this.node_config.retry_delay.msecs);
+            this.taskman.wait(this.node_config.retry_delay.msecs);
         }
 
         logInfo("Discovery reached. %s peers connected.", this.peers.length);
 
         // the rest can be done asynchronously as we can already
         // start validating and voting on the blockchain
-        this.runTask(()
+        this.taskman.runTask(()
         {
             while (!this.peerLimitReached())
             {
                 this.connectNextAddresses();
-                this.wait(this.node_config.retry_delay.msecs);
+                this.taskman.wait(this.node_config.retry_delay.msecs);
             }
         });
     }
@@ -152,7 +157,7 @@ public class NetworkManager
 
     public void retrieveLatestBlocks (Ledger ledger)
     {
-        this.runTask(
+        this.taskman.runTask(
         ()
         {
             // periodic task
@@ -162,9 +167,21 @@ public class NetworkManager
                     ledger.getLastBlock().header.height + 1,
                     (blocks) { blocks.each!(block => ledger.addNewBlock(block)); });
 
-                this.wait(2.seconds);
+                this.taskman.wait(2.seconds);
             }
         });
+    }
+
+    /***************************************************************************
+
+        Returns:
+            an instance of a vibe.d-backed task manager
+
+    ***************************************************************************/
+
+    protected TaskManager getTaskManager ()
+    {
+        return new TaskManager();
     }
 
     /***************************************************************************
@@ -275,7 +292,7 @@ public class NetworkManager
                 address !in this.connecting_addresses)
             {
                 this.connecting_addresses.put(address);
-                this.runTask(() { this.tryConnecting(address); });
+                this.taskman.runTask(() { this.tryConnecting(address); });
             }
         }
     }
@@ -332,30 +349,6 @@ public class NetworkManager
     protected API getClient (Address address)
     {
         return new RestInterfaceClient!API(address);
-    }
-
-    /***************************************************************************
-
-        Run an asynchronous task
-
-        This is needed to support testing via `LocalRest`.
-        It should not be in `NetworkManager`.
-        However this is currently the place that uses it.
-        When we build a good enough abstraction, this can be removed.
-
-    ***************************************************************************/
-
-    protected void runTask ( void delegate() dg)
-    {
-        static import vibe.core.core;
-        vibe.core.core.runTask(dg);
-    }
-
-    /// Ditto
-    protected void wait (Duration dur)
-    {
-        static import vibe.core.core;
-        vibe.core.core.sleep(dur);
     }
 
     /***************************************************************************

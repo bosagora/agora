@@ -29,11 +29,14 @@ import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Set;
+import agora.common.Task;
 import agora.common.Transaction;
 import agora.common.crypto.Key;
 import agora.node.Ledger;
 import agora.node.Network;
 import agora.node.Node;
+
+import core.time;
 
 import std.array;
 import std.algorithm.iteration;
@@ -77,6 +80,45 @@ public Transaction[] getChainedTransactions (Transaction root, size_t count,
     }
 
     return transactions;
+}
+
+/*******************************************************************************
+
+    Task manager backed by LocalRest's event loop.
+
+*******************************************************************************/
+
+public class LocalRestTaskManager : TaskManager
+{
+    /***************************************************************************
+
+        Run an asynchronous task in LocalRest's event loop.
+
+        Params:
+            dg = the delegate the task should run
+
+    ***************************************************************************/
+
+    public override void runTask ( void delegate() dg)
+    {
+        static import geod24.LocalRest;
+        geod24.LocalRest.runTask(dg);
+    }
+
+    /***************************************************************************
+
+        Suspend the current task for the given duration
+
+        Params:
+            dur = the duration for which to suspend the task for
+
+    ***************************************************************************/
+
+    public override void wait (Duration dur)
+    {
+        static import geod24.LocalRest;
+        geod24.LocalRest.sleep(dur);
+    }
 }
 
 /*******************************************************************************
@@ -194,18 +236,16 @@ public class TestNetworkManager : NetworkManager
         return fully_discovered.byKey.array;
     }
 
-    /// This is a hack
-    protected override void runTask ( void delegate() dg)
-    {
-        static import geod24.LocalRest;
-        geod24.LocalRest.runTask(dg);
-    }
+    /***************************************************************************
 
-    /// Ditto
-    protected override void wait (Duration dur)
+        Returns:
+            an instance of a LocalRest-backed task manager
+
+    ***************************************************************************/
+
+    protected override TaskManager getTaskManager ()
     {
-        static import geod24.LocalRest;
-        geod24.LocalRest.sleep(dur);
+        return new LocalRestTaskManager();
     }
 }
 
