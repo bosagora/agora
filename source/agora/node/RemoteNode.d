@@ -75,18 +75,18 @@ class RemoteNode
 
     /***************************************************************************
 
-        Try connecting to the node, call onReceivedNetworkInfoDg() whenever
-        new network information is received, and call onClientConnectedDg()
+        Try connecting to the node, call receiveNetInfo() whenever
+        new network information is received, and call onNodeConnected()
         when we're ready to gossip / interact with the node.
 
         Params:
-            onReceivedNetworkInfoDg = delegate to call with any new network info
+            receiveNetInfo = delegate to call with any new network info
             onClientConnectedDg = delegate to call when the handshake is complete
 
     ***************************************************************************/
 
-    public void getReady ( void delegate(NetworkInfo) onReceivedNetworkInfoDg,
-        void delegate(RemoteNode) onClientConnectedDg )
+    public void getReady ( void delegate(NetworkInfo) receiveNetInfo,
+        void delegate(RemoteNode) onNodeConnected )
     {
         while (!this.getPublicKey())
         {
@@ -103,7 +103,7 @@ class RemoteNode
             sleep(this.retry_delay);
         }
 
-        onClientConnectedDg(this);
+        onNodeConnected(this);
 
         // keep asynchronously polling for complete network info.
         // net info is complete when the client established
@@ -112,7 +112,7 @@ class RemoteNode
         {
             // received some network info (may still be incomplete)
             if (this.getNetworkInfo())
-                onReceivedNetworkInfoDg(this.net_info);
+                receiveNetInfo(this.net_info);
 
             if (this.net_info.state == NetworkState.Complete)
                 break;
