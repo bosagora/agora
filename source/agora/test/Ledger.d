@@ -168,8 +168,7 @@ unittest
     auto gen_block = getGenesisBlock();
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
-    foreach (node; nodes[1 .. $])
-        node.sleep(1.seconds);
+    nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
     auto txes = getChainedTransactions(gen_block.tx, 100, gen_key_pair);
     txes.each!(tx => node_1.putTransaction(tx));
