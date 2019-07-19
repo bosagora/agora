@@ -21,6 +21,7 @@ module agora.common.Transaction;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.crypto.Key;
+import agora.node.BlockSerialize;
 
 import std.algorithm;
 
@@ -76,6 +77,25 @@ public struct Transaction
         foreach (output; this.outputs)
             hashPart(output, dg);
     }
+
+
+    /***************************************************************************
+
+        Transactions Serialization
+
+        Params:
+            dg = Serialize function
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    {
+        foreach (const ref input; this.inputs)
+            serializePart(input, dg);
+
+        foreach (const ref output; this.outputs)
+            serializePart(output, dg);
+    }
 }
 
 ///
@@ -122,6 +142,21 @@ public struct Output
         hashPart(this.value, dg);
         hashPart(this.address, dg);
     }
+
+    /***************************************************************************
+
+        Output Serialization
+
+        Params:
+            dg = Serialize function
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    {
+        serializePart(this.value, dg);
+        serializePart(this.address, dg);
+    }
 }
 
 /// The input of the transaction, which spends a previously received `Output`
@@ -150,6 +185,22 @@ public struct Input
     {
         hashPart(this.previous, dg);
         hashPart(this.index, dg);
+    }
+
+    /***************************************************************************
+
+        Input Serialization
+
+        Params:
+             dg = serialize function
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    {
+        serializePart(this.previous, dg);
+        serializePart(this.index, dg);
+        serializePart(this.signature, dg);
     }
 }
 

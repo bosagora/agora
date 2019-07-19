@@ -19,6 +19,7 @@ import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
+import agora.node.BlockSerialize;
 
 /*******************************************************************************
 
@@ -53,6 +54,22 @@ public struct BlockHeader
     {
         dg(this.prev_block[]);
         hashPart(this.height, dg);
+        dg(this.tx_hash[]);
+    }
+
+    /***************************************************************************
+
+        Block Header Serialization
+
+        Params:
+             dg = serialize function accumulator
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    {
+        dg(this.prev_block[]);
+        serializePart(this.height, dg);
         dg(this.tx_hash[]);
     }
 }
@@ -94,6 +111,21 @@ public struct Block
 
     ///
     public Transaction tx;
+
+    /***************************************************************************
+
+        Block serialization
+
+        Params:
+            dg = serialize function accumulator
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    {
+        serializePart(header, dg);
+        serializePart(tx, dg);
+    }
 }
 
 /*******************************************************************************
