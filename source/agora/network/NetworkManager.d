@@ -23,8 +23,9 @@
 module agora.network.NetworkManager;
 
 import agora.common.API;
-import agora.common.crypto.Key;
+import agora.common.BanManager;
 import agora.common.Block;
+import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.Data;
 import agora.common.Metadata;
@@ -37,6 +38,7 @@ import agora.node.Ledger;
 import vibe.core.log;
 import vibe.web.rest;
 
+import core.stdc.time;
 import core.time;
 
 import std.algorithm;
@@ -63,15 +65,15 @@ public class NetworkManager
     /// Used to prevent connecting to the same address twice.
     protected Set!Address connecting_addresses;
 
-    /// Addresses we won't connect to anymore
-    protected Set!Address banned_addresses;
-
     /// All known addresses so far
     protected Set!Address known_addresses;
 
     /// Addresses are added and removed here,
     /// but never added again if they're already in known_addresses
     protected Set!Address todo_addresses;
+
+    /// Address ban manager
+    protected BanManager banman;
 
     ///
     private Metadata metadata;
@@ -86,14 +88,15 @@ public class NetworkManager
     version (unittest) public this () { }
 
     /// Ctor
-    public this (in NodeConfig node_config, in string[] peers,
-        in string[] dns_seeds, Metadata metadata)
+    public this (in NodeConfig node_config, in BanManager.Config banman_conf,
+        in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
         this.taskman = this.getTaskManager();
         this.node_config = node_config;
         this.metadata = metadata;
         this.seed_peers = peers;
         this.dns_seeds = dns_seeds;
+        this.banman = new BanManager(banman_conf);
     }
 
     /// try to discover the network until we found
@@ -102,8 +105,8 @@ public class NetworkManager
     {
         // add our own IP to the list of banned IPs to avoid
         // the node communicating with itself
-        this.banned_addresses.put(
-            format("http://%s:%s", this.node_config.address, this.node_config.port));
+        this.banman.banUntil(format("http://%s:%s", this.node_config.address,
+            this.node_config.port), time_t.max);
 
         assert(this.metadata !is null, "Metadata is null");
         this.metadata.load();
@@ -233,7 +236,7 @@ public class NetworkManager
     private void tryConnecting ( Address address )
     {
         // banned address
-        if (this.isAddressBanned(address))
+        if (this.banman.isBanned(address))
             return;
 
         logInfo("Establishing connection with %s...", address);
@@ -281,7 +284,7 @@ public class NetworkManager
         foreach (address; addresses)
         {
             // go away
-            if (this.isAddressBanned(address))
+            if (this.banman.isBanned(address))
                 continue;
 
             // make a note of it
@@ -309,26 +312,13 @@ public class NetworkManager
         {
             this.todo_addresses.remove(address);
 
-            if (!this.isAddressBanned(address) &&
+            if (!this.banman.isBanned(address) &&
                 address !in this.connecting_addresses)
             {
                 this.connecting_addresses.put(address);
                 this.taskman.runTask(() { this.tryConnecting(address); });
             }
         }
-    }
-
-    ///
-    private void banAddress ( Address address ) nothrow @safe
-    {
-        logInfo("Banned address: %s", address);
-        this.banned_addresses.put(address);
-    }
-
-    /// Return true if this address was already visited
-    private bool isAddressBanned ( Address address )  pure nothrow @safe @nogc
-    {
-        return !!(address in this.banned_addresses);
     }
 
     ///

@@ -15,6 +15,7 @@ module agora.test.Metadata;
 
 version (unittest):
 
+import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Data;
@@ -35,10 +36,10 @@ class MetaNetworkManager : TestNetworkManager
     public this () { super(); }
 
     /// Ditto
-    public this (NodeConfig config, in string[] peers, in string[] dns_seeds,
+    public this (NodeConfig config, BanManager.Config ban_conf, in string[] peers, in string[] dns_seeds,
         Metadata metadata)
     {
-        super(config, peers, dns_seeds, metadata);
+        super(config, ban_conf, peers, dns_seeds, metadata);
     }
 
     /// before we start the nodes, we want to simulate metadata configuration

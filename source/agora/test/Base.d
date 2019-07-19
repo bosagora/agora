@@ -23,6 +23,7 @@ module agora.test.Base;
 version (unittest):
 
 import agora.common.API;
+import agora.common.BanManager;
 import agora.common.Block;
 import agora.common.Config;
 import agora.common.Data;
@@ -104,6 +105,7 @@ public class TestNetworkManager : NetworkManager
     static import std.concurrency;
     import geod24.LocalRest;
     import core.time;
+    import core.stdc.time;
 
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
@@ -117,11 +119,11 @@ public class TestNetworkManager : NetworkManager
     public this () { super(); }
 
     /// ditto
-    public this (NodeConfig config, in string[] peers, in string[] dns_seeds, Metadata metadata)
+    public this (NodeConfig config, BanManager.Config ban_conf, in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
-        super(config, peers, dns_seeds, metadata);
+        super(config, ban_conf, peers, dns_seeds, metadata);
         // NetworkManager assumes IP are used but we use pubkey
-        this.banned_addresses.put(config.key_pair.address.toString());
+        this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
     }
 
     ///
@@ -337,6 +339,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 
             Config conf =
             {
+                banman : BanManager.Config(size_t.max, 0),  // don't automatically ban yet
                 node : node_configs[idx],
                 network : configure_network
                     ? assumeUnique(other_pairs.map!(k => k.address.toString()).array)

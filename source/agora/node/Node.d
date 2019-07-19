@@ -75,7 +75,7 @@ public class Node (Network) : API
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.network = new Network(config.node, config.network,
+        this.network = new Network(config.node, config.banman, config.network,
             config.dns_seeds,
             this.metadata);
         this.ledger = new Ledger();

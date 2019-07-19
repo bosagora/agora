@@ -44,6 +44,15 @@ node:
   data_dir: .cache
 
 ################################################################################
+##                         Ban manager configuration                          ##
+################################################################################
+banman:
+  # max failed requests until an address is banned
+  max_failed_requests: 10
+  # the default duration of a ban
+  ban_duration: 86400
+
+################################################################################
 ##                          Administrative interface                          ##
 ################################################################################
 admin:
