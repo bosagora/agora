@@ -15,6 +15,7 @@
 
 module agora.common.Config;
 
+import agora.common.BanManager;
 import agora.common.crypto.Key;
 import agora.common.Set;
 
@@ -46,6 +47,9 @@ public struct Config
 {
     static assert(!hasUnsharedAliasing!(typeof(this)),
         "Type must be shareable accross threads");
+
+    /// Ban manager config
+    public BanManager.Config banman;
 
     /// The node config
     public NodeConfig node;
@@ -225,6 +229,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 
     Config conf =
     {
+        banman : parseBanManagerConfig(root["banman"]),
         node : parseNodeConfig(root["node"]),
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns")),
@@ -277,6 +282,18 @@ private NodeConfig parseNodeConfig ( Node node )
         key_pair : key_pair,
         retry_delay : retry_delay,
         data_dir : data_dir,
+    };
+
+    return conf;
+}
+
+/// Parse the banman config section
+private BanManager.Config parseBanManagerConfig ( Node node )
+{
+    BanManager.Config conf =
+    {
+        max_failed_requests : node["max_failed_requests"].as!size_t,
+        ban_duration : node["ban_duration"].as!size_t,
     };
 
     return conf;
