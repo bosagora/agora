@@ -16,6 +16,7 @@ module agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.crypto.Crc16;
 import agora.common.Hash;
+import agora.node.BlockSerialize;
 
 import geod24.bitblob;
 import base32;
@@ -171,6 +172,20 @@ public struct PublicKey
     ***************************************************************************/
 
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        dg(this.data[]);
+    }
+
+    /***************************************************************************
+
+        Key Serialization
+
+        Params:
+            dg = Serialize function
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) pure const nothrow @safe
     {
         dg(this.data[]);
     }
