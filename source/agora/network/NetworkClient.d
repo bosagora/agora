@@ -48,9 +48,6 @@ class NetworkClient
     /// API client to the node
     private API api;
 
-    /// The public configuration as retrieved by getPublicConfig()
-    public PublicConfig pub_conf;
-
     /// The key of the node as retrieved by getPublicKey()
     public PublicKey key;
 
@@ -107,14 +104,6 @@ class NetworkClient
             this.taskman.wait(this.retry_delay);
         }
 
-        while (!this.getPublicConfig())
-        {
-            logInfo("[%s] (%s): Couldn't retrieve configuration. " ~
-                "Will retry in %s..",
-                this.address, this.key, this.retry_delay);
-            this.taskman.wait(this.retry_delay);
-        }
-
         onNodeConnected(this);
 
         // keep asynchronously polling for complete network info,
@@ -132,30 +121,6 @@ class NetworkClient
             logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
                 this.address, this.key, this.retry_delay);
             this.taskman.wait(this.retry_delay);
-        }
-    }
-
-    /***************************************************************************
-
-        Get the public config of this node, stored in the
-        `pub_conf` field if the request succeeded.
-
-        Returns:
-            true if the request succeeded
-
-    ***************************************************************************/
-
-    private bool getPublicConfig ()
-    {
-        try
-        {
-            this.pub_conf = this.api.getPublicConfig();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            logError(ex.message);
-            return false;
         }
     }
 

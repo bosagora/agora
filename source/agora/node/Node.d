@@ -108,17 +108,6 @@ public class Node (Network) : API
         return this.network.getNetworkInfo();
     }
 
-    /// GET: /public_config
-    public override PublicConfig getPublicConfig() pure nothrow @safe @nogc
-    {
-        PublicConfig config =
-        {
-            is_validator : this.config.node.is_validator
-        };
-
-        return config;
-    }
-
     /***************************************************************************
 
         Receive a transaction.
