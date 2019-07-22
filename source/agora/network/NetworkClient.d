@@ -22,7 +22,6 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
 
-import vibe.core.core;
 import vibe.core.log;
 
 import core.time;
@@ -105,7 +104,7 @@ class NetworkClient
         {
             logInfo("[%s] Couldn't retrieve public key. Will retry in %s..",
                 this.address, this.retry_delay);
-            sleep(this.retry_delay);
+            this.taskman.wait(this.retry_delay);
         }
 
         while (!this.getPublicConfig())
@@ -113,7 +112,7 @@ class NetworkClient
             logInfo("[%s] (%s): Couldn't retrieve configuration. " ~
                 "Will retry in %s..",
                 this.address, this.key, this.retry_delay);
-            sleep(this.retry_delay);
+            this.taskman.wait(this.retry_delay);
         }
 
         onNodeConnected(this);
@@ -132,7 +131,7 @@ class NetworkClient
 
             logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
                 this.address, this.key, this.retry_delay);
-            sleep(this.retry_delay);
+            this.taskman.wait(this.retry_delay);
         }
     }
 
