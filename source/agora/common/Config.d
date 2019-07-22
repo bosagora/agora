@@ -165,8 +165,8 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 class ConfigException : Exception
 {
     ///
-    @nogc @safe pure nothrow public this ( string msg, string file = __FILE__,
-        size_t line = __LINE__ )
+    public this (string msg, string file = __FILE__, size_t line = __LINE__)
+        @nogc @safe pure nothrow
     {
         super(msg, file, line);
     }
@@ -207,7 +207,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 
     Node root = Loader.fromFile(cmdln.config_path).load();
 
-    string[] parseSequence ( string section )
+    string[] parseSequence (string section)
     {
         if (auto node = section in root)
             enforce(root[section].type == NodeType.sequence,
@@ -255,7 +255,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 }
 
 /// Parse the node config section
-private NodeConfig parseNodeConfig ( Node node )
+private NodeConfig parseNodeConfig (Node node)
 {
     auto is_validator = node["is_validator"].as!bool;
     auto min_listeners = node["min_listeners"].as!size_t;
@@ -288,7 +288,7 @@ private NodeConfig parseNodeConfig ( Node node )
 }
 
 /// Parse the banman config section
-private BanManager.Config parseBanManagerConfig ( Node node )
+private BanManager.Config parseBanManagerConfig (Node node)
 {
     BanManager.Config conf =
     {
@@ -300,7 +300,7 @@ private BanManager.Config parseBanManagerConfig ( Node node )
 }
 
 /// Parse the quorum config section
-private QuorumConfig[] parseQuorumSection ( Node quorums_root )
+private QuorumConfig[] parseQuorumSection (Node quorums_root)
 {
     struct PreQuorum
     {
@@ -328,7 +328,7 @@ private QuorumConfig[] parseQuorumSection ( Node quorums_root )
         pre_quorums[name] = quorum;
     }
 
-    float parseThreshold ( string input )
+    float parseThreshold (string input)
     {
         // todo: add ability to specify 2/3 style fractions
         if (input.endsWith("%"))
@@ -337,7 +337,7 @@ private QuorumConfig[] parseQuorumSection ( Node quorums_root )
             return 100.0;
     }
 
-    QuorumConfig toQuorum ( string temp_name, PreQuorum temp_quorum )
+    QuorumConfig toQuorum (string temp_name, PreQuorum temp_quorum)
     {
         auto name = temp_name;
         auto threshold = parseThreshold(temp_quorum.threshold);

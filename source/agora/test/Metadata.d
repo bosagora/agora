@@ -43,7 +43,7 @@ class MetaNetworkManager : TestNetworkManager
     }
 
     /// before we start the nodes, we want to simulate metadata configuration
-    public override void start ( )
+    public override void start ()
     {
         auto keys = this.apis.keys.array;
 

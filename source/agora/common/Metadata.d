@@ -63,7 +63,7 @@ public class Metadata
 public class MemMetadata : Metadata
 {
     ///
-    public this ( )
+    public this ()
     {
     }
 
@@ -94,7 +94,7 @@ public class DiskMetadata : Metadata
 
     ***************************************************************************/
 
-    public this ( string data_dir )
+    public this (string data_dir)
     in
     {
         assert(data_dir.length > 0);

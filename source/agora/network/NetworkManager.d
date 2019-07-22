@@ -227,13 +227,13 @@ public class NetworkManager
     }
 
     /// Dump the metadata
-    public void dumpMetadata ( )
+    public void dumpMetadata ()
     {
         this.metadata.dump();
     }
 
     /// Attempt connecting with the given address
-    private void tryConnecting ( Address address )
+    private void tryConnecting (Address address)
     {
         // banned address
         if (this.banman.isBanned(address))
@@ -266,7 +266,7 @@ public class NetworkManager
         }
     }
 
-    private void onNodeConnected ( NetworkClient node )
+    private void onNodeConnected (NetworkClient node)
     {
         this.connecting_addresses.remove(node.address);
 
@@ -279,7 +279,7 @@ public class NetworkManager
     }
 
     /// Received new set of addresses, put them in the todo & known IP list
-    private void addAddresses ( Set!Address addresses )
+    private void addAddresses (Set!Address addresses)
     {
         foreach (address; addresses)
         {
@@ -322,12 +322,12 @@ public class NetworkManager
     }
 
     ///
-    private bool minPeersConnected ( )  pure nothrow @safe @nogc
+    private bool minPeersConnected ()  pure nothrow @safe @nogc
     {
         return this.peers.length >= this.node_config.min_listeners;
     }
 
-    private bool peerLimitReached ( )  pure nothrow @safe @nogc
+    private bool peerLimitReached ()  pure nothrow @safe @nogc
     {
         return this.peers.length >= this.node_config.max_listeners;
     }

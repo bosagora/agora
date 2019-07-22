@@ -60,17 +60,16 @@ class NetworkClient
             taskman = used for creating new tasks
             address = used for logging and querying by external code
             api = the API to issue the requests with
-            retry_delay = the amout to wait between retrying failed requests
+            retry = the amout to wait between retrying failed requests
 
     ***************************************************************************/
 
-    public this ( TaskManager taskman, Address address, API api,
-        Duration retry_delay )
+    public this (TaskManager taskman, Address address, API api, Duration retry)
     {
         this.taskman = taskman;
         this.address = address;
         this.api = api;
-        this.retry_delay = retry_delay;
+        this.retry_delay = retry;
     }
 
     /***************************************************************************
@@ -84,7 +83,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void handshake ( )
+    public void handshake ()
     {
         while (!this.getPublicKey())
         {
@@ -104,7 +103,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    private bool getPublicKey ( )
+    private bool getPublicKey ()
     {
         try
         {

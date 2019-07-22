@@ -23,26 +23,26 @@ import core.stdc.string;
 
 /// simplified Set() code with some convenience methods,
 /// could use a drop-in implementation later.
-struct Set (T)
+public struct Set (T)
 {
     ///
     bool[T] _set;
     alias _set this;
 
     /// Put an element in the set
-    public void put ( T key )
+    public void put (T key)
     {
         this._set[key] = true;
     }
 
     /// Remove an element from the set
-    public void remove ( T key )
+    public void remove (T key)
     {
         this._set.remove(key);
     }
 
     /// Walk over all elements and call dg(elem)
-    public int opApply ( int delegate(T) dg )
+    public int opApply (int delegate(T) dg)
     {
         foreach (key; this._set.byKey)
         {
@@ -54,7 +54,7 @@ struct Set (T)
     }
 
     /// Build a new Set out of the provided range
-    public static Set from ( Range ) ( Range range)
+    public static Set from (Range) (Range range)
     {
         typeof(return) map;
         foreach (T item; range)
@@ -63,7 +63,7 @@ struct Set (T)
     }
 
     /// Fill an existing set with elements from an array
-    public void fill ( const(T)[] rhs )
+    public void fill (const(T)[] rhs)
     {
         foreach (key; rhs)
             this.put(key);
@@ -71,7 +71,7 @@ struct Set (T)
 }
 
 /// fill the buffer with the set's keys
-private void fillFrom ( T ) ( ref T[] buffer, Set!T input )
+private void fillFrom (T) (ref T[] buffer, Set!T input)
 {
     buffer.length = input.length;
     assumeSafeAppend(buffer);
@@ -94,7 +94,7 @@ private void fillFrom ( T ) ( ref T[] buffer, Set!T input )
     Returns:
         a randomly distributed array of $count elements
 */
-public T[] pickRandom (T) ( Set!T input, size_t count = 0 )
+public T[] pickRandom (T) (Set!T input, size_t count = 0)
 {
     if (count == 0)
         count = input.length;
