@@ -20,7 +20,7 @@
 
 *******************************************************************************/
 
-module agora.node.Network;
+module agora.network.Network;
 
 import agora.common.API;
 import agora.common.crypto.Key;
