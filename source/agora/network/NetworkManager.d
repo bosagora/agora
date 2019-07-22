@@ -240,10 +240,27 @@ public class NetworkManager
         auto node = new NetworkClient(this.taskman, address,
             this.getClient(address), this.node_config.retry_delay.msecs);
 
-        node.getReady(
-            (net_info) { this.addAddresses(net_info.addresses); },
-            &this.onNodeConnected,
-            &this.minPeersConnected);
+        node.handshake();
+        this.onNodeConnected(node);
+
+        // keep asynchronously polling for complete network info,
+        // until complete peer info is returned or the parent
+        // node has established all necessary connections
+        while (!this.minPeersConnected())
+        {
+            NetworkInfo net_info;
+            if (node.getNetworkInfo(net_info))
+            {
+                // received some network info (may still be incomplete)
+                this.addAddresses(net_info.addresses);
+                if (net_info.state == NetworkState.Complete)
+                    break;
+            }
+
+            logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
+                node.address, node.key, this.node_config.retry_delay);
+            this.taskman.wait(this.node_config.retry_delay.msecs);
+        }
     }
 
     private void onNodeConnected ( NetworkClient node )
