@@ -245,7 +245,7 @@ public Transaction[] getChainedTransactions (Transaction root, size_t count,
 *******************************************************************************/
 
 public Amount getSumInput (Transaction tx,
-    Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
+    scope Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     return tx.inputs
         .map!(a => findOutput(a.previous, a.index))
@@ -284,7 +284,7 @@ public Amount getSumOutput (Transaction tx) nothrow pure @safe @nogc
 *******************************************************************************/
 
 public bool verify (Transaction tx,
-    Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
+    scope Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     if (tx.inputs.length == 0)
         return false;
@@ -342,7 +342,7 @@ unittest
     );
 
     // delegate for finding `Output`
-    auto findOutput = (Hash hash, size_t index)
+    scope findOutput = (Hash hash, size_t index)
     {
         if (auto tx = hash in storage)
             if (index < tx.outputs.length)
@@ -380,7 +380,7 @@ unittest
     storage[tx_1_hash] = tx_1;
 
     // delegate for finding `Output`
-    auto findOutput = (Hash hash, size_t index)
+    scope findOutput = (Hash hash, size_t index)
     {
         if (auto tx = hash in storage)
             if (index < tx.outputs.length)
@@ -414,7 +414,7 @@ unittest
     key_pairs ~= KeyPair.random();
 
     // delegate for finding `Output`
-    auto findOutput = (Hash hash, size_t index)
+    scope findOutput = (Hash hash, size_t index)
     {
         if (auto tx = hash in storage)
             if (index < tx.outputs.length)

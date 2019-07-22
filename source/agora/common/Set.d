@@ -42,7 +42,7 @@ public struct Set (T)
     }
 
     /// Walk over all elements and call dg(elem)
-    public int opApply (int delegate(T) dg)
+    public int opApply (scope int delegate(T) dg)
     {
         foreach (key; this._set.byKey)
         {
