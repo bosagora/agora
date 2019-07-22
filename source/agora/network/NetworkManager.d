@@ -260,7 +260,7 @@ public class NetworkManager
             return;
 
         logInfo("Establishing connection with %s...", address);
-        auto node = new NetworkClient(this.taskman, address,
+        auto node = new NetworkClient(this.taskman, this.banman, address,
             this.getClient(address, this.node_config.timeout.msecs),
             this.node_config.retry_delay.msecs,
             this.node_config.max_retries);
@@ -275,7 +275,14 @@ public class NetworkManager
             }
             catch (Exception ex)
             {
-               // keep trying until node is connected
+                // try again, unless banned
+                if (this.banman.isBanned(node.address))
+                {
+                    this.connecting_addresses.remove(node.address);
+                    logInfo("Handshake with node %s failed: %s. Node banned until %s",
+                        node.address, ex.message, this.banman.getUnbanTime(node.address));
+                    return;
+                }
             }
         }
 
@@ -288,20 +295,27 @@ public class NetworkManager
             try
             {
                 auto net_info = node.getNetworkInfo();
-                this.addAddresses(net_info.addresses);
                 if (net_info.state == NetworkState.Complete)
-                    break;  // done
+                    return;  // done
+
+                // if it's incomplete give the client some time to connect
+                // with other peers and try again later
+                logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
+                    node.address, node.key, this.node_config.retry_delay);
+                this.taskman.wait(this.node_config.retry_delay.msecs);
             }
             catch (Exception ex)
             {
-                // attempt later
+                // try again, unless banned
+                if (this.banman.isBanned(node.address))
+                {
+                    this.connecting_addresses.remove(node.address);
+                    logInfo("Retrieval of peers from node %s failed: %s. " ~
+                        "Node banned until %s", node.address, ex.message,
+                        this.banman.getUnbanTime(node.address));
+                    return;
+                }
             }
-
-            // if it's incomplete give the client some time to connect
-            // with other peers and try again later
-            logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
-                node.address, node.key, this.node_config.retry_delay);
-            this.taskman.wait(this.node_config.retry_delay.msecs);
         }
     }
 

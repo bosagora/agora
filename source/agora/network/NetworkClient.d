@@ -49,6 +49,9 @@ class NetworkClient
     /// Task manager
     private TaskManager taskman;
 
+    /// Ban manager
+    private BanManager banman;
+
     /// API client to the node
     private API api;
 
@@ -65,6 +68,7 @@ class NetworkClient
 
         Params:
             taskman = used for creating new tasks
+            banman = ban manager
             address = used for logging and querying by external code
             api = the API to issue the requests with
             retry = the amout to wait between retrying failed requests
@@ -72,10 +76,11 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public this (TaskManager taskman, Address address, API api, Duration retry,
-        size_t max_retries)
+    public this (TaskManager taskman, BanManager banman, Address address,
+        API api, Duration retry, size_t max_retries)
     {
         this.taskman = taskman;
+        this.banman = banman;
         this.address = address;
         this.api = api;
         this.retry_delay = retry;
@@ -222,6 +227,9 @@ class NetworkClient
                     this.taskman.wait(this.retry_delay);
             }
         }
+
+        // request considered failed after max retries reached
+        this.banman.onFailedRequest(this.address);
 
         if (ex !is null)
             throw ex;
