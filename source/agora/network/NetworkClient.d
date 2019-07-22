@@ -75,50 +75,21 @@ class NetworkClient
 
     /***************************************************************************
 
-        Try connecting to the node, call receiveNetInfo() whenever
-        new network information is received, and call onNodeConnected()
-        when we're ready to gossip / interact with the node.
-        minPeersConnected() is periodically called to determine if it's
-        necessary to continuously query a node for more network info.
+        Handshake with the node.
 
-        Params:
-            receiveNetInfo = delegate to call with any new network info
-            onNodeConnected = delegate to call when the handshake is complete
-            minPeersConnected = will be periodically called by this method to
-                                determine if we should keep polling the node
-                                for more network info (to connect to more nodes).
+        Currently only the node's public key is retrieved,
+        later version checks should be added here.
+
+        Note that it is currently blocking until handshake is considered complete.
 
     ***************************************************************************/
 
-    public void getReady ( void delegate(NetworkInfo) receiveNetInfo,
-        void delegate(NetworkClient) onNodeConnected,
-        bool delegate() minPeersConnected )
+    public void handshake ( )
     {
         while (!this.getPublicKey())
         {
             logInfo("[%s] Couldn't retrieve public key. Will retry in %s..",
                 this.address, this.retry_delay);
-            this.taskman.wait(this.retry_delay);
-        }
-
-        onNodeConnected(this);
-
-        // keep asynchronously polling for complete network info,
-        // until complete peer info is returned or the parent
-        // node has established all necessary connections
-        while (!minPeersConnected())
-        {
-            NetworkInfo net_info;
-            if (this.getNetworkInfo(net_info))
-            {
-                // received some network info (may still be incomplete)
-                receiveNetInfo(net_info);
-                if (net_info.state == NetworkState.Complete)
-                    break;
-            }
-
-            logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
-                this.address, this.key, this.retry_delay);
             this.taskman.wait(this.retry_delay);
         }
     }
@@ -160,7 +131,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    private bool getNetworkInfo (out NetworkInfo net_info)
+    public bool getNetworkInfo (out NetworkInfo net_info)
     {
         try
         {
