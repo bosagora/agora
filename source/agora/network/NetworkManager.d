@@ -31,8 +31,8 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
+import agora.network.RemoteNode;
 import agora.node.Ledger;
-import agora.node.RemoteNode;
 
 import vibe.core.log;
 import vibe.web.rest;

@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.node.RemoteNode;
+module agora.network.RemoteNode;
 
 import agora.common.API;
 import agora.common.Block;
