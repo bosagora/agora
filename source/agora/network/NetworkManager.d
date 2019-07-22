@@ -31,7 +31,7 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
-import agora.network.RemoteNode;
+import agora.network.NetworkClient;
 import agora.node.Ledger;
 
 import vibe.core.log;
@@ -57,7 +57,7 @@ public class NetworkManager
     private TaskManager taskman;
 
     /// The connected nodes
-    protected RemoteNode[PublicKey] peers;
+    protected NetworkClient[PublicKey] peers;
 
     /// The addresses currently establishing connections to.
     /// Used to prevent connecting to the same address twice.
@@ -237,7 +237,7 @@ public class NetworkManager
             return;
 
         logInfo("Establishing connection with %s...", address);
-        auto node = new RemoteNode(this.taskman, address,
+        auto node = new NetworkClient(this.taskman, address,
             this.getClient(address), this.node_config.retry_delay.msecs);
 
         node.getReady(
@@ -246,7 +246,7 @@ public class NetworkManager
             &this.minPeersConnected);
     }
 
-    private void onNodeConnected ( RemoteNode node )
+    private void onNodeConnected ( NetworkClient node )
     {
         this.connecting_addresses.remove(node.address);
 

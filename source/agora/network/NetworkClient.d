@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.network.RemoteNode;
+module agora.network.NetworkClient;
 
 import agora.common.API;
 import agora.common.Block;
@@ -33,7 +33,7 @@ import std.format;
 import std.random;
 
 /// Used for communicating with a remote node
-class RemoteNode
+class NetworkClient
 {
     /// Address of the node we're interacting with (for logging)
     public const Address address;
@@ -98,7 +98,7 @@ class RemoteNode
     ***************************************************************************/
 
     public void getReady ( void delegate(NetworkInfo) receiveNetInfo,
-        void delegate(RemoteNode) onNodeConnected,
+        void delegate(NetworkClient) onNodeConnected,
         bool delegate() minPeersConnected )
     {
         while (!this.getPublicKey())
