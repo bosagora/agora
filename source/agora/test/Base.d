@@ -65,7 +65,7 @@ public class LocalRestTaskManager : TaskManager
 
     ***************************************************************************/
 
-    public override void runTask ( void delegate() dg)
+    public override void runTask (void delegate() dg)
     {
         static import geod24.LocalRest;
         geod24.LocalRest.runTask(dg);

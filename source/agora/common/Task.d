@@ -31,7 +31,7 @@ public class TaskManager
 
     ***************************************************************************/
 
-    public void runTask ( void delegate() dg)
+    public void runTask (void delegate() dg)
     {
         static import vibe.core.core;
         vibe.core.core.runTask(dg);
