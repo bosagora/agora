@@ -32,7 +32,7 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
 import agora.common.crypto.Key;
-import agora.network.Network;
+import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.node.Node;
 
