@@ -40,13 +40,6 @@ public struct NetworkInfo
     public Set!string addresses;
 }
 
-/// Contains the public part of node's configuration (e.g. lacking the private keys)
-public struct PublicConfig
-{
-    /// whether this is a validator node1
-    public bool is_validator;
-}
-
 /*******************************************************************************
 
     Define the API a full node exposes to the world
@@ -93,19 +86,6 @@ public interface API
     ***************************************************************************/
 
     public NetworkInfo getNetworkInfo ();
-
-    /***************************************************************************
-
-        Returns:
-            The publicly exposed configuration of this node.
-            (e.g.: is it a validator, etc)
-
-        API:
-            GET /public_config
-
-    ***************************************************************************/
-
-    public PublicConfig getPublicConfig ();
 
     /***************************************************************************
 
