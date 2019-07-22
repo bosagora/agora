@@ -17,8 +17,8 @@ import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Set;
 import agora.common.Transaction;
+import agora.network.Network;
 import agora.node.Ledger;
-import agora.node.Network;
 
 /// Ditto
 public class GossipProtocol

@@ -32,8 +32,8 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
 import agora.common.crypto.Key;
+import agora.network.Network;
 import agora.node.Ledger;
-import agora.node.Network;
 import agora.node.Node;
 
 import core.time;

@@ -20,8 +20,8 @@ import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Transaction;
+import agora.network.Network;
 import agora.node.Ledger;
-import agora.node.Network;
 
 import agora.node.GossipProtocol;
 
@@ -44,7 +44,7 @@ private enum MaxBatchBlocksSent = 1000;
 
     Params:
       Network = Type of the class handling network communication
-                `agora.node.Network.Network` or a derivative is expected.
+                `agora.network.Network.Network` or a derivative is expected.
 
 *******************************************************************************/
 public class Node (Network) : API

@@ -19,7 +19,7 @@
 module agora.app;
 
 import agora.common.Config;
-import agora.node.Network;
+import agora.network.Network;
 import agora.node.Node;
 
 import vibe.core.core;
