@@ -51,9 +51,6 @@ class NetworkClient
     /// The key of the node as retrieved by getPublicKey()
     public PublicKey key;
 
-    /// Current network info state as retrieved by getNetworkInfo()
-    public NetworkInfo net_info;
-
 
     /***************************************************************************
 
@@ -111,12 +108,14 @@ class NetworkClient
         // node has established all necessary connections
         while (!minPeersConnected())
         {
-            // received some network info (may still be incomplete)
-            if (this.getNetworkInfo())
-                receiveNetInfo(this.net_info);
-
-            if (this.net_info.state == NetworkState.Complete)
-                break;
+            NetworkInfo net_info;
+            if (this.getNetworkInfo(net_info))
+            {
+                // received some network info (may still be incomplete)
+                receiveNetInfo(net_info);
+                if (net_info.state == NetworkState.Complete)
+                    break;
+            }
 
             logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
                 this.address, this.key, this.retry_delay);
@@ -151,18 +150,21 @@ class NetworkClient
     /***************************************************************************
 
         Get the network info of the node, stored in the
-        `net_info` field if the request succeeded.
+        `net_info` parameter if the request succeeded.
+
+        Params:
+            net_info = will contain the network info if successful
 
         Returns:
             true if the request succeeded
 
     ***************************************************************************/
 
-    private bool getNetworkInfo ()
+    private bool getNetworkInfo (out NetworkInfo net_info)
     {
         try
         {
-            this.net_info = this.api.getNetworkInfo();
+            net_info = this.api.getNetworkInfo();
             logInfo("[%s]: Received network info %s", this.address,
                 net_info);
             return true;
