@@ -429,6 +429,12 @@ public class NetworkManager
     {
         foreach (ref node; this.peers)
         {
+            if (this.banman.isBanned(node.address))
+            {
+                logTrace("Not sending to %s as it's banned", node.address);
+                continue;
+            }
+
             node.sendTransaction(tx);
         }
     }
