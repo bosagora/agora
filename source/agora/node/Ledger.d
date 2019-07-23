@@ -35,6 +35,8 @@ public class Ledger
     /// pointer to the latest block
     private Block* last_block;
 
+    /// Temporary storage where transactions are stored until blocks are created.
+    private Transaction[] storage;
 
     /// Ctor
     public this ()
@@ -64,10 +66,26 @@ public class Ledger
     {
         if (!tx.verify(&this.findOutput))
             return false;
-
-        auto block = makeNewBlock(*this.last_block, tx);
-        this.addNewBlock(block);
+        this.storage ~= tx;
+        if (this.storage.length >= 8)
+            this.makeBlock();
         return true;
+    }
+
+    /***************************************************************************
+
+        Create a new block.
+
+    ***************************************************************************/
+
+    public void makeBlock () @trusted
+    {
+        if (this.storage.length > 0)
+        {
+            auto block = makeNewBlock(*this.last_block, this.storage);
+            this.storage.length = 0;
+            this.addNewBlock(block);
+        }
     }
 
     /***************************************************************************
@@ -172,10 +190,13 @@ public class Ledger
     {
         foreach (ref block; this.ledger)
         {
-            if (block.header.tx_hash == tx_hash)
+            foreach(ref tx; block.txs)
             {
-                if (index < block.tx.outputs.length)
-                    return &block.tx.outputs[index];
+                if (hashFull(tx) == tx_hash)
+                {
+                    if (index < tx.outputs.length)
+                        return &tx.outputs[index];
+                }
             }
         }
 
@@ -197,7 +218,7 @@ unittest
         Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
 
     // last transaction in the ledger
-    Hash last_tx_hash = hashFull(getGenesisBlock().tx);
+    Hash last_tx_hash = hashFull(getGenesisBlock().txs[$-1]);
     Transaction tx =
     {
         [Input(last_tx_hash, 0)],
@@ -208,15 +229,16 @@ unittest
     tx.inputs[0].signature = signature;
 
     assert(ledger.acceptTransaction(tx));
-    assert(ledger.getLastBlock().tx == tx);
-    assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
+    ledger.makeBlock();
+    assert(ledger.getLastBlock().txs[$-1] == tx);
 
     // getLastBlock Testing serialization
     // Compare the serialization hexstring with the origin Ledger data.
     const ubyte[] data = serializeFull(ledger.getLastBlock());
+
     const string serializeData =
-     "DDDC3C5D5CB1018DDAD191A1AE3D80DC1AF350B535CFE9F1732EF321AE0F15709F08168648E88686"
-    ~"22DE1DE55525650E9A9BB02605BBA9DA11173A6D491853F50100000000000000DD9AAF1064DA6746"
+     "02A91D85E7279998D31FE887281D0031D8C19FA732DC0BAC3A323569B19A14AD4B274255397A9A56"
+    ~"F14930CFAF7C7648377602EF0EF0E01821EE18F676092D060100000000000000DD9AAF1064DA6746"
     ~"2DC1CC496E0374084058403429A1F74B72663F6CCA35B80AECD85063383D372F9DBCD770EF654B96"
     ~"99F8C8801E6FD8041E9F517DF0B7CD2DE8D87AE11BDB8A861F7B0BD6EE6D7D37657FDD47CF8ED340"
     ~"CDE27387366F9A64ABC91788162EFE5B3C9DAA4104113445994C7F0497199FF442E88F78C582A2CF"
@@ -237,17 +259,18 @@ unittest
     assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
-    Transaction last_tx = getGenesisBlock().tx;
+    Transaction last_tx = getGenesisBlock().txs[$-1];
 
     // each tx currently creates one block
     void genTransactions (size_t count)
     {
-        auto txes = getChainedTransactions(last_tx, count, gen_key_pair);
+        auto txes = getChainedTransactions(last_tx, count, gen_key_pair, 1);
         txes.each!((tx)
             {
                 assert(ledger.acceptTransaction(tx));
-                assert(ledger.getLastBlock().tx == tx);
-                assert(ledger.getLastBlock().header.tx_hash == tx.hashFull());
+                ledger.makeBlock();
+                assert(ledger.getLastBlock().txs[$-1] == tx);
+
             });
 
         last_tx = txes[$ - 1];

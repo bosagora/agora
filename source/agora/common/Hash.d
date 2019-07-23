@@ -157,6 +157,25 @@ public void hashPart (scope cstring record, scope HashDg state) /*pure*/ nothrow
     state(cast(const ubyte[])record);
 }
 
+/// Merge two hash
+public Hash mergeHash (Hash h1, Hash h2)
+        nothrow @nogc @trusted
+{
+    static struct MergeHash
+    {
+        Hash left;
+        Hash right;
+
+        public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+        {
+            hashPart(this.left, dg);
+            hashPart(this.right, dg);
+        }
+    }
+
+    return hashFull(MergeHash(h1, h2));
+}
+
 // Test that the implementation actually matches what the RFC gives
 nothrow @nogc @safe unittest
 {
