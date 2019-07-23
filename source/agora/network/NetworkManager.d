@@ -140,9 +140,11 @@ public class NetworkManager
         // start validating and voting on the blockchain
         this.taskman.runTask(()
         {
-            while (!this.peerLimitReached())
+            while (1)
             {
-                this.connectNextAddresses();
+                if (!this.peerLimitReached())
+                    this.connectNextAddresses();
+
                 this.taskman.wait(this.node_config.retry_delay.msecs);
             }
         });
@@ -275,9 +277,13 @@ public class NetworkManager
     /// Attempt connecting with the given address
     private void tryConnecting (Address address)
     {
-        // banned address
+        // banned address, try later
         if (this.banman.isBanned(address))
+        {
+            this.connecting_addresses.remove(address);
+            this.todo_addresses.put(address);
             return;
+        }
 
         logInfo("Establishing connection with %s...", address);
         auto node = new NetworkClient(this.taskman, this.banman, address,
@@ -299,6 +305,7 @@ public class NetworkManager
                 if (this.banman.isBanned(node.address))
                 {
                     this.connecting_addresses.remove(node.address);
+                    this.todo_addresses.put(node.address);  // try later
                     logInfo("Handshake with node %s failed: %s. Node banned until %s",
                         node.address, ex.message, this.banman.getUnbanTime(node.address));
                     return;
@@ -330,6 +337,7 @@ public class NetworkManager
                 if (this.banman.isBanned(node.address))
                 {
                     this.connecting_addresses.remove(node.address);
+                    this.todo_addresses.put(node.address);  // try later
                     logInfo("Retrieval of peers from node %s failed: %s. " ~
                         "Node banned until %s", node.address, ex.message,
                         this.banman.getUnbanTime(node.address));
@@ -400,9 +408,10 @@ public class NetworkManager
         return this.peers.length >= this.node_config.min_listeners;
     }
 
-    private bool peerLimitReached ()  pure nothrow @safe @nogc
+    private bool peerLimitReached ()  nothrow @safe
     {
-        return this.peers.length >= this.node_config.max_listeners;
+        return this.peers.byValue.filter!(node =>
+            !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
