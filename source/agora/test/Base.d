@@ -442,3 +442,44 @@ unittest
     static bool willFail () { return false; }
     assertThrown!AssertError(300.msecs.tryUntil(willFail()));
 }
+
+/// Returns: the entire ledger from the provided node
+public const(Block)[] getAllBlocks (TestAPI node)
+{
+    import std.range;
+    const(Block)[] blocks;
+
+    // note: may return less than asked for, hence the loop
+    size_t starting_block = 0;
+    while (1)
+    {
+        auto new_blocks = node.getBlocksFrom(starting_block, uint.max);
+        if (new_blocks.length == 0)  // no blocks left
+            break;
+
+        // ensure sequential consistency
+        foreach (block; new_blocks)
+            assert(block.header.height == starting_block++);
+
+        blocks ~= new_blocks;
+    }
+
+    return blocks;
+}
+
+/// Returns: true if all the nodes contain the same blocks
+public bool containSameBlocks (API)(API[] nodes, size_t height)
+{
+    auto first_blocks = nodes[0].getAllBlocks();
+
+    foreach (node; nodes)
+    {
+        if (node.getBlockHeight() != height)
+            return false;
+
+        if (node.getAllBlocks() != first_blocks)
+            return false;
+    }
+
+    return true;
+}
