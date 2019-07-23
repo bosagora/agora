@@ -16,6 +16,8 @@ module agora.common.BanManager;
 
 import agora.common.Data;
 
+import vibe.core.log;
+
 import core.stdc.stdlib;
 import core.stdc.time;
 
@@ -133,6 +135,7 @@ public class BanManager
 
     public void banUntil (Address address, time_t banned_until)
     {
+        logTrace("BanManager: Address %s banned until %s", address, banned_until);
         this.get(address).banned_until = banned_until;
     }
 
