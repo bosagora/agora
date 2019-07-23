@@ -18,8 +18,22 @@ import agora.common.Data;
 /// Type of delegate SerializeDg
 public alias SerializeDg = void delegate(scope const(ubyte)[]) pure nothrow @safe;
 
+/*******************************************************************************
+
+    Serialize the block struct and return as a ubyte[].
+
+    Params:
+      T = Type of struct to serialize
+      record = Instance of `T` to serialize
+      dg  = Serialize delegate, when this struct is nested in another.
+
+    Returns:
+      The serialized `ubyte[]`
+
+*******************************************************************************/
+
 public ubyte[] serializeFull (T) (scope const auto ref T record)
-    nothrow @safe
+    pure nothrow @safe
 {
     ubyte[] res;
     scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
