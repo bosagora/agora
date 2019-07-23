@@ -96,7 +96,7 @@ public class NetworkManager
         this.metadata = metadata;
         this.seed_peers = peers;
         this.dns_seeds = dns_seeds;
-        this.banman = new BanManager(banman_conf);
+        this.banman = this.getBanManager(banman_conf);
     }
 
     /// try to discover the network until we found
@@ -185,6 +185,26 @@ public class NetworkManager
     protected TaskManager getTaskManager ()
     {
         return new TaskManager();
+    }
+
+    /***************************************************************************
+
+        Get a BanManager instance.
+
+        Can be overriden in unittests to test ban management
+        without relying on a clock.
+
+        Params:
+            banman_conf = ban manager config
+
+        Returns:
+            an instance of a BanManager
+
+    ***************************************************************************/
+
+    protected BanManager getBanManager (in BanManager.Config banman_conf)
+    {
+        return new BanManager(banman_conf);
     }
 
     /***************************************************************************
