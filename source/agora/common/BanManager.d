@@ -86,8 +86,22 @@ public class BanManager
         if (status.fail_count >= this.config.max_failed_requests)
         {
             status.fail_count = 0;
-            status.banned_until = this.getCurTime() + this.config.ban_duration;
+            this.ban(address);
         }
+    }
+
+    /***************************************************************************
+
+        Manually ban an address using the configured ban time in the ban config.
+
+        Params:
+            address = the address to ban
+
+    ***************************************************************************/
+
+    public void ban (Address address)
+    {
+        this.banFor(address, this.config.ban_duration);
     }
 
     /***************************************************************************
@@ -243,4 +257,8 @@ unittest
     assert(banman.isBanned("node-1"));
     banman.time++;
     assert(!banman.isBanned("node-1"));
+
+    banman.time = 0;
+    banman.ban("node-2");  // use default ban time
+    assert(banman.getUnbanTime("node-2") == 86400);
 }
