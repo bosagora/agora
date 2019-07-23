@@ -141,6 +141,26 @@ public class BanManager
         return false;
     }
 
+    /***************************************************************************
+
+        Get the un-ban unix timestamp of the provided address,
+        or 0 if the address was never banned.
+
+        Params:
+            address = the address to check
+
+        Returns:
+            the un-ban time, or 0 if address was never banned.
+
+    ***************************************************************************/
+
+    public time_t getUnbanTime (Address address) const
+    {
+        if (auto stats = address in this.ips)
+            return stats.banned_until;
+
+        return 0;
+    }
 
     /***************************************************************************
 
@@ -196,10 +216,12 @@ unittest
         assert(!banman.isBanned("node-1"));
     }
 
+    assert(banman.getUnbanTime("node-1") == 0);  // not banned yet
+
     banman.onFailedRequest("node-1");
     assert(banman.get("node-1").fail_count == 0);  // reset counter on ban
     assert(banman.isBanned("node-1"));
-    assert(banman.get("node-1").banned_until == 86400);  // banned until "next day"
+    assert(banman.getUnbanTime("node-1") == 86400);  // banned until "next day"
 
     // stop counting failed requests during the ban
     banman.onFailedRequest("node-1");
