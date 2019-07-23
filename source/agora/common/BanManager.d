@@ -63,7 +63,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public this (Config config)
+    public this (Config config) @safe nothrow pure @nogc
     {
         this.config = config;
     }
@@ -77,7 +77,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void onFailedRequest (Address address)
+    public void onFailedRequest (Address address) @safe nothrow
     {
         if (this.isBanned(address))
             return;
@@ -101,7 +101,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void ban (Address address)
+    public void ban (Address address) @safe nothrow
     {
         this.banFor(address, this.config.ban_duration);
     }
@@ -117,7 +117,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void banFor (Address address, long ban_seconds)
+    public void banFor (Address address, long ban_seconds) @safe nothrow
     {
         const ban_until = this.getCurTime() + ban_seconds;
         this.banUntil(address, ban_until);
@@ -133,7 +133,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void banUntil (Address address, time_t banned_until)
+    public void banUntil (Address address, time_t banned_until) @safe nothrow
     {
         logTrace("BanManager: Address %s banned until %s", address, banned_until);
         this.get(address).banned_until = banned_until;
@@ -151,7 +151,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public bool isBanned (Address address) const
+    public bool isBanned (Address address) @safe nothrow @nogc
     {
         if (auto stats = address in this.ips)
             return stats.banned_until > this.getCurTime();
@@ -172,7 +172,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public time_t getUnbanTime (Address address) const
+    public time_t getUnbanTime (Address address) @safe nothrow pure @nogc
     {
         if (auto stats = address in this.ips)
             return stats.banned_until;
@@ -189,7 +189,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    protected time_t getCurTime () const
+    protected time_t getCurTime () @safe nothrow @nogc
     {
         return time(null);
     }
@@ -210,8 +210,9 @@ public class BanManager
 
     ***************************************************************************/
 
-    private Status* get (Address address)
+    private Status* get (Address address) @trusted nothrow pure
     {
+        scope(failure) assert(0);  // it will never throw
         return &this.ips.require(address, Status.init);
     }
 }
