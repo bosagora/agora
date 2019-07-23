@@ -38,6 +38,7 @@ import agora.node.API;
 import agora.node.Ledger;
 import agora.node.Node;
 
+import core.stdc.time;
 import std.array;
 import std.algorithm.iteration;
 import std.exception;
@@ -88,6 +89,25 @@ public class LocalRestTaskManager : TaskManager
     {
         static import geod24.LocalRest;
         geod24.LocalRest.sleep(dur);
+    }
+}
+
+/// A ban manager with a fake clock for reliable unittesting
+public class FakeClockBanManager : BanManager
+{
+    /// the fake current time
+    public __gshared time_t time;
+
+    /// Ctor
+    public this (Config conf)
+    {
+        super(conf);
+    }
+
+    /// Return the fake time
+    protected override time_t getCurTime () const @trusted
+    {
+        return time;
     }
 }
 
@@ -230,6 +250,22 @@ public class TestNetworkManager : NetworkManager
     {
         return new LocalRestTaskManager();
     }
+
+    /***************************************************************************
+
+        Params:
+            conf = ban manager config
+
+        Returns:
+            an instance of a BanManager with a fake clock
+
+    ***************************************************************************/
+
+    protected override BanManager getBanManager (in BanManager.Config conf)
+    {
+        return new FakeClockBanManager(conf);
+    }
+
 }
 
 /// Used to call start/shutdown outside of main, and for dependency injection
@@ -320,6 +356,7 @@ public enum NetworkTopology
         retry_delay = the delay between request retries (in msecs)
         max_retries = max retries before a request is considered failed
         timeout = request timeout (in msecs)
+        max_failed_requests = max failed requests before a node is banned
 
     Returns:
         The set of public key added to the node
@@ -328,7 +365,8 @@ public enum NetworkTopology
 
 public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
     (NetworkTopology topology, size_t nodes, bool configure_network = true,
-        long retry_delay = 100, size_t max_retries = 20, long timeout = 500)
+        long retry_delay = 100, size_t max_retries = 20, long timeout = 500,
+        size_t max_failed_requests = 100)
 {
     import std.algorithm;
     import std.array;
@@ -374,9 +412,15 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             // todo: add this check in the unittests
             auto other_pairs = key_pairs[0 .. idx] ~ key_pairs[idx + 1 .. $];
 
+            BanManager.Config ban_conf =
+            {
+                max_failed_requests : max_failed_requests,
+                ban_duration: 300
+            };
+
             Config conf =
             {
-                banman : BanManager.Config(size_t.max, 0),  // don't automatically ban yet
+                banman : ban_conf,
                 node : node_configs[idx],
                 network : configure_network
                     ? assumeUnique(other_pairs.map!(k => k.address.toString()).array)
