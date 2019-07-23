@@ -53,6 +53,61 @@ public Hash buildMerkleTree(ref Transaction[] txs, ref Hash[] merkle_tree)
     return ((merkle_tree.length == 0) ? Hash.init : merkle_tree[$ - 1]);
 }
 
+    /*******************************************************************************
+
+        Get merkle branch
+
+        Params:
+            merkle_tree = Array of Hash, this is Merkle Tree
+            size_txs = Number of transactions
+            index = Sequence of transactions
+
+        Returns:
+            Return merkle branch
+
+    *******************************************************************************/
+
+    public Hash[] getMerkleBranch(ref Hash[] merkle_tree, size_t size_txs, size_t index)
+    {
+        Hash[] merkle_branch;
+        size_t j = 0;
+        for (size_t length = size_txs; length > 1; length = (length + 1) / 2)
+        {
+            size_t i = min(index ^ 1, length - 1);
+            merkle_branch ~= merkle_tree[j + i];
+            index >>= 1;
+            j += length;
+        }
+        return merkle_branch;
+    }
+
+    /*******************************************************************************
+
+        Calculate the merkle root using the merkle branch.
+
+        Params:
+            hash = `Hash` of `Transaction`
+            merkle_branch = `Hash` of merkle branch
+            index = Index of the hash in the array of transactions. It starts at zero.
+
+        Returns:
+            Return `Hash` of merkle root.
+
+    *******************************************************************************/
+
+    public Hash checkMerkleBranch(Hash hash, const ref Hash[] merkle_branch, size_t index)
+    {
+        foreach(const ref otherside; merkle_branch)
+        {
+            if (index & 1)
+                hash = mergeHash(otherside, hash);
+            else
+                hash = mergeHash(hash, otherside);
+            index >>= 1;
+        }
+        return hash;
+    }
+
 /// Merge two hash
 public Hash mergeHash (Hash h1, Hash h2)
         nothrow @nogc @trusted
@@ -127,4 +182,21 @@ unittest
     const Hash h01234567 = mergeHash(h0123, h4567);
 
     assert(merkle_root == h01234567, "Error in MerkleTree.");
+
+    // Merkle Proof
+    merkle_branch = getMerkleBranch(merkle_tree, txs.length, 2);
+    assert(merkle_branch.length == 3);
+    assert(merkle_branch[0] == h3, "Error in the merkle path.");
+    assert(merkle_branch[1] == h01, "Error in the merkle path.");
+    assert(merkle_branch[2] == h4567, "Error in the merkle path.");
+
+    assert(merkle_root == checkMerkleBranch(h2, merkle_branch, 2), "Error in the merkle proof.");
+
+    merkle_branch = getMerkleBranch(merkle_tree, txs.length, 4);
+    assert(merkle_branch.length == 3);
+    assert(merkle_branch[0] == h5, "Error in the merkle path.");
+    assert(merkle_branch[1] == h67, "Error in the merkle path.");
+    assert(merkle_branch[2] == h0123, "Error in the merkle path.");
+
+    assert(merkle_root == checkMerkleBranch(h4, merkle_branch, 4), "Error in the merkle proof.");
 }
