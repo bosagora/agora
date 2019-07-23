@@ -106,21 +106,6 @@ public class BanManager
 
     /***************************************************************************
 
-        Manually ban an address, until the specified time.
-
-        Params:
-            address = the address to ban
-            banned_until = the time at which the IP will be considered un-banned
-
-    ***************************************************************************/
-
-    public void banUntil (Address address, time_t banned_until)
-    {
-        this.get(address).banned_until = banned_until;
-    }
-
-    /***************************************************************************
-
         Manually ban an address, for the specified number of seconds from
         the current time.
 
@@ -132,7 +117,23 @@ public class BanManager
 
     public void banFor (Address address, long ban_seconds)
     {
-        this.get(address).banned_until = this.getCurTime() + ban_seconds;
+        const ban_until = this.getCurTime() + ban_seconds;
+        this.banUntil(address, ban_until);
+    }
+
+    /***************************************************************************
+
+        Manually ban an address, until the specified time.
+
+        Params:
+            address = the address to ban
+            banned_until = the time at which the IP will be considered un-banned
+
+    ***************************************************************************/
+
+    public void banUntil (Address address, time_t banned_until)
+    {
+        this.get(address).banned_until = banned_until;
     }
 
     /***************************************************************************
