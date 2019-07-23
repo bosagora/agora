@@ -241,25 +241,43 @@ public class NetworkManager
 
         logInfo("Establishing connection with %s...", address);
         auto node = new NetworkClient(this.taskman, address,
-            this.getClient(address), this.node_config.retry_delay.msecs);
+            this.getClient(address), this.node_config.retry_delay.msecs,
+            this.node_config.max_retries);
 
-        node.handshake();
-        this.onNodeConnected(node);
+        while (1)
+        {
+            try
+            {
+                node.handshake();
+                this.onNodeConnected(node);
+                break;
+            }
+            catch (Exception ex)
+            {
+               // keep trying until node is connected
+            }
+        }
 
         // keep asynchronously polling for complete network info,
-        // until complete peer info is returned or the parent
-        // node has established all necessary connections
+        // until complete peer info is returned, or we've
+        // established all necessary connections,
+        // or the node was banned
         while (!this.minPeersConnected())
         {
-            NetworkInfo net_info;
-            if (node.getNetworkInfo(net_info))
+            try
             {
-                // received some network info (may still be incomplete)
+                auto net_info = node.getNetworkInfo();
                 this.addAddresses(net_info.addresses);
                 if (net_info.state == NetworkState.Complete)
-                    break;
+                    break;  // done
+            }
+            catch (Exception ex)
+            {
+                // attempt later
             }
 
+            // if it's incomplete give the client some time to connect
+            // with other peers and try again later
             logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
                 node.address, node.key, this.node_config.retry_delay);
             this.taskman.wait(this.node_config.retry_delay.msecs);
