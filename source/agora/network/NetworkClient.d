@@ -14,6 +14,7 @@
 module agora.network.NetworkClient;
 
 import agora.common.API;
+import agora.common.BanManager;
 import agora.common.Block;
 import agora.common.Config;
 import agora.common.crypto.Key;
@@ -42,6 +43,9 @@ class NetworkClient
     /// so whatever implements `API` should be handling this
     private const Duration retry_delay;
 
+    /// Max request retries before a request is considered failed
+    private const size_t max_retries;
+
     /// Task manager
     private TaskManager taskman;
 
@@ -50,6 +54,9 @@ class NetworkClient
 
     /// The key of the node as retrieved by getPublicKey()
     public PublicKey key;
+
+    /// Reusable exception
+    private Exception exception;
 
 
     /***************************************************************************
@@ -61,15 +68,20 @@ class NetworkClient
             address = used for logging and querying by external code
             api = the API to issue the requests with
             retry = the amout to wait between retrying failed requests
+            max_retries = max number of times a failed request should be retried
 
     ***************************************************************************/
 
-    public this (TaskManager taskman, Address address, API api, Duration retry)
+    public this (TaskManager taskman, Address address, API api, Duration retry,
+        size_t max_retries)
     {
         this.taskman = taskman;
         this.address = address;
         this.api = api;
         this.retry_delay = retry;
+        this.max_retries = max_retries;
+        this.exception = new Exception(
+            format("Request failure after %s attempts", max_retries));
     }
 
     /***************************************************************************
@@ -81,40 +93,14 @@ class NetworkClient
 
         Note that it is currently blocking until handshake is considered complete.
 
+        Throws:
+            Exception if the handshake did not complete.
+
     ***************************************************************************/
 
     public void handshake ()
     {
-        while (!this.getPublicKey())
-        {
-            logInfo("[%s] Couldn't retrieve public key. Will retry in %s..",
-                this.address, this.retry_delay);
-            this.taskman.wait(this.retry_delay);
-        }
-    }
-
-    /***************************************************************************
-
-        Get the public key of this node, stored in the
-        `key` field if the request succeeded.
-
-        Returns:
-            true if the request succeeded
-
-    ***************************************************************************/
-
-    private bool getPublicKey ()
-    {
-        try
-        {
-            this.key = this.api.getPublicKey();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            logError(ex.message);
-            return false;
-        }
+        this.key = this.attemptRequest(this.api.getPublicKey(), this.exception);
     }
 
     /***************************************************************************
@@ -126,31 +112,25 @@ class NetworkClient
             net_info = will contain the network info if successful
 
         Returns:
-            true if the request succeeded
+            NetworkInfo if successful
+
+        Throws:
+            Exception if the request failed.
 
     ***************************************************************************/
 
-    public bool getNetworkInfo (out NetworkInfo net_info)
+    public NetworkInfo getNetworkInfo ()
     {
-        try
-        {
-            net_info = this.api.getNetworkInfo();
-            logInfo("[%s]: Received network info %s", this.address,
-                net_info);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            logError(ex.message);
-            return false;
-        }
+        return this.attemptRequest(this.api.getNetworkInfo(), this.exception);
     }
 
     /***************************************************************************
 
         Send a transaction asynchronously to the node.
         Any errors are reported to the debugging log.
-        Note that failed requests will not be automatically retried.
+
+        The request is retried up to 'this.max_retries',
+        any failures are logged and ignored.
 
         Params:
             tx = the transaction to send
@@ -159,16 +139,10 @@ class NetworkClient
 
     public void sendTransaction (Transaction tx) @trusted
     {
-        this.taskman.runTask(()
+        this.taskman.runTask(
         {
-            try
-            {
-                this.api.putTransaction(tx);
-            }
-            catch (Exception ex)
-            {
-                logDebug(ex.message);
-            }
+            this.attemptRequest!(LogLevel.debug_)(this.api.putTransaction(tx),
+                null);
         });
     }
 
@@ -178,19 +152,14 @@ class NetworkClient
             the height of the node's ledger,
             or ulong.max if the request failed
 
+        Throws:
+            Exception if the request failed.
+
     ***************************************************************************/
 
     public ulong getBlockHeight ()
     {
-        try
-        {
-            return this.api.getBlockHeight();
-        }
-        catch (Exception ex)
-        {
-            logError(ex.message);
-            return ulong.max;
-        }
+        return this.attemptRequest(this.api.getBlockHeight(), this.exception);
     }
 
     /***************************************************************************
@@ -208,18 +177,57 @@ class NetworkClient
 
             If the request failed, returns an empty array
 
+        Throws:
+            Exception if the request failed.
+
     ***************************************************************************/
 
     public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
     {
-        try
+        return this.attemptRequest(
+            this.api.getBlocksFrom(block_height, max_blocks), this.exception);
+    }
+
+    /***************************************************************************
+
+        Attempt a request up to 'this.max_retries' attempts, and make the task
+        wait this.retry_delay between each attempt.
+
+        If all requests fail and 'ex' is not null, throw the exception.
+
+        Params:
+            log_level = the logging level to use for logging failed requests
+            T = the type of delegate
+            dg = the delegate to call
+            ex = the exception to throw if all attempts fail (if not null)
+
+        Returns:
+            the return value of dg(), which may be void
+
+    ***************************************************************************/
+
+    private T attemptRequest (LogLevel log_level = LogLevel.error, T)(
+        lazy T dg, Exception ex)
+    {
+        foreach (idx; 0 .. this.max_retries)
         {
-            return this.api.getBlocksFrom(block_height, max_blocks);
+            try
+            {
+                return dg();
+            }
+            catch (Exception ex)
+            {
+                log!log_level(ex.message);
+                if (idx + 1 < this.max_retries) // wait after each failure except last
+                    this.taskman.wait(this.retry_delay);
+            }
         }
-        catch (Exception ex)
-        {
-            logError(ex.message);
-            return null;
-        }
+
+        if (ex !is null)
+            throw ex;
+
+        // ex is null, failure is ignored
+        static if (!is(T == void))
+            return T.init;
     }
 }
