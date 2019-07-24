@@ -241,62 +241,31 @@ unittest
 
     scope ledger = new Ledger;
     assert(*ledger.getLastBlock() == getGenesisBlock());
-
-    // same key-pair as in getGenesisBlock()
-    const genesis_key_pair = KeyPair.fromSeed(
-        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-
-    // last transaction in the ledger
-    Hash last_tx_hash = hashFull(getGenesisBlock().txs[$-1]);
-    Transaction tx =
-    {
-        [Input(last_tx_hash, 0)],
-        [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
-    };
-
-    auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
-    tx.inputs[0].signature = signature;
-
-    assert(ledger.acceptTransaction(tx));
-    ledger.makeBlock();
-    assert(ledger.getLastBlock().txs[$-1] == tx);
-}
-
-/// getBlocksFrom tests
-unittest
-{
-    import agora.common.crypto.Key;
-
-    scope ledger = new Ledger;
-    assert(*ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
-    Transaction last_tx = getGenesisBlock().txs[$-1];
+    Transaction[] last_txs;
 
-    // each tx currently creates one block
-    void genTransactions (size_t count)
+    // generate enough transactions to form a block
+    void genBlockTransactions (size_t count)
     {
-        auto txes = getChainedTransactions(last_tx, count, gen_key_pair, 1);
+        auto txes = makeChainedTransactions(gen_key_pair, last_txs, count);
         txes.each!((tx)
             {
                 assert(ledger.acceptTransaction(tx));
-                ledger.makeBlock();
-                assert(ledger.getLastBlock().txs[$-1] == tx);
-
             });
 
-        last_tx = txes[$ - 1];
+        last_txs = txes;
     }
 
-    genTransactions(2);
+    genBlockTransactions(2);
     const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
     assert(blocks[0] == getGenesisBlock());
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
 
-    /// now generate 98 more txes (and blocks) to make it 100 + genesis block (101 total)
-    genTransactions(98);
+    /// now generate 98 more blocks to make it 100 + genesis block (101 total)
+    genBlockTransactions(98);
 
     assert(ledger.getLastBlock().header.height == 100);
 

@@ -68,53 +68,62 @@ private bool containSameBlocks (API)(API[] nodes, size_t height)
 ///
 unittest
 {
+    import core.thread;
     import std.algorithm;
     import std.conv;
     import std.format;
-
-    import std.array;
+    import std.range;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
-    auto node_1 = network.apis.values[0];
-    KeyPair[] key_pairs;
+    auto nodes = network.apis.values;
+    auto node_1 = nodes[0];
 
-    auto gen_key_pair = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
-
-    int period = 8;
-    auto txes = getChainedTransactions(gen_block.txs[$-1], period*10, gen_key_pair, 8);
-    txes.each!(tx => node_1.putTransaction(tx));
-
-    // ensure block height is the same everywhere
-    foreach (key, ref node; network.apis)
+    Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
+    Transaction[] last_txs;
+    foreach (block_idx; 0 .. 100)  // create 100 blocks
     {
-        auto block_height = node.getBlockHeight();
-        assert(block_height == 10, block_height.to!string);
+        // create enough tx's for a single block
+        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
+
+        // send it to one node
+        txs.each!(tx => node_1.putTransaction(tx));
+
+        Thread.sleep(50.msecs);  // await gossip and block creation
+
+        nodes.enumerate.each!((idx, node) =>
+            assert(node.getBlockHeight() == block_idx + 1,
+                format("Node %s has block height %s. Expected: %s",
+                    idx, node.getBlockHeight().to!string, block_idx + 1)));
+
+        block_txes ~= txs;
+        last_txs = txs;
     }
 
     // get all the blocks (including genesis block)
-    auto blocks = node_1.getBlocksFrom(0, 11);
+    auto blocks = node_1.getBlocksFrom(0, 101);
 
     assert(blocks[0] == getGenesisBlock());
 
     // exclude genesis block
-    assert(join(blocks[1 .. $].map!(block => block.txs.map!(tx => tx))).equal(txes[]));
+    assert(blocks[1 .. $].enumerate.each!((idx, block) =>
+        assert(block.txs == block_txes[idx])
+    ));
 
     blocks = node_1.getBlocksFrom(0, 1);
     assert(blocks.length == 1 && blocks[0] == getGenesisBlock());
 
-    blocks = node_1.getBlocksFrom(10, 1);
-    assert(blocks.length == 1 && blocks[0].txs[0..$].equal(txes[$-period..$]));
+    blocks = node_1.getBlocksFrom(100, 1);
+    assert(blocks.length == 1 && blocks[0].txs == block_txes[99]);  // -1 as genesis block not included
 
     // over the limit => return up to the highest block
-    assert(node_1.getBlocksFrom(0, 100).length == 11);
+    assert(node_1.getBlocksFrom(0, 1000).length == 101);
 
     // higher index than available => return nothing
-    assert(node_1.getBlocksFrom(100, 10).length == 0);
+    assert(node_1.getBlocksFrom(1000, 10).length == 0);
 }
 
 /// test catch-up phase during booting
@@ -122,20 +131,35 @@ unittest
 {
     import core.thread;
     import std.algorithm;
+    import std.conv;
+    import std.format;
+    import std.range;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
-    auto gen_key_pair = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
 
-    int period = 8;
-    auto txes = getChainedTransactions(gen_block.txs[$-1], period*10, gen_key_pair, 8);
-    txes.each!(tx => node_1.putTransaction(tx));
+    Transaction[] last_txs;
+    foreach (block_idx; 0 .. 100)  // create 100 blocks
+    {
+        // create enough tx's for a single block
+        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
 
-    assert(node_1.getBlockHeight() == 10);
+        // send it to one node
+        txs.each!(tx => node_1.putTransaction(tx));
+
+        assert(node_1.getBlockHeight() == block_idx + 1,
+            format("Node 1 has block height %s. Expected: %s",
+                node_1.getBlockHeight().to!string, block_idx + 1));
+
+        last_txs = txs;
+    }
+
+    Thread.sleep(50.msecs);  // await block creation
+
+    assert(node_1.getBlockHeight() == 100);
 
     foreach (empty_node; nodes[1 .. $])
     {
@@ -149,7 +173,7 @@ unittest
     auto attempts = 80;  // wait up to 80*100 msecs (8 seconds)
     while (attempts--)
     {
-        if (containSameBlocks(nodes, 10))
+        if (containSameBlocks(nodes, 100))
             return;
 
         // let them do catch-up after boot
@@ -162,6 +186,7 @@ unittest
 {
     import core.thread;
     import std.algorithm;
+    import std.range;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
@@ -169,20 +194,17 @@ unittest
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
-    auto gen_key_pair = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    int period = 8;
-    auto txes = getChainedTransactions(gen_block.txs[$-1], period*10, gen_key_pair, 8);
-    txes.each!(tx => node_1.putTransaction(tx));
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 100);
+    txs.each!(tx => node_1.putTransaction(tx));
 
     auto attempts = 80;  // wait up to 80*100 msecs (8 seconds)
     while (attempts--)
     {
-        if (containSameBlocks(nodes, 10))
+        if (containSameBlocks(nodes, 100))
             return;
 
         // let them do catch-up after boot
