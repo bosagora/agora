@@ -187,4 +187,6 @@ unittest
         // let them do catch-up after boot
         Thread.sleep(100.msecs);
     }
+
+    assert(0, "Nodes do not contain the same blocks");
 }
