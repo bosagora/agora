@@ -190,3 +190,88 @@ unittest
 
     assert(0, "Nodes do not contain the same blocks");
 }
+
+/// Merkle Proof
+unittest
+{
+    import std.algorithm.sorting;
+
+    const NodeCount = 4;
+    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+    network.start();
+
+    auto nodes = network.apis.values;
+    auto node_1 = nodes[0];
+    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_block = getGenesisBlock();
+
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    Hash gen_tx_hash = hashFull(gen_block.txs[$-1]);
+    Transaction[] txs;
+
+    foreach (idx; 0 .. 8)
+    {
+        Transaction tx = Transaction(
+            [
+                Input(gen_tx_hash, 0)
+            ],
+            [
+                Output(1_000_000, key_pairs[idx].address)
+            ]
+        );
+        tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        node_1.putTransaction(tx);
+        txs ~= tx;
+    }
+
+    Hash[] hashes;
+    hashes.reserve(txs.length);
+    foreach (ref e; txs)
+        hashes ~= hashFull(e);
+
+    // transactions are ordered lexicographically by hash in the Merkle tree
+    hashes.sort!("a < b");
+
+    const Hash ha = hashes[0];
+    const Hash hb = hashes[1];
+    const Hash hc = hashes[2];
+    const Hash hd = hashes[3];
+    const Hash he = hashes[4];
+    const Hash hf = hashes[5];
+    const Hash hg = hashes[6];
+    const Hash hh = hashes[7];
+
+    const Hash hab = mergeHash(ha, hb);
+    const Hash hcd = mergeHash(hc, hd);
+    const Hash hef = mergeHash(he, hf);
+    const Hash hgh = mergeHash(hg, hh);
+
+    const Hash habcd = mergeHash(hab, hcd);
+    const Hash hefgh = mergeHash(hef, hgh);
+
+    const Hash habcdefgh = mergeHash(habcd, hefgh);
+
+    Hash[] merkle_path;
+    foreach (key, ref node; nodes)
+    {
+        merkle_path = node.getMerklePath(1, hc);
+        assert(merkle_path.length == 3);
+        assert(merkle_path[0] == hd, "Error in the merkle path.");
+        assert(merkle_path[1] == hab, "Error in the merkle path.");
+        assert(merkle_path[2] == hefgh, "Error in the merkle path.");
+        assert(habcdefgh == Block.checkMerklePath(hc, merkle_path, 2), "Error in the merkle proof.");
+        assert(habcdefgh != Block.checkMerklePath(hd, merkle_path, 2), "Error in the merkle proof.");
+
+        merkle_path = node.getMerklePath(1, he);
+        assert(merkle_path.length == 3);
+        assert(merkle_path[0] == hf, "Error in the merkle path.");
+        assert(merkle_path[1] == hgh, "Error in the merkle path.");
+        assert(merkle_path[2] == habcd, "Error in the merkle path.");
+        assert(habcdefgh == Block.checkMerklePath(he, merkle_path, 4), "Error in the merkle proof.");
+        assert(habcdefgh != Block.checkMerklePath(hf, merkle_path, 4), "Error in the merkle proof.");
+
+        merkle_path = node.getMerklePath(1, Hash.init);
+        assert(merkle_path.length == 0);
+    }
+}

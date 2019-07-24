@@ -23,6 +23,7 @@ import agora.common.Serializer;
 import agora.common.Transaction;
 
 import std.algorithm.comparison;
+import std.algorithm.sorting;
 
 /*******************************************************************************
 
@@ -191,9 +192,12 @@ public struct Block
 
     public Hash buildMerkleTree() nothrow @safe
     {
-        this.merkle_tree.length = this.txs.length;
-        foreach (size_t idx, ref hash; this.merkle_tree)
-            hash = hashFull(this.txs[idx]);
+        this.merkle_tree.reserve(this.txs.length);
+        foreach (ref tx; this.txs)
+            this.merkle_tree ~= hashFull(tx);
+
+        // transactions are ordered lexicographically by hash in the Merkle tree
+        this.merkle_tree.sort!("a < b");
 
         size_t j = 0;
         for (size_t length = this.txs.length; length > 1; length = (length + 1) / 2)
@@ -213,41 +217,40 @@ public struct Block
 
     /*******************************************************************************
 
-        Get merkle branch
+        Get merkle path
 
         Params:
             index = Sequence of transactions
 
         Returns:
-            Return merkle branch
+            Return merkle path
 
     *******************************************************************************/
 
-    public Hash[] getMerkleBranch (size_t index) @safe
+    public Hash[] getMerklePath (size_t index) @safe
     {
         if (this.merkle_tree.length == 0)
             this.buildMerkleTree();
 
-        Hash[] merkle_branch;
+        Hash[] merkle_path;
         size_t j = 0;
         for (size_t length = this.txs.length; length > 1; length = (length + 1) / 2)
         {
             size_t i = min(index ^ 1, length - 1);
-            merkle_branch ~= this.merkle_tree[j + i];
+            merkle_path ~= this.merkle_tree[j + i];
             index >>= 1;
             j += length;
         }
-
-        return merkle_branch;
+        return merkle_path;
     }
 
     /*******************************************************************************
 
-        Calculate the merkle root using the merkle branch.
+        Calculate the merkle root using the merkle path.
 
         Params:
             hash = `Hash` of `Transaction`
-            merkle_branch = `Hash` of merkle branch
+            merkle_path  = `Hash` of merkle path
             index = Index of the hash in the array of transactions. It starts at zero.
 
         Returns:
@@ -255,10 +258,9 @@ public struct Block
 
     *******************************************************************************/
 
-    public static Hash checkMerkleBranch (Hash hash, const ref Hash[] merkle_branch,
-        size_t index) @safe
+    public static Hash checkMerklePath (Hash hash, Hash[] merkle_path, size_t index) @safe
     {
-        foreach (const ref otherside; merkle_branch)
+        foreach (const ref otherside; merkle_path)
         {
             if (index & 1)
                 hash = mergeHash(otherside, hash);
@@ -269,6 +271,30 @@ public struct Block
         }
 
         return hash;
+    }
+
+    /*******************************************************************************
+
+        Find the sequence of transactions for the hash.
+
+        Params:
+            hash = `Hash` of `Transaction`
+
+        Returns:
+            Return sequence if found hash, otherwise Retrun the number of
+            transactions.
+
+    *******************************************************************************/
+
+    public size_t findHashIndex (Hash hash) @safe
+    {
+        if (this.merkle_tree.length == 0)
+            this.buildMerkleTree();
+
+        foreach (idx; 0 .. min(this.txs.length, this.merkle_tree.length))
+            if (hash == this.merkle_tree[idx])
+                return idx;
+        return this.txs.length;
     }
 }
 
@@ -339,12 +365,11 @@ unittest
     }();
 }
 
-
 /// Test of Merkle Path and Merkle Proof
 unittest
 {
     Transaction[] txs;
-    Hash[] merkle_branch;
+    Hash[] merkle_path;
 
     KeyPair[] key_pairs = [
         KeyPair.random(),
@@ -376,39 +401,47 @@ unittest
     block.txs ~= txs;
     block.header.merkle_root = block.buildMerkleTree();
 
-    const Hash h0 = hashFull(txs[0]);
-    const Hash h1 = hashFull(txs[1]);
-    const Hash h2 = hashFull(txs[2]);
-    const Hash h3 = hashFull(txs[3]);
-    const Hash h4 = hashFull(txs[4]);
-    const Hash h5 = hashFull(txs[5]);
-    const Hash h6 = hashFull(txs[6]);
-    const Hash h7 = hashFull(txs[7]);
+    Hash[] hashes;
+    hashes.reserve(txs.length);
+    foreach (ref e; txs)
+        hashes ~= hashFull(e);
 
-    const Hash h01 = mergeHash(h0, h1);
-    const Hash h23 = mergeHash(h2, h3);
-    const Hash h45 = mergeHash(h4, h5);
-    const Hash h67 = mergeHash(h6, h7);
+    // transactions are ordered lexicographically by hash in the Merkle tree
+    hashes.sort!("a < b");
 
-    const Hash h0123 = mergeHash(h01, h23);
-    const Hash h4567 = mergeHash(h45, h67);
+    const Hash ha = hashes[0];
+    const Hash hb = hashes[1];
+    const Hash hc = hashes[2];
+    const Hash hd = hashes[3];
+    const Hash he = hashes[4];
+    const Hash hf = hashes[5];
+    const Hash hg = hashes[6];
+    const Hash hh = hashes[7];
 
-    const Hash h01234567 = mergeHash(h0123, h4567);
+    const Hash hab = mergeHash(ha, hb);
+    const Hash hcd = mergeHash(hc, hd);
+    const Hash hef = mergeHash(he, hf);
+    const Hash hgh = mergeHash(hg, hh);
 
-    assert(block.header.merkle_root == h01234567, "Error in MerkleTree.");
+    const Hash habcd = mergeHash(hab, hcd);
+    const Hash hefgh = mergeHash(hef, hgh);
+
+    const Hash habcdefgh = mergeHash(habcd, hefgh);
+
+    assert(block.header.merkle_root == habcdefgh, "Error in MerkleTree.");
 
     // Merkle Proof
-    merkle_branch = block.getMerkleBranch(2);
-    assert(merkle_branch.length == 3);
-    assert(merkle_branch[0] == h3, "Error in the merkle path.");
-    assert(merkle_branch[1] == h01, "Error in the merkle path.");
-    assert(merkle_branch[2] == h4567, "Error in the merkle path.");
-    assert(block.header.merkle_root == Block.checkMerkleBranch(h2, merkle_branch, 2), "Error in the merkle proof.");
+    merkle_path = block.getMerklePath(2);
+    assert(merkle_path.length == 3);
+    assert(merkle_path[0] == hd, "Error in the merkle path.");
+    assert(merkle_path[1] == hab, "Error in the merkle path.");
+    assert(merkle_path[2] == hefgh, "Error in the merkle path.");
+    assert(block.header.merkle_root == Block.checkMerklePath(hc, merkle_path, 2), "Error in the merkle proof.");
 
-    merkle_branch = block.getMerkleBranch(4);
-    assert(merkle_branch.length == 3);
-    assert(merkle_branch[0] == h5, "Error in the merkle path.");
-    assert(merkle_branch[1] == h67, "Error in the merkle path.");
-    assert(merkle_branch[2] == h0123, "Error in the merkle path.");
-    assert(block.header.merkle_root == Block.checkMerkleBranch(h4, merkle_branch, 4), "Error in the merkle proof.");
+    merkle_path = block.getMerklePath(4);
+    assert(merkle_path.length == 3);
+    assert(merkle_path[0] == hf, "Error in the merkle path.");
+    assert(merkle_path[1] == hgh, "Error in the merkle path.");
+    assert(merkle_path[2] == habcd, "Error in the merkle path.");
+    assert(block.header.merkle_root == Block.checkMerklePath(he, merkle_path, 4), "Error in the merkle proof.");
 }

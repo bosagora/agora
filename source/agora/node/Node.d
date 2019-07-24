@@ -166,4 +166,11 @@ public class Node (Network) : API
     {
         return new DiskMetadata(data_dir);
     }
+
+
+    /// GET: /merkle_path
+    public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
+    {
+        return this.ledger.getMerklePath(block_height, hash);
+    }
 }
