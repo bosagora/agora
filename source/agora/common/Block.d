@@ -17,6 +17,7 @@ module agora.common.Block;
 
 import agora.common.crypto.Key;
 import agora.common.Data;
+import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Transaction;
@@ -72,6 +73,22 @@ public struct BlockHeader
         dg(this.prev_block[]);
         serializePart(this.height, dg);
         dg(this.merkle_root[]);
+    }
+
+    /***************************************************************************
+
+        Block Header Deserialization
+
+        Params:
+            dg = deserialize function accumulator
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        this.prev_block = Hash(dg(Hash.sizeof));
+        deserializePart(this.height, dg);
+        this.merkle_root = Hash(dg(Hash.sizeof));
     }
 }
 
@@ -144,6 +161,27 @@ public struct Block
 
     /***************************************************************************
 
+        Block Deserialization
+
+        Params:
+            dg = deserialize function accumulator
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        deserializePart(this.header, dg);
+        size_t size;
+        deserializePart(size, dg);
+        this.txs.length = size;
+        foreach (idx; 0 .. size)
+        {
+            deserializePart(this.txs[idx], dg);
+        }
+    }
+
+    /***************************************************************************
+
         Build merkle tree
 
         Returns:
@@ -151,7 +189,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public Hash buildMerkleTree() @safe
+    public Hash buildMerkleTree() nothrow @safe
     {
         this.merkle_tree.length = this.txs.length;
         foreach (size_t idx, ref hash; this.merkle_tree)

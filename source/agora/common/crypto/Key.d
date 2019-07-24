@@ -13,8 +13,9 @@
 
 module agora.common.crypto.Key;
 
-import agora.common.Data;
 import agora.common.crypto.Crc16;
+import agora.common.Data;
+import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 
@@ -204,6 +205,24 @@ public struct PublicKey
     public void serialize (scope SerializeDg dg) pure const nothrow @safe
     {
         dg(this.data[]);
+    }
+
+    /***************************************************************************
+
+        PublicKey fromBinary
+
+        Params:
+            dg = deserialize function
+
+        Returns:
+            `PublicKey` Public key address
+
+    ***************************************************************************/
+
+    public static PublicKey fromBinary (scope DeserializeDg dg) nothrow @safe
+    {
+        alias DType = typeof(this.data);
+        return PublicKey(DType(dg(DType.sizeof)));
     }
 
     ///
