@@ -107,6 +107,9 @@ unittest
 
 public struct Block
 {
+    /// number of transactions that constitutes a block
+    public enum TxsInBlock = 8;
+
     ///
     public BlockHeader header;
 

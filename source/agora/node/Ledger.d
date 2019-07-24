@@ -68,7 +68,7 @@ public class Ledger
             return false;
 
         this.storage ~= tx;
-        if (this.storage.length >= 8)
+        if (this.storage.length >= Block.TxsInBlock)
             this.makeBlock();
 
         return true;
@@ -82,12 +82,10 @@ public class Ledger
 
     private void makeBlock () @trusted
     {
-        if (this.storage.length > 0)
-        {
-            auto block = makeNewBlock(*this.last_block, this.storage);
-            this.storage.length = 0;
-            this.addNewBlock(block);
-        }
+        auto block = makeNewBlock(*this.last_block, this.storage);
+        this.storage.length = 0;
+        assumeSafeAppend(this.storage);
+        this.addNewBlock(block);
     }
 
     /***************************************************************************
