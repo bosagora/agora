@@ -20,6 +20,7 @@ module agora.common.Transaction;
 
 import agora.common.crypto.Key;
 import agora.common.Data;
+import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 
@@ -98,6 +99,42 @@ public struct Transaction
         foreach (const ref output; this.outputs)
             serializePart(output, dg);
     }
+
+    /***************************************************************************
+
+        Transactions deserialization
+
+        Params:
+            dg = Deserialize function
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        size_t input_size;
+        deserializePart(input_size, dg);
+        this.inputs.length = input_size;
+
+        // deserialize and generate inputs
+        foreach (idx; 0 .. input_size)
+        {
+            Input input;
+            deserializePart(input , dg);
+            this.inputs[idx] = input;
+        }
+
+        size_t output_size;
+        deserializePart(output_size, dg);
+        this.outputs.length = output_size;
+
+        // deserialize and generate outputs
+        foreach (idx; 0 .. output_size)
+        {
+            Output output;
+            deserializePart(output, dg);
+            this.outputs[idx] = output;
+        }
+    }
 }
 
 ///
@@ -159,6 +196,21 @@ public struct Output
         serializePart(this.value, dg);
         serializePart(this.address, dg);
     }
+
+    /***************************************************************************
+
+        Output Deserialization
+
+        Params:
+            dg = deserialize function
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        deserializePart(this.value, dg);
+        this.address = PublicKey.fromBinary(dg);
+    }
 }
 
 /// The input of the transaction, which spends a previously received `Output`
@@ -203,6 +255,22 @@ public struct Input
         serializePart(this.previous, dg);
         serializePart(this.index, dg);
         serializePart(this.signature, dg);
+    }
+
+    /***************************************************************************
+
+        Input deserialization
+
+        Params:
+             dg = deserialize function
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        this.previous = Hash(dg(Hash.sizeof));
+        deserializePart(this.index, dg);
+        this.signature = Hash(dg(Hash.sizeof));
     }
 }
 

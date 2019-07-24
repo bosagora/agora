@@ -17,7 +17,6 @@ import agora.common.API;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
-import agora.common.Serializer;
 import agora.common.Transaction;
 
 import vibe.core.log;
@@ -208,7 +207,6 @@ public class Ledger
 unittest
 {
     import agora.common.crypto.Key;
-    import std.digest : toHexString;
 
     scope ledger = new Ledger;
     assert(ledger.getLastBlock() == getGenesisBlock());
@@ -231,24 +229,6 @@ unittest
     assert(ledger.acceptTransaction(tx));
     ledger.makeBlock();
     assert(ledger.getLastBlock().txs[$-1] == tx);
-
-    // getLastBlock Testing serialization
-    // Compare the serialization hexstring with the origin Ledger data.
-    const ubyte[] data = serializeFull(ledger.getLastBlock());
-
-    const string serializeData =
-     "02A91D85E7279998D31FE887281D0031D8C19FA732DC0BAC3A323569B19A14AD4B274255397A9A56"
-    ~"F14930CFAF7C7648377602EF0EF0E01821EE18F676092D060100000000000000DD9AAF1064DA6746"
-    ~"2DC1CC496E0374084058403429A1F74B72663F6CCA35B80AECD85063383D372F9DBCD770EF654B96"
-    ~"99F8C8801E6FD8041E9F517DF0B7CD2D01000000000000000100000000000000E8D87AE11BDB8A86"
-    ~"1F7B0BD6EE6D7D37657FDD47CF8ED340CDE27387366F9A64ABC91788162EFE5B3C9DAA4104113445"
-    ~"994C7F0497199FF442E88F78C582A2CF0000000066D002DC3D4F02352BF1E9478501CCF78FEA23AA"
-    ~"FBAD4652630297C030A2F53E028BE2CDCEEBADCCAD09908A375495919B49F263127B9BCC06DC8519"
-    ~"A51EF80D0100000000000000005A6202000000009D0238E0A171400BC6D68A9D9B316ACD51096491"
-    ~"13A05C284F4296D2B30122F50100000000000000DD9AAF1064DA67462DC1CC496E03740840584034"
-    ~"29A1F74B72663F6CCA35B80AECD85063383D372F9DBCD770EF654B9699F8C8801E6FD8041E9F517D"
-    ~"F0B7CD2D";
-    assert(data.toHexString() == serializeData);
 }
 
 /// getBlocksFrom tests
