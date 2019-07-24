@@ -46,10 +46,6 @@ import std.format;
 
 /*******************************************************************************
 
-}
-
-/*******************************************************************************
-
     Task manager backed by LocalRest's event loop.
 
 *******************************************************************************/
@@ -119,7 +115,8 @@ public class TestNetworkManager : NetworkManager
     public this () { super(); }
 
     /// ditto
-    public this (NodeConfig config, BanManager.Config ban_conf, in string[] peers, in string[] dns_seeds, Metadata metadata)
+    public this (NodeConfig config, BanManager.Config ban_conf,
+        in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
         super(config, ban_conf, peers, dns_seeds, metadata);
         // NetworkManager assumes IP are used but we use pubkey
