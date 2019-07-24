@@ -23,6 +23,7 @@ import agora.common.Data;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.Genesis;
 
 import std.algorithm;
 
@@ -306,64 +307,110 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
 
 /*******************************************************************************
 
-    Create a set of chained transactions, where each transaction spends the
-    entire sum of the previous transaction.
+    Create a set of transactions, where each newly created transaction
+    spends the entire sum of each provided transaction's output as
+    set in the parameters.
 
-    Useful for quickly generating transactions for use with unittests.
+    If prev_txs is null, the first set of transactions that fill a block will
+    spend the genesis transaction's outputs.
 
     Params:
-        root = the first transaction in the chain will spend the output of
-               this transaction
-        count = the number of transactions to create
+        prev_txs = the previous transactions to refer to
         key_pair = the key pair used to sign transactions and to send
                    the output to
+        block_count = the number of blocks that will be created if the
+                      returned transactions are added to the ledger
 
 *******************************************************************************/
 
 version (unittest)
-public Transaction[] getChainedTransactions (Transaction root, size_t count, KeyPair key_pair, size_t period = 1)
+public Transaction[] makeChainedTransactions (KeyPair key_pair,
+    Transaction[] prev_txs, size_t block_count)
 {
+    import agora.common.Block;
+    import std.conv;
+
+    const TxCount = block_count * Block.TxsInBlock;
+
+    // in unittests we use the following blockchain layout:
+    //
+    // genesis => 8 outputs
+    // txs[0] => spend gen_tx.outputs[0]
+    // txs[1] => spend gen_tx.outputs[1]...
+    // ..
+    // tx[9] => spend tx[0].outputs[0]
+    // tx[10] => spend tx[1].outputs[0]
+    // ..
+    // tx[17] => spend tx[9].outputs[0]
+    // tx[18] => spend tx[10].outputs[0]
+    // ..
+    // therefore the genesis block and the 1st block are unique here,
+    // as the 1st block spends all the genesis outputs via separate
+    // transactions, and subsequent blocks have transactions which
+    // spend the only outputs in the transaction from the previous block
+
     Transaction[] transactions;
-    Hash last_tx_hash;
 
-    if (period > 1)
+    // always use the same amount, for simplicity
+    const AmountPerTx = 40_000_000 / Block.TxsInBlock;
+
+    foreach (idx; 0 .. TxCount)
     {
-        foreach (idx; 0 .. count)
+        Input input;
+        if (prev_txs.length == 0)  // refering to genesis tx's outputs
+            input = Input(hashFull(getGenesisTx()), idx.to!uint);
+        else  // refering to tx's in the previous block
+            input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
+
+        Transaction tx =
         {
-            if (idx < period)
-                last_tx_hash = hashFull(root);
-            else
-                last_tx_hash = hashFull(transactions[idx-period]);
+            [input],
+            [Output(AmountPerTx, key_pair.address)]  // send to the same address
+        };
 
-            Transaction tx =
-            {
-                [Input(last_tx_hash, 0)],
-                [Output((idx%period + 1)*100, key_pair.address)]  // send to the same address
-            };
+        auto signature = key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        transactions ~= tx;
 
-            auto signature = key_pair.secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-            transactions ~= tx;
-        }
-    }
-    else
-    {
-        last_tx_hash = hashFull(root);
-        foreach (idx; 0 .. count)
+        // new transactions will refer to the just created transactions
+        // which will be part of the previous block after the block is created
+        if (Block.TxsInBlock == 1 ||  // special case
+            (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
         {
-            Transaction tx =
-            {
-                [Input(last_tx_hash, 0)],
-                [Output(40_000_000, key_pair.address)]  // send to the same address
-            };
-
-            auto signature = key_pair.secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-            last_tx_hash = hashFull(tx);
-            transactions ~= tx;
+            // refer to tx'es which will be in the previous block
+            prev_txs = transactions[$ - Block.TxsInBlock .. $];
         }
     }
     return transactions;
+}
+
+///
+unittest
+{
+    import agora.common.Block;
+    import std.format;
+    auto gen_key = getGenesisKeyPair();
+    auto gen_block = getGenesisBlock();
+
+    /// should spend genesis block's outputs
+    auto txes = makeChainedTransactions(gen_key, null, 1);
+    foreach (idx; 0 .. Block.TxsInBlock)
+    {
+        assert(txes[idx].inputs.length == 1);
+        assert(txes[idx].inputs[0].index == idx);
+        assert(txes[idx].inputs[0].previous == hashFull(gen_block.txs[0]));
+    }
+
+    auto prev_txs = txes;
+    // should spend the previous tx'es outputs
+    txes = makeChainedTransactions(gen_key, txes, 1);
+
+    foreach (idx; 0 .. Block.TxsInBlock)
+    {
+        assert(txes[idx].inputs.length == 1);
+        assert(txes[idx].inputs[0].index == 0);  // always refers to only output in tx
+        assert(txes[idx].inputs[0].previous == hashFull(prev_txs[idx]));
+    }
 }
 
 /*******************************************************************************
