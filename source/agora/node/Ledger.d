@@ -17,8 +17,8 @@ import agora.common.API;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
+import agora.common.Serializer;
 import agora.common.Transaction;
-import agora.node.BlockSerialize;
 
 import vibe.core.log;
 

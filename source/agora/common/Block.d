@@ -18,8 +18,8 @@ module agora.common.Block;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Hash;
+import agora.common.Serializer;
 import agora.common.Transaction;
-import agora.node.BlockSerialize;
 
 import std.algorithm.comparison;
 

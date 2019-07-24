@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.node.BlockSerialize;
+module agora.common.Serializer;
 
 import agora.common.Data;
 
