@@ -141,4 +141,23 @@ public interface API
     ***************************************************************************/
 
     public Block[] getBlocksFrom (ulong block_height, size_t max_blocks);
+
+
+    /***************************************************************************
+
+        Get the array of hashes which form the merkle path
+
+        API:
+            GET /merkle_path
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+            hash         = transaction hash
+
+        Returns:
+            the array of hashes which form the merkle path
+
+    ***************************************************************************/
+
+    public Hash[] getMerklePath (ulong block_height, Hash hash);
 }
