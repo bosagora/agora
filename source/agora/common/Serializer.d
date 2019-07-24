@@ -20,20 +20,21 @@ public alias SerializeDg = void delegate(scope const(ubyte)[]) pure nothrow @saf
 
 /*******************************************************************************
 
-    Serialize the block struct and return as a ubyte[].
+    Serialize a struct and return it as a ubyte[].
 
     Params:
-      T = Type of struct to serialize
-      record = Instance of `T` to serialize
-      dg  = Serialize delegate, when this struct is nested in another.
+        T = Type of struct to serialize
+        record = Instance of `T` to serialize
+        dg  = Serialization delegate, when this struct is a nested struct
 
     Returns:
-      The serialized `ubyte[]`
+        The serialized `ubyte[]`
 
 *******************************************************************************/
 
 public ubyte[] serializeFull (T) (scope const auto ref T record)
     pure nothrow @safe
+    if (is(T == struct))
 {
     ubyte[] res;
     scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
