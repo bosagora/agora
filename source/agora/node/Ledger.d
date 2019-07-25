@@ -218,30 +218,28 @@ unittest
     assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
-    Transaction last_tx = getGenesisBlock().txs[$-1];
+    Transaction[] last_txs;
 
-    // each tx currently creates one block
-    void genTransactions (size_t count)
+    // generate enough transactions to form a block
+    void genBlockTransactions (size_t count)
     {
-        auto txes = getChainedTransactions(last_tx, count, gen_key_pair);
+        auto txes = getChainedTransactions(gen_key_pair, count * Block.TxsInBlock, last_txs);
         txes.each!((tx)
             {
                 assert(ledger.acceptTransaction(tx));
-                assert(ledger.getLastBlock().txs.back == tx);
-                assert(ledger.getLastBlock().header.merkle_root == tx.hashFull());
             });
 
-        last_tx = txes[$ - 1];
+        last_txs = txes;
     }
 
-    genTransactions(2);
+    genBlockTransactions(2);
     Block[] blocks = ledger.getBlocksFrom(0, 10);
     assert(blocks[0] == getGenesisBlock());
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
 
-    /// now generate 98 more txes (and blocks) to make it 100 + genesis block (101 total)
-    genTransactions(98);
+    /// now generate 98 more blocks to make it 100 + genesis block (101 total)
+    genBlockTransactions(98);
 
     assert(ledger.getLastBlock().header.height == 100);
 
@@ -287,13 +285,13 @@ unittest
     // Compare the serialization hexstring with the origin Ledger data.
     const ubyte[] data = serializeFull(ledger.getLastBlock());
     const string serializeData =
-      "DDDC3C5D5CB1018DDAD191A1AE3D80DC1AF350B535CFE9F1732EF321AE0F15709F08168648E88686"
-    ~ "22DE1DE55525650E9A9BB02605BBA9DA11173A6D491853F50100000000000000DD9AAF1064DA6746"
-    ~ "2DC1CC496E0374084058403429A1F74B72663F6CCA35B80AECD85063383D372F9DBCD770EF654B96"
-    ~ "99F8C8801E6FD8041E9F517DF0B7CD2DE8D87AE11BDB8A861F7B0BD6EE6D7D37657FDD47CF8ED340"
-    ~ "CDE27387366F9A64ABC91788162EFE5B3C9DAA4104113445994C7F0497199FF442E88F78C582A2CF"
-    ~ "0000000066D002DC3D4F02352BF1E9478501CCF78FEA23AAFBAD4652630297C030A2F53E028BE2CD"
-    ~ "CEEBADCCAD09908A375495919B49F263127B9BCC06DC8519A51EF80D005A6202000000009D0238E0"
+      "22C36F687A498003D15B4D010653A71112A61A9970A25C192A5060072B1A7F0FCC684AD362EE3D20"
+    ~ "0B8A59BBB9ADC8E851D8CC759153B9B2129390BC96341B1564000000000000008E1F0836C7BADC6C"
+    ~ "AA94A514C4609E769E3B35405D8FF516A927C5ECE0C7FA195C2EE293999E627F1882887D6549886B"
+    ~ "8B95599BD71DAD00C816844997AE17085EA64DFAEB641BDE2B835E38F57DE3B6DDDA436CEAD1FCD8"
+    ~ "55983E5A53D1DE979ADBBD0057677C4FD7E5C05747B8DD1ECCE95129C276524A63771429CB52387D"
+    ~ "00000000B5A6E38688D77D7ABDBB32C6F30245120D3DD27E914C99978AE1D72955EA40C743A69684"
+    ~ "A93FECF8544F75071F2BCEAF70647639D0792E305FC2ED1BCDDCD208005A6202000000009D0238E0"
     ~ "A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5";
 
     assert(data.toHexString() == serializeData, data.toHexString());
