@@ -66,15 +66,17 @@ public class Ledger
     {
         if (!tx.verify(&this.findOutput))
             return false;
+
         this.storage ~= tx;
         if (this.storage.length >= 8)
             this.makeBlock();
+
         return true;
     }
 
     /***************************************************************************
 
-        Create a new block.
+        Create a new block out of transactions in the storage.
 
     ***************************************************************************/
 
@@ -190,7 +192,7 @@ public class Ledger
     {
         foreach (ref block; this.ledger)
         {
-            foreach(ref tx; block.txs)
+            foreach (ref tx; block.txs)
             {
                 if (hashFull(tx) == tx_hash)
                 {
