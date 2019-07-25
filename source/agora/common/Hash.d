@@ -157,9 +157,20 @@ public void hashPart (scope cstring record, scope HashDg state) /*pure*/ nothrow
     state(cast(const ubyte[])record);
 }
 
-/// Merge two hash
-public Hash mergeHash (Hash h1, Hash h2)
-        nothrow @nogc @trusted
+/*******************************************************************************
+
+    Merges two hashes together
+
+    Params:
+        h1 = the first hash
+        h2 = the second hash
+
+    Returns:
+        the merged hash
+
+*******************************************************************************/
+
+public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @trusted
 {
     static struct MergeHash
     {
