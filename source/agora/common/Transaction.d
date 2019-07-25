@@ -259,48 +259,26 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
 *******************************************************************************/
 
 version (unittest)
-public Transaction[] getChainedTransactions (Transaction root, size_t count, KeyPair key_pair, size_t period = 1)
+public Transaction[] getChainedTransactions (Transaction root, size_t count,
+    KeyPair key_pair)
 {
     Transaction[] transactions;
-    Hash last_tx_hash;
+    Hash last_tx_hash = hashFull(root);
 
-    if (period > 1)
+    foreach (idx; 0 .. count)
     {
-        foreach (idx; 0 .. count)
+        Transaction tx =
         {
-            if (idx < period)
-                last_tx_hash = hashFull(root);
-            else
-                last_tx_hash = hashFull(transactions[idx-period]);
+            [Input(last_tx_hash, 0)],
+            [Output(40_000_000, key_pair.address)]  // send to the same address
+        };
 
-            Transaction tx =
-            {
-                [Input(last_tx_hash, 0)],
-                [Output((idx%period + 1)*100, key_pair.address)]  // send to the same address
-            };
-
-            auto signature = key_pair.secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-            transactions ~= tx;
-        }
+        auto signature = key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        last_tx_hash = hashFull(tx);
+        transactions ~= tx;
     }
-    else
-    {
-        last_tx_hash = hashFull(root);
-        foreach (idx; 0 .. count)
-        {
-            Transaction tx =
-            {
-                [Input(last_tx_hash, 0)],
-                [Output(40_000_000, key_pair.address)]  // send to the same address
-            };
 
-            auto signature = key_pair.secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-            last_tx_hash = hashFull(tx);
-            transactions ~= tx;
-        }
-    }
     return transactions;
 }
 
