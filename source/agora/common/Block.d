@@ -38,9 +38,8 @@ public struct BlockHeader
     /// Block height (genesis is #0)
     public ulong height;
 
-    /// The hash of the only transaction in the block
-    /// (later to be replaced with a merkle root)
-    public Hash tx_hash;
+    /// The hash of the merkle root of the transactions
+    public Hash merkle_root;
 
 
     /***************************************************************************
@@ -56,7 +55,7 @@ public struct BlockHeader
     {
         dg(this.prev_block[]);
         hashPart(this.height, dg);
-        dg(this.tx_hash[]);
+        dg(this.merkle_root[]);
     }
 
     /***************************************************************************
@@ -72,7 +71,7 @@ public struct BlockHeader
     {
         dg(this.prev_block[]);
         serializePart(this.height, dg);
-        dg(this.tx_hash[]);
+        dg(this.merkle_root[]);
     }
 }
 
@@ -88,7 +87,7 @@ unittest
     {
         Output[1] outputs = [ Output(100, pubkey) ];
         Transaction tx = { outputs: outputs[] };
-        BlockHeader header = { tx_hash : tx.hashFull() };
+        BlockHeader header = { merkle_root : tx.hashFull() };
 
         auto hash = hashFull(header);
         auto exp_hash = Hash("0xc45f765d063deece0348f9e7d47287fec5324395b1c" ~
@@ -285,7 +284,7 @@ public Block makeNewBlock (Block prev_block, Transaction[] txs) @safe
     block.header.height = prev_block.header.height + 1;
     block.txs ~= txs;
 
-    block.header.tx_hash = block.buildMerkleTree();
+    block.header.merkle_root = block.buildMerkleTree();
 
     return block;
 }
@@ -338,7 +337,7 @@ unittest
     block.header.prev_block = Hash.init;
     block.header.height = 0;
     block.txs ~= txs;
-    block.header.tx_hash = block.buildMerkleTree();
+    block.header.merkle_root = block.buildMerkleTree();
 
     const Hash h0 = hashFull(txs[0]);
     const Hash h1 = hashFull(txs[1]);
@@ -359,7 +358,7 @@ unittest
 
     const Hash h01234567 = mergeHash(h0123, h4567);
 
-    assert(block.header.tx_hash == h01234567, "Error in MerkleTree.");
+    assert(block.header.merkle_root == h01234567, "Error in MerkleTree.");
 
     // Merkle Proof
     merkle_branch = block.getMerkleBranch(2);
@@ -367,12 +366,12 @@ unittest
     assert(merkle_branch[0] == h3, "Error in the merkle path.");
     assert(merkle_branch[1] == h01, "Error in the merkle path.");
     assert(merkle_branch[2] == h4567, "Error in the merkle path.");
-    assert(block.header.tx_hash == Block.checkMerkleBranch(h2, merkle_branch, 2), "Error in the merkle proof.");
+    assert(block.header.merkle_root == Block.checkMerkleBranch(h2, merkle_branch, 2), "Error in the merkle proof.");
 
     merkle_branch = block.getMerkleBranch(4);
     assert(merkle_branch.length == 3);
     assert(merkle_branch[0] == h5, "Error in the merkle path.");
     assert(merkle_branch[1] == h67, "Error in the merkle path.");
     assert(merkle_branch[2] == h0123, "Error in the merkle path.");
-    assert(block.header.tx_hash == Block.checkMerkleBranch(h4, merkle_branch, 4), "Error in the merkle proof.");
+    assert(block.header.merkle_root == Block.checkMerkleBranch(h4, merkle_branch, 4), "Error in the merkle proof.");
 }
