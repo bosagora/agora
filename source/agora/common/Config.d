@@ -101,6 +101,9 @@ public struct NodeConfig
     /// Maximum number of retries to issue before a request is considered failed
     public size_t max_retries = 5;
 
+    /// Timeout of each request (in milliseconds)
+    public long timeout = 500;
+
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir;
 }
@@ -270,6 +273,7 @@ private NodeConfig parseNodeConfig (Node node)
         retry_delay = cast(long)(delay.as!float * 1000);
 
     size_t max_retries = node["max_retries"].as!size_t;
+    size_t timeout = node["timeout"].as!size_t;
 
     string data_dir = node["data_dir"].as!string;
     auto port = node["port"].as!ushort;
@@ -287,6 +291,7 @@ private NodeConfig parseNodeConfig (Node node)
         key_pair : key_pair,
         retry_delay : retry_delay,
         max_retries : max_retries,
+        timeout : timeout,
         data_dir : data_dir,
     };
 

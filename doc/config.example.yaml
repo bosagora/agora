@@ -35,6 +35,8 @@ node:
   retry_delay: 1.5
   # Maximum number of retries to issue before a request is considered failed
   max_retries: 5
+  # Timeout for each request in milliseconds
+  timeout: 50
   # This is a randomly generated keypair
   # If this node is not a validator, this will be ignored
   #

@@ -241,7 +241,8 @@ public class NetworkManager
 
         logInfo("Establishing connection with %s...", address);
         auto node = new NetworkClient(this.taskman, address,
-            this.getClient(address), this.node_config.retry_delay.msecs,
+            this.getClient(address, this.node_config.timeout.msecs),
+            this.node_config.retry_delay.msecs,
             this.node_config.max_retries);
 
         while (1)
@@ -369,15 +370,16 @@ public class NetworkManager
 
         Params:
           address = The address (IPv4, IPv6, hostname) of this node
+          timeout = the timeout duration to use for requests
 
         Returns:
           An object to communicate with the node at `address`
 
     ***************************************************************************/
 
-    protected API getClient (Address address)
+    protected API getClient (Address address, Duration timeout)
     {
-        return new RestInterfaceClient!API(address);
+        return new RestInterfaceClient!API(address/*, timeout*/);
     }
 
     /***************************************************************************
