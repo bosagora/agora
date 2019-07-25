@@ -124,10 +124,10 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override API getClient (Address address)
+    protected final override API getClient (Address address, Duration timeout)
     {
         if (auto ptr = address in tbn)
-            return new RemoteAPI!API(*ptr);
+            return new RemoteAPI!API(*ptr, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
     }

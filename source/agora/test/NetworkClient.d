@@ -65,3 +65,48 @@ unittest
 
     assert(0, "Nodes should have same block height");
 }
+
+/// test request timeouts
+unittest
+{
+    import std.algorithm;
+    import std.range;
+    import core.thread;
+
+    const NodeCount = 4;
+    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+
+    network.start();
+    assert(network.getDiscoveredNodes().length == NodeCount);
+
+    auto nodes = network.apis.values;
+    auto node_1 = nodes[0];
+
+    // block periodic getBlocksFrom
+    node_1.filter!(node_1.getBlocksFrom);
+
+    // reject inbound requests
+    const DropRequests = true;
+    nodes[1 .. $].each!(node => node.sleep(100.msecs, DropRequests));
+
+    auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+
+    // node 1 will keep trying to send transactions up to
+    // max_retries * (retry_delay + timeout) seconds (see Base.d),
+    // 20 * (100 + 100) = 4 seconds of retry time
+    txes.each!(tx => node_1.putTransaction(tx));
+
+    // wait for transaction propagation to succeed
+    Thread.sleep(2000.msecs);
+
+    auto attempts = 20;  // wait up to 20*100 msecs (2 seconds)
+    while (attempts--)
+    {
+        if (nodes.all!(node => node.getBlockHeight() == 1))
+            return;
+
+        Thread.sleep(100.msecs);
+    }
+
+    assert(0, "Nodes should have same block height");
+}
