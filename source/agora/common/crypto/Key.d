@@ -98,6 +98,22 @@ public struct KeyPair
     }
 }
 
+/*******************************************************************************
+
+    Get the key-pair which can spend the UTXO in the genesis transaction.
+    Used for unittests, will be removed later.
+
+    Returns:
+        the key pair which can spend the UTXO in the genesis transaction
+
+*******************************************************************************/
+
+public KeyPair getGenesisKeyPair ()
+{
+    return KeyPair.fromSeed(
+        Seed.fromString(
+            "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
+}
 
 /// Represent a public key / address
 public struct PublicKey
