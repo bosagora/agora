@@ -227,23 +227,6 @@ public struct Block
 
 /*******************************************************************************
 
-    Get the key-pair which can spend the UTXO in the genesis transaction.
-    Used for unittests, will be removed later.
-
-    Returns:
-        the key pair which can spend the UTXO in the genesis transaction
-
-*******************************************************************************/
-
-public KeyPair getGenesisKeyPair ()
-{
-    return KeyPair.fromSeed(
-        Seed.fromString(
-            "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-}
-
-/*******************************************************************************
-
     Creates the genesis block.
     The output address is currently hardcoded to a randomly generated value,
     it will be replaced later with the proper address.
