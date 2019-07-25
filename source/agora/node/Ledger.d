@@ -80,7 +80,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void makeBlock () @trusted
+    private void makeBlock () @trusted
     {
         if (this.storage.length > 0)
         {
