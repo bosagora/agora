@@ -206,51 +206,6 @@ public class Ledger
     }
 }
 
-///
-unittest
-{
-    import agora.common.crypto.Key;
-    import std.range;
-    import std.digest : toHexString;
-
-    scope ledger = new Ledger;
-    assert(ledger.getLastBlock() == getGenesisBlock());
-
-    // same key-pair as in getGenesisBlock()
-    const genesis_key_pair = KeyPair.fromSeed(
-        Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-
-    // last transaction in the ledger
-    Hash last_tx_hash = hashFull(getGenesisBlock().txs.back);
-    Transaction tx =
-    {
-        [Input(last_tx_hash, 0)],
-        [Output(40_000_000, genesis_key_pair.address)]  // send to the same address
-    };
-
-    auto signature = genesis_key_pair.secret.sign(hashFull(tx)[]);
-    tx.inputs[0].signature = signature;
-
-    assert(ledger.acceptTransaction(tx));
-    assert(ledger.getLastBlock().txs.back == tx);
-    assert(ledger.getLastBlock().header.merkle_root == tx.hashFull());
-
-    // getLastBlock Testing serialization
-    // Compare the serialization hexstring with the origin Ledger data.
-    const ubyte[] data = serializeFull(ledger.getLastBlock());
-    const string serializeData =
-     "DDDC3C5D5CB1018DDAD191A1AE3D80DC1AF350B535CFE9F1732EF321AE0F15709F08168648E88686"
-    ~"22DE1DE55525650E9A9BB02605BBA9DA11173A6D491853F50100000000000000DD9AAF1064DA6746"
-    ~"2DC1CC496E0374084058403429A1F74B72663F6CCA35B80AECD85063383D372F9DBCD770EF654B96"
-    ~"99F8C8801E6FD8041E9F517DF0B7CD2DE8D87AE11BDB8A861F7B0BD6EE6D7D37657FDD47CF8ED340"
-    ~"CDE27387366F9A64ABC91788162EFE5B3C9DAA4104113445994C7F0497199FF442E88F78C582A2CF"
-    ~"0000000066D002DC3D4F02352BF1E9478501CCF78FEA23AAFBAD4652630297C030A2F53E028BE2CD"
-    ~"CEEBADCCAD09908A375495919B49F263127B9BCC06DC8519A51EF80D005A6202000000009D0238E0"
-    ~"A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5";
-
-    assert(data.toHexString() == serializeData);
-}
-
 /// getBlocksFrom tests
 unittest
 {
