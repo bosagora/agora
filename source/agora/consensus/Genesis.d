@@ -32,12 +32,11 @@ import agora.common.crypto.Key;
 
 public Block getGenesisBlock ()
 {
-    auto gen_tx = newCoinbaseTX(getGenesisKeyPair().address, 40_000_000);
-    auto header = BlockHeader(
-        Hash.init, 0,
-        mergeHash(hashFull(gen_tx),hashFull(gen_tx)));
-
-    return Block(header, [gen_tx]);
+    Block block;
+    block.header.height = 0;
+    block.txs ~= getGenesisTx();
+    block.header.merkle_root = block.buildMerkleTree();
+    return block;
 }
 
 ///
@@ -45,6 +44,29 @@ unittest
 {
     // ensure the genesis block is always the same
     assert(getGenesisBlock() == getGenesisBlock());
+}
+
+/*******************************************************************************
+
+    Returns:
+        the genesis transaction
+
+*******************************************************************************/
+
+public Transaction getGenesisTx ()
+{
+    import agora.common.Block;
+    import std.algorithm;
+    import std.range;
+    import std.format;
+
+    Output[] outputs = iota(Block.TxsInBlock).map!(_ =>
+        Output(40_000_000 / Block.TxsInBlock, getGenesisKeyPair().address)).array;
+
+    return Transaction(
+        [Input(Hash.init, 0)],
+        outputs
+    );
 }
 
 /*******************************************************************************
