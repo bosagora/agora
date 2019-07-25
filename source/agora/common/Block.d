@@ -108,7 +108,7 @@ unittest
 public struct Block
 {
     /// number of transactions that constitutes a block
-    public enum TxsInBlock = 1;
+    public enum TxsInBlock = 8;
 
     ///
     public BlockHeader header;
@@ -258,7 +258,6 @@ unittest
 /*******************************************************************************
 
     Create a new block, referencing the provided previous block.
-    In the current preliminary design a block contains a single transaction.
 
     Params:
         prev_block = the previous block
