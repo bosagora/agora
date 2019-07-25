@@ -190,7 +190,7 @@ public class Ledger
     {
         foreach (ref block; this.ledger)
         {
-            foreach(ref tx; block.txs)
+            foreach (ref tx; block.txs)
             {
                 if (hashFull(tx) == tx_hash)
                 {

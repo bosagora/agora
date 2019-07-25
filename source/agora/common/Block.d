@@ -154,11 +154,14 @@ public struct Block
             for (size_t i = 0; i < length; i += 2)
             {
                 size_t i2 = min(i + 1, length - 1);
-                this.merkle_tree ~= mergeHash(this.merkle_tree[j + i], this.merkle_tree[j + i2]);
+                this.merkle_tree ~= mergeHash(this.merkle_tree[j + i],
+                    this.merkle_tree[j + i2]);
             }
+
             j += length;
         }
-        return ((this.merkle_tree.length == 0) ? Hash.init : this.merkle_tree[$ - 1]);
+
+        return this.merkle_tree.length == 0 ? Hash.init : this.merkle_tree[$ - 1];
     }
 
     /*******************************************************************************
@@ -173,7 +176,7 @@ public struct Block
 
     *******************************************************************************/
 
-    public Hash[] getMerkleBranch(size_t index) @safe
+    public Hash[] getMerkleBranch (size_t index) @safe
     {
         if (this.merkle_tree.length == 0)
             this.buildMerkleTree();
@@ -187,6 +190,7 @@ public struct Block
             index >>= 1;
             j += length;
         }
+
         return merkle_branch;
     }
 
@@ -204,16 +208,19 @@ public struct Block
 
     *******************************************************************************/
 
-    public static Hash checkMerkleBranch(Hash hash, const ref Hash[] merkle_branch, size_t index) @safe
+    public static Hash checkMerkleBranch (Hash hash, const ref Hash[] merkle_branch,
+        size_t index) @safe
     {
-        foreach(const ref otherside; merkle_branch)
+        foreach (const ref otherside; merkle_branch)
         {
             if (index & 1)
                 hash = mergeHash(otherside, hash);
             else
                 hash = mergeHash(hash, otherside);
+
             index >>= 1;
         }
+
         return hash;
     }
 }
