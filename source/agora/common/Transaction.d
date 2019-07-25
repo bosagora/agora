@@ -244,6 +244,28 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
 
 /*******************************************************************************
 
+    Returns:
+        the genesis transaction
+
+*******************************************************************************/
+
+public Transaction getGenesisTx ()
+{
+    import agora.common.Block;
+    import std.range;
+    import std.format;
+
+    Output[] outputs = iota(Block.TxsInBlock).map!(_ =>
+        Output(40_000_000 / Block.TxsInBlock, getGenesisKeyPair().address)).array;
+
+    return Transaction(
+        [Input(Hash.init, 0)],
+        outputs
+    );
+}
+
+/*******************************************************************************
+
     Create a set of chained transactions, where each transaction spends the
     entire sum of the previous transaction.
 

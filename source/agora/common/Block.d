@@ -241,14 +241,11 @@ public struct Block
 
 public Block getGenesisBlock ()
 {
-    import agora.common.crypto.Key;
-
-    auto gen_tx = newCoinbaseTX(getGenesisKeyPair().address, 40_000_000);
-    auto header = BlockHeader(
-        Hash.init, 0,
-        mergeHash(hashFull(gen_tx),hashFull(gen_tx)));
-
-    return Block(header, [gen_tx]);
+    Block block;
+    block.header.height = 0;
+    block.txs ~= getGenesisTx();
+    block.header.merkle_root = block.buildMerkleTree();
+    return block;
 }
 
 ///
