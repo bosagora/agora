@@ -18,10 +18,10 @@
 
 module agora.common.Transaction;
 
+import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Serializer;
-import agora.common.crypto.Key;
 
 import std.algorithm;
 

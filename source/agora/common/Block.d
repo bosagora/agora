@@ -63,7 +63,7 @@ public struct BlockHeader
         Block Header Serialization
 
         Params:
-             dg = serialize function accumulator
+            dg = serialize function accumulator
 
     ***************************************************************************/
 
