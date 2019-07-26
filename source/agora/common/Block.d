@@ -132,8 +132,14 @@ public struct Block
     public void serialize (scope SerializeDg dg) pure const nothrow @safe
     {
         serializePart(this.header, dg);
+
+        serializePart(this.txs.length, dg);
         foreach (ref tx; this.txs)
             serializePart(tx, dg);
+
+        serializePart(this.merkle_tree.length, dg);
+        foreach (ref merkle; this.merkle_tree)
+            dg(merkle[]);
     }
 
     /***************************************************************************
