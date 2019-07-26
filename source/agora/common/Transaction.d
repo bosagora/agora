@@ -90,9 +90,11 @@ public struct Transaction
 
     public void serialize (scope SerializeDg dg) pure const nothrow @safe
     {
+        serializePart(this.inputs.length, dg);
         foreach (const ref input; this.inputs)
             serializePart(input, dg);
 
+        serializePart(this.outputs.length, dg);
         foreach (const ref output; this.outputs)
             serializePart(output, dg);
     }
