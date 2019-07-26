@@ -16,7 +16,7 @@ git clone https://github.com/bpfkorea/agora.git
 # Use the git root as working directory
 cd agora/
 # Initialize and update the list of submodules
-git submodules update --init
+git submodule update --init
 # Build the application
 dub build --skip-registry=all
 # Build & run the tests
