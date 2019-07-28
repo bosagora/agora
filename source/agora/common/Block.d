@@ -428,20 +428,20 @@ unittest
 
     const Hash habcdefgh = mergeHash(habcd, hefgh);
 
-    assert(block.header.merkle_root == habcdefgh, "Error in MerkleTree.");
+    assert(block.header.merkle_root == habcdefgh);
 
     // Merkle Proof
     merkle_path = block.getMerklePath(2);
     assert(merkle_path.length == 3);
-    assert(merkle_path[0] == hd, "Error in the merkle path.");
-    assert(merkle_path[1] == hab, "Error in the merkle path.");
-    assert(merkle_path[2] == hefgh, "Error in the merkle path.");
-    assert(block.header.merkle_root == Block.checkMerklePath(hc, merkle_path, 2), "Error in the merkle proof.");
+    assert(merkle_path[0] == hd);
+    assert(merkle_path[1] == hab);
+    assert(merkle_path[2] == hefgh);
+    assert(block.header.merkle_root == Block.checkMerklePath(hc, merkle_path, 2));
 
     merkle_path = block.getMerklePath(4);
     assert(merkle_path.length == 3);
-    assert(merkle_path[0] == hf, "Error in the merkle path.");
-    assert(merkle_path[1] == hgh, "Error in the merkle path.");
-    assert(merkle_path[2] == habcd, "Error in the merkle path.");
-    assert(block.header.merkle_root == Block.checkMerklePath(he, merkle_path, 4), "Error in the merkle proof.");
+    assert(merkle_path[0] == hf);
+    assert(merkle_path[1] == hgh);
+    assert(merkle_path[2] == habcd);
+    assert(block.header.merkle_root == Block.checkMerklePath(he, merkle_path, 4));
 }
