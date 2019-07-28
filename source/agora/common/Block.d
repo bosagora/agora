@@ -192,9 +192,9 @@ public struct Block
 
     public Hash buildMerkleTree() nothrow @safe
     {
-        this.merkle_tree.reserve(this.txs.length);
-        foreach (ref tx; this.txs)
-            this.merkle_tree ~= hashFull(tx);
+        this.merkle_tree.length = this.txs.length;
+        foreach (size_t idx, ref hash; this.merkle_tree)
+            hash = hashFull(this.txs[idx]);
 
         // transactions are ordered lexicographically by hash in the Merkle tree
         this.merkle_tree.sort!("a < b");
