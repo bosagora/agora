@@ -21,6 +21,7 @@ import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
+import agora.consensus.Genesis;
 import agora.test.Base;
 
 /// Returns: the entire ledger from the provided node
