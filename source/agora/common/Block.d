@@ -349,7 +349,7 @@ unittest
 
 *******************************************************************************/
 
-public Block makeNewBlock (Block prev_block, Transaction[] txs) @safe
+public Block makeNewBlock (const ref Block prev_block, Transaction[] txs) @safe
 {
     Block block;
 

@@ -32,7 +32,7 @@ public class Ledger
     private Block[] ledger;
 
     /// pointer to the latest block
-    private Block* last_block;
+    private const(Block)* last_block;
 
     /// Temporary storage where transactions are stored until blocks are created.
     private Transaction[] storage;
@@ -94,9 +94,9 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Block getLastBlock () @safe nothrow @nogc
+    public const(Block)* getLastBlock () @safe nothrow @nogc
     {
-        return *this.last_block;
+        return this.last_block;
     }
 
     /***************************************************************************
@@ -237,7 +237,7 @@ unittest
     import agora.common.crypto.Key;
 
     scope ledger = new Ledger;
-    assert(ledger.getLastBlock() == getGenesisBlock());
+    assert(*ledger.getLastBlock() == getGenesisBlock());
 
     // same key-pair as in getGenesisBlock()
     const genesis_key_pair = KeyPair.fromSeed(
@@ -265,7 +265,7 @@ unittest
     import agora.common.crypto.Key;
 
     scope ledger = new Ledger;
-    assert(ledger.getLastBlock() == getGenesisBlock());
+    assert(*ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
@@ -347,7 +347,7 @@ unittest
     ];
 
     scope ledger = new Ledger;
-    assert(ledger.getLastBlock() == getGenesisBlock());
+    assert(*ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
