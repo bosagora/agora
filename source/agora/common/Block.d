@@ -215,7 +215,7 @@ public struct Block
         return this.merkle_tree.length == 0 ? Hash.init : this.merkle_tree[$ - 1];
     }
 
-    /*******************************************************************************
+    /***************************************************************************
 
         Get merkle path
 
@@ -225,7 +225,7 @@ public struct Block
         Returns:
             Return merkle path
 
-    *******************************************************************************/
+    ***************************************************************************/
 
     public Hash[] getMerklePath (size_t index) @safe
     {
@@ -244,19 +244,19 @@ public struct Block
         return merkle_path;
     }
 
-    /*******************************************************************************
+    /***************************************************************************
 
         Calculate the merkle root using the merkle path.
 
         Params:
             hash = `Hash` of `Transaction`
             merkle_path  = `Hash` of merkle path
-            index = Index of the hash in the array of transactions. It starts at zero.
+            index = Index of the hash in the array of transactions.
 
         Returns:
             Return `Hash` of merkle root.
 
-    *******************************************************************************/
+    ***************************************************************************/
 
     public static Hash checkMerklePath (Hash hash, Hash[] merkle_path, size_t index) @safe
     {
@@ -273,7 +273,7 @@ public struct Block
         return hash;
     }
 
-    /*******************************************************************************
+    /***************************************************************************
 
         Find the sequence of transactions for the hash.
 
@@ -284,7 +284,7 @@ public struct Block
             Return sequence if found hash, otherwise Retrun the number of
             transactions.
 
-    *******************************************************************************/
+    ***************************************************************************/
 
     public size_t findHashIndex (Hash hash) @safe
     {
