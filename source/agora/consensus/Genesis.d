@@ -50,7 +50,10 @@ unittest
 /*******************************************************************************
 
     Get the key-pair which can spend the UTXO in the genesis transaction.
+
     Used for unittests, will be removed later.
+    The associated address is :
+    GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
 
     Returns:
         the key pair which can spend the UTXO in the genesis transaction
