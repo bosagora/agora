@@ -110,7 +110,7 @@ unittest
     import agora.common.Hash;
     import agora.common.Serializer;
 
-    scope Block block = getGenesisBlock();
+    const block = getGenesisBlock();
 
     // Block Testing serialization & deserialization
     // Compare the serialization data with the origin Ledger data.

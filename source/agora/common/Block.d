@@ -190,7 +190,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public Hash buildMerkleTree() nothrow @safe
+    public Hash buildMerkleTree () nothrow @safe
     {
         this.merkle_tree.length = (this.txs.length * 2) - 1;
         return this.buildMerkleTreeImpl();
