@@ -221,7 +221,7 @@ public class Ledger
         if (block_height >= this.ledger.length)
             return null;
 
-        Block * block = &this.ledger[block_height];
+        Block* block = &this.ledger[block_height];
 
         size_t index = block.findHashIndex(hash);
         if (index < block.txs.length)
@@ -341,7 +341,10 @@ unittest
 {
     import agora.common.crypto.Key;
 
-    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+    KeyPair[] key_pairs = [
+        KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
+        KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random
+    ];
 
     scope ledger = new Ledger;
     assert(ledger.getLastBlock() == getGenesisBlock());
