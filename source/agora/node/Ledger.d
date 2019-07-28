@@ -18,6 +18,7 @@ import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
+import agora.consensus.Genesis;
 
 import vibe.core.log;
 

@@ -109,6 +109,7 @@ unittest
 {
     import agora.common.Hash;
     import agora.common.Serializer;
+    import agora.consensus.Genesis;
 
     const block = getGenesisBlock();
 
