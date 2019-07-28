@@ -116,24 +116,16 @@ public struct Transaction
         this.inputs.length = input_size;
 
         // deserialize and generate inputs
-        foreach (idx; 0 .. input_size)
-        {
-            Input input;
+        foreach (ref input; this.inputs)
             deserializePart(input , dg);
-            this.inputs[idx] = input;
-        }
 
         size_t output_size;
         deserializePart(output_size, dg);
         this.outputs.length = output_size;
 
         // deserialize and generate outputs
-        foreach (idx; 0 .. output_size)
-        {
-            Output output;
+        foreach (ref output; this.outputs)
             deserializePart(output, dg);
-            this.outputs[idx] = output;
-        }
     }
 }
 
