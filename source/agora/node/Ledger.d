@@ -398,19 +398,19 @@ unittest
     Hash[] merkle_path;
     merkle_path = ledger.getMerklePath(1, hc);
     assert(merkle_path.length == 3);
-    assert(merkle_path[0] == hd, "Error in the merkle path.");
-    assert(merkle_path[1] == hab, "Error in the merkle path.");
-    assert(merkle_path[2] == hefgh, "Error in the merkle path.");
-    assert(habcdefgh == Block.checkMerklePath(hc, merkle_path, 2), "Error in the merkle proof.");
-    assert(habcdefgh != Block.checkMerklePath(hd, merkle_path, 2), "Error in the merkle proof.");
+    assert(merkle_path[0] == hd);
+    assert(merkle_path[1] == hab);
+    assert(merkle_path[2] == hefgh);
+    assert(habcdefgh == Block.checkMerklePath(hc, merkle_path, 2));
+    assert(habcdefgh != Block.checkMerklePath(hd, merkle_path, 2));
 
     merkle_path = ledger.getMerklePath(1, he);
     assert(merkle_path.length == 3);
-    assert(merkle_path[0] == hf, "Error in the merkle path.");
-    assert(merkle_path[1] == hgh, "Error in the merkle path.");
-    assert(merkle_path[2] == habcd, "Error in the merkle path.");
-    assert(habcdefgh == Block.checkMerklePath(he, merkle_path, 4), "Error in the merkle proof.");
-    assert(habcdefgh != Block.checkMerklePath(hf, merkle_path, 4), "Error in the merkle proof.");
+    assert(merkle_path[0] == hf);
+    assert(merkle_path[1] == hgh);
+    assert(merkle_path[2] == habcd);
+    assert(habcdefgh == Block.checkMerklePath(he, merkle_path, 4));
+    assert(habcdefgh != Block.checkMerklePath(hf, merkle_path, 4));
 
     merkle_path = ledger.getMerklePath(1, Hash.init);
     assert(merkle_path.length == 0);
