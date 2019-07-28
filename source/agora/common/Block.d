@@ -192,12 +192,19 @@ public struct Block
 
     public Hash buildMerkleTree() nothrow @safe
     {
+        this.merkle_tree.length = (this.txs.length * 2) - 1;
+        return this.buildMerkleTreeImpl();
+    }
+
+    /// Ditto
+    public Hash buildMerkleTreeImpl () nothrow @safe @nogc
+    {
         import core.bitop;
         const log2 = bsf(this.txs.length);
         assert((1 << log2) == this.txs.length,
                "Transactions for a block should be a strict power of 2");
+        assert(this.merkle_tree.length == (this.txs.length * 2) - 1);
 
-        this.merkle_tree.length = (this.txs.length * 2) - 1;
         foreach (size_t idx, ref hash; this.merkle_tree[0 .. this.txs.length])
             hash = hashFull(this.txs[idx]);
 
