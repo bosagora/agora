@@ -39,12 +39,11 @@ public Block deserializeBlock (scope ubyte[] data)
     nothrow @safe
 {
     Block block;
-    size_t offset = 0;
 
     scope DeserializeDg dg = (size) nothrow @safe
     {
-        ubyte[] res = data[offset .. offset + size];
-        offset += size;
+        ubyte[] res = data[0 .. size];
+        data = data[size .. $];
         return res;
     };
 
