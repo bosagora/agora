@@ -170,7 +170,7 @@ public void hashPart (scope cstring record, scope HashDg state) /*pure*/ nothrow
 
 *******************************************************************************/
 
-public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @trusted
+public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @safe
 {
     static struct MergeHash
     {
