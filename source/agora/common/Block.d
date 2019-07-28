@@ -193,21 +193,26 @@ public struct Block
     public Hash buildMerkleTree() nothrow @safe
     {
         import core.bitop;
-        assert((1 << bsf(this.txs.length)) == this.txs.length,
+        const log2 = bsf(this.txs.length);
+        assert((1 << log2) == this.txs.length,
                "Transactions for a block should be a strict power of 2");
 
-        this.merkle_tree.length = this.txs.length;
-        foreach (size_t idx, ref hash; this.merkle_tree)
+        this.merkle_tree.length = (this.txs.length * 2) - 1;
+        foreach (size_t idx, ref hash; this.merkle_tree[0 .. this.txs.length])
             hash = hashFull(this.txs[idx]);
 
         // transactions are ordered lexicographically by hash in the Merkle tree
-        this.merkle_tree.sort!("a < b");
+        this.merkle_tree[0 .. this.txs.length].sort!("a < b");
 
-        for (size_t order = bsr(this.txs.length); order != 0; order--)
+        immutable len = this.merkle_tree.length;
+        for (size_t order = 0; order < log2; order++)
         {
-            this.merkle_tree[$ - (1 << order) .. $].chunks(2)
+            immutable start = len - (len >> (order));
+            immutable end   = len - (len >> (order + 1));
+            this.merkle_tree[start .. end].chunks(2)
                 .map!(tup => mergeHash(tup[0], tup[1]))
-                .each!(val => this.merkle_tree ~= val);
+                .enumerate(size_t(end))
+                .each!((idx, val) => this.merkle_tree[idx] = val);
         }
 
         return this.merkle_tree[$ - 1];
