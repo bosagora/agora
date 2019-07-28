@@ -23,7 +23,9 @@ import agora.common.Serializer;
 import agora.common.Transaction;
 
 import std.algorithm.comparison;
+import std.algorithm.iteration;
 import std.algorithm.sorting;
+import std.range;
 
 /*******************************************************************************
 
@@ -201,17 +203,11 @@ public struct Block
         // transactions are ordered lexicographically by hash in the Merkle tree
         this.merkle_tree.sort!("a < b");
 
-        size_t j = 0;
-        for (size_t length = this.txs.length; length > 1; length = (length + 1) / 2)
+        for (size_t order = bsr(this.txs.length); order != 0; order--)
         {
-            for (size_t i = 0; i < length; i += 2)
-            {
-                size_t i2 = min(i + 1, length - 1);
-                this.merkle_tree ~= mergeHash(this.merkle_tree[j + i],
-                    this.merkle_tree[j + i2]);
-            }
-
-            j += length;
+            this.merkle_tree[$ - (1 << order) .. $].chunks(2)
+                .map!(tup => mergeHash(tup[0], tup[1]))
+                .each!(val => this.merkle_tree ~= val);
         }
 
         return this.merkle_tree[$ - 1];
