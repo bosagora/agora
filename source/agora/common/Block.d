@@ -175,11 +175,17 @@ public struct Block
     public void deserialize (scope DeserializeDg dg) nothrow @safe
     {
         deserializePart(this.header, dg);
+
         size_t size;
         deserializePart(size, dg);
         this.txs.length = size;
         foreach (ref tx; this.txs)
             deserializePart(tx, dg);
+
+        deserializePart(size, dg);
+        this.merkle_tree.length = size;
+        foreach (ref h; this.merkle_tree)
+            deserializePart(h, dg);
     }
 
     /***************************************************************************

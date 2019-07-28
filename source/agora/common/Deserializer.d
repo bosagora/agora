@@ -117,4 +117,24 @@ unittest
     // Compare the serialization data with the origin Ledger data.
     ubyte[] serializedData = serializeFull(block);
     assert(block == deserializeBlock(serializedData));
+
+    // Check that there is no trailing data
+    ubyte[] arrayData = serializeFull(block) ~ serializeFull(block);
+
+    void deserializeArrayEntry () nothrow @safe
+    {
+        scope DeserializeDg dg = (size) nothrow @safe
+        {
+            ubyte[] res = arrayData[0 .. size];
+            arrayData = arrayData[size .. $];
+            return res;
+        };
+
+        Block newblock;
+        newblock.deserialize(dg);
+        assert(newblock == block);
+    }
+
+    deserializeArrayEntry();
+    deserializeArrayEntry();
 }
