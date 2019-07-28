@@ -72,7 +72,7 @@ public struct BlockHeader
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    public void serialize (scope SerializeDg dg) const nothrow @safe
     {
         dg(this.prev_block[]);
         serializePart(this.height, dg);
@@ -150,7 +150,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) pure const nothrow @safe
+    public void serialize (scope SerializeDg dg) const nothrow @safe
     {
         serializePart(this.header, dg);
 
