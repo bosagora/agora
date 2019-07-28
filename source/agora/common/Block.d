@@ -175,10 +175,8 @@ public struct Block
         size_t size;
         deserializePart(size, dg);
         this.txs.length = size;
-        foreach (idx; 0 .. size)
-        {
-            deserializePart(this.txs[idx], dg);
-        }
+        foreach (ref tx; this.txs)
+            deserializePart(tx, dg);
     }
 
     /***************************************************************************
