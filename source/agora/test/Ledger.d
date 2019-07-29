@@ -25,10 +25,10 @@ import agora.consensus.Genesis;
 import agora.test.Base;
 
 /// Returns: the entire ledger from the provided node
-private Block[] getAllBlocks (TestAPI node)
+private const(Block)[] getAllBlocks (TestAPI node)
 {
     import std.range;
-    Block[] blocks;
+    const(Block)[] blocks;
 
     // note: may return less than asked for, hence the loop
     size_t starting_block = 0;

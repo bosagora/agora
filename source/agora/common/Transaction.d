@@ -419,7 +419,7 @@ public Amount getSumOutput (Transaction tx) nothrow pure @safe @nogc
 *******************************************************************************/
 
 public bool verify (Transaction tx,
-    scope Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
+    scope const(Output)* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     if (tx.inputs.length == 0)
         return false;

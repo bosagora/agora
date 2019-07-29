@@ -30,7 +30,7 @@ public class Ledger
     /// data storage for all the blocks,
     /// currently a single contiguous region to
     /// improve locality of reference
-    private Block[] ledger;
+    private const(Block)[] ledger;
 
     /// pointer to the latest block
     private const(Block)* last_block;
@@ -115,7 +115,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Block[] getBlocksFrom (ulong block_height, size_t max_blocks) @safe nothrow @nogc
+    public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
+        @safe nothrow @nogc
     {
         assert(max_blocks > 0);
 
@@ -136,7 +137,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void addNewBlock (Block block) @trusted nothrow
+    public void addNewBlock (const Block block) @trusted nothrow
     {
         // force nothrow, an exception will never be thrown here
         scope (failure) assert(0);
@@ -165,7 +166,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private bool isValidBlock (Block block)
+    private bool isValidBlock (const ref Block block)
     {
         const expected_height = this.last_block !is null
             ? (this.last_block.header.height + 1)
@@ -186,7 +187,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private Output* findOutput (Hash tx_hash, size_t index) @safe
+    private const(Output)* findOutput (Hash tx_hash, size_t index) @safe
     {
         foreach (ref block; this.ledger)
         {
@@ -222,7 +223,7 @@ public class Ledger
         if (block_height >= this.ledger.length)
             return null;
 
-        Block* block = &this.ledger[block_height];
+        const(Block)* block = &this.ledger[block_height];
 
         size_t index = block.findHashIndex(hash);
         if (index < block.txs.length)
@@ -288,7 +289,7 @@ unittest
     }
 
     genTransactions(2);
-    Block[] blocks = ledger.getBlocksFrom(0, 10);
+    const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
     assert(blocks[0] == getGenesisBlock());
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
