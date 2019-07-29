@@ -62,7 +62,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptTransaction (Transaction tx) @trusted
+    public bool acceptTransaction (Transaction tx) @safe
     {
         if (!tx.verify(&this.findOutput))
             return false;
@@ -80,11 +80,11 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void makeBlock () @trusted
+    private void makeBlock () @safe
     {
         auto block = makeNewBlock(*this.last_block, this.storage);
         this.storage.length = 0;
-        assumeSafeAppend(this.storage);
+        () @trusted { assumeSafeAppend(this.storage); }();
         this.addNewBlock(block);
     }
 
@@ -137,11 +137,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void addNewBlock (const Block block) @trusted nothrow
+    public void addNewBlock (const Block block) nothrow @safe
     {
-        // force nothrow, an exception will never be thrown here
-        scope (failure) assert(0);
-
         if (!this.isValidBlock(block))
         {
             logDebug("Rejected block. %s", block);
