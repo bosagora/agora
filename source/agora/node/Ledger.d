@@ -17,12 +17,17 @@ import agora.common.API;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
+import agora.common.Serializer;
 import agora.common.Transaction;
 import agora.consensus.Genesis;
 
 import vibe.core.log;
 
 import std.algorithm;
+import std.exception;
+import std.file;
+import std.format;
+import std.stdio;
 
 /// Ditto
 public class Ledger
@@ -228,6 +233,49 @@ public class Ledger
             return block.getMerklePath(index);
         else
             return null;
+    }
+
+    /***************************************************************************
+
+        Write a block to the ledger file on disk.
+
+        Params:
+            ledger_file = Instance of file for ledgerFile
+            index_file = Instance of file for indexFile
+            block = Type of struct to writeFile
+
+    ***************************************************************************/
+
+    public void writeBlockFile (File ledger_file, File index_file, ref const Block block) @safe
+    {
+        size_t block_size = 0;
+
+        scope SerializeDg dg = (scope const (ubyte[]) data) nothrow @safe
+        {
+            try
+            {
+                ledger_file.rawWrite(data);
+                block_size += data.length;
+            }
+            catch (Exception ex)
+            {
+                logError("writeBlockFile: %s", () @trusted { return ex.message;}());
+            }
+        };
+        serializePart(block, dg);
+
+        scope SerializeDg index_dg = (scope const (ubyte[]) data) nothrow @safe
+        {
+            try
+            {
+                index_file.rawWrite(data);
+            }
+            catch (Exception ex)
+            {
+                logError("writeBlockFile: %s", () @trusted { return ex.message;}());
+            }
+        };
+        serializePart(block_size, index_dg);
     }
 }
 
