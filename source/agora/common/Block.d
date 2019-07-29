@@ -244,10 +244,9 @@ public struct Block
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (size_t index) @safe
+    public Hash[] getMerklePath (size_t index) const @safe
     {
-        if (this.merkle_tree.length == 0)
-            this.buildMerkleTree();
+        assert(this.merkle_tree.length != 0, "Block hasn't been fully initialized");
 
         Hash[] merkle_path;
         size_t j = 0;
@@ -303,10 +302,9 @@ public struct Block
 
     ***************************************************************************/
 
-    public size_t findHashIndex (Hash hash) @safe
+    public size_t findHashIndex (Hash hash) const @safe
     {
-        if (this.merkle_tree.length == 0)
-            this.buildMerkleTree();
+        assert(this.merkle_tree.length != 0, "Block hasn't been fully initialized");
 
         foreach (idx; 0 .. min(this.txs.length, this.merkle_tree.length))
             if (hash == this.merkle_tree[idx])
