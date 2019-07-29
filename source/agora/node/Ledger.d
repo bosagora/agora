@@ -166,7 +166,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private bool isValidBlock (const ref Block block)
+    private bool isValidBlock (const ref Block block) pure nothrow @safe @nogc
     {
         const expected_height = this.last_block !is null
             ? (this.last_block.header.height + 1)
