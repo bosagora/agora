@@ -197,6 +197,7 @@ public class Ledger
                 {
                     if (index < tx.outputs.length)
                         return &tx.outputs[index];
+                    return null;
                 }
             }
         }
