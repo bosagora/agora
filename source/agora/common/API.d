@@ -151,7 +151,7 @@ public interface API
             GET /merkle_path
 
         Params:
-            block_height = the starting block height to begin retrieval from
+            block_height = Height of the block that contains the transaction hash
             hash         = transaction hash
 
         Returns:
