@@ -198,7 +198,7 @@ public class NetworkManager
     ***************************************************************************/
 
     private void getBlocksFrom (ulong block_height,
-        scope void delegate(Block[]) @safe onReceivedBlocks)
+        scope void delegate(const(Block)[]) @safe onReceivedBlocks)
     {
         auto node_pair = this.peers.byValue
             .map!(node => tuple(node.getBlockHeight(), node))

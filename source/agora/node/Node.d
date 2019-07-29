@@ -138,7 +138,8 @@ public class Node (Network) : API
     }
 
     /// GET: /blocks_from
-    public Block[] getBlocksFrom (ulong block_height, size_t max_blocks) @safe
+    public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
+        @safe
     {
         return this.ledger.getBlocksFrom(block_height,
             min(max_blocks, MaxBatchBlocksSent));
