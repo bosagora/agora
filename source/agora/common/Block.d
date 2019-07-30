@@ -106,7 +106,7 @@ unittest
     // above parts not @safe/@nogc yet
     () @safe @nogc nothrow
     {
-        Output[1] outputs = [ Output(100, pubkey) ];
+        Output[1] outputs = [ Output(Amount(100), pubkey) ];
         Transaction tx = { outputs: outputs[] };
         BlockHeader header = { merkle_root : tx.hashFull() };
 
@@ -373,7 +373,7 @@ unittest
     Hash last_hash = Hash.init;
     for (int idx = 0; idx < 8; idx++)
     {
-        tx = Transaction([Input(last_hash, 0)],[Output(100_000, key_pairs[idx+1].address)]);
+        tx = Transaction([Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
         tx.inputs[0].signature = key_pairs[idx].secret.sign(last_hash[]);
         txs ~= tx;
