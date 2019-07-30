@@ -33,3 +33,7 @@ docs/
 
 # Visual Studio Code
 .vscode
+
+# Agora uses this directory by default to store data
+# It is ignored for convenience and testing sake
+.cache/
