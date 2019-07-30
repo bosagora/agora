@@ -18,6 +18,7 @@
 
 module agora.common.Transaction;
 
+import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Deserializer;
@@ -27,22 +28,6 @@ import agora.consensus.Genesis;
 
 import std.algorithm;
 
-
-/*******************************************************************************
-
-    Currency amount type to use
-
-    This is simply an alias to `long` at the moment, and should be made smarter.
-    Currently this has two major drawbacks:
-    - It does not do any overflow / underflow checks (over the total amount)
-    - It can go negative
-    We should probably wrap this in a smarter type to do currency operations,
-    and move it to a shared location, as currency operations might be performed
-    independently of `Transaction`.
-
-*******************************************************************************/
-
-public alias Amount = long;
 
 /*******************************************************************************
 
@@ -432,7 +417,8 @@ public Amount getSumInput (Transaction tx,
     return tx.inputs
         .map!(a => findOutput(a.previous, a.index))
         .filter!(a => a !is null)
-        .map!(a => a.value).sum();
+        .map!(a => a.value)
+        .reduce!((a, b) => a.mustAdd(b));
 }
 
 /*******************************************************************************
@@ -441,15 +427,20 @@ public Amount getSumInput (Transaction tx,
 
     Params:
         tx = `Transaction`
+        acc = Accumulator value. Pass a default-initialized value to get this
+              transaction's sum of output.
 
     Return:
-        Sum of `Output` in the `Transaction`
+        `true` if the sum returned is correct. `false` if there was an overflow.
 
 *******************************************************************************/
 
-public Amount getSumOutput (Transaction tx) nothrow pure @safe @nogc
+public bool getSumOutput (Transaction tx, ref Amount acc) nothrow pure @safe @nogc
 {
-    return tx.outputs.map!(a => a.value).sum();
+    foreach (ref o; tx.outputs)
+        if (!acc.add(o.value))
+            return false;
+    return true;
 }
 
 /*******************************************************************************
@@ -476,7 +467,7 @@ public bool verify (Transaction tx,
 
     // disallow negative amounts
     foreach (output; tx.outputs)
-        if (output.value < 0)
+        if (!output.value.isValid())
             return false;
 
     Amount sum_unspent;
@@ -492,10 +483,12 @@ public bool verify (Transaction tx,
         if (!output.address.verify(input.signature, tx_hash[]))
             return false;
 
-        sum_unspent += output.value;
+        if (!sum_unspent.add(output.value))
+            return false;
     }
 
-    return tx.getSumOutput() <= sum_unspent;
+    Amount new_unspent;
+    return tx.getSumOutput(new_unspent) && sum_unspent.sub(new_unspent);
 }
 
 /// verify transaction data
@@ -574,7 +567,8 @@ unittest
     Transaction tx_2 =
     {
         inputs  : [Input(tx_1_hash, 0)],
-        outputs : [Output(Amount(-400_000), key_pairs[1].address)]  // oops
+        // oops
+        outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address)]
     };
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);

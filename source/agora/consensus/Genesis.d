@@ -13,6 +13,7 @@
 
 module agora.consensus.Genesis;
 
+import agora.common.Amount;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
