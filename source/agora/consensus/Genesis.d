@@ -60,8 +60,9 @@ public Transaction getGenesisTx ()
     import std.range;
     import std.format;
 
-    Output[] outputs = iota(Block.TxsInBlock).map!(_ =>
-        Output(40_000_000 / Block.TxsInBlock, getGenesisKeyPair().address)).array;
+    Output[] outputs = iota(Block.TxsInBlock).map!(
+        _ => Output(Amount(40_000_000 / Block.TxsInBlock), getGenesisKeyPair().address)
+        ).array;
 
     return Transaction(
         [Input(Hash.init, 0)],

@@ -332,7 +332,7 @@ unittest
                 Input(gen_tx_hash, 0)
             ],
             [
-                Output(1_000_000, key_pairs[idx].address)
+                Output(Amount(1_000_000), key_pairs[idx].address)
             ]
         );
         tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);

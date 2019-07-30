@@ -352,7 +352,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     Transaction[] transactions;
 
     // always use the same amount, for simplicity
-    const AmountPerTx = 40_000_000 / Block.TxsInBlock;
+    const Amount AmountPerTx = 40_000_000 / Block.TxsInBlock;
 
     foreach (idx; 0 .. TxCount)
     {
@@ -479,7 +479,7 @@ public bool verify (Transaction tx,
         if (output.value < 0)
             return false;
 
-    long sum_unspent;
+    Amount sum_unspent;
 
     const tx_hash = hashFull(tx);
     foreach (input; tx.inputs)
@@ -507,7 +507,7 @@ unittest
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     // Creates the first transaction.
-    Transaction previousTx = newCoinbaseTX(key_pairs[0].address, 100);
+    Transaction previousTx = newCoinbaseTX(key_pairs[0].address, Amount(100));
 
     // Save
     Hash previousHash = hashFull(previousTx);
@@ -519,7 +519,7 @@ unittest
             Input(previousHash, 0)
         ],
         [
-            Output(50, key_pairs[1].address)
+            Output(Amount(50), key_pairs[1].address)
         ]
     );
 
@@ -538,13 +538,13 @@ unittest
     // It is validated. (the sum of `Output` < the sum of `Input`)
     assert(secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
 
-    secondTx.outputs ~= Output(50, key_pairs[2].address);
+    secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
     assert(secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
 
-    secondTx.outputs ~= Output(50, key_pairs[3].address);
+    secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
@@ -555,7 +555,7 @@ unittest
 unittest
 {
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
-    Transaction tx_1 = newCoinbaseTX(key_pairs[0].address, 1000);
+    Transaction tx_1 = newCoinbaseTX(key_pairs[0].address, Amount(1000));
     Hash tx_1_hash = hashFull(tx_1);
 
     Transaction[Hash] storage;
@@ -574,7 +574,7 @@ unittest
     Transaction tx_2 =
     {
         inputs  : [Input(tx_1_hash, 0)],
-        outputs : [Output(-400_000, key_pairs[1].address)]  // oops
+        outputs : [Output(Amount(-400_000), key_pairs[1].address)]  // oops
     };
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
@@ -606,7 +606,7 @@ unittest
     };
 
     // Create the first transaction.
-    Transaction genesisTx = newCoinbaseTX(key_pairs[0].address, 100_000);
+    Transaction genesisTx = newCoinbaseTX(key_pairs[0].address, Amount(100_000));
     Hash genesisHash = hashFull(genesisTx);
     storage[genesisHash] = genesisTx;
     genesisTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(genesisTx)[]);
@@ -617,7 +617,7 @@ unittest
             Input(genesisHash, 0)
         ],
         [
-            Output(1_000, key_pairs[1].address)
+            Output(Amount(1_000), key_pairs[1].address)
         ]
     );
 
@@ -633,7 +633,7 @@ unittest
             Input(tx1Hash, 0)
         ],
         [
-            Output(1_000, key_pairs[1].address)
+            Output(Amount(1_000), key_pairs[1].address)
         ]
     );
 
