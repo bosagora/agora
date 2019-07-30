@@ -15,6 +15,7 @@
 
 module agora.common.Block;
 
+import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Deserializer;
