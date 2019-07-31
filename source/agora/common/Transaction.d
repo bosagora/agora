@@ -400,29 +400,6 @@ unittest
 
 /*******************************************************************************
 
-    Get sum of `Input`
-
-    Params:
-        tx = `Transaction`
-        findOutput = delegate for finding `Output`
-
-    Return:
-        Sum of `Input` in the `Transaction`
-
-*******************************************************************************/
-
-public Amount getSumInput (Transaction tx,
-    scope Output* delegate (Hash hash, size_t index) @safe findOutput) @safe
-{
-    return tx.inputs
-        .map!(a => findOutput(a.previous, a.index))
-        .filter!(a => a !is null)
-        .map!(a => a.value)
-        .reduce!((a, b) => a.mustAdd(b));
-}
-
-/*******************************************************************************
-
     Get sum of `Output`
 
     Params:
