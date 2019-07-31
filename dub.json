@@ -35,7 +35,7 @@
         "source/scpp/build/numeric.o",
         "source/scpp/build/uint128_t.o"
     ],
-    "lflags": [ "-lsodium", "-lstdc++" ],
+    "lflags": [ "-lsodium", "-lstdc++", "-lsqlite3" ],
 
     "mainSourceFile": "source/agora/node/main.d",
 
@@ -52,6 +52,7 @@
     "dependencies": {
         "base32":           { "path": "submodules/base32/", "version": "*" },
         "bitblob":          { "path": "submodules/bitblob/", "version": "*" },
+        "d2sqlite3":        { "path": "submodules/d2sqlite3/", "version": "*" },
         "dyaml":            { "path": "submodules/dyaml/", "version": "*" },
         "libsodiumd":       { "path": "submodules/libsodiumd/", "version": "*" },
         "localrest":        { "path": "submodules/localrest/", "version": "*" },

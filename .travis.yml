@@ -38,13 +38,15 @@ addons:
     packages:
       - libsodium-dev
       - g++-9
+      - libsqlite3-dev
 
 env:
-  - PATH=$HOME/bin/:$PATH
+  - PATH=$HOME/bin/:$PATH; export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
 
 # No way to install the apt package, so...
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ];   then brew install libsodium; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then brew install sqlite3; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then mkdir -p $HOME/bin/; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which gcc-9` $HOME/bin/gcc; fi # /usr/bin/gcc-9
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which g++-9` $HOME/bin/g++; fi # /usr/bin/g++-9
