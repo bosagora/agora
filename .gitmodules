@@ -43,3 +43,6 @@
 [submodule "vibe.d"]
 	path = submodules/vibe.d
 	url = https://github.com/bpfkorea/vibe.d.git
+[submodule "d2sqlite3"]
+	path = submodules/d2sqlite3
+	url = https://github.com/biozic/d2sqlite3.git
