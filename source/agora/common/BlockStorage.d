@@ -28,6 +28,10 @@ import std.mmfile;
 import std.path;
 
 
+const MFILE_HEAD_SIZE = size_t.sizeof;
+
+const MFILE_RESERVE_SIZE = 128 * 1024;
+
 /// Ditto
 public class BlockStorage
 {
@@ -41,10 +45,15 @@ public class BlockStorage
     /// We will change to index file in the next step.
     private size_t[] block_positions;
 
+    /// The size of data. Exclude the size of the header and the reserved size
+    private size_t data_size;
+
     /// Ctor
     public this (string path)
     {
         this.path = path;
+
+        this.data_size = 0;
     }
 
     /***************************************************************************
@@ -58,7 +67,37 @@ public class BlockStorage
 
     private string getFileName ()
     {
-        return buildPath(this.path, "block.dat");
+        return buildPath(this.path, "block_v2.dat");
+    }
+
+    /***************************************************************************
+
+        Write data length to file header
+
+        Params:
+            length = The size of data
+
+    ***************************************************************************/
+
+    private void writeDataLength (size_t length)
+    {
+        foreach (idx, e; (cast(const ubyte*)&length)[0 .. size_t.sizeof])
+            this.file[idx] = e;
+    }
+
+    /***************************************************************************
+
+        Read data length to file header
+
+        Returns:
+            The size of data in file header
+
+    ***************************************************************************/
+
+    private size_t readDataLength ()
+    {
+        ubyte[] values = cast(ubyte[])this.file[0 .. MFILE_HEAD_SIZE];
+        return *cast(size_t*)&(values[0]);
     }
 
     /***************************************************************************
@@ -74,19 +113,64 @@ public class BlockStorage
 
     private void map (size_t resize = 0)
     {
+        // It's already mapped, and if it doesn't change its size
         if ((this.file !is null) && (resize == 0))
             return;
+
+        // It's already mapped, and if can use reserved memory
+        if ((this.file !is null) && (this.data_size < resize) &&
+            (MFILE_HEAD_SIZE + resize < this.file.length))
+        {
+            this.writeDataLength(resize);
+            this.data_size = resize;
+            return;
+        }
 
         if (this.file !is null)
             this.unMap();
 
-        this.file =
-            new MmFile(
-                this.getFileName(),
-                MmFile.Mode.readWrite,
-                resize,
-                null
-            );
+        const string name = this.getFileName();
+
+        if (resize != 0)
+        {
+            this.file =
+                new MmFile(
+                    name,
+                    MmFile.Mode.readWrite,
+                    resize + MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE,
+                    null
+                );
+            this.writeDataLength(resize);
+            this.data_size = resize;
+        }
+        else
+        {
+            if (name.exists())
+            {
+                this.file =
+                    new MmFile(
+                        name,
+                        MmFile.Mode.readWrite,
+                        0,
+                        null
+                    );
+                this.data_size = this.readDataLength();
+            }
+            else
+            {
+                this.file =
+                    new MmFile(
+                        name,
+                        MmFile.Mode.readWrite,
+                        max(MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE, resize),
+                        null
+                    );
+                this.writeDataLength(0);
+                this.data_size = 0;
+            }
+
+            this.data_size = this.readDataLength();
+        }
     }
 
     /***************************************************************************
@@ -131,6 +215,7 @@ public class BlockStorage
         // first in this file
         if (bidx == 0)
         {
+            this.map();
             pos = 0;
             // resize to serialized_block.length
             this.map(serialized_block.length);
@@ -138,9 +223,9 @@ public class BlockStorage
         else
         {
             this.map();
-            pos = file.length;
+            pos = this.data_size;
             // increase size by serialized_block.length
-            this.map(file.length + serialized_block.length);
+            this.map(this.data_size + serialized_block.length);
         }
 
         // add information to the look up table.
@@ -148,7 +233,7 @@ public class BlockStorage
 
         // write to memory
         foreach (idx, ref e; serialized_block)
-            this.file[pos + idx] = e;
+            this.file[MFILE_HEAD_SIZE + pos + idx] = e;
 
         return true;
     }
@@ -159,6 +244,7 @@ public class BlockStorage
 
         Params:
             block = `Block` to read
+            height = height of `Block`
 
         Returns:
             Returns true if success, otherwise returns false.
@@ -173,20 +259,38 @@ public class BlockStorage
         const size_t next_height = height + 1;
         this.map();
 
-        const size_t from = this.block_positions[height];
-        size_t to;
+        const size_t x0 = this.block_positions[height];
+        size_t x1;
 
         if (next_height >= this.block_positions.length)
-            to = file.length;
+            x1 = this.data_size;
         else
-            to = this.block_positions[next_height];
+            x1 = this.block_positions[next_height];
 
-        assert(from < file.length);
-        assert(from < to);
+        assert(x0 < this.data_size);
+        assert(x0 < x1);
 
-        block = deserialize!Block(cast(ubyte[])this.file[from .. to]);
+        const size_t x2 = x0 + MFILE_HEAD_SIZE;
+        const size_t x3 = x1 + MFILE_HEAD_SIZE;
+        block = deserialize!Block(cast(ubyte[])this.file[x2 .. x3]);
 
         return true;
+    }
+
+    /***************************************************************************
+
+        Remove data file
+
+    ***************************************************************************/
+
+    public void remove ()
+    {
+        if (this.file is null)
+            return;
+
+        auto name = this.getFileName();
+        if (name.exists)
+            name.remove();
     }
 }
 
@@ -207,6 +311,7 @@ version(none) unittest
         mkdir(path);
 
     BlockStorage storage = new BlockStorage(path);
+    storage.remove();
 
     KeyPair[] key_pairs = [
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
