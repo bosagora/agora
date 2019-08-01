@@ -1,13 +1,20 @@
 language: d
 
 d:
-  - dmd-2.086.1 # Pinned due to https://issues.dlang.org/show_bug.cgi?id=20022
+  - dmd-2.087.1 # 2.087.0 has regressions
+  - dmd-2.086.1
   - ldc-1.16.0  # Older version don't work
   - dmd-2.085.1
+  - dmd-beta    # Last so that `fast_finish` is useful
 
 os:
   - linux
 #  - osx
+
+matrix:
+  allow_failures:
+    - d: dmd-beta
+  fast_finish: true
 
 # `brew install` is the slowest thing ever on OSX
 # It takes at least 6 minutes to run
