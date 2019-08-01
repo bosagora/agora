@@ -72,6 +72,8 @@ private int main (string[] args)
         auto router = new URLRouter();
 
         auto node = new Node!NetworkManager(config);
+        scope(exit) node.shutdown();
+
         router.registerRestInterface(node);
         runTask( { node.start(); });
 

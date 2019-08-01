@@ -156,6 +156,17 @@ public class TestNetworkManager : NetworkManager
 
     /***************************************************************************
 
+        Shut down each of the nodes
+
+    ***************************************************************************/
+
+    public void shutdown ()
+    {
+        this.apis.each!(a => a.shutdown());
+    }
+
+    /***************************************************************************
+
         Keep polling and waiting for nodes to all reach discovery,
         up to 10 attempts and a sleep time between each attempt;
 
@@ -213,11 +224,14 @@ public class TestNetworkManager : NetworkManager
     }
 }
 
-/// Temporary hack to work around the inability to do 'start' from main
+/// Used to call start/shutdown outside of main, and for dependency injection
 public interface TestAPI : API
 {
     ///
     public abstract void start();
+
+    ///
+    public abstract void shutdown ();
 
     ///
     public abstract void metaAddPeer(string peer);
@@ -236,6 +250,12 @@ public final class TestNode (Net) : Node!Net, TestAPI
     public override void start ()
     {
         super.start();
+    }
+
+    ///
+    public override void shutdown ()
+    {
+        super.shutdown();
     }
 
     /// Used by the node
