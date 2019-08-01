@@ -13,14 +13,14 @@
 
 module scpd.types.Stellar_SCP;
 
-import core.stdc.config;
-import core.stdc.inttypes;
-
 import vibe.data.json;
 
 import scpd.Cpp;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
+
+import core.stdc.config;
+import core.stdc.inttypes;
 
 extern(C++, `stellar`):
 

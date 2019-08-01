@@ -26,11 +26,11 @@ import agora.test.Base;
 ///
 unittest
 {
-    import core.thread;
     import std.algorithm;
     import std.conv;
     import std.format;
     import std.range;
+    import core.thread;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);

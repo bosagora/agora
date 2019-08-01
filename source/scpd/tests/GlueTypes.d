@@ -13,13 +13,14 @@
 
 module scpd.tests.GlueTypes;
 
-import core.stdc.stdint;
-import std.meta;
-
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.Utils;
 import scpd.types.XDRBase;
+
+import std.meta;
+
+import core.stdc.stdint;
 
 // todo: replace with __allMembers tricks in the future
 alias TypesWithLayout = AliasSeq!

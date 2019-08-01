@@ -26,10 +26,9 @@ import agora.test.Base;
 /// test retrying requests after failure
 unittest
 {
-    import vibe.core.log;
-    import core.thread;
     import std.algorithm;
     import std.range;
+    import core.thread;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);

@@ -25,12 +25,12 @@ import agora.common.Transaction;
 
 import vibe.core.log;
 
-import core.time;
-
 import std.algorithm;
 import std.array;
 import std.format;
 import std.random;
+
+import core.time;
 
 /// Used for communicating with a remote node
 class NetworkClient
