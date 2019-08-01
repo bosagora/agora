@@ -307,9 +307,26 @@ public struct Block
     {
         assert(this.merkle_tree.length != 0, "Block hasn't been fully initialized");
 
-        foreach (idx; 0 .. min(this.txs.length, this.merkle_tree.length))
-            if (hash == this.merkle_tree[idx])
-                return idx;
+        const size_t size = min(this.txs.length, this.merkle_tree.length);
+        if (size == 0) return this.txs.length;
+        long left = 0;
+        long right = size - 1;
+        long mid;
+        while (left <= right)
+        {
+            mid = (left + right) / 2;
+
+            auto tgt_hash = this.merkle_tree[mid];
+            if (tgt_hash == hash)
+                return mid;
+            else
+            {
+                if (hash < tgt_hash)
+                    right = mid - 1;
+                else
+                    left = mid + 1;
+            }
+        }
         return this.txs.length;
     }
 }
