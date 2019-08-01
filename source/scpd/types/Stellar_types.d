@@ -14,12 +14,12 @@
 
 module scpd.types.Stellar_types;
 
-import core.stdc.config;
-import core.stdc.inttypes;
-
 import scpd.types.XDRBase;
 
 import geod24.bitblob;
+
+import core.stdc.config;
+import core.stdc.inttypes;
 
 extern(C++, `stellar`):
 

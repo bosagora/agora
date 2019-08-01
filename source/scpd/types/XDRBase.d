@@ -16,16 +16,16 @@
 
 module scpd.types.XDRBase;
 
-import core.stdc.config;
-import core.stdc.inttypes;
-import core.stdcpp.array;
-
-import std.meta;
+import scpd.Cpp;
+import scpd.Util;
 
 import vibe.data.json;
 
-import scpd.Cpp;
-import scpd.Util;
+import std.meta;
+
+import core.stdc.config;
+import core.stdc.inttypes;
+import core.stdcpp.array;
 
 import geod24.bitblob;
 

@@ -13,8 +13,6 @@
 
 module scpd.scp.SCP;
 
-import core.stdc.inttypes;
-
 import scpd.scp.LocalNode;
 import scpd.scp.SCPDriver;
 import scpd.scp.Slot;
@@ -23,6 +21,8 @@ import scpd.Cpp;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
+
+import core.stdc.inttypes;
 
 extern(C++, `stellar`):
 

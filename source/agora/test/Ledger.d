@@ -68,11 +68,11 @@ private bool containSameBlocks (API)(API[] nodes, size_t height)
 ///
 unittest
 {
-    import core.thread;
     import std.algorithm;
     import std.conv;
     import std.format;
     import std.range;
+    import core.thread;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
@@ -129,11 +129,11 @@ unittest
 /// test catch-up phase during booting
 unittest
 {
-    import core.thread;
     import std.algorithm;
     import std.conv;
     import std.format;
     import std.range;
+    import core.thread;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
@@ -184,9 +184,9 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    import core.thread;
     import std.algorithm;
     import std.range;
+    import core.thread;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);

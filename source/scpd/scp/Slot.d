@@ -13,9 +13,6 @@
 
 module scpd.scp.Slot;
 
-import core.stdc.inttypes;
-import core.stdc.time;
-
 import scpd.Cpp;
 import scpd.scp.BallotProtocol;
 import scpd.scp.NominationProtocol;
@@ -23,6 +20,9 @@ import scpd.scp.SCP;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
+
+import core.stdc.inttypes;
+import core.stdc.time;
 
 extern(C++, `stellar`):
 

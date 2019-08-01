@@ -37,12 +37,12 @@ import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.node.Node;
 
-import core.time;
-
 import std.array;
 import std.algorithm.iteration;
 import std.exception;
 import std.format;
+
+import core.time;
 
 /*******************************************************************************
 
@@ -166,8 +166,8 @@ public class TestNetworkManager : NetworkManager
 
     public PublicKey[] getDiscoveredNodes ()
     {
-        import core.thread;
         import std.stdio;
+        import core.thread;
 
         const attempts = 10;
 

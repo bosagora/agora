@@ -14,11 +14,11 @@
 
 module scpd.scp.SCPDriver;
 
-import core.stdc.inttypes;
-
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
+
+import core.stdc.inttypes;
 
 extern(C++, `stellar`):
 
