@@ -252,7 +252,8 @@ unittest
                 assert(ledger.acceptTransaction(tx));
             });
 
-        last_txs = txes;
+        // keep track of last tx's to chain them to
+        last_txs = txes[$ - Block.TxsInBlock .. $];
     }
 
     genBlockTransactions(2);
