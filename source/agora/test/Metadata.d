@@ -67,5 +67,6 @@ unittest
     const NodeCount = 4;
     auto network = makeTestNetwork!MetaNetworkManager(NetworkTopology.Simple, NodeCount, false);
     network.start();
+    scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
 }

@@ -78,6 +78,7 @@ unittest
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
+    scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
@@ -169,6 +170,7 @@ unittest
 
     // now start the network, let other nodes catch-up the latest blocks
     network.start();
+    scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto attempts = 80;  // wait up to 80*100 msecs (8 seconds)
@@ -192,6 +194,7 @@ unittest
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
+    scope(exit) network.shutdown();
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
@@ -223,6 +226,7 @@ unittest
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
     network.start();
+    scope(exit) network.shutdown();
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];

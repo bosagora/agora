@@ -91,7 +91,20 @@ public class Node (Network) : API
         this.network.discover();
 
         this.network.retrieveLatestBlocks(this.ledger);
+    }
 
+    /***************************************************************************
+
+        Called on node shutdown.
+
+        Note that this is called explicitly before any destructors,
+        to allow clean shutdown of e.g. databases, which may require
+        GC allocations during the shutdown phase.
+
+    ***************************************************************************/
+
+    public void shutdown ()
+    {
         logInfo("Dumping metadata..");
         this.network.dumpMetadata();
     }
