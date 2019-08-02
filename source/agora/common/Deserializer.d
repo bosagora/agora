@@ -107,6 +107,7 @@ unittest
 {
     import agora.common.Hash;
     import agora.common.Serializer;
+    import agora.common.Transaction;
     import agora.consensus.Genesis;
 
     const block = getGenesisBlock();
@@ -132,4 +133,9 @@ unittest
 
     deserializeArrayEntry();
     deserializeArrayEntry();
+
+    // transaction test
+    auto tx = getGenesisTx();
+    auto tx_bytes = serializeFull(tx);
+    assert(deserialize!Transaction(tx_bytes) == tx);
 }
