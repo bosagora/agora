@@ -201,7 +201,7 @@ public class NetworkManager
     ***************************************************************************/
 
     private void getBlocksFrom (ulong block_height,
-        scope void delegate(const(Block)[]) @safe onReceivedBlocks)
+        scope void delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
         // return size_t.max if getBlockHeight() fails
         size_t getHeight (NetworkClient node)
@@ -212,21 +212,21 @@ public class NetworkManager
                 return size_t.max;
         }
 
-        auto node_pair = this.peers.byValue
-            .map!(node => tuple(getHeight(node), node))
-            .filter!(pair => pair[0] != ulong.max)  // request failed
-            .reduce!((a, b) => a[0] > b[0] ? a : b);
-
-        const highest_block = node_pair[0];
-        if (highest_block < block_height)
-            return;  // we're up to date
-
-        logInfo("Retrieving latest blocks..");
-        auto node = node_pair[1];
-        const MaxBlocks = 1024;
-
         try
         {
+            auto node_pair = this.peers.byValue
+                .map!(node => tuple(getHeight(node), node))
+                .filter!(pair => pair[0] != ulong.max)  // request failed
+                .reduce!((a, b) => a[0] > b[0] ? a : b);
+
+            const highest_block = node_pair[0];
+            if (highest_block < block_height)
+                return;  // we're up to date
+
+            logInfo("Retrieving latest blocks..");
+            auto node = node_pair[1];
+            const MaxBlocks = 1024;
+
             do
             {
                 // todo: if any block fails verification, we have to try another node
