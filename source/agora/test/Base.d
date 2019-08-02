@@ -44,6 +44,13 @@ import std.format;
 
 import core.time;
 
+/// Required initialization
+shared static this ()
+{
+    import agora.common.TransactionPool;
+    TransactionPool.initialize();
+}
+
 /*******************************************************************************
 
     Task manager backed by LocalRest's event loop.
