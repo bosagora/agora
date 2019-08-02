@@ -192,6 +192,9 @@ public class NetworkManager
         Retrieve blocks starting from block_height up to the highest block
         that's available from the connected nodes.
 
+        As requests may fail, this function should be called with a timer
+        to ensure consistency of the node's ledger with other nodes.
+
         Params:
             block_height = the starting block height to begin retrieval from
 
@@ -200,8 +203,17 @@ public class NetworkManager
     private void getBlocksFrom (ulong block_height,
         scope void delegate(const(Block)[]) @safe onReceivedBlocks)
     {
+        // return size_t.max if getBlockHeight() fails
+        size_t getHeight (NetworkClient node)
+        {
+            try
+                return node.getBlockHeight();
+            catch (Exception ex)
+                return size_t.max;
+        }
+
         auto node_pair = this.peers.byValue
-            .map!(node => tuple(node.getBlockHeight(), node))
+            .map!(node => tuple(getHeight(node), node))
             .filter!(pair => pair[0] != ulong.max)  // request failed
             .reduce!((a, b) => a[0] > b[0] ? a : b);
 
