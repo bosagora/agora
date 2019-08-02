@@ -104,7 +104,7 @@ public void deserializePart (ref long record, scope DeserializeDg dg)
     record = *cast(long*)(dg(record.sizeof).ptr);
 }
 
-///
+/// test various serialization / deserialization of types
 unittest
 {
     import agora.common.Hash;
@@ -113,21 +113,18 @@ unittest
 
     const block = getGenesisBlock();
 
-    // Block Testing serialization & deserialization
-    // Compare the serialization data with the origin Ledger data.
-    ubyte[] serializedData = serializeFull(block);
-    assert(block == deserializeBlock(serializedData));
+    ubyte[] block_bytes = serializeFull(block);
+    assert(deserializeBlock(block_bytes) == block);
 
     // Check that there is no trailing data
-    ubyte[] arrayData = serializeFull(block) ~ serializeFull(block);
+    ubyte[] blocks_data = serializeFull(block) ~ serializeFull(block);
 
     void deserializeArrayEntry () nothrow @safe
     {
         scope DeserializeDg dg = (size) nothrow @safe
         {
-            ubyte[] res = arrayData[0 .. size];
-            arrayData = arrayData[size .. $];
-            return res;
+            scope(exit) blocks_data = blocks_data[size .. $];
+            return blocks_data[0 .. size];
         };
 
         Block newblock;
