@@ -22,23 +22,21 @@ public alias DeserializeDg = ubyte[] delegate(size_t size) nothrow @safe;
 
 /*******************************************************************************
 
-    Deserialize a struct and return it as a Block.
+    Deserialize a struct and return it.
 
     Params:
         T = Type of struct to deserialize
         data = Binary serialized representation of `T` to be deserialized
-        record = Instance of `T` to deserialize
-        dg  = Deserialization delegate, when this struct is a nested struct
 
     Returns:
-        The deserialized `Block`
+        The deserialized struct
 
 *******************************************************************************/
 
-public Block deserializeBlock (scope ubyte[] data)
-    nothrow @safe
+public T deserialize (T) (scope ubyte[] data) nothrow @safe
+    if (is(T == struct) && is(typeof(T.init.deserialize(DeserializeDg.init))))
 {
-    Block block;
+    T value;
 
     scope DeserializeDg dg = (size) nothrow @safe
     {
@@ -47,8 +45,8 @@ public Block deserializeBlock (scope ubyte[] data)
         return res;
     };
 
-    block.deserialize(dg);
-    return block;
+    value.deserialize(dg);
+    return value;
 }
 
 /// Ditto
@@ -114,7 +112,7 @@ unittest
     const block = getGenesisBlock();
 
     ubyte[] block_bytes = serializeFull(block);
-    assert(deserializeBlock(block_bytes) == block);
+    assert(deserialize!Block(block_bytes) == block);
 
     // Check that there is no trailing data
     ubyte[] blocks_data = serializeFull(block) ~ serializeFull(block);
