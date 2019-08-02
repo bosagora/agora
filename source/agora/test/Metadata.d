@@ -64,6 +64,8 @@ class MetaNetworkManager : TestNetworkManager
 ///
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     const NodeCount = 4;
     auto network = makeTestNetwork!MetaNetworkManager(NetworkTopology.Simple, NodeCount, false);
     network.start();

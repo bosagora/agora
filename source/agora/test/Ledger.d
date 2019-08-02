@@ -69,6 +69,8 @@ private bool containSameBlocks (API)(API[] nodes, size_t height)
 ///
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import core.thread;
     import std.algorithm;
     import std.conv;
@@ -130,6 +132,8 @@ unittest
 /// test catch-up phase during booting
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import core.thread;
     import std.algorithm;
     import std.conv;
@@ -185,6 +189,8 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import core.thread;
     import std.algorithm;
     import std.range;
@@ -218,6 +224,8 @@ unittest
 /// Merkle Proof
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import std.algorithm.sorting;
 
     const NodeCount = 4;

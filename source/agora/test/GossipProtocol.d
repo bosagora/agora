@@ -26,6 +26,8 @@ import agora.test.Base;
 ///
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import core.thread;
     import std.algorithm;
     import std.conv;

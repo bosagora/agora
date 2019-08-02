@@ -235,6 +235,8 @@ public class Ledger
 ///
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import agora.common.crypto.Key;
 
     scope ledger = new Ledger;
@@ -309,6 +311,8 @@ unittest
 /// Merkle Proof
 unittest
 {
+    import std.stdio;
+    writefln("Running unittest %s:%s", __FILE__, __LINE__);
     import agora.common.crypto.Key;
 
     KeyPair[] key_pairs = [
