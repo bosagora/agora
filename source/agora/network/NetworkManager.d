@@ -225,17 +225,25 @@ public class NetworkManager
         auto node = node_pair[1];
         const MaxBlocks = 1024;
 
-        do
+        try
         {
-            // todo: if any block fails verification, we have to try another node
-            auto blocks = node.getBlocksFrom(block_height, MaxBlocks);
-            logInfo("Received blocks [%s..%s] out of %s..", block_height,
-                block_height + blocks.length, highest_block + 1);  // genesis block
+            do
+            {
+                // todo: if any block fails verification, we have to try another node
+                auto blocks = node.getBlocksFrom(block_height, MaxBlocks);
+                logInfo("Received blocks [%s..%s] out of %s..", block_height,
+                    block_height + blocks.length, highest_block + 1);  // genesis block
 
-            onReceivedBlocks(blocks);
-            block_height += blocks.length;
+                onReceivedBlocks(blocks);
+                block_height += blocks.length;
+            }
+            while (block_height < highest_block);
         }
-        while (block_height < highest_block);
+        catch (Exception ex)
+        {
+            logError("Couldn't retrieve blocks: %s. Will try again later..",
+                ex.message);
+        }
     }
 
     /// Dump the metadata
