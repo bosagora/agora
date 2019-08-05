@@ -78,7 +78,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private string getFileName (size_t index)
+    private string getFileName (size_t index) @safe
     {
         return buildPath(this.path, format("B%012d.dat", index));
     }
@@ -96,7 +96,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public void map (size_t findex)
+    public void map (size_t findex) @trusted
     {
         // It's already mapped,
         if ((this.file !is null) && (findex == this.file_index))
@@ -123,7 +123,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public void unMap ()
+    public void unMap () @trusted
     {
         if (this.file is null)
             return;
@@ -146,7 +146,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public bool saveBlock (const ref Block block)
+    public bool saveBlock (const ref Block block) @safe
     {
         if (block.header.height != this.block_positions.length)
             return false;
@@ -181,9 +181,7 @@ public class BlockStorage
         this.writeSizeT(MFILE_HEAD_SIZE + pos, serialized_block.length);
 
         // write to memory
-        size_t b = MFILE_HEAD_SIZE + pos + size_t.sizeof;
-        foreach (idx, ref e; serialized_block)
-            this.file[b + idx] = e;
+        this.write(MFILE_HEAD_SIZE + pos + size_t.sizeof, serialized_block);
 
         return true;
     }
@@ -201,7 +199,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, size_t height)
+    public bool readBlock (ref Block block, size_t height) @safe
     {
         if (height >= this.block_positions.length)
             return false;
@@ -217,7 +215,7 @@ public class BlockStorage
         const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
         const size_t x3 = x2 + block_size;
 
-        block = deserialize!Block(cast(ubyte[])this.file[x2 .. x3]);
+        block = deserialize!Block(this.read(x2, x3));
 
         return true;
     }
@@ -231,7 +229,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private void writeDataLength (size_t length)
+    private void writeDataLength (size_t length) @safe
     {
         this.writeSizeT(0, length);
     }
@@ -245,7 +243,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private size_t readDataLength ()
+    private size_t readDataLength () @safe
     {
         return this.readSizeT(0);
     }
@@ -260,7 +258,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private void writeSizeT (size_t pos, size_t value)
+    private void writeSizeT (size_t pos, size_t value) @trusted
     {
         foreach (idx, e; (cast(const ubyte*)&value)[0 .. size_t.sizeof])
             this.file[pos+idx] = e;
@@ -278,10 +276,66 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private size_t readSizeT (size_t pos)
+    private size_t readSizeT (size_t pos) @trusted
     {
         ubyte[] values = cast(ubyte[])this.file[pos .. pos + size_t.sizeof];
         return *cast(size_t*)&(values[0]);
+    }
+    /***************************************************************************
+
+        Read data from the file.
+
+        Params:
+            from = Start position of range to read
+            to   = End position of range to read
+
+        Returns:
+            Returns array of unsigned bytes read
+
+    ***************************************************************************/
+
+    private ubyte[] read (size_t from, size_t to) @trusted
+    {
+        assert(this.file !is null);
+        assert(this.getFileLength >= to);
+
+        return cast(ubyte[])this.file[from .. to];
+    }
+
+    /***************************************************************************
+
+        Write data to the file.
+
+        Params:
+            pos  = Start position of range to write
+            data = Array of unsigned bytes to be written to file
+
+    ***************************************************************************/
+
+    private void write (size_t pos, const ubyte[] data) @trusted
+    {
+        assert(this.file !is null);
+        assert(this.getFileLength >= pos+data.length);
+
+        foreach (idx, ref e; data)
+            this.file[pos + idx] = e;
+    }
+
+    /***************************************************************************
+
+        Get memory mapped file size
+
+        Returns:
+            Returns size of file if is mapped, or 0 if is not mapped
+
+    ***************************************************************************/
+
+    private size_t getFileLength () @trusted
+    {
+        if (this.file is null)
+            return 0;
+
+        return this.file.length;
     }
 }
 
