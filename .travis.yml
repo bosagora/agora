@@ -7,7 +7,7 @@ d:
 
 os:
   - linux
-  - osx
+#  - osx
 
 # `brew install` is the slowest thing ever on OSX
 # It takes at least 6 minutes to run
