@@ -9,7 +9,7 @@
 	url = https://github.com/rejectedsoftware/diet-ng.git
 [submodule "dyaml"]
 	path = submodules/dyaml
-	url = https://github.com/dlang-community/D-YAML.git
+	url = https://github.com/bpfkorea/D-YAML.git
 [submodule "eventcore"]
 	path = submodules/eventcore
 	url = https://github.com/vibe-d/eventcore.git
