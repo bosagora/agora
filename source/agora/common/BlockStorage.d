@@ -2,8 +2,8 @@
 
     Defines the memory mapped file of a block.
 
-    The number of files is one.
-    We will expand to use multiple files in the next step.
+    The file is divided into multiple parts.
+    The number of blocks in a file is fixed.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -28,9 +28,15 @@ import std.mmfile;
 import std.path;
 
 
+/// The size of header
 const MFILE_HEAD_SIZE = size_t.sizeof;
 
-const MFILE_RESERVE_SIZE = 128 * 1024;
+/// The maximum number of block in one file
+const MFILE_MAX_BLOCK = 100;
+
+/// The map file size
+const MFILE_MAP_SIZE = 640 * 1024;
+
 
 /// Ditto
 public class BlockStorage
@@ -40,6 +46,9 @@ public class BlockStorage
 
     /// Path of block data
     private string path;
+
+    /// Index of current file
+    private size_t file_index;
 
     /// Index is block height, Value is position of file
     /// We will change to index file in the next step.
@@ -52,7 +61,8 @@ public class BlockStorage
     public this (string path)
     {
         this.path = path;
-
+        this.file_index =
+            max(0, this.block_positions.length-1) / MFILE_MAX_BLOCK;
         this.data_size = 0;
     }
 
@@ -60,117 +70,51 @@ public class BlockStorage
 
         Make a file name using the index.
 
+        Params:
+            index = the index of the file.
+
         Returns:
             Returns the file name.
 
     ***************************************************************************/
 
-    private string getFileName ()
+    private string getFileName (size_t index)
     {
-        return buildPath(this.path, "block_v2.dat");
-    }
-
-    /***************************************************************************
-
-        Write data length to file header
-
-        Params:
-            length = The size of data
-
-    ***************************************************************************/
-
-    private void writeDataLength (size_t length)
-    {
-        foreach (idx, e; (cast(const ubyte*)&length)[0 .. size_t.sizeof])
-            this.file[idx] = e;
-    }
-
-    /***************************************************************************
-
-        Read data length to file header
-
-        Returns:
-            The size of data in file header
-
-    ***************************************************************************/
-
-    private size_t readDataLength ()
-    {
-        ubyte[] values = cast(ubyte[])this.file[0 .. MFILE_HEAD_SIZE];
-        return *cast(size_t*)&(values[0]);
+        return buildPath(this.path, format("B%012d.dat", index));
     }
 
     /***************************************************************************
 
         Open memory mapped file.
 
+        If it was mapping the same file, just return.
+        If it was mapping the other file, close previously mapped file.
         If a size change occurs, open it again.
 
         Params:
-            resize = The size of the file to change. If 0 does not change it.
+            findex = the index of the file.
 
     ***************************************************************************/
 
-    private void map (size_t resize = 0)
+    public void map (size_t findex)
     {
-        // It's already mapped, and if it doesn't change its size
-        if ((this.file !is null) && (resize == 0))
+        // It's already mapped,
+        if ((this.file !is null) && (findex == this.file_index))
             return;
-
-        // It's already mapped, and if can use reserved memory
-        if ((this.file !is null) && (this.data_size < resize) &&
-            (MFILE_HEAD_SIZE + resize < this.file.length))
-        {
-            this.writeDataLength(resize);
-            this.data_size = resize;
-            return;
-        }
 
         if (this.file !is null)
             this.unMap();
 
-        const string name = this.getFileName();
+        this.file_index = findex;
 
-        if (resize != 0)
-        {
-            this.file =
-                new MmFile(
-                    name,
-                    MmFile.Mode.readWrite,
-                    resize + MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE,
-                    null
-                );
-            this.writeDataLength(resize);
-            this.data_size = resize;
-        }
-        else
-        {
-            if (name.exists())
-            {
-                this.file =
-                    new MmFile(
-                        name,
-                        MmFile.Mode.readWrite,
-                        0,
-                        null
-                    );
-                this.data_size = this.readDataLength();
-            }
-            else
-            {
-                this.file =
-                    new MmFile(
-                        name,
-                        MmFile.Mode.readWrite,
-                        max(MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE, resize),
-                        null
-                    );
-                this.writeDataLength(0);
-                this.data_size = 0;
-            }
-
-            this.data_size = this.readDataLength();
-        }
+        this.file =
+            new MmFile(
+                this.getFileName(this.file_index),
+                MmFile.Mode.readWrite,
+                MFILE_MAP_SIZE,
+                null
+            );
+        this.data_size = this.readDataLength();
     }
 
     /***************************************************************************
@@ -179,7 +123,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private void unMap ()
+    public void unMap ()
     {
         if (this.file is null)
             return;
@@ -209,31 +153,37 @@ public class BlockStorage
 
         const ubyte[] serialized_block = serializeFull(block);
 
-        const size_t bidx = block.header.height;
+        const size_t fidx = block.header.height / MFILE_MAX_BLOCK;
+        const size_t bidx = block.header.height % MFILE_MAX_BLOCK;
         size_t pos;
+
+        this.map(fidx);
 
         // first in this file
         if (bidx == 0)
         {
-            this.map();
             pos = 0;
             // resize to serialized_block.length
-            this.map(serialized_block.length);
+            this.data_size = serialized_block.length + size_t.sizeof;
+            this.writeDataLength(this.data_size);
         }
         else
         {
-            this.map();
             pos = this.data_size;
             // increase size by serialized_block.length
-            this.map(this.data_size + serialized_block.length);
+            this.data_size += serialized_block.length + size_t.sizeof;
+            this.writeDataLength(this.data_size);
         }
 
         // add information to the look up table.
-        this.block_positions ~= pos;
+        this.block_positions ~= (MFILE_MAP_SIZE * fidx + pos);
+
+        this.writeSizeT(MFILE_HEAD_SIZE + pos, serialized_block.length);
 
         // write to memory
+        size_t b = MFILE_HEAD_SIZE + pos + size_t.sizeof;
         foreach (idx, ref e; serialized_block)
-            this.file[MFILE_HEAD_SIZE + pos + idx] = e;
+            this.file[b + idx] = e;
 
         return true;
     }
@@ -256,22 +206,17 @@ public class BlockStorage
         if (height >= this.block_positions.length)
             return false;
 
-        const size_t next_height = height + 1;
-        this.map();
+        const size_t fidx = height / MFILE_MAX_BLOCK;
+        this.map(fidx);
 
-        const size_t x0 = this.block_positions[height];
-        size_t x1;
-
-        if (next_height >= this.block_positions.length)
-            x1 = this.data_size;
-        else
-            x1 = this.block_positions[next_height];
+        const size_t x0 = this.block_positions[height] - fidx * MFILE_MAP_SIZE;
+        const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
 
         assert(x0 < this.data_size);
-        assert(x0 < x1);
 
-        const size_t x2 = x0 + MFILE_HEAD_SIZE;
-        const size_t x3 = x1 + MFILE_HEAD_SIZE;
+        const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
+        const size_t x3 = x2 + block_size;
+
         block = deserialize!Block(cast(ubyte[])this.file[x2 .. x3]);
 
         return true;
@@ -279,18 +224,64 @@ public class BlockStorage
 
     /***************************************************************************
 
-        Remove data file
+        Write data length to file header
+
+        Params:
+            length = The size of data
 
     ***************************************************************************/
 
-    public void remove ()
+    private void writeDataLength (size_t length)
     {
-        if (this.file is null)
-            return;
+        this.writeSizeT(0, length);
+    }
 
-        auto name = this.getFileName();
-        if (name.exists)
-            name.remove();
+    /***************************************************************************
+
+        Read data length to file header
+
+        Returns:
+            The size of data in file header
+
+    ***************************************************************************/
+
+    private size_t readDataLength ()
+    {
+        return this.readSizeT(0);
+    }
+
+    /***************************************************************************
+
+        Read type of `size_t` data
+
+        Params:
+            pos = position of memory mapped file
+            value = type of `size_t`
+
+    ***************************************************************************/
+
+    private void writeSizeT (size_t pos, size_t value)
+    {
+        foreach (idx, e; (cast(const ubyte*)&value)[0 .. size_t.sizeof])
+            this.file[pos+idx] = e;
+    }
+
+    /***************************************************************************
+
+        Read type of `size_t` data
+
+        Params:
+            pos = position of memory mapped file
+
+        Returns:
+            type of `size_t`
+
+    ***************************************************************************/
+
+    private size_t readSizeT (size_t pos)
+    {
+        ubyte[] values = cast(ubyte[])this.file[pos .. pos + size_t.sizeof];
+        return *cast(size_t*)&(values[0]);
     }
 }
 
@@ -305,13 +296,11 @@ version(none) unittest
 
     import std.algorithm.comparison;
 
-
     string path = buildPath(getcwd, ".cache");
     if (!path.exists)
         mkdir(path);
 
     BlockStorage storage = new BlockStorage(path);
-    storage.remove();
 
     KeyPair[] key_pairs = [
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
@@ -329,7 +318,7 @@ version(none) unittest
     Transaction tx;
 
     // save
-    foreach (idx; 1 .. 100)
+    foreach (idx; 1 .. 300)
     {
         tx = Transaction(
             [
@@ -346,15 +335,16 @@ version(none) unittest
 
     // load
     Block[] loaded_blocks;
-    loaded_blocks.length = 100;
-    foreach (idx; 0 .. 100)
+    loaded_blocks.length = 300;
+    foreach (idx; 0 .. 300)
         storage.readBlock(loaded_blocks[idx], idx);
 
     // compare
     assert(equal(blocks, loaded_blocks));
 
     // checks data file
-    assert(storage.getFileName().exists);
+    foreach (idx; 0 .. 3)
+        assert(storage.getFileName(idx).exists);
 
     // test of random access
     import std.random;
@@ -369,5 +359,8 @@ version(none) unittest
         assert(random_block.header.height == height);
     }
 
-    destroy(storage);
+    storage.unMap();
+
+    foreach (idx; 0 .. 3)
+        storage.getFileName(idx).remove();
 }
