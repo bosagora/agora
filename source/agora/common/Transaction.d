@@ -282,7 +282,7 @@ public bool isCoinbaseTx (Transaction tx) nothrow pure @safe @nogc
 
 *******************************************************************************/
 
-public Transaction newCoinbaseTX (PublicKey address, Amount value = 0)
+public Transaction newCoinbaseTX (PublicKey address, Amount value = Amount(0))
 {
     return Transaction(
         [Input(Hash.init, 0)],
