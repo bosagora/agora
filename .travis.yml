@@ -26,8 +26,7 @@ matrix:
 # of release this is not an immediate concern
 cache:
   directories:
-    - $HOME/Library/Caches/Homebrew
-    - /usr/local/Homebrew
+    - $HOME/Dependencies/
 
 # We need a fairly recent compiler for SCP
 # Namely one with N4387 fixed
@@ -43,9 +42,18 @@ addons:
 env:
   - PATH=$HOME/bin/:$PATH PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
 
-# No way to install the apt package, so...
+# A note about OSX:
+# Homebrew uses a massive git repository, that gets updated very frequently.
+# This leads to homebrew taking forever to update its package definition on
+# every single CI run.
+# It also means a new release of libsodium could potentially break our build.
+# As a result, instead of relying on the Homebrew-provided formula,
+# the bottle used had been extracted, and is force-fed to brew.
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then brew install libsodium; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then mkdir -p $HOME/Dependencies/; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then wget -P $HOME/Dependencies/ https://homebrew.bintray.com/bottles/libsodium-1.0.18.high_sierra.bottle.tar.gz; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then tar -C /usr/local/Cellar/ -xf $HOME/Dependencies/libsodium-1.0.18.high_sierra.bottle.tar.gz; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then brew link libsodium; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then mkdir -p $HOME/bin/; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which gcc-9` $HOME/bin/gcc; fi # /usr/bin/gcc-9
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ln -s `which g++-9` $HOME/bin/g++; fi # /usr/bin/g++-9
