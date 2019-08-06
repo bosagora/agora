@@ -18,6 +18,7 @@ import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
+import agora.common.TransactionPool;
 import agora.consensus.Genesis;
 import agora.node.API;
 
@@ -36,12 +37,13 @@ public class Ledger
     /// pointer to the latest block
     private const(Block)* last_block;
 
-    /// Temporary storage where transactions are stored until blocks are created.
-    private Transaction[] storage;
+    /// Pool of transactions to pick from when generating blocks
+    private TransactionPool pool;
 
     /// Ctor
-    public this ()
+    public this (TransactionPool pool)
     {
+        this.pool = pool;
         auto block = getGenesisBlock();
         this.acceptBlock(block);
     }
@@ -91,8 +93,8 @@ public class Ledger
         if (!tx.verify(&this.findOutput))
             return false;
 
-        this.storage ~= tx;
-        if (this.storage.length >= Block.TxsInBlock)
+        this.pool.add(tx);
+        if (this.pool.length >= Block.TxsInBlock)
             this.makeBlock();
 
         return true;
@@ -106,9 +108,9 @@ public class Ledger
 
     private void makeBlock () @safe
     {
-        auto block = makeNewBlock(*this.last_block, this.storage);
-        this.storage.length = 0;
-        () @trusted { assumeSafeAppend(this.storage); }();
+        auto txs = this.pool.take(Block.TxsInBlock);
+        assert(txs.length == Block.TxsInBlock);
+        auto block = makeNewBlock(*this.last_block, txs);
         this.acceptBlock(block);
     }
 
@@ -236,8 +238,12 @@ public class Ledger
 unittest
 {
     import agora.common.crypto.Key;
+    import agora.common.Data;
+    import agora.common.Hash;
 
-    scope ledger = new Ledger;
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    scope ledger = new Ledger(pool);
     assert(*ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
@@ -317,7 +323,9 @@ unittest
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random
     ];
 
-    scope ledger = new Ledger;
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    scope ledger = new Ledger(pool);
     assert(*ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
 
