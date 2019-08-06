@@ -18,10 +18,13 @@ module agora.common.BlockStorage;
 
 import agora.common.Amount;
 import agora.common.Block;
+import agora.common.Data;
 import agora.common.Deserializer;
+import agora.common.Hash;
 import agora.common.Serializer;
 
-import std.algorithm.comparison;
+import std.algorithm;
+import std.container.rbtree;
 import std.file;
 import std.format;
 import std.mmfile;
@@ -37,6 +40,22 @@ const MFILE_MAX_BLOCK = 100;
 /// The map file size
 const MFILE_MAP_SIZE = 640 * 1024;
 
+const HASH_SIZE = 64;
+
+private struct HeightPosition
+{
+    size_t              height;
+    size_t              position;
+}
+
+private struct HashPosition
+{
+    ubyte[HASH_SIZE]    hash;
+    size_t              position;
+}
+
+alias IndexHeight = RedBlackTree!(HeightPosition, "(a.height < b.height)");
+alias IndexHash = RedBlackTree!(HashPosition, "(a.hash < b.hash)");
 
 /// Ditto
 public class BlockStorage
@@ -50,20 +69,24 @@ public class BlockStorage
     /// Index of current file
     private size_t file_index;
 
-    /// Index is block height, Value is position of file
-    /// We will change to index file in the next step.
-    private size_t[] block_positions;
-
     /// The size of data. Exclude the size of the header and the reserved size
     private size_t data_size;
+
+    /// Index is block height
+    private IndexHeight height_idx;
+
+    /// Index is block hash
+    private IndexHash hash_idx;
 
     /// Ctor
     public this (string path)
     {
         this.path = path;
-        this.file_index =
-            max(0, this.block_positions.length-1) / MFILE_MAX_BLOCK;
+        this.file_index = 0;
         this.data_size = 0;
+
+        this.height_idx = new IndexHeight();
+        this.hash_idx = new IndexHash();
     }
 
     /***************************************************************************
@@ -148,7 +171,8 @@ public class BlockStorage
 
     public bool saveBlock (const ref Block block) @safe
     {
-        if (block.header.height != this.block_positions.length)
+        if ((this.height_idx.length > 0) &&
+            (this.height_idx.back.height >= block.header.height))
             return false;
 
         const ubyte[] serialized_block = serializeFull(block);
@@ -175,9 +199,25 @@ public class BlockStorage
             this.writeDataLength(this.data_size);
         }
 
-        // add information to the look up table.
-        this.block_positions ~= (MFILE_MAP_SIZE * fidx + pos);
+        // add to index of heigth
+        const size_t block_position = (MFILE_MAP_SIZE * fidx + pos);
+        this.height_idx.insert(
+            HeightPosition(
+                block.header.height,
+                block_position
+            )
+        );
 
+        // add to index of hash
+        ubyte[HASH_SIZE] hash_bytes = hashFull(block.header)[0..HASH_SIZE];
+        this.hash_idx.insert(
+            HashPosition(
+                hash_bytes,
+                block_position
+            )
+        );
+
+        // write block data size
         this.writeSizeT(MFILE_HEAD_SIZE + pos, serialized_block.length);
 
         // write to memory
@@ -201,23 +241,79 @@ public class BlockStorage
 
     public bool readBlock (ref Block block, size_t height) @safe
     {
-        if (height >= this.block_positions.length)
+        if ((this.height_idx.length == 0) ||
+            (this.height_idx.back.height < height))
             return false;
 
-        const size_t fidx = height / MFILE_MAX_BLOCK;
-        this.map(fidx);
+        auto finds
+            = this.height_idx[].find!( (a, b) => a.height == b)(height);
 
-        const size_t x0 = this.block_positions[height] - fidx * MFILE_MAP_SIZE;
-        const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
+        if (!finds.empty)
+        {
+            const size_t position = finds.front.position;
 
-        assert(x0 < this.data_size);
+            this.map(position / MFILE_MAP_SIZE);
 
-        const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
-        const size_t x3 = x2 + block_size;
+            const size_t x0 = position % MFILE_MAP_SIZE;
+            const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
 
-        block = deserialize!Block(this.read(x2, x3));
+            assert(x0 < this.data_size);
 
-        return true;
+            const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
+            const size_t x3 = x2 + block_size;
+
+            block = deserialize!Block(this.read(x2, x3));
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    /***************************************************************************
+
+        Read block from the file.
+
+        Params:
+            block = `Block` to read
+            hash = `Hash` of `Block`
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readBlock (ref Block block, Hash hash) @safe
+    {
+        ubyte[HASH_SIZE] hash_bytes = hash[0..HASH_SIZE];
+
+        auto finds
+            = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
+
+        if (!finds.empty)
+        {
+            const size_t position = finds.front.position;
+
+            this.map(position / MFILE_MAP_SIZE);
+
+            const size_t x0 = position % MFILE_MAP_SIZE;
+            const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
+
+            assert(x0 < this.data_size);
+
+            const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
+            const size_t x3 = x2 + block_size;
+
+            block = deserialize!Block(this.read(x2, x3));
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     /***************************************************************************
@@ -281,6 +377,7 @@ public class BlockStorage
         ubyte[] values = cast(ubyte[])this.file[pos .. pos + size_t.sizeof];
         return *cast(size_t*)&(values[0]);
     }
+
     /***************************************************************************
 
         Read data from the file.
@@ -361,6 +458,7 @@ version(none) unittest
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random
     ];
     Block[] blocks;
+    Hash[] block_hashes;
 
     blocks ~= getGenesisBlock();
     storage.saveBlock(blocks[$ - 1]);
@@ -368,7 +466,7 @@ version(none) unittest
     auto gen_key_pair = getGenesisKeyPair();
     Transaction last_tx = blocks[$ - 1].txs[$-1];
     Hash gen_tx_hash = hashFull(last_tx);
-
+    block_hashes ~= hashFull(blocks[$ - 1].header);
     Transaction tx;
 
     // save
@@ -384,6 +482,7 @@ version(none) unittest
         );
         tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);
         blocks ~= makeNewBlock(blocks[$ - 1], [tx]);
+        block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
     }
 
@@ -407,10 +506,16 @@ version(none) unittest
     auto rnd = rndGen;
 
     Block random_block;
-    foreach (height; iota(100).randomCover(rnd))
+    foreach (height; iota(300).randomCover(rnd))
     {
         storage.readBlock(random_block, height);
         assert(random_block.header.height == height);
+    }
+
+    foreach (idx; iota(300).randomCover(rnd))
+    {
+        storage.readBlock(random_block, block_hashes[idx]);
+        assert(hashFull(random_block.header) == block_hashes[idx]);
     }
 
     storage.unMap();
