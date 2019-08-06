@@ -15,9 +15,9 @@ module agora.test.NetworkManager;
 
 version (unittest):
 
-import agora.common.API;
 import agora.common.Transaction;
 import agora.consensus.Genesis;
+import agora.node.API;
 import agora.test.Base;
 
 /// test behavior when getBlockHeight() call fails

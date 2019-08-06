@@ -33,7 +33,7 @@
 
 *******************************************************************************/
 
-module agora.common.API;
+module agora.node.API;
 
 import agora.common.crypto.Key;
 import agora.common.Block;
