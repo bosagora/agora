@@ -16,7 +16,7 @@
 
 *******************************************************************************/
 
-module agora.common.Transaction;
+module agora.consensus.data.Transaction;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;

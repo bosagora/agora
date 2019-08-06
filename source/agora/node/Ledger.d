@@ -17,8 +17,8 @@ import agora.common.Amount;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
-import agora.common.Transaction;
 import agora.common.TransactionPool;
+import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.node.API;
 

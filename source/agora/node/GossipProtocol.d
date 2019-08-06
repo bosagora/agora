@@ -16,7 +16,7 @@ module agora.node.GossipProtocol;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Set;
-import agora.common.Transaction;
+import agora.consensus.data.Transaction;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
 

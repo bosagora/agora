@@ -15,7 +15,7 @@ module agora.test.NetworkManager;
 
 version (unittest):
 
-import agora.common.Transaction;
+import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.node.API;
 import agora.test.Base;
