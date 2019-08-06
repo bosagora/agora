@@ -57,7 +57,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void acceptBlock (const Block block) nothrow @safe
+    public void acceptBlock (const ref Block block) nothrow @safe
     {
         if (!this.isValidBlock(block))
         {
