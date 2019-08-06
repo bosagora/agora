@@ -387,3 +387,58 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
         assert(0, "Not implemented");
     }
 }
+
+/*******************************************************************************
+
+    Keeps attempting the 'check' condition until it is true,
+    or until the timeout expires. It will sleep the main
+    thread for 100 msecs between each re-try.
+
+    If the timeout expires, and the 'check' condition is still false,
+    it throws an AssertError.
+
+    Params:
+        timeout = time to wait for the check to succeed
+        check = the condition to check on
+        file = file from the call site
+        line = line from the call site
+
+    Throws:
+        AssertError if the timeout is reached and the condition still fails
+
+*******************************************************************************/
+
+public void tryUntil (Duration timeout, lazy bool check,
+    string file = __FILE__, size_t line = __LINE__)
+{
+    import core.exception;
+    import core.thread;
+
+    // wait 100 msecs between attempts
+    const SleepTime = 100;
+    auto attempts = timeout.total!"msecs" / SleepTime;
+
+    while (attempts--)
+    {
+        if (check)
+            return;
+
+        Thread.sleep(SleepTime.msecs);
+    }
+
+    throw new AssertError(format("Check condition failed after timeout of %s",
+        timeout), file, line);
+}
+
+///
+unittest
+{
+    import core.exception;
+    import std.exception;
+
+    static bool willSucceed () { static int x; return ++x == 2; }
+    1.seconds.tryUntil(willSucceed());
+
+    static bool willFail () { return false; }
+    assertThrown!AssertError(300.msecs.tryUntil(willFail()));
+}
