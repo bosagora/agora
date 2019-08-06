@@ -123,7 +123,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public void map (size_t findex, size_t resize = 0) @trusted
+    private void map (size_t findex, size_t resize = 0) @trusted
     {
         // It's already mapped,
         if ((this.file !is null) && (findex == this.file_index))
@@ -194,7 +194,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public void unMap () @trusted
+    private void unMap () @trusted
     {
         if (this.file is null)
             return;
@@ -203,6 +203,17 @@ public class BlockStorage
         destroy(this.file);
         GC.free(&this.file);
         this.file = null;
+    }
+
+    /***************************************************************************
+
+        Release memory mapped file.
+
+    ***************************************************************************/
+
+    public void release () @safe
+    {
+        this.unMap();
     }
 
     /***************************************************************************
@@ -566,7 +577,7 @@ version(none) unittest
         assert(hashFull(random_block.header) == block_hashes[idx]);
     }
 
-    storage.unMap();
+    storage.release();
 
     foreach (idx; 0 .. 3)
         storage.getFileName(idx).remove();
