@@ -31,6 +31,7 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
+import agora.common.TransactionPool;
 import agora.common.crypto.Key;
 import agora.network.NetworkManager;
 import agora.node.API;
@@ -269,6 +270,12 @@ public final class TestNode (Net) : Node!Net, TestAPI
     public override Metadata getMetadata (string _unused) @system
     {
         return new MemMetadata();
+    }
+
+    /// Return a transaction pool backed by an in-memory SQLite db
+    public override TransactionPool getPool (string) @system
+    {
+        return new TransactionPool(":memory:");
     }
 
     /// Used by unittests

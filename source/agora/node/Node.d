@@ -19,6 +19,7 @@ import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Transaction;
+import agora.common.TransactionPool;
 import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.Ledger;
@@ -31,6 +32,7 @@ import vibe.web.rest;
 
 import std.algorithm;
 import std.exception;
+import std.path : buildPath;
 
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
 private enum MaxBatchBlocksSent = 1000;
@@ -65,6 +67,9 @@ public class Node (Network) : API
     /// Procedure of peer-to-peer communication
     private GossipProtocol gossip;
 
+    /// Transaction pool
+    private TransactionPool pool;
+
     ///
     private Ledger ledger;
 
@@ -78,7 +83,8 @@ public class Node (Network) : API
         this.network = new Network(config.node, config.banman, config.network,
             config.dns_seeds,
             this.metadata);
-        this.ledger = new Ledger();
+        this.pool = this.getPool(config.node.data_dir);
+        this.ledger = new Ledger(this.pool);
         this.gossip = new GossipProtocol(this.network, this.ledger);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
@@ -105,8 +111,9 @@ public class Node (Network) : API
 
     public void shutdown ()
     {
-        logInfo("Dumping metadata..");
+        logInfo("Shutting down..");
         this.network.dumpMetadata();
+        this.pool.shutdown();
     }
 
     /// GET /public_key
@@ -156,6 +163,27 @@ public class Node (Network) : API
     {
         return this.ledger.getBlocksFrom(block_height,
             min(max_blocks, MaxBatchBlocksSent));
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a TransactionPool
+
+        Subclasses can override this method and return
+        a TransactionPool backed by an in-memory SQLite database.
+
+        Params:
+            data_dir = path to the data directory
+
+        Returns:
+            the transaction pool
+
+    ***************************************************************************/
+
+    protected TransactionPool getPool (string data_dir)
+    {
+        return new TransactionPool(buildPath(
+            config.node.data_dir, "tx_pool.dat"));
     }
 
     /***************************************************************************
