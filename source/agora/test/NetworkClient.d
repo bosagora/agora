@@ -55,16 +55,7 @@ unittest
     Thread.sleep(100.msecs);
     nodes[1 .. $].each!(node => node.clearFilter());
 
-    auto attempts = 20;  // wait up to 20*100 msecs (2 seconds)
-    while (attempts--)
-    {
-        if (nodes.all!(node => node.getBlockHeight() == 1))
-            return;
-
-        Thread.sleep(100.msecs);
-    }
-
-    assert(0, "Nodes should have same block height");
+    2.seconds.tryUntil(nodes.all!(node => node.getBlockHeight() == 1));
 }
 
 /// test request timeouts
@@ -97,17 +88,5 @@ unittest
     // 20 * (100 + 100) = 4 seconds of retry time
     txes.each!(tx => node_1.putTransaction(tx));
 
-    // wait for transaction propagation to succeed
-    Thread.sleep(2000.msecs);
-
-    auto attempts = 20;  // wait up to 20*100 msecs (2 seconds)
-    while (attempts--)
-    {
-        if (nodes.all!(node => node.getBlockHeight() == 1))
-            return;
-
-        Thread.sleep(100.msecs);
-    }
-
-    assert(0, "Nodes should have same block height");
+    4.seconds.tryUntil(nodes.all!(node => node.getBlockHeight() == 1));
 }
