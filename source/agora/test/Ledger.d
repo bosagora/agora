@@ -172,16 +172,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
-
-    auto attempts = 80;  // wait up to 80*100 msecs (8 seconds)
-    while (attempts--)
-    {
-        if (containSameBlocks(nodes, 100))
-            return;
-
-        // let them do catch-up after boot
-        Thread.sleep(100.msecs);
-    }
+    8.seconds.tryUntil(containSameBlocks(nodes, 100));
 }
 
 /// test catch-up phase after initial booting (periodic catch-up)
@@ -204,18 +195,7 @@ unittest
 
     auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 100);
     txs.each!(tx => node_1.putTransaction(tx));
-
-    auto attempts = 80;  // wait up to 80*100 msecs (8 seconds)
-    while (attempts--)
-    {
-        if (containSameBlocks(nodes, 100))
-            return;
-
-        // let them do catch-up after boot
-        Thread.sleep(100.msecs);
-    }
-
-    assert(0, "Nodes do not contain the same blocks");
+    8.seconds.tryUntil(containSameBlocks(nodes, 100));
 }
 
 /// Merkle Proof
