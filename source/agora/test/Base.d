@@ -303,6 +303,9 @@ public enum NetworkTopology
         topology = Network topology to adopt
         nodes    = Number of nodes to instantiated
         configure_network = whether to set up the peers in the config
+        retry_delay = the delay between request retries (in msecs)
+        max_retries = max retries before a request is considered failed
+        timeout = request timeout (in msecs)
 
     Returns:
         The set of public key added to the node
@@ -310,7 +313,8 @@ public enum NetworkTopology
 *******************************************************************************/
 
 public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
-    (NetworkTopology topology, size_t nodes, bool configure_network = true)
+    (NetworkTopology topology, size_t nodes, bool configure_network = true,
+        long retry_delay = 100, size_t max_retries = 20, long timeout = 500)
 {
     import std.algorithm;
     import std.array;
@@ -341,8 +345,9 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             NodeConfig node_conf =
             {
                 key_pair : key_pairs[idx],
-                retry_delay : 100, // msecs
-                max_retries : 20,
+                retry_delay : retry_delay, // msecs
+                max_retries : max_retries,
+                timeout : timeout,
                 min_listeners : nodes - 1,
             };
 
