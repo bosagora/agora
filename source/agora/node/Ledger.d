@@ -43,7 +43,30 @@ public class Ledger
     public this ()
     {
         auto block = getGenesisBlock();
-        this.addNewBlock(block);
+        this.acceptBlock(block);
+    }
+
+    /***************************************************************************
+
+        Add a block to the ledger.
+
+        If the block fails verification, it is not added to the ledger.
+
+        Params:
+            block = the block to add
+
+    ***************************************************************************/
+
+    public void acceptBlock (const Block block) nothrow @safe
+    {
+        if (!this.isValidBlock(block))
+        {
+            logDebug("Rejected block. %s", block);
+            return;
+        }
+
+        this.ledger ~= block;
+        this.last_block = &this.ledger[$ - 1];
     }
 
     /***************************************************************************
@@ -86,7 +109,7 @@ public class Ledger
         auto block = makeNewBlock(*this.last_block, this.storage);
         this.storage.length = 0;
         () @trusted { assumeSafeAppend(this.storage); }();
-        this.addNewBlock(block);
+        this.acceptBlock(block);
     }
 
     /***************************************************************************
@@ -125,29 +148,6 @@ public class Ledger
             return null;
 
         return this.ledger[block_height .. min(block_height + max_blocks, $)];
-    }
-
-    /***************************************************************************
-
-        Add a block to the ledger.
-
-        If the block fails verification, it is not added to the ledger.
-
-        Params:
-            block = the block to add
-
-    ***************************************************************************/
-
-    public void addNewBlock (const Block block) nothrow @safe
-    {
-        if (!this.isValidBlock(block))
-        {
-            logDebug("Rejected block. %s", block);
-            return;
-        }
-
-        this.ledger ~= block;
-        this.last_block = &this.ledger[$ - 1];
     }
 
     /***************************************************************************

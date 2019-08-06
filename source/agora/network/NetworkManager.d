@@ -168,7 +168,7 @@ public class NetworkManager
             {
                 this.getBlocksFrom(
                     ledger.getLastBlock().header.height + 1,
-                    (blocks) { blocks.each!(block => ledger.addNewBlock(block)); });
+                    (blocks) { blocks.each!(block => ledger.acceptBlock(block)); });
 
                 this.taskman.wait(2.seconds);
             }
