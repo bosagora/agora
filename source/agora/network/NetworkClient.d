@@ -20,7 +20,7 @@ import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Set;
 import agora.common.Task;
-import agora.common.Transaction;
+import agora.consensus.data.Transaction;
 import agora.node.API;
 
 import vibe.core.log;

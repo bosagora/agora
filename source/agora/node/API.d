@@ -39,7 +39,7 @@ import agora.common.crypto.Key;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Set;
-import agora.common.Transaction;
+import agora.consensus.data.Transaction;
 
 import vibe.data.json;
 import vibe.web.rest;

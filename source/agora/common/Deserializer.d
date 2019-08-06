@@ -107,7 +107,7 @@ unittest
 {
     import agora.common.Hash;
     import agora.common.Serializer;
-    import agora.common.Transaction;
+    import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
 
     const block = getGenesisBlock();

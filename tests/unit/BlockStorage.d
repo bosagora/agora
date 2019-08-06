@@ -21,7 +21,7 @@ import agora.common.BlockStorage;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Hash;
-import agora.common.Transaction;
+import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 
 import std.algorithm.comparison;

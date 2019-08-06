@@ -30,7 +30,7 @@ import agora.common.Data;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
-import agora.common.Transaction;
+import agora.consensus.data.Transaction;
 import agora.network.NetworkClient;
 import agora.node.API;
 import agora.node.Ledger;
