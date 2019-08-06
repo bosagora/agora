@@ -39,7 +39,7 @@
 
 module agora.common.Hash;
 
-import agora.common.Data;
+static import agora.common.Data;
 
 import libsodium;
 
@@ -74,6 +74,11 @@ nothrow @nogc @safe unittest
     Hash ulm = hashFull(ulong.max);
 }
 
+///
+public alias Hash = agora.common.Data.Hash;
+
+///
+public alias Signature = agora.common.Data.Signature;
 
 /// Type of delegate passed to `hash` function when there's a state
 public alias HashDg = void delegate(scope const(ubyte)[]) /*pure*/ nothrow @safe @nogc;
@@ -152,7 +157,7 @@ public void hashPart (ulong record, scope HashDg state) /*pure*/ nothrow @nogc @
 }
 
 /// Ditto
-public void hashPart (scope cstring record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
+public void hashPart (scope const(char)[] record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
 {
     state(cast(const ubyte[])record);
 }
