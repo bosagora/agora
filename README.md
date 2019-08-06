@@ -1,4 +1,7 @@
-# Agora [![Build Status](https://travis-ci.com/bpfkorea/agora.svg?branch=v0.x.x)](https://travis-ci.com/bpfkorea/agora)
+# Agora
+
+[![Build Status](https://travis-ci.com/bpfkorea/agora.svg?branch=v0.x.x)](https://travis-ci.com/bpfkorea/agora)
+[![codecov](https://codecov.io/gh/bpfkorea/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bpfkorea/agora)
 
 Node implementation for BOA CoinNet
 
