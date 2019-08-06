@@ -13,7 +13,6 @@
 
 module agora.network.NetworkClient;
 
-import agora.common.API;
 import agora.common.BanManager;
 import agora.common.Block;
 import agora.common.Config;
@@ -22,6 +21,7 @@ import agora.common.Data;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
+import agora.node.API;
 
 import vibe.core.log;
 

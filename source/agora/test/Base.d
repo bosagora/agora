@@ -22,7 +22,6 @@ module agora.test.Base;
 
 version (unittest):
 
-import agora.common.API;
 import agora.common.BanManager;
 import agora.common.Block;
 import agora.common.Config;
@@ -34,6 +33,7 @@ import agora.common.Task;
 import agora.common.Transaction;
 import agora.common.crypto.Key;
 import agora.network.NetworkManager;
+import agora.node.API;
 import agora.node.Ledger;
 import agora.node.Node;
 

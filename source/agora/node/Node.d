@@ -13,7 +13,6 @@
 
 module agora.node.Node;
 
-import agora.common.API;
 import agora.common.Block;
 import agora.common.Config;
 import agora.common.Metadata;
@@ -21,6 +20,7 @@ import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Transaction;
 import agora.network.NetworkManager;
+import agora.node.API;
 import agora.node.Ledger;
 
 import agora.node.GossipProtocol;

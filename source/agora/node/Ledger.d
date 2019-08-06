@@ -14,12 +14,12 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
-import agora.common.API;
 import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.Transaction;
 import agora.consensus.Genesis;
+import agora.node.API;
 
 import vibe.core.log;
 

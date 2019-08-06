@@ -22,7 +22,6 @@
 
 module agora.network.NetworkManager;
 
-import agora.common.API;
 import agora.common.BanManager;
 import agora.common.Block;
 import agora.common.crypto.Key;
@@ -33,6 +32,7 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.Transaction;
 import agora.network.NetworkClient;
+import agora.node.API;
 import agora.node.Ledger;
 
 import vibe.core.log;
