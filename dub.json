@@ -37,7 +37,7 @@
     ],
     "lflags": [ "-lsodium", "-lstdc++" ],
 
-    "mainSourceFile": "source/agora/app.d",
+    "mainSourceFile": "source/agora/node/main.d",
 
     "configurations": [
         {

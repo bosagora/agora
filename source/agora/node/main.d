@@ -16,7 +16,7 @@
 
 *******************************************************************************/
 
-module agora.app;
+module agora.node.main;
 
 import agora.common.Config;
 import agora.network.NetworkManager;
