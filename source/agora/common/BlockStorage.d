@@ -34,6 +34,9 @@ import std.path;
 /// The size of header
 const MFILE_HEAD_SIZE = size_t.sizeof;
 
+/// Amount of reserved size
+const MFILE_RESERVE_SIZE = 64 * 1024;
+
 /// The maximum number of block in one file
 const MFILE_MAX_BLOCK = 100;
 
@@ -116,28 +119,73 @@ public class BlockStorage
 
         Params:
             findex = the index of the file.
+            resize = The size of the file to change. If 0 does not change it.
 
     ***************************************************************************/
 
-    public void map (size_t findex) @trusted
+    public void map (size_t findex, size_t resize = 0) @trusted
     {
         // It's already mapped,
         if ((this.file !is null) && (findex == this.file_index))
-            return;
+        {
+            // if it doesn't change its size
+            if (resize == 0)
+                return;
+
+            // if can use reserved memory
+            if ((this.data_size < resize) &&
+                (MFILE_HEAD_SIZE + resize < this.getFileLength()))
+            {
+                this.writeDataLength(resize);
+                this.data_size = resize;
+                return;
+            }
+        }
 
         if (this.file !is null)
             this.unMap();
 
         this.file_index = findex;
+        const string name = this.getFileName(this.file_index);
 
-        this.file =
-            new MmFile(
-                this.getFileName(this.file_index),
-                MmFile.Mode.readWrite,
-                MFILE_MAP_SIZE,
-                null
-            );
-        this.data_size = this.readDataLength();
+        if (resize != 0)
+        {
+            this.file =
+                new MmFile(
+                    name,
+                    MmFile.Mode.readWrite,
+                    resize + MFILE_HEAD_SIZE + MFILE_RESERVE_SIZE,
+                    null
+                );
+            this.writeDataLength(resize);
+            this.data_size = resize;
+        }
+        else
+        {
+            if (name.exists())
+            {
+                this.file =
+                    new MmFile(
+                        name,
+                        MmFile.Mode.readWrite,
+                        0,
+                        null
+                    );
+                this.data_size = this.readDataLength();
+            }
+            else
+            {
+                this.file =
+                    new MmFile(
+                        name,
+                        MmFile.Mode.readWrite,
+                        max(MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE, resize),
+                        null
+                    );
+                this.writeDataLength(0);
+                this.data_size = 0;
+            }
+        }
     }
 
     /***************************************************************************
@@ -181,22 +229,21 @@ public class BlockStorage
         const size_t bidx = block.header.height % MFILE_MAX_BLOCK;
         size_t pos;
 
-        this.map(fidx);
-
         // first in this file
         if (bidx == 0)
         {
             pos = 0;
             // resize to serialized_block.length
-            this.data_size = serialized_block.length + size_t.sizeof;
-            this.writeDataLength(this.data_size);
+            size_t size = serialized_block.length + size_t.sizeof;
+            this.map(fidx, size);
         }
         else
         {
+            this.map(fidx);
             pos = this.data_size;
             // increase size by serialized_block.length
-            this.data_size += serialized_block.length + size_t.sizeof;
-            this.writeDataLength(this.data_size);
+            size_t size = serialized_block.length + size_t.sizeof;
+            this.map(fidx, this.data_size + size);
         }
 
         // add to index of heigth
@@ -446,6 +493,7 @@ version(none) unittest
     import agora.consensus.Genesis;
 
     import std.algorithm.comparison;
+
 
     string path = buildPath(getcwd, ".cache");
     if (!path.exists)
