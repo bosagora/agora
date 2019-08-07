@@ -55,7 +55,7 @@ unittest
     Thread.sleep(100.msecs);
     nodes[1 .. $].each!(node => node.clearFilter());
 
-    2.seconds.tryUntil(nodes.all!(node => node.getBlockHeight() == 1));
+    nodes.all!(node => node.getBlockHeight() == 1).retryFor(2.seconds);
 }
 
 /// test request timeouts
@@ -88,5 +88,5 @@ unittest
     // 20 * (100 + 100) = 4 seconds of retry time
     txes.each!(tx => node_1.putTransaction(tx));
 
-    4.seconds.tryUntil(nodes.all!(node => node.getBlockHeight() == 1));
+    nodes.all!(node => node.getBlockHeight() == 1).retryFor(4.seconds);
 }

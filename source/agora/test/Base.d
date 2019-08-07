@@ -395,7 +395,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 
 /*******************************************************************************
 
-    Keeps attempting the 'check' condition until it is true,
+    Keeps retrying the 'check' condition until it is true,
     or until the timeout expires. It will sleep the main
     thread for 100 msecs between each re-try.
 
@@ -403,8 +403,8 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
     it throws an AssertError.
 
     Params:
-        timeout = time to wait for the check to succeed
         check = the condition to check on
+        timeout = time to wait for the check to succeed
         file = file from the call site
         line = line from the call site
 
@@ -413,7 +413,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 
 *******************************************************************************/
 
-public void tryUntil (Duration timeout, lazy bool check,
+public void retryFor (lazy bool check, Duration timeout,
     string file = __FILE__, size_t line = __LINE__)
 {
     import core.exception;
@@ -442,10 +442,10 @@ unittest
     import std.exception;
 
     static bool willSucceed () { static int x; return ++x == 2; }
-    1.seconds.tryUntil(willSucceed());
+    willSucceed().retryFor(1.seconds);
 
     static bool willFail () { return false; }
-    assertThrown!AssertError(300.msecs.tryUntil(willFail()));
+    assertThrown!AssertError(willFail().retryFor(300.msecs));
 }
 
 /// Returns: the entire ledger from the provided node
