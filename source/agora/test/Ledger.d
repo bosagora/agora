@@ -131,7 +131,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
-    8.seconds.tryUntil(containSameBlocks(nodes, 100));
+    containSameBlocks(nodes, 100).retryFor(8.seconds);
 }
 
 /// test catch-up phase after initial booting (periodic catch-up)
@@ -154,7 +154,7 @@ unittest
 
     auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 100);
     txs.each!(tx => node_1.putTransaction(tx));
-    8.seconds.tryUntil(containSameBlocks(nodes, 100));
+    containSameBlocks(nodes, 100).retryFor(8.seconds);
 }
 
 /// Merkle Proof
