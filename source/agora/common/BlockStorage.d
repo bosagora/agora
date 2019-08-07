@@ -23,12 +23,16 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 
+import vibe.core.log;
+
 import std.algorithm;
 import std.container.rbtree;
+import std.exception;
 import std.file;
 import std.format;
 import std.mmfile;
 import std.path;
+import std.stdio;
 
 
 /// The size of header
@@ -90,6 +94,8 @@ public class BlockStorage
 
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
+
+        this.loadAllIndexes();
     }
 
     /***************************************************************************
@@ -280,6 +286,8 @@ public class BlockStorage
 
         // write to memory
         this.write(MFILE_HEAD_SIZE + pos + size_t.sizeof, serialized_block);
+
+        this.saveIndex(block.header.height, hash_bytes, block_position);
 
         return true;
     }
@@ -492,6 +500,144 @@ public class BlockStorage
 
         return this.file.length;
     }
+
+    /***************************************************************************
+
+        Store index data for one block in the file.
+
+        Params:
+            height = height of `Block`
+            hash = hash of `Block`
+            pos = position of memory mapped file
+
+        Returns:
+            Returns size of file if is mapped, or 0 if is not mapped
+
+    ***************************************************************************/
+
+    private void saveIndex (
+        size_t height,
+        ubyte[HASH_SIZE] hash,
+        size_t pos) @safe
+    {
+        File idx_file;
+        string file_name = buildPath(this.path, "index.dat");
+
+        try
+        {
+            idx_file = File(file_name, "a+b");
+            idx_file.seek(0, SEEK_END);
+
+            idx_file.writeSizeType(height);
+            idx_file.rawWrite(hash);
+            idx_file.writeSizeType(pos);
+
+            idx_file.close();
+        }
+        catch (Exception ex)
+        {
+            logError("saveIndex: %s",
+                () @trusted { return ex.message; }());
+        }
+    }
+
+    /***************************************************************************
+
+        Read the index data stored in the index file.
+
+    ***************************************************************************/
+
+    private void loadAllIndexes () @safe
+    {
+        File idx_file;
+
+        size_t height;
+        ubyte[HASH_SIZE] hash;
+        size_t pos;
+        string file_name = buildPath(this.path, "index.dat");
+
+        this.height_idx.clear();
+        this.hash_idx.clear();
+
+        if (file_name.exists)
+        {
+            try
+            {
+                idx_file = File(file_name, "rb");
+
+                size_t record_size = (size_t.sizeof * 2 + HASH_SIZE);
+                size_t record_count = idx_file.size / record_size;
+                foreach (idx; 0 .. record_count)
+                {
+                    height = idx_file.readSizeType();
+
+                    idx_file.rawRead(hash);
+
+                    pos = idx_file.readSizeType();
+
+                    // add to index of heigth
+                    this.height_idx.insert(HeightPosition(height, pos));
+
+                    // add to index of hash
+                    this.hash_idx.insert(HashPosition(hash, pos));
+                }
+
+                idx_file.close();
+            }
+            catch (Exception ex)
+            {
+                logError("loadAllIndexes: %s",
+                    () @trusted { return ex.message; }());
+            }
+        }
+    }
+
+    /***************************************************************************
+
+        Remove the index file.
+
+    ***************************************************************************/
+
+    public static void removeIndexFile (string path)
+    {
+        string name = buildPath(path, "index.dat");
+        if (name.exists)
+            name.remove();
+    }
+}
+
+/*******************************************************************************
+
+    Write type of `size_t` data to file
+
+    Params:
+        file = `File`
+        value = Value to write to file
+
+*******************************************************************************/
+
+public void writeSizeType (File file, size_t value) @trusted
+{
+    file.rawWrite((cast(const ubyte*)&value)[0 .. size_t.sizeof]);
+}
+
+/*******************************************************************************
+
+    Read type of `size_t` data for file
+
+    Params:
+        file = `File`
+
+    Returns:
+        type of `size_t`
+
+*******************************************************************************/
+
+public size_t readSizeType (File file) @trusted
+{
+    ubyte[size_t.sizeof] buffer;
+    file.rawRead(buffer);
+    return *cast(size_t*)&(buffer[0]);
 }
 
 /// Create and store 1000 blocks and read again. And read 100 random.
@@ -506,11 +652,19 @@ version(none) unittest
     import std.algorithm.comparison;
 
 
+    const size_t count = 300;
+
     string path = buildPath(getcwd, ".cache");
     if (!path.exists)
         mkdir(path);
 
+    BlockStorage.removeIndexFile(path);
     BlockStorage storage = new BlockStorage(path);
+    foreach (idx; 0 .. count / MFILE_MAX_BLOCK)
+    {
+        auto name = storage.getFileName(idx);
+        if (name.exists) name.remove();
+    }
 
     KeyPair[] key_pairs = [
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
@@ -529,7 +683,7 @@ version(none) unittest
     Transaction tx;
 
     // save
-    foreach (idx; 1 .. 300)
+    foreach (idx; 1 .. count)
     {
         tx = Transaction(
             [
@@ -547,15 +701,15 @@ version(none) unittest
 
     // load
     Block[] loaded_blocks;
-    loaded_blocks.length = 300;
-    foreach (idx; 0 .. 300)
+    loaded_blocks.length = count;
+    foreach (idx; 0 .. count)
         storage.readBlock(loaded_blocks[idx], idx);
 
     // compare
     assert(equal(blocks, loaded_blocks));
 
     // checks data file
-    foreach (idx; 0 .. 3)
+    foreach (idx; 0 .. count / MFILE_MAX_BLOCK)
         assert(storage.getFileName(idx).exists);
 
     // test of random access
@@ -565,13 +719,13 @@ version(none) unittest
     auto rnd = rndGen;
 
     Block random_block;
-    foreach (height; iota(300).randomCover(rnd))
+    foreach (height; iota(count).randomCover(rnd))
     {
         storage.readBlock(random_block, height);
         assert(random_block.header.height == height);
     }
 
-    foreach (idx; iota(300).randomCover(rnd))
+    foreach (idx; iota(count).randomCover(rnd))
     {
         storage.readBlock(random_block, block_hashes[idx]);
         assert(hashFull(random_block.header) == block_hashes[idx]);
@@ -579,6 +733,20 @@ version(none) unittest
 
     storage.release();
 
-    foreach (idx; 0 .. 3)
-        storage.getFileName(idx).remove();
+    //  Verify index data that is already stored.
+    BlockStorage other = new BlockStorage(path);
+
+    foreach (height; iota(count).randomCover(rnd))
+    {
+        other.readBlock(random_block, height);
+        assert(random_block.header.height == height);
+    }
+
+    foreach (idx; iota(count).randomCover(rnd))
+    {
+        other.readBlock(random_block, block_hashes[idx]);
+        assert(hashFull(random_block.header) == block_hashes[idx]);
+    }
+
+    other.release();
 }
