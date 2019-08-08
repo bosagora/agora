@@ -36,7 +36,7 @@
 module agora.node.API;
 
 import agora.common.crypto.Key;
-import agora.common.Block;
+import agora.consensus.data.Block;
 import agora.common.Data;
 import agora.common.Set;
 import agora.consensus.data.Transaction;

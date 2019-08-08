@@ -13,7 +13,7 @@
 
 module agora.node.Node;
 
-import agora.common.Block;
+import agora.consensus.data.Block;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;

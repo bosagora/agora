@@ -233,9 +233,9 @@ unittest
 /// memory reclamation tests
 unittest
 {
-    import agora.common.Block;
     import agora.common.Deserializer;
     import agora.common.Serializer;
+    import agora.consensus.data.Block;
     import agora.consensus.Genesis;
     import std.exception;
     import core.memory;

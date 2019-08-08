@@ -14,7 +14,7 @@
 module agora.consensus.Genesis;
 
 import agora.common.Amount;
-import agora.common.Block;
+import agora.consensus.data.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.crypto.Key;
@@ -56,7 +56,7 @@ unittest
 
 public Transaction getGenesisTx ()
 {
-    import agora.common.Block;
+    import agora.consensus.data.Block;
     import std.algorithm;
     import std.range;
     import std.format;

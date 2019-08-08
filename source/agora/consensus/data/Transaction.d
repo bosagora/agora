@@ -312,7 +312,7 @@ version (unittest)
 public Transaction[] makeChainedTransactions (KeyPair key_pair,
     Transaction[] prev_txs, size_t block_count)
 {
-    import agora.common.Block;
+    import agora.consensus.data.Block;
     import std.conv;
 
     assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
@@ -373,7 +373,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
 ///
 unittest
 {
-    import agora.common.Block;
+    import agora.consensus.data.Block;
     import std.format;
     auto gen_key = getGenesisKeyPair();
     auto gen_block = getGenesisBlock();

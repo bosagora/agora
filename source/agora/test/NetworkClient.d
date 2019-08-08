@@ -16,7 +16,7 @@ module agora.test.NetworkClient;
 version (unittest):
 
 import agora.common.crypto.Key;
-import agora.common.Block;
+import agora.consensus.data.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.consensus.data.Transaction;

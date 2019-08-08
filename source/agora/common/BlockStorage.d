@@ -17,11 +17,11 @@
 module agora.common.BlockStorage;
 
 import agora.common.Amount;
-import agora.common.Block;
 import agora.common.Data;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.data.Block;
 
 import std.algorithm;
 import std.container.rbtree;
