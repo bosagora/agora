@@ -1,5 +1,7 @@
 language: d
 
+dist: xenial
+
 d:
   - dmd-2.087.1 # 2.087.0 has regressions
   - dmd-2.086.1
