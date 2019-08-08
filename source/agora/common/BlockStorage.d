@@ -23,8 +23,6 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 
-import vibe.core.log;
-
 import std.algorithm;
 import std.container.rbtree;
 import std.exception;
@@ -504,8 +502,7 @@ public class BlockStorage
         }
         catch (Exception ex)
         {
-            logError("saveIndex: %s",
-                () @trusted { return ex.message; }());
+            () @trusted { stderr.writeln("saveIndex: ", ex.message); }();
         }
     }
 
@@ -554,8 +551,7 @@ public class BlockStorage
             }
             catch (Exception ex)
             {
-                logError("loadAllIndexes: %s",
-                    () @trusted { return ex.message; }());
+                () @trusted { stderr.writeln("loadAllIndexes: ", ex.message); }();
             }
         }
     }
