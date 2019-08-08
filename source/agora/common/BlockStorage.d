@@ -61,8 +61,10 @@ private struct HashPosition
     size_t              position;
 }
 
-alias IndexHeight = RedBlackTree!(HeightPosition, "(a.height < b.height)");
-alias IndexHash = RedBlackTree!(HashPosition, "(a.hash < b.hash)");
+/// Type of RBTree used for height indexing
+private alias IndexHeight = RedBlackTree!(HeightPosition, "(a.height < b.height)");
+/// Type of RBTree used for hash indexing
+private alias IndexHash = RedBlackTree!(HashPosition, "(a.hash < b.hash)");
 
 /// Ditto
 public class BlockStorage
