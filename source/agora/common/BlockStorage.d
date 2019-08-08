@@ -47,8 +47,6 @@ const MFILE_MAX_BLOCK = 100;
 /// The map file size
 const MFILE_MAP_SIZE = 640 * 1024;
 
-const HASH_SIZE = 64;
-
 private struct HeightPosition
 {
     size_t              height;
@@ -57,7 +55,7 @@ private struct HeightPosition
 
 private struct HashPosition
 {
-    ubyte[HASH_SIZE]    hash;
+    ubyte[Hash.sizeof]  hash;
     size_t              position;
 }
 
@@ -275,7 +273,7 @@ public class BlockStorage
         );
 
         // add to index of hash
-        ubyte[HASH_SIZE] hash_bytes = hashFull(block.header)[0..HASH_SIZE];
+        ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
         this.hash_idx.insert(
             HashPosition(
                 hash_bytes,
@@ -355,7 +353,7 @@ public class BlockStorage
 
     public bool readBlock (ref Block block, Hash hash) @safe
     {
-        ubyte[HASH_SIZE] hash_bytes = hash[0..HASH_SIZE];
+        ubyte[Hash.sizeof] hash_bytes = hash[];
 
         auto finds
             = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
@@ -519,7 +517,7 @@ public class BlockStorage
 
     private void saveIndex (
         size_t height,
-        ubyte[HASH_SIZE] hash,
+        ubyte[Hash.sizeof] hash,
         size_t pos) @safe
     {
         File idx_file;
@@ -554,7 +552,7 @@ public class BlockStorage
         File idx_file;
 
         size_t height;
-        ubyte[HASH_SIZE] hash;
+        ubyte[Hash.sizeof] hash;
         size_t pos;
         string file_name = buildPath(this.path, "index.dat");
 
@@ -567,7 +565,7 @@ public class BlockStorage
             {
                 idx_file = File(file_name, "rb");
 
-                size_t record_size = (size_t.sizeof * 2 + HASH_SIZE);
+                size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
                 size_t record_count = idx_file.size / record_size;
                 foreach (idx; 0 .. record_count)
                 {
