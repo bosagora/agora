@@ -5,8 +5,9 @@ dist: xenial
 d:
   - dmd-2.087.1 # 2.087.0 has regressions
   - dmd-2.086.1
-  - ldc-1.16.0  # Older version don't work
-  - dmd-beta    # Last so that `fast_finish` is useful
+  - ldc-1.16.0     # Older version don't work
+  - dmd-nightly   # Nightlies at the end so that `fast_finish` is useful
+  - ldc-latest-ci # The freshest LDC
 
 os:
   - linux
@@ -15,6 +16,7 @@ os:
 matrix:
   allow_failures:
     - d: dmd-beta
+    - d: ldc-latest-ci
   fast_finish: true
 
 # `brew install` is the slowest thing ever on OSX
