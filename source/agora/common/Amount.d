@@ -192,8 +192,7 @@ public struct Amount
     /// Prefer using this only in `unittest`s
     public ref Amount mustAdd (Amount other)
     {
-        if (!this.add(other))
-            assert(0);
+        this.add(other) || assert(0);
         return this;
     }
 
@@ -201,8 +200,7 @@ public struct Amount
     /// Prefer using this only in `unittest`s
     public ref Amount mustSub (Amount other)
     {
-        if (!this.sub(other))
-            assert(0);
+        this.sub(other) || assert(0);
         return this;
     }
 
@@ -220,17 +218,14 @@ nothrow pure @nogc @safe unittest
 {
     // Typical use case is to do `if (!op) error_handling;`
     Amount two = Amount.UnitPerCoin;
-    if (!two.add(two))
-        assert(0);
-    if (!two.sub(two))
-        assert(0);
+    assert(two.add(two));
+    assert(two.sub(two));
 
     // The value is still valid
     assert(two.isValid());
 
     // This should error
-    if (two.sub(Amount(1)))
-        assert(0);
+    assert(!two.sub(Amount(1)));
 
     // The value was poisoned
     assert(!two.isValid());
@@ -238,6 +233,22 @@ nothrow pure @nogc @safe unittest
     assert(!two.sub(two));
     // But can be reset to a sane value if needed
     two = Amount(1);
-    if (!two.sub(Amount(1)))
-        assert(0);
+    assert(two.sub(Amount(1)));
+
+    // mustAdd / mustSub coverage
+    two.mustAdd(Amount(1));
+    assert(two == Amount(1));
+    two.mustSub(Amount(1));
+    assert(two == Amount(0));
+}
+
+pure @safe unittest
+{
+    import std.exception;
+    assert(Amount.fromString(`5000000000000000`) == Amount.MaxUnitSupply);
+    assertThrown!Exception(Amount.fromString(`5000000000000001`));
+    Amount maxv = Amount.MaxUnitSupply;
+    assert(maxv.isValid());
+    assert(!maxv.add(Amount(1)));
+    assert(!maxv.isValid());
 }
