@@ -166,31 +166,28 @@ public class BlockStorage
             this.writeDataLength(resize);
             this.data_size = resize;
         }
+        else if (name.exists())
+        {
+            this.file =
+                new MmFile(
+                    name,
+                    MmFile.Mode.readWrite,
+                    0,
+                    null
+                );
+            this.data_size = this.readDataLength();
+        }
         else
         {
-            if (name.exists())
-            {
-                this.file =
-                    new MmFile(
-                        name,
-                        MmFile.Mode.readWrite,
-                        0,
-                        null
-                    );
-                this.data_size = this.readDataLength();
-            }
-            else
-            {
-                this.file =
-                    new MmFile(
-                        name,
-                        MmFile.Mode.readWrite,
-                        max(MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE, resize),
-                        null
-                    );
-                this.writeDataLength(0);
-                this.data_size = 0;
-            }
+            this.file =
+                new MmFile(
+                    name,
+                    MmFile.Mode.readWrite,
+                    max(MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE, resize),
+                    null
+                );
+            this.writeDataLength(0);
+            this.data_size = 0;
         }
     }
 
