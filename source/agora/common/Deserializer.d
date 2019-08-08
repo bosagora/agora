@@ -14,7 +14,6 @@
 module agora.common.Deserializer;
 
 import agora.common.Data;
-import agora.common.Block;
 import agora.common.crypto.Key;
 
 /// Type of delegate deserializeDg
@@ -105,6 +104,7 @@ public void deserializePart (ref long record, scope DeserializeDg dg)
 /// test various serialization / deserialization of types
 unittest
 {
+    import agora.common.Block;
     import agora.common.Hash;
     import agora.common.Serializer;
     import agora.consensus.data.Transaction;
