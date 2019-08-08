@@ -13,7 +13,7 @@
 
 *******************************************************************************/
 
-module agora.common.Block;
+module agora.consensus.data.Block;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;

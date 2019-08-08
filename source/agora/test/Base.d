@@ -23,7 +23,7 @@ module agora.test.Base;
 version (unittest):
 
 import agora.common.BanManager;
-import agora.common.Block;
+import agora.consensus.data.Block;
 import agora.common.Config;
 import agora.common.Data;
 import agora.common.Hash;

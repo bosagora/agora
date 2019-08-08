@@ -14,7 +14,7 @@
 module agora.network.NetworkClient;
 
 import agora.common.BanManager;
-import agora.common.Block;
+import agora.consensus.data.Block;
 import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Data;

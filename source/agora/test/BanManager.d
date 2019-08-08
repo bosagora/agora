@@ -17,9 +17,9 @@ module agora.test.BanManager;
 version (unittest):
 
 import agora.common.crypto.Key;
-import agora.common.Block;
 import agora.common.Data;
 import agora.common.Hash;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
