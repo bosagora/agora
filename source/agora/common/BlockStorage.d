@@ -311,28 +311,24 @@ public class BlockStorage
         auto finds
             = this.height_idx[].find!( (a, b) => a.height == b)(height);
 
-        if (!finds.empty)
-        {
-            const size_t position = finds.front.position;
-
-            this.map(position / MFILE_MAP_SIZE);
-
-            const size_t x0 = position % MFILE_MAP_SIZE;
-            const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
-
-            assert(x0 < this.data_size);
-
-            const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
-            const size_t x3 = x2 + block_size;
-
-            block = deserialize!Block(this.read(x2, x3));
-
-            return true;
-        }
-        else
-        {
+        if (finds.empty)
             return false;
-        }
+
+        const size_t position = finds.front.position;
+
+        this.map(position / MFILE_MAP_SIZE);
+
+        const size_t x0 = position % MFILE_MAP_SIZE;
+        const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
+
+        assert(x0 < this.data_size);
+
+        const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
+        const size_t x3 = x2 + block_size;
+
+        block = deserialize!Block(this.read(x2, x3));
+
+        return true;
     }
 
     /***************************************************************************
@@ -355,28 +351,24 @@ public class BlockStorage
         auto finds
             = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
 
-        if (!finds.empty)
-        {
-            const size_t position = finds.front.position;
-
-            this.map(position / MFILE_MAP_SIZE);
-
-            const size_t x0 = position % MFILE_MAP_SIZE;
-            const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
-
-            assert(x0 < this.data_size);
-
-            const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
-            const size_t x3 = x2 + block_size;
-
-            block = deserialize!Block(this.read(x2, x3));
-
-            return true;
-        }
-        else
-        {
+        if (finds.empty)
             return false;
-        }
+
+        const size_t position = finds.front.position;
+
+        this.map(position / MFILE_MAP_SIZE);
+
+        const size_t x0 = position % MFILE_MAP_SIZE;
+        const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
+
+        assert(x0 < this.data_size);
+
+        const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
+        const size_t x3 = x2 + block_size;
+
+        block = deserialize!Block(this.read(x2, x3));
+
+        return true;
     }
 
     /***************************************************************************
