@@ -216,28 +216,28 @@ public struct Amount
 }
 
 ///
- nothrow pure @nogc @safe unittest
- {
-     // Typical use case is to do `if (!op) error_handling;`
-     Amount two = Amount.UnitPerCoin;
-     if (!two.add(two))
-         assert(0);
-     if (!two.sub(two))
-         assert(0);
+nothrow pure @nogc @safe unittest
+{
+    // Typical use case is to do `if (!op) error_handling;`
+    Amount two = Amount.UnitPerCoin;
+    if (!two.add(two))
+        assert(0);
+    if (!two.sub(two))
+        assert(0);
 
-     // The value is still valid
-     assert(two.isValid());
+    // The value is still valid
+    assert(two.isValid());
 
-     // This should error
-     if (two.sub(Amount(1)))
-         assert(0);
+    // This should error
+    if (two.sub(Amount(1)))
+        assert(0);
 
-     // The value was poisoned
-     assert(!two.isValid());
-     // Even substracting it to itself (which should yield 0) doesn't work
-     assert(!two.sub(two));
-     // But can be reset to a sane value if needed
-     two = Amount(1);
-     if (!two.sub(Amount(1)))
-         assert(0);
+    // The value was poisoned
+    assert(!two.isValid());
+    // Even substracting it to itself (which should yield 0) doesn't work
+    assert(!two.sub(two));
+    // But can be reset to a sane value if needed
+    two = Amount(1);
+    if (!two.sub(Amount(1)))
+        assert(0);
 }
