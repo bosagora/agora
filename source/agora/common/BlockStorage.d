@@ -36,16 +36,16 @@ import std.stdio;
 
 
 /// The size of header
-const MFILE_HEAD_SIZE = size_t.sizeof;
+private immutable size_t MFILE_HEAD_SIZE = size_t.sizeof;
 
 /// Amount of reserved size
-const MFILE_RESERVE_SIZE = 64 * 1024;
+private immutable size_t MFILE_RESERVE_SIZE = 64 * 1024;
 
 /// The maximum number of block in one file
-const MFILE_MAX_BLOCK = 100;
+private immutable ulong MFILE_MAX_BLOCK = 100;
 
 /// The map file size
-const MFILE_MAP_SIZE = 640 * 1024;
+private immutable size_t MFILE_MAP_SIZE = 640 * 1024;
 
 private struct HeightPosition
 {
