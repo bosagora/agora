@@ -15,7 +15,7 @@ os:
 
 matrix:
   allow_failures:
-    - d: dmd-beta
+    - d: dmd-nightly
     - d: ldc-latest-ci
   fast_finish: true
 
