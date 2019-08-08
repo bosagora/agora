@@ -303,20 +303,7 @@ public class BlockStorage
         if (finds.empty)
             return false;
 
-        const size_t position = finds.front.position;
-
-        this.map(position / MFILE_MAP_SIZE);
-
-        const size_t x0 = position % MFILE_MAP_SIZE;
-        const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
-
-        assert(x0 < this.data_size);
-
-        const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
-        const size_t x3 = x2 + block_size;
-
-        block = deserialize!Block(this.read(x2, x3));
-
+        this.readBlockAtPosition(block, finds.front.position);
         return true;
     }
 
@@ -343,8 +330,13 @@ public class BlockStorage
         if (finds.empty)
             return false;
 
-        const size_t position = finds.front.position;
+        this.readBlockAtPosition(block, finds.front.position);
+        return true;
+    }
 
+    /// Ditto
+    private void readBlockAtPosition (ref Block block, size_t position) @safe
+    {
         this.map(position / MFILE_MAP_SIZE);
 
         const size_t x0 = position % MFILE_MAP_SIZE;
@@ -356,8 +348,6 @@ public class BlockStorage
         const size_t x3 = x2 + block_size;
 
         block = deserialize!Block(this.read(x2, x3));
-
-        return true;
     }
 
     /***************************************************************************
