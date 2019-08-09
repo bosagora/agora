@@ -44,6 +44,7 @@ unittest
         true, retry_delay, max_retries, timeout, max_failed_requests);
     setLogLevel(LogLevel.info);
     network.start();
+    scope(exit) network.shutdown();
 
     auto keys = network.apis.keys;
     auto node_1 = network.apis[keys[0]];
