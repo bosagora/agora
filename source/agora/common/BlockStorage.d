@@ -147,7 +147,7 @@ public class BlockStorage
         }
 
         if (this.file !is null)
-            this.unMap();
+            this.release();
 
         this.file_index = findex;
         const string name = this.getFileName(this.file_index);
@@ -195,7 +195,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    private void unMap () @trusted
+    public void release () @trusted
     {
         if (this.file is null)
             return;
