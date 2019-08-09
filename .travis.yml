@@ -41,7 +41,7 @@ addons:
       - libsqlite3-dev
 
 env:
-  - PATH=$HOME/bin/:$PATH; export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
+  - PATH=$HOME/bin/:$PATH PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
 
 # No way to install the apt package, so...
 before_install:
