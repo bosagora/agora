@@ -152,9 +152,9 @@ unittest
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 100);
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 4);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 100).retryFor(8.seconds);
+    containSameBlocks(nodes, 4).retryFor(8.seconds);
 }
 
 /// Merkle Proof
