@@ -98,6 +98,44 @@ With parameters: `void foobar (int p1, void* p2)`.
 Templated functions are written as `void foobar (T) (T arg)`.
 This makes functions easy to `grep` for.
 
+### Attributes (@trusted, @safe, @nogc, pure, etc)
+
+Prefer adding `@safe`, `@nogc`, and `pure` atttributes to functions when it's
+possible. If one or more statements inside of a non-trivial function call a
+non-safe or non-trusted function, don't mark the function itself as `@trusted`.
+Instead, mark it as `@safe` and use trusted anonymous delegates on the
+statement level.
+
+For example, don't do this:
+
+```D
+public void add (Transaction tx) @trusted
+{
+    auto tx_bytes = serializeFull(tx);
+    db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
+        hashFull(tx)[], tx_bytes);
+}
+```
+
+Instead do this:
+
+```D
+public void add (Transaction tx) @safe
+{
+    auto tx_bytes = serializeFull(tx);  // serializeFull() is already @safe
+
+    () @trusted {
+    db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
+        hashFull(tx)[], tx_bytes); }();
+}
+```
+
+The above code declares an anonymous delegate, and immediately calls it.
+Notice that the delegate itself is marked as `@trusted`.
+
+Note: You should only mark code as trusted if it really should be trusted.
+For a general definition of what code can be trusted, consult this page: https://dlang.org/spec/function.html#trusted-functions
+
 ### Variable & Fields
 
 Note: our rules for variables & fields deviate from the official D style-guide.
