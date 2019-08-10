@@ -43,7 +43,7 @@ private immutable size_t ReserveSize = 64 * 1024;
 private immutable ulong MaxBlock = 100;
 
 /// The map file size
-private immutable size_t MapSize = 640 * 1024;
+private immutable size_t MapSize = 64 * 1024;
 
 private struct HeightPosition
 {
