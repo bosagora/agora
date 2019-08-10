@@ -34,16 +34,16 @@ import std.stdio;
 
 
 /// The size of header
-private immutable size_t MFILE_HEAD_SIZE = size_t.sizeof;
+private immutable size_t HeadSize = size_t.sizeof;
 
 /// Amount of reserved size
-private immutable size_t MFILE_RESERVE_SIZE = 64 * 1024;
+private immutable size_t ReserveSize = 64 * 1024;
 
 /// The maximum number of block in one file
-private immutable ulong MFILE_MAX_BLOCK = 100;
+private immutable ulong MaxBlock = 100;
 
 /// The map file size
-private immutable size_t MFILE_MAP_SIZE = 640 * 1024;
+private immutable size_t MapSize = 640 * 1024;
 
 private struct HeightPosition
 {
@@ -138,7 +138,7 @@ public class BlockStorage
 
             // if can use reserved memory
             if ((this.data_size < resize) &&
-                (MFILE_HEAD_SIZE + resize < this.getFileLength()))
+                (HeadSize + resize < this.getFileLength()))
             {
                 this.writeDataLength(resize);
                 this.data_size = resize;
@@ -158,7 +158,7 @@ public class BlockStorage
                 new MmFile(
                     name,
                     MmFile.Mode.readWrite,
-                    resize + MFILE_HEAD_SIZE + MFILE_RESERVE_SIZE,
+                    resize + HeadSize + ReserveSize,
                     null
                 );
             this.writeDataLength(resize);
@@ -181,7 +181,7 @@ public class BlockStorage
                 new MmFile(
                     name,
                     MmFile.Mode.readWrite,
-                    max(MFILE_HEAD_SIZE+MFILE_RESERVE_SIZE, resize),
+                    max(HeadSize+ReserveSize, resize),
                     null
                 );
             this.writeDataLength(0);
@@ -226,8 +226,8 @@ public class BlockStorage
 
         const ubyte[] serialized_block = serializeFull(block);
 
-        const size_t fidx = block.header.height / MFILE_MAX_BLOCK;
-        const size_t bidx = block.header.height % MFILE_MAX_BLOCK;
+        const size_t fidx = block.header.height / MaxBlock;
+        const size_t bidx = block.header.height % MaxBlock;
         size_t pos;
 
         // first in this file
@@ -248,7 +248,7 @@ public class BlockStorage
         }
 
         // add to index of heigth
-        const size_t block_position = (MFILE_MAP_SIZE * fidx + pos);
+        const size_t block_position = (MapSize * fidx + pos);
         this.height_idx.insert(
             HeightPosition(
                 block.header.height,
@@ -266,10 +266,10 @@ public class BlockStorage
         );
 
         // write block data size
-        this.writeSizeT(MFILE_HEAD_SIZE + pos, serialized_block.length);
+        this.writeSizeT(HeadSize + pos, serialized_block.length);
 
         // write to memory
-        this.write(MFILE_HEAD_SIZE + pos + size_t.sizeof, serialized_block);
+        this.write(HeadSize + pos + size_t.sizeof, serialized_block);
 
         this.saveIndex(block.header.height, hash_bytes, block_position);
 
@@ -335,14 +335,14 @@ public class BlockStorage
     /// Ditto
     private void readBlockAtPosition (ref Block block, size_t position) @safe
     {
-        this.map(position / MFILE_MAP_SIZE);
+        this.map(position / MapSize);
 
-        const size_t x0 = position % MFILE_MAP_SIZE;
-        const size_t block_size = this.readSizeT(MFILE_HEAD_SIZE + x0);
+        const size_t x0 = position % MapSize;
+        const size_t block_size = this.readSizeT(HeadSize + x0);
 
         assert(x0 < this.data_size);
 
-        const size_t x2 = x0 + MFILE_HEAD_SIZE + size_t.sizeof;
+        const size_t x2 = x0 + HeadSize + size_t.sizeof;
         const size_t x3 = x2 + block_size;
 
         block = deserialize!Block(this.read(x2, x3));
