@@ -524,35 +524,35 @@ public class BlockStorage
         this.height_idx.clear();
         this.hash_idx.clear();
 
-        if (file_name.exists)
+        if (!file_name.exists)
+            return;
+
+        try
         {
-            try
+            idx_file = File(file_name, "rb");
+
+            size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
+            size_t record_count = idx_file.size / record_size;
+            foreach (idx; 0 .. record_count)
             {
-                idx_file = File(file_name, "rb");
+                height = idx_file.readSizeType();
 
-                size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
-                size_t record_count = idx_file.size / record_size;
-                foreach (idx; 0 .. record_count)
-                {
-                    height = idx_file.readSizeType();
+                idx_file.rawRead(hash);
 
-                    idx_file.rawRead(hash);
+                pos = idx_file.readSizeType();
 
-                    pos = idx_file.readSizeType();
+                // add to index of heigth
+                this.height_idx.insert(HeightPosition(height, pos));
 
-                    // add to index of heigth
-                    this.height_idx.insert(HeightPosition(height, pos));
-
-                    // add to index of hash
-                    this.hash_idx.insert(HashPosition(hash, pos));
-                }
-
-                idx_file.close();
+                // add to index of hash
+                this.hash_idx.insert(HashPosition(hash, pos));
             }
-            catch (Exception ex)
-            {
-                () @trusted { stderr.writeln("loadAllIndexes: ", ex.message); }();
-            }
+
+            idx_file.close();
+        }
+        catch (Exception ex)
+        {
+            () @trusted { stderr.writeln("loadAllIndexes: ", ex.message); }();
         }
     }
 
