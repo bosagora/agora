@@ -29,14 +29,11 @@ private int main (string[] args)
 {
     size_t count;
 
-    // For convenience, if no compiler is provided, uses `dmd`
-    immutable compiler = args.length >= 2 ? args[1] : "dmd";
-
     const importPaths = getImportPaths();
     const lflags = getLflags();
     if (!importPaths.length || !lflags.length)
         return 1;
-    const Args = ["rdmd", "--compiler=" ~ compiler, "-cov", ] ~
+    const Args = ["rdmd", ] ~ args[1 .. $] ~
         importPaths.map!(v => "-I" ~ v).array ~
         lflags.map!(v => "-L" ~ v).array;
 
