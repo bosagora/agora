@@ -463,6 +463,8 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
     Params:
         check = the condition to check on
         timeout = time to wait for the check to succeed
+        msg = optional AssertException message when the condition fails
+              after the timeout expires
         file = file from the call site
         line = line from the call site
 
@@ -472,7 +474,7 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
 *******************************************************************************/
 
 public void retryFor (lazy bool check, Duration timeout,
-    string file = __FILE__, size_t line = __LINE__)
+    lazy string msg = "", string file = __FILE__, size_t line = __LINE__)
 {
     import core.exception;
     import core.thread;
@@ -480,6 +482,7 @@ public void retryFor (lazy bool check, Duration timeout,
     // wait 100 msecs between attempts
     const SleepTime = 100;
     auto attempts = timeout.total!"msecs" / SleepTime;
+    const TotalAttempts = attempts;
 
     while (attempts--)
     {
@@ -489,8 +492,13 @@ public void retryFor (lazy bool check, Duration timeout,
         Thread.sleep(SleepTime.msecs);
     }
 
-    throw new AssertError(format("Check condition failed after timeout of %s",
-        timeout), file, line);
+    auto assert_msg = format("Check condition failed after timeout of %s " ~
+        "and %s attempts", timeout, TotalAttempts);
+
+    if (msg.length)
+        assert_msg ~= ": " ~ msg;
+
+    throw new AssertError(assert_msg, file, line);
 }
 
 ///
