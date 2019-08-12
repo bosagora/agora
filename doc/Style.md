@@ -15,6 +15,9 @@ too many files, or adds too much functionality, consider splitting it
 up into several distinct commits.
 
 - Each commit **must** compile and **must** pass all tests. Hence it is not good form to add tests and then make them pass.
+  A simple way to check that each of your branch's commits compiles and pass test is to run the following command:
+  `git rebase -i --exec 'dub test && dub build' v0.x.x`. This assumes your branch is based on `v0.x.x`.
+  You might also want to run the integration test suite, in which case look at what [the CI is doing](../.travis.yaml).
 
 - The commit title and description should follow some general rules:
 
