@@ -14,6 +14,7 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
+import agora.common.BlockStorage;
 import agora.consensus.data.Block;
 import agora.common.Data;
 import agora.common.Hash;
@@ -30,22 +31,20 @@ import std.algorithm;
 /// Ditto
 public class Ledger
 {
-    /// data storage for all the blocks,
-    /// currently a single contiguous region to
-    /// improve locality of reference
-    private const(Block)[] ledger;
-
-    /// pointer to the latest block
-    private const(Block)* last_block;
+    /// data storage for all the blocks
+    private IBlockStorage storage;
 
     /// Pool of transactions to pick from when generating blocks
     private TransactionPool pool;
 
     /// Ctor
-    public this (TransactionPool pool)
+    public this (TransactionPool pool, IBlockStorage storage)
     {
         this.pool = pool;
-        this.addGenesisBlock();
+        this.storage = storage;
+        auto block = getGenesisBlock();
+        if (!this.storage.saveBlock(block))
+            assert(0);
     }
 
     /***************************************************************************
@@ -64,15 +63,17 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        if (!block.isValid(this.last_block.header.height,
-            this.last_block.header.hashFull, &this.findUTXO))
+        Block last_block;
+        if (!this.storage.readLastBlock(last_block))
+            assert(0);
+        if (!block.isValid(last_block.header.height,
+            last_block.header.hashFull, &this.findUTXO))
         {
             logDebug("Rejected block. %s", block);
             return false;
         }
-
-        this.ledger ~= block;
-        this.last_block = &this.ledger[$ - 1];
+        if (!this.storage.saveBlock(block))
+            return false;
         return true;
     }
 
@@ -115,20 +116,27 @@ public class Ledger
     {
         auto txs = this.pool.take(Block.TxsInBlock);
         assert(txs.length == Block.TxsInBlock);
-        auto block = makeNewBlock(*this.last_block, txs);
-        assert(this.acceptBlock(block));
+        Block last_block;
+        if (!this.storage.readLastBlock(last_block))
+            assert(0);
+        auto block = makeNewBlock(last_block, txs);
+        if (!this.acceptBlock(block))
+            assert(0);
     }
 
     /***************************************************************************
 
         Returns:
-            the highest block
+            latest block height
 
     ***************************************************************************/
 
-    public const(Block)* getLastBlock () @safe nothrow @nogc
+    public ulong getBlockHeight () @safe nothrow
     {
-        return this.last_block;
+        Block last_block;
+        if (!this.storage.readLastBlock(last_block))
+            assert(0);
+        return last_block.header.height;
     }
 
     /***************************************************************************
@@ -147,14 +155,23 @@ public class Ledger
     ***************************************************************************/
 
     public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
-        @safe nothrow @nogc
+        @safe nothrow
     {
         assert(max_blocks > 0);
 
-        if (block_height > this.ledger.length)
-            return null;
+        const MaxHeight
+            = min(block_height + max_blocks, this.getBlockHeight() + 1);
+        const(Block)[] res;
+        foreach (height; block_height .. MaxHeight)
+        {
+            Block block;
+            if (!this.storage.readBlock(block, height))
+                assert(0);
 
-        return this.ledger[block_height .. min(block_height + max_blocks, $)];
+            res ~= block;
+        }
+
+        return res;
     }
 
     /***************************************************************************
@@ -170,10 +187,14 @@ public class Ledger
     ***************************************************************************/
 
     private const(Output)* findUTXO (Hash tx_hash, size_t index)
-        @safe nothrow @nogc
+        @safe nothrow
     {
-        foreach (ref block; this.ledger)
+        foreach (height; 0 .. this.getBlockHeight() + 1)
         {
+            Block block;
+            if (!this.storage.readBlock(block, height))
+                assert(0);
+
             foreach (ref tx; block.txs)
             {
                 if (hashFull(tx) == tx_hash)
@@ -204,45 +225,35 @@ public class Ledger
 
     public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
-        if (block_height >= this.ledger.length)
+        if (this.getBlockHeight() < block_height)
             return null;
 
-        const(Block)* block = &this.ledger[block_height];
-
+        Block block;
+        if (!this.storage.readBlock(block, block_height))
+            assert(0);
         size_t index = block.findHashIndex(hash);
-        if (index < block.txs.length)
-            return block.getMerklePath(index);
-        else
+        if (index >= block.txs.length)
             return null;
-    }
-
-    /***************************************************************************
-
-        Add the genesis block to the ledger.
-
-    ***************************************************************************/
-
-    private void addGenesisBlock ()
-    {
-        assert(this.ledger.length == 0);
-        auto block = getGenesisBlock();
-        this.ledger ~= block;
-        this.last_block = &this.ledger[$ - 1];
+        return block.getMerklePath(index);
     }
 }
 
 ///
 unittest
 {
+    import agora.common.BlockStorage;
     import agora.common.crypto.Key;
     import agora.common.Data;
     import agora.common.Hash;
 
+    auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
-    scope ledger = new Ledger(pool);
-    assert(*ledger.getLastBlock() == getGenesisBlock());
-    assert(ledger.ledger.length == 1);
+    scope ledger = new Ledger(pool, storage);
+    assert(ledger.getBlockHeight() == 0);
+
+    const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
+    assert(blocks[$ - 1] == getGenesisBlock());
 
     auto gen_key_pair = getGenesisKeyPair();
     Transaction[] last_txs;
@@ -261,15 +272,14 @@ unittest
     }
 
     genBlockTransactions(2);
-    const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
+    blocks = ledger.getBlocksFrom(0, 10);
     assert(blocks[0] == getGenesisBlock());
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
 
     /// now generate 98 more blocks to make it 100 + genesis block (101 total)
     genBlockTransactions(98);
-
-    assert(ledger.getLastBlock().header.height == 100);
+    assert(ledger.getBlockHeight() == 100);
 
     blocks = ledger.getBlocksFrom(0, 10);
     assert(blocks[0] == getGenesisBlock());
@@ -317,9 +327,10 @@ unittest
     import agora.common.Data;
     import agora.common.Hash;
 
+    auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
-    scope ledger = new Ledger(pool);
+    scope ledger = new Ledger(pool, storage);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
@@ -335,11 +346,13 @@ unittest
 /// Merkle Proof
 unittest
 {
+    import agora.common.BlockStorage;
     import agora.common.crypto.Key;
 
+    auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
-    scope ledger = new Ledger(pool);
+    scope ledger = new Ledger(pool, storage);
 
     auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
