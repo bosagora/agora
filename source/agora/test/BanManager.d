@@ -29,16 +29,17 @@ unittest
 {
     import core.thread;
     import std.algorithm;
+    import std.conv;
     import std.range;
     const NodeCount = 2;
 
     const long retry_delay = 10;
     const size_t max_retries = 10;
     const long timeout = 10;
-    const size_t max_failed_requests = 32;
+    const size_t max_failed_requests = 4 * Block.TxsInBlock;
 
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount,
-        true, retry_delay, max_retries, timeout, max_failed_requests);
+    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple,
+        NodeCount, true, retry_delay, max_retries, timeout, max_failed_requests);
     network.start();
     scope(exit) network.shutdown();
 
@@ -69,71 +70,41 @@ unittest
     node_1.filter!(node_1.getBlocksFrom);  // node 2 can't retrieve blocks
     node_2.filter!(node_2.putTransaction); // node 1 can't gossip transactions
 
-    // node 2 will reject gossipping
+    // leftover txs which node 2 rejected due to filter
     Transaction[] left_txs;
 
-    auto new_tx = genBlockTransactions(1);
+    auto new_tx = genBlockTransactions(4);
     left_txs ~= new_tx;
     new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
 
-    new_tx = genBlockTransactions(1);
-    left_txs ~= new_tx;
-    new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
+    // wait for node 2 to be banned and all putTransaction requests to time-out
+    Thread.sleep(2.seconds);
 
-    new_tx = genBlockTransactions(1);
-    left_txs ~= new_tx;
-    new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
+    retryFor(node_1.getBlockHeight() == 5, 1.seconds);
+    retryFor(node_2.getBlockHeight() == 1, 1.seconds);
 
-    new_tx = genBlockTransactions(1);
-    left_txs ~= new_tx;
-    new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 5);
-    assert(node_2.getBlockHeight() == 1);
-
+    // clear putTransaction filter
     node_2.clearFilter();
-    left_txs.each!(tx => node_2.putTransaction(tx));  // manually add them
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 5);
-    assert(node_2.getBlockHeight() == 5);
+    left_txs.each!(tx => node_2.putTransaction(tx));  // add leftover txs
+    retryFor(node_1.getBlockHeight() == 5, 1.seconds);
+    retryFor(node_2.getBlockHeight() == 5, 1.seconds);
 
+    // node 2 should be banned by this point
     new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
     new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 6);
-    assert(node_2.getBlockHeight() == 5);  // filter is active
+    retryFor(node_1.getBlockHeight() == 6, 1.seconds);
+    retryFor(node_2.getBlockHeight() == 5, 1.seconds);  // node was banned
 
-    left_txs.each!(tx => node_2.putTransaction(tx));  // manually add them again
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 6);
-    assert(node_2.getBlockHeight() == 6);
-
-    // now test that node 1 banned outbound communication with node 2
-    // first clear the filter
-    node_2.clearFilter();
-
-    new_tx = genBlockTransactions(1);
-    left_txs ~= new_tx;
-    new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 7);
-    assert(node_2.getBlockHeight() == 6);  // node was banned
-
-    left_txs.each!(tx => node_2.putTransaction(tx));  // manually add them again
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 7);
-    assert(node_2.getBlockHeight() == 7);
+    left_txs.each!(tx => node_2.putTransaction(tx));  // add leftover txs
+    retryFor(node_1.getBlockHeight() == 6, 1.seconds);
+    retryFor(node_2.getBlockHeight() == 6, 1.seconds);
 
     FakeClockBanManager.time += 500;  // nodes should be unbanned now
 
     new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
     new_tx.each!(tx => node_1.putTransaction(tx));
-    Thread.sleep(500.msecs);
-    assert(node_1.getBlockHeight() == 8);
-    assert(node_2.getBlockHeight() == 8);  // node was un-banned
+    retryFor(node_1.getBlockHeight() == 7, 1.seconds);
+    retryFor(node_2.getBlockHeight() == 7, 1.seconds);  // node was un-banned
 }
