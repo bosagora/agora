@@ -165,7 +165,7 @@ public class NetworkManager
             while (1)
             {
                 this.getBlocksFrom(
-                    ledger.getLastBlock().header.height + 1,
+                    ledger.getBlockHeight() + 1,
                     blocks => blocks.all!(block => ledger.acceptBlock(block)));
 
                 this.taskman.wait(2.seconds);

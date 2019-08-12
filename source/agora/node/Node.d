@@ -15,6 +15,7 @@ module agora.node.Node;
 
 import agora.consensus.data.Block;
 import agora.common.BanManager;
+import agora.common.BlockStorage;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
@@ -69,6 +70,8 @@ public class Node : API
     ///
     private Ledger ledger;
 
+    /// Blockstorage
+    private IBlockStorage storage;
 
     /// Ctor
     public this (const Config config)
@@ -78,8 +81,9 @@ public class Node : API
         this.config = config;
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata);
+        this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
-        this.ledger = new Ledger(this.pool);
+        this.ledger = new Ledger(this.pool, this.storage);
         this.gossip = new GossipProtocol(this.network, this.ledger);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
@@ -149,7 +153,7 @@ public class Node : API
     /// GET: /block_height
     public ulong getBlockHeight ()
     {
-        return this.ledger.getLastBlock().header.height;
+        return this.ledger.getBlockHeight();
     }
 
     /// GET: /blocks_from
@@ -230,6 +234,32 @@ public class Node : API
         return new DiskMetadata(data_dir);
     }
 
+    /***************************************************************************
+
+        Returns an instance of a BlockStorage or MemoryStorage
+
+        Note: not exposed in the API.
+
+        Params:
+            data_dir = path to the blockdata directory
+
+        Returns:
+            Returns instance of `MemoryStorage` if data_dir is empty,
+            otherwise returns instance of `BlockStorage`
+
+    ***************************************************************************/
+
+    protected IBlockStorage getBlockStorage (string data_dir) @system
+    {
+        version (unittest)
+        {
+            return new MemBlockStorage();
+        }
+        else
+        {
+            return new BlockStorage(data_dir);
+        }
+    }
 
     /// GET: /merkle_path
     public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
