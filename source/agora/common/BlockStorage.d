@@ -502,7 +502,7 @@ public class BlockStorage
         }
         catch (Exception ex)
         {
-            () @trusted { stderr.writeln("saveIndex: ", ex.message); }();
+            this.writeLog("BlockStorage.saveIndex: ", ex);
         }
     }
 
@@ -552,7 +552,7 @@ public class BlockStorage
         }
         catch (Exception ex)
         {
-            () @trusted { stderr.writeln("loadAllIndexes: ", ex.message); }();
+            this.writeLog("BlockStorage.loadAllIndexes: ", ex);
         }
     }
 
@@ -567,6 +567,27 @@ public class BlockStorage
         string name = buildPath(path, "index.dat");
         if (name.exists)
             name.remove();
+    }
+
+    /***************************************************************************
+
+        Write error message
+
+        Params:
+            func = function name
+            ex = Instance of `Exception`
+
+    ***************************************************************************/
+
+    private void writeLog (string func, Exception ex) @trusted nothrow
+    {
+        try
+        {
+            stderr.writeln(func, ex.message);
+        }
+        catch (Exception ex)
+        {
+        }
     }
 }
 
