@@ -45,7 +45,7 @@ unittest
 
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
     Transaction[] last_txs;
-    foreach (block_idx; 0 .. 100)  // create 100 blocks
+    foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
         auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
@@ -76,14 +76,14 @@ unittest
     blocks = node_1.getBlocksFrom(0, 1);
     assert(blocks.length == 1 && blocks[0] == getGenesisBlock());
 
-    blocks = node_1.getBlocksFrom(100, 1);
-    assert(blocks.length == 1 && blocks[0].txs == block_txes[99]);  // -1 as genesis block not included
+    blocks = node_1.getBlocksFrom(10, 1);
+    assert(blocks.length == 1 && blocks[0].txs == block_txes[9]);  // -1 as genesis block not included
 
     // over the limit => return up to the highest block
-    assert(node_1.getBlocksFrom(0, 1000).length == 101);
+    assert(node_1.getBlocksFrom(0, 100).length == 11);
 
     // higher index than available => return nothing
-    assert(node_1.getBlocksFrom(1000, 10).length == 0);
+    assert(node_1.getBlocksFrom(100, 10).length == 0);
 }
 
 /// test catch-up phase during booting
@@ -102,7 +102,7 @@ unittest
     auto node_1 = nodes[0];
 
     Transaction[] last_txs;
-    foreach (block_idx; 0 .. 100)  // create 100 blocks
+    foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
         auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
@@ -118,7 +118,7 @@ unittest
         last_txs = txs;
     }
 
-    retryFor(node_1.getBlockHeight() == 100, 1.seconds);
+    retryFor(node_1.getBlockHeight() == 10, 1.seconds);
 
     foreach (empty_node; nodes[1 .. $])
     {
@@ -129,7 +129,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
-    containSameBlocks(nodes, 100).retryFor(8.seconds);
+    containSameBlocks(nodes, 10).retryFor(8.seconds);
 }
 
 /// test catch-up phase after initial booting (periodic catch-up)
