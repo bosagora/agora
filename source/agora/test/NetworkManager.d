@@ -43,19 +43,9 @@ unittest
     auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 1);
     txes.each!(tx => node_1.putTransaction(tx));
 
-    Thread.sleep(2000.msecs);
-
     nodes[0].clearFilter();
     nodes[1].clearFilter();
 
-    auto attempts = 20;  // wait up to 20*100 msecs (2 seconds)
-    while (attempts--)
-    {
-        if (nodes.all!(node => node.getBlockHeight() == 1))
-            return;
-
-        Thread.sleep(100.msecs);
-    }
-
-    assert(0, "Nodes should have same block height");
+    nodes.all!(node => node.getBlockHeight() == 1)
+        .retryFor(2.seconds, "Nodes should have same block height");
 }
