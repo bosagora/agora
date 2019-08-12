@@ -28,25 +28,19 @@ import std.algorithm.comparison;
 import std.file;
 import std.path;
 
-/// The maximum number of block in one file
-private immutable ulong MFILE_MAX_BLOCK = 100;
-
 ///
 private void main ()
 {
     const size_t count = 300;
 
     string path = buildPath(getcwd, ".cache");
-    if (!path.exists)
-        mkdir(path);
+    if (path.exists)
+        rmdirRecurse(path);
+
+    mkdir(path);
 
     BlockStorage.removeIndexFile(path);
     BlockStorage storage = new BlockStorage(path);
-    foreach (idx; 0 .. count / MFILE_MAX_BLOCK)
-    {
-        auto name = storage.getFileName(idx);
-        if (name.exists) name.remove();
-    }
 
     KeyPair[] key_pairs = [
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
@@ -90,10 +84,6 @@ private void main ()
 
     // compare
     assert(equal(blocks, loaded_blocks));
-
-    // checks data file
-    foreach (idx; 0 .. count / MFILE_MAX_BLOCK)
-        assert(storage.getFileName(idx).exists);
 
     // test of random access
     import std.random;

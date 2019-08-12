@@ -33,15 +33,6 @@ import std.path;
 import std.stdio;
 
 
-/// The size of header
-private immutable size_t HeadSize = size_t.sizeof;
-
-/// Amount of reserved size
-private immutable size_t ReserveSize = 64 * 1024;
-
-/// The maximum number of block in one file
-private immutable ulong MaxBlock = 100;
-
 /// The map file size
 private immutable size_t MapSize = 640 * 1024;
 
@@ -74,21 +65,24 @@ public class BlockStorage
     /// Index of current file
     private size_t file_index;
 
-    /// The size of data. Exclude the size of the header and the reserved size
-    private size_t data_size;
-
     /// Index is block height
     private IndexHeight height_idx;
 
     /// Index is block hash
     private IndexHash hash_idx;
 
+    /// Size of Block Data
+    private size_t length;
+
+    /// Base Position of current file
+    private size_t file_base;
+
     /// Ctor
     public this (string path)
     {
         this.path = path;
-        this.file_index = 0;
-        this.data_size = 0;
+        this.file_index = ulong.max;
+        this.length = ulong.max;
 
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
@@ -119,79 +113,44 @@ public class BlockStorage
 
         If it was mapping the same file, just return.
         If it was mapping the other file, close previously mapped file.
-        If a size change occurs, open it again.
 
         Params:
             findex = the index of the file.
-            resize = The size of the file to change. If 0 does not change it.
 
     ***************************************************************************/
 
-    private void map (size_t findex, size_t resize = 0) @trusted
+    private bool map (size_t findex) @trusted nothrow
     {
-        // It's already mapped,
-        if ((this.file !is null) && (findex == this.file_index))
-        {
-            // if it doesn't change its size
-            if (resize == 0)
-                return;
+        try {
+            if ((this.file !is null) && (findex == this.file_index))
+                return true;
 
-            // if can use reserved memory
-            if ((this.data_size < resize) &&
-                (HeadSize + resize < this.getFileLength()))
-            {
-                this.writeDataLength(resize);
-                this.data_size = resize;
-                return;
-            }
-        }
+            if (this.file !is null)
+                this.release();
 
-        if (this.file !is null)
-            this.release();
+            this.file_index = findex;
 
-        this.file_index = findex;
-        const string name = this.getFileName(this.file_index);
-
-        if (resize != 0)
-        {
             this.file =
                 new MmFile(
-                    name,
+                    this.getFileName(this.file_index),
                     MmFile.Mode.readWrite,
-                    resize + HeadSize + ReserveSize,
+                    MapSize,
                     null
                 );
-            this.writeDataLength(resize);
-            this.data_size = resize;
+
+            this.file_base = MapSize * this.file_index;
+            return true;
         }
-        else if (name.exists())
+        catch (Exception ex)
         {
-            this.file =
-                new MmFile(
-                    name,
-                    MmFile.Mode.readWrite,
-                    0,
-                    null
-                );
-            this.data_size = this.readDataLength();
-        }
-        else
-        {
-            this.file =
-                new MmFile(
-                    name,
-                    MmFile.Mode.readWrite,
-                    max(HeadSize+ReserveSize, resize),
-                    null
-                );
-            this.writeDataLength(0);
-            this.data_size = 0;
+            this.writeLog("BlockStorage.map: ", ex);
+            return false;
         }
     }
 
     /***************************************************************************
 
-        Close memory mapped file.
+        Release memory mapped file.
 
     ***************************************************************************/
 
@@ -218,62 +177,79 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public bool saveBlock (const ref Block block) @safe
+    public bool saveBlock (const ref Block block) @safe nothrow
     {
-        if ((this.height_idx.length > 0) &&
-            (this.height_idx.back.height >= block.header.height))
+        try
+        {
+            if ((this.height_idx.length > 0) &&
+                (this.height_idx.back.height >= block.header.height))
+                return false;
+
+            size_t last_pos, last_size, block_position, data_position;
+            if (this.length == ulong.max)
+            {
+                if (this.height_idx.length > 0)
+                {
+                    last_pos = this.height_idx.back.position;
+
+                    if (!this.readSizeT(last_pos, last_size))
+                        return false;
+
+                    this.length = last_pos + size_t.sizeof + last_size;
+                }
+                else
+                {
+                    last_pos = 0;
+                    last_size = 0;
+                    this.length = 0;
+                }
+            }
+
+            block_position = this.length;
+            data_position = block_position + size_t.sizeof;
+
+            size_t block_size = 0;
+            scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+            {
+                // write to memory
+                this.write(data_position + block_size, data);
+                block_size += data.length;
+            };
+            serializePart(block, dg);
+
+            // write block data size
+            if (!this.writeSizeT(block_position, block_size))
+                return false;
+
+            this.length += size_t.sizeof + block_size;
+
+            // add to index of heigth
+            this.height_idx.insert(
+                HeightPosition(
+                    block.header.height,
+                    block_position
+                )
+            );
+
+            // add to index of hash
+            ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
+            this.hash_idx.insert(
+                HashPosition(
+                    hash_bytes,
+                    block_position
+                )
+            );
+
+            if (!this.saveIndex(block.header.height, hash_bytes, block_position))
+                return false;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.saveBlock: ", ex);
             return false;
-
-        const ubyte[] serialized_block = serializeFull(block);
-
-        const size_t fidx = block.header.height / MaxBlock;
-        const size_t bidx = block.header.height % MaxBlock;
-        size_t pos;
-
-        // first in this file
-        if (bidx == 0)
-        {
-            pos = 0;
-            // resize to serialized_block.length
-            size_t size = serialized_block.length + size_t.sizeof;
-            this.map(fidx, size);
         }
-        else
-        {
-            this.map(fidx);
-            pos = this.data_size;
-            // increase size by serialized_block.length
-            size_t size = serialized_block.length + size_t.sizeof;
-            this.map(fidx, this.data_size + size);
-        }
-
-        // add to index of heigth
-        const size_t block_position = (MapSize * fidx + pos);
-        this.height_idx.insert(
-            HeightPosition(
-                block.header.height,
-                block_position
-            )
-        );
-
-        // add to index of hash
-        ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
-        this.hash_idx.insert(
-            HashPosition(
-                hash_bytes,
-                block_position
-            )
-        );
-
-        // write block data size
-        this.writeSizeT(HeadSize + pos, serialized_block.length);
-
-        // write to memory
-        this.write(HeadSize + pos + size_t.sizeof, serialized_block);
-
-        this.saveIndex(block.header.height, hash_bytes, block_position);
-
-        return true;
     }
 
     /***************************************************************************
@@ -289,7 +265,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, size_t height) @safe
+    public bool readBlock (ref Block block, size_t height) @safe nothrow
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -301,8 +277,16 @@ public class BlockStorage
         if (finds.empty)
             return false;
 
-        this.readBlockAtPosition(block, finds.front.position);
-        return true;
+        try
+        {
+            this.readBlockAtPosition(block, finds.front.position);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.readBlock: ", ex);
+            return false;
+        }
     }
 
     /***************************************************************************
@@ -318,7 +302,7 @@ public class BlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, Hash hash) @safe
+    public bool readBlock (ref Block block, Hash hash) @safe nothrow
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
@@ -328,52 +312,30 @@ public class BlockStorage
         if (finds.empty)
             return false;
 
-        this.readBlockAtPosition(block, finds.front.position);
-        return true;
+        try
+        {
+            this.readBlockAtPosition(block, finds.front.position);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.readBlock: ", ex);
+            return false;
+        }
     }
 
     /// Ditto
     private void readBlockAtPosition (ref Block block, size_t position) @safe
     {
-        this.map(position / MapSize);
-
-        const size_t x0 = position % MapSize;
-        const size_t block_size = this.readSizeT(HeadSize + x0);
-
-        assert(x0 < this.data_size);
-
-        const size_t x2 = x0 + HeadSize + size_t.sizeof;
-        const size_t x3 = x2 + block_size;
-
-        block = deserialize!Block(this.read(x2, x3));
-    }
-
-    /***************************************************************************
-
-        Write data length to file header
-
-        Params:
-            length = The size of data
-
-    ***************************************************************************/
-
-    private void writeDataLength (size_t length) @safe
-    {
-        this.writeSizeT(0, length);
-    }
-
-    /***************************************************************************
-
-        Read data length to file header
-
-        Returns:
-            The size of data in file header
-
-    ***************************************************************************/
-
-    private size_t readDataLength () @safe
-    {
-        return this.readSizeT(0);
+        size_t pos = position + size_t.sizeof;
+        scope DeserializeDg dg = (size) nothrow @safe
+        {
+            ubyte[] res;
+            this.read(pos, pos + size, res);
+            pos += size;
+            return res;
+        };
+        block.deserialize(dg);
     }
 
     /***************************************************************************
@@ -384,12 +346,17 @@ public class BlockStorage
             pos = position of memory mapped file
             value = type of `size_t`
 
+        Returns:
+            Returns true if success, otherwise returns false.
+
     ***************************************************************************/
 
-    private void writeSizeT (size_t pos, size_t value) @trusted
+    private bool writeSizeT (size_t pos, size_t value) @trusted nothrow
     {
         foreach (idx, e; (cast(const ubyte*)&value)[0 .. size_t.sizeof])
-            this.file[pos+idx] = e;
+            if (!this.writeByte(pos + idx, e))
+                return false;
+        return true;
     }
 
     /***************************************************************************
@@ -398,16 +365,21 @@ public class BlockStorage
 
         Params:
             pos = position of memory mapped file
+            value = type of `size_t`
 
         Returns:
-            type of `size_t`
+            Returns true if success, otherwise returns false.
 
     ***************************************************************************/
 
-    private size_t readSizeT (size_t pos) @trusted
+    private bool readSizeT (size_t pos, ref size_t value) @trusted nothrow
     {
-        ubyte[] values = cast(ubyte[])this.file[pos .. pos + size_t.sizeof];
-        return *cast(size_t*)&(values[0]);
+        ubyte[] data;
+        if (!this.read(pos, pos+size_t.sizeof, data))
+            return false;
+
+        value = *cast(size_t*)(data.ptr);
+        return true;
     }
 
     /***************************************************************************
@@ -417,18 +389,42 @@ public class BlockStorage
         Params:
             from = Start position of range to read
             to   = End position of range to read
+            data = Array of unsigned bytes read
 
         Returns:
-            Returns array of unsigned bytes read
+            Returns true if success, otherwise returns false.
 
     ***************************************************************************/
 
-    private ubyte[] read (size_t from, size_t to) @trusted
+    private bool read (size_t from, size_t to, ref ubyte[] data)
+        @trusted nothrow
     {
-        assert(this.file !is null);
-        assert(this.getFileLength >= to);
-
-        return cast(ubyte[])this.file[from .. to];
+        if (
+            (this.file !is null) &&
+            (from / MapSize == this.file_index) &&
+            (to / MapSize == this.file_index))
+        {
+            try
+            {
+                const size_t x0 = from - this.file_base;
+                const size_t x1 = to - this.file_base;
+                data = cast(ubyte[])this.file[x0 .. x1];
+                return true;
+            }
+            catch (Exception ex)
+            {
+                this.writeLog("BlockStorage.read: ", ex);
+                return false;
+            }
+        }
+        else
+        {
+            data.length = to - from;
+            foreach (idx; from .. to)
+                if (!this.readByte(idx, data[idx-from]))
+                    return false;
+            return true;
+        }
     }
 
     /***************************************************************************
@@ -439,32 +435,93 @@ public class BlockStorage
             pos  = Start position of range to write
             data = Array of unsigned bytes to be written to file
 
+        Returns:
+            Returns true if success, otherwise returns false.
+
     ***************************************************************************/
 
-    private void write (size_t pos, const ubyte[] data) @trusted
+    private bool write (size_t pos, const ubyte[] data) @trusted nothrow
     {
-        assert(this.file !is null);
-        assert(this.getFileLength >= pos+data.length);
-
-        foreach (idx, ref e; data)
-            this.file[pos + idx] = e;
+        try
+        {
+            if (
+                (this.file !is null) &&
+                (pos / MapSize == this.file_index) &&
+                ((pos+data.length) / MapSize == this.file_index))
+            {
+                const size_t x0 = pos - this.file_base;
+                foreach (idx, e; data)
+                    this.file[x0+idx] = e;
+            }
+            else
+            {
+                foreach (idx, e; data)
+                    if (!this.writeByte(pos + idx, e))
+                        return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.write: ", ex);
+            return false;
+        }
     }
 
     /***************************************************************************
 
-        Get memory mapped file size
+        Read unsigned byte to the file.
+
+        Params:
+            pos = Position to read
+            data = Unsigned bytes read from file
 
         Returns:
-            Returns size of file if is mapped, or 0 if is not mapped
+            Returns true if success, otherwise returns false.
 
     ***************************************************************************/
 
-    private size_t getFileLength () @trusted
+    private bool readByte (size_t pos, ref ubyte data) @trusted nothrow
     {
-        if (this.file is null)
-            return 0;
+        try
+        {
+            if (this.map(pos / MapSize))
+                data = this.file[pos - this.file_base];
+            return true;
+        }
+        catch (Exception ex)
+        {
+            writeLog("BlockStorage.readBytes: ", ex);
+            return false;
+        }
+    }
 
-        return this.file.length;
+    /***************************************************************************
+
+        Write unsigned byte to the file.
+
+        Params:
+            pos  = Start position of range to write
+            data = Unsigned bytes to be written to file
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    private bool writeByte (size_t pos, ubyte data) @trusted nothrow
+    {
+        try
+        {
+            if (this.map(pos / MapSize))
+                this.file[pos - this.file_base] = data;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.writeByte: ", ex);
+            return false;
+        }
     }
 
     /***************************************************************************
@@ -477,20 +534,20 @@ public class BlockStorage
             pos = position of memory mapped file
 
         Returns:
-            Returns size of file if is mapped, or 0 if is not mapped
+            Returns true if success, otherwise returns false.
 
     ***************************************************************************/
 
-    private void saveIndex (
+    private bool saveIndex (
         size_t height,
         ubyte[Hash.sizeof] hash,
-        size_t pos) @safe
+        size_t pos) @safe nothrow
     {
-        File idx_file;
-        string file_name = buildPath(this.path, "index.dat");
-
         try
         {
+            File idx_file;
+            string file_name = buildPath(this.path, "index.dat");
+
             idx_file = File(file_name, "a+b");
             idx_file.seek(0, SEEK_END);
 
@@ -499,10 +556,13 @@ public class BlockStorage
             idx_file.writeSizeType(pos);
 
             idx_file.close();
+
+            return true;
         }
         catch (Exception ex)
         {
             this.writeLog("BlockStorage.saveIndex: ", ex);
+            return false;
         }
     }
 
@@ -510,25 +570,28 @@ public class BlockStorage
 
         Read the index data stored in the index file.
 
+        Returns:
+            Returns true if success, otherwise returns false.
+
     ***************************************************************************/
 
-    private void loadAllIndexes () @safe
+    private bool loadAllIndexes () @safe nothrow
     {
-        File idx_file;
-
-        size_t height;
-        ubyte[Hash.sizeof] hash;
-        size_t pos;
-        string file_name = buildPath(this.path, "index.dat");
-
-        this.height_idx.clear();
-        this.hash_idx.clear();
-
-        if (!file_name.exists)
-            return;
-
         try
         {
+            size_t height;
+            ubyte[Hash.sizeof] hash;
+            size_t pos;
+
+            this.height_idx.clear();
+            this.hash_idx.clear();
+
+            string file_name = buildPath(this.path, "index.dat");
+
+            if (!file_name.exists)
+                return true;
+
+            File idx_file;
             idx_file = File(file_name, "rb");
 
             size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
@@ -549,16 +612,21 @@ public class BlockStorage
             }
 
             idx_file.close();
+            return true;
         }
         catch (Exception ex)
         {
             this.writeLog("BlockStorage.loadAllIndexes: ", ex);
+            return false;
         }
     }
 
     /***************************************************************************
 
         Remove the index file.
+
+        Params:
+            path = path to the data directory
 
     ***************************************************************************/
 
