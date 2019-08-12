@@ -30,7 +30,7 @@ unittest
     import std.conv;
     import std.format;
     import std.range;
-    import core.thread;
+    import core.time;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
@@ -52,12 +52,10 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        Thread.sleep(50.msecs);  // await gossip
-
         // gossip was complete
         nodes.each!(node =>
             txs.each!(tx =>
-                assert(node.hasTransactionHash(hashFull(tx)))
+                node.hasTransactionHash(hashFull(tx)).retryFor(1.seconds)
         ));
 
         last_txs = txs;

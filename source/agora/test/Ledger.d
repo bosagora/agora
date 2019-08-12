@@ -32,7 +32,7 @@ unittest
     import std.conv;
     import std.format;
     import std.range;
-    import core.thread;
+    import core.time;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
@@ -53,10 +53,9 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        Thread.sleep(50.msecs);  // await gossip and block creation
-
         nodes.enumerate.each!((idx, node) =>
-            assert(node.getBlockHeight() == block_idx + 1,
+            retryFor(node.getBlockHeight() == block_idx + 1,
+                4.seconds,
                 format("Node %s has block height %s. Expected: %s",
                     idx, node.getBlockHeight().to!string, block_idx + 1)));
 
@@ -94,7 +93,7 @@ unittest
     import std.conv;
     import std.format;
     import std.range;
-    import core.thread;
+    import core.time;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
@@ -111,16 +110,15 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        assert(node_1.getBlockHeight() == block_idx + 1,
+        retryFor(node_1.getBlockHeight() == block_idx + 1,
+            1.seconds,
             format("Node 1 has block height %s. Expected: %s",
                 node_1.getBlockHeight().to!string, block_idx + 1));
 
         last_txs = txs;
     }
 
-    Thread.sleep(50.msecs);  // await block creation
-
-    assert(node_1.getBlockHeight() == 100);
+    retryFor(node_1.getBlockHeight() == 100, 1.seconds);
 
     foreach (empty_node; nodes[1 .. $])
     {
@@ -139,7 +137,7 @@ unittest
 {
     import std.algorithm;
     import std.range;
-    import core.thread;
+    import core.time;
 
     const NodeCount = 4;
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
