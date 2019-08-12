@@ -28,11 +28,8 @@ import agora.test.Base;
 unittest
 {
     import core.thread;
-    import vibe.core.log;
     import std.algorithm;
     import std.range;
-
-    setLogLevel(LogLevel.info);
     const NodeCount = 2;
 
     const long retry_delay = 10;
@@ -42,7 +39,6 @@ unittest
 
     auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount,
         true, retry_delay, max_retries, timeout, max_failed_requests);
-    setLogLevel(LogLevel.info);
     network.start();
     scope(exit) network.shutdown();
 
