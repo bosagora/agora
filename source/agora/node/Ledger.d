@@ -95,7 +95,7 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        if (!tx.verify(&this.findOutput))
+        if (!tx.isValid(&this.findOutput))
             return false;
 
         this.pool.add(tx);
