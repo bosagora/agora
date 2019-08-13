@@ -438,6 +438,8 @@ public class NetworkManager
 
     ***************************************************************************/
 
+    // TODO: move from string Address type to URL or abstract Address type
+    // Currently it used both for "base URLs" and IP addresses
     protected API getClient (Address address, Duration timeout)
     {
         return new RestInterfaceClient!API(address/*, timeout*/);
