@@ -78,7 +78,7 @@ private int main (string[] args)
         settings.port = config.node.port;
         auto router = new URLRouter();
 
-        auto node = new Node!NetworkManager(config);
+        auto node = new Node(config);
         scope(exit) node.shutdown();
 
         router.registerRestInterface(node);

@@ -163,7 +163,7 @@ public class TestNetworkManager : NetworkManager
     /// Initialize a new node
     protected void createNewNode (PublicKey address, Config conf)
     {
-        auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetworkManager)(conf);
+        auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf);
         tbn[address.toString()] = api.tid();
         this.apis[address] = api;
     }
@@ -282,7 +282,7 @@ public interface TestAPI : API
 }
 
 /// Ditto
-public final class TestNode (Net) : Node!Net, TestAPI
+public final class TestNode : Node, TestAPI
 {
     ///
     public this (Config config)
@@ -318,6 +318,15 @@ public final class TestNode (Net) : Node!Net, TestAPI
     public override void metaAddPeer (Address peer)
     {
         this.metadata.peers.put(peer);
+    }
+
+    /// Return an instance of the custom TestNetworkManager
+    protected override NetworkManager getNetworkManager (
+        in NodeConfig node_config, in BanManager.Config banman_conf,
+        in string[] peers, in string[] dns_seeds, Metadata metadata)
+    {
+        return new TestNetworkManager(node_config, banman_conf, peers,
+            dns_seeds, metadata);
     }
 }
 
