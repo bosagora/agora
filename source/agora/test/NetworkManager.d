@@ -28,7 +28,7 @@ unittest
     import core.thread;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);

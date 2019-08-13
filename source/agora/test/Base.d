@@ -381,7 +381,7 @@ public enum NetworkTopology
 
 *******************************************************************************/
 
-public APIManager makeTestNetwork (APIManager : TestAPIManager)
+public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     (NetworkTopology topology, size_t nodes, bool configure_network = true,
         long retry_delay = 100, size_t max_retries = 20, long timeout = 500,
         size_t max_failed_requests = 100)
