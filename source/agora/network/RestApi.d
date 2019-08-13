@@ -46,31 +46,6 @@ public interface VibeRestAPI : API
 {
 // The REST generator requires @safe methods
 @safe:
-
-    /***************************************************************************
-
-        Returns:
-            The public key of this node
-
-        API:
-            GET /public_key
-
-    ***************************************************************************/
-
-    public PublicKey getPublicKey ();
-
-    /***************************************************************************
-
-        Returns:
-            The peer network of this node
-
-        API:
-            GET /network_info
-
-    ***************************************************************************/
-
-    public NetworkInfo getNetworkInfo ();
-
     /***************************************************************************
 
         Returns:
@@ -83,65 +58,4 @@ public interface VibeRestAPI : API
 
     @method(HTTPMethod.GET)
     public bool hasTransactionHash (Hash tx);
-
-    /***************************************************************************
-
-        API:
-            PUT /transaction
-
-    ***************************************************************************/
-
-    public void putTransaction (Transaction tx);
-
-    /***************************************************************************
-
-        Returns:
-            the highest block height in this node's ledger
-
-    ***************************************************************************/
-
-    public ulong getBlockHeight ();
-
-
-    /***************************************************************************
-
-        Get the array of blocks starting from the provided block height.
-
-        The block at `block_height` is included in the array.
-        Note that a node is free to return less blocks than asked for.
-        However it must never return more blocks than asked for.
-
-        API:
-            GET /blocks_from
-
-        Params:
-            block_height = the starting block height to begin retrieval from
-            max_blocks   = the maximum blocks to return at once
-
-        Returns:
-            the array of blocks starting from block_height,
-            up to `max_blocks`
-
-    ***************************************************************************/
-
-    public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks);
-
-
-    /***************************************************************************
-
-        Get the array of hashes which form the merkle path
-
-        API:
-            GET /merkle_path
-
-        Params:
-            block_height = Height of the block that contains the transaction hash
-            hash         = transaction hash
-
-        Returns:
-            the array of hashes which form the merkle path
-
-    ***************************************************************************/
-
-    public Hash[] getMerklePath (ulong block_height, Hash hash);
 }
