@@ -20,6 +20,7 @@ import agora.common.Hash;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
+import agora.consensus.Validation;
 import agora.node.API;
 
 import vibe.core.log;
