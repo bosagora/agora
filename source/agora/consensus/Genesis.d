@@ -31,7 +31,7 @@ import agora.consensus.data.Transaction;
 
 *******************************************************************************/
 
-public Block getGenesisBlock ()
+public const(Block) getGenesisBlock ()
 {
     Block block;
     block.header.height = 0;

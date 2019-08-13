@@ -52,14 +52,14 @@ private void main ()
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
         KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random
     ];
-    Block[] blocks;
+    const(Block)[] blocks;
     Hash[] block_hashes;
 
     blocks ~= getGenesisBlock();
     storage.saveBlock(blocks[$ - 1]);
 
     auto gen_key_pair = getGenesisKeyPair();
-    Transaction last_tx = blocks[$ - 1].txs[$-1];
+    const Transaction last_tx = blocks[$ - 1].txs[$-1];
     Hash gen_tx_hash = hashFull(last_tx);
     block_hashes ~= hashFull(blocks[$ - 1].header);
     Transaction tx;

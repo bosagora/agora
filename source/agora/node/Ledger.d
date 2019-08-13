@@ -356,7 +356,7 @@ unittest
     assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
-    Transaction last_tx = getGenesisBlock().txs[$-1];
+    const Transaction last_tx = getGenesisBlock().txs[$-1];
     Hash gen_tx_hash = hashFull(last_tx);
 
     Transaction[] txs;
