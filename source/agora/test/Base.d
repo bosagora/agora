@@ -113,18 +113,12 @@ public class FakeClockBanManager : BanManager
 
 /*******************************************************************************
 
-    Base class for `NetworkManager` used in unittests
-
-    The `NetworkManager` class is the mean used to communicate with other nodes.
-    In regular build, it does network communication, but in unittests it should
-    not do IO (or appear not to).
-
-    In the current design, all nodes should be instantiated upfront,
-    registered via `std.concurrency.register`, and located by `getClient`.
+    Used by unittests to send messages to individual nodes.
+    This class is instantiated once per unittest.
 
 *******************************************************************************/
 
-public class TestNetworkManager : NetworkManager
+public class TestAPIManager
 {
     static import std.concurrency;
     import geod24.LocalRest;
@@ -136,35 +130,11 @@ public class TestNetworkManager : NetworkManager
     /// Also kept here to avoid any eager garbage collection.
     public RemoteAPI!TestAPI[PublicKey] apis;
 
-    /// Workaround compiler bug that triggers in `std.concurrency`
-    protected __gshared std.concurrency.Tid[string] tbn;
-
-    /// Ctor
-    public this () { super(); }
-
-    /// ditto
-    public this (NodeConfig config, BanManager.Config ban_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata)
-    {
-        super(config, ban_conf, peers, dns_seeds, metadata);
-        // NetworkManager assumes IP are used but we use pubkey
-        this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
-    }
-
-    ///
-    protected final override API getClient (Address address, Duration timeout)
-    {
-        if (auto ptr = address in tbn)
-            return new RemoteAPI!API(*ptr, timeout);
-        assert(0, "Trying to access node at address '" ~ address ~
-               "' without first creating it");
-    }
-
     /// Initialize a new node
     protected void createNewNode (PublicKey address, Config conf)
     {
         auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf);
-        tbn[address.toString()] = api.tid();
+        TestNetworkManager.tbn[address.toString()] = api.tid();
         this.apis[address] = api;
     }
 
@@ -237,6 +207,46 @@ public class TestNetworkManager : NetworkManager
         }
 
         return fully_discovered.byKey.array;
+    }
+}
+
+/*******************************************************************************
+
+    Base class for `NetworkManager` used in unittests.
+    This class is instantiated once per unittested node.
+
+    The `NetworkManager` class is the mean used to communicate with other nodes.
+    In regular build, it does network communication, but in unittests it should
+    not do IO (or appear not to).
+
+    In the current design, all nodes should be instantiated upfront,
+    registered via `std.concurrency.register`, and located by `getClient`.
+
+*******************************************************************************/
+
+public class TestNetworkManager : NetworkManager
+{
+    import geod24.LocalRest;
+
+    /// Workaround compiler bug that triggers in `std.concurrency`
+    protected __gshared std.concurrency.Tid[string] tbn;
+
+    /// Constructor
+    public this (NodeConfig config, BanManager.Config ban_conf,
+        in string[] peers, in string[] dns_seeds, Metadata metadata)
+    {
+        super(config, ban_conf, peers, dns_seeds, metadata);
+        // NetworkManager assumes IP are used but we use pubkey
+        this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
+    }
+
+    ///
+    protected final override API getClient (Address address, Duration timeout)
+    {
+        if (auto ptr = address in tbn)
+            return new RemoteAPI!API(*ptr, timeout);
+        assert(0, "Trying to access node at address '" ~ address ~
+               "' without first creating it");
     }
 
     /***************************************************************************
@@ -357,7 +367,7 @@ public enum NetworkTopology
     by the `TestNetworkManager` implementation.
 
     Params:
-        NetworkT = Type of `NetworkManager` to instantiate
+        APIManager = Type of API manager to instantiate
         topology = Network topology to adopt
         nodes    = Number of nodes to instantiated
         configure_network = whether to set up the peers in the config
@@ -371,7 +381,7 @@ public enum NetworkTopology
 
 *******************************************************************************/
 
-public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
+public APIManager makeTestNetwork (APIManager : TestAPIManager)
     (NetworkTopology topology, size_t nodes, bool configure_network = true,
         long retry_delay = 100, size_t max_retries = 20, long timeout = 500,
         size_t max_failed_requests = 100)
@@ -438,15 +448,11 @@ public NetworkT makeTestNetwork (NetworkT : TestNetworkManager)
             configs ~= conf;
         }
 
-        auto net = new NetworkT();
-
-        // Workaround https://issues.dlang.org/show_bug.cgi?id=20002
-        TestNetworkManager base_net = net;
-
+        auto net = new APIManager();
         foreach (idx, ref conf; configs)
         {
             const address = node_configs[idx].key_pair.address;
-            base_net.createNewNode(address, conf);
+            net.createNewNode(address, conf);
         }
 
         return net;
