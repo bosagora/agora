@@ -21,7 +21,7 @@ import agora.common.Data;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.network.NetworkManager;
-import agora.node.API;
+import agora.node.API: NetworkInfo;
 import agora.node.Ledger;
 
 import agora.node.GossipProtocol;
@@ -39,7 +39,7 @@ private enum MaxBatchBlocksSent = 1000;
 
 /*******************************************************************************
 
-    Implementation of the Node API
+    Implementation of the Node
 
     This class implement the business code of the node.
     Communication with the other nodes is handled by the `Network` class.
@@ -50,10 +50,11 @@ private enum MaxBatchBlocksSent = 1000;
                 derivative is expected.
 
 *******************************************************************************/
-public class Node (Network) : API
+import agora.test.Base: TestAPI;
+class Node (Network) : TestAPI // TODO: remove TestAPI
 {
     /// Metadata instance
-    protected Metadata metadata;
+    private Metadata metadata;
 
     /// Config instance
     private const Config config;
@@ -90,6 +91,12 @@ public class Node (Network) : API
             400, Json("The query was incorrect"), string.init, int.init);
     }
 
+    ~this()
+    {
+        //FIXME:
+        //~ shutdown();
+    }
+
     /// The first task method, loading from disk, node discovery, etc
     public void start ()
     {
@@ -108,7 +115,6 @@ public class Node (Network) : API
         GC allocations during the shutdown phase.
 
     ***************************************************************************/
-
     public void shutdown ()
     {
         logInfo("Shutting down..");
@@ -116,14 +122,18 @@ public class Node (Network) : API
         this.pool.shutdown();
     }
 
-    /// GET /public_key
-    public override PublicKey getPublicKey () pure nothrow @safe @nogc
+    //~ version(unittest)
+    void metaAddPeer (string peer)
+    {
+        this.metadata.peers.put(peer);
+    }
+
+    PublicKey getPublicKey () pure nothrow @safe @nogc
     {
         return this.config.node.key_pair.address;
     }
 
-    /// GET: /network_info
-    public override NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
+    public NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
     {
         return this.network.getNetworkInfo();
     }
@@ -132,27 +142,21 @@ public class Node (Network) : API
 
         Receive a transaction.
 
-        API:
-            PUT /transaction
-
         Params:
             tx = the received transaction
 
     ***************************************************************************/
-
-    public override void putTransaction (Transaction tx) @safe
+    public void putTransaction (Transaction tx) @safe
     {
         this.gossip.receiveTransaction(tx);
     }
 
-    /// GET: /hasTransactionHash
-    public override bool hasTransactionHash (Hash tx) @safe
+    public bool hasTransactionHash (Hash tx) @safe
     {
         return this.gossip.hasTransactionHash(tx);
     }
 
-    /// GET: /block_height
-    public ulong getBlockHeight ()
+    public ulong getBlockHeight () @safe
     {
         return this.ledger.getLastBlock().header.height;
     }

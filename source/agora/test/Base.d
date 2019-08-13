@@ -268,21 +268,21 @@ public class TestNetworkManager : NetworkManager
 
 }
 
-/// Used to call start/shutdown outside of main, and for dependency injection
+/// Used to call start/shutdown outside of main
 public interface TestAPI : API
 {
     ///
-    public abstract void start();
+    void start();
 
     ///
-    public abstract void shutdown ();
+    void shutdown ();
 
     ///
-    public abstract void metaAddPeer(string peer);
+    void metaAddPeer(string peer);
 }
 
 /// Ditto
-public final class TestNode (Net) : Node!Net, TestAPI
+public final class TestNode (Net) : Node!Net
 {
     ///
     public this (Config config)
@@ -312,12 +312,6 @@ public final class TestNode (Net) : Node!Net, TestAPI
     public override TransactionPool getPool (string) @system
     {
         return new TransactionPool(":memory:");
-    }
-
-    /// Used by unittests
-    public override void metaAddPeer (Address peer)
-    {
-        this.metadata.peers.put(peer);
     }
 }
 
