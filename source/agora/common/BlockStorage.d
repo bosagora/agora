@@ -975,10 +975,9 @@ unittest
     Hash[] block_hashes;
 
     auto gen_key_pair = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
-    blocks ~= gen_block;
-    storage.saveBlock(gen_block);
-    block_hashes ~= hashFull(gen_block.header);
+    blocks ~= GenesisBlock;
+    storage.saveBlock(GenesisBlock);
+    block_hashes ~= hashFull(GenesisBlock.header);
     Transaction[] last_txs;
 
     void genBlocks (size_t count)

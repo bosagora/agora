@@ -48,14 +48,12 @@ void main ()
     }
 
     auto kp = getGenesisKeyPair();
-    const gTx = getGenesisTx();
-    const gTxH = hashFull(gTx);
 
     foreach (idx; 0 .. 8)
     {
         auto tx = Transaction(
-            [Input(gTxH, idx)],
-            [Output(gTx.outputs[idx].value, kp.address)]
+            [Input(GenesisBlock.header.merkle_root, idx)],
+            [Output(GenesisTransaction.outputs[idx].value, kp.address)]
         );
 
         auto signature = kp.secret.sign(hashFull(tx)[]);

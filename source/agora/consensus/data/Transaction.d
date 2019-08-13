@@ -345,7 +345,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     {
         Input input;
         if (prev_txs.length == 0)  // refering to genesis tx's outputs
-            input = Input(hashFull(getGenesisTx()), idx.to!uint);
+            input = Input(hashFull(GenesisTransaction), idx.to!uint);
         else  // refering to tx's in the previous block
             input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
 
@@ -377,7 +377,6 @@ unittest
     import agora.consensus.data.Block;
     import std.format;
     auto gen_key = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
 
     /// should spend genesis block's outputs
     auto txes = makeChainedTransactions(gen_key, null, 1);
@@ -385,7 +384,7 @@ unittest
     {
         assert(txes[idx].inputs.length == 1);
         assert(txes[idx].inputs[0].index == idx);
-        assert(txes[idx].inputs[0].previous == hashFull(gen_block.txs[0]));
+        assert(txes[idx].inputs[0].previous == hashFull(GenesisBlock.txs[0]));
     }
 
     auto prev_txs = txes;

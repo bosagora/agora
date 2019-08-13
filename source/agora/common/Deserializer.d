@@ -110,13 +110,12 @@ unittest
     import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
 
-    const block = getGenesisBlock();
-
-    ubyte[] block_bytes = serializeFull(block);
-    assert(deserialize!Block(block_bytes) == block);
+    ubyte[] block_bytes = serializeFull(GenesisBlock);
+    // TODO: This trigger a DMD bug about array comparison
+    assert(cast(const)deserialize!Block(block_bytes) == GenesisBlock);
 
     // Check that there is no trailing data
-    ubyte[] blocks_data = serializeFull(block) ~ serializeFull(block);
+    ubyte[] blocks_data = serializeFull(GenesisBlock) ~ serializeFull(GenesisBlock);
 
     void deserializeArrayEntry () nothrow @safe
     {
@@ -128,14 +127,14 @@ unittest
 
         Block newblock;
         newblock.deserialize(dg);
-        assert(newblock == block);
+        // TODO: This trigger a DMD bug about array comparison
+        assert(cast(const)newblock == GenesisBlock);
     }
 
     deserializeArrayEntry();
     deserializeArrayEntry();
 
     // transaction test
-    auto tx = getGenesisTx();
-    auto tx_bytes = serializeFull(tx);
-    assert(deserialize!Transaction(tx_bytes) == tx);
+    auto tx_bytes = serializeFull(GenesisTransaction);
+    assert(deserialize!Transaction(tx_bytes) == GenesisTransaction);
 }

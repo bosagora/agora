@@ -42,8 +42,7 @@ public class Ledger
     {
         this.pool = pool;
         this.storage = storage;
-        auto block = getGenesisBlock();
-        if (!this.storage.saveBlock(block))
+        if (!this.storage.saveBlock(GenesisBlock))
             assert(0);
     }
 
@@ -253,7 +252,7 @@ unittest
     assert(ledger.getBlockHeight() == 0);
 
     const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
-    assert(blocks[$ - 1] == getGenesisBlock());
+    assert(blocks[$ - 1] == GenesisBlock);
 
     auto gen_key_pair = getGenesisKeyPair();
     Transaction[] last_txs;
@@ -273,7 +272,7 @@ unittest
 
     genBlockTransactions(2);
     blocks = ledger.getBlocksFrom(0, 10);
-    assert(blocks[0] == getGenesisBlock());
+    assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
 
@@ -282,13 +281,13 @@ unittest
     assert(ledger.getBlockHeight() == 100);
 
     blocks = ledger.getBlocksFrom(0, 10);
-    assert(blocks[0] == getGenesisBlock());
+    assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 10);
 
     /// lower limit
     blocks = ledger.getBlocksFrom(0, 5);
-    assert(blocks[0] == getGenesisBlock());
+    assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 5);
 
@@ -337,9 +336,8 @@ unittest
 
     auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
-    auto gen_block = getGenesisBlock();
 
-    auto valid_block = makeNewBlock(gen_block, txs);
+    auto valid_block = makeNewBlock(GenesisBlock, txs);
     assert(ledger.acceptBlock(valid_block));
 }
 

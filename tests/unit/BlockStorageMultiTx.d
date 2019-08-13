@@ -46,7 +46,7 @@ private void main ()
     BlockStorage storage = new BlockStorage(path);
     const(Block)[] blocks;
 
-    blocks ~= getGenesisBlock();
+    blocks ~= GenesisBlock;
     storage.saveBlock(blocks[$ - 1]);
 
     // We can use a random keypair because blocks are not validated
@@ -110,7 +110,7 @@ private Transaction[] makeChainedTransactions (KeyPair key_pair,
     {
         Input input;
         if (prev_txs.length == 0)  // refering to genesis tx's outputs
-            input = Input(hashFull(getGenesisTx()), idx.to!uint);
+            input = Input(hashFull(GenesisTransaction), idx.to!uint);
         else  // refering to tx's in the previous block
             input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
 

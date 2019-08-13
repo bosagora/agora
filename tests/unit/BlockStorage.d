@@ -49,7 +49,7 @@ private void main ()
     const(Block)[] blocks;
     Hash[] block_hashes;
 
-    blocks ~= getGenesisBlock();
+    blocks ~= GenesisBlock;
     storage.saveBlock(blocks[$ - 1]);
 
     // We can use a random keypair because blocks are not validated
