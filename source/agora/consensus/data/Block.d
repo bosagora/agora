@@ -381,16 +381,10 @@ public Block makeNewBlock (const ref Block prev_block, Transaction[] txs) @safe
 }
 
 ///
-unittest
+@safe unittest
 {
-    const Block gen_block = getGenesisBlock();
-
-    // above parts not @safe/@nogc yet
-    () @safe
-    {
-        auto new_block = makeNewBlock(gen_block, [Transaction.init]);
-        assert(new_block.header.prev_block == hashFull(gen_block.header));
-    }();
+    auto new_block = makeNewBlock(GenesisBlock, [Transaction.init]);
+    assert(new_block.header.prev_block == hashFull(GenesisBlock.header));
 }
 
 /// Test of Merkle Path and Merkle Proof

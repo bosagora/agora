@@ -259,7 +259,7 @@ public bool isValid (const ref Block block, in ulong prev_height,
 
     // special case for the genesis block
     if (block.header.height == 0)
-        return block == getGenesisBlock();
+        return block == GenesisBlock;
 
     if (block.header.height != prev_height + 1)
         return false;
@@ -301,47 +301,45 @@ unittest
     };
 
     auto gen_key = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
-    assert(gen_block.isValid(gen_block.header.height, Hash.init, null));
-    auto gen_hash = gen_block.header.hashFull();
+    assert(GenesisBlock.isValid(GenesisBlock.header.height, Hash.init, null));
+    auto gen_hash = GenesisBlock.header.hashFull();
 
-    auto gen_tx = gen_block.txs[0];
-    tx_map[gen_tx.hashFull()] = [gen_tx];
+    tx_map[GenesisTransaction.hashFull()] = [GenesisTransaction];
     auto txs = makeChainedTransactions(gen_key, null, 1);
-    auto block = makeNewBlock(gen_block, txs);
+    auto block = makeNewBlock(GenesisBlock, txs);
 
     // height check
-    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     block.header.height = 100;
-    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    block.header.height = gen_block.header.height + 1;
-    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    block.header.height = GenesisBlock.header.height + 1;
+    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     /// .prev_block check
     block.header.prev_block = block.header.hashFull();
-    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     block.header.prev_block = gen_hash;
-    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     /// .txs length check
     block.txs = txs[0 .. $ - 1];
-    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     block.txs = txs ~ txs;
-    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     block.txs = txs;
-    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     /// no matching utxo => fail
     tx_map.clear();
-    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    tx_map[gen_tx.hashFull()] = [gen_tx];
-    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+    tx_map[GenesisTransaction.hashFull()] = [GenesisTransaction];
+    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     tx_map.clear();  // genesis is spent
     auto prev_txs = txs;
@@ -369,8 +367,8 @@ unittest
     // the key is hashMulti(hash(prev_tx), index)
     Output[Hash] utxo_set;
 
-    foreach (idx, output; gen_tx.outputs)
-        utxo_set[hashMulti(gen_tx.hashFull, idx)] = output;
+    foreach (idx, ref output; GenesisTransaction.outputs)
+        utxo_set[hashMulti(GenesisTransaction.hashFull, idx)] = output;
 
     assert(utxo_set.length != 0);
     const utxo_set_len = utxo_set.length;
@@ -395,8 +393,8 @@ unittest
 
     // consumed all utxo => fail
     txs = makeChainedTransactions(gen_key, null, 1);
-    block = makeNewBlock(gen_block, txs);
-    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    block = makeNewBlock(GenesisBlock, txs);
+    assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));
 
     assert(used_set.length == utxo_set_len);  // consumed all utxos
@@ -406,38 +404,38 @@ unittest
 
     // consumed same utxo twice => fail
     txs[$ - 1] = txs[$ - 2];
-    block = makeNewBlock(gen_block, txs);
-    assert(!block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    block = makeNewBlock(GenesisBlock, txs);
+    assert(!block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));
 
     // we stopped validation due to a double-spend
     assert(used_set.length == txs.length - 1);
 
     txs = makeChainedTransactions(gen_key, prev_txs, 1);
-    block = makeNewBlock(gen_block, txs);
-    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    block = makeNewBlock(GenesisBlock, txs);
+    assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
     // modify the last hex byte of the merkle root
     block.header.merkle_root[][$ - 1]++;
 
-    assert(!block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    assert(!block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
     // now restore it back to what it was
     block.header.merkle_root[][$ - 1]--;
-    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
     const last_root = block.header.merkle_root;
 
     // txs with a different amount
     txs = makeChainedTransactions(gen_key, prev_txs, 1, 20_000_000);
-    block = makeNewBlock(gen_block, txs);
-    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    block = makeNewBlock(GenesisBlock, txs);
+    assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
     // the previous merkle root should not match the new txs
     block.header.merkle_root = last_root;
-    assert(!block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+    assert(!block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 }

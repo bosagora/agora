@@ -20,56 +20,50 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.consensus.data.Transaction;
 
-/*******************************************************************************
 
-    Creates the genesis block.
-    The output address is currently hardcoded to a randomly generated value,
-    it will be replaced later with the proper address.
-
-    Returns:
-        the genesis block
-
-*******************************************************************************/
-
-public const(Block) getGenesisBlock () nothrow @safe
+/// The genesis block
+public immutable Block GenesisBlock =
 {
-    Block block;
-    block.header.height = 0;
-    block.txs ~= getGenesisTx();
-    block.header.merkle_root = block.buildMerkleTree();
-    return block;
-}
+    header:
+    {
+        prev_block:  Hash.init,
+        height:      0,
+        merkle_root: GenesisMerkleRoot,
+    },
+    txs: [ GenesisTransaction ],
+    merkle_tree: [ GenesisMerkleRoot ],
+};
 
 ///
 unittest
 {
-    // ensure the genesis block is always the same
-    assert(getGenesisBlock() == getGenesisBlock());
+    assert(GenesisBlock.header.prev_block == Hash.init);
+    assert(GenesisBlock.header.height == 0);
+    assert(GenesisBlock.header.merkle_root == GenesisBlock.merkle_tree[0]);
+    assert(GenesisBlock.merkle_tree.length == 1);
+    assert(GenesisBlock.header.merkle_root == hashFull(GenesisTransaction));
 }
 
-/*******************************************************************************
+///
+private immutable Hash GenesisMerkleRoot =
+    Hash(`0x893abe59f6640fe10aae19682ba982276e78e155a13e7f3ab377f426330c4732`
+         ~ `b4d46a3a6c2a81719dc953dd4d92b493281f8f7a6cef38beca135563d0fdd115`);
 
-    Returns:
-        the genesis transaction
-
-*******************************************************************************/
-
-public Transaction getGenesisTx () nothrow @safe
+/// The single transaction that are part of the genesis block
+public immutable Transaction GenesisTransaction =
 {
-    import agora.consensus.data.Block;
-    import std.algorithm;
-    import std.range;
-    import std.format;
-
-    Output[] outputs = iota(Block.TxsInBlock).map!(
-        _ => Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress)
-        ).array;
-
-    return Transaction(
-        [Input(Hash.init, 0)],
-        outputs
-    );
-}
+    inputs: [ Input(Hash.init, 0) ],
+    outputs: [
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+    ],
+};
 
 // TODO: Replace with the foundation's pubkey
 /// GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
