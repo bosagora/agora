@@ -167,7 +167,7 @@ public class NetworkManager
             {
                 this.getBlocksFrom(
                     ledger.getLastBlock().header.height + 1,
-                    (blocks) { blocks.each!(block => ledger.acceptBlock(block)); });
+                    blocks => blocks.all!(block => ledger.acceptBlock(block)));
 
                 this.taskman.wait(2.seconds);
             }
@@ -217,11 +217,14 @@ public class NetworkManager
         Params:
             block_height = the starting block height to begin retrieval from
             onReceivedBlocks = delegate to call with the received blocks
+                               if it returns false, further processing of blocks
+                               from the same node is rejected due to invalid
+                               block data.
 
     ***************************************************************************/
 
     private void getBlocksFrom (ulong block_height,
-        scope void delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
+        scope bool delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
         // return size_t.max if getBlockHeight() fails
         size_t getHeight (NetworkClient node)
@@ -254,7 +257,10 @@ public class NetworkManager
                 logInfo("Received blocks [%s..%s] out of %s..", block_height,
                     block_height + blocks.length, highest_block + 1);  // genesis block
 
-                onReceivedBlocks(blocks);
+                // one or more blocks were rejected, stop retrieval from node
+                if (!onReceivedBlocks(blocks))
+                    return;
+
                 block_height += blocks.length;
             }
             while (block_height < highest_block);
