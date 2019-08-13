@@ -45,7 +45,7 @@ public class Ledger
     {
         this.pool = pool;
         auto block = getGenesisBlock();
-        this.acceptBlock(block);
+        assert(this.acceptBlock(block));
     }
 
     /***************************************************************************
@@ -57,18 +57,22 @@ public class Ledger
         Params:
             block = the block to add
 
+        Returns:
+            true if the block was accepted
+
     ***************************************************************************/
 
-    public void acceptBlock (const ref Block block) nothrow @safe
+    public bool acceptBlock (const ref Block block) nothrow @safe
     {
         if (!this.isValidBlock(block))
         {
             logDebug("Rejected block. %s", block);
-            return;
+            return false;
         }
 
         this.ledger ~= block;
         this.last_block = &this.ledger[$ - 1];
+        return true;
     }
 
     /***************************************************************************
@@ -111,7 +115,7 @@ public class Ledger
         auto txs = this.pool.take(Block.TxsInBlock);
         assert(txs.length == Block.TxsInBlock);
         auto block = makeNewBlock(*this.last_block, txs);
-        this.acceptBlock(block);
+        assert(this.acceptBlock(block));
     }
 
     /***************************************************************************
@@ -311,6 +315,28 @@ unittest
 
     // higher index than available => return nothing
     assert(ledger.getBlocksFrom(1000, 10).length == 0);
+}
+
+/// basic block verification
+unittest
+{
+    import agora.common.crypto.Key;
+    import agora.common.Data;
+    import agora.common.Hash;
+
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    scope ledger = new Ledger(pool);
+
+    Block invalid_block;  // default-initialized should be invalid
+    assert(!ledger.acceptBlock(invalid_block));
+
+    auto gen_key_pair = getGenesisKeyPair();
+    auto txs = makeChainedTransactions(gen_key_pair, null, 1);
+    auto gen_block = getGenesisBlock();
+
+    auto valid_block = makeNewBlock(gen_block, txs);
+    assert(ledger.acceptBlock(valid_block));
 }
 
 /// Merkle Proof
