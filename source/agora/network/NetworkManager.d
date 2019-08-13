@@ -219,6 +219,7 @@ public class NetworkManager
 
         Params:
             block_height = the starting block height to begin retrieval from
+            onReceivedBlocks = delegate to call with the received blocks
 
     ***************************************************************************/
 
