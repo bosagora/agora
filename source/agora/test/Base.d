@@ -265,20 +265,19 @@ public class TestNetworkManager : NetworkManager
     {
         return new FakeClockBanManager(conf);
     }
-
 }
 
 /// Used to call start/shutdown outside of main, and for dependency injection
 public interface TestAPI : API
 {
     ///
-    public abstract void start();
+    public abstract void start ();
 
     ///
     public abstract void shutdown ();
 
     ///
-    public abstract void metaAddPeer(string peer);
+    public abstract void metaAddPeer (string peer);
 }
 
 /// Ditto
