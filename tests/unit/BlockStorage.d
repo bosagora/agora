@@ -58,7 +58,8 @@ private void main ()
     blocks ~= getGenesisBlock();
     storage.saveBlock(blocks[$ - 1]);
 
-    auto gen_key_pair = getGenesisKeyPair();
+    // We can use a random keypair because blocks are not validated
+    auto gen_key_pair = KeyPair.random();
     const Transaction last_tx = blocks[$ - 1].txs[$-1];
     Hash gen_tx_hash = hashFull(last_tx);
     block_hashes ~= hashFull(blocks[$ - 1].header);
