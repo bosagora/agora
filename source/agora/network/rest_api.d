@@ -53,17 +53,14 @@ import vibe.http.common;
 
 class VibeRestAPIImpl : VibeRestAPI
 {
+    import agora.network.NetworkManager;
+
     private Node node;
 
     ///
-    public this (Config config)
+    public this (Config config, NetworkManager function() createNetworkManager)
     {
-        node = new Node(config);
-    }
-
-    this(Node node)
-    {
-        this.node = node;
+        node = new Node(config, createNetworkManager);
     }
 
     public void start ()

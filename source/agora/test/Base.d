@@ -164,7 +164,7 @@ public class TestNetworkManager : NetworkManager
     /// Initialize a new node
     protected void createNewNode (PublicKey address, Config conf)
     {
-        auto api = RemoteAPI!VibeRestAPI.spawn!(TestNode /*!TestNetworkManager*/)(conf);
+        auto api = RemoteAPI!VibeRestAPI.spawn!TestNode(conf, { return new TestNetworkManager; });
         tbn[address.toString()] = api.tid();
         this.apis[address] = api;
     }
@@ -273,9 +273,9 @@ public class TestNetworkManager : NetworkManager
 public final class TestNode : VibeRestAPIImpl
 {
     ///
-    public this (Config config)
+    public this (Config config, NetworkManager function() createNetworkManager)
     {
-        super(config);
+        super(config, createNetworkManager);
     }
 
     ///

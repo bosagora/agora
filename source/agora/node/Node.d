@@ -73,16 +73,22 @@ class Node
     ///
     private Ledger ledger;
 
-
     /// Ctor
-    public this (const Config config)
+    public this (const Config config, NetworkManager function() createNetworkManager = null)
     {
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.network = new NetworkManager(config.node, config.banman, config.network,
-            config.dns_seeds,
-            this.metadata);
+        if(createNetworkManager is null)
+            network = new NetworkManager(
+                config.node,
+                config.banman,
+                config.network,
+                config.dns_seeds,
+                this.metadata
+            );
+        else
+            network = createNetworkManager();
         this.pool = this.getPool(config.node.data_dir);
         this.ledger = new Ledger(this.pool);
         this.gossip = new GossipProtocol(this.network, this.ledger);
