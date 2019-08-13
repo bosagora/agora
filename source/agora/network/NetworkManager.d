@@ -440,7 +440,9 @@ public class NetworkManager
 
     protected API getClient (Address address, Duration timeout)
     {
-        return new RestInterfaceClient!API(address/*, timeout*/);
+        import agora.network.RestApi;
+
+        return new RestInterfaceClient!VibeRestAPI(address/*, timeout*/);
     }
 
     /***************************************************************************

@@ -1,28 +1,6 @@
 /*******************************************************************************
 
-    Definitions of the nodes (full node & validator) APIs
-
-    Two kinds of nodes exist: full nodes, and validators.
-    A full node follows the network as a passive actor, but does validation
-    on the data it receives, and can forward that data to other nodes.
-    A validator is a full node which participates in consensus.
-
-    An `API` is used as an interface to communicate with a node.
-    As such, a class that implements `API` exists (in `agora.node.Node`),
-    and in order to communicate with other nodes, it holds an `API` for
-    each of those nodes.
-
-    `API` are defined as D interfaces, following what is done in Vibe.d.
-    Those interfaces can be read by a generator to build a client or a server.
-    One such generator is Vibe.d's `vibe.web.rest`. `RestInterfaceClient`
-    allows to query a REST API, while `registerRestInterface` will route queries
-    and deserialize parameters according to the interface's definition.
-
-    Another generator which we use for unittests is "LocalRest".
-    It allows to start a node per thread, and uses `std.concurrency`
-    to do message passing between nodes.
-
-    Lastly, we plan to implement a generator which works directly on TCP/IP.
+    Definitions of the nodes (full node & validator) REST APIs
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -33,8 +11,9 @@
 
 *******************************************************************************/
 
-module agora.node.API;
+module agora.network.RestApi;
 
+import agora.node.API;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.common.Data;
@@ -44,23 +23,6 @@ import agora.consensus.data.Transaction;
 import vibe.data.json;
 import vibe.web.rest;
 import vibe.http.common;
-
-/// The network state (completed when sufficient validators are connected to)
-public enum NetworkState
-{
-    Incomplete,
-    Complete
-}
-
-/// Contains the network info (state & addresses)
-public struct NetworkInfo
-{
-    /// Whether the node knows about the IPs of all its quorum set nodes
-    public NetworkState state;
-
-    /// Partial or full view of the addresses of the node's quorum (based on is_complete)
-    public Set!string addresses;
-}
 
 /*******************************************************************************
 
@@ -79,14 +41,19 @@ public struct NetworkInfo
    to verify the blockchain while lacking the ability to create new blocks.
 
 *******************************************************************************/
-public interface API
+@path("/")
+public interface VibeRestAPI : API
 {
+// The REST generator requires @safe methods
 @safe:
 
     /***************************************************************************
 
         Returns:
             The public key of this node
+
+        API:
+            GET /public_key
 
     ***************************************************************************/
 
@@ -96,6 +63,9 @@ public interface API
 
         Returns:
             The peer network of this node
+
+        API:
+            GET /network_info
 
     ***************************************************************************/
 
@@ -111,6 +81,7 @@ public interface API
 
     ***************************************************************************/
 
+    @method(HTTPMethod.GET)
     public bool hasTransactionHash (Hash tx);
 
     /***************************************************************************
@@ -140,6 +111,9 @@ public interface API
         Note that a node is free to return less blocks than asked for.
         However it must never return more blocks than asked for.
 
+        API:
+            GET /blocks_from
+
         Params:
             block_height = the starting block height to begin retrieval from
             max_blocks   = the maximum blocks to return at once
@@ -156,6 +130,9 @@ public interface API
     /***************************************************************************
 
         Get the array of hashes which form the merkle path
+
+        API:
+            GET /merkle_path
 
         Params:
             block_height = Height of the block that contains the transaction hash
