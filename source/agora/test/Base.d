@@ -307,7 +307,7 @@ public interface TestAPI : API
 }
 
 /// Ditto
-public final class TestNode : Node, TestAPI
+public class TestNode : Node, TestAPI
 {
     ///
     public this (Config config)
