@@ -49,3 +49,113 @@ unittest
     nodes.all!(node => node.getBlockHeight() == 1)
         .retryFor(2.seconds, "Nodes should have same block height");
 }
+
+/// test behavior when a node sends bad block data
+unittest
+{
+    import agora.common.BanManager;
+    import agora.consensus.data.Block;
+    import agora.common.Config;
+    import agora.common.Metadata;
+    import agora.common.crypto.Key;
+    import core.time;
+    import geod24.LocalRest;
+    import std.algorithm;
+
+    /// node which returns bad blocks
+    static class BadNode : TestNode
+    {
+        ///
+        public this (Config config)
+        {
+            super(config);
+        }
+
+        /// return phony blocks
+        public override const(Block)[] getBlocksFrom (ulong block_height,
+            size_t max_blocks)
+        {
+            Block[] blocks;
+            Transaction[] last_tx;
+
+            auto gen_key = () @trusted { return getGenesisKeyPair(); }();
+
+            Block last_block;
+            // make 20 blocks which have an invalid previous hash
+            foreach (idx; 0 .. 20)
+            {
+                auto txs = () @trusted { return makeChainedTransactions(gen_key, last_tx, 1); }();
+                last_tx = txs;
+                auto block = makeNewBlock(last_block, txs);
+
+                // currently the only block validation the Ledger does is the height
+                block.header.height = idx + 10;
+                blocks ~= block;
+                last_block = block;
+            }
+
+            return blocks;
+        }
+
+        /// return block length as returned by function above
+        public override ulong getBlockHeight () { return 20; }
+    }
+
+    static class BadAPIManager : TestAPIManager
+    {
+        // base class uses a hashmap, can't depend on the order of nodes
+        public RemoteAPI!TestAPI[] nodes;
+
+        /// Initialize a new node
+        public override void createNewNode (PublicKey address, Config conf)
+        {
+            RemoteAPI!TestAPI api;
+            if (this.nodes.length == 0)
+            {
+                api = RemoteAPI!TestAPI.spawn!(BadNode)(conf);
+            }
+            else
+            {
+                api = RemoteAPI!TestAPI.spawn!(TestNode)(conf);
+            }
+
+            TestNetworkManager.tbn[address.toString()] = api.tid();
+            this.apis[address] = api;
+            this.nodes ~= api;
+        }
+    }
+
+    const NodeCount = 3;
+    auto network = makeTestNetwork!BadAPIManager(NetworkTopology.Simple,
+        NodeCount);
+    network.start();
+    scope(exit) network.shutdown();
+    assert(network.getDiscoveredNodes().length == NodeCount);
+
+    auto nodes = network.nodes;
+    auto node_bad = nodes[0];
+    auto node_good = nodes[1];
+    auto node_test = nodes[2];
+
+    // enable filtering first
+    node_good.filter!(API.getBlocksFrom);
+    node_bad.filter!(API.getBlocksFrom);
+    node_test.filter!(API.putTransaction);
+
+    // make 10 good blocks
+    auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 10);
+    txes.each!(tx => node_good.putTransaction(tx));
+
+    // at this point both the good node and bad node have same amount of blocks,
+    // but bad node pretends to have + 10
+    assert(node_good.getBlockHeight() == 10);
+    assert(node_bad.getBlockHeight() == 20);
+    assert(node_test.getBlockHeight() == 0);  // only genesis
+
+    node_bad.clearFilter();
+    node_good.clearFilter();
+
+    // node_receiver will receive its blocks from node_good
+    retryFor(node_test.getBlockHeight() == 10, 4.seconds);
+    assert(containSameBlocks([node_test, node_good], 10));
+}
