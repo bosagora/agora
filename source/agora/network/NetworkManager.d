@@ -43,7 +43,6 @@ import std.array;
 import std.exception;
 import std.format;
 import std.random;
-import std.typecons;
 
 import core.stdc.time;
 import core.time;
@@ -226,6 +225,12 @@ public class NetworkManager
     private void getBlocksFrom (ulong block_height,
         scope bool delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
+        struct Pair { size_t height; NetworkClient client; }
+
+        static Pair[] node_pairs;
+        node_pairs.length = 0;
+        assumeSafeAppend(node_pairs);
+
         // return size_t.max if getBlockHeight() fails
         size_t getHeight (NetworkClient node)
         {
@@ -235,35 +240,34 @@ public class NetworkManager
                 return size_t.max;
         }
 
-        try
+        auto node_pair = this.peers.byValue
+            .map!(node => Pair(getHeight(node), node))
+            .filter!(pair => pair.height != ulong.max)  // request failed
+            .each!(pair => node_pairs ~= pair);
+
+        node_pairs.sort!((a, b) => a.height > b.height);
+
+        LNextNode: foreach (pair; node_pairs) try
         {
-            auto node_pair = this.peers.byValue
-                .map!(node => tuple(getHeight(node), node))
-                .filter!(pair => pair[0] != ulong.max)  // request failed
-                .reduce!((a, b) => a[0] > b[0] ? a : b);
+            if (block_height > pair.height)
+                continue;  // this node does not have newer blocks than us
 
-            const highest_block = node_pair[0];
-            if (highest_block < block_height)
-                return;  // we're up to date
-
-            logInfo("Retrieving latest blocks..");
-            auto node = node_pair[1];
+            logInfo("Retrieving latest blocks from %s..", pair.client.address);
             const MaxBlocks = 1024;
 
             do
             {
-                // todo: if any block fails verification, we have to try another node
-                auto blocks = node.getBlocksFrom(block_height, MaxBlocks);
+                auto blocks = pair.client.getBlocksFrom(block_height, MaxBlocks);
                 logInfo("Received blocks [%s..%s] out of %s..", block_height,
-                    block_height + blocks.length, highest_block + 1);  // genesis block
+                    block_height + blocks.length, pair.height + 1);  // genesis block
 
                 // one or more blocks were rejected, stop retrieval from node
                 if (!onReceivedBlocks(blocks))
-                    return;
+                    continue LNextNode;
 
                 block_height += blocks.length;
             }
-            while (block_height < highest_block);
+            while (block_height < pair.height);
         }
         catch (Exception ex)
         {
