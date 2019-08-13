@@ -163,6 +163,22 @@ public class TestAPIManager
         this.apis.each!(a => a.shutdown());
     }
 
+    /// fill in the in-memory metadata with the peers before nodes are started
+    public void addMetadata ()
+    {
+        auto keys = this.apis.keys.array;
+
+        foreach (key_x; keys)
+        foreach (key_y; keys)
+        {
+            if (key_x == key_y)
+                continue;
+
+            this.apis[key_x].metaAddPeer(key_y.toString());
+            this.apis[key_y].metaAddPeer(key_x.toString());
+        }
+    }
+
     /***************************************************************************
 
         Keep polling and waiting for nodes to all reach discovery,
