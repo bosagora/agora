@@ -14,13 +14,8 @@
 module agora.network.RestApi;
 
 import agora.node.API;
-import agora.common.crypto.Key;
-import agora.consensus.data.Block;
 import agora.common.Data;
-import agora.common.Set;
-import agora.consensus.data.Transaction;
 
-import vibe.data.json;
 import vibe.web.rest;
 import vibe.http.common;
 
@@ -57,5 +52,5 @@ public interface VibeRestAPI : API
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
-    public bool hasTransactionHash (Hash tx);
+    override public bool hasTransactionHash (Hash tx);
 }

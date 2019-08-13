@@ -41,10 +41,6 @@ import agora.common.Data;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
 
-import vibe.data.json;
-import vibe.web.rest;
-import vibe.http.common;
-
 /// The network state (completed when sufficient validators are connected to)
 public enum NetworkState
 {
