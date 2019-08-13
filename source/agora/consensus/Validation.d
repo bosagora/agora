@@ -31,7 +31,7 @@ import agora.consensus.data.Transaction;
 
 *******************************************************************************/
 
-public bool verify (Transaction tx,
+public bool isValid (Transaction tx,
     scope const(Output)* delegate (Hash hash, size_t index) @safe findOutput) @safe
 {
     if (tx.inputs.length == 0)
@@ -104,19 +104,19 @@ unittest
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(findOutput), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(findOutput), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.verify(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(!secondTx.isValid(findOutput), format("Transaction data is not validated %s", secondTx));
 }
 
 /// negative output amounts disallowed
@@ -148,7 +148,7 @@ unittest
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
-    assert(!tx_2.verify(findOutput));
+    assert(!tx_2.isValid(findOutput));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -195,7 +195,7 @@ unittest
     tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage[tx1Hash] = tx1;
 
-    assert(tx1.verify(findOutput), format("Transaction signature is not validated %s", tx1));
+    assert(tx1.isValid(findOutput), format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
         [
@@ -211,5 +211,5 @@ unittest
     tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage[tx2Hash] = tx2;
     // Signature verification must be error
-    assert(!tx2.verify(findOutput), format("Transaction signature is not validated %s", tx2));
+    assert(!tx2.isValid(findOutput), format("Transaction signature is not validated %s", tx2));
 }
