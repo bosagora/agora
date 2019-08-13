@@ -105,10 +105,16 @@ public struct PublicKey
     /*private*/ BitBlob!(crypto_sign_ed25519_PUBLICKEYBYTES * 8) data;
     alias data this;
 
-    /// Constructor accepting only 1 argument
+    /// Construct an instance from the binary representation
     private this (typeof(PublicKey.tupleof) args) pure nothrow @safe @nogc
     {
         this.tupleof = args;
+    }
+
+    /// Ditto
+    public this (const ubyte[] args) pure nothrow @safe @nogc
+    {
+        this.data = args;
     }
 
     /// Uses Stellar's representation instead of hex
