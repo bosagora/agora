@@ -131,7 +131,7 @@ public class TestAPIManager
     public RemoteAPI!TestAPI[PublicKey] apis;
 
     /// Initialize a new node
-    protected void createNewNode (PublicKey address, Config conf)
+    public void createNewNode (PublicKey address, Config conf)
     {
         auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf);
         TestNetworkManager.tbn[address.toString()] = api.tid();
@@ -245,7 +245,7 @@ public class TestNetworkManager : NetworkManager
     import geod24.LocalRest;
 
     /// Workaround compiler bug that triggers in `std.concurrency`
-    protected __gshared std.concurrency.Tid[string] tbn;
+    public __gshared std.concurrency.Tid[string] tbn;
 
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
