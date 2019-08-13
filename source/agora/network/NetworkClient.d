@@ -21,7 +21,7 @@ import agora.common.Data;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Transaction;
-import agora.node.API;
+import agora.node.Node: Node;
 
 import vibe.core.log;
 
@@ -31,6 +31,23 @@ import std.format;
 import std.random;
 
 import core.time;
+
+/// The network state (completed when sufficient validators are connected to)
+public enum NetworkState
+{
+    Incomplete,
+    Complete
+}
+
+/// Contains the network info (state & addresses)
+public struct NetworkInfo
+{
+    /// Whether the node knows about the IPs of all its quorum set nodes
+    public NetworkState state;
+
+    /// Partial or full view of the addresses of the node's quorum (based on is_complete)
+    public Set!string addresses;
+}
 
 /// Used for communicating with a remote node
 class NetworkClient
@@ -52,8 +69,7 @@ class NetworkClient
     /// Ban manager
     private BanManager banman;
 
-    /// API client to the node
-    private API api;
+    private Node node;
 
     /// The key of the node as retrieved by getPublicKey()
     public PublicKey key;
@@ -77,12 +93,12 @@ class NetworkClient
     ***************************************************************************/
 
     public this (TaskManager taskman, BanManager banman, Address address,
-        API api, Duration retry, size_t max_retries)
+        Node node, Duration retry, size_t max_retries)
     {
         this.taskman = taskman;
         this.banman = banman;
         this.address = address;
-        this.api = api;
+        this.node = node;
         this.retry_delay = retry;
         this.max_retries = max_retries;
         this.exception = new Exception(
@@ -105,7 +121,7 @@ class NetworkClient
 
     public void handshake ()
     {
-        this.key = this.attemptRequest(this.api.getPublicKey(), this.exception);
+        this.key = this.attemptRequest(node.getPublicKey(), this.exception);
     }
 
     /***************************************************************************
@@ -126,7 +142,7 @@ class NetworkClient
 
     public NetworkInfo getNetworkInfo ()
     {
-        return this.attemptRequest(this.api.getNetworkInfo(), this.exception);
+        return this.attemptRequest(node.getNetworkInfo(), this.exception);
     }
 
     /***************************************************************************
@@ -146,7 +162,7 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            this.attemptRequest!(LogLevel.debug_)(this.api.putTransaction(tx),
+            this.attemptRequest!(LogLevel.debug_)(node.putTransaction(tx),
                 null);
         });
     }
@@ -164,7 +180,7 @@ class NetworkClient
 
     public ulong getBlockHeight ()
     {
-        return this.attemptRequest(this.api.getBlockHeight(), this.exception);
+        return this.attemptRequest(node.getBlockHeight(), this.exception);
     }
 
     /***************************************************************************
@@ -190,7 +206,7 @@ class NetworkClient
     public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
     {
         return this.attemptRequest(
-            this.api.getBlocksFrom(block_height, max_blocks), this.exception);
+            node.getBlocksFrom(block_height, max_blocks), this.exception);
     }
 
     /***************************************************************************

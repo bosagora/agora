@@ -31,8 +31,9 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Transaction;
+import agora.network.rest_api;
 import agora.network.NetworkClient;
-import agora.node.API;
+import agora.node.Node: Node;
 import agora.node.Ledger;
 
 import vibe.core.log;
@@ -287,7 +288,8 @@ public class NetworkManager
 
         logInfo("Establishing connection with %s...", address);
         auto node = new NetworkClient(this.taskman, this.banman, address,
-            this.getClient(address, this.node_config.timeout.msecs),
+            null, //FIXME: temporary
+            //~ this.getClient(address, this.node_config.timeout.msecs), //FIXME: what's going on here?!
             this.node_config.retry_delay.msecs,
             this.node_config.max_retries);
 
@@ -440,9 +442,9 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected API getClient (Address address, Duration timeout)
+    protected VibeRestAPI getClient (Address address, Duration timeout)
     {
-        return new RestInterfaceClient!API(address/*, timeout*/);
+        return new RestInterfaceClient!VibeRestAPI(address/*, timeout*/);
     }
 
     /***************************************************************************

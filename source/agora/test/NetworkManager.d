@@ -17,7 +17,7 @@ version (unittest):
 
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
-import agora.node.API;
+import agora.network.rest_api;
 import agora.test.Base;
 
 /// test behavior when getBlockHeight() call fails
@@ -37,8 +37,8 @@ unittest
     auto node_1 = nodes[0];
 
     // first two nodes will fail, second two should work
-    nodes[0].filter!(API.getBlockHeight);
-    nodes[1].filter!(API.getBlockHeight);
+    nodes[0].filter!(VibeRestAPI.getBlockHeight);
+    nodes[1].filter!(VibeRestAPI.getBlockHeight);
 
     auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 1);
     txes.each!(tx => node_1.putTransaction(tx));

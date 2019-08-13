@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Definitions of the nodes (full node & validator) APIs
+    Definitions of the nodes (full node & validator) REST APIs
 
     Two kinds of nodes exist: full nodes, and validators.
     A full node follows the network as a passive actor, but does validation
@@ -33,34 +33,75 @@
 
 *******************************************************************************/
 
-module agora.node.API;
+module agora.network.rest_api;
 
+import agora.node.Node: Node;
+import agora.network.NetworkClient;
+import agora.common.Metadata;
+import agora.common.TransactionPool;
+import agora.common.crypto.Key;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.common.Data;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
+import agora.common.Config;
 
 import vibe.data.json;
 import vibe.web.rest;
 import vibe.http.common;
 
-/// The network state (completed when sufficient validators are connected to)
-public enum NetworkState
+class VibeRestAPIImpl : VibeRestAPI
 {
-    Incomplete,
-    Complete
+    private Node node;
+
+    ///
+    public this (Config config)
+    {
+        node = new Node(config);
+    }
+
+    this(Node node)
+    {
+        this.node = node;
+    }
+
+    public void start ()
+    {
+        node.start();
+    }
+
+    ///
+    public void shutdown ()
+    {
+        node.shutdown();
+    }
+
+    public Metadata getMetadata (string _unused)
+    {
+        return node.getMetadata(_unused);
+    }
+
+    void metaAddPeer (string peer)
+    {
+        node.metaAddPeer(peer);
+    }
+
+    /// Return a transaction pool backed by an in-memory SQLite db
+    public TransactionPool getPool (string) @system
+    {
+        return new TransactionPool(":memory:");
+    }
+
+    PublicKey getPublicKey (){ return node.getPublicKey; }
+    NetworkInfo getNetworkInfo(){ return node.getNetworkInfo; }
+    void putTransaction(Transaction tx){ node.putTransaction(tx); }
+    ulong getBlockHeight(){ return node.getBlockHeight; }
+    const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks){ return node.getBlocksFrom(block_height, max_blocks); }
+    Hash[] getMerklePath (ulong block_height, Hash hash){ return node.getMerklePath(block_height, hash); }
+    bool hasTransactionHash (Hash tx) { return node.hasTransactionHash(tx); }
 }
 
-/// Contains the network info (state & addresses)
-public struct NetworkInfo
-{
-    /// Whether the node knows about the IPs of all its quorum set nodes
-    public NetworkState state;
-
-    /// Partial or full view of the addresses of the node's quorum (based on is_complete)
-    public Set!string addresses;
-}
 
 /*******************************************************************************
 
@@ -80,8 +121,12 @@ public struct NetworkInfo
 
 *******************************************************************************/
 @path("/")
-public interface API
+interface VibeRestAPI
 {
+    void metaAddPeer (string peer);
+    public void start ();
+    public void shutdown ();
+
 // The REST generator requires @safe methods
 @safe:
 

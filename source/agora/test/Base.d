@@ -33,8 +33,9 @@ import agora.common.Task;
 import agora.common.TransactionPool;
 import agora.common.crypto.Key;
 import agora.consensus.data.Transaction;
+import agora.network.rest_api;
 import agora.network.NetworkManager;
-import agora.node.API;
+import agora.network.NetworkClient;
 import agora.node.Ledger;
 import agora.node.Node;
 
@@ -134,7 +135,7 @@ public class TestNetworkManager : NetworkManager
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
-    public RemoteAPI!TestAPI[PublicKey] apis;
+    public RemoteAPI!VibeRestAPI[PublicKey] apis;
 
     /// Workaround compiler bug that triggers in `std.concurrency`
     protected __gshared std.concurrency.Tid[string] tbn;
@@ -152,10 +153,10 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override API getClient (Address address, Duration timeout)
+    protected final override VibeRestAPI getClient (Address address, Duration timeout)
     {
         if (auto ptr = address in tbn)
-            return new RemoteAPI!API(*ptr, timeout);
+            return new RemoteAPI!VibeRestAPI(*ptr, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
     }
@@ -163,7 +164,7 @@ public class TestNetworkManager : NetworkManager
     /// Initialize a new node
     protected void createNewNode (PublicKey address, Config conf)
     {
-        auto api = RemoteAPI!TestAPI.spawn!(TestNode!TestNetworkManager)(conf);
+        auto api = RemoteAPI!VibeRestAPI.spawn!(TestNode /*!TestNetworkManager*/)(conf);
         tbn[address.toString()] = api.tid();
         this.apis[address] = api;
     }
@@ -268,21 +269,8 @@ public class TestNetworkManager : NetworkManager
 
 }
 
-/// Used to call start/shutdown outside of main
-public interface TestAPI : API
-{
-    ///
-    void start();
-
-    ///
-    void shutdown ();
-
-    ///
-    void metaAddPeer(string peer);
-}
-
 /// Ditto
-public final class TestNode (Net) : Node!Net
+public final class TestNode : VibeRestAPIImpl
 {
     ///
     public this (Config config)
@@ -509,7 +497,7 @@ unittest
 }
 
 /// Returns: the entire ledger from the provided node
-public const(Block)[] getAllBlocks (TestAPI node)
+public const(Block)[] getAllBlocks (VibeRestAPI node)
 {
     import std.range;
     const(Block)[] blocks;

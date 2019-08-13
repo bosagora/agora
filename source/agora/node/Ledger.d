@@ -20,7 +20,7 @@ import agora.common.Hash;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
-import agora.node.API;
+import agora.network.rest_api; //FIXME: remove it
 
 import vibe.core.log;
 

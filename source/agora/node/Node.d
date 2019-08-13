@@ -21,7 +21,7 @@ import agora.common.Data;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.network.NetworkManager;
-import agora.node.API: NetworkInfo;
+import agora.network.NetworkClient;
 import agora.node.Ledger;
 
 import agora.node.GossipProtocol;
@@ -50,8 +50,7 @@ private enum MaxBatchBlocksSent = 1000;
                 derivative is expected.
 
 *******************************************************************************/
-import agora.test.Base: TestAPI;
-class Node (Network) : TestAPI // TODO: remove TestAPI
+class Node
 {
     /// Metadata instance
     private Metadata metadata;
@@ -60,7 +59,7 @@ class Node (Network) : TestAPI // TODO: remove TestAPI
     private const Config config;
 
     /// Network of connected nodes
-    private Network network;
+    private NetworkManager network;
 
     /// Reusable exception object
     private RestException exception;
@@ -81,7 +80,7 @@ class Node (Network) : TestAPI // TODO: remove TestAPI
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.network = new Network(config.node, config.banman, config.network,
+        this.network = new NetworkManager(config.node, config.banman, config.network,
             config.dns_seeds,
             this.metadata);
         this.pool = this.getPool(config.node.data_dir);
@@ -122,8 +121,8 @@ class Node (Network) : TestAPI // TODO: remove TestAPI
         this.pool.shutdown();
     }
 
-    //~ version(unittest)
-    void metaAddPeer (string peer)
+    version(unittest)
+    void metaAddPeer (string peer) @safe
     {
         this.metadata.peers.put(peer);
     }
@@ -208,7 +207,7 @@ class Node (Network) : TestAPI // TODO: remove TestAPI
 
     ***************************************************************************/
 
-    protected Metadata getMetadata (string data_dir) @system
+    Metadata getMetadata (string data_dir)
     {
         return new DiskMetadata(data_dir);
     }
