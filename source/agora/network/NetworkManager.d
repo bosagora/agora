@@ -84,9 +84,6 @@ public class NetworkManager
     /// DNS seeds
     private const(string)[] dns_seeds;
 
-    /// no-op. for use with unittests only
-    version (unittest) public this () { }
-
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
         in string[] peers, in string[] dns_seeds, Metadata metadata)

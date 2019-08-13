@@ -27,20 +27,10 @@ import std.array;
 import std.algorithm;
 
 ///
-class MetaNetworkManager : TestNetworkManager
+class MetaAPIManager : TestAPIManager
 {
     static import std.concurrency;
     import geod24.LocalRest;
-
-    /// Ctor
-    public this () { super(); }
-
-    /// Ditto
-    public this (NodeConfig config, BanManager.Config ban_conf, in string[] peers, in string[] dns_seeds,
-        Metadata metadata)
-    {
-        super(config, ban_conf, peers, dns_seeds, metadata);
-    }
 
     /// before we start the nodes, we want to simulate metadata configuration
     public override void start ()
@@ -65,7 +55,7 @@ class MetaNetworkManager : TestNetworkManager
 unittest
 {
     const NodeCount = 4;
-    auto network = makeTestNetwork!MetaNetworkManager(NetworkTopology.Simple, NodeCount, false);
+    auto network = makeTestNetwork!MetaAPIManager(NetworkTopology.Simple, NodeCount, false);
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);

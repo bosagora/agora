@@ -38,7 +38,7 @@ unittest
     const long timeout = 10;
     const size_t max_failed_requests = 4 * Block.TxsInBlock;
 
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple,
+    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple,
         NodeCount, true, retry_delay, max_retries, timeout, max_failed_requests);
     network.start();
     scope(exit) network.shutdown();

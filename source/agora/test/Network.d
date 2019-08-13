@@ -24,7 +24,7 @@ unittest
     import std.format;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);

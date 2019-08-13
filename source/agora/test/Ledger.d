@@ -35,7 +35,7 @@ unittest
     import core.time;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
     assert(network.getDiscoveredNodes().length == NodeCount);
@@ -96,7 +96,7 @@ unittest
     import core.time;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple, NodeCount);
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
@@ -140,7 +140,7 @@ unittest
     import core.time;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
 
@@ -161,7 +161,7 @@ unittest
     import std.algorithm.sorting;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork!TestNetworkManager(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork!TestAPIManager(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
 
