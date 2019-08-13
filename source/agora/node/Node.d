@@ -14,6 +14,7 @@
 module agora.node.Node;
 
 import agora.consensus.data.Block;
+import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
@@ -44,13 +45,8 @@ private enum MaxBatchBlocksSent = 1000;
     This class implement the business code of the node.
     Communication with the other nodes is handled by the `Network` class.
 
-    Params:
-      Network = Type of the class handling network communication
-                `agora.network.NetworkManager.NetworkManager` or a
-                derivative is expected.
-
 *******************************************************************************/
-public class Node (Network) : API
+public class Node : API
 {
     /// Metadata instance
     protected Metadata metadata;
@@ -59,7 +55,7 @@ public class Node (Network) : API
     private const Config config;
 
     /// Network of connected nodes
-    private Network network;
+    private NetworkManager network;
 
     /// Reusable exception object
     private RestException exception;
@@ -80,9 +76,8 @@ public class Node (Network) : API
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.network = new Network(config.node, config.banman, config.network,
-            config.dns_seeds,
-            this.metadata);
+        this.network = this.getNetworkManager(config.node, config.banman,
+            config.network, config.dns_seeds, this.metadata);
         this.pool = this.getPool(config.node.data_dir);
         this.ledger = new Ledger(this.pool);
         this.gossip = new GossipProtocol(this.network, this.ledger);
@@ -163,6 +158,32 @@ public class Node (Network) : API
     {
         return this.ledger.getBlocksFrom(block_height,
             min(max_blocks, MaxBatchBlocksSent));
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a NetworkManager
+
+        Unittests can override this method and return a custom NetworkManager.
+
+        Params:
+            node_config = the node config
+            banman_conf = the ban manager config
+            peers = the peers to connect to
+            dns_seeds = the DNS seeds to retrieve peers from
+            metadata = metadata containing known peers and other meta info
+
+        Returns:
+            an instance of a NetworkManager
+
+    ***************************************************************************/
+
+    protected NetworkManager getNetworkManager (in NodeConfig node_config,
+        in BanManager.Config banman_conf, in string[] peers,
+        in string[] dns_seeds, Metadata metadata)
+    {
+        return new NetworkManager(node_config, banman_conf, peers, dns_seeds,
+            metadata);
     }
 
     /***************************************************************************
