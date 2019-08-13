@@ -358,7 +358,7 @@ public Block makeNewBlock (const ref Block prev_block, Transaction[] txs) @safe
 ///
 unittest
 {
-    Block gen_block = getGenesisBlock();
+    const Block gen_block = getGenesisBlock();
 
     // above parts not @safe/@nogc yet
     () @safe
