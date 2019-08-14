@@ -29,7 +29,7 @@ import agora.node.GossipProtocol;
 
 import vibe.core.log;
 import vibe.data.json;
-import vibe.web.rest;
+import vibe.web.rest : RestException;
 
 import std.algorithm;
 import std.exception;
