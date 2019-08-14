@@ -192,7 +192,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    private const(Output)* findOutput (Hash tx_hash, size_t index) @safe
+    private const(Output)* findOutput (Hash tx_hash, size_t index)
+        @safe nothrow @nogc
     {
         foreach (ref block; this.ledger)
         {
