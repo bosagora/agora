@@ -206,36 +206,37 @@ nothrow @nogc @safe unittest
 
 /*******************************************************************************
 
-    Merges two hashes together
+    Hashes multiple arguments together
 
     Params:
-        h1 = the first hash
-        h2 = the second hash
+        T = variadic argument types
+        args = the arguments
 
     Returns:
-        the merged hash
+        the hash of all the arguments
 
 *******************************************************************************/
 
-public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @safe
+public Hash hashMulti (T...)(auto ref T args) nothrow @nogc @safe
 {
-    static struct MergeHash
-    {
-        Hash left;
-        Hash right;
+    Hash hash = void;
+    crypto_generichash_state state;
 
-        public void computeHash (scope HashDg dg) const nothrow @safe @nogc
-        {
-            hashPart(this.left, dg);
-            hashPart(this.right, dg);
-        }
-    }
+    auto dg = () @trusted {
+        crypto_generichash_init(&state, null, 0, Hash.sizeof);
+        scope HashDg dg = (scope const(ubyte)[] data) @trusted
+            => cast(void)crypto_generichash_update(&state, data.ptr, data.length);
+        return dg;
+    }();
 
-    return hashFull(MergeHash(h1, h2));
+    static foreach (idx, _; args)
+        hashPart(args[idx], dg);
+    () @trusted { crypto_generichash_final(&state, hash[].ptr, Hash.sizeof); }();
+    return hash;
 }
 
 ///
-unittest
+nothrow @nogc @safe unittest
 {
     Hash foo = hashFull("foo");
     Hash bar = hashFull("bar");
@@ -243,5 +244,26 @@ unittest
         "0xe0343d063b14c52630563ec81b0f91a84ddb05f2cf05a2e4330ddc79bd3a06e57" ~
         "c2e756f276c112342ff1d6f1e74d05bdb9bf880abd74a2e512654e12d171a74");
 
-    assert(mergeHash(foo, bar) == merged);
+    assert(hashMulti(foo, bar) == merged);
+
+    static struct S
+    {
+        public char c0;
+        private int unused_1;
+        public char c1;
+        private int unused_2;
+        public char c2;
+        private int unused_3;
+
+        public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+        {
+            hashPart(this.c0, dg);
+            hashPart(this.c1, dg);
+            hashPart(this.c2, dg);
+        }
+    }
+
+    auto hash_1 = hashMulti(420, "bpfk", S('a', 0, 'b', 0, 'c', 0));
+    auto hash_2 = hashMulti(420, "bpfk", S('a', 1, 'b', 2, 'c', 3));
+    assert(hash_1 == hash_2);
 }

@@ -189,15 +189,15 @@ unittest
     const Hash hg = hashes[6];
     const Hash hh = hashes[7];
 
-    const Hash hab = mergeHash(ha, hb);
-    const Hash hcd = mergeHash(hc, hd);
-    const Hash hef = mergeHash(he, hf);
-    const Hash hgh = mergeHash(hg, hh);
+    const Hash hab = hashMulti(ha, hb);
+    const Hash hcd = hashMulti(hc, hd);
+    const Hash hef = hashMulti(he, hf);
+    const Hash hgh = hashMulti(hg, hh);
 
-    const Hash habcd = mergeHash(hab, hcd);
-    const Hash hefgh = mergeHash(hef, hgh);
+    const Hash habcd = hashMulti(hab, hcd);
+    const Hash hefgh = hashMulti(hef, hgh);
 
-    const Hash habcdefgh = mergeHash(habcd, hefgh);
+    const Hash habcdefgh = hashMulti(habcd, hefgh);
 
     Hash[] merkle_path;
     foreach (key, ref node; nodes)
