@@ -233,3 +233,15 @@ public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @safe
 
     return hashFull(MergeHash(h1, h2));
 }
+
+///
+unittest
+{
+    Hash foo = hashFull("foo");
+    Hash bar = hashFull("bar");
+    const merged = Hash(
+        "0xe0343d063b14c52630563ec81b0f91a84ddb05f2cf05a2e4330ddc79bd3a06e57" ~
+        "c2e756f276c112342ff1d6f1e74d05bdb9bf880abd74a2e512654e12d171a74");
+
+    assert(mergeHash(foo, bar) == merged);
+}
