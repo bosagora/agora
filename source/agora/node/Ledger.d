@@ -45,8 +45,7 @@ public class Ledger
     public this (TransactionPool pool)
     {
         this.pool = pool;
-        auto block = getGenesisBlock();
-        assert(this.acceptBlock(block));
+        this.addGenesisBlock();
     }
 
     /***************************************************************************
@@ -173,11 +172,7 @@ public class Ledger
 
     private bool isValidBlock (const ref Block block) pure nothrow @safe @nogc
     {
-        const expected_height = this.last_block !is null
-            ? (this.last_block.header.height + 1)
-            : 0;
-
-        return block.header.height == expected_height;
+        return block.header.height == this.last_block.header.height + 1;
     }
 
     /***************************************************************************
@@ -237,6 +232,20 @@ public class Ledger
             return block.getMerklePath(index);
         else
             return null;
+    }
+
+    /***************************************************************************
+
+        Add the genesis block to the ledger.
+
+    ***************************************************************************/
+
+    private void addGenesisBlock ()
+    {
+        assert(this.ledger.length == 0);
+        auto block = getGenesisBlock();
+        this.ledger ~= block;
+        this.last_block = &this.ledger[$ - 1];
     }
 }
 
