@@ -413,7 +413,8 @@ unittest
 
 *******************************************************************************/
 
-public bool getSumOutput (Transaction tx, ref Amount acc) nothrow pure @safe @nogc
+public bool getSumOutput (const Transaction tx, ref Amount acc)
+    nothrow pure @safe @nogc
 {
     foreach (ref o; tx.outputs)
         if (!acc.add(o.value))
