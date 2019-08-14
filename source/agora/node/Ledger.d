@@ -346,37 +346,13 @@ unittest
 {
     import agora.common.crypto.Key;
 
-    KeyPair[] key_pairs = [
-        KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
-        KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random
-    ];
-
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
     scope ledger = new Ledger(pool);
-    assert(*ledger.getLastBlock() == getGenesisBlock());
-    assert(ledger.ledger.length == 1);
 
     auto gen_key_pair = getGenesisKeyPair();
-    const Transaction last_tx = getGenesisBlock().txs[$-1];
-    Hash gen_tx_hash = hashFull(last_tx);
-
-    Transaction[] txs;
-
-    foreach (idx; 0 .. 8)
-    {
-        Transaction tx = Transaction(
-            [
-                Input(gen_tx_hash, 0)
-            ],
-            [
-                Output(Amount(1_000_000), key_pairs[idx].address)
-            ]
-        );
-        tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        assert(ledger.acceptTransaction(tx));
-        txs ~= tx;
-    }
+    auto txs = makeChainedTransactions(gen_key_pair, null, 1);
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
     Hash[] hashes;
     hashes.reserve(txs.length);
