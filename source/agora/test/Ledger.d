@@ -229,3 +229,55 @@ unittest
         assert(merkle_path.length == 0);
     }
 }
+
+/// test behavior of receiving double-spend transactions
+unittest
+{
+    import agora.common.Deserializer;
+    import agora.common.Serializer;
+    import std.algorithm;
+    import core.time;
+    import core.thread;
+    import agora.consensus.Validation;
+
+    const NodeCount = 2;
+    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount, true,
+        100, 20, 100);  // reduce timeout to 100 msecs
+    network.start();
+    scope(exit) network.shutdown();
+
+    auto nodes = network.apis.values;
+    auto node_1 = nodes[0];
+
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+    txs.each!(tx => node_1.putTransaction(tx));
+    containSameBlocks(nodes, 1).retryFor(3.seconds);
+
+    txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
+    txs.each!(tx => node_1.putTransaction(tx));
+    containSameBlocks(nodes, 2).retryFor(3.seconds);
+
+    txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
+
+    // create a deep-copy of the first tx
+    auto backup_tx = deserialize!Transaction(serializeFull(txs[0]));
+
+    // create a double-spend tx
+    txs[0].inputs[0] = txs[1].inputs[0];
+    txs[0].outputs[0].value = Amount(100);
+    auto signature = getGenesisKeyPair().secret.sign(hashFull(txs[0])[]);
+    txs[0].inputs[0].signature = signature;
+
+    // make sure the transaction is still authentic (signature is correct),
+    // even if it's double spending
+    assert(txs[0].isValid((Hash hash, size_t index, out Output output)
+        { output = GenesisTransaction.outputs[0]; return true; }));
+
+    txs.each!(tx => node_1.putTransaction(tx));
+
+    Thread.sleep(2.seconds);  // wait for propagation
+    containSameBlocks(nodes, 2).retryFor(3.seconds);  // no new block yet (1 rejected tx)
+
+    node_1.putTransaction(backup_tx);
+    containSameBlocks(nodes, 3).retryFor(3.seconds);  // new block finally created
+}

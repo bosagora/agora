@@ -24,6 +24,7 @@ version (unittest):
 
 import agora.common.BanManager;
 import agora.consensus.data.Block;
+import agora.consensus.data.UTXOSet;
 import agora.common.Config;
 import agora.common.Data;
 import agora.common.Hash;
@@ -337,6 +338,12 @@ public class TestNode : Node, TestAPI
     public override TransactionPool getPool (string) @system
     {
         return new TransactionPool(":memory:");
+    }
+
+    /// Return a UTXO set backed by an in-memory SQLite db
+    protected override UTXOSet getUtxoSet (string data_dir)
+    {
+        return new UTXOSet(":memory:");
     }
 
     /// Used by unittests
