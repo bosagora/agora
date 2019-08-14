@@ -16,6 +16,7 @@ module agora.consensus.Validation;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Hash;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 
 /// Delegate to find an unspent UTXO
@@ -216,4 +217,44 @@ unittest
     storage[tx2Hash] = tx2;
     // Signature verification must be error
     assert(!tx2.isValid(findUTXO), format("Transaction signature is not validated %s", tx2));
+}
+
+/*******************************************************************************
+
+    Check the validity of a block.
+
+    Currently only the height of the block is
+    checked against the previous height.
+
+    Params:
+        block = the block to check
+        prev_height = the height of the previous block which this
+                      block should point to
+
+    Returns:
+        true if the block is considered valid
+
+*******************************************************************************/
+
+public bool isValid (const ref Block block, in ulong prev_height)
+    pure nothrow @safe @nogc
+{
+    if (block.header.height != prev_height + 1)
+        return false;
+
+    return true;
+}
+
+///
+unittest
+{
+    import agora.consensus.Genesis;
+    auto gen_block = getGenesisBlock();
+    Block block;
+    block.header.prev_block = gen_block.header.hashFull();
+    block.header.height = gen_block.header.height + 1;
+    assert(block.isValid(gen_block.header.height));
+
+    block.header.height = 100;
+    assert(!block.isValid(gen_block.header.height));
 }
