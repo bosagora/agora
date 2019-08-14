@@ -440,7 +440,15 @@ public class NetworkManager
 
     protected API getClient (Address address, Duration timeout)
     {
-        return new RestInterfaceClient!API(address/*, timeout*/);
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!API(settings);
     }
 
     /***************************************************************************
