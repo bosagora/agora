@@ -162,36 +162,6 @@ public void hashPart (scope const(char)[] record, scope HashDg state) /*pure*/ n
     state(cast(const ubyte[])record);
 }
 
-/*******************************************************************************
-
-    Merges two hashes together
-
-    Params:
-        h1 = the first hash
-        h2 = the second hash
-
-    Returns:
-        the merged hash
-
-*******************************************************************************/
-
-public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @safe
-{
-    static struct MergeHash
-    {
-        Hash left;
-        Hash right;
-
-        public void computeHash (scope HashDg dg) const nothrow @safe @nogc
-        {
-            hashPart(this.left, dg);
-            hashPart(this.right, dg);
-        }
-    }
-
-    return hashFull(MergeHash(h1, h2));
-}
-
 // Test that the implementation actually matches what the RFC gives
 nothrow @nogc @safe unittest
 {
@@ -232,4 +202,34 @@ nothrow @nogc @safe unittest
     str.c1 = 'b';
     str.c2 = 'c';
     assert(hashFull(str) == abc_exp);
+}
+
+/*******************************************************************************
+
+    Merges two hashes together
+
+    Params:
+        h1 = the first hash
+        h2 = the second hash
+
+    Returns:
+        the merged hash
+
+*******************************************************************************/
+
+public Hash mergeHash (Hash h1, Hash h2) nothrow @nogc @safe
+{
+    static struct MergeHash
+    {
+        Hash left;
+        Hash right;
+
+        public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+        {
+            hashPart(this.left, dg);
+            hashPart(this.right, dg);
+        }
+    }
+
+    return hashFull(MergeHash(h1, h2));
 }
