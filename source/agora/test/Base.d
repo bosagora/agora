@@ -481,6 +481,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     }
 }
 
+unittest
+{
+    auto tn = makeTestNetwork(NetworkTopology.Simple, 2);
+}
+
 /*******************************************************************************
 
     Keeps retrying the 'check' condition until it is true,
