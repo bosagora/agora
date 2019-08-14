@@ -205,7 +205,7 @@ public struct Block
     }
 
     /// Ditto
-    public Hash buildMerkleTreeImpl () nothrow @safe @nogc
+    private Hash buildMerkleTreeImpl () nothrow @safe @nogc
     {
         import core.bitop;
         const log2 = bsf(this.txs.length);
