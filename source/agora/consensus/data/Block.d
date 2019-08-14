@@ -191,46 +191,67 @@ public struct Block
 
     /***************************************************************************
 
-        Build merkle tree
+        Build a merkle tree and its root, and store the tree to this Block
 
         Returns:
-            Return merkle root
+            the merkle root
 
     ***************************************************************************/
 
     public Hash buildMerkleTree () nothrow @safe
     {
-        this.merkle_tree.length = (this.txs.length * 2) - 1;
-        return this.buildMerkleTreeImpl();
+        return Block.buildMerkleTree(this.txs, this.merkle_tree);
+    }
+
+    /***************************************************************************
+
+        Build a merkle tree and return its root
+
+        Params:
+            txs = the transactions to use
+            merkle_tree = will contain the merkle tree on function return
+
+        Returns:
+            the merkle root
+
+    ***************************************************************************/
+
+    public static Hash buildMerkleTree (const(Transaction)[] txs,
+        ref Hash[] merkle_tree) nothrow @safe
+    {
+        () @trusted { merkle_tree.assumeSafeAppend(); }();
+        merkle_tree.length = (txs.length * 2) - 1;
+        return Block.buildMerkleTreeImpl(txs, merkle_tree);
     }
 
     /// Ditto
-    private Hash buildMerkleTreeImpl () nothrow @safe @nogc
+    private static Hash buildMerkleTreeImpl (const(Transaction)[] txs,
+        ref Hash[] merkle_tree) nothrow @safe @nogc
     {
         import core.bitop;
-        const log2 = bsf(this.txs.length);
-        assert((1 << log2) == this.txs.length,
+        const log2 = bsf(txs.length);
+        assert((1 << log2) == txs.length,
                "Transactions for a block should be a strict power of 2");
-        assert(this.merkle_tree.length == (this.txs.length * 2) - 1);
+        assert(merkle_tree.length == (txs.length * 2) - 1);
 
-        foreach (size_t idx, ref hash; this.merkle_tree[0 .. this.txs.length])
-            hash = hashFull(this.txs[idx]);
+        foreach (size_t idx, ref hash; merkle_tree[0 .. txs.length])
+            hash = hashFull(txs[idx]);
 
         // transactions are ordered lexicographically by hash in the Merkle tree
-        this.merkle_tree[0 .. this.txs.length].sort!("a < b");
+        merkle_tree[0 .. txs.length].sort!("a < b");
 
-        immutable len = this.merkle_tree.length;
+        immutable len = merkle_tree.length;
         for (size_t order = 0; order < log2; order++)
         {
             immutable start = len - (len >> (order));
             immutable end   = len - (len >> (order + 1));
-            this.merkle_tree[start .. end].chunks(2)
+            merkle_tree[start .. end].chunks(2)
                 .map!(tup => mergeHash(tup[0], tup[1]))
                 .enumerate(size_t(end))
-                .each!((idx, val) => this.merkle_tree[idx] = val);
+                .each!((idx, val) => merkle_tree[idx] = val);
         }
 
-        return this.merkle_tree[$ - 1];
+        return merkle_tree[$ - 1];
     }
 
     /***************************************************************************
