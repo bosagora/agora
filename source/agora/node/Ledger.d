@@ -19,6 +19,7 @@ import agora.common.Hash;
 import agora.common.TransactionPool;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.API;
@@ -41,17 +42,31 @@ public class Ledger
     /// The last block in the ledger
     private Block last_block;
 
+    /// UTXO set
+    private UTXOSet utxo_set;
 
-    /// Ctor
-    public this (TransactionPool pool, IBlockStorage storage)
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            pool = the transaction pool
+            utxo_set = the set of unspent outputs
+            storage = the block storage
+
+    ***************************************************************************/
+
+    public this (TransactionPool pool, UTXOSet utxo_set, IBlockStorage storage)
     {
         this.pool = pool;
+        this.utxo_set = utxo_set;
         this.storage = storage;
 
-        // add the genesis block
+        // add the genesis block and update the utxo set
         if (this.storage.isEmpty())
         {
-            this.storage.saveBlock(GenesisBlock);
+            this.addValidatedBlock(GenesisBlock);
             assert(!this.storage.isEmpty());  // sanity check
         }
 
@@ -76,20 +91,13 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        if (auto reason = block.isInvalidReason(this.last_block.header.height,
-            this.last_block.header.hashFull, &this.findUTXO))
+        if (auto fail_reason = this.validateBlock(block))
         {
-            logDebug("Rejected block: %s: %s", reason, prettify(block));
+            logDebug("Rejected block: %s: %s", fail_reason, block.prettify());
             return false;
         }
 
-        if (!this.storage.saveBlock(block))
-            return false;
-
-        // must read back as 'block' here is const
-        if (!this.storage.readLastBlock(this.last_block))
-            assert(0);
-
+        this.addValidatedBlock(block);
         return true;
     }
 
@@ -98,7 +106,8 @@ public class Ledger
         Called when a new transaction is received.
 
         If the transaction is accepted it will be added to
-        a new block, and the block will be added to the ledger.
+        the transaction pool. If there are enough valid transactions
+        in the pool, a block will be created.
 
         If the transaction is invalid, it's rejected and false is returned.
 
@@ -106,46 +115,131 @@ public class Ledger
             tx = the received transaction
 
         Returns:
-            true if the transaction is valid and was added to a block
+            true if the transaction is valid and was added to the pool
 
     ***************************************************************************/
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        if (!tx.isValid(&this.findUTXO))
+        if (!this.isValidTransaction(tx))
+        {
+            logInfo("Rejected tx: %s", tx);
             return false;
+        }
 
         this.pool.add(tx);
         if (this.pool.length >= Block.TxsInBlock)
-            this.makeBlock();
+            this.tryCreateBlock();
 
         return true;
     }
 
     /***************************************************************************
 
-        Create a new block out of transactions in the storage.
+        Add a validated block to the Ledger,
+        and add all of its outputs to the UTXO set.
+
+        Params:
+            block = the block to add
 
     ***************************************************************************/
 
-    private void makeBlock () @safe
+    private void addValidatedBlock (const ref Block block) nothrow @safe
+    {
+        scope (failure) assert(0);
+
+        // add the new UTXOs
+        block.txs.each!(tx => this.utxo_set.updateUtxoCache(tx));
+
+        // remove the TXs from the Pool
+        block.txs.each!(tx => this.pool.remove(tx.hashFull()));
+
+        if (!this.storage.saveBlock(block))
+            assert(0);
+
+        // read back and cache the last block
+        if (!this.storage.readLastBlock(this.last_block))
+            assert(0);
+    }
+
+    /***************************************************************************
+
+        Try making a new block if there are enough valid and non double-spending
+        transactions in the pool
+
+        Double-spending transactions will be skipped over while iterating
+        over the pool. If there are not enough valid transactions,
+        a block will not be created.
+
+    ***************************************************************************/
+
+    private void tryCreateBlock () @safe
     {
         Hash[] hashes;
         Transaction[] txs;
 
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
         foreach (hash, tx; this.pool)
         {
-            hashes ~= hash;
-            txs ~= tx;
+            if (tx.isValid(utxo_finder))
+            {
+                hashes ~= hash;
+                txs ~= tx;
+            }
+            else
+            {
+                logDebug("Rejected double-spend tx: %s", tx);
+            }
+
+            if (txs.length >= Block.TxsInBlock)
+                break;
         }
 
-        assert(txs.length == Block.TxsInBlock);
+        if (txs.length != Block.TxsInBlock)
+            return;  // not enough valid txs
 
         auto block = makeNewBlock(this.last_block, txs);
-        if (!this.acceptBlock(block))
+        if (!this.acceptBlock(block))  // txs should be valid
             assert(0);
+    }
 
-        hashes.each!(hash => this.pool.remove(hash));
+    /***************************************************************************
+
+        Check whether the transaction is valid and may be added to the pool.
+
+        A transaction is valid if it references a previous UTXO in the
+        blockchain. Note that double-spend transactions are not tracked here,
+        they are only tracked during the creation of a block.
+
+        Params:
+            transaction = the transaction to validate
+
+        Returns:
+            true if the transaction may be added to the pool
+
+    ***************************************************************************/
+
+    public bool isValidTransaction (const ref Transaction tx) nothrow @safe
+    {
+        return tx.isValid(this.utxo_set.getUTXOFinder());
+    }
+
+    /***************************************************************************
+
+        Check whether the block is valid.
+
+        Params:
+            block = the block to check
+
+        Returns:
+            the error message if block validation failed, otherwise null
+
+    ***************************************************************************/
+
+    public string validateBlock (const ref Block block) nothrow @safe
+    {
+        return block.isInvalidReason(last_block.header.height,
+            last_block.header.hashFull, this.utxo_set.getUTXOFinder());
     }
 
     /***************************************************************************
@@ -197,48 +291,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Find a transaction in the ledger
-
-        Params:
-            tx_hash = the hash of transation
-            index = index of the output
-            output = will contain the UTXO if found
-
-        Return:
-            Return transaction if found. Return null otherwise.
-
-    ***************************************************************************/
-
-    private bool findUTXO (Hash tx_hash, size_t index, out Output output)
-        @safe nothrow
-    {
-        foreach (height; 0 .. this.getBlockHeight() + 1)
-        {
-            Block block;
-            if (!this.storage.readBlock(block, height))
-                assert(0);
-
-            foreach (ref tx; block.txs)
-            {
-                if (hashFull(tx) == tx_hash)
-                {
-                    if (index < tx.outputs.length)
-                    {
-                        output = tx.outputs[index];
-                        return true;
-                    }
-
-                    return false;
-                }
-            }
-        }
-
-        return false;
-    }
-
-
-    /***************************************************************************
-
         Get the array of hashs the merkle path.
 
         Params:
@@ -275,7 +327,9 @@ unittest
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
-    scope ledger = new Ledger(pool, storage);
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    scope ledger = new Ledger(pool, utxo_set, storage);
     assert(ledger.getBlockHeight() == 0);
 
     const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
@@ -356,7 +410,9 @@ unittest
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
-    scope ledger = new Ledger(pool, storage);
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    scope ledger = new Ledger(pool, utxo_set, storage);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
@@ -376,7 +432,9 @@ unittest
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
-    scope ledger = new Ledger(pool, storage);
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    scope ledger = new Ledger(pool, utxo_set, storage);
 
     auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
