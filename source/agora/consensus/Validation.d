@@ -18,6 +18,10 @@ import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.consensus.data.Transaction;
 
+/// Delegate to find an unspent UTXO
+public alias UtxoFinder = scope const(Output)* delegate (Hash hash, size_t index)
+    @safe;
+
 /*******************************************************************************
 
     Get result of transaction data and signature verification
@@ -31,8 +35,7 @@ import agora.consensus.data.Transaction;
 
 *******************************************************************************/
 
-public bool isValid (Transaction tx,
-    scope const(Output)* delegate (Hash hash, size_t index) @safe findOutput) @safe
+public bool isValid (Transaction tx, UtxoFinder findOutput) @safe
 {
     if (tx.inputs.length == 0)
         return false;
