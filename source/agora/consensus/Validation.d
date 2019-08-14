@@ -18,6 +18,7 @@ import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.consensus.Genesis;
 
 /// Delegate to find an unspent UTXO
 public alias UTXOFinder = scope const(Output)* delegate (Hash hash, size_t index)
@@ -223,23 +224,57 @@ unittest
 
     Check the validity of a block.
 
-    Currently only the height of the block is
-    checked against the previous height.
+    A block is considered valid if:
+        - its height is the previous block height + 1
+        - its prev_hash is the previous block header's hash
+        - the number of transactions in the block are equal to Block.TxsInBlock
+        - the merkle root in the header matches the re-built merkle tree root
+          based on the included transactions in the block
+        - all the the transactions pass validation, which implies:
+            - signatures are authentic
+            - the inputs spend an output which must be found with the
+              findUTXO() delegate
+
+    Note that checking for transactions which double-spend is the responsibility
+    of the findUTXO() delegate. During validation, whenever this delegate is
+    called it should also keep track of the used UTXOs, thereby marking
+    it as a spent output. See the `findNonSpent` function in the
+    unittest for an example.
 
     Params:
         block = the block to check
         prev_height = the height of the previous block which this
                       block should point to
+        findUTXO = delegate to find the referenced unspent UTXOs with
 
     Returns:
         true if the block is considered valid
 
 *******************************************************************************/
 
-public bool isValid (const ref Block block, in ulong prev_height)
-    pure nothrow @safe @nogc
+public bool isValid (const ref Block block, in ulong prev_height,
+    in Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
 {
+    import std.algorithm;
+
+    // special case for the genesis block
+    if (block.header.height == 0)
+        return block == getGenesisBlock();
+
     if (block.header.height != prev_height + 1)
+        return false;
+
+    if (block.header.prev_block != prev_hash)
+        return false;
+
+    if (block.txs.length != Block.TxsInBlock)
+        return false;
+
+    if (block.txs.any!(tx => !tx.isValid(findUTXO)))
+        return false;
+
+    Hash[] merkle_tree;
+    if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
         return false;
 
     return true;
@@ -249,12 +284,160 @@ public bool isValid (const ref Block block, in ulong prev_height)
 unittest
 {
     import agora.consensus.Genesis;
+    import std.algorithm;
+    import std.range;
+
+    // note: using array as a workaround to be able to store const Transactions
+    const(Transaction)[][Hash] tx_map;
+    scope findUTXO = (Hash hash, size_t index)
+    {
+        if (auto tx = hash in tx_map)
+        {
+            if (index < (*tx).front.outputs.length)
+                return &(*tx).front.outputs[index];
+        }
+
+        return null;
+    };
+
+    auto gen_key = getGenesisKeyPair();
     auto gen_block = getGenesisBlock();
-    Block block;
-    block.header.prev_block = gen_block.header.hashFull();
-    block.header.height = gen_block.header.height + 1;
-    assert(block.isValid(gen_block.header.height));
+    assert(gen_block.isValid(gen_block.header.height, Hash.init, null));
+    auto gen_hash = gen_block.header.hashFull();
+
+    auto gen_tx = gen_block.txs[0];
+    tx_map[gen_tx.hashFull()] = [gen_tx];
+    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto block = makeNewBlock(gen_block, txs);
+
+    // height check
+    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
 
     block.header.height = 100;
-    assert(!block.isValid(gen_block.header.height));
+    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    block.header.height = gen_block.header.height + 1;
+    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    /// .prev_block check
+    block.header.prev_block = block.header.hashFull();
+    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    block.header.prev_block = gen_hash;
+    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    /// .txs length check
+    block.txs = txs[0 .. $ - 1];
+    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    block.txs = txs ~ txs;
+    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    block.txs = txs;
+    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    /// no matching utxo => fail
+    tx_map.clear();
+    assert(!block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    tx_map[gen_tx.hashFull()] = [gen_tx];
+    assert(block.isValid(gen_block.header.height, gen_hash, findUTXO));
+
+    tx_map.clear();  // genesis is spent
+    auto prev_txs = txs;
+    prev_txs.each!(tx => tx_map[tx.hashFull()] = [tx]);  // these will be spent
+
+    auto prev_block = block;
+    txs = makeChainedTransactions(gen_key, prev_txs, 1);
+    block = makeNewBlock(prev_block, txs);
+    assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
+        findUTXO));
+
+    assert(prev_txs.length > 0);  // sanity check
+    foreach (tx; prev_txs)
+    {
+        // one utxo missing from the set => fail
+        tx_map.remove(tx.hashFull);
+        assert(!block.isValid(prev_block.header.height, prev_block.header.hashFull(),
+            findUTXO));
+
+        tx_map[tx.hashFull] = [tx];
+        assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
+            findUTXO));
+    }
+
+    // the key is hashMulti(hash(prev_tx), index)
+    Output[Hash] utxo_set;
+
+    foreach (idx, output; gen_tx.outputs)
+        utxo_set[hashMulti(gen_tx.hashFull, idx)] = output;
+
+    assert(utxo_set.length != 0);
+    const utxo_set_len = utxo_set.length;
+
+    // contains the used set of UTXOs during validation (to prevent double-spend)
+    Output[Hash] used_set;
+    UTXOFinder findNonSpent = (Hash hash, size_t index)
+    {
+        auto utxo_hash = hashMulti(hash, index);
+
+        if (utxo_hash in used_set)
+            return null;  // double-spend
+
+        if (auto utxo = utxo_hash in utxo_set)
+        {
+            used_set[utxo_hash] = *utxo;
+            return utxo;
+        }
+
+        return null;
+    };
+
+    // consumed all utxo => fail
+    txs = makeChainedTransactions(gen_key, null, 1);
+    block = makeNewBlock(gen_block, txs);
+    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+            findNonSpent));
+
+    assert(used_set.length == utxo_set_len);  // consumed all utxos
+
+    // reset state
+    used_set.clear();
+
+    // consumed same utxo twice => fail
+    txs[$ - 1] = txs[$ - 2];
+    block = makeNewBlock(gen_block, txs);
+    assert(!block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+            findNonSpent));
+
+    // we stopped validation due to a double-spend
+    assert(used_set.length == txs.length - 1);
+
+    txs = makeChainedTransactions(gen_key, prev_txs, 1);
+    block = makeNewBlock(gen_block, txs);
+    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+        findUTXO));
+
+    // modify the last hex byte of the merkle root
+    block.header.merkle_root[][$ - 1]++;
+
+    assert(!block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+        findUTXO));
+
+    // now restore it back to what it was
+    block.header.merkle_root[][$ - 1]--;
+    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+        findUTXO));
+    const last_root = block.header.merkle_root;
+
+    // txs with a different amount
+    txs = makeChainedTransactions(gen_key, prev_txs, 1, 20_000_000);
+    block = makeNewBlock(gen_block, txs);
+    assert(block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+        findUTXO));
+
+    // the previous merkle root should not match the new txs
+    block.header.merkle_root = last_root;
+    assert(!block.isValid(gen_block.header.height, gen_block.header.hashFull(),
+        findUTXO));
 }

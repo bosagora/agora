@@ -64,7 +64,8 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        if (!block.isValid(this.last_block.header.height))
+        if (!block.isValid(this.last_block.header.height,
+            this.last_block.header.hashFull, &this.findUTXO))
         {
             logDebug("Rejected block. %s", block);
             return false;
