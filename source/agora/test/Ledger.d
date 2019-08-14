@@ -158,7 +158,7 @@ unittest
 /// Merkle Proof
 unittest
 {
-    import std.algorithm.sorting;
+    import std.algorithm;
 
     const NodeCount = 4;
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
@@ -167,28 +167,10 @@ unittest
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
+
     auto gen_key_pair = getGenesisKeyPair();
-    auto gen_block = getGenesisBlock();
-
-    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
-
-    Hash gen_tx_hash = hashFull(gen_block.txs[$-1]);
-    Transaction[] txs;
-
-    foreach (idx; 0 .. 8)
-    {
-        Transaction tx = Transaction(
-            [
-                Input(gen_tx_hash, 0)
-            ],
-            [
-                Output(Amount(1_000_000), key_pairs[idx].address)
-            ]
-        );
-        tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        node_1.putTransaction(tx);
-        txs ~= tx;
-    }
+    auto txs = makeChainedTransactions(gen_key_pair, null, 1);
+    txs.each!(tx => node_1.putTransaction(tx));
 
     Hash[] hashes;
     hashes.reserve(txs.length);
