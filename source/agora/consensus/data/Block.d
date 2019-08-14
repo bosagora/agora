@@ -246,7 +246,7 @@ public struct Block
             immutable start = len - (len >> (order));
             immutable end   = len - (len >> (order + 1));
             merkle_tree[start .. end].chunks(2)
-                .map!(tup => mergeHash(tup[0], tup[1]))
+                .map!(tup => hashMulti(tup[0], tup[1]))
                 .enumerate(size_t(end))
                 .each!((idx, val) => merkle_tree[idx] = val);
         }
@@ -301,9 +301,9 @@ public struct Block
         foreach (const ref otherside; merkle_path)
         {
             if (index & 1)
-                hash = mergeHash(otherside, hash);
+                hash = hashMulti(otherside, hash);
             else
-                hash = mergeHash(hash, otherside);
+                hash = hashMulti(hash, otherside);
 
             index >>= 1;
         }
@@ -442,15 +442,15 @@ unittest
     const Hash hg = hashes[6];
     const Hash hh = hashes[7];
 
-    const Hash hab = mergeHash(ha, hb);
-    const Hash hcd = mergeHash(hc, hd);
-    const Hash hef = mergeHash(he, hf);
-    const Hash hgh = mergeHash(hg, hh);
+    const Hash hab = hashMulti(ha, hb);
+    const Hash hcd = hashMulti(hc, hd);
+    const Hash hef = hashMulti(he, hf);
+    const Hash hgh = hashMulti(hg, hh);
 
-    const Hash habcd = mergeHash(hab, hcd);
-    const Hash hefgh = mergeHash(hef, hgh);
+    const Hash habcd = hashMulti(hab, hcd);
+    const Hash hefgh = hashMulti(hef, hgh);
 
-    const Hash habcdefgh = mergeHash(habcd, hefgh);
+    const Hash habcdefgh = hashMulti(habcd, hefgh);
 
     assert(block.header.merkle_root == habcdefgh);
 
