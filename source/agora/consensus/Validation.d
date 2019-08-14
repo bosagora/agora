@@ -20,7 +20,7 @@ import agora.consensus.data.Transaction;
 
 /// Delegate to find an unspent UTXO
 public alias UtxoFinder = scope const(Output)* delegate (Hash hash, size_t index)
-    @safe nothrow @nogc;
+    @safe nothrow;
 
 /*******************************************************************************
 
@@ -35,8 +35,8 @@ public alias UtxoFinder = scope const(Output)* delegate (Hash hash, size_t index
 
 *******************************************************************************/
 
-public bool isValid (const Transaction tx, UtxoFinder findOutput) 
-    @safe nothrow @nogc
+public bool isValid (const Transaction tx, UtxoFinder findOutput)
+    @safe nothrow
 {
     if (tx.inputs.length == 0)
         return false;
