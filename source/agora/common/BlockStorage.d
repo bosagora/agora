@@ -87,6 +87,9 @@ public class BlockStorage
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
 
+        if (!this.path.exists)
+            mkdirRecurse(this.path);
+
         this.loadAllIndexes();
     }
 
