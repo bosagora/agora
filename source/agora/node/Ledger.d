@@ -201,13 +201,15 @@ public class Ledger
 
         Params:
             tx_hash = the hash of transation
+            index = index of the output
+            output = will contain the UTXO if found
 
         Return:
             Return transaction if found. Return null otherwise.
 
     ***************************************************************************/
 
-    private const(Output)* findUTXO (Hash tx_hash, size_t index)
+    private bool findUTXO (Hash tx_hash, size_t index, out Output output)
         @safe nothrow
     {
         foreach (height; 0 .. this.getBlockHeight() + 1)
@@ -221,13 +223,17 @@ public class Ledger
                 if (hashFull(tx) == tx_hash)
                 {
                     if (index < tx.outputs.length)
-                        return &tx.outputs[index];
-                    return null;
+                    {
+                        output = tx.outputs[index];
+                        return true;
+                    }
+
+                    return false;
                 }
             }
         }
 
-        return null;
+        return false;
     }
 
 
