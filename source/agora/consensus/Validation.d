@@ -21,8 +21,8 @@ import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 
 /// Delegate to find an unspent UTXO
-public alias UTXOFinder = scope const(Output)* delegate (Hash hash, size_t index)
-    @safe nothrow;
+public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
+    out Output) @safe nothrow;
 
 /*******************************************************************************
 
@@ -58,8 +58,8 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO)
     foreach (input; tx.inputs)
     {
         // all referenced outputs must be present
-        auto output = findUTXO(input.previous, input.index);
-        if (output is null)
+        Output output;
+        if (!findUTXO(input.previous, input.index, output))
             return "Transaction: Input ref not in UTXO";
 
         if (!output.address.verify(input.signature, tx_hash[]))
@@ -110,13 +110,18 @@ unittest
     );
 
     // delegate for finding `Output`
-    scope findUTXO = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index, out Output output)
     {
         if (auto tx = hash in storage)
+        {
             if (index < tx.outputs.length)
-                return &tx.outputs[index];
+            {
+                output = tx.outputs[index];
+                return true;
+            }
+        }
 
-            return null;
+        return false;
     };
 
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
@@ -148,12 +153,18 @@ unittest
     storage[tx_1_hash] = tx_1;
 
     // delegate for finding `Output`
-    scope findUTXO = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index, out Output output)
     {
         if (auto tx = hash in storage)
+        {
             if (index < tx.outputs.length)
-                return &tx.outputs[index];
-        return null;
+            {
+                output = tx.outputs[index];
+                return true;
+            }
+        }
+
+        return false;
     };
 
     // Creates the second transaction.
@@ -183,13 +194,18 @@ unittest
     key_pairs ~= KeyPair.random();
 
     // delegate for finding `Output`
-    scope findUTXO = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index, out Output output)
     {
         if (auto tx = hash in storage)
+        {
             if (index < tx.outputs.length)
-                return &tx.outputs[index];
+            {
+                output = tx.outputs[index];
+                return true;
+            }
+        }
 
-            return null;
+        return false;
     };
 
     // Create the first transaction.
@@ -316,15 +332,18 @@ unittest
 
     // note: using array as a workaround to be able to store const Transactions
     const(Transaction)[][Hash] tx_map;
-    scope findUTXO = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index, out Output output)
     {
         if (auto tx = hash in tx_map)
         {
             if (index < (*tx).front.outputs.length)
-                return &(*tx).front.outputs[index];
+            {
+                output = (*tx).front.outputs[index];
+                return true;
+            }
         }
 
-        return null;
+        return false;
     };
 
     auto gen_key = getGenesisKeyPair();
@@ -409,20 +428,21 @@ unittest
 
     // contains the used set of UTXOs during validation (to prevent double-spend)
     Output[Hash] used_set;
-    UTXOFinder findNonSpent = (Hash hash, size_t index)
+    UTXOFinder findNonSpent = (Hash hash, size_t index, out Output output)
     {
         auto utxo_hash = hashMulti(hash, index);
 
         if (utxo_hash in used_set)
-            return null;  // double-spend
+            return false;  // double-spend
 
         if (auto utxo = utxo_hash in utxo_set)
         {
             used_set[utxo_hash] = *utxo;
-            return utxo;
+            output = *utxo;
+            return true;
         }
 
-        return null;
+        return false;
     };
 
     // consumed all utxo => fail
