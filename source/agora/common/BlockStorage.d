@@ -796,3 +796,232 @@ public size_t readSizeType (File file) @trusted
     file.rawRead(buffer);
     return *cast(size_t*)&(buffer[0]);
 }
+
+
+/*******************************************************************************
+
+    Define the memory storage for blocks
+
+    Implemented using only memory without file IO.
+
+*******************************************************************************/
+
+public class MemBlockStorage : IBlockStorage
+{
+    /// Storage for all the blocks
+    private ubyte[][] blocks;
+
+    /// Index is block height
+    private IndexHeight height_idx;
+
+    /// Index is block hash
+    private IndexHash hash_idx;
+
+    /// Ctor
+    public this ()
+    {
+        this.height_idx = new IndexHeight();
+        this.hash_idx = new IndexHash();
+    }
+
+    /***************************************************************************
+
+        Read the last block from array.
+
+        Params:
+            block = will contain the block if the read was successful
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readLastBlock (ref Block block) @safe nothrow
+    {
+        if (this.height_idx.length == 0)
+            return false;
+
+        return this.readBlock(block, this.height_idx.back.position);
+    }
+
+    /***************************************************************************
+
+        Save block to array.
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool saveBlock (const ref Block block) @safe nothrow
+    {
+        scope (failure) assert(0);
+
+        if (this.blocks.length != block.header.height)
+            return false;
+
+        size_t block_position = this.blocks.length;
+
+        this.blocks ~= serializeFull!Block(block);
+
+        // add to index of heigth
+        this.height_idx.insert(
+            HeightPosition(
+                block.header.height,
+                block_position
+            )
+        );
+
+        // add to index of hash
+        ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
+        this.hash_idx.insert(
+            HashPosition(
+                hash_bytes,
+                block_position
+            )
+        );
+        return true;
+    }
+
+    /***************************************************************************
+
+        Read block from array.
+
+        Params:
+            block = `Block` to read
+            height = height of `Block`
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readBlock (ref Block block, size_t height) @safe nothrow
+    {
+        if ((this.height_idx.length == 0) ||
+            (this.height_idx.back.height < height))
+            return false;
+
+        auto finds
+            = this.height_idx[].find!( (a, b) => a.height == b)(height);
+
+        if (finds.empty)
+            return false;
+
+        block = deserialize!Block(this.blocks[finds.front.position]);
+        return true;
+    }
+
+    /***************************************************************************
+
+        Read block from array.
+
+        Params:
+            block = `Block` to read
+            hash = `Hash` of `Block`
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readBlock (ref Block block, Hash hash) @safe nothrow
+    {
+        ubyte[Hash.sizeof] hash_bytes = hash[];
+
+        auto finds
+            = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
+
+        if (finds.empty)
+            return false;
+
+        block = deserialize!Block(this.blocks[finds.front.position]);
+        return true;
+    }
+
+    /***************************************************************************
+
+        Write error message
+
+        Params:
+            func = function name
+            ex = Instance of `Exception`
+
+    ***************************************************************************/
+
+    private void writeLog (string func, Exception ex) @trusted nothrow
+    {
+        scope (failure) assert(0);
+        stderr.writeln(func, ex.message);
+    }
+}
+
+
+///
+unittest
+{
+    import agora.common.crypto.Key;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.Genesis;
+    import std.algorithm.comparison;
+
+    const size_t BlockCount = 50;
+    MemBlockStorage storage = new MemBlockStorage();
+
+    const(Block)[] blocks;
+    Hash[] block_hashes;
+
+    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_block = getGenesisBlock();
+    blocks ~= gen_block;
+    storage.saveBlock(gen_block);
+    block_hashes ~= hashFull(gen_block.header);
+    Transaction[] last_txs;
+
+    void genBlocks (size_t count)
+    {
+        while (--count)
+        {
+            auto txs = makeChainedTransactions(gen_key_pair, last_txs, 1);
+            auto block = makeNewBlock(blocks[$ - 1], txs);
+            last_txs = txs;
+
+            blocks ~= block;
+            block_hashes ~= hashFull(block.header);
+            storage.saveBlock(block);
+        }
+    }
+
+    genBlocks(BlockCount);
+
+    // load
+    Block[] loaded_blocks;
+    loaded_blocks.length = BlockCount;
+    foreach (idx; 0 .. BlockCount)
+        storage.readBlock(loaded_blocks[idx], idx);
+
+    // compare
+    assert(equal(blocks, loaded_blocks));
+
+    // test of random access
+    import std.random;
+    import std.range;
+
+    auto rnd = rndGen;
+
+    Block random_block;
+    foreach (height; iota(BlockCount).randomCover(rnd))
+    {
+        storage.readBlock(random_block, height);
+        assert(random_block.header.height == height);
+    }
+
+    foreach (idx; iota(BlockCount).randomCover(rnd))
+    {
+        storage.readBlock(random_block, block_hashes[idx]);
+        assert(hashFull(random_block.header) == block_hashes[idx]);
+    }
+}
