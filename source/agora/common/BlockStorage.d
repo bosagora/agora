@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Defines the memory mapped file of a block.
+    Define the storage for blocks
 
     The file is divided into multiple parts.
     The number of blocks in a file is fixed.
@@ -32,6 +32,78 @@ import std.mmfile;
 import std.path;
 import std.stdio;
 
+/*******************************************************************************
+
+    Define the storage for blocks
+
+*******************************************************************************/
+
+public interface IBlockStorage
+{
+    @safe nothrow:
+
+    /***************************************************************************
+
+        Read the last block from the storage.
+
+        Params:
+            block = The last block
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readLastBlock (ref Block block);
+
+
+    /***************************************************************************
+
+        Save block to the storage.
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool saveBlock (const ref Block block);
+
+
+    /***************************************************************************
+
+        Read block from the storage.
+
+        Params:
+            block = `Block` to read
+            height = height of `Block`
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readBlock (ref Block block, size_t height);
+
+
+    /***************************************************************************
+
+        Read block from the storage.
+
+        Params:
+            block = `Block` to read
+            hash = `Hash` of `Block`
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readBlock (ref Block block, Hash hash);
+}
+
 
 /// The map file size
 private immutable size_t MapSize = 640 * 1024;
@@ -53,8 +125,14 @@ private alias IndexHeight = RedBlackTree!(HeightPosition, "(a.height < b.height)
 /// Type of RBTree used for hash indexing
 private alias IndexHash = RedBlackTree!(HashPosition, "(a.hash < b.hash)");
 
-/// Ditto
-public class BlockStorage
+/*******************************************************************************
+
+    Defines storage for Blocks using memory map file
+    The file is divided into multiple parts.
+
+*******************************************************************************/
+
+public class BlockStorage : IBlockStorage
 {
     /// Instance of memory mapped file
     private MmFile file;
@@ -108,6 +186,26 @@ public class BlockStorage
     public string getFileName (size_t index) @safe
     {
         return buildPath(this.path, format("B%012d.dat", index));
+    }
+
+    /***************************************************************************
+
+        Read the last block from the storage.
+
+        Params:
+            block = will contain the block if the read was successful
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool readLastBlock (ref Block block) @safe nothrow
+    {
+        if (this.height_idx.length == 0)
+            return false;
+
+        return this.readBlock(block, this.height_idx.back.position);
     }
 
     /***************************************************************************
