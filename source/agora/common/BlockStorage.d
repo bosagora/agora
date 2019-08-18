@@ -120,6 +120,9 @@ public class BlockStorage
         Params:
             findex = the index of the file.
 
+        Returns:
+            Returns true if success, otherwise returns false.
+
     ***************************************************************************/
 
     private bool map (size_t findex) @trusted nothrow
