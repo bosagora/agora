@@ -43,9 +43,8 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public static void initialize ()
+    shared static this()
     {
-        .shutdown();
         .config(SQLITE_CONFIG_MULTITHREAD);
         version (unittest) {} else
             .config(SQLITE_CONFIG_LOG, &loggerCallback, null);
