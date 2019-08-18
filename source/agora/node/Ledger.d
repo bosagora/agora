@@ -248,7 +248,7 @@ unittest
     import agora.common.Hash;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
+    scope(exit) destroy(pool);
     scope ledger = new Ledger(pool);
     assert(*ledger.getLastBlock() == getGenesisBlock());
     assert(ledger.ledger.length == 1);
@@ -327,7 +327,7 @@ unittest
     import agora.common.Hash;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
+    scope(exit) destroy(pool);
     scope ledger = new Ledger(pool);
 
     Block invalid_block;  // default-initialized should be invalid
@@ -347,7 +347,7 @@ unittest
     import agora.common.crypto.Key;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
+    scope(exit) destroy(pool);
     scope ledger = new Ledger(pool);
 
     auto gen_key_pair = getGenesisKeyPair();

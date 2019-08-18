@@ -108,7 +108,7 @@ public class Node : API
     {
         logInfo("Shutting down..");
         this.network.dumpMetadata();
-        this.pool.shutdown();
+        destroy(pool);
     }
 
     /// GET /public_key

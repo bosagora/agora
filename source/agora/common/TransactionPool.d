@@ -70,7 +70,6 @@ public class TransactionPool
         if (db_exists)
             logInfo("Loading database from: %s", db_path);
 
-        // note: can fail. we may want to just recover txes from the network instead.
         this.db = Database(db_path);
 
         if (db_exists)
@@ -105,16 +104,7 @@ public class TransactionPool
         }
     }
 
-    /***************************************************************************
-
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
+    ~this ()
     {
         this.db.close();
     }
@@ -213,7 +203,7 @@ unittest
     import std.exception;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();  // note: must call outside destructor
+    scope(exit) destroy(pool);
 
     auto gen_key = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key, null, 1);
@@ -241,7 +231,7 @@ unittest
     import core.memory;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
+    scope(exit) destroy(pool);
 
     auto gen_key = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key, null, 1);
