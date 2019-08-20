@@ -18,6 +18,10 @@ matrix:
     - d: dmd-nightly
     - d: ldc-latest-ci
   fast_finish: true
+  include:
+    - d: dmd
+      services: docker
+      script:   docker run -it $(docker build -q .) --help
 
 # `brew install` is the slowest thing ever on OSX
 # It takes at least 6 minutes to run
