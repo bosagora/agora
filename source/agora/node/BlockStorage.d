@@ -26,6 +26,7 @@ import agora.consensus.Genesis;
 
 import std.algorithm;
 import std.container.rbtree;
+import std.digest.crc;
 import std.exception;
 import std.file;
 import std.format;
@@ -109,6 +110,12 @@ public interface IBlockStorage
 /// The map file size
 private immutable size_t MapSize = 640 * 1024;
 
+/// The block data size
+private immutable size_t DataSize = MapSize - ChecksumSize;
+
+/// The CRC32 checksum size
+private immutable size_t ChecksumSize = 4;
+
 private struct HeightPosition
 {
     size_t              height;
@@ -156,12 +163,16 @@ public class BlockStorage : IBlockStorage
     /// Base Position of current file
     private size_t file_base;
 
+    /// Saving current block
+    private bool is_saving;
+
     /// Ctor
     public this (string path)
     {
         this.path = path;
         this.file_index = ulong.max;
         this.length = ulong.max;
+        this.is_saving = false;
 
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
@@ -235,13 +246,19 @@ public class BlockStorage : IBlockStorage
     private bool map (size_t findex) @trusted nothrow
     {
         try {
-            if ((this.file !is null) && (findex == this.file_index))
-                return true;
-
             if (this.file !is null)
+            {
+                if (findex == this.file_index)
+                    return true;
+
+                if (this.is_saving && !this.writeChecksum())
+                    assert(0);
+
                 this.release();
+            }
 
             this.file_index = findex;
+            bool file_exist = std.file.exists(this.getFileName(this.file_index));
 
             this.file =
                 new MmFile(
@@ -251,7 +268,10 @@ public class BlockStorage : IBlockStorage
                     null
                 );
 
-            this.file_base = MapSize * this.file_index;
+            this.file_base = DataSize * this.file_index;
+            if (file_exist)
+                this.validateChecksum();
+
             return true;
         }
         catch (Exception ex)
@@ -321,6 +341,8 @@ public class BlockStorage : IBlockStorage
             block_position = this.length;
             data_position = block_position + size_t.sizeof;
 
+            this.is_saving = true;
+            scope(exit) this.is_saving = false;
             size_t block_size = 0;
             scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
             {
@@ -337,6 +359,9 @@ public class BlockStorage : IBlockStorage
                 return false;
 
             this.length += size_t.sizeof + block_size;
+
+            if (!this.writeChecksum())
+                assert(0);
 
             // add to index of heigth
             this.height_idx.insert(
@@ -517,13 +542,13 @@ public class BlockStorage : IBlockStorage
     {
         if (
             (this.file !is null) &&
-            (from / MapSize == this.file_index) &&
-            (to / MapSize == this.file_index))
+            (from / DataSize == this.file_index) &&
+            (to / DataSize == this.file_index))
         {
             try
             {
-                const size_t x0 = from - this.file_base;
-                const size_t x1 = to - this.file_base;
+                const size_t x0 = from - this.file_base + ChecksumSize;
+                const size_t x1 = to - this.file_base + ChecksumSize;
                 data = cast(ubyte[])this.file[x0 .. x1];
                 return true;
             }
@@ -562,10 +587,10 @@ public class BlockStorage : IBlockStorage
         {
             if (
                 (this.file !is null) &&
-                (pos / MapSize == this.file_index) &&
-                ((pos+data.length) / MapSize == this.file_index))
+                (pos / DataSize == this.file_index) &&
+                ((pos + data.length) / DataSize == this.file_index))
             {
-                const size_t x0 = pos - this.file_base;
+                const size_t x0 = pos - this.file_base + ChecksumSize;
                 foreach (idx, e; data)
                     this.file[x0+idx] = e;
             }
@@ -601,10 +626,10 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            if (!this.map(pos / MapSize))
+            if (!this.map(pos / DataSize))
                 return false;
 
-            data = this.file[pos - this.file_base];
+            data = this.file[pos - this.file_base + ChecksumSize];
             return true;
         }
         catch (Exception ex)
@@ -631,10 +656,10 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            if (!this.map(pos / MapSize))
+            if (!this.map(pos / DataSize))
                 return false;
 
-            this.file[pos - this.file_base] = data;
+            this.file[pos - this.file_base + ChecksumSize] = data;
             return true;
         }
         catch (Exception ex)
@@ -771,6 +796,83 @@ public class BlockStorage : IBlockStorage
     {
         scope (failure) assert(0);
         stderr.writeln(func, ex.message);
+    }
+
+    /*******************************************************************************
+
+        Calculate the checksum of the provided data
+
+        Params:
+            data = the data to calculate the checksum of
+
+        Returns:
+            the checksum bytes
+
+    *******************************************************************************/
+
+    private static ubyte[] makeChecksum (const ubyte[] data) @safe nothrow
+    {
+        scope crc32 = new CRC32Digest();
+        crc32.put(data);
+        static ubyte[4] buffer;
+        return () @trusted { return crc32.finish(buffer); }();
+    }
+
+    /*******************************************************************************
+
+        Validate the checksum in the memory-mapped blocks.
+        If validation fails, it throws an AssertError.
+
+    *******************************************************************************/
+
+    private void validateChecksum () @trusted
+    {
+        try
+        {
+            auto file_name = this.getFileName(this.file_index);
+            const ubyte[] actual = cast(ubyte[])this.file[0 .. ChecksumSize];
+            const ubyte[] data = cast(ubyte[])this.file[ChecksumSize .. MapSize];
+            const expected = makeChecksum(data);
+            if (actual != expected)
+            {
+                stderr.writefln("[ERROR] %s Block file is corrupt.", file_name);
+                assert(0);
+            }
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.validateChecksum: ", ex);
+            assert(0);
+        }
+    }
+
+    /*******************************************************************************
+
+        Read the file data, calculate checksum,
+        and write checksum to file at start point
+
+        Returns:
+            true if the checksum was successful
+
+    *******************************************************************************/
+
+    private bool writeChecksum () @trusted nothrow
+    {
+        try
+        {
+            const ubyte[] checksum = makeChecksum(
+                cast(ubyte[])this.file[ChecksumSize .. MapSize]);
+
+            foreach (idx, val; checksum)
+                this.file[idx] = val;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.writeLog("BlockStorage.writeChecksum: ", ex);
+            return false;
+        }
     }
 }
 
