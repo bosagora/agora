@@ -220,7 +220,11 @@ public struct Block
         ref Hash[] merkle_tree) nothrow @safe
     {
         () @trusted { merkle_tree.assumeSafeAppend(); }();
-        merkle_tree.length = (txs.length * 2) - 1;
+
+        // workaround for issue #127 with ldc2 on osx
+        const MerkleLength = (txs.length * 2) - 1;
+        merkle_tree = new Hash[](MerkleLength);
+
         return Block.buildMerkleTreeImpl(txs, merkle_tree);
     }
 
