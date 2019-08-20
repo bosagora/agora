@@ -31,7 +31,7 @@ import agora.consensus.data.Transaction;
 
 *******************************************************************************/
 
-public const(Block) getGenesisBlock ()
+public const(Block) getGenesisBlock () nothrow @safe
 {
     Block block;
     block.header.height = 0;
@@ -54,7 +54,7 @@ unittest
 
 *******************************************************************************/
 
-public Transaction getGenesisTx ()
+public Transaction getGenesisTx () nothrow @safe
 {
     import agora.consensus.data.Block;
     import std.algorithm;
