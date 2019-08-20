@@ -254,7 +254,6 @@ unittest
     txs.each!(tx => txs_bytes ~= serializeFull(tx));
 
     txs = null;
-    GC.collect();  // GC should not have collected the transactions
 
     // deserialize the transactions
     txs_bytes.each!((data)
