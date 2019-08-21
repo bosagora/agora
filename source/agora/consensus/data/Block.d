@@ -26,6 +26,7 @@ import agora.consensus.Genesis;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
+import std.algorithm.searching;
 import std.algorithm.sorting;
 import std.range;
 
@@ -333,25 +334,10 @@ public struct Block
         assert(this.merkle_tree.length == (this.txs.length * 2) - 1,
             "Block hasn't been fully initialized");
 
-        long left = 0;
-        long right = this.txs.length - 1;
-        long mid;
-        while (left <= right)
-        {
-            mid = (left + right) / 2;
+        auto index = this.merkle_tree[0 .. this.txs.length]
+            .enumerate.assumeSorted.find!(res => res[1] == hash);
 
-            auto tgt_hash = this.merkle_tree[mid];
-            if (tgt_hash == hash)
-                return mid;
-            else
-            {
-                if (hash < tgt_hash)
-                    right = mid - 1;
-                else
-                    left = mid + 1;
-            }
-        }
-        return this.txs.length;
+        return index.empty ? this.txs.length : index.front[0];
     }
 }
 
