@@ -1,0 +1,21 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"base32": {"path":"../../submodules/base32/"},
+		"bitblob": {"path":"../../submodules/bitblob/"},
+		"botan": { "path": "../../submodules/botan/" },
+		"botan-math": { "path": "../../submodules/botan-math/" },
+		"diet-ng": { "path": "../../submodules/diet-ng/" },
+		"eventcore": { "path": "../../submodules/eventcore/" },
+		"libasync": { "path": "../../submodules/libasync/" },
+		"libevent": { "path": "../../submodules/libevent/" },
+		"libsodiumd": {"path":"../../submodules/libsodiumd/"},
+		"memutils": { "path": "../../submodules/memutils/" },
+		"mir-linux-kernel": { "path": "../../submodules/mir-linux-kernel/" },
+		"openssl": { "path": "../../submodules/openssl/" },
+		"stdx-allocator": { "path": "../../submodules/stdx-allocator/" },
+		"taggedalgebraic": { "path": "../../submodules/taggedalgebraic/" },
+		"vibe-core": { "path": "../../submodules/vibe-core/" },
+		"vibe-d": {"path":"../../submodules/vibe.d/"}
+	}
+}

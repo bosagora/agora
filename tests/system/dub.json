@@ -1,0 +1,29 @@
+{
+    "name": "systemtest-simple",
+    "targetType": "executable",
+    "targetPath": "build",
+    "lflags": [ "-lsodium" ],
+
+    "sourceFiles": [
+        "../../source/agora/common/crypto/Crc16.d",
+        "../../source/agora/common/crypto/Key.d",
+        "../../source/agora/common/Amount.d",
+        "../../source/agora/common/Data.d",
+        "../../source/agora/common/Deserializer.d",
+        "../../source/agora/common/Hash.d",
+        "../../source/agora/common/Serializer.d",
+        "../../source/agora/common/Set.d",
+        "../../source/agora/consensus/data/Block.d",
+        "../../source/agora/consensus/data/Transaction.d",
+        "../../source/agora/consensus/Genesis.d",
+        "../../source/agora/node/API.d"
+    ],
+    "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/*.d" ],
+
+    "dependencies": {
+        "base32":           { "path": "../../submodules/base32/", "version": "*" },
+        "bitblob":          { "path": "../../submodules/bitblob/", "version": "*" },
+        "libsodiumd":       { "path": "../../submodules/libsodiumd/", "version": "*" },
+        "vibe-d":           { "path": "../../submodules/vibe.d/", "version": "*" }
+    }
+}

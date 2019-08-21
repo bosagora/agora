@@ -1,0 +1,31 @@
+# Simple system integration test
+#
+# This file starts 3 nodes and let them connect to one another.
+# The exposed ports are 4000 - 4001, although nodes use 2826 locally.
+#
+# Note: The order for binding is $LOCAL:$REMOTE ($REMOTE == in container)
+
+version: '3'
+
+services:
+  node-0:
+    image: "agora:latest"
+    command: [ "--config", "/root/wd/config.yaml" ]
+    ports:
+      - "4000:2826"
+    volumes:
+      - ./node/0/:/root/wd/
+  node-1:
+    image: "agora:latest"
+    command: [ "--config", "/root/wd/config.yaml" ]
+    ports:
+      - "4001:2826"
+    volumes:
+      - ./node/1/:/root/wd/
+  node-2:
+    image: "agora:latest"
+    command: [ "--config", "/root/wd/config.yaml" ]
+    ports:
+      - "4002:2826"
+    volumes:
+      - ./node/2/:/root/wd/

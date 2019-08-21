@@ -21,7 +21,12 @@ matrix:
   include:
     - d: dmd
       services: docker
-      script:   docker run -it $(docker build -q .) --help
+      script:
+        - docker build -t agora .
+        - docker run agora --help
+        - docker-compose -f tests/system/docker-compose.yml up -d
+        - dub --root tests/system/
+        - docker-compose -f tests/system/docker-compose.yml down
 
 # `brew install` is the slowest thing ever on OSX
 # It takes at least 6 minutes to run

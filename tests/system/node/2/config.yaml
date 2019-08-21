@@ -1,0 +1,83 @@
+################################################################################
+##                             Network interface                              ##
+################################################################################
+node:
+  is_validator: true
+  min_listeners: 2
+  max_listeners: 10
+  address: 0.0.0.0
+  port:    2826
+  retry_delay: 1.5
+  max_retries: 5
+  timeout: 50
+  # This is a randomly generated keypair
+  # If this node is not a validator, this will be ignored
+  #
+  # DO NOT USE THOSE VALUES ANYWHERE
+  # Private seed:    SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ
+  # Public address:  GA3DMXTREDC4AIUTHRFIXCKWKF7BDIXRWM2KLV74OPK2OKDM2VJ235GN
+  seed:    SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ
+  # Path to the data directory (if the path doesn't exist it will be created)
+  data_dir: .cache
+
+################################################################################
+##                         Ban manager configuration                          ##
+################################################################################
+banman:
+  max_failed_requests: 10
+  ban_duration: 86400
+
+################################################################################
+##                          Administrative interface                          ##
+################################################################################
+admin:
+  enabled: false
+  address: 127.0.0.1
+  port:    2827
+
+################################################################################
+##                               Node discovery                               ##
+##                                                                            ##
+## When the network first starts, we need to connect to some peers to learn   ##
+## the topology and find a safe intersection to listen to, and, if we are     ##
+## a validator, to insert ourselves.                                          ##
+################################################################################
+network:
+  # Supported value: IPv4, IPv6
+  - http://node-0:2826
+  - http://node-1:2826
+
+################################################################################
+##                               Quorum slices                                ##
+################################################################################
+quorum:
+  # name of the quorum
+  - name: quorum-1
+    # threshold as a percentage
+    threshold: 66%
+    # the list of nodes and sub-quorums in this quorum
+    nodes:
+      - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
+      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+      # a subquorum is referenced with a $ symbol
+      - $quorum-1.1
+  - name: quorum-1.1
+    threshold: 66%
+    nodes:
+      - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
+      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+      # references another sub-quorum
+      - $quorum-1.1.1
+  - name: quorum-1.1.1
+    threshold: 66%
+    nodes:
+      - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
+      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+
+################################################################################
+##                               Logging options                              ##
+################################################################################
+logging:
+  # Values: trace, debugV, debug_, diagnostic, info, warn, error, critical, fatal, none (default)
+  level: none
