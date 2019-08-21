@@ -14,6 +14,8 @@
 module agora.common.Set;
 
 import agora.common.Data;
+import agora.common.Deserializer;
+import agora.common.Serializer;
 
 import libsodium.randombytes;
 
@@ -67,6 +69,58 @@ public struct Set (T)
     {
         foreach (key; rhs)
             this.put(key);
+    }
+
+    /***************************************************************************
+
+        Serialization support
+
+        Params:
+            dg = Serialize delegate
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const nothrow @safe
+    {
+        serializePart(this._set.length, dg);
+        foreach (const ref value; this._set.byKey)
+            serializePart(value, dg);
+    }
+
+    /***************************************************************************
+
+        Deserialization support
+
+        Params:
+            dg = Deserialize delegate
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        size_t length;
+        deserializePart(length, dg);
+
+        // deserialize and generate inputs
+        foreach (idx; 0 .. length)
+        {
+            import std.range;
+            import std.traits;
+
+            static if (isArray!T)  // special-case
+            {
+                alias MutableArray(T) = Unqual!(ElementEncodingType!T)[];
+                MutableArray!T value;
+                deserializePart(value, dg);
+                this._set[value.idup] = true;
+            }
+            else
+            {
+                T value;
+                deserializePart(value, dg);
+                this._set[value] = true;
+            }
+        }
     }
 }
 
@@ -127,6 +181,28 @@ unittest
     auto full = set.pickRandom();
     sort(full);
     assert(full.uniq.count == set.length);
+}
+
+/// serialization test for Set!int
+unittest
+{
+    auto old_set = Set!int.from([2, 4, 6, 8]);
+    auto bytes = old_set.serializeFull();
+    auto new_set = deserialize!(Set!int)(bytes);
+
+    assert(new_set.length == old_set.length);
+    old_set.each!(value => assert(value in new_set));
+}
+
+/// serialization test for Set!string
+unittest
+{
+    auto old_set = Set!string.from(["foo", "bar", "agora"]);
+    auto bytes = old_set.serializeFull();
+    auto new_set = deserialize!(Set!string)(bytes);
+
+    assert(new_set.length == old_set.length);
+    old_set.each!(value => assert(value in new_set));
 }
 
 /**
