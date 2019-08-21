@@ -14,9 +14,10 @@
 module agora.common.Metadata;
 
 import agora.common.Data;
+import agora.common.Deserializer;
+import agora.common.Serializer;
 import agora.common.Set;
 
-import vibe.data.json;
 
 import std.array;
 import std.file;
@@ -35,20 +36,6 @@ public abstract class Metadata
 {
     /// The set of peers we previously established connection to
     public Set!Address peers;
-
-    /// Deserialize the Metadata from a Json string
-    public static void fromJsonString (Metadata metadata, string json)
-    {
-        metadata.peers = deserializeJson!(Set!Address)(json);
-    }
-
-    /// Dump the Metadata to a Json string
-    public string toJsonString ()
-    {
-        auto app = appender!string();
-        serializeToJson(app, this.peers);
-        return app.data[];
-    }
 
     /// Load the metadata
     public void load() { }
@@ -107,8 +94,8 @@ public class DiskMetadata : Metadata
     {
         try if (this.file_path.exists)
         {
-            string raw_data = cast(string)std.file.read(this.file_path);
-            Metadata.fromJsonString(this, raw_data);
+            auto bytes = cast(ubyte[])std.file.read(file_path);
+            this.peers = deserialize!(typeof(this.peers))(bytes);
         }
         catch (Exception ex)
         {
@@ -121,7 +108,8 @@ public class DiskMetadata : Metadata
     /// Dump metadata to disk
     public override void dump ()
     {
-        std.file.write(this.file_path, this.toJsonString());
+        auto bytes = serializeFull(this.peers);
+        std.file.write(this.file_path, bytes);
     }
 }
 
@@ -131,11 +119,5 @@ unittest
     auto meta = new MemMetadata();
     const peer = "http://127.0.0.1:4567";
     meta.peers.put(peer);
-    assert(peer in meta.peers);
-
-    auto str = meta.toJsonString();
-    meta.peers.clear();
-
-    Metadata.fromJsonString(meta, str);
     assert(peer in meta.peers);
 }
