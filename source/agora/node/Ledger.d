@@ -95,7 +95,7 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        if (!tx.isValid(&this.findOutput))
+        if (!tx.isValid(&this.findUTXO))
             return false;
 
         this.pool.add(tx);
@@ -192,7 +192,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private const(Output)* findOutput (Hash tx_hash, size_t index)
+    private const(Output)* findUTXO (Hash tx_hash, size_t index)
         @safe nothrow @nogc
     {
         foreach (ref block; this.ledger)
