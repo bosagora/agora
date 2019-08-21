@@ -140,7 +140,8 @@ unittest
     import core.time;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount, true,
+        100, 20, 100);  // reduce timeout to 100 msecs
     network.start();
     scope(exit) network.shutdown();
 
@@ -150,9 +151,9 @@ unittest
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 4);
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 2);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 4).retryFor(8.seconds);
+    containSameBlocks(nodes, 2).retryFor(8.seconds);
 }
 
 /// Merkle Proof
