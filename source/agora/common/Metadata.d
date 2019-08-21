@@ -106,9 +106,9 @@ public class DiskMetadata : Metadata
     /// Load metadata from disk
     public override void load ()
     {
-        try
+        try if (this.file_path.exists)
         {
-            string raw_data = cast(string)std.file.read(file_path);
+            string raw_data = cast(string)std.file.read(this.file_path);
             Metadata.fromJsonString(this, raw_data);
         }
         catch (Exception ex)
