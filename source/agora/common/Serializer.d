@@ -103,5 +103,6 @@ public void serializePart (ulong record, scope SerializeDg dg)
 public void serializePart (scope cstring record, scope SerializeDg dg)
     nothrow @trusted
 {
+    serializePart(record.length, dg);
     dg(cast(const ubyte[])record);
 }
