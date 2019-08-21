@@ -19,7 +19,7 @@ import agora.common.Hash;
 import agora.consensus.data.Transaction;
 
 /// Delegate to find an unspent UTXO
-public alias UtxoFinder = scope const(Output)* delegate (Hash hash, size_t index)
+public alias UTXOFinder = scope const(Output)* delegate (Hash hash, size_t index)
     @safe nothrow;
 
 /*******************************************************************************
@@ -28,14 +28,14 @@ public alias UtxoFinder = scope const(Output)* delegate (Hash hash, size_t index
 
     Params:
         tx = `Transaction`
-        findOutput = delegate for finding `Output`
+        findUTXO = delegate for finding `Output`
 
     Return:
         Return true if this transaction is verified.
 
 *******************************************************************************/
 
-public bool isValid (const Transaction tx, UtxoFinder findOutput)
+public bool isValid (const Transaction tx, UTXOFinder findUTXO)
     @safe nothrow
 {
     if (tx.inputs.length == 0)
@@ -55,7 +55,7 @@ public bool isValid (const Transaction tx, UtxoFinder findOutput)
     foreach (input; tx.inputs)
     {
         // all referenced outputs must be present
-        auto output = findOutput(input.previous, input.index);
+        auto output = findUTXO(input.previous, input.index);
         if (output is null)
             return false;
 
@@ -96,7 +96,7 @@ unittest
     );
 
     // delegate for finding `Output`
-    scope findOutput = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index)
     {
         if (auto tx = hash in storage)
             if (index < tx.outputs.length)
@@ -108,19 +108,19 @@ unittest
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.isValid(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.isValid(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.isValid(findOutput), format("Transaction data is not validated %s", secondTx));
+    assert(!secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
 }
 
 /// negative output amounts disallowed
@@ -134,7 +134,7 @@ unittest
     storage[tx_1_hash] = tx_1;
 
     // delegate for finding `Output`
-    scope findOutput = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index)
     {
         if (auto tx = hash in storage)
             if (index < tx.outputs.length)
@@ -152,7 +152,7 @@ unittest
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
-    assert(!tx_2.isValid(findOutput));
+    assert(!tx_2.isValid(findUTXO));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -169,7 +169,7 @@ unittest
     key_pairs ~= KeyPair.random();
 
     // delegate for finding `Output`
-    scope findOutput = (Hash hash, size_t index)
+    scope findUTXO = (Hash hash, size_t index)
     {
         if (auto tx = hash in storage)
             if (index < tx.outputs.length)
@@ -199,7 +199,7 @@ unittest
     tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage[tx1Hash] = tx1;
 
-    assert(tx1.isValid(findOutput), format("Transaction signature is not validated %s", tx1));
+    assert(tx1.isValid(findUTXO), format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
         [
@@ -215,5 +215,5 @@ unittest
     tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage[tx2Hash] = tx2;
     // Signature verification must be error
-    assert(!tx2.isValid(findOutput), format("Transaction signature is not validated %s", tx2));
+    assert(!tx2.isValid(findUTXO), format("Transaction signature is not validated %s", tx2));
 }
