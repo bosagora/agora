@@ -330,12 +330,11 @@ public struct Block
 
     public size_t findHashIndex (Hash hash) const @safe
     {
-        assert(this.merkle_tree.length != 0, "Block hasn't been fully initialized");
+        assert(this.merkle_tree.length == (this.txs.length * 2) - 1,
+            "Block hasn't been fully initialized");
 
-        const size_t size = min(this.txs.length, this.merkle_tree.length);
-        if (size == 0) return this.txs.length;
         long left = 0;
-        long right = size - 1;
+        long right = this.txs.length - 1;
         long mid;
         while (left <= right)
         {
