@@ -28,6 +28,7 @@ import vibe.http.router;
 import vibe.http.server;
 import vibe.web.rest;
 
+import std.file;
 import std.getopt;
 import std.stdio;
 
@@ -77,6 +78,8 @@ private int main (string[] args)
         auto settings = new HTTPServerSettings(config.node.address);
         settings.port = config.node.port;
         auto router = new URLRouter();
+
+        mkdirRecurse(config.node.data_dir);
 
         auto node = new Node(config);
         scope(exit) node.shutdown();
