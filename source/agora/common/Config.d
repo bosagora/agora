@@ -213,11 +213,13 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 
     Node root = Loader.fromFile(cmdln.config_path).load();
 
-    string[] parseSequence (string section)
+    string[] parseSequence (string section, bool optional = false)
     {
         if (auto node = section in root)
             enforce(root[section].type == NodeType.sequence,
                 format("`%s` section must be a sequence", section));
+        else if (optional)
+            return null;
         else
             throw new Exception(
                 format("The '%s' section is mandatory and must " ~
@@ -238,7 +240,7 @@ private Config parseConfigFileImpl (CommandLine cmdln)
         banman : parseBanManagerConfig(root["banman"]),
         node : parseNodeConfig(root["node"]),
         network : assumeUnique(parseSequence("network")),
-        dns_seeds : assumeUnique(parseSequence("dns")),
+        dns_seeds : assumeUnique(parseSequence("dns", true)),
         quorums : assumeUnique(parseQuorumSection(root["quorum"]))
     };
 
