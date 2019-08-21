@@ -16,7 +16,6 @@ module agora.common.Metadata;
 import agora.common.Data;
 import agora.common.Set;
 
-import vibe.core.log;
 import vibe.data.json;
 
 import std.array;
@@ -114,7 +113,8 @@ public class DiskMetadata : Metadata
         catch (Exception ex)
         {
             // ignored for now, missing metadata is not critical
-            logError(ex.message);
+            writefln("Error loading metadata from %s: %s", this.file_path,
+                ex.message);
         }
     }
 
