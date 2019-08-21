@@ -81,6 +81,13 @@ public void deserializePart (ref ushort record, scope DeserializeDg dg)
 }
 
 /// Ditto
+public void deserializePart (ref int record, scope DeserializeDg dg)
+    nothrow @trusted
+{
+    record = *cast(int*)(dg(record.sizeof).ptr);
+}
+
+/// Ditto
 public void deserializePart (ref uint record, scope DeserializeDg dg)
     nothrow @trusted
 {
@@ -146,25 +153,28 @@ unittest
     auto tx_bytes = serializeFull(GenesisTransaction);
     assert(deserialize!Transaction(tx_bytes) == GenesisTransaction);
 
-    // string test
+    // test of various field types
     static struct S
     {
+        int i;
         string s;
 
         void serialize (scope SerializeDg dg) const nothrow @safe
         {
+            serializePart(this.i, dg);
             serializePart(this.s, dg);
         }
 
         void deserialize (scope DeserializeDg dg) nothrow @safe
         {
+            deserializePart(this.i, dg);
             char[] buffer;
             deserializePart(buffer, dg);
             this.s = buffer.idup;
         }
     }
 
-    auto s = S("foo");
+    auto s = S(42, "foo");
     auto bytes = serializeFull(s);
     assert(bytes.deserialize!S == s);
 }
