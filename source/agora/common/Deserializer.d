@@ -101,6 +101,14 @@ public void deserializePart (ref long record, scope DeserializeDg dg)
     record = *cast(long*)(dg(record.sizeof).ptr);
 }
 
+/// Ditto
+public void deserializePart (ref char[] record, scope DeserializeDg dg)
+    nothrow @trusted
+{
+    auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
+    record = cast(char[])dg(length);
+}
+
 /// test various serialization / deserialization of types
 unittest
 {
@@ -137,4 +145,26 @@ unittest
     // transaction test
     auto tx_bytes = serializeFull(GenesisTransaction);
     assert(deserialize!Transaction(tx_bytes) == GenesisTransaction);
+
+    // string test
+    static struct S
+    {
+        string s;
+
+        void serialize (scope SerializeDg dg) const nothrow @safe
+        {
+            serializePart(this.s, dg);
+        }
+
+        void deserialize (scope DeserializeDg dg) nothrow @safe
+        {
+            char[] buffer;
+            deserializePart(buffer, dg);
+            this.s = buffer.idup;
+        }
+    }
+
+    auto s = S("foo");
+    auto bytes = serializeFull(s);
+    assert(bytes.deserialize!S == s);
 }
