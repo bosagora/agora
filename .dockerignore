@@ -1,0 +1,9 @@
+doc/
+tests/
+
+# Various build folders
+build/
+source/scpp/build/
+.dub/
+submodules/*/.dub/
+submodules/vibe.d/*/.dub/
