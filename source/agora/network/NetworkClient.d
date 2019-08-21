@@ -143,8 +143,16 @@ class NetworkClient
 
     public void sendTransaction (Transaction tx) @trusted
     {
+        import agora.common.Hash;
+        const tx_hash = tx.hashFull();
+
         this.taskman.runTask(
         {
+            // if the node already has this tx, don't send it
+            if (this.attemptRequest!(LogLevel.debug_)(
+                this.api.hasTransactionHash(tx_hash), null))
+                return;
+
             this.attemptRequest(this.api.putTransaction(tx), null);
         });
     }
