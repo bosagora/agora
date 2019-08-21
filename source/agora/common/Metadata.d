@@ -29,11 +29,10 @@ import std.typecons;
 /*******************************************************************************
 
     Contains the serialized set of peers a node has connected to.
-    Note: Cannot be abstract, vibe.d requirement.
 
 *******************************************************************************/
 
-public class Metadata
+public abstract class Metadata
 {
     /// The set of peers we previously established connection to
     public Set!Address peers;
