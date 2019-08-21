@@ -82,7 +82,7 @@ private int main (string[] args)
         scope(exit) node.shutdown();
 
         router.registerRestInterface(node);
-        runTask( { node.start(); });
+        runTask({ node.start(); });
 
         logInfo("About to listen to HTTP: %s", settings.port);
         listenHTTP(settings, router);
