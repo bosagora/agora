@@ -145,8 +145,7 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            this.attemptRequest!(LogLevel.debug_)(this.api.putTransaction(tx),
-                null);
+            this.attemptRequest(this.api.putTransaction(tx), null);
         });
     }
 
@@ -210,7 +209,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    private T attemptRequest (LogLevel log_level = LogLevel.error, T)(
+    private T attemptRequest (LogLevel log_level = LogLevel.debug_, T)(
         lazy T dg, Exception ex)
     {
         foreach (idx; 0 .. this.max_retries)
