@@ -42,8 +42,6 @@ public class Ledger
     {
         this.pool = pool;
         this.storage = storage;
-        if (!this.storage.saveBlock(GenesisBlock))
-            assert(0);
     }
 
     /***************************************************************************

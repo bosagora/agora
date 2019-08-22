@@ -22,6 +22,7 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
+import agora.consensus.Genesis;
 
 import std.algorithm;
 import std.container.rbtree;
@@ -169,6 +170,10 @@ public class BlockStorage : IBlockStorage
             mkdirRecurse(this.path);
 
         this.loadAllIndexes();
+
+        // Add Genesis if the storage is empty
+        if (this.height_idx.length == 0)
+            this.saveBlock(GenesisBlock);
     }
 
     /***************************************************************************
@@ -817,6 +822,7 @@ public class MemBlockStorage : IBlockStorage
     {
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
+        this.saveBlock(GenesisBlock);
     }
 
     /***************************************************************************
