@@ -1,0 +1,12 @@
+version: 2
+
+jobs:
+  # Build the Docker image
+  build:
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build & test docker image
+          command: ./ci/system_integration_test.sh
