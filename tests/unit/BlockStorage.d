@@ -16,13 +16,13 @@
 module unit.BlockStorage;
 
 import agora.common.Amount;
-import agora.common.BlockStorage;
 import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
+import agora.node.BlockStorage;
 
 import std.algorithm.comparison;
 import std.file;

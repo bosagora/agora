@@ -15,7 +15,6 @@ module agora.node.Node;
 
 import agora.consensus.data.Block;
 import agora.common.BanManager;
-import agora.common.BlockStorage;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
@@ -24,6 +23,7 @@ import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.network.NetworkManager;
 import agora.node.API;
+import agora.node.BlockStorage;
 import agora.node.Ledger;
 
 import agora.node.GossipProtocol;

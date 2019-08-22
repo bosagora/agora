@@ -14,15 +14,15 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
-import agora.common.BlockStorage;
-import agora.consensus.data.Block;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.common.TransactionPool;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.API;
+import agora.node.BlockStorage;
 
 import vibe.core.log;
 
@@ -238,7 +238,6 @@ public class Ledger
 ///
 unittest
 {
-    import agora.common.BlockStorage;
     import agora.common.crypto.Key;
     import agora.common.Data;
     import agora.common.Hash;
@@ -342,7 +341,6 @@ unittest
 /// Merkle Proof
 unittest
 {
-    import agora.common.BlockStorage;
     import agora.common.crypto.Key;
 
     auto storage = new MemBlockStorage();
