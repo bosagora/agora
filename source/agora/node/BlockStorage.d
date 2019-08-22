@@ -210,7 +210,7 @@ public class BlockStorage : IBlockStorage
         if (this.height_idx.length == 0)
             return false;
 
-        return this.readBlock(block, this.height_idx.back.position);
+        return this.readBlock(block, this.height_idx.back.height);
     }
 
     /***************************************************************************
@@ -842,7 +842,7 @@ public class MemBlockStorage : IBlockStorage
         if (this.height_idx.length == 0)
             return false;
 
-        return this.readBlock(block, this.height_idx.back.position);
+        return this.readBlock(block, this.height_idx.back.height);
     }
 
     /***************************************************************************
