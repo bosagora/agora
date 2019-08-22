@@ -17,6 +17,8 @@ matrix:
   allow_failures:
     - d: dmd-nightly
     - d: ldc-latest-ci
+    - d: ldc-1.16.0
+      os: osx
   fast_finish: true
   include:
     - d: dmd
