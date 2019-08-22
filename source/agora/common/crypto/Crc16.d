@@ -105,7 +105,7 @@ ubyte[2] checksum(scope const(ubyte)[] data)
 bool validate(scope const ubyte[] data, scope const ubyte[] expected)
 {
     assert(expected.length == 2);
-	const actual = checksum(data);
+    const actual = checksum(data);
     return expected == actual;
 }
 
