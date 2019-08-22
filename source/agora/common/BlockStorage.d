@@ -753,13 +753,8 @@ public class BlockStorage : IBlockStorage
 
     private void writeLog (string func, Exception ex) @trusted nothrow
     {
-        try
-        {
-            stderr.writeln(func, ex.message);
-        }
-        catch (Exception ex)
-        {
-        }
+        scope (failure) assert(0);
+        stderr.writeln(func, ex.message);
     }
 }
 
