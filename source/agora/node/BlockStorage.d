@@ -14,7 +14,7 @@
 
 *******************************************************************************/
 
-module agora.common.BlockStorage;
+module agora.node.BlockStorage;
 
 import agora.common.Amount;
 import agora.common.Data;
