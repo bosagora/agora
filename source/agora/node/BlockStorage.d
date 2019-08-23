@@ -169,11 +169,15 @@ public class BlockStorage : IBlockStorage
         if (!this.path.exists)
             mkdirRecurse(this.path);
 
-        this.loadAllIndexes();
+        if (!this.loadAllIndexes())
+            assert(0);
 
         // Add Genesis if the storage is empty
         if (this.height_idx.length == 0)
-            this.saveBlock(GenesisBlock);
+        {
+            if (!this.saveBlock(GenesisBlock))
+                assert(0);
+        }
     }
 
     /***************************************************************************
@@ -321,7 +325,9 @@ public class BlockStorage : IBlockStorage
             scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
             {
                 // write to memory
-                this.write(data_position + block_size, data);
+                if (!this.write(data_position + block_size, data))
+                    assert(0);
+
                 block_size += data.length;
             };
             serializePart(block, dg);
@@ -440,7 +446,8 @@ public class BlockStorage : IBlockStorage
         scope DeserializeDg dg = (size) nothrow @safe
         {
             ubyte[] res;
-            this.read(pos, pos + size, res);
+            if (!this.read(pos, pos + size, res))
+                assert(0);
             pos += size;
             return res;
         };
@@ -594,8 +601,10 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            if (this.map(pos / MapSize))
-                data = this.file[pos - this.file_base];
+            if (!this.map(pos / MapSize))
+                return false;
+
+            data = this.file[pos - this.file_base];
             return true;
         }
         catch (Exception ex)
@@ -622,8 +631,10 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            if (this.map(pos / MapSize))
-                this.file[pos - this.file_base] = data;
+            if (!this.map(pos / MapSize))
+                return false;
+
+            this.file[pos - this.file_base] = data;
             return true;
         }
         catch (Exception ex)
