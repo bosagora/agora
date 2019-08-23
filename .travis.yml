@@ -23,7 +23,7 @@ matrix:
   include:
     - d: dmd
       services: docker
-      script:   ./ci/travis_system_integration.sh
+      script:   ./ci/system_integration_test.sh
 
 # `brew install` is the slowest thing ever on OSX
 # It takes at least 6 minutes to run
