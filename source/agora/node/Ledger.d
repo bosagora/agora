@@ -37,6 +37,10 @@ public class Ledger
     /// Pool of transactions to pick from when generating blocks
     private TransactionPool pool;
 
+    /// The last block in the ledger
+    private Block last_block;
+
+
     /// Ctor
     public this (TransactionPool pool, IBlockStorage storage)
     {
@@ -49,13 +53,10 @@ public class Ledger
             this.storage.saveBlock(GenesisBlock);
             assert(!this.storage.isEmpty());  // sanity check
         }
-        else
-        {
-            // ensure latest checksum can be read
-            Block last_block;
-            if (!this.storage.readLastBlock(last_block))
-                assert(0);
-        }
+
+        // ensure latest checksum can be read
+        if (!this.storage.readLastBlock(this.last_block))
+            assert(0);
     }
 
     /***************************************************************************
@@ -74,12 +75,8 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        Block last_block;
-        if (!this.storage.readLastBlock(last_block))
-            assert(0);
-
-        if (!block.isValid(last_block.header.height,
-            last_block.header.hashFull, &this.findUTXO))
+        if (!block.isValid(this.last_block.header.height,
+            this.last_block.header.hashFull, &this.findUTXO))
         {
             logDebug("Rejected block. %s", block);
             return false;
@@ -87,6 +84,10 @@ public class Ledger
 
         if (!this.storage.saveBlock(block))
             return false;
+
+        // must read back as 'block' here is const
+        if (!this.storage.readLastBlock(this.last_block))
+            assert(0);
 
         return true;
     }
@@ -130,10 +131,8 @@ public class Ledger
     {
         auto txs = this.pool.take(Block.TxsInBlock);
         assert(txs.length == Block.TxsInBlock);
-        Block last_block;
-        if (!this.storage.readLastBlock(last_block))
-            assert(0);
-        auto block = makeNewBlock(last_block, txs);
+
+        auto block = makeNewBlock(this.last_block, txs);
         if (!this.acceptBlock(block))
             assert(0);
     }
@@ -147,10 +146,7 @@ public class Ledger
 
     public ulong getBlockHeight () @safe nothrow
     {
-        Block last_block;
-        if (!this.storage.readLastBlock(last_block))
-            assert(0);
-        return last_block.header.height;
+        return this.last_block.header.height;
     }
 
     /***************************************************************************
