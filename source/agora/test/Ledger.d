@@ -159,6 +159,7 @@ unittest
 /// Merkle Proof
 unittest
 {
+    import core.time;
     import std.algorithm;
 
     const NodeCount = 4;
@@ -199,6 +200,9 @@ unittest
     const Hash hefgh = hashMulti(hef, hgh);
 
     const Hash habcdefgh = hashMulti(habcd, hefgh);
+
+    // wait for transaction propagation
+    nodes.each!(node => retryFor(node.getBlockHeight() == 1, 4.seconds));
 
     Hash[] merkle_path;
     foreach (key, ref node; nodes)
