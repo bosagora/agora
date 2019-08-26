@@ -811,7 +811,16 @@ public class BlockStorage : IBlockStorage
     *******************************************************************************/
 
     private static ubyte[] makeChecksum (const ubyte[] data) @safe nothrow
+    out(result)
     {
+        assert(result.length + DataSize <= MapSize,
+            "Checksum size is too large to fit in the map");
+    }
+    body
+    {
+        assert(data.length < 1 << 20,
+            "Data length for checksum should not exceed 1MB");
+
         scope crc32 = new CRC32Digest();
         crc32.put(data);
         static ubyte[4] buffer;
