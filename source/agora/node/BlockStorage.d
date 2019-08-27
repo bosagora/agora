@@ -46,6 +46,15 @@ public interface IBlockStorage
 
     /***************************************************************************
 
+        Returns:
+            true if the storage is empty (height index was not loaded)
+
+    ***************************************************************************/
+
+    public bool isEmpty ();
+
+    /***************************************************************************
+
         Read the last block from the storage.
 
         Params:
@@ -184,11 +193,23 @@ public class BlockStorage : IBlockStorage
             assert(0);
 
         // Add Genesis if the storage is empty
-        if (this.height_idx.length == 0)
+        if (this.isEmpty())
         {
             if (!this.saveBlock(GenesisBlock))
                 assert(0);
         }
+    }
+
+    /***************************************************************************
+
+        Returns:
+            true if the storage is empty (height index was not loaded)
+
+    ***************************************************************************/
+
+    public bool isEmpty ()
+    {
+        return this.height_idx.length == 0;
     }
 
     /***************************************************************************
@@ -936,6 +957,18 @@ public class MemBlockStorage : IBlockStorage
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
         this.saveBlock(GenesisBlock);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            true if the storage is empty (height index was not loaded)
+
+    ***************************************************************************/
+
+    public bool isEmpty ()
+    {
+        return this.height_idx.length == 0;
     }
 
     /***************************************************************************
