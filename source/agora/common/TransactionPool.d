@@ -167,46 +167,79 @@ public class TransactionPool
 
     /***************************************************************************
 
+        Walk over the transactions in the pool and call the provided delegate
+        with each hash and transaction
+
         Params:
-            amount = how many transactions to return
+            dg = the delegate to call
 
         Returns:
-            an array of 'amount' transactions
-
-        Note:
-            @trusted because most of the body executes non-@safe code,
-            which is assumed to be safe
+            the status code of the delegate, or zero
 
     ***************************************************************************/
 
-    public Transaction[] take (size_t amount) @trusted
+    public int opApply (scope int delegate(Hash hash, Transaction tx) dg) @trusted
     {
-        assert(amount <= this.length());
-
-        Hash[] hashes;
-        Transaction[] txs;
-
-        auto results = db.execute("SELECT key, val FROM tx_pool LIMIT ?",
-            amount);
+        auto results = this.db.execute("SELECT key, val FROM tx_pool");
 
         foreach (row; results)
         {
-            hashes ~= *cast(Hash*)row.peek!(ubyte[])(0).ptr;
-            txs ~= deserialize!Transaction(row.peek!(ubyte[])(1));
+            auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
+            auto tx = deserialize!Transaction(row.peek!(ubyte[])(1));
+
+            // break
+            if (auto ret = dg(hash, tx))
+                return ret;
         }
 
+        return 0;
+    }
+
+    /***************************************************************************
+
+        Remove the transaction with the given key from the pool
+
+        Params:
+            hash = the hash of the transaction
+
+    ***************************************************************************/
+
+    public void remove (Hash hash) @trusted
+    {
+        this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash[]);
+    }
+
+    /***************************************************************************
+
+        Take the specified number of transactions and remove them from the pool.
+
+        Params:
+            count = how many transactions to take from the pool
+
+        Returns:
+            an array of 'count' transactions
+
+    ***************************************************************************/
+
+    version (unittest) public Transaction[] take (size_t count) @safe
+    {
         const len_prev = this.length();
+        Hash[] hashes;
+        Transaction[] txs;
 
-        hashes.each!(hash => db.execute("DELETE FROM tx_pool WHERE key = ?",
-            hash[]));
+        foreach (hash, tx; this)
+        {
+            hashes ~= hash;
+            txs ~= tx;
+        }
 
-        enforce(this.length() == len_prev - amount, "Did not delete txs properly");
-
+        hashes.each!(hash => this.remove(hash));
+        assert(this.length() == len_prev - count);
         return txs;
     }
 }
 
-/// add / take tests
+/// add & opApply / remove tests (through take())
 unittest
 {
     import agora.consensus.Genesis;

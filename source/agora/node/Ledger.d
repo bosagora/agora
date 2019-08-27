@@ -129,12 +129,22 @@ public class Ledger
 
     private void makeBlock () @safe
     {
-        auto txs = this.pool.take(Block.TxsInBlock);
+        Hash[] hashes;
+        Transaction[] txs;
+
+        foreach (hash, tx; this.pool)
+        {
+            hashes ~= hash;
+            txs ~= tx;
+        }
+
         assert(txs.length == Block.TxsInBlock);
 
         auto block = makeNewBlock(this.last_block, txs);
         if (!this.acceptBlock(block))
             assert(0);
+
+        hashes.each!(hash => this.pool.remove(hash));
     }
 
     /***************************************************************************
