@@ -191,13 +191,6 @@ public class BlockStorage : IBlockStorage
 
         if (!this.loadAllIndexes())
             assert(0);
-
-        // Add Genesis if the storage is empty
-        if (this.isEmpty())
-        {
-            if (!this.saveBlock(GenesisBlock))
-                assert(0);
-        }
     }
 
     /***************************************************************************
@@ -956,7 +949,6 @@ public class MemBlockStorage : IBlockStorage
     {
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
-        this.saveBlock(GenesisBlock);
     }
 
     /***************************************************************************

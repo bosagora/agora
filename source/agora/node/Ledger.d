@@ -42,6 +42,20 @@ public class Ledger
     {
         this.pool = pool;
         this.storage = storage;
+
+        // add the genesis block
+        if (this.storage.isEmpty())
+        {
+            this.storage.saveBlock(GenesisBlock);
+            assert(!this.storage.isEmpty());  // sanity check
+        }
+        else
+        {
+            // ensure latest checksum can be read
+            Block last_block;
+            if (!this.storage.readLastBlock(last_block))
+                assert(0);
+        }
     }
 
     /***************************************************************************
