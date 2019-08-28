@@ -72,7 +72,7 @@ public class NetworkManager
     protected Set!Address todo_addresses;
 
     /// Address ban manager
-    protected BanManager banman;
+    private BanManager banman;
 
     ///
     private Metadata metadata;
@@ -84,7 +84,7 @@ public class NetworkManager
     private const(string)[] dns_seeds;
 
     /// Ctor
-    public this (in NodeConfig node_config, in BanManager.Config banman_conf,
+    public this (in NodeConfig node_config, BanManager banman, 
         in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
         this.taskman = this.getTaskManager();
@@ -92,7 +92,7 @@ public class NetworkManager
         this.metadata = metadata;
         this.seed_peers = peers;
         this.dns_seeds = dns_seeds;
-        this.banman = this.getBanManager(banman_conf);
+        this.banman = banman;
     }
 
     /// try to discover the network until we found
@@ -183,26 +183,6 @@ public class NetworkManager
     protected TaskManager getTaskManager ()
     {
         return new TaskManager();
-    }
-
-    /***************************************************************************
-
-        Get a BanManager instance.
-
-        Can be overriden in unittests to test ban management
-        without relying on a clock.
-
-        Params:
-            banman_conf = ban manager config
-
-        Returns:
-            an instance of a BanManager
-
-    ***************************************************************************/
-
-    protected BanManager getBanManager (in BanManager.Config banman_conf)
-    {
-        return new BanManager(banman_conf);
     }
 
     /***************************************************************************

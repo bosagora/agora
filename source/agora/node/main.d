@@ -19,7 +19,7 @@
 module agora.node.main;
 
 import agora.common.Config;
-import agora.network.NetworkManager;
+import agora.network.FilteredURLRouter;
 import agora.node.Node;
 
 import vibe.core.core;
@@ -75,10 +75,6 @@ private int main (string[] args)
         setLogLevel(config.logging.log_level);
         logTrace("Config is: %s", config);
 
-        auto settings = new HTTPServerSettings(config.node.address);
-        settings.port = config.node.port;
-        auto router = new URLRouter();
-
         mkdirRecurse(config.node.data_dir);
         // Support code coverage being written to the data directory
         // This way we can collect data from docker containers
@@ -92,6 +88,10 @@ private int main (string[] args)
 
         auto node = new Node(config);
         scope(exit) node.shutdown();
+
+        auto settings = new HTTPServerSettings(config.node.address);
+        settings.port = config.node.port;
+        auto router = new FilteredURLRouter(node.banman);
 
         router.registerRestInterface(node);
         runTask({ node.start(); });

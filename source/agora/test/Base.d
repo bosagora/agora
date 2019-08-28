@@ -248,12 +248,12 @@ public class TestNetworkManager : NetworkManager
     public __gshared std.concurrency.Tid[string] tbn;
 
     /// Constructor
-    public this (NodeConfig config, BanManager.Config ban_conf,
+    public this (NodeConfig config, BanManager banman,
         in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
-        super(config, ban_conf, peers, dns_seeds, metadata);
+        super(config, banman, peers, dns_seeds, metadata);
         // NetworkManager assumes IP are used but we use pubkey
-        this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
+        banman.banUntil(config.key_pair.address.toString(), time_t.max);
     }
 
     ///
@@ -275,21 +275,6 @@ public class TestNetworkManager : NetworkManager
     protected override TaskManager getTaskManager ()
     {
         return new LocalRestTaskManager();
-    }
-
-    /***************************************************************************
-
-        Params:
-            conf = ban manager config
-
-        Returns:
-            an instance of a BanManager with a fake clock
-
-    ***************************************************************************/
-
-    protected override BanManager getBanManager (in BanManager.Config conf)
-    {
-        return new FakeClockBanManager(conf);
     }
 }
 
@@ -347,10 +332,10 @@ public class TestNode : Node, TestAPI
 
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
-        in NodeConfig node_config, in BanManager.Config banman_conf,
+        in NodeConfig node_config, BanManager banman,
         in string[] peers, in string[] dns_seeds, Metadata metadata)
     {
-        return new TestNetworkManager(node_config, banman_conf, peers,
+        return new TestNetworkManager(node_config, banman, peers,
             dns_seeds, metadata);
     }
 }

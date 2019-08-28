@@ -73,20 +73,44 @@ public class Node : API
     /// Blockstorage
     private IBlockStorage storage;
 
+    ///
+    public BanManager banman;
+
     /// Ctor
     public this (const Config config)
     {
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.network = this.getNetworkManager(config.node, config.banman,
-            config.network, config.dns_seeds, this.metadata);
+        this.banman = this.getBanManager(config.banman);
+        this.network = this.getNetworkManager(config.node,
+            this.banman, config.network, config.dns_seeds, this.metadata);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         this.ledger = new Ledger(this.pool, this.storage);
         this.gossip = new GossipProtocol(this.network, this.ledger);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
+    }
+
+    /***************************************************************************
+
+        Get a BanManager instance.
+
+        Can be overriden in unittests to test ban management
+        without relying on a clock.
+
+        Params:
+            banman_conf = ban manager config
+
+        Returns:
+            an instance of a BanManager
+
+    ***************************************************************************/
+
+    public BanManager getBanManager (in BanManager.Config banman_conf)
+    {
+        return new BanManager(banman_conf);
     }
 
     /// The first task method, loading from disk, node discovery, etc
@@ -172,7 +196,7 @@ public class Node : API
 
         Params:
             node_config = the node config
-            banman_conf = the ban manager config
+            banman = the ban manager
             peers = the peers to connect to
             dns_seeds = the DNS seeds to retrieve peers from
             metadata = metadata containing known peers and other meta info
@@ -183,10 +207,10 @@ public class Node : API
     ***************************************************************************/
 
     protected NetworkManager getNetworkManager (in NodeConfig node_config,
-        in BanManager.Config banman_conf, in string[] peers,
+        BanManager banman, in string[] peers,
         in string[] dns_seeds, Metadata metadata)
     {
-        return new NetworkManager(node_config, banman_conf, peers, dns_seeds,
+        return new NetworkManager(node_config, banman, peers, dns_seeds,
             metadata);
     }
 
