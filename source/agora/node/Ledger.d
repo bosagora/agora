@@ -77,14 +77,17 @@ public class Ledger
         Block last_block;
         if (!this.storage.readLastBlock(last_block))
             assert(0);
+
         if (!block.isValid(last_block.header.height,
             last_block.header.hashFull, &this.findUTXO))
         {
             logDebug("Rejected block. %s", block);
             return false;
         }
+
         if (!this.storage.saveBlock(block))
             return false;
+
         return true;
     }
 
