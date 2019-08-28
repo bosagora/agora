@@ -42,6 +42,7 @@ unittest
         retry_delay, max_retries, timeout, max_failed_requests);
     network.start();
     scope(exit) network.shutdown();
+    assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto keys = network.apis.keys;
     auto node_1 = network.apis[keys[0]];

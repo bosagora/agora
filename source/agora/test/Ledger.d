@@ -144,6 +144,7 @@ unittest
         100, 20, 100);  // reduce timeout to 100 msecs
     network.start();
     scope(exit) network.shutdown();
+    assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
@@ -166,6 +167,7 @@ unittest
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
+    assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
