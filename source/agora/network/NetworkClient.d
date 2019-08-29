@@ -112,14 +112,11 @@ class NetworkClient
         Get the network info of the node, stored in the
         `net_info` parameter if the request succeeded.
 
-        Params:
-            net_info = will contain the network info if successful
-
         Returns:
-            NetworkInfo if successful
+            `NetworkInfo` if successful
 
         Throws:
-            Exception if the request failed.
+            `Exception` if the request failed.
 
     ***************************************************************************/
 

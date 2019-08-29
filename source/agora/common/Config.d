@@ -180,16 +180,16 @@ class ConfigException : Exception
 
 /*******************************************************************************
 
-    Parses the config file and returns a Config instance.
+    Parses the config file and returns a `Config` instance.
 
     Params:
-        cmdlnd = command-line arguments (containing the path to the config)
+        cmdln = command-line arguments (containing the path to the config)
 
     Throws:
-        ConfigException if parsing the config file failed.
+        `ConfigException` if parsing the config file failed.
 
     Returns:
-        Config instance
+        `Config` instance
 
 *******************************************************************************/
 

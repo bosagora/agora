@@ -243,8 +243,8 @@ unittest
 
     Params:
         block = the block to check
-        prev_height = the height of the previous block which this
-                      block should point to
+        prev_height = the height of the direct ancestor of this block
+        prev_hash = the hash of the direct ancestor of this block
         findUTXO = delegate to find the referenced unspent UTXOs with
 
     Returns:
