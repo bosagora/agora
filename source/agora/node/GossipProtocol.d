@@ -77,7 +77,7 @@ public class GossipProtocol
         Check if this transaction is in the transaction cache.
 
         Params:
-            tx = the received transaction
+            hash = hash of a transaction
 
         Returns:
             Return true if this transaction was a transaction already received.
