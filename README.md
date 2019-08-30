@@ -1,6 +1,7 @@
 # Agora
 
 [![Build Status](https://travis-ci.com/bpfkorea/agora.svg?branch=v0.x.x)](https://travis-ci.com/bpfkorea/agora)
+[![CircleCI](https://circleci.com/gh/bpfkorea/agora.svg?style=svg)](https://circleci.com/gh/bpfkorea/agora)
 [![codecov](https://codecov.io/gh/bpfkorea/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bpfkorea/agora)
 [![](https://images.microbadger.com/badges/image/bpfk/agora.svg)](https://microbadger.com/images/bpfk/agora)
 [![](https://images.microbadger.com/badges/version/bpfk/agora.svg)](https://microbadger.com/images/bpfk/agora)
