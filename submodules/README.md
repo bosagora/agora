@@ -9,7 +9,7 @@ This data can also be gathered by running `git submodules`.
 | Dependency name  | Version      | Write access | Platform |
 |------------------|--------------|:------------:|----------|
 | base32           | v0.1.0       |              |          |
-| bitblob          | v1.1.3       |       Y      |     Y    |
+| bitblob          | v1.1.4       |       Y      |     Y    |
 | diet-ng          | v1.5.0       |              |          |
 | dyaml            | v0.8.0       |              |          |
 | eventcore        | v0.8.42      |              |          |
