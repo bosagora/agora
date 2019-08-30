@@ -3,10 +3,18 @@ version: 2
 jobs:
   # Build the Docker image
   build:
+    docker:
+      - image: alpine:3.10.1
     steps:
-      - checkout
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
+          name: Install dependencies
+          command: apk add --no-cache bash docker git
+      - checkout
+      - run:
+          name: Checking out submodules
+          command: git submodule update --init
+      - run:
           name: Build & test docker image
-          command: ./ci/system_integration_test.sh
+          command: ci/system_integration_test.sh
