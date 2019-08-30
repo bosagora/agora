@@ -144,7 +144,7 @@ public class Node : API
         this.gossip.receiveTransaction(tx);
     }
 
-    /// GET: /hasTransactionHash
+    /// GET: /has_transaction_hash
     public override bool hasTransactionHash (Hash tx) @safe
     {
         return this.gossip.hasTransactionHash(tx);

@@ -115,7 +115,7 @@ public interface API
             Return true if the node has this transaction hash.
 
         API:
-            GET /hasTransactionHash
+            GET /has_transaction_hash
 
     ***************************************************************************/
 
