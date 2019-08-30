@@ -230,6 +230,7 @@ unittest
         - the number of transactions in the block are equal to Block.TxsInBlock
         - the merkle root in the header matches the re-built merkle tree root
           based on the included transactions in the block
+        - Transactions are ordered by their hash value
         - all the the transactions pass validation, which implies:
             - signatures are authentic
             - the inputs spend an output which must be found with the
@@ -270,6 +271,9 @@ public bool isValid (const ref Block block, in ulong prev_height,
     if (block.txs.length != Block.TxsInBlock)
         return false;
 
+    if (!block.txs.isSorted())
+        return false;
+
     if (block.txs.any!(tx => !tx.isValid(findUTXO)))
         return false;
 
@@ -305,7 +309,7 @@ unittest
     auto gen_hash = GenesisBlock.header.hashFull();
 
     tx_map[GenesisTransaction.hashFull()] = [GenesisTransaction];
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto txs = makeChainedTransactions(gen_key, null, 1).sort.array;
     auto block = makeNewBlock(GenesisBlock, txs);
 
     // height check
@@ -328,10 +332,17 @@ unittest
     block.txs = txs[0 .. $ - 1];
     assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    block.txs = txs ~ txs;
+    block.txs = (txs ~ txs).sort.array;
     assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     block.txs = txs;
+    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+
+    /// Txs sorting check
+    block.txs = txs.reverse;
+    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+
+    block.txs = txs.reverse;
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     /// no matching utxo => fail
@@ -392,7 +403,7 @@ unittest
     };
 
     // consumed all utxo => fail
-    txs = makeChainedTransactions(gen_key, null, 1);
+    txs = makeChainedTransactions(gen_key, null, 1).sort.array;
     block = makeNewBlock(GenesisBlock, txs);
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));

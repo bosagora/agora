@@ -374,6 +374,7 @@ public Block makeNewBlock (const ref Block prev_block, Transaction[] txs) @safe
     block.header.prev_block = prev_block.header.hashFull();
     block.header.height = prev_block.header.height + 1;
     block.txs ~= txs;
+    block.txs.sort;
 
     block.header.merkle_root = block.buildMerkleTree();
 

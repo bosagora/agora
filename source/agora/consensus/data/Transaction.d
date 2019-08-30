@@ -113,6 +113,18 @@ public struct Transaction
         foreach (ref output; this.outputs)
             deserializePart(output, dg);
     }
+
+    /// Support for sorting transactions
+    public int opCmp (ref const(Transaction) other) const nothrow @safe @nogc
+    {
+        return hashFull(this).opCmp(hashFull(other));
+    }
+
+    /// Ditto
+    public int opCmp (const(Transaction) other) const nothrow @safe @nogc
+    {
+        return this.opCmp(other);
+    }
 }
 
 ///
@@ -124,6 +136,14 @@ nothrow @safe @nogc unittest
         "5358eeaf31105ed219541ff717e2868a614758e140472f9172d2522585fdc6c6035" ~
         "90142f7026a78");
     assert(hash == exp_hash);
+}
+
+unittest
+{
+    import std.algorithm.sorting : isStrictlyMonotonic;
+    static Transaction identity (ref Transaction tx) { return tx; }
+    Transaction[] txs = [ Transaction.init, Transaction.init ];
+    assert(!txs.isStrictlyMonotonic!((a, b) => identity(a) < identity(b)));
 }
 
 /*******************************************************************************
