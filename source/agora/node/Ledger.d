@@ -23,6 +23,7 @@ import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.API;
 import agora.node.BlockStorage;
+import agora.utils.PrettyPrinter;
 
 import vibe.core.log;
 
@@ -75,10 +76,10 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        if (!block.isValid(this.last_block.header.height,
+        if (auto reason = block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull, &this.findUTXO))
         {
-            logDebug("Rejected block. %s", block);
+            logDebug("Rejected block: %s: %s", reason, prettify(block));
             return false;
         }
 
