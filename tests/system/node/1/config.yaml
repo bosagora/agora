@@ -81,4 +81,4 @@ quorum:
 ################################################################################
 logging:
   # Values: trace, debugV, debug_, diagnostic, info, warn, error, critical, fatal, none (default)
-  level: none
+  level: debug_
