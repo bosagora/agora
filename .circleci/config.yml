@@ -13,6 +13,17 @@ jobs:
           command: apk add --no-cache bash docker git
       - checkout
       - run:
+          name: Checkout merge commit
+          command: |
+            set -ex
+            if [[ -n "${CIRCLE_PR_NUMBER}" ]]
+            then
+              FETCH_REFS="${FETCH_REFS}
+              +refs/pull/${CIRCLE_PR_NUMBER}/merge:pr/${CIRCLE_PR_NUMBER}/merge"
+              git fetch -u origin ${FETCH_REFS}
+              git checkout "pr/${CIRCLE_PR_NUMBER}/merge"
+            fi
+      - run:
           name: Checking out submodules
           command: git submodule update --init
       - run:
