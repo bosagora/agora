@@ -30,4 +30,4 @@ jobs:
             git submodule update --init
       - run:
           name: Build & test docker image
-          command: ci/system_integration_test.sh
+          command: ci/system_integration_test.d
