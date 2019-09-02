@@ -224,6 +224,7 @@ public class TransactionPool
     version (unittest) public Transaction[] take (size_t count) @safe
     {
         const len_prev = this.length();
+        assert(len_prev >= count);
         Hash[] hashes;
         Transaction[] txs;
 
@@ -231,6 +232,8 @@ public class TransactionPool
         {
             hashes ~= hash;
             txs ~= tx;
+            if (txs.length == count)
+                break;
         }
 
         hashes.each!(hash => this.remove(hash));
@@ -257,6 +260,13 @@ unittest
     auto pool_txs = pool.take(txs.length);
     assert(pool.length == 0);
     assert(txs == pool_txs);
+
+    txs.each!(tx => pool.add(tx));
+    assert(pool.length == txs.length);
+
+    auto half_txs = pool.take(txs.length / 2);
+    assert(half_txs.length == txs.length / 2);
+    assert(pool.length == txs.length / 2);
 
     // adding duplicate tx hash => exception throw
     pool.add(txs[0]);
