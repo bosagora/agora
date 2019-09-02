@@ -37,11 +37,21 @@
     ],
     "lflags": [ "-lsodium", "-lstdc++", "-lsqlite3" ],
 
-    "mainSourceFile": "source/agora/node/main.d",
-
     "configurations": [
         {
+            "name": "server",
+            "mainSourceFile": "source/agora/node/main.d",
+            "excludedSourceFiles": [ "source/agora/cli/*" ]
+        },
+        {
+            "name": "cli",
+            "targetName": "agora-cli",
+            "mainSourceFile": "source/agora/cli/main.d",
+            "excludedSourceFiles": [ "source/agora/node/main.d" ]
+        },
+        {
             "name": "unittest",
+            "excludedSourceFiles": [ "source/agora/cli/main.d" ],
             "sourceFiles": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o"
