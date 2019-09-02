@@ -188,6 +188,18 @@ public struct Amount
         return true;
     }
 
+    /// Returns: The integral part of the amount (value / 1 BOA)
+    public ulong integral () const
+    {
+        return this.value / UnitPerCoin.value;
+    }
+
+    /// Returns: The decimal part of the amount (value % 1 BOA)
+    public ulong decimal () const
+    {
+        return this.value % UnitPerCoin.value;
+    }
+
     /// Convenience version of `add` which asserts in case of overflow
     /// Prefer using this only in `unittest`s
     public ref Amount mustAdd (Amount other)
@@ -251,4 +263,19 @@ pure @safe unittest
     assert(maxv.isValid());
     assert(!maxv.add(Amount(1)));
     assert(!maxv.isValid());
+}
+
+pure @safe nothrow @nogc unittest
+{
+    assert(Amount.UnitPerCoin.integral() == 1);
+    assert(Amount.UnitPerCoin.decimal() == 0);
+
+    assert(Amount.MaxUnitSupply.integral() == 500_000_000);
+    assert(Amount.MaxUnitSupply.decimal() == 0);
+
+    assert(Amount(500).integral() == 0);
+    assert(Amount(500).decimal() == 500);
+
+    assert(Amount(100_500_000).integral() == 10);
+    assert(Amount(100_500_000).decimal() == 500_000);
 }
