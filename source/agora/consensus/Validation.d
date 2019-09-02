@@ -33,23 +33,24 @@ public alias UTXOFinder = scope const(Output)* delegate (Hash hash, size_t index
         findUTXO = delegate for finding `Output`
 
     Return:
-        Return true if this transaction is verified.
+        `null` if the transaction is valid, a string explaining the reason it
+        is invalid otherwise.
 
 *******************************************************************************/
 
-public bool isValid (const Transaction tx, UTXOFinder findUTXO)
+public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO)
     @safe nothrow
 {
     if (tx.inputs.length == 0)
-        return false;
+        return "Transaction: No input";
 
     if (tx.outputs.length == 0)
-        return false;
+        return "Transaction: No output";
 
     // disallow negative amounts
     foreach (output; tx.outputs)
         if (!output.value.isValid())
-            return false;
+            return "Transaction: Output(s) overflow or underflow";
 
     Amount sum_unspent;
 
@@ -59,17 +60,28 @@ public bool isValid (const Transaction tx, UTXOFinder findUTXO)
         // all referenced outputs must be present
         auto output = findUTXO(input.previous, input.index);
         if (output is null)
-            return false;
+            return "Transaction: Input ref not in UTXO";
 
         if (!output.address.verify(input.signature, tx_hash[]))
-            return false;
+            return "Transaction: Input has invalid signature";
 
         if (!sum_unspent.add(output.value))
-            return false;
+            return "Transaction: Input overflow";
     }
 
     Amount new_unspent;
-    return tx.getSumOutput(new_unspent) && sum_unspent.sub(new_unspent);
+    if (!tx.getSumOutput(new_unspent))
+        return "Transaction: Referenced Output(s) overflow";
+    if (!sum_unspent.sub(new_unspent))
+        return "Transaction: Output(s) are higher than Input(s)";
+    return null;
+}
+
+/// Ditto but returns a bool
+public bool isValid (const Transaction tx, UTXOFinder findUTXO)
+    @safe nothrow
+{
+    return isInvalidReason(tx, findUTXO) is null;
 }
 
 /// verify transaction data
@@ -249,39 +261,50 @@ unittest
         findUTXO = delegate to find the referenced unspent UTXOs with
 
     Returns:
-        true if the block is considered valid
+        `null` if the block is valid, a string explaining the reason it
+        is invalid otherwise.
 
 *******************************************************************************/
 
-public bool isValid (const ref Block block, in ulong prev_height,
+public string isInvalidReason (const ref Block block, in ulong prev_height,
     in Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
 {
     import std.algorithm;
 
     // special case for the genesis block
     if (block.header.height == 0)
-        return block == GenesisBlock;
+        return block == GenesisBlock ?
+            null : "Block: Height 0 but not Genesis block";
 
-    if (block.header.height != prev_height + 1)
-        return false;
+    if (block.header.height > prev_height + 1)
+        return "Block: Height is above expected height";
+    if (block.header.height < prev_height + 1)
+        return "Block: Height is under expected height";
 
     if (block.header.prev_block != prev_hash)
-        return false;
+        return "Block: Header.prev_block does not match previous block";
 
     if (block.txs.length != Block.TxsInBlock)
-        return false;
+        return "Block: Number of transaction mismatch";
 
     if (!block.txs.isSorted())
-        return false;
+        return "Block: Transactions are not sorted";
 
     if (block.txs.any!(tx => !tx.isValid(findUTXO)))
-        return false;
+        return "Block: Some transactions are invalid";
 
     Hash[] merkle_tree;
     if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
-        return false;
+        return "Block: Merkle root does not match header's";
 
-    return true;
+    return null;
+}
+
+/// Ditto but returns `bool`
+public bool isValid (const ref Block block, in ulong prev_height,
+    in Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
+{
+    return isInvalidReason(block, prev_height, prev_hash, findUTXO) is null;
 }
 
 ///
