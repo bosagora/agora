@@ -25,6 +25,7 @@ import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
+import agora.utils.PrettyPrinter;
 
 import agora.node.GossipProtocol;
 
@@ -141,6 +142,7 @@ public class Node : API
 
     public override void putTransaction (Transaction tx) @safe
     {
+        logDebug("Receveid Transaction: %s", prettify(tx));
         this.gossip.receiveTransaction(tx);
     }
 
