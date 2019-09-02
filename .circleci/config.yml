@@ -25,7 +25,9 @@ jobs:
             fi
       - run:
           name: Checking out submodules
-          command: git submodule update --init
+          command: |
+            git submodule sync
+            git submodule update --init
       - run:
           name: Build & test docker image
           command: ci/system_integration_test.sh
