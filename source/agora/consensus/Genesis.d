@@ -52,7 +52,7 @@ private immutable Hash GenesisMerkleRoot =
 /// The single transaction that are part of the genesis block
 public immutable Transaction GenesisTransaction =
 {
-    inputs: [ Input(Hash.init, 0) ],
+    inputs: [ Input.init ],
     outputs: [
         Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
         Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
