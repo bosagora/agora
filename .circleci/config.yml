@@ -4,7 +4,7 @@ jobs:
   # Build the Docker image
   build:
     docker:
-      - image: alpine:3.10.1
+      - image: bpfk/circleci:latest
     steps:
       - setup_remote_docker:
           docker_layer_caching: true
