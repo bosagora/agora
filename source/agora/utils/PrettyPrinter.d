@@ -34,7 +34,7 @@ public auto prettify (T) (const ref T input)
 {
     static if (is(T : const Amount))
         return AmountFmt(input);
-    else static if (is(T : const Amount))
+    else static if (is(T : const Hash))
         return HashFmt(input);
     else static if (is(T : const Input))
         return InputFmt(input);
