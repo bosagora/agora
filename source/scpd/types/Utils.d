@@ -14,6 +14,8 @@
 module scpd.types.Utils;
 
 import scpd.Cpp;
+import scpd.scp.SCP;
+import scpd.scp.SCPDriver;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
@@ -88,3 +90,7 @@ extern(C++, `stellar`)
         }
     }
 }
+
+/// SCP constructor wrapper
+SCP* createSCP (SCPDriver driver, ref const(NodeID) nodeID, bool isValidator,
+    ref const(SCPQuorumSet) qSetLocal);
