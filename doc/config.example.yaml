@@ -83,29 +83,24 @@ dns:
 ##                               Quorum slices                                ##
 ################################################################################
 quorum:
-  # name of the quorum
-  - name: quorum-1
-    # threshold as a percentage
-    threshold: 66%
-    # the list of nodes and sub-quorums in this quorum
+  # threshold as a percentage
+  threshold: 66%
+  # the list of nodes in this quorum
+  nodes:
+    - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
+    - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+  # the list of sub-quorums in this quorum
+  sub_quorums:
+  - threshold: 66%
     nodes:
       - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
       - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-      # a subquorum is referenced with a $ symbol
-      - $quorum-1.1
-  - name: quorum-1.1
-    threshold: 66%
-    nodes:
-      - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
-      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-      # references another sub-quorum
-      - $quorum-1.1.1
-  - name: quorum-1.1.1
-    threshold: 66%
-    nodes:
-      - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
-      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+    sub_quorums:
+    - threshold: 66%
+      nodes:
+        - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
+        - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
+        - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
 
 ################################################################################
 ##                               Logging options                              ##
