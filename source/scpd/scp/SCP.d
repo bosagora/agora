@@ -44,9 +44,6 @@ extern(C++, class) public struct SCP
     this(SCPDriver driver, ref const(NodeID) nodeID, bool isValidator,
          ref const(SCPQuorumSet) qSetLocal);
 
-    static SCP* create (SCPDriver driver, ref const(NodeID) nodeID, bool isValidator,
-                        ref const(SCPQuorumSet) qSetLocal);
-
     enum EnvelopeState
     {
         INVALID, // the envelope is considered invalid
