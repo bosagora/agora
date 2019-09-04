@@ -39,6 +39,7 @@ immutable Includes = [
 
 immutable CppFlags = [
     "-c",
+    "-g",
     "-W",
     "-Wall",
     "-Wno-unused-parameter",
