@@ -3,9 +3,10 @@ language: d
 dist: xenial
 
 d:
-  - dmd-2.087.1 # 2.087.0 has regressions
-  - dmd-2.086.1
-  - ldc-1.16.0     # Older version don't work
+  - dmd-2.088.0
+  - dmd-2.087.1   # 2.087.0 has regressions
+  - ldc-1.17.0    # Older version don't work
+  - ldc-1.16.0    # Older version don't work
   - dmd-nightly   # Nightlies at the end so that `fast_finish` is useful
   - ldc-latest-ci # The freshest LDC
 
@@ -17,6 +18,8 @@ matrix:
   allow_failures:
     - d: dmd-nightly
     - d: ldc-latest-ci
+    - d: ldc-1.17.0
+      os: osx
     - d: ldc-1.16.0
       os: osx
   fast_finish: true
