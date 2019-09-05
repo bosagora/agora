@@ -62,7 +62,8 @@ private struct AmountFmt
 @safe unittest
 {
     immutable one = Amount(1);
-    assert(format("%s", AmountFmt(Amount.MaxUnitSupply)) == "500,000,000.0000,000");
+    assert(format("%s", AmountFmt(Amount.MaxUnitSupply)) == "500,000,000.0000,000",
+        format("%s", AmountFmt(Amount.MaxUnitSupply)));
     assert(format("%s", AmountFmt(one)) == "0.0000,001");
     assert(format("%s", AmountFmt(Amount.UnitPerCoin)) == "1.0000,000");
 }
