@@ -46,3 +46,6 @@
 [submodule "d2sqlite3"]
 	path = submodules/d2sqlite3
 	url = https://github.com/biozic/d2sqlite3.git
+[submodule "protobuf-d"]
+	path = submodules/protobuf-d
+	url = https://github.com/dcarp/protobuf-d.git

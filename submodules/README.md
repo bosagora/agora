@@ -18,6 +18,7 @@ This data can also be gathered by running `git submodules`.
 | memutils         | 0.4.13       |              |          |
 | mir-linux-kernel | 1.0.1        |              |          |
 | openssl          | 1.1.6+1.0.1g |              |          |
+| protobuf-d       | a89aa09      |              |          |
 | stdx-allocator   | 2.77.5       |              |          |
 | taggedalgebraic  | 0.11.4       |              |          |
 | tinyendian       | 0.2.0        |              |          |
