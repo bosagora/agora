@@ -55,16 +55,30 @@ private struct AmountFmt
 
     public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
     {
-        formattedWrite(sink, "%,d.%,.8d", this.value.integral(), this.value.decimal());
+        formattedWrite(sink, "%,d", this.value.integral());
+        if (auto dec = this.value.decimal())
+        {
+            sink(".");
+            size_t mask = 1_000_000;
+            while (dec)
+            {
+                if (mask == 100_000 || mask == 100)
+                    sink(",");
+                sink("0123456789"[dec / mask .. (dec / mask) + 1]);
+                dec %= mask;
+                mask /= 10;
+            }
+        }
     }
 }
 
 @safe unittest
 {
     immutable one = Amount(1);
-    assert(format("%s", AmountFmt(Amount.MaxUnitSupply)) == "500,000,000.0000,000");
-    assert(format("%s", AmountFmt(one)) == "0.0000,001");
-    assert(format("%s", AmountFmt(Amount.UnitPerCoin)) == "1.0000,000");
+    assert(format("%s", AmountFmt(Amount.MaxUnitSupply)) == "500,000,000");
+    assert(format("%s", AmountFmt(one)) == "0.0,000,001", format("%s", AmountFmt(one)));
+    assert(format("%s", AmountFmt(Amount.UnitPerCoin)) == "1");
+    assert(format("%s", AmountFmt(Amount(50_000))) == "0.0,05");
 }
 
 /// Formatting struct for `Hash` and `Signature`
@@ -189,7 +203,7 @@ private struct OutputFmt
 @safe unittest
 {
     Output output;
-    assert(format("%s", OutputFmt(output)) == "GAAA...AWHF(0.0000,000)");
+    assert(format("%s", OutputFmt(output)) == "GAAA...AWHF(0)");
 }
 
 /// Format a whole transaction
@@ -222,9 +236,9 @@ private struct TransactionFmt
 {
     import agora.consensus.Genesis;
     static immutable ResultStr = `Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000)`;
+Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
 
     assert(ResultStr == format("%s", TransactionFmt(GenesisTransaction)));
 }
@@ -278,9 +292,9 @@ private struct BlockFmt
     import agora.consensus.Genesis;
     static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x893a...d115, Transactions: 1
 Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000)`;
+Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
     assert(ResultStr == format("%s", BlockFmt(GenesisBlock)));
 }
 
@@ -291,13 +305,13 @@ GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000)`;
 
     static immutable ResultStr = `Height: 1, Prev: 0xf4ec...dcba, Root: 0xd63e...0715, Transactions: 2
 Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000)
+Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)
 Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000),
-GCOQ...LRIJ(0.05,000,000), GCOQ...LRIJ(0.05,000,000)`;
+Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
+GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
 
     immutable MerkleRoot = hashMulti(
         GenesisBlock.header.merkle_root, GenesisBlock.header.merkle_root);
