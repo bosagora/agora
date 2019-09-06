@@ -155,6 +155,17 @@ unittest
 
 *******************************************************************************/
 
+/// The Agora Transaction Output Type constans
+
+/// General payment type
+public immutable int TXO_PAYMENT = 0;
+
+/// Freezing capability to UTXO type
+public immutable int TXO_FREEZE = 1;
+
+/// Unfreezing capability to UTXO type
+public immutable int TXO_UNFREEZE = 2;
+
 public struct Output
 {
     /// The monetary value of this output, in 1/10^7
@@ -164,6 +175,8 @@ public struct Output
     /// Note that in Bitcoin, this is an address (the double hash of a pubkey)
     public PublicKey address;
 
+    /// Transation Output Type
+    public uint type;
 
     /***************************************************************************
 
@@ -178,6 +191,7 @@ public struct Output
     {
         hashPart(this.value, dg);
         hashPart(this.address, dg);
+        hashPart(this.type, dg);
     }
 
     /***************************************************************************
@@ -193,6 +207,7 @@ public struct Output
     {
         serializePart(this.value, dg);
         serializePart(this.address, dg);
+        serializePart(this.type, dg);
     }
 
     /***************************************************************************
@@ -208,6 +223,7 @@ public struct Output
     {
         deserializePart(this.value, dg);
         this.address = PublicKey.fromBinary(dg);
+        deserializePart(this.type, dg);
     }
 }
 
