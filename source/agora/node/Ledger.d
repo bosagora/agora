@@ -73,6 +73,19 @@ public class Ledger
         // ensure latest checksum can be read
         if (!this.storage.readLastBlock(this.last_block))
             assert(0);
+
+        // need to regenerate the UTXO set, starting from the genesis block
+        if (this.utxo_set.length == 0)
+        {
+            Block block;
+            foreach (height; 0 .. this.last_block.header.height + 1)
+            {
+                if (!this.storage.readBlock(block, height))
+                    assert(0);
+
+                this.updateUTXOSet(block);
+            }
+        }
     }
 
     /***************************************************************************
@@ -148,18 +161,33 @@ public class Ledger
     {
         scope (failure) assert(0);
 
-        // add the new UTXOs
-        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx));
-
-        // remove the TXs from the Pool
-        block.txs.each!(tx => this.pool.remove(tx.hashFull()));
-
+        this.updateUTXOSet(block);
         if (!this.storage.saveBlock(block))
             assert(0);
 
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
             assert(0);
+    }
+
+    /***************************************************************************
+
+        Update the UTXO set based on the block's transactions
+
+        Params:
+            block = the block to update the UTXO set with
+
+    ***************************************************************************/
+
+    private void updateUTXOSet (const ref Block block) nothrow @safe
+    {
+        scope (failure) assert(0);
+
+        // add the new UTXOs
+        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx));
+
+        // remove the TXs from the Pool
+        block.txs.each!(tx => this.pool.remove(tx.hashFull()));
     }
 
     /***************************************************************************
@@ -486,4 +514,39 @@ unittest
 
     merkle_path = ledger.getMerklePath(1, Hash.init);
     assert(merkle_path.length == 0);
+}
+
+/// test that the UTXO set is rebuilt if it's empty when the block storage has blocks
+unittest
+{
+    import agora.common.crypto.Key;
+    import agora.common.Data;
+    import agora.common.Hash;
+
+    auto storage = new MemBlockStorage();
+    assert(storage.saveBlock(GenesisBlock));
+
+    auto gen_key = getGenesisKeyPair();
+    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto block = makeNewBlock(GenesisBlock, txs);
+    assert(storage.saveBlock(block));
+
+    txs = makeChainedTransactions(gen_key, txs, 1);
+    block = makeNewBlock(block, txs);
+    assert(storage.saveBlock(block));
+
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    scope ledger = new Ledger(pool, utxo_set, storage);
+
+    assert(utxo_set.length == 8);
+    auto finder = utxo_set.getUTXOFinder();
+    auto new_txs = makeChainedTransactions(gen_key, txs, 1);
+
+    assert(new_txs.length > 0);
+    Output _out;
+    new_txs.each!(tx => assert(finder(tx.inputs[0].previous, tx.inputs[0].index,
+        _out)));
 }
