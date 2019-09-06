@@ -141,7 +141,7 @@ public class TestAPIManager
 
     /***************************************************************************
 
-        Start each of the nodes
+        Asynchronously start each of the nodes
 
         Params:
             count = Expected number of nodes
@@ -150,7 +150,17 @@ public class TestAPIManager
 
     public void start ()
     {
-        this.apis.each!(a => a.start());
+        import std.concurrency;
+
+        __gshared RemoteAPI!TestAPI[] nodes;
+        static void runNode (size_t index)
+        {
+            nodes[index].start();
+        }
+
+        nodes = this.apis.values;
+        foreach (idx; 0 .. nodes.length)
+            spawn(&runNode, idx);
     }
 
     /***************************************************************************
@@ -195,7 +205,8 @@ public class TestAPIManager
         import std.stdio;
         import core.thread;
 
-        const attempts = 10;
+        // sleep 1000 times until 1 second is reached
+        const attempts = 1000;
 
         bool[PublicKey] fully_discovered;
 
@@ -217,7 +228,7 @@ public class TestAPIManager
                 break;
 
             // try again
-            auto sleep_time = 1.seconds;  // should be enough time
+            auto sleep_time = 10.msecs;
             writefln("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
                 fully_discovered.length, this.apis.length);
             Thread.sleep(sleep_time);
