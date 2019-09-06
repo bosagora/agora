@@ -63,6 +63,18 @@ public class UTXOSet
 
     /***************************************************************************
 
+        Returns:
+            the number of elements in the UTXO set
+
+    ***************************************************************************/
+
+    public size_t length () @safe
+    {
+        return this.utxo_db.length();
+    }
+
+    /***************************************************************************
+
         Add all of a transaction's outputs to the Utxo set,
         and remove the spent outputs in the transaction from the set.
 
@@ -203,6 +215,21 @@ private class UTXODB
     public void shutdown ()
     {
         this.db.close();
+    }
+
+    /***************************************************************************
+
+        Returns:
+            the number of elements in the UTXO set
+
+    ***************************************************************************/
+
+    public size_t length () @safe
+    {
+        return () @trusted {
+            return this.db.execute("SELECT count(*) FROM utxo_map")
+                .oneValue!size_t;
+        }();
     }
 
     /***************************************************************************
