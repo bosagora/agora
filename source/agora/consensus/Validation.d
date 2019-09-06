@@ -105,7 +105,7 @@ unittest
             Input(previousHash, 0)
         ],
         [
-            Output(Amount(50), key_pairs[1].address)
+            Output(Amount(50), key_pairs[1].address, TXO_PAYMENT)
         ]
     );
 
@@ -124,13 +124,13 @@ unittest
     // It is validated. (the sum of `Output` < the sum of `Input`)
     assert(secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
 
-    secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
+    secondTx.outputs ~= Output(Amount(50), key_pairs[2].address, TXO_PAYMENT);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
     assert(secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
 
-    secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
+    secondTx.outputs ~= Output(Amount(50), key_pairs[3].address, TXO_PAYMENT);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
@@ -161,7 +161,7 @@ unittest
     {
         inputs  : [Input(tx_1_hash, 0)],
         // oops
-        outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address)]
+        outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address, TXO_PAYMENT)]
     };
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
@@ -204,7 +204,7 @@ unittest
             Input(genesisHash, 0)
         ],
         [
-            Output(Amount(1_000), key_pairs[1].address)
+            Output(Amount(1_000), key_pairs[1].address, TXO_PAYMENT)
         ]
     );
 
@@ -220,7 +220,7 @@ unittest
             Input(tx1Hash, 0)
         ],
         [
-            Output(Amount(1_000), key_pairs[1].address)
+            Output(Amount(1_000), key_pairs[1].address, TXO_PAYMENT)
         ]
     );
 

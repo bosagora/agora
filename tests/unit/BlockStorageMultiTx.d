@@ -117,7 +117,7 @@ private Transaction[] makeChainedTransactions (KeyPair key_pair,
         Transaction tx =
         {
             [input],
-            [Output(AmountPerTx, key_pair.address)]  // send to the same address
+            [Output(AmountPerTx, key_pair.address, TXO_PAYMENT]  // send to the same address
         };
 
         auto signature = key_pair.secret.sign(hashFull(tx)[]);

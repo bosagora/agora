@@ -67,7 +67,7 @@ private void main ()
                 Input(gen_tx_hash, 0)
             ],
             [
-                Output(Amount(1_000), key_pairs[idx % 8].address)
+                Output(Amount(1_000), key_pairs[idx % 8].address, TXO_PAYMENT)
             ]
         );
         tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);

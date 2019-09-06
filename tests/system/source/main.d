@@ -53,7 +53,7 @@ void main ()
     {
         auto tx = Transaction(
             [Input(GenesisBlock.header.merkle_root, idx)],
-            [Output(GenesisTransaction.outputs[idx].value, kp.address)]
+            [Output(GenesisTransaction.outputs[idx].value, kp.address, TXO_PAYMENT)]
         );
 
         auto signature = kp.secret.sign(hashFull(tx)[]);

@@ -54,14 +54,14 @@ public immutable Transaction GenesisTransaction =
 {
     inputs: [ Input.init ],
     outputs: [
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
+        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress, TXO_PAYMENT),
     ],
 };
 

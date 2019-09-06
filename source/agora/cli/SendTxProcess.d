@@ -192,7 +192,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
     Transaction tx =
     {
         [Input(Hash.fromString(op.txhash), op.index)],
-        [Output(Amount(op.amount), PublicKey.fromString(op.address))]
+        [Output(Amount(op.amount), PublicKey.fromString(op.address), TXO_PAYMENT)]
     };
 
     auto signature = key_pair.secret.sign(hashFull(tx)[]);
@@ -317,7 +317,7 @@ unittest
     Transaction tx =
     {
         [Input(Hash.fromString(txhash), index)],
-        [Output(Amount(amount), PublicKey.fromString(address))]
+        [Output(Amount(amount), PublicKey.fromString(address), TXO_PAYMENT)]
     };
     Hash send_txhash = hashFull(tx);
     auto key_pair = KeyPair.fromSeed(Seed.fromString(key));

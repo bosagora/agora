@@ -322,7 +322,7 @@ public Transaction newCoinbaseTX (PublicKey address, Amount value = Amount(0))
 {
     return Transaction(
         [Input(Hash.init, 0)],
-        [Output(value, address)]
+        [Output(value, address, TXO_PAYMENT)]
     );
 }
 
@@ -388,7 +388,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
         Transaction tx =
         {
             [input],
-            [Output(AmountPerTx, key_pair.address)]  // send to the same address
+            [Output(AmountPerTx, key_pair.address, TXO_PAYMENT)]  // send to the same address
         };
 
         auto signature = key_pair.secret.sign(hashFull(tx)[]);
