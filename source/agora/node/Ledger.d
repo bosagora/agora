@@ -62,13 +62,7 @@ public class Ledger
         this.pool = pool;
         this.utxo_set = utxo_set;
         this.storage = storage;
-
-        // add the genesis block and update the utxo set
-        if (this.storage.isEmpty())
-        {
-            this.addValidatedBlock(GenesisBlock);
-            assert(!this.storage.isEmpty());  // sanity check
-        }
+        this.storage.load();
 
         // ensure latest checksum can be read
         if (!this.storage.readLastBlock(this.last_block))
@@ -524,8 +518,6 @@ unittest
     import agora.common.Hash;
 
     auto storage = new MemBlockStorage();
-    assert(storage.saveBlock(GenesisBlock));
-
     auto gen_key = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key, null, 1);
     auto block = makeNewBlock(GenesisBlock, txs);

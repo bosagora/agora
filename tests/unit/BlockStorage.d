@@ -108,6 +108,7 @@ private void main ()
 
     //  Verify index data that is already stored.
     BlockStorage other = new BlockStorage(path);
+    other.load();
 
     foreach (height; iota(count).randomCover(rnd))
     {

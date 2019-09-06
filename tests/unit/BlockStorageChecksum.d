@@ -51,7 +51,6 @@ private void writeBlocks (string path)
 
     const(Block)[] blocks;
     blocks ~= GenesisBlock;
-    storage.saveBlock(blocks[$ - 1]);
 
     foreach (block_idx; 0 .. BlockCount)
     {
