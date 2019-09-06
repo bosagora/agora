@@ -19,8 +19,11 @@ import agora.common.crypto.Key;
 import agora.common.Data;
 import agora.common.Hash;
 import agora.node.API;
+import agora.utils.PrettyPrinter;
 
 import vibe.web.rest;
+
+import std.algorithm;
 import std.stdio;
 import core.thread;
 import core.time;
@@ -33,51 +36,65 @@ private immutable Addrs = [
 
 void main ()
 {
-    API[3] clients;
-    foreach (idx, addr; Addrs)
-        clients[idx] = new RestInterfaceClient!API(addr);
-
-    foreach (idx, ref client; clients)
     {
-        writefln("[%s] getPublicKey: %s", idx, client.getPublicKey());
-        writefln("[%s] getNetworkInfo: %s", idx, client.getNetworkInfo());
-        const height = client.getBlockHeight();
-        writefln("[%s] getBlockHeight: %s", idx, height);
-        writeln("----------------------------------------");
-        assert(height == 0);
+        API[3] clients;
+        foreach (idx, addr; Addrs)
+            clients[idx] = new RestInterfaceClient!API(addr);
+
+        foreach (idx, ref client; clients)
+        {
+            writefln("[%s] getPublicKey: %s", idx, client.getPublicKey());
+            writefln("[%s] getNetworkInfo: %s", idx, client.getNetworkInfo());
+            const height = client.getBlockHeight();
+            writefln("[%s] getBlockHeight: %s", idx, height);
+            writeln("----------------------------------------");
+            assert(height == 0);
+        }
+
+        auto kp = getGenesisKeyPair();
+
+        foreach (idx; 0 .. 8)
+        {
+            Transaction tx = {
+                type: TxType.Payment,
+                inputs: [Input(GenesisBlock.header.merkle_root, idx)],
+                outputs: [Output(GenesisTransaction.outputs[idx].value, kp.address)]
+            };
+
+            auto signature = kp.secret.sign(hashFull(tx)[]);
+            tx.inputs[0].signature = signature;
+            clients[0].putTransaction(tx);
+        }
     }
 
-    auto kp = getGenesisKeyPair();
-
-    foreach (idx; 0 .. 8)
     {
-        auto tx = Transaction(
-            TxType.Payment,
-            [Input(GenesisBlock.header.merkle_root, idx)],
-            [Output(GenesisTransaction.outputs[idx].value, kp.address)]
-        );
+        // TODO: This is a hack because of issue #312
+        // https://github.com/bpfkorea/agora/issues/312
+        API[3] clients;
+        foreach (idx, addr; Addrs)
+            clients[idx] = new RestInterfaceClient!API(addr);
 
-        auto signature = kp.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        clients[0].putTransaction(tx);
-    }
-
-    Thread.sleep(1.seconds);
-
-    Hash blockHash;
-    foreach (idx, ref client; clients)
-    {
-        const height = client.getBlockHeight();
-        const blocks = client.getBlocksFrom(0, 42);
-        writefln("[%s] getBlockHeight: %s", idx, height);
-        writefln("[%s] getBlocksFrom: %s", idx, blocks);
-        writeln("----------------------------------------");
-        assert(height == 1);
-        assert(blocks.length == 2);
-        if (idx != 0)
-            assert(blockHash == hashFull(blocks[1].header));
-        else
-            blockHash = hashFull(blocks[1].header);
+        Hash blockHash;
+        size_t times; // Number of times we slept for 50 msecs
+        foreach (idx, ref client; clients)
+        {
+        Start:
+            Thread.sleep(50.msecs);
+            const height = client.getBlockHeight();
+            // Retry if we're too early
+            if (height < 1 && times++ < 100) goto Start;
+            const blocks = client.getBlocksFrom(0, 42);
+            writefln("[%s] getBlockHeight: %s", idx, height);
+            writefln("[%s] getBlocksFrom: %s", idx, blocks.map!prettify);
+            writeln("----------------------------------------");
+            assert(height == 1);
+            assert(blocks.length == 2);
+            if (idx != 0)
+                assert(blockHash == hashFull(blocks[1].header));
+            else
+                blockHash = hashFull(blocks[1].header);
+            times = 0;
+        }
     }
 }
 

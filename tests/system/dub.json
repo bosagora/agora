@@ -16,7 +16,8 @@
         "../../source/agora/consensus/data/Block.d",
         "../../source/agora/consensus/data/Transaction.d",
         "../../source/agora/consensus/Genesis.d",
-        "../../source/agora/node/API.d"
+        "../../source/agora/node/API.d",
+        "../../source/agora/utils/PrettyPrinter.d",
     ],
     "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/*.d" ],
 
