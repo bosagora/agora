@@ -44,10 +44,10 @@ private void main ()
 
     BlockStorage.removeIndexFile(path);
     BlockStorage storage = new BlockStorage(path);
+    storage.load();
     const(Block)[] blocks;
 
     blocks ~= GenesisBlock;
-    storage.saveBlock(blocks[$ - 1]);
 
     // We can use a random keypair because blocks are not validated
     auto gen_key_pair = KeyPair.random();

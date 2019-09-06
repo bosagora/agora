@@ -46,12 +46,15 @@ public interface IBlockStorage
 
     /***************************************************************************
 
-        Returns:
-            true if the storage is empty (height index was not loaded)
+        Load the block storage. If there was nothing to load,
+        a Genesis block will be added to the ledger. In this case the calling
+        code should treat the block as new and update the set of UTXOs, etc.
+
+        If the blockchain data is corrupt the application will be halted.
 
     ***************************************************************************/
 
-    public bool isEmpty ();
+    public void load ();
 
     /***************************************************************************
 
@@ -185,24 +188,30 @@ public class BlockStorage : IBlockStorage
 
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
+    }
+
+    /***************************************************************************
+
+        Load the blockchain from the storage
+
+    ***************************************************************************/
+
+    public void load ()
+    {
+        scope (failure) assert(0);
 
         if (!this.path.exists)
             mkdirRecurse(this.path);
 
         if (!this.loadAllIndexes())
             assert(0);
-    }
 
-    /***************************************************************************
-
-        Returns:
-            true if the storage is empty (height index was not loaded)
-
-    ***************************************************************************/
-
-    public bool isEmpty ()
-    {
-        return this.height_idx.length == 0;
+        // Add Genesis if the storage is empty
+        if (this.height_idx.length == 0)
+        {
+            if (!this.saveBlock(GenesisBlock))
+                assert(0);
+        }
     }
 
     /***************************************************************************
@@ -958,19 +967,11 @@ public class MemBlockStorage : IBlockStorage
     {
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
+        this.saveBlock(GenesisBlock);
     }
 
-    /***************************************************************************
-
-        Returns:
-            true if the storage is empty (height index was not loaded)
-
-    ***************************************************************************/
-
-    public bool isEmpty ()
-    {
-        return this.height_idx.length == 0;
-    }
+    /// No-op: MemBlockStorage does no I/O
+    public override void load () { }
 
     /***************************************************************************
 
