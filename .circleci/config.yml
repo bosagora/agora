@@ -1,16 +1,11 @@
-version: 2
+version: 2.1
 
 jobs:
   # Build the Docker image
   build:
-    docker:
-      - image: bpfk/circleci:latest
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Install dependencies
-          command: apk add --no-cache bash docker git openssh-client
       - checkout
       - run:
           name: Checkout merge commit
@@ -29,5 +24,25 @@ jobs:
             git submodule sync
             git submodule update --init
       - run:
+          name: Install DMD
+          command: |
+            mkdir -p $HOME/dlang && wget https://dlang.org/install.sh -O $HOME/dlang/install.sh
+            chmod +x $HOME/dlang/install.sh
+            $HOME/dlang/install.sh install dmd-2.088.0
+      - run:
+          name: Install libsodium
+          command: |
+            pushd $HOME
+            wget https://github.com/jedisct1/libsodium/archive/1.0.18-RELEASE.tar.gz
+            tar xvfz 1.0.18-RELEASE.tar.gz
+            cd libsodium-1.0.18-RELEASE
+            ./configure
+            make -j4
+            sudo make install
+            sudo ldconfig # Refresh cache
+            popd
+      - run:
           name: Build & test docker image
-          command: ci/system_integration_test.d
+          command: |
+            source $HOME/dlang/dmd-2.088.0/activate
+            ci/system_integration_test.d

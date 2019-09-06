@@ -12,6 +12,9 @@ import std.stdio;
 
 /// Root of the repository
 immutable RootPath = __FILE_FULL_PATH__.dirName.dirName;
+immutable IntegrationPath = RootPath.buildPath("tests").buildPath("system");
+/// Configuration file for docker-compose
+immutable ComposeFile = IntegrationPath.buildPath("docker-compose.yml");
 
 /+ ***************************** Commands to run **************************** +/
 /// A simple test to ensure that the container works correctly,
@@ -19,11 +22,38 @@ immutable RootPath = __FILE_FULL_PATH__.dirName.dirName;
 immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
                        "-t", "agora", RootPath, ];
 immutable TestContainer = [ "docker", "run", "agora", "--help", ];
+immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", "-d", ];
+immutable DockerComposeDown = [ "docker-compose", "-f", ComposeFile, "down", ];
+immutable DockerComposeLogs = [ "docker-compose", "-f", ComposeFile, "logs", "-t", ];
+immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, ];
+immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
+                      IntegrationPath.buildPath("node/1/.cache/"),
+                      IntegrationPath.buildPath("node/2/.cache/")];
 
-private int main ()
+private int main (string[] args)
 {
-    runCmd(BuildImg);
+    // If the user pass `nobuild` as first argument, skip docker image build,
+    // which is the most expensive operation this script performs
+    if (args.length < 2 || args[1] != "nobuild")
+        runCmd(BuildImg);
+
+    // Simple sanity test
     runCmd(TestContainer);
+
+    // First make sure that there we start from a clean slate,
+    // as the docker-compose bind volumes
+    runCmd(Cleanup);
+
+    // Now run the tests
+    runCmd(DockerComposeUp);
+    scope (exit) runCmd(DockerComposeDown);
+    scope (failure)
+    {
+        runCmd(DockerComposeLogs ~ "node-0");
+        runCmd(DockerComposeLogs ~ "node-1");
+        runCmd(DockerComposeLogs ~ "node-2");
+    }
+    runCmd(RunIntegrationTests);
 
     return 0;
 }
