@@ -32,10 +32,10 @@ public alias APIMaker = API delegate (string address);
 private struct SendTxOption
 {
     /// IP address of node
-    public string host;
+    public string host = "localhost";
 
     /// Port of node
-    public ushort port;
+    public ushort port = 2826;
 
     /// Hash of the previous transaction
     public string txhash;
@@ -62,11 +62,11 @@ public GetoptResult parseSendTxOption (ref SendTxOption op, string[] args)
     return getopt(
         args,
         "ip|i",
-            "IP address of node",
+            "IP address of node (default: localhost)",
             &op.host,
 
         "port|p",
-            "Port of node",
+            "Port of node (default: 2826)",
             &op.port,
 
         "txhash|t",
@@ -148,12 +148,6 @@ public int sendTxProcess (string[] args, ref string[] outputs,
     }
 
     bool isValid = true;
-
-    if (op.host == "")
-        op.host = "localhost";
-
-    if (op.port == 0)
-        op.port = 2826;
 
     if (op.txhash.length == 0)
     {
