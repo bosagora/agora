@@ -204,6 +204,7 @@ public class TestAPIManager
     {
         import std.stdio;
         import core.thread;
+        import vibe.core.log;
 
         // sleep 1000 times until 1 second is reached
         const attempts = 1000;
@@ -229,10 +230,13 @@ public class TestAPIManager
 
             // try again
             auto sleep_time = 10.msecs;
-            writefln("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
+            logInfo("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
                 fully_discovered.length, this.apis.length);
             Thread.sleep(sleep_time);
         }
+
+        logInfo("Discovered %s/%s nodes", fully_discovered.length,
+            this.apis.length);
 
         return fully_discovered.byKey.array;
     }
