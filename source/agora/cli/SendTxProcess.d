@@ -99,7 +99,7 @@ public GetoptResult parseSendTxOption (ref SendTxOption op, string[] args)
 /// Print help
 public void printSendTxHelp (ref string[] outputs)
 {
-    outputs ~= "usage: agora-cli sendtx --ip --port --txhash --index --amount --dest --key --dump";
+    outputs ~= "usage: agora-cli sendtx [--dump] [--ip addr] [--port port] --txhash --index --amount --dest --key";
     outputs ~= "";
     outputs ~= "   sendtx      Send a transaction to node";
     outputs ~= "";
