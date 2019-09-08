@@ -18,10 +18,9 @@ module agora.common.Config;
 import agora.common.BanManager;
 import agora.common.crypto.Key;
 import agora.common.Set;
+import agora.utils.Log;
 
 import dyaml.node;
-
-import vibe.core.log;
 
 import std.algorithm;
 import std.conv;
@@ -150,7 +149,7 @@ public struct LoggingConfig
         "Type must be shareable accross threads");
 
     /// The logging level
-    LogLevel log_level = LogLevel.none;
+    LogLevel log_level = LogLevel.None;
 }
 
 /// Parse the command-line arguments and return a GetoptResult

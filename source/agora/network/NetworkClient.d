@@ -21,8 +21,7 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Transaction;
 import agora.node.API;
-
-import vibe.core.log;
+import agora.utils.Log;
 
 import std.algorithm;
 import std.array;
@@ -30,6 +29,8 @@ import std.format;
 import std.random;
 
 import core.time;
+
+mixin AddLogger!();
 
 /// Used for communicating with a remote node
 class NetworkClient
@@ -146,7 +147,7 @@ class NetworkClient
         this.taskman.runTask(
         {
             // if the node already has this tx, don't send it
-            if (this.attemptRequest!(LogLevel.debug_)(
+            if (this.attemptRequest!(LogLevel.Trace)(
                 this.api.hasTransactionHash(tx_hash), null))
                 return;
 
@@ -214,7 +215,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    private T attemptRequest (LogLevel log_level = LogLevel.debug_, T)(
+    private T attemptRequest (LogLevel log_level = LogLevel.Trace, T)(
         lazy T dg, Exception ex)
     {
         foreach (idx; 0 .. this.max_retries)
@@ -225,7 +226,7 @@ class NetworkClient
             }
             catch (Exception ex)
             {
-                log!log_level(ex.message);
+                log.format(log_level, ex.message);
                 if (idx + 1 < this.max_retries) // wait after each failure except last
                     this.taskman.wait(this.retry_delay);
             }

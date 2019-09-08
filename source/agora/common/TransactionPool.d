@@ -19,19 +19,20 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Transaction;
+import agora.utils.Log;
 
 import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
 
-import vibe.core.log;
-
 import std.algorithm;
 import std.conv : to;
 import std.exception : collectException, enforce;
 import std.file : exists;
 import std.range;
+
+mixin AddLogger!();
 
 /// Ditto
 public class TransactionPool
@@ -68,13 +69,13 @@ public class TransactionPool
     {
         const db_exists = db_path.exists;
         if (db_exists)
-            logInfo("Loading database from: %s", db_path);
+            log.info("Loading database from: {}", db_path);
 
         // note: can fail. we may want to just recover txes from the network instead.
         this.db = Database(db_path);
 
         if (db_exists)
-            logInfo("Loaded database from: %s", db_path);
+            log.info("Loaded database from: {}", db_path);
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
@@ -97,7 +98,7 @@ public class TransactionPool
     {
         try
         {
-            logError("SQLite error: (%s) %s", code, msg.to!string);
+            log.error("SQLite error: ({}) {}", code, msg.to!string);
         }
         catch (Exception ex)
         {

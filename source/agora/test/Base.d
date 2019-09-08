@@ -411,11 +411,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 {
     import std.algorithm;
     import std.array;
-    import vibe.core.log;
+    import ocean.util.log.Logger;
 
     // by default emit only errors during unittests.
     // can be re-set by calling code.
-    setLogLevel(LogLevel.error);
+    Log.root.level(Log.root.Level.Error, true);
 
     // We know we're in the main thread
     // Vibe.d messes with the scheduler - reset it

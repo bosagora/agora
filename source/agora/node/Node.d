@@ -26,17 +26,19 @@ import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
+import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import agora.node.GossipProtocol;
 
-import vibe.core.log;
 import vibe.data.json;
 import vibe.web.rest : RestException;
 
 import std.algorithm;
 import std.exception;
 import std.path : buildPath;
+
+mixin AddLogger!();
 
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
 private enum MaxBatchBlocksSent = 1000;
@@ -98,7 +100,7 @@ public class Node : API
     /// The first task method, loading from disk, node discovery, etc
     public void start ()
     {
-        logInfo("Doing network discovery..");
+        log.info("Doing network discovery..");
         this.network.discover();
 
         this.network.retrieveLatestBlocks(this.ledger);
@@ -116,7 +118,7 @@ public class Node : API
 
     public void shutdown ()
     {
-        logInfo("Shutting down..");
+        log.info("Shutting down..");
         this.network.dumpMetadata();
         this.pool.shutdown();
         this.utxo_set.shutdown();
@@ -148,7 +150,7 @@ public class Node : API
 
     public override void putTransaction (Transaction tx) @safe
     {
-        logDebug("Receveid Transaction: %s", prettify(tx));
+        log.trace("Receveid Transaction: {}", prettify(tx));
         this.gossip.receiveTransaction(tx);
     }
 

@@ -19,12 +19,13 @@ import agora.common.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
 import agora.consensus.Validation;
+import agora.utils.Log;
 
 import d2sqlite3.database;
 
-import vibe.core.log;
-
 import std.file;
+
+mixin AddLogger!();
 
 /// ditto
 public class UTXOSet
@@ -188,7 +189,7 @@ private class UTXODB
     {
         const db_exists = utxo_db_path.exists;
         if (db_exists)
-            logInfo("Loading UTXO database from: %s", utxo_db_path);
+            log.info("Loading UTXO database from: {}", utxo_db_path);
 
         // todo: can fail. we would have to recover by either:
         // A) reconstructing it from our blockchain storage
@@ -196,7 +197,7 @@ private class UTXODB
         this.db = Database(utxo_db_path);
 
         if (db_exists)
-            logInfo("Loaded database from: %s", utxo_db_path);
+            log.info("Loaded database from: {}", utxo_db_path);
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~

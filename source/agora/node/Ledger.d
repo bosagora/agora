@@ -24,11 +24,12 @@ import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.API;
 import agora.node.BlockStorage;
+import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
-import vibe.core.log;
-
 import std.algorithm;
+
+mixin AddLogger!();
 
 /// Ditto
 public class Ledger
@@ -99,9 +100,11 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
+        scope (failure) assert(0);
+
         if (auto fail_reason = this.validateBlock(block))
         {
-            logDebug("Rejected block: %s: %s", fail_reason, block.prettify());
+            log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
             return false;
         }
 
@@ -131,7 +134,7 @@ public class Ledger
     {
         if (!this.isValidTransaction(tx))
         {
-            logInfo("Rejected tx: %s", tx);
+            log.info("Rejected tx: {}", tx);
             return false;
         }
 
@@ -211,7 +214,7 @@ public class Ledger
             }
             else
             {
-                logDebug("Rejected double-spend tx: %s", tx);
+                log.trace("Rejected double-spend tx: {}", tx);
             }
 
             if (txs.length >= Block.TxsInBlock)
