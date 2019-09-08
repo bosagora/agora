@@ -21,12 +21,14 @@ module agora.node.main;
 import agora.common.Config;
 import agora.network.NetworkManager;
 import agora.node.Node;
+import agora.utils.Log;
 
 import vibe.core.core;
-import vibe.core.log;
 import vibe.http.router;
 import vibe.http.server;
 import vibe.web.rest;
+
+import ocean.util.log.Logger;
 
 import std.file;
 import std.getopt;
@@ -42,6 +44,8 @@ shared static this ()
     import agora.common.TransactionPool;
     TransactionPool.initialize();
 }
+
+mixin AddLogger!();
 
 /// Application entry point
 private int main (string[] args)
@@ -72,8 +76,8 @@ private int main (string[] args)
             return 0;
         }
 
-        setLogLevel(config.logging.log_level);
-        logTrace("Config is: %s", config);
+        Log.root.level(config.logging.log_level, true);
+        log.trace("Config is: {}", config);
 
         auto settings = new HTTPServerSettings(config.node.address);
         settings.port = config.node.port;
@@ -96,7 +100,7 @@ private int main (string[] args)
         router.registerRestInterface(node);
         runTask({ node.start(); });
 
-        logInfo("About to listen to HTTP: %s", settings.port);
+        log.info("About to listen to HTTP: {}", settings.port);
         listenHTTP(settings, router);
 
         return runEventLoop();

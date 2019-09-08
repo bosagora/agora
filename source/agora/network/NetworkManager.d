@@ -34,8 +34,8 @@ import agora.consensus.data.Transaction;
 import agora.network.NetworkClient;
 import agora.node.API;
 import agora.node.Ledger;
+import agora.utils.Log;
 
-import vibe.core.log;
 import vibe.web.rest;
 
 import std.algorithm;
@@ -47,6 +47,7 @@ import std.random;
 import core.stdc.time;
 import core.time;
 
+mixin AddLogger!();
 
 /// Ditto
 public class NetworkManager
@@ -122,7 +123,7 @@ public class NetworkManager
                 this.addAddresses(resolveDNSSeeds(this.dns_seeds));
         }
 
-        logInfo("Discovering from %s", this.todo_addresses.byKey());
+        log.info("Discovering from {}", this.todo_addresses.byKey());
 
         while (!this.minPeersConnected())
         {
@@ -130,7 +131,7 @@ public class NetworkManager
             this.taskman.wait(this.node_config.retry_delay.msecs);
         }
 
-        logInfo("Discovery reached. %s peers connected.", this.peers.length);
+        log.info("Discovery reached. {} peers connected.", this.peers.length);
 
         // the rest can be done asynchronously as we can already
         // start validating and voting on the blockchain
@@ -252,13 +253,13 @@ public class NetworkManager
             if (block_height > pair.height)
                 continue;  // this node does not have newer blocks than us
 
-            logInfo("Retrieving latest blocks from %s..", pair.client.address);
+            log.info("Retrieving latest blocks from {}..", pair.client.address);
             const MaxBlocks = 1024;
 
             do
             {
                 auto blocks = pair.client.getBlocksFrom(block_height, MaxBlocks);
-                logInfo("Received blocks [%s..%s] out of %s..", block_height,
+                log.info("Received blocks [{}..{}] out of {}..", block_height,
                     block_height + blocks.length, pair.height + 1);  // genesis block
 
                 // one or more blocks were rejected, stop retrieval from node
@@ -271,7 +272,8 @@ public class NetworkManager
         }
         catch (Exception ex)
         {
-            logError("Couldn't retrieve blocks: %s. Will try again later..",
+            scope (failure) assert(0);
+            log.error("Couldn't retrieve blocks: {}. Will try again later..",
                 ex.message);
         }
     }
@@ -293,7 +295,7 @@ public class NetworkManager
             return;
         }
 
-        logInfo("Establishing connection with %s...", address);
+        log.info("Establishing connection with {}...", address);
         auto node = new NetworkClient(this.taskman, this.banman, address,
             this.getClient(address, this.node_config.timeout.msecs),
             this.node_config.retry_delay.msecs,
@@ -314,7 +316,7 @@ public class NetworkManager
                 {
                     this.connecting_addresses.remove(node.address);
                     this.todo_addresses.put(node.address);  // try later
-                    logInfo("Handshake with node %s failed: %s. Node banned until %s",
+                    log.info("Handshake with node {} failed: {}. Node banned until {}",
                         node.address, ex.message, this.banman.getUnbanTime(node.address));
                     return;
                 }
@@ -335,7 +337,7 @@ public class NetworkManager
 
                 // if it's incomplete give the client some time to connect
                 // with other peers and try again later
-                logInfo("[%s] (%s): Peer info is incomplete. Retrying in %s..",
+                log.info("[{}] ({}): Peer info is incomplete. Retrying in {}..",
                     node.address, node.key, this.node_config.retry_delay);
                 this.taskman.wait(this.node_config.retry_delay.msecs);
             }
@@ -346,8 +348,8 @@ public class NetworkManager
                 {
                     this.connecting_addresses.remove(node.address);
                     this.todo_addresses.put(node.address);  // try later
-                    logInfo("Retrieval of peers from node %s failed: %s. " ~
-                        "Node banned until %s", node.address, ex.message,
+                    log.info("Retrieval of peers from node {} failed: {}. " ~
+                        "Node banned until {}", node.address, ex.message,
                         this.banman.getUnbanTime(node.address));
                     return;
                 }
@@ -362,7 +364,7 @@ public class NetworkManager
         if (this.peerLimitReached())
             return;
 
-        logInfo("Established new connection with peer: %s", node.key);
+        log.info("Established new connection with peer: {}", node.key);
         this.peers[node.key] = node;
         this.metadata.peers.put(node.address);
     }
@@ -394,7 +396,7 @@ public class NetworkManager
 
         auto random_addresses = this.todo_addresses.pickRandom();
 
-        logInfo("Connecting to next set of addresses: %s",
+        log.info("Connecting to next set of addresses: {}",
             random_addresses);
 
         foreach (address; random_addresses)
@@ -476,7 +478,7 @@ public class NetworkManager
         {
             if (this.banman.isBanned(node.address))
             {
-                logTrace("Not sending to %s as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned", node.address);
                 continue;
             }
 
@@ -508,33 +510,33 @@ private Set!Address resolveDNSSeeds (in string[] dns_seeds)
     foreach (host; dns_seeds)
     try
     {
-        logInfo("DNS: contacting seed '%s'..", host);
+        log.info("DNS: contacting seed '{}'..", host);
         foreach (addr_info; getAddressInfo(host))
         {
-            logTrace("DNS: checking address %s", addr_info);
+            log.trace("DNS: checking address {}", addr_info);
             if (addr_info.family != AddressFamily.INET &&
                 addr_info.family != AddressFamily.INET6)
             {
-                logTrace("DNS: rejected non-IP family %s", addr_info.family);
+                log.trace("DNS: rejected non-IP family {}", addr_info.family);
                 continue;
             }
 
             // we only support TCP for now
             if (addr_info.protocol != ProtocolType.TCP)
             {
-                logTrace("DNS: rejected non-TCP node %s", addr_info);
+                log.trace("DNS: rejected non-TCP node {}", addr_info);
                 continue;
             }
 
             // if the port is set to zero, assume default Boa port
             auto ip = addr_info.address.to!string.replace(":0", ":2826");
-            logInfo("DNS: accepted IP %s", ip);
+            log.info("DNS: accepted IP {}", ip);
             resolved_ips.put(ip);
         }
     }
     catch (Exception ex)
     {
-        logError("Error contacting DNS seed: %s", ex.message);
+        log.error("Error contacting DNS seed: {}", ex.message);
     }
 
     return resolved_ips;

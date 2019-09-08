@@ -15,11 +15,12 @@
 module agora.common.BanManager;
 
 import agora.common.Data;
-
-import vibe.core.log;
+import agora.utils.Log;
 
 import core.stdc.stdlib;
 import core.stdc.time;
+
+mixin AddLogger!();
 
 /// ditto
 public class BanManager
@@ -135,7 +136,8 @@ public class BanManager
 
     public void banUntil (Address address, time_t banned_until) @safe nothrow
     {
-        logTrace("BanManager: Address %s banned until %s", address, banned_until);
+        scope (failure) assert(0);
+        log.trace("BanManager: Address {} banned until {}", address, banned_until);
         this.get(address).banned_until = banned_until;
     }
 
