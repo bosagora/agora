@@ -257,7 +257,6 @@ private Config parseConfigFileImpl (CommandLine cmdln)
         = root["logging"]["level"].as!string.to!LogLevel;
 
     enforce(conf.quorums.length != 0);
-    logInfo("Quorum set: %s", conf.quorums);
 
     return conf;
 }
