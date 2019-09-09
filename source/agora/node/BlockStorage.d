@@ -251,7 +251,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public string getFileName (size_t index) @safe
+    private string getFileName (size_t index) @safe
     {
         return buildPath(this.root_path, format("B%012d.dat", index));
     }
@@ -306,11 +306,12 @@ public class BlockStorage : IBlockStorage
             }
 
             this.file_index = findex;
-            bool file_exist = std.file.exists(this.getFileName(this.file_index));
+            const file_name = this.getFileName(this.file_index);
+            bool file_exist = std.file.exists(file_name);
 
             this.file =
                 new MmFile(
-                    this.getFileName(this.file_index),
+                    file_name,
                     MmFile.Mode.readWrite,
                     MapSize,
                     null
