@@ -51,6 +51,7 @@ PUSHBACKINST1(unsigned char)
 PUSHBACKINST1(xvector<unsigned char>)
 
 PUSHBACKINST1(PublicKey)
+PUSHBACKINST1(SCPQuorumSet)
 PUSHBACKINST3(PublicKey, std::vector)
 PUSHBACKINST3(SCPEnvelope, std::vector)
 PUSHBACKINST3(SCPQuorumSet, std::vector)

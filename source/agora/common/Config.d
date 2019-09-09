@@ -20,6 +20,9 @@ import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.utils.Log;
 
+import scpd.types.Stellar_SCP;
+import scpd.types.Utils;
+
 import dyaml.node;
 
 import std.algorithm;
@@ -544,4 +547,94 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
     throw new Exception(format(
         "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
         name, section, QualifiedName));
+}
+
+/*******************************************************************************
+
+    Convert a QuorumConfig to the SCPQorum which the SCP protocol understands
+
+    Params:
+        quorum_conf = the quorum config
+
+    Returns:
+        `SCPQuorumSet` instance
+
+*******************************************************************************/
+
+public SCPQuorumSet toSCPQuorumSet ( QuorumConfig quorum_conf )
+{
+    import std.conv;
+    import scpd.types.Stellar_types : Hash, NodeID;
+
+    SCPQuorumSet quorum;
+    quorum.threshold = quorum_conf.threshold.to!uint;
+
+    foreach (node; quorum_conf.nodes)
+    {
+        auto key = Hash(node[]);
+        auto pub_key = NodeID(key);
+        quorum.validators.push_back(pub_key);
+    }
+
+    foreach (sub_quorum; quorum_conf.quorums)
+    {
+        auto scp_quorum = toSCPQuorumSet(sub_quorum);
+        quorum.innerSets.push_back(scp_quorum);
+    }
+
+    return quorum;
+}
+
+/*******************************************************************************
+
+    Convert an SCPQorum to a QuorumConfig
+
+    Params:
+        scp_quorum = the quorum config
+
+    Returns:
+        `SCPQuorumSet` instance
+
+*******************************************************************************/
+
+public QuorumConfig toQuorumConfig ( in SCPQuorumSet scp_quorum )
+{
+    import std.conv;
+    import scpd.types.Stellar_types : Hash, NodeID;
+
+    PublicKey[] nodes;
+
+    foreach (node; scp_quorum.validators.constIterator)
+        nodes ~= PublicKey(node[]);
+
+    QuorumConfig[] quorums;
+    foreach (sub_quorum; scp_quorum.innerSets.constIterator)
+        quorums ~= toQuorumConfig(sub_quorum);
+
+    QuorumConfig quorum =
+    {
+        threshold : scp_quorum.threshold.to!uint,
+        nodes : assumeUnique(nodes),
+        quorums : assumeUnique(quorums),
+    };
+
+    return quorum;
+}
+
+///
+unittest
+{
+    auto quorum = QuorumConfig(2,
+        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
+         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+        [QuorumConfig(2,
+            [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
+             PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+            [QuorumConfig(2,
+                [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
+                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5"),
+                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])])]);
+
+    auto scp_quorum = toSCPQuorumSet(quorum);
+    assert(scp_quorum.toQuorumConfig() == quorum);
 }
