@@ -719,9 +719,9 @@ public class BlockStorage : IBlockStorage
             idx_file = File(file_name, "a+b");
             idx_file.seek(0, SEEK_END);
 
-            idx_file.writeSizeType(height);
+            serializePart(height, (scope v) => idx_file.rawWrite(v));
             idx_file.rawWrite(hash);
-            idx_file.writeSizeType(pos);
+            serializePart(pos, (scope v) => idx_file.rawWrite(v));
 
             idx_file.close();
 
@@ -906,21 +906,6 @@ public class BlockStorage : IBlockStorage
             return false;
         }
     }
-}
-
-/*******************************************************************************
-
-    Write type of `size_t` data to file
-
-    Params:
-        file = `File`
-        value = Value to write to file
-
-*******************************************************************************/
-
-public void writeSizeType (File file, size_t value) @trusted
-{
-    file.rawWrite((cast(const ubyte*)&value)[0 .. size_t.sizeof]);
 }
 
 /*******************************************************************************
