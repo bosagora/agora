@@ -853,7 +853,7 @@ public class BlockStorage : IBlockStorage
 
     *******************************************************************************/
 
-    private static ubyte[] makeChecksum (const ubyte[] data) @safe nothrow
+    private static ubyte[4] makeChecksum (const ubyte[] data) @safe nothrow
     out(result)
     {
         assert(result.length + DataSize <= MapSize,
@@ -863,11 +863,7 @@ public class BlockStorage : IBlockStorage
     {
         assert(data.length < 1 << 20,
             "Data length for checksum should not exceed 1MB");
-
-        scope crc32 = new CRC32Digest();
-        crc32.put(data);
-        static ubyte[4] buffer;
-        return () @trusted { return crc32.finish(buffer); }();
+        return crc32Of(data);
     }
 
     /***************************************************************************
@@ -915,7 +911,7 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            const ubyte[] checksum = makeChecksum(
+            const ubyte[4] checksum = makeChecksum(
                 cast(ubyte[])this.file[ChecksumSize .. MapSize]);
 
             foreach (idx, val; checksum)
