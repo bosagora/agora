@@ -101,6 +101,7 @@ unittest
 
     // Creates the second transaction.
     Transaction secondTx = Transaction(
+        TxType.Payment,
         [
             Input(previousHash, 0)
         ],
@@ -170,6 +171,7 @@ unittest
     // Creates the second transaction.
     Transaction tx_2 =
     {
+        TxType.Payment,
         inputs  : [Input(tx_1_hash, 0)],
         // oops
         outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address)]
@@ -216,6 +218,7 @@ unittest
 
     // Create the second transaction.
     Transaction tx1 = Transaction(
+        TxType.Payment,
         [
             Input(genesisHash, 0)
         ],
@@ -232,6 +235,7 @@ unittest
     assert(tx1.isValid(findUTXO), format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
+        TxType.Payment,
         [
             Input(tx1Hash, 0)
         ],

@@ -46,12 +46,13 @@ unittest
 
 ///
 private immutable Hash GenesisMerkleRoot =
-    Hash(`0x893abe59f6640fe10aae19682ba982276e78e155a13e7f3ab377f426330c4732`
-         ~ `b4d46a3a6c2a81719dc953dd4d92b493281f8f7a6cef38beca135563d0fdd115`);
+    Hash(`0xd04f8dd627ec5245129527b2327ad73d1157d483441a249d7eecd086ee1c4775`
+         ~ `3ad14d410f2bf128d8737366038c85d223e5701b73c7238089f52898ecd0e1b2`);
 
 /// The single transaction that are part of the genesis block
 public immutable Transaction GenesisTransaction =
 {
+    TxType.Payment,
     inputs: [ Input.init ],
     outputs: [
         Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),

@@ -52,6 +52,7 @@ void main ()
     foreach (idx; 0 .. 8)
     {
         auto tx = Transaction(
+            TxType.Payment,
             [Input(GenesisBlock.header.merkle_root, idx)],
             [Output(GenesisTransaction.outputs[idx].value, kp.address)]
         );

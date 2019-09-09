@@ -113,9 +113,9 @@ unittest
         BlockHeader header = { merkle_root : tx.hashFull() };
 
         auto hash = hashFull(header);
-        auto exp_hash = Hash("0xc45f765d063deece0348f9e7d47287fec5324395b1c" ~
-            "065cde457dbb3c809cbb680450e86ac86bac50ce0d5cd8b1f9b04b29c1b2e5" ~
-            "4cee5d6d5aaac38bb4dca3c");
+        auto exp_hash = Hash("0xc04f3226bdc07c6d3141e3ac14888cd3b4199d84877" ~
+            "e591927063af65e5f56b14f9236e764bacb980aed5acefb98981b221e5c99e" ~
+            "aaaf1100c87c250cec2f32c");
         assert(hash == exp_hash);
     }();
 }
@@ -396,7 +396,7 @@ unittest
     Hash last_hash = Hash.init;
     for (int idx = 0; idx < 8; idx++)
     {
-        tx = Transaction([Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
+        tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
         tx.inputs[0].signature = key_pairs[idx].secret.sign(last_hash[]);
         txs ~= tx;

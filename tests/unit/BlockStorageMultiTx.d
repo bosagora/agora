@@ -116,6 +116,7 @@ private Transaction[] makeChainedTransactions (KeyPair key_pair,
 
         Transaction tx =
         {
+            TxType.Payment,
             [input],
             [Output(AmountPerTx, key_pair.address)]  // send to the same address
         };
