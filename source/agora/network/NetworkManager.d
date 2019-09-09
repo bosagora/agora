@@ -96,9 +96,17 @@ public class NetworkManager
         this.banman = this.getBanManager(banman_conf);
     }
 
-    /// try to discover the network until we found
-    /// all the validator nodes from our quorum set.
-    public void discover ()
+    /***************************************************************************
+
+        Try to discover the network until we found
+        all the validator nodes from our quorum set.
+
+        Returns:
+            the map of public key => validator node client
+
+    ***************************************************************************/
+
+    public NetworkClient[PublicKey] discover ()
     {
         // add our own IP to the list of banned IPs to avoid
         // the node communicating with itself
@@ -145,6 +153,8 @@ public class NetworkManager
                 this.taskman.wait(this.node_config.retry_delay.msecs);
             }
         });
+
+        return this.peers;
     }
 
     /***************************************************************************
