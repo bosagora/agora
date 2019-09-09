@@ -319,7 +319,7 @@ public class BlockStorage : IBlockStorage
 
             this.file_base = DataSize * this.file_index;
             if (file_exist)
-                this.validateChecksum();
+                return this.validateChecksum();
 
             return true;
         }
@@ -870,14 +870,16 @@ public class BlockStorage : IBlockStorage
         return () @trusted { return crc32.finish(buffer); }();
     }
 
-    /*******************************************************************************
+    /***************************************************************************
 
         Validate the checksum in the memory-mapped blocks.
-        If validation fails, it throws an AssertError.
 
-    *******************************************************************************/
+        Returns:
+            `true` if the data matches the checksum, `false` otherwise.
 
-    private void validateChecksum () @trusted
+    ***************************************************************************/
+
+    private bool validateChecksum () @trusted
     {
         try
         {
@@ -888,13 +890,14 @@ public class BlockStorage : IBlockStorage
             if (actual != expected)
             {
                 stderr.writefln("[ERROR] %s Block file is corrupt.", file_name);
-                assert(0);
+                return false;
             }
+            return true;
         }
         catch (Exception ex)
         {
             this.writeLog("BlockStorage.validateChecksum: ", ex);
-            assert(0);
+            return false;
         }
     }
 
