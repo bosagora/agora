@@ -77,16 +77,6 @@ private int main (string[] args)
         auto router = new URLRouter();
 
         mkdirRecurse(config.node.data_dir);
-        // Support code coverage being written to the data directory
-        // This way we can collect data from docker containers
-        // Note: This DOES NOT WORK WITH LDC (#221)
-        version (D_Coverage)
-        {
-            import core.runtime;
-            import std.path : buildPath;
-            immutable coverPath = config.node.data_dir.buildPath("coverage");
-            dmd_coverDestPath(coverPath);
-        }
 
         auto node = new Node(config);
         scope(exit) node.shutdown();
