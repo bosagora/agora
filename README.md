@@ -29,4 +29,13 @@ dub build --skip-registry=all
 dub test --skip-registry=all
 ```
 
+Note: on OSX, it's necessary to have `pkg-config` installed, and to export the `PKG_CONFIG_PATH` envirnoment variable so it can find the `sqlite3` library to link to.
+
+```console
+brew install pkg-config
+
+# or ~/.zshrc, etc
+echo export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig" >> ~/.bashrc
+```
+
 You can also check our [CI configuration](./.travis.yml).
