@@ -62,7 +62,8 @@ public class Ledger
         this.pool = pool;
         this.utxo_set = utxo_set;
         this.storage = storage;
-        this.storage.load();
+        if (!this.storage.load())
+            assert(0);
 
         // ensure latest checksum can be read
         if (!this.storage.readLastBlock(this.last_block))

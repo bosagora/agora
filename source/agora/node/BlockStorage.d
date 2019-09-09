@@ -50,11 +50,12 @@ public interface IBlockStorage
         a Genesis block will be added to the ledger. In this case the calling
         code should treat the block as new and update the set of UTXOs, etc.
 
-        If the blockchain data is corrupt the application will be halted.
+        Returns:
+            `false` if the data couldn't be loaded, `true` otherwise.
 
     ***************************************************************************/
 
-    public void load ();
+    public bool load ();
 
     /***************************************************************************
 
@@ -157,8 +158,8 @@ public class BlockStorage : IBlockStorage
     /// Instance of memory mapped file
     private MmFile file;
 
-    /// Path of block data
-    private string path;
+    /// Path to the directory which contains the block files
+    private string root_path;
 
     /// Index of current file
     private size_t file_index;
@@ -178,10 +179,23 @@ public class BlockStorage : IBlockStorage
     /// Saving current block
     private bool is_saving;
 
-    /// Ctor
+    /***************************************************************************
+
+        Construct an instance of a `BlockStorage`
+
+        Params:
+            path = Path to the directory where the block files are stored
+
+        Note:
+            The object is not usable after construction.
+            This is to keep the constructor simple and free of side effect / IO.
+            The `load` method needs to be called to load the indexes.
+
+    ***************************************************************************/
+
     public this (string path) nothrow @safe pure
     {
-        this.path = path;
+        this.root_path = path;
         this.file_index = ulong.max;
         this.length = ulong.max;
         this.is_saving = false;
@@ -194,24 +208,30 @@ public class BlockStorage : IBlockStorage
 
         Load the blockchain from the storage
 
+        Performs loading of the index and the last batch of blocks from disk.
+
+        Returns:
+            `false` when it fails to load.
+
     ***************************************************************************/
 
-    public void load ()
+    public bool load ()
     {
-        scope (failure) assert(0);
-
-        if (!this.path.exists)
-            mkdirRecurse(this.path);
+        try if (!this.root_path.exists)
+            mkdirRecurse(this.root_path);
+        catch (Exception e)
+            return false;
 
         if (!this.loadAllIndexes())
-            assert(0);
+            return false;
 
         // Add Genesis if the storage is empty
         if (this.height_idx.length == 0)
         {
             if (!this.saveBlock(GenesisBlock))
-                assert(0);
+                return false;
         }
+        return true;
     }
 
     /***************************************************************************
@@ -228,7 +248,7 @@ public class BlockStorage : IBlockStorage
 
     public string getFileName (size_t index) @safe
     {
-        return buildPath(this.path, format("B%012d.dat", index));
+        return buildPath(this.root_path, format("B%012d.dat", index));
     }
 
     /***************************************************************************
@@ -714,7 +734,7 @@ public class BlockStorage : IBlockStorage
         try
         {
             File idx_file;
-            string file_name = buildPath(this.path, "index.dat");
+            string file_name = buildPath(this.root_path, "index.dat");
 
             idx_file = File(file_name, "a+b");
             idx_file.seek(0, SEEK_END);
@@ -754,7 +774,7 @@ public class BlockStorage : IBlockStorage
             this.height_idx.clear();
             this.hash_idx.clear();
 
-            string file_name = buildPath(this.path, "index.dat");
+            string file_name = buildPath(this.root_path, "index.dat");
 
             if (!file_name.exists)
                 return true;
@@ -956,7 +976,7 @@ public class MemBlockStorage : IBlockStorage
     }
 
     /// No-op: MemBlockStorage does no I/O
-    public override void load () { }
+    public override bool load () { return true; }
 
     /***************************************************************************
 
