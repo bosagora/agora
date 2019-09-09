@@ -13,16 +13,22 @@ services:
     ports:
       - "4000:2826"
     volumes:
-      - ./node/0/:/agora/
+      - "./node/0/:/agora/"
+      - "../../source:/agora/source/"
+      - "../../submodules:/agora/submodules/"
   node-1:
     image: "agora:latest"
     ports:
       - "4001:2826"
     volumes:
-      - ./node/1/:/agora/
+      - "./node/1/:/agora/"
+      - "../../source:/agora/source/"
+      - "../../submodules:/agora/submodules/"
   node-2:
     image: "agora:latest"
     ports:
       - "4002:2826"
     volumes:
-      - ./node/2/:/agora/
+      - "./node/2/:/agora/"
+      - "../../source:/agora/source/"
+      - "../../submodules:/agora/submodules/"

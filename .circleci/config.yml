@@ -46,4 +46,11 @@ jobs:
           command: |
             source $HOME/dlang/dmd-2.088.0/activate
             ci/system_integration_test.d
+            # Work around druntime setting the permissions to 600..
+            sudo chmod 644 tests/system/node/*/*.lst
           no_output_timeout: 15m
+      - run:
+          name: Upload code coverage
+          command: |
+             curl -s https://codecov.io/bash | bash -s -- \
+               -n "CircleCI" -F "integration" -Z || echo 'Codecov upload failed'
