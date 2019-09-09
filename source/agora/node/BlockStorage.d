@@ -179,7 +179,7 @@ public class BlockStorage : IBlockStorage
     private bool is_saving;
 
     /// Ctor
-    public this (string path)
+    public this (string path) nothrow @safe pure
     {
         this.path = path;
         this.file_index = ulong.max;
