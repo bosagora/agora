@@ -179,6 +179,9 @@ public class BlockStorage : IBlockStorage
     /// Saving current block
     private bool is_saving;
 
+    /// Pre-allocated constant file path
+    private immutable string index_path;
+
     /***************************************************************************
 
         Construct an instance of a `BlockStorage`
@@ -199,6 +202,8 @@ public class BlockStorage : IBlockStorage
         this.file_index = ulong.max;
         this.length = ulong.max;
         this.is_saving = false;
+
+        this.index_path = buildPath(this.root_path, "index.dat");
 
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
@@ -733,10 +738,7 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            File idx_file;
-            string file_name = buildPath(this.root_path, "index.dat");
-
-            idx_file = File(file_name, "a+b");
+            File idx_file = File(this.index_path, "a+b");
             idx_file.seek(0, SEEK_END);
 
             serializePart(height, (scope v) => idx_file.rawWrite(v));
@@ -774,13 +776,10 @@ public class BlockStorage : IBlockStorage
             this.height_idx.clear();
             this.hash_idx.clear();
 
-            string file_name = buildPath(this.root_path, "index.dat");
-
-            if (!file_name.exists)
+            if (!this.index_path.exists)
                 return true;
 
-            File idx_file;
-            idx_file = File(file_name, "rb");
+            File idx_file = File(this.index_path, "rb");
 
             size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
             size_t record_count = idx_file.size / record_size;
