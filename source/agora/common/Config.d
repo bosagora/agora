@@ -228,16 +228,13 @@ private Config parseConfigFileImpl (CommandLine cmdln)
         return result;
     }
 
-    enforce("node" in root, "The 'node' section is required");
-    enforce("quorum" in root, "The 'quorum' section is required");
-
     Config conf =
     {
         banman : parseBanManagerConfig(root["banman"]),
-        node : parseNodeConfig(root["node"]),
+        node : parseNodeConfig("node" in root),
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns", true)),
-        quorum : parseQuorumSection(root["quorum"])
+        quorum : parseQuorumSection("quorum" in root),
     };
 
     enforce(conf.network.length > 0, "Network section is empty");
@@ -251,15 +248,15 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 
     conf.logging.log_level
         = root["logging"]["level"].as!string.to!LogLevel;
-
-
-
     return conf;
 }
 
 /// Parse the node config section
-private NodeConfig parseNodeConfig (Node node)
+private NodeConfig parseNodeConfig (Node* node_ptr)
 {
+    enforce(node_ptr, "The 'node' section is required");
+    auto node = *node_ptr;
+
     auto is_validator = node["is_validator"].as!bool;
     auto min_listeners = node["min_listeners"].as!size_t;
     auto max_listeners = node["max_listeners"].as!size_t;
@@ -312,7 +309,7 @@ private BanManager.Config parseBanManagerConfig (Node node)
     Parse the quorum config section
 
     Params:
-        node = the Yaml node position to one quorum configuration
+        node_ptr = pointer to the Yaml node containing the quorum configuration
         level = the nesting level of the quorum. The maximum nesting is 3.
 
     Returns:
@@ -320,21 +317,23 @@ private BanManager.Config parseBanManagerConfig (Node node)
 
 *******************************************************************************/
 
-private QuorumConfig parseQuorumSection (Node node, size_t level = 1)
+private QuorumConfig parseQuorumSection (Node* node_ptr, size_t level = 1)
 {
     import std.algorithm;
     import std.exception;
     enforce(level <= 3, "Cannot have more than 2 levels of sub-quorums.");
+    enforce(node_ptr, "The 'quorum' section is required");
+    auto node = *node_ptr;
 
     PublicKey[] nodes;
-    foreach (string node; node["nodes"])
-        nodes ~= PublicKey.fromString(node);
+    foreach (string nodeKeyStr; node["nodes"])
+        nodes ~= PublicKey.fromString(nodeKeyStr);
 
     QuorumConfig[] sub_quorums;
     if (auto subs = "sub_quorums" in node)
     {
-        foreach (Node sub; *subs)
-            sub_quorums ~= parseQuorumSection(sub, level + 1);
+        foreach (ref Node sub; *subs)
+            sub_quorums ~= parseQuorumSection(&sub, level + 1);
     }
 
     const threshold = getThreshold(
@@ -370,7 +369,7 @@ unittest
                   - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5`;
 
     auto node = Loader.fromString(conf_example).load();
-    auto quorum = parseQuorumSection(node["quorum"]);
+    auto quorum = parseQuorumSection("quorum" in node);
 
     auto expected = QuorumConfig(2,
         [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
@@ -403,7 +402,7 @@ unittest
                       - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5`;
 
     node = Loader.fromString(bad_nesting).load();
-    assertThrown(parseQuorumSection(node["quorum"]));
+    assertThrown(parseQuorumSection("quorum" in node));
 }
 
 /*******************************************************************************
