@@ -149,7 +149,7 @@ public class Ledger
         scope (failure) assert(0);
 
         // add the new UTXOs
-        block.txs.each!(tx => this.utxo_set.updateUtxoCache(tx));
+        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx));
 
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx.hashFull()));

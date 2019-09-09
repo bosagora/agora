@@ -83,7 +83,7 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    public void updateUtxoCache (const ref Transaction tx) nothrow @safe
+    public void updateUTXOCache (const ref Transaction tx) nothrow @safe
     {
         foreach (const ref input; tx.inputs)
         {
