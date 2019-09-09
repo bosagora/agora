@@ -39,6 +39,22 @@ public struct CommandLine
 
     /// check state of config file and exit early
     public bool config_check;
+
+    /// Overrides for config options
+    public string[][string] overrides;
+
+    /// Helper to add items to `overrides`
+    private void overridesHandler (string, string value)
+    {
+        import std.string;
+        const idx = value.indexOf('=');
+        if (idx < 0) return;
+        string k = value[0 .. idx], v = value[idx + 1 .. $];
+        if (auto val = k in this.overrides)
+            (*val) ~= v;
+        else
+            this.overrides[k] = [ v ];
+    }
 }
 
 /// Main config
@@ -160,7 +176,14 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 
         "config-check",
             "Check the state of the config and exit",
-            &cmdline.config_check);
+            &cmdline.config_check,
+
+        "override|O",
+            "Override a config file value\n" ~
+            "Example: ./agora -O node.validator=true -o dns=1.1.1.1 -o dns=2.2.2.2\n" ~
+            "Array values are additive, other items are set to the last override",
+            &cmdline.overridesHandler,
+        );
 }
 
 /// Thrown when parsing the config fails
@@ -189,7 +212,7 @@ class ConfigException : Exception
 
 *******************************************************************************/
 
-public Config parseConfigFile (CommandLine cmdln)
+public Config parseConfigFile (ref const CommandLine cmdln)
 {
     try
     {
@@ -202,15 +225,18 @@ public Config parseConfigFile (CommandLine cmdln)
 }
 
 /// ditto
-private Config parseConfigFileImpl (CommandLine cmdln)
+private Config parseConfigFileImpl (ref const CommandLine cmdln)
 {
     import std.conv;
     import dyaml;
 
     Node root = Loader.fromFile(cmdln.config_path).load();
 
-    string[] parseSequence (string section, bool optional = false)
+    const(string)[] parseSequence (string section, bool optional = false)
     {
+        if (auto val = section in cmdln.overrides)
+            return *val;
+
         if (auto node = section in root)
             enforce(root[section].type == NodeType.sequence,
                 format("`%s` section must be a sequence", section));
@@ -230,49 +256,43 @@ private Config parseConfigFileImpl (CommandLine cmdln)
 
     Config conf =
     {
-        banman : parseBanManagerConfig(root["banman"]),
-        node : parseNodeConfig("node" in root),
+        banman : parseBanManagerConfig("banman" in root, cmdln),
+        node : parseNodeConfig("node" in root, cmdln),
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns", true)),
-        quorum : parseQuorumSection("quorum" in root),
+        quorum : parseQuorumSection("quorum" in root, cmdln),
     };
 
     enforce(conf.network.length > 0, "Network section is empty");
 
-    if (auto admin = "admin" in root)
-    {
-        conf.admin.enabled = (*admin)["enabled"].as!bool;
-        conf.admin.address = (*admin)["address"].as!string;
-        conf.admin.port    = (*admin)["port"].as!ushort;
-    }
+    Node* admin = "admin" in root;
+    conf.admin.enabled = opt!(bool,   "admin", "enabled")(cmdln, admin);
+    conf.admin.address = opt!(string, "admin", "address")(cmdln, admin);
+    conf.admin.port    = opt!(ushort, "admin", "port")(cmdln, admin);
 
-    conf.logging.log_level
-        = root["logging"]["level"].as!string.to!LogLevel;
+    conf.logging.log_level = opt!(LogLevel, "logging", "level")(
+        cmdln, "logging" in root, LogLevel.Error);
+
     return conf;
 }
 
 /// Parse the node config section
-private NodeConfig parseNodeConfig (Node* node_ptr)
+private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
 {
-    enforce(node_ptr, "The 'node' section is required");
-    auto node = *node_ptr;
+    auto is_validator = get!(bool, "node", "is_validator")(cmdln, node);
+    auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
+    auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
+    auto address = get!(string, "node", "address")(cmdln, node);
 
-    auto is_validator = node["is_validator"].as!bool;
-    auto min_listeners = node["min_listeners"].as!size_t;
-    auto max_listeners = node["max_listeners"].as!size_t;
-    auto address = node["address"].as!string;
+    long retry_delay = cast(long)(opt!(float, "node", "retry_delay")(cmdln, node, 3.0) * 1000);
 
-    long retry_delay = 3000;
-    if (auto delay = "retry_delay" in node)
-        retry_delay = cast(long)(delay.as!float * 1000);
+    size_t max_retries = get!(size_t, "node", "max_retries")(cmdln, node);
+    size_t timeout = get!(size_t, "node", "timeout")(cmdln, node);
 
-    size_t max_retries = node["max_retries"].as!size_t;
-    size_t timeout = node["timeout"].as!size_t;
+    string data_dir = get!(string, "node", "data_dir")(cmdln, node);
+    auto port = get!(ushort, "node", "port")(cmdln, node);
 
-    string data_dir = node["data_dir"].as!string;
-    auto port = node["port"].as!ushort;
-
-    string node_seed = node["seed"].as!string;
+    string node_seed = get!(string, "node", "seed")(cmdln, node);
     auto key_pair = KeyPair.fromSeed(Seed.fromString(node_seed));
 
     NodeConfig conf =
@@ -293,14 +313,11 @@ private NodeConfig parseNodeConfig (Node* node_ptr)
 }
 
 /// Parse the banman config section
-private BanManager.Config parseBanManagerConfig (Node node)
+private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLine cmdln)
 {
-    BanManager.Config conf =
-    {
-        max_failed_requests : node["max_failed_requests"].as!size_t,
-        ban_duration : node["ban_duration"].as!size_t,
-    };
-
+    BanManager.Config conf;
+    conf.max_failed_requests = get!(size_t, "banman", "max_failed_requests")(cmdln, node);
+    conf.ban_duration = get!(size_t, "banman", "ban_duration")(cmdln, node);
     return conf;
 }
 
@@ -310,6 +327,7 @@ private BanManager.Config parseBanManagerConfig (Node node)
 
     Params:
         node_ptr = pointer to the Yaml node containing the quorum configuration
+        cmdln = the parsed command line arguments, for override
         level = the nesting level of the quorum. The maximum nesting is 3.
 
     Returns:
@@ -317,27 +335,34 @@ private BanManager.Config parseBanManagerConfig (Node node)
 
 *******************************************************************************/
 
-private QuorumConfig parseQuorumSection (Node* node_ptr, size_t level = 1)
+private QuorumConfig parseQuorumSection (Node* node_ptr,
+    const ref CommandLine cmdln, size_t level = 1)
 {
     import std.algorithm;
     import std.exception;
     enforce(level <= 3, "Cannot have more than 2 levels of sub-quorums.");
-    enforce(node_ptr, "The 'quorum' section is required");
-    auto node = *node_ptr;
 
     PublicKey[] nodes;
-    foreach (string nodeKeyStr; node["nodes"])
-        nodes ~= PublicKey.fromString(nodeKeyStr);
+    if (auto nodeKeyArray = "quorum.nodes" in cmdln.overrides)
+        foreach (string nodeKeyStr; *nodeKeyArray)
+            nodes ~= PublicKey.fromString(nodeKeyStr);
+    else if (node_ptr is null)
+        throw new Exception("Section 'quorum.nodes' is mandatory but not present");
+    else
+        foreach (string nodeKeyStr; (*node_ptr)["nodes"])
+            nodes ~= PublicKey.fromString(nodeKeyStr);
 
     QuorumConfig[] sub_quorums;
-    if (auto subs = "sub_quorums" in node)
-    {
-        foreach (ref Node sub; *subs)
-            sub_quorums ~= parseQuorumSection(&sub, level + 1);
-    }
+    // Node: Providing sub_quorums via command line is currently not supported
+    if (node_ptr)
+        if (auto subs = "sub_quorums" in *node_ptr)
+        {
+            foreach (ref Node sub; *subs)
+                sub_quorums ~= parseQuorumSection(&sub, cmdln, level + 1);
+        }
 
-    const threshold = getThreshold(
-        node["threshold"].as!string.stripRight('%').to!float,
+    const thresholdRaw = cmdln.get!(string, "quorum", "threshold")(node_ptr);
+    const threshold = getThreshold(thresholdRaw.stripRight('%').to!float,
         nodes.length + sub_quorums.length);
 
     return QuorumConfig(threshold, nodes.assumeUnique, sub_quorums.assumeUnique);
@@ -347,6 +372,7 @@ private QuorumConfig parseQuorumSection (Node* node_ptr, size_t level = 1)
 unittest
 {
     import dyaml.loader;
+    CommandLine cmdln;
 
     immutable conf_example = `
     quorum:
@@ -369,7 +395,7 @@ unittest
                   - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5`;
 
     auto node = Loader.fromString(conf_example).load();
-    auto quorum = parseQuorumSection("quorum" in node);
+    auto quorum = parseQuorumSection("quorum" in node, cmdln);
 
     auto expected = QuorumConfig(2,
         [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
@@ -402,7 +428,7 @@ unittest
                       - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5`;
 
     node = Loader.fromString(bad_nesting).load();
-    assertThrown(parseQuorumSection("quorum" in node));
+    assertThrown(parseQuorumSection("quorum" in node, cmdln));
 }
 
 /*******************************************************************************
@@ -432,4 +458,33 @@ unittest
     assert(getThreshold(33.3, 10) == 4);  // round up
     assert(getThreshold(100.0, 1) == 1);
     assert(getThreshold(1, 1) == 1);  // round up
+}
+
+/// Optionally get a value
+private T opt (T, string section, string name) (
+    const ref CommandLine cmdln, Node* node, lazy T def = T.init)
+{
+    try
+        return get!(T, section, name)(cmdln, node);
+    catch (Exception e)
+        return def;
+}
+
+/// Helper function to get a config parameter
+private T get (T, string section, string name) (const ref CommandLine cmdl, Node* node)
+{
+    import std.conv;
+
+    static immutable QualifiedName = (section ~ "." ~ name);
+
+    if (auto val = QualifiedName in cmdl.overrides)
+        return (*val)[$ - 1].to!T;
+
+    if (node)
+        if (auto val = name in *node)
+            return (*val).as!T;
+
+    throw new Exception(format(
+        "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
+        name, section, QualifiedName));
 }
