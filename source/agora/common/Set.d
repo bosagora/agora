@@ -80,7 +80,7 @@ public struct Set (T)
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) const nothrow @safe
+    public void serialize (scope SerializeDg dg) const @safe
     {
         serializePart(this._set.length, dg);
         foreach (const ref value; this._set.byKey)

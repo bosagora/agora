@@ -191,7 +191,7 @@ public struct PublicKey
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) const nothrow @safe
+    public void serialize (scope SerializeDg dg) const @safe
     {
         dg(this.data[]);
     }

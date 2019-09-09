@@ -159,7 +159,7 @@ unittest
         int i;
         string s;
 
-        void serialize (scope SerializeDg dg) const nothrow @safe
+        void serialize (scope SerializeDg dg) const @safe
         {
             serializePart(this.i, dg);
             serializePart(this.s, dg);

@@ -16,7 +16,7 @@ module agora.common.Serializer;
 import agora.common.Data;
 
 /// Type of delegate SerializeDg
-public alias SerializeDg = void delegate(scope const(ubyte)[]) nothrow @safe;
+public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
 
 /*******************************************************************************
 
@@ -33,11 +33,11 @@ public alias SerializeDg = void delegate(scope const(ubyte)[]) nothrow @safe;
 *******************************************************************************/
 
 public ubyte[] serializeFull (T) (scope const auto ref T record)
-    nothrow @safe
+    @safe
     if (is(T == struct))
 {
     ubyte[] res;
-    scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+    scope SerializeDg dg = (scope const(ubyte[]) data) @safe
     {
         res ~= data;
     };
@@ -48,7 +48,7 @@ public ubyte[] serializeFull (T) (scope const auto ref T record)
 
 /// Ditto
 public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg)
-    nothrow @safe
+    @safe
     if (is(T == struct))
 {
     static assert(is(typeof(T.init.serialize(SerializeDg.init))),
@@ -59,49 +59,49 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
 
 /// Ditto
 public void serializePart () (scope const auto ref Hash record, scope SerializeDg dg)
-    nothrow @safe
+    @safe
 {
     dg(record[]);
 }
 
 /// Ditto
 public void serializePart (scope const Signature record, scope SerializeDg dg)
-    nothrow @trusted
+    @trusted
 {
    dg(record[]);
 }
 
 /// Ditto
 public void serializePart (ubyte record, scope SerializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     dg((cast(ubyte*)&record)[0 .. ubyte.sizeof]);
 }
 
 /// Ditto
 public void serializePart (ushort record, scope SerializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     dg((cast(ubyte*)&record)[0 .. ushort.sizeof]);
 }
 
 /// Ditto
 public void serializePart (uint record, scope SerializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     dg((cast(ubyte*)&record)[0 .. uint.sizeof]);
 }
 
 /// Ditto
 public void serializePart (ulong record, scope SerializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     dg((cast(ubyte*)&record)[0 .. ulong.sizeof]);
 }
 
 /// Ditto
 public void serializePart (scope cstring record, scope SerializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     serializePart(record.length, dg);
     dg(cast(const ubyte[])record);
