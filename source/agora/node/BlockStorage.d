@@ -215,7 +215,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool load ()
+    public override bool load () @safe nothrow
     {
         try if (!this.root_path.exists)
             mkdirRecurse(this.root_path);
@@ -263,7 +263,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readLastBlock (ref Block block) @safe nothrow
+    public override bool readLastBlock (ref Block block) @safe nothrow
     {
         if (this.height_idx.length == 0)
             return false;
@@ -353,7 +353,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool saveBlock (const ref Block block) @safe nothrow
+    public override bool saveBlock (const ref Block block) @safe nothrow
     {
         try
         {
@@ -448,7 +448,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, size_t height) @safe nothrow
+    public override bool readBlock (ref Block block, size_t height) @safe nothrow
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -485,7 +485,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, Hash hash) @safe nothrow
+    public override bool readBlock (ref Block block, Hash hash) @safe nothrow
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
