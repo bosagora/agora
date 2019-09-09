@@ -75,7 +75,7 @@ public struct Transaction
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) const nothrow @safe
+    public void serialize (scope SerializeDg dg) const @safe
     {
         serializePart(this.inputs.length, dg);
         foreach (const ref input; this.inputs)
@@ -189,7 +189,7 @@ public struct Output
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) const nothrow @safe
+    public void serialize (scope SerializeDg dg) const @safe
     {
         serializePart(this.value, dg);
         serializePart(this.address, dg);
@@ -248,7 +248,7 @@ public struct Input
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) const nothrow @safe
+    public void serialize (scope SerializeDg dg) const @safe
     {
         serializePart(this.previous, dg);
         serializePart(this.index, dg);

@@ -71,7 +71,7 @@ public struct Amount
     }
 
     /// Support for serialization
-    public void serialize (scope SerializeDg dg) const nothrow @safe
+    public void serialize (scope SerializeDg dg) const @safe
     {
         serializePart(this.value, dg);
     }

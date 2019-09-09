@@ -83,7 +83,7 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    public void updateUTXOCache (const ref Transaction tx) nothrow @safe
+    public void updateUTXOCache (const ref Transaction tx) @safe
     {
         foreach (const ref input; tx.inputs)
         {
@@ -270,13 +270,13 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public void opIndexAssign (const ref Output output, Hash key) nothrow @safe
+    public void opIndexAssign (const ref Output output, Hash key) @safe
     {
         static ubyte[] buffer;
         buffer.length = 0;
         () @trusted { assumeSafeAppend(buffer); }();
 
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+        scope SerializeDg dg = (scope const(ubyte[]) data) @safe
         {
             buffer ~= data;
         };
