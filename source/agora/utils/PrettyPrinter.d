@@ -222,7 +222,8 @@ private struct TransactionFmt
         enum InputPerLine = 3;
         enum OutputPerLine = 3;
 
-        formattedWrite(sink, "Inputs (%d): %(%(%s, %),\n%)\n",
+        formattedWrite(sink, "Type : %s, Inputs (%d): %(%(%s, %),\n%)\n",
+            this.value.type,
             this.value.inputs.length,
             this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
 
@@ -235,7 +236,7 @@ private struct TransactionFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ResultStr = `Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
@@ -264,7 +265,7 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x893a...d115`;
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xd04f...e1b2`;
     assert(GenesisHStr == format("%s", BlockHeaderFmt(GenesisBlock.header)));
 }
 
@@ -290,8 +291,8 @@ private struct BlockFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x893a...d115, Transactions: 1
-Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xd04f...e1b2, Transactions: 1
+Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
@@ -303,12 +304,12 @@ GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
     import agora.common.Hash;
     import agora.consensus.Genesis;
 
-    static immutable ResultStr = `Height: 1, Prev: 0xf4ec...dcba, Root: 0xd63e...0715, Transactions: 2
-Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ResultStr = `Height: 1, Prev: 0xcdc3...00e1, Root: 0x4203...1ec3, Transactions: 2
+Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)
-Inputs (1): 0x0000...0000[0]:0x0000...0000
+Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
 GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;

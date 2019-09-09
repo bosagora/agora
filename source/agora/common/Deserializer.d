@@ -59,6 +59,17 @@ public void deserializePart (T) (ref T record, scope DeserializeDg dg)
     record.deserialize(dg);
 }
 
+/// Enum support
+public void deserializePart (T)(ref T record, scope DeserializeDg dg)
+    nothrow @trusted
+    if (is(T == enum))
+{
+    import std.traits;
+    OriginalType!T orig_val;
+    deserializePart(orig_val, dg);
+    record = cast(T)(orig_val);
+}
+
 /// Ditto
 public void deserializePart (ref Hash record, scope DeserializeDg dg)
     nothrow @safe

@@ -27,7 +27,14 @@ import agora.common.Serializer;
 import agora.consensus.Genesis;
 
 import std.algorithm;
+import std.traits;
 
+/// The Agora Transaction Type constans
+public enum TxType : ubyte
+{
+    Payment,
+    Freeze
+}
 
 /*******************************************************************************
 
@@ -40,6 +47,9 @@ import std.algorithm;
 
 public struct Transaction
 {
+    /// Transation type
+    public TxType type;
+
     /// The list of unspent `outputs` from previous transaction(s) that will be spent
     public Input[] inputs;
 
@@ -58,6 +68,9 @@ public struct Transaction
 
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
+        OriginalType!TxType tx_type;
+        hashPart(tx_type, dg);
+
         foreach (input; this.inputs)
             hashPart(input, dg);
 
@@ -77,6 +90,9 @@ public struct Transaction
 
     public void serialize (scope SerializeDg dg) const @safe
     {
+        OriginalType!TxType tx_type;
+        serializePart(tx_type, dg);
+
         serializePart(this.inputs.length, dg);
         foreach (const ref input; this.inputs)
             serializePart(input, dg);
@@ -97,6 +113,8 @@ public struct Transaction
 
     public void deserialize (scope DeserializeDg dg) nothrow @safe
     {
+        deserializePart(this.type, dg);
+
         size_t input_size;
         deserializePart(input_size, dg);
         this.inputs.length = input_size;
@@ -132,9 +150,9 @@ nothrow @safe @nogc unittest
 {
     Transaction tx;
     auto hash = hashFull(tx);
-    auto exp_hash = Hash("0xcee29bfe1a706fd555b748145b683a904bb04e9344648913" ~
-        "5358eeaf31105ed219541ff717e2868a614758e140472f9172d2522585fdc6c6035" ~
-        "90142f7026a78");
+    auto exp_hash = Hash("0x4b6e507a0519827d48792e6f27f3a0f5b4bc284c69c83a2a" ~
+        "ebe35f11443e96364c90f780d4448320440efe68808fe4b6c7c4745d2e7c7e16956" ~
+        "987df86f6a32f");
     assert(hash == exp_hash);
 }
 
@@ -305,6 +323,7 @@ public bool isCoinbaseTx (Transaction tx) nothrow pure @safe @nogc
 public Transaction newCoinbaseTX (PublicKey address, Amount value = Amount(0))
 {
     return Transaction(
+        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(value, address)]
     );
@@ -371,6 +390,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
 
         Transaction tx =
         {
+            TxType.Payment,
             [input],
             [Output(AmountPerTx, key_pair.address)]  // send to the same address
         };

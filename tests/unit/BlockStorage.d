@@ -63,6 +63,7 @@ private void main ()
     foreach (idx; 1 .. count)
     {
         tx = Transaction(
+            TxType.Payment,
             [
                 Input(gen_tx_hash, 0)
             ],

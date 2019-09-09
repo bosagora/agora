@@ -185,6 +185,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
 
     Transaction tx =
     {
+        TxType.Payment,
         [Input(Hash.fromString(op.txhash), op.index)],
         [Output(Amount(op.amount), PublicKey.fromString(op.address))]
     };
@@ -310,6 +311,7 @@ unittest
 
     Transaction tx =
     {
+        TxType.Payment,
         [Input(Hash.fromString(txhash), index)],
         [Output(Amount(amount), PublicKey.fromString(address))]
     };
