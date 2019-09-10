@@ -27,7 +27,6 @@ import agora.common.Serializer;
 import agora.consensus.Genesis;
 
 import std.algorithm;
-import std.traits;
 
 /// The Agora Transaction Type constans
 public enum TxType : ubyte
@@ -68,8 +67,7 @@ public struct Transaction
 
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
-        OriginalType!TxType tx_type;
-        hashPart(tx_type, dg);
+        hashPart(this.type, dg);
 
         foreach (input; this.inputs)
             hashPart(input, dg);
@@ -90,8 +88,7 @@ public struct Transaction
 
     public void serialize (scope SerializeDg dg) const @safe
     {
-        OriginalType!TxType tx_type;
-        serializePart(tx_type, dg);
+        serializePart(this.type, dg);
 
         serializePart(this.inputs.length, dg);
         foreach (const ref input; this.inputs)
