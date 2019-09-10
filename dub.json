@@ -40,6 +40,7 @@
     "configurations": [
         {
             "name": "server",
+            "targetName": "agora",
             "mainSourceFile": "source/agora/node/main.d",
             "excludedSourceFiles": [ "source/agora/cli/*" ]
         },
@@ -51,6 +52,7 @@
         },
         {
             "name": "unittest",
+            "targetName": "agora-unittests",
             "excludedSourceFiles": [ "source/agora/cli/main.d" ],
             "sourceFiles": [
                 "source/scpp/build/DSizeChecks.o",
