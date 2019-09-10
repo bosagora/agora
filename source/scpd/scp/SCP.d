@@ -113,16 +113,13 @@ extern(C++, class) public struct SCP
     // returns all messages for the slot
     vector!SCPEnvelope getCurrentState(uint64_t slotIndex);
 
+    // returns the latest message from a node
+    // or null if not found
+    const(SCPEnvelope)* getLatestMessage(ref const(NodeID) id);
+
     // returns messages that contributed to externalizing the slot
     // (or empty if the slot didn't externalize)
     vector!SCPEnvelope getExternalizingState(uint64_t slotIndex);
-
-    // returns if a node is in the (transitive) quorum originating at
-    // the local node, scanning the known slots.
-    // TB_TRUE iff n is in the quorum
-    // TB_FALSE iff n is not in the quorum
-    // TB_MAYBE iff the quorum cannot be computed
-    TriBool isNodeInQuorum(ref const(NodeID) node);
 }
 
 static assert(SCP.sizeof == 48);
