@@ -24,13 +24,10 @@ extern(C++, `stellar`):
 
 public abstract class SCPDriver
 {
-    void D0 () {} // First dtor
-    void D1 () {} // Second dtor
-    //~this();
+    ~this() {}
 
     // Envelope signature/verification
     abstract void signEnvelope(ref SCPEnvelope envelope);
-    abstract bool verifyEnvelope(ref const(SCPEnvelope) envelope);
 
     // Delegates the retrieval of the quorum set designated by `qSetHash` to
     // the user of SCP.
@@ -63,29 +60,27 @@ public abstract class SCPDriver
         kFullyValidatedValue, // value is valid for sure
         kMaybeValidValue      // value may be valid
     }
-    ValidationLevel validateValue(uint64_t slotIndex, ref const(Value) value, bool nomination)
-    {
-        return ValidationLevel.kMaybeValidValue;
-    }
+    ValidationLevel validateValue(uint64_t slotIndex, ref const(Value) value, bool nomination);
 
     // `extractValidValue` transforms the value, if possible to a different
     // value that the local node would agree to (fully validated).
     // This is used during nomination when encountering an invalid value (ie
     // validateValue did not return `kFullyValidatedValue` for this value).
     // returning Value() means no valid value could be extracted
-    Value extractValidValue(uint64_t slotIndex, ref const(Value) value)
-    {
-        return Value.init;
-    }
+    Value extractValidValue(uint64_t slotIndex, ref const(Value) value);
 
     // `getValueString` is used for debugging
     // default implementation is the hash of the value
     //std::string getValueString(ref const(Value) v) const;
-    void getValueString(ref const(Value) v) const; // Slot in the vtable
+    void* getValueString(ref const(Value) v) const;
+
+    // `toStrKey` returns StrKey encoded string representation
+    //std::string toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+    void* toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
 
     // `toShortString` converts to the common name of a key if found
     //std::string toShortString(ref const(PublicKey) pk) const;
-    void toShortString(ref const(PublicKey) pk) const; // Slot in the vtable
+    void* toShortString(ref const(PublicKey) pk) const;
 
     // `computeHashNode` is used by the nomination protocol to
     // randomize the order of messages between nodes.
@@ -103,7 +98,7 @@ public abstract class SCPDriver
     //abstract Value combineCandidates(
     // uint64 slotIndex, ref const(std::set!Value) candidates);
     abstract Value combineCandidates(
-        uint64_t slotIndex, ref const(Value)* candidates); // slot in the vtable
+        uint64_t slotIndex, ref const(Value)* candidates);
 
     // `setupTimer`: requests to trigger 'cb' after timeout
     // if cb is nullptr, the timer is cancelled
@@ -112,7 +107,7 @@ public abstract class SCPDriver
                              std::chrono::milliseconds timeout,
                              std::function<void()> cb);
     */
-    abstract void setupTimer(); // Slot in the vtable
+    abstract void setupTimer();
 
     // `computeTimeout` computes a timeout given a round number
     // it should be sufficiently large such that nodes in a
@@ -124,13 +119,11 @@ public abstract class SCPDriver
 
     // `valueExternalized` is called at most once per slot when the slot
     // externalize its value.
-    void valueExternalized(uint64_t slotIndex, ref const(Value) value)
-    {}
+    void valueExternalized(uint64_t slotIndex, ref const(Value) value);
 
     // ``nominatingValue`` is called every time the local instance nominates
     // a new value.
-    void nominatingValue(uint64_t slotIndex, ref const(Value) value)
-    {}
+    void nominatingValue(uint64_t slotIndex, ref const(Value) value);
 
     // the following methods are used for monitoring of the SCP subsystem
     // most implementation don't really need to do anything with these
@@ -138,31 +131,25 @@ public abstract class SCPDriver
     // `updatedCandidateValue` is called every time a new candidate value
     // is included in the candidate set, the value passed in is
     // a composite value
-    void updatedCandidateValue(uint64_t slotIndex, ref const(Value) value)
-    {}
+    void updatedCandidateValue(uint64_t slotIndex, ref const(Value) value);
 
     // `startedBallotProtocol` is called when the ballot protocol is started
     // (ie attempts to prepare a new ballot)
-    void startedBallotProtocol(uint64_t slotIndex, ref const(SCPBallot) ballot)
-    {}
+    void startedBallotProtocol(uint64_t slotIndex, ref const(SCPBallot) ballot);
 
     // `acceptedBallotPrepared` every time a ballot is accepted as prepared
-    void acceptedBallotPrepared(uint64_t slotIndex, ref const(SCPBallot) ballot)
-    {}
+    void acceptedBallotPrepared(uint64_t slotIndex, ref const(SCPBallot) ballot);
 
     // `confirmedBallotPrepared` every time a ballot is confirmed prepared
-    void confirmedBallotPrepared(uint64_t slotIndex, ref const(SCPBallot) ballot)
-    {}
+    void confirmedBallotPrepared(uint64_t slotIndex, ref const(SCPBallot) ballot);
 
     // `acceptedCommit` every time a ballot is accepted commit
-    void acceptedCommit(uint64_t slotIndex, ref const(SCPBallot) ballot)
-    {}
+    void acceptedCommit(uint64_t slotIndex, ref const(SCPBallot) ballot);
 
     // `ballotDidHearFromQuorum` is called when we received messages related to
     // the current `mBallot` from a set of node that is a transitive quorum for
     // the local node.
-    void ballotDidHearFromQuorum(uint64_t slotIndex, ref const(SCPBallot) ballot)
-    {}
+    void ballotDidHearFromQuorum(uint64_t slotIndex, ref const(SCPBallot) ballot);
 }
 
 static assert(__traits(classInstanceSize, SCPDriver) == 8);
