@@ -76,7 +76,6 @@ public struct Transaction
             hashPart(output, dg);
     }
 
-
     /***************************************************************************
 
         Transactions Serialization
@@ -445,6 +444,50 @@ unittest
         assert(txes[idx].inputs[0].previous == hashFull(prev_txs[idx]));
         assert(txes[idx].outputs[0].value == Amount(SpendPerTx));
     }
+}
+
+/// Transaction type serialize & deserialize for unittest
+unittest
+{
+    Transaction payment_tx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output.init]
+    );
+    assert(agora.common.Deserializer.deserialize!Transaction(serializeFull(payment_tx)) == payment_tx);
+
+    Transaction freeze_tx = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output.init]
+    );
+    assert(agora.common.Deserializer.deserialize!Transaction(serializeFull(freeze_tx)) == freeze_tx);
+}
+
+/// Transaction type hashing for unittest
+unittest
+{
+    Transaction payment_tx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output.init]
+    );
+
+    const tx_payment_hash = Hash(
+    "0x9a87d86f702cd0f519efba81cf379f2a06907f34df6546f93c8619af113d0d774" ~
+    "041b8e45f7975890b98890c7f5b0c062f6dae88ac1ec8d2c25dcf88b9aa01c9");
+    assert(hashFull(payment_tx) == tx_payment_hash);
+
+    Transaction freeze_tx = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output.init]
+    );
+
+    const tx_freeze_hash = Hash(
+    "0x7c8f238f70318aae788487e57eb6f4793e3b0e48fbe017c1829ec269d07a76661" ~
+    "5173e9a33739e916b1d40248a48add0296b2a8e51d0f8e1a87bf7acc7c4f136");
+    assert(hashFull(freeze_tx) == tx_freeze_hash);
 }
 
 /*******************************************************************************
