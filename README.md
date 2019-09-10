@@ -1,5 +1,7 @@
 # Agora
 
+[Docker Hub image](https://hub.docker.com/r/bpfk/agora)
+
 [![Build Status](https://travis-ci.com/bpfkorea/agora.svg?branch=v0.x.x)](https://travis-ci.com/bpfkorea/agora)
 [![CircleCI](https://circleci.com/gh/bpfkorea/agora.svg?style=svg)](https://circleci.com/gh/bpfkorea/agora)
 [![codecov](https://codecov.io/gh/bpfkorea/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bpfkorea/agora)
@@ -8,11 +10,46 @@
 
 Node implementation for BOA CoinNet
 
+# Docker usage
+
+We provide a public build of this repository (see above).
+The easiest way to get agora is to run `docker pull bpfk/agora`.
+
+The `Dockerfile` lives at the root of this repository,
+so one can run `docker build -t agora .` to build it.
+Note that you need to initialize submodules (`git submodules update --init`)
+before you first build agora.
+
+For a test run, try:
+```console
+docker run -p 127.0.0.1:4000:2826/tcp -v `pwd`/doc/:/root/etc/ agora -c etc/config.example.yaml
+```
+This will start a node with the example config file,
+and make the port locally accessible (See http://127.0.0.1:4000/) .
+
 # Building on POSIX
 
+## Dependencies
+
 You need a recent C++ compiler (g++ with N4387 fixed), a recent D compiler, and `dub`.
-On Linux, we recommend you install gcc-9 so that you can also get `gdc`.
-On OSX, the latest `llvm` package should do the job.
+On Linux, we recommend gcc-9. On OSX, the latest `llvm` package available on Homebrew.
+
+Additionally, the following are dependencies:
+- `libsodium`:  Development library
+- `pkg-config`: For DUB to find the correct `sqlite3` and other system libraries
+- `openssl`:    Binary (to detect the version) and development library
+- `sqlite3`:    Development library
+- `zlib`:       Development library
+
+Additionally, on OSX, `PKG_CONFIG_PATH` needs to be properly set to pick up `sqlite3`.
+Provided you installed `sqlite-dev` via `brew`, you can run the following command prior to building:
+```console
+export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
+```
+Since this setting does not persist, we recommend you follow Homebrew's instructions
+and add it to your `.bashrc`, `.zshrc`, etc...
+
+## Build instructions
 
 ```console
 # Install the latest DMD compiler
@@ -29,4 +66,10 @@ dub build --skip-registry=all
 dub test --skip-registry=all
 ```
 
-You can also check our [CI configuration](./.travis.yml).
+## Running tests
+
+Agora comes with plenty of tests. Take a look at the CI configuration for an exact list.
+At the moment, the three main ways to run the test are:
+- `dub test`: Test the consensus protocol and runs all the unittests
+- `rdmd tests/runner.d`: Run a serie of simple integrations tests
+- `ci/system_integration_test.d`: Run a full-fledged system integration test, including building the docker image.
