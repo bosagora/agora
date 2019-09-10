@@ -36,6 +36,7 @@
         "source/scpp/build/uint128_t.o"
     ],
     "lflags": [ "-lsodium", "-lstdc++", "-lsqlite3" ],
+    "buildRequirements": [ "allowWarnings" ],
 
     "configurations": [
         {
