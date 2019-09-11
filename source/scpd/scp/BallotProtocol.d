@@ -100,6 +100,17 @@ extern(C++, class) public struct BallotProtocol
 
     // ** status methods
 
+    // returns information about the local state in JSON format
+    // including historical statements if available
+    //Json::Value getJsonInfo();
+    void* getJsonInfo();
+
+    // returns information about the quorum for a given node
+    //Json::Value getJsonQuorumInfo(NodeID const& id, bool summary,
+    //                              bool fullKeys = false);
+    void* getJsonQuorumInfo(ref const(NodeID)  id, bool summary,
+        bool fullKeys = false);
+
     // returns the hash of the QuorumSet that should be downloaded
     // with the statement.
     // note: the companion hash for an EXTERNALIZE statement does
@@ -110,14 +121,15 @@ extern(C++, class) public struct BallotProtocol
     // c for EXTERNALIZE messages
     static SCPBallot getWorkingBallot(const ref SCPStatement st);
 
-    // SCPEnvelope* getLastMessageSend() const
-    // {
-    //     return mLastEnvelopeEmit.get();
-    // }
+    SCPEnvelope* getLastMessageSend() const;
 
     void setStateFromEnvelope(const ref SCPEnvelope e);
 
     vector!SCPEnvelope getCurrentState() const;
+
+    // returns the latest message from a node
+    // or null if not found
+    const(SCPEnvelope)* getLatestMessage(ref const(NodeID) id) const;
 
     vector!SCPEnvelope getExternalizingState() const;
 
