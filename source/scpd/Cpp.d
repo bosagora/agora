@@ -70,6 +70,9 @@ extern(C++, (StdNS!())) {
     }
 }
 
+/// C++ support for foreach
+extern(C++) private int cpp_set_foreach(T)(void* set, void* ctx, void* cb);
+
 extern(C++, `std`) {
     /// Binding: Needs to be instantiated on C++ side
     shared_ptr!T make_shared(T, Args...)(Args args);
@@ -88,6 +91,19 @@ extern(C++, `std`) {
     public struct set (Key)
     {
         void*[3] ptr;
+
+        /// Foreach support
+        extern(D) public int opApply (scope int delegate(ref const(Key)) dg) const
+        {
+            extern(C++) static int wrapper (void* context, ref const(Key) value)
+            {
+                auto dg = *cast(typeof(dg)*)context;
+                return dg(value);
+            }
+
+            return cpp_set_foreach!Key(cast(void*)&this, cast(void*)&dg,
+                cast(void*)&wrapper);
+        }
     }
 
     /// Fake bindings for std::map
@@ -95,6 +111,17 @@ extern(C++, `std`) {
     {
         void*[3] ptr;
     }
+}
+
+private extern(C++) set!uint makeTestSet();
+
+unittest
+{
+    auto set = makeTestSet;
+    uint[] values;
+    foreach (val; set)
+        values ~= val;
+    assert(values == [1, 2, 3, 4, 5]);
 }
 
 /// Can't import `core.stdcpp.allocator` because it transitively imports
