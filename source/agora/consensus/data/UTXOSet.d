@@ -27,6 +27,73 @@ import std.file;
 
 mixin AddLogger!();
 
+/// The structure of spendable transaction output
+public struct UTXOSetValue
+{
+    /// Block height
+    ulong height;
+
+    /// Transaction type
+    TxType type;
+
+    /// Previous transaction type
+    TxType prev_type;
+
+    /// Unspend transaction output
+    Output output;
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.height, dg);
+        hashPart(this.type, dg);
+        hashPart(this.prev_type, dg);
+        hashPart(this.output, dg);
+    }
+
+    /***************************************************************************
+
+        Input Serialization
+
+        Params:
+             dg = serialize function
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.height, dg);
+        serializePart(this.type, dg);
+        serializePart(this.prev_type, dg);
+        serializePart(this.output, dg);
+    }
+
+    /***************************************************************************
+
+        Input deserialization
+
+        Params:
+             dg = deserialize function
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    {
+        deserializePart(this.height, dg);
+        deserializePart(this.type, dg);
+        deserializePart(this.prev_type, dg);
+        deserializePart(this.output, dg);
+    }
+}
+
 /// ditto
 public class UTXOSet
 {
