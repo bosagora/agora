@@ -221,6 +221,10 @@ public class TestAPIManager
     /// Registry holding the nodes
     protected Registry reg;
 
+    /// Keeps the order of creation as createNewNode() was called.
+    /// Needed to know which node was the first / last one in some tests.
+    public PublicKey[] keys;
+
     ///
     public this ()
     {
@@ -233,6 +237,7 @@ public class TestAPIManager
         auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg);
         this.reg.register(address.toString(), api.tid());
         this.apis[address] = api;
+        this.keys ~= address;
     }
 
     /***************************************************************************
@@ -490,6 +495,7 @@ public class TestNode : Node, TestAPI
         in string[] peers, in string[] dns_seeds, Metadata metadata,
         TaskManager taskman)
     {
+        assert(taskman !is null);
         return new TestNetworkManager(node_config, banman_conf, peers,
             dns_seeds, metadata, taskman, this.registry);
     }
@@ -498,8 +504,11 @@ public class TestNode : Node, TestAPI
 /// Describes a network topology for testing purpose
 public enum NetworkTopology
 {
-    /// 4 nodes which all know about each other. Figure 9 in the SCP paper.
+    /// A number of nodes which all know about each other. Figure 9 in the SCP paper.
     Simple,
+
+    /// Same as Simple, with one additional non-validating node
+    OneNonValidator,
 
     /// 4 nodes, 3 required, correspond to Figure 2 in the SCP paper
     Balanced,
@@ -562,6 +571,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     {
         NodeConfig conf =
         {
+            is_validator : true,
             key_pair : KeyPair.random(),
             retry_delay : retry_delay, // msecs
             max_retries : max_retries,
@@ -572,21 +582,23 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
+    BanManager.Config ban_conf =
+    {
+        max_failed_requests : max_failed_requests,
+        ban_duration: 300
+    };
+
     Config makeConfig (NodeConfig self, NodeConfig[] node_confs)
     {
-        BanManager.Config ban_conf =
-        {
-            max_failed_requests : max_failed_requests,
-            ban_duration: 300
-        };
-
         auto other_nodes =
             node_confs
                 .filter!(conf => conf != self)
                 .map!(conf => conf.key_pair.address.toString());
 
-        auto quorum_keys = assumeUnique(
-            node_confs.map!(conf => conf.key_pair.address).array);
+        auto quorum_keys =
+            node_confs
+                .filter!(conf => conf.is_validator)
+                .map!(conf => conf.key_pair.address).array.assumeUnique;
 
         Config conf =
         {
@@ -599,28 +611,69 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
+    Config makeCyclicConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs)
+    {
+        auto prev_idx = idx == 0 ? node_confs.length - 1 : idx - 1;
+
+        auto other_nodes =
+            node_confs
+                .filter!(conf => conf != self)
+                .map!(conf => conf.key_pair.address.toString());
+
+        immutable quorum_keys = [self.key_pair.address, node_confs[prev_idx].key_pair.address];
+
+        Config conf =
+        {
+            banman : ban_conf,
+            node : self,
+            network : configure_network ? assumeUnique(other_nodes.array) : null,
+            quorum : { nodes : quorum_keys /*, threshold : 2*/ }  // fails with 2
+        };
+
+        return conf;
+    }
+
+    NodeConfig[] node_configs;
+    Config[] configs;
+
     final switch (topology)
     {
     case NetworkTopology.Simple:
-        auto node_configs = iota(nodes).map!(_ => makeNodeConfig()).array;
-        auto configs = iota(nodes)
+        node_configs = iota(nodes).map!(_ => makeNodeConfig()).array;
+        configs = iota(nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+        break;
 
-        auto net = new APIManager();
-        foreach (idx, ref conf; configs)
-        {
-            const address = node_configs[idx].key_pair.address;
-            net.createNewNode(address, conf);
-        }
+    case NetworkTopology.OneNonValidator:
+        node_configs ~= iota(nodes).map!(_ => makeNodeConfig()).array;
+        node_configs[$ - 1].is_validator = false;
+        configs = iota(nodes)
+            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+        break;
 
-        return net;
+    case NetworkTopology.Cyclic:
+        node_configs = iota(nodes).map!(_ => makeNodeConfig()).array;
+        node_configs.each!((ref conf) => conf.min_listeners = 1);
+        configs = iota(nodes)
+            .map!(idx => makeCyclicConfig(idx, node_configs[idx], node_configs))
+                .array;
+
+        break;
 
     case NetworkTopology.Balanced:
     case NetworkTopology.Tiered:
-    case NetworkTopology.Cyclic:
     case NetworkTopology.SinglePoF:
         assert(0, "Not implemented");
     }
+
+    auto net = new APIManager();
+    foreach (idx, ref conf; configs)
+    {
+        const address = node_configs[idx].key_pair.address;
+        net.createNewNode(address, conf);
+    }
+
+    return net;
 }
 
 /*******************************************************************************

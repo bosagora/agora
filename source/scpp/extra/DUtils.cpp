@@ -67,7 +67,7 @@ void callCPPDelegate (void* cb)
 }
 
 std::shared_ptr<SCPQuorumSet> makeSharedSCPQuorumSet (
-    SCPQuorumSet& quorum)
+    const SCPQuorumSet& quorum)
 {
     return std::make_shared<SCPQuorumSet>(quorum);
 }
