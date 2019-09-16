@@ -23,6 +23,7 @@ import agora.common.Types;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
+import agora.consensus.protocol.Nominator;
 import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.BlockStorage;
@@ -32,6 +33,9 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import scpd.types.Stellar_SCP;
+
+import scpd.types.Stellar_SCP;
+import scpd.types.Utils;
 
 import vibe.data.json;
 import vibe.web.rest : RestException;
@@ -86,6 +90,9 @@ public class Node : API
     /// Blockstorage
     private IBlockStorage storage;
 
+    /// Nominator instance
+    private Nominator nominator;
+
     /// Ctor
     public this (const Config config)
     {
@@ -107,10 +114,48 @@ public class Node : API
     /// The first task method, loading from disk, node discovery, etc
     public void start ()
     {
+        import scpd.scp.QuorumSetUtils;
         log.info("Doing network discovery..");
-        this.network.discover();
-
+        auto peers = this.network.discover();
         this.network.retrieveLatestBlocks(this.ledger);
+
+        // nothing to do
+        if (!this.config.node.is_validator)
+            return;
+
+        import agora.network.NetworkClient;
+        auto quorum_set = toSCPQuorumSet(this.config.quorum);
+        normalizeQSet(quorum_set);
+
+        // todo: assertion fails do the misconfigured(?) threshold of 1 which
+        // is lower than vBlockingSize in QuorumSetSanityChecker::checkSanity
+        const ExtraChecks = false;
+        enforce(isQuorumSetSane(quorum_set, ExtraChecks),
+            "Configured quorum set is not considered valid by SCP");
+
+        import agora.common.Set;
+        import std.typecons;
+
+        void getNodes (QuorumConfig conf, ref bool[PublicKey] nodes)
+        {
+            foreach (node; conf.nodes)
+                nodes[node] = true;
+
+            foreach (sub_conf; conf.quorums)
+                getNodes(sub_conf, nodes);
+        }
+
+        // can't use Set(), requires serialization support
+        bool[PublicKey] quorum_keys;
+        getNodes(this.config.quorum, quorum_keys);
+
+        auto quorum_peers = peers.byKeyValue
+            .filter!(item => item.key in quorum_keys)
+            .map!(item => tuple(item.key, item.value))
+            .assocArray();
+
+        this.nominator = new Nominator(this.config.node.key_pair,
+            this.ledger, this.taskman, quorum_peers, quorum_set);
     }
 
     /***************************************************************************
@@ -180,7 +225,11 @@ public class Node : API
 
     public bool receiveEnvelope (SCPEnvelope envelope)
     {
-        return true;
+        // we should not receive SCP messages unless we're a validator node
+        if (!this.config.node.is_validator)
+            return false;
+
+        return this.nominator.receiveEnvelope(envelope);
     }
 
     /// GET: /has_transaction_hash

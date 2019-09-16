@@ -122,7 +122,7 @@ unittest
     }
 
     const NodeCount = 3;
-    auto network = makeTestNetwork!BadAPIManager(NetworkTopology.Simple,
+    auto network = makeTestNetwork!BadAPIManager(NetworkTopology.OneNonValidator,
         NodeCount);
     network.start();
     scope(exit) network.shutdown();

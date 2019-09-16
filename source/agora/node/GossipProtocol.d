@@ -65,6 +65,7 @@ public class GossipProtocol
         if (this.ledger.acceptTransaction(tx))
         {
             this.network.sendTransaction(tx);
+            this.ledger.tryNominateTXSet();
         }
     }
 
