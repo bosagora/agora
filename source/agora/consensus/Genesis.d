@@ -20,7 +20,6 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.consensus.data.Transaction;
 
-
 /// The genesis block
 public immutable Block GenesisBlock =
 {
@@ -46,8 +45,8 @@ unittest
 
 ///
 private immutable Hash GenesisMerkleRoot =
-    Hash(`0xd04f8dd627ec5245129527b2327ad73d1157d483441a249d7eecd086ee1c4775`
-         ~ `3ad14d410f2bf128d8737366038c85d223e5701b73c7238089f52898ecd0e1b2`);
+    Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413959ca`
+         ~ `4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
 
 /// The single transaction that are part of the genesis block
 public immutable Transaction GenesisTransaction =
@@ -55,14 +54,14 @@ public immutable Transaction GenesisTransaction =
     TxType.Payment,
     inputs: [ Input.init ],
     outputs: [
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
-        Output(Amount(40_000_000 / Block.TxsInBlock), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
+        Output(Amount(62_500_000L * 10_000_000L), GenesisOutputAddress),
     ],
 };
 

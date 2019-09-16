@@ -237,10 +237,9 @@ private struct TransactionFmt
 {
     import agora.consensus.Genesis;
     static immutable ResultStr = `Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
-
+Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
     assert(ResultStr == format("%s", TransactionFmt(GenesisTransaction)));
 }
 
@@ -265,7 +264,7 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xd04f...e1b2`;
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xdb6e...d2c3`;
     assert(GenesisHStr == format("%s", BlockHeaderFmt(GenesisBlock.header)));
 }
 
@@ -291,11 +290,11 @@ private struct BlockFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xd04f...e1b2, Transactions: 1
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xdb6e...d2c3, Transactions: 1
 Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
+Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
     assert(ResultStr == format("%s", BlockFmt(GenesisBlock)));
 }
 
@@ -304,15 +303,15 @@ GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
     import agora.common.Hash;
     import agora.consensus.Genesis;
 
-    static immutable ResultStr = `Height: 1, Prev: 0xcdc3...00e1, Root: 0x4203...1ec3, Transactions: 2
+    static immutable ResultStr = `Height: 1, Prev: 0xd462...60db, Root: 0xf9f5...fde2, Transactions: 2
 Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)
+Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)
 Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
-Outputs (8): GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5),
-GCOQ...LRIJ(0.5), GCOQ...LRIJ(0.5)`;
+Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
 
     immutable MerkleRoot = hashMulti(
         GenesisBlock.header.merkle_root, GenesisBlock.header.merkle_root);
