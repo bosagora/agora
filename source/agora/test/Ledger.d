@@ -260,7 +260,7 @@ unittest
     txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
 
     // create a deep-copy of the first tx
-    auto backup_tx = deserialize!Transaction(serializeFull(txs[0]));
+    auto backup_tx = deserializeFull!Transaction(serializeFull(txs[0]));
 
     // create a double-spend tx
     txs[0].inputs[0] = txs[1].inputs[0];

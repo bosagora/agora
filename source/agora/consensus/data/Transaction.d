@@ -454,14 +454,14 @@ unittest
         [Input(Hash.init, 0)],
         [Output.init]
     );
-    assert(agora.common.Deserializer.deserialize!Transaction(serializeFull(payment_tx)) == payment_tx);
+    assert(agora.common.Deserializer.deserializeFull!Transaction(serializeFull(payment_tx)) == payment_tx);
 
     Transaction freeze_tx = Transaction(
         TxType.Freeze,
         [Input(Hash.init, 0)],
         [Output.init]
     );
-    assert(agora.common.Deserializer.deserialize!Transaction(serializeFull(freeze_tx)) == freeze_tx);
+    assert(agora.common.Deserializer.deserializeFull!Transaction(serializeFull(freeze_tx)) == freeze_tx);
 }
 
 /// Transaction type hashing for unittest

@@ -254,7 +254,7 @@ private class UTXODB
 
         foreach (row; results)
         {
-            output = deserialize!Output(row.peek!(ubyte[])(0));
+            output = deserializeFull!Output(row.peek!(ubyte[])(0));
             return true;
         }
 

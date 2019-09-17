@@ -186,7 +186,7 @@ public class TransactionPool
         foreach (row; results)
         {
             auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
-            auto tx = deserialize!Transaction(row.peek!(ubyte[])(1));
+            auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(1));
 
             // break
             if (auto ret = dg(hash, tx))

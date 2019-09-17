@@ -188,7 +188,7 @@ unittest
 {
     auto old_set = Set!int.from([2, 4, 6, 8]);
     auto bytes = old_set.serializeFull();
-    auto new_set = deserialize!(Set!int)(bytes);
+    auto new_set = deserializeFull!(Set!int)(bytes);
 
     assert(new_set.length == old_set.length);
     old_set.each!(value => assert(value in new_set));
@@ -199,7 +199,7 @@ unittest
 {
     auto old_set = Set!string.from(["foo", "bar", "agora"]);
     auto bytes = old_set.serializeFull();
-    auto new_set = deserialize!(Set!string)(bytes);
+    auto new_set = deserializeFull!(Set!string)(bytes);
 
     assert(new_set.length == old_set.length);
     old_set.each!(value => assert(value in new_set));
