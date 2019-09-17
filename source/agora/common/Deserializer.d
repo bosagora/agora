@@ -32,8 +32,7 @@ public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 
 *******************************************************************************/
 
-public T deserialize (T) (scope ubyte[] data) @safe
-    if (is(T == struct) && is(typeof(T.init.deserialize(DeserializeDg.init))))
+public T deserializeFull (T) (scope ubyte[] data) @safe
 {
     T value;
 
@@ -44,7 +43,7 @@ public T deserialize (T) (scope ubyte[] data) @safe
         return res;
     };
 
-    value.deserialize(dg);
+    deserializePart(value, dg);
     return value;
 }
 
@@ -137,7 +136,7 @@ unittest
 
     ubyte[] block_bytes = serializeFull(GenesisBlock);
     // TODO: This trigger a DMD bug about array comparison
-    assert(cast(const)deserialize!Block(block_bytes) == GenesisBlock);
+    assert(cast(const)deserializeFull!Block(block_bytes) == GenesisBlock);
 
     // Check that there is no trailing data
     ubyte[] blocks_data = serializeFull(GenesisBlock) ~ serializeFull(GenesisBlock);
@@ -161,7 +160,7 @@ unittest
 
     // transaction test
     auto tx_bytes = serializeFull(GenesisTransaction);
-    assert(deserialize!Transaction(tx_bytes) == GenesisTransaction);
+    assert(deserializeFull!Transaction(tx_bytes) == GenesisTransaction);
 
     // test of various field types
     static struct S
@@ -186,5 +185,5 @@ unittest
 
     auto s = S(42, "foo");
     auto bytes = serializeFull(s);
-    assert(bytes.deserialize!S == s);
+    assert(deserializeFull!S(bytes) == s);
 }

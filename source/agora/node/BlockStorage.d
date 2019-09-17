@@ -1064,7 +1064,7 @@ public class MemBlockStorage : IBlockStorage
         if (finds.empty)
             return false;
 
-        block = deserialize!Block(this.blocks[finds.front.position]);
+        block = deserializeFull!Block(this.blocks[finds.front.position]);
         return true;
     }
 
@@ -1091,7 +1091,7 @@ public class MemBlockStorage : IBlockStorage
         if (finds.empty)
             return false;
 
-        block = deserialize!Block(this.blocks[finds.front.position]);
+        block = deserializeFull!Block(this.blocks[finds.front.position]);
         return true;
     }
 

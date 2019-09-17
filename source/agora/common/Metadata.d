@@ -95,7 +95,7 @@ public class DiskMetadata : Metadata
         try if (this.file_path.exists)
         {
             auto bytes = cast(ubyte[])std.file.read(file_path);
-            this.peers = deserialize!(typeof(this.peers))(bytes);
+            this.peers = deserializeFull!(typeof(this.peers))(bytes);
         }
         catch (Exception ex)
         {
