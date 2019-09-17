@@ -2,6 +2,19 @@
 
     Utilities to deal with logging
 
+    ---
+    module agora.foo.bar;
+
+    import agora.utils.Log;
+
+    mixin AddLogger!();
+
+    void myFunctionThatLogs (int arg = 42)
+    {
+        log.info("[{}:{}] My argument is: {}", __FILE__, __LINE__, arg);
+    }
+    ---
+
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
         All rights reserved.

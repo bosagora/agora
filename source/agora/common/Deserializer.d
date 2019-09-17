@@ -16,6 +16,69 @@ module agora.common.Deserializer;
 import agora.common.Types;
 import agora.common.crypto.Key;
 
+/// test various serialization / deserialization of types
+unittest
+{
+    import agora.consensus.data.Block;
+    import agora.common.Hash;
+    import agora.common.Serializer;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.Genesis;
+
+    ubyte[] block_bytes = serializeFull(GenesisBlock);
+    // TODO: This trigger a DMD bug about array comparison
+    assert(cast(const)deserializeFull!Block(block_bytes) == GenesisBlock);
+
+    // Check that there is no trailing data
+    ubyte[] blocks_data = serializeFull(GenesisBlock) ~ serializeFull(GenesisBlock);
+
+    void deserializeArrayEntry () @safe
+    {
+        scope DeserializeDg dg = (size) @safe
+        {
+            scope(exit) blocks_data = blocks_data[size .. $];
+            return blocks_data[0 .. size];
+        };
+
+        Block newblock;
+        newblock.deserialize(dg);
+        // TODO: This trigger a DMD bug about array comparison
+        assert(cast(const)newblock == GenesisBlock);
+    }
+
+    deserializeArrayEntry();
+    deserializeArrayEntry();
+
+    // transaction test
+    auto tx_bytes = serializeFull(GenesisTransaction);
+    assert(deserializeFull!Transaction(tx_bytes) == GenesisTransaction);
+
+    // test of various field types
+    static struct S
+    {
+        int i;
+        string s;
+
+        void serialize (scope SerializeDg dg) const @safe
+        {
+            serializePart(this.i, dg);
+            serializePart(this.s, dg);
+        }
+
+        void deserialize (scope DeserializeDg dg) @safe
+        {
+            deserializePart(this.i, dg);
+            char[] buffer;
+            deserializePart(buffer, dg);
+            this.s = buffer.idup;
+        }
+    }
+
+    auto s = S(42, "foo");
+    auto bytes = serializeFull(s);
+    assert(bytes.deserializeFull!S == s);
+}
+
 /// Type of delegate deserializeDg
 public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 
@@ -170,67 +233,4 @@ public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
 {
     auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
     record = dg(length);
-}
-
-/// test various serialization / deserialization of types
-unittest
-{
-    import agora.consensus.data.Block;
-    import agora.common.Hash;
-    import agora.common.Serializer;
-    import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
-
-    ubyte[] block_bytes = serializeFull(GenesisBlock);
-    // TODO: This trigger a DMD bug about array comparison
-    assert(cast(const)deserializeFull!Block(block_bytes) == GenesisBlock);
-
-    // Check that there is no trailing data
-    ubyte[] blocks_data = serializeFull(GenesisBlock) ~ serializeFull(GenesisBlock);
-
-    void deserializeArrayEntry () @safe
-    {
-        scope DeserializeDg dg = (size) @safe
-        {
-            scope(exit) blocks_data = blocks_data[size .. $];
-            return blocks_data[0 .. size];
-        };
-
-        Block newblock;
-        newblock.deserialize(dg);
-        // TODO: This trigger a DMD bug about array comparison
-        assert(cast(const)newblock == GenesisBlock);
-    }
-
-    deserializeArrayEntry();
-    deserializeArrayEntry();
-
-    // transaction test
-    auto tx_bytes = serializeFull(GenesisTransaction);
-    assert(deserializeFull!Transaction(tx_bytes) == GenesisTransaction);
-
-    // test of various field types
-    static struct S
-    {
-        int i;
-        string s;
-
-        void serialize (scope SerializeDg dg) const @safe
-        {
-            serializePart(this.i, dg);
-            serializePart(this.s, dg);
-        }
-
-        void deserialize (scope DeserializeDg dg) @safe
-        {
-            deserializePart(this.i, dg);
-            char[] buffer;
-            deserializePart(buffer, dg);
-            this.s = buffer.idup;
-        }
-    }
-
-    auto s = S(42, "foo");
-    auto bytes = serializeFull(s);
-    assert(deserializeFull!S(bytes) == s);
 }

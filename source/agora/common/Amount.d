@@ -25,7 +25,7 @@
 
 module agora.common.Amount;
 
-/// Ditto
+/// Defines a monetary type used in the blockchain
 public struct Amount
 {
     import agora.common.Deserializer;

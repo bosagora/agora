@@ -338,7 +338,7 @@ public struct Seed
     }
 }
 
-///
+/// Discriminant for Stellar binary-encoded user-facing data
 public enum VersionByte : ubyte
 {
 	/// Used for encoded stellar addresses
