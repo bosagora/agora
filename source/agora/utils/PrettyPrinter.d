@@ -29,7 +29,22 @@ import std.algorithm;
 import std.format;
 import std.range;
 
-/// Ditto
+///
+unittest
+{
+    import agora.utils.Log;
+
+    void myFunction (T) (T data)
+    {
+        Logger log = Log.lookup(__MODULE__);
+        // Supported types: Amount, Hash, Input, Output, Block, Transaction, ...
+        // If a type is not supported it is returned verbatim
+        log.info("Got a {} of value: {}", T.stringof, prettify(data));
+    }
+}
+
+/// Returns:
+/// A formatting struct for a type, or the value if no such struct exists
 public auto prettify (T) (const ref T input)
 {
     static if (is(T : const Amount))

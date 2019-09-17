@@ -16,8 +16,7 @@
  * ported from the Go code in the stellar/go codebase
  * (https://github.com/stellar/go/).
  *
- * Original file:
- * https://github.com/stellar/go/blob/680340b409a03a6061ae445067453f582411deaf/crc16/main.go
+ * Original_file: https://github.com/stellar/go/blob/680340b409a03a6061ae445067453f582411deaf/crc16/main.go
  *
  * The code is licensed as:
  *

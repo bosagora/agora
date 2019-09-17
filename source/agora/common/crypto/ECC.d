@@ -4,8 +4,7 @@
 
     Those primitives are used for Schnorr signatures.
 
-    See_Also:
-      https://en.wikipedia.org/wiki/EdDSA#Ed25519
+    See_Also: https://en.wikipedia.org/wiki/EdDSA#Ed25519
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea

@@ -19,7 +19,7 @@ module agora.common.Task;
 
 import core.time;
 
-/// Ditto
+/// Exposes primitives to run tasks through Vibe.d
 public class TaskManager
 {
     /***************************************************************************
