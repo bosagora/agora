@@ -42,7 +42,7 @@ import std.stdio;
 
 public interface IBlockStorage
 {
-    @safe nothrow:
+    @safe:
 
     /***************************************************************************
 
@@ -989,7 +989,7 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readLastBlock (ref Block block) @safe nothrow
+    public bool readLastBlock (ref Block block) @safe
     {
         if (this.height_idx.length == 0)
             return false;
@@ -1052,7 +1052,7 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, size_t height) @safe nothrow
+    public bool readBlock (ref Block block, size_t height) @safe
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -1081,7 +1081,7 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, Hash hash) @safe nothrow
+    public bool readBlock (ref Block block, Hash hash) @safe
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 

@@ -107,7 +107,7 @@ public struct Transaction
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         deserializePart(this.type, dg);
 
@@ -218,7 +218,7 @@ public struct Output
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         deserializePart(this.value, dg);
         this.address = PublicKey.fromBinary(dg);
@@ -278,7 +278,7 @@ public struct Input
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         this.previous = Hash(dg(Hash.sizeof));
         deserializePart(this.index, dg);

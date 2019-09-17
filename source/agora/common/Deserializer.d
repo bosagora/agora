@@ -17,7 +17,7 @@ import agora.common.Data;
 import agora.common.crypto.Key;
 
 /// Type of delegate deserializeDg
-public alias DeserializeDg = ubyte[] delegate(size_t size) nothrow @safe;
+public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 
 /*******************************************************************************
 
@@ -32,12 +32,12 @@ public alias DeserializeDg = ubyte[] delegate(size_t size) nothrow @safe;
 
 *******************************************************************************/
 
-public T deserialize (T) (scope ubyte[] data) nothrow @safe
+public T deserialize (T) (scope ubyte[] data) @safe
     if (is(T == struct) && is(typeof(T.init.deserialize(DeserializeDg.init))))
 {
     T value;
 
-    scope DeserializeDg dg = (size) nothrow @safe
+    scope DeserializeDg dg = (size) @safe
     {
         ubyte[] res = data[0 .. size];
         data = data[size .. $];
@@ -49,8 +49,7 @@ public T deserialize (T) (scope ubyte[] data) nothrow @safe
 }
 
 /// Ditto
-public void deserializePart (T) (ref T record, scope DeserializeDg dg)
-    nothrow @safe
+public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
     if (is(T == struct))
 {
     static assert(is(typeof(T.init.deserialize(DeserializeDg.init))),
@@ -61,7 +60,7 @@ public void deserializePart (T) (ref T record, scope DeserializeDg dg)
 
 /// Enum support
 public void deserializePart (T)(ref T record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
     if (is(T == enum))
 {
     import std.traits;
@@ -72,56 +71,56 @@ public void deserializePart (T)(ref T record, scope DeserializeDg dg)
 
 /// Ditto
 public void deserializePart (ref Hash record, scope DeserializeDg dg)
-    nothrow @safe
+    @safe
 {
     record = Hash(dg(Hash.sizeof));
 }
 
 /// Ditto
 public void deserializePart (ref ubyte record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     record = dg(record.sizeof)[0];
 }
 
 /// Ditto
 public void deserializePart (ref ushort record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     record = *cast(ushort*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
 public void deserializePart (ref int record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     record = *cast(int*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
 public void deserializePart (ref uint record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     record = *cast(uint*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
 public void deserializePart (ref ulong record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     record = *cast(ulong*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
 public void deserializePart (ref long record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     record = *cast(long*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
 public void deserializePart (ref char[] record, scope DeserializeDg dg)
-    nothrow @trusted
+    @trusted
 {
     auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
     record = cast(char[])dg(length);
@@ -143,9 +142,9 @@ unittest
     // Check that there is no trailing data
     ubyte[] blocks_data = serializeFull(GenesisBlock) ~ serializeFull(GenesisBlock);
 
-    void deserializeArrayEntry () nothrow @safe
+    void deserializeArrayEntry () @safe
     {
-        scope DeserializeDg dg = (size) nothrow @safe
+        scope DeserializeDg dg = (size) @safe
         {
             scope(exit) blocks_data = blocks_data[size .. $];
             return blocks_data[0 .. size];
@@ -176,7 +175,7 @@ unittest
             serializePart(this.s, dg);
         }
 
-        void deserialize (scope DeserializeDg dg) nothrow @safe
+        void deserialize (scope DeserializeDg dg) @safe
         {
             deserializePart(this.i, dg);
             char[] buffer;

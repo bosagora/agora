@@ -296,7 +296,7 @@ public class Ledger
     ***************************************************************************/
 
     public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
-        @safe nothrow
+        @safe
     {
         assert(max_blocks > 0);
 

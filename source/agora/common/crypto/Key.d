@@ -208,7 +208,7 @@ public struct PublicKey
 
     ***************************************************************************/
 
-    public static PublicKey fromBinary (scope DeserializeDg dg) nothrow @safe
+    public static PublicKey fromBinary (scope DeserializeDg dg) @safe
     {
         alias DType = typeof(this.data);
         return PublicKey(DType(dg(DType.sizeof)));
