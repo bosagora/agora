@@ -90,7 +90,7 @@ public struct BlockHeader
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         this.prev_block = Hash(dg(Hash.sizeof));
         deserializePart(this.height, dg);
@@ -174,7 +174,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         deserializePart(this.header, dg);
 

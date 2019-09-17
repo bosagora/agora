@@ -77,7 +77,7 @@ public struct Amount
     }
 
     /// Support for deserialization
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         deserializePart(this.value, dg);
     }

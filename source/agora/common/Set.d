@@ -96,7 +96,7 @@ public struct Set (T)
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) nothrow @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         size_t length;
         deserializePart(length, dg);
