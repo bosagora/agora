@@ -196,6 +196,12 @@ public struct PublicKey
         dg(this.data[]);
     }
 
+    /// Support for deserialization
+    public void deserialize (scope DeserializeDg dg) @safe
+    {
+        this.data.opIndex[] = dg(this.data.opIndex.length)[];
+    }
+
     /***************************************************************************
 
         PublicKey fromBinary
