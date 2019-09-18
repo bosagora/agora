@@ -310,8 +310,11 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
     if (!block.txs.isSorted())
         return "Block: Transactions are not sorted";
 
-    if (block.txs.any!(tx => !tx.isValid(findUTXO)))
-        return "Block: Some transactions are invalid";
+    foreach (const ref tx; block.txs)
+    {
+        if (auto fail_reason = tx.isInvalidReason(findUTXO))
+            return fail_reason;
+    }
 
     Hash[] merkle_tree;
     if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
