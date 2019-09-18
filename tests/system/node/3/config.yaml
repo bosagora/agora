@@ -66,5 +66,5 @@ network:
 ##                               Logging options                              ##
 ################################################################################
 logging:
-  # Values: Trace, Info, Warn, Error, Fatal, None (default)
-  level: Info
+  root:
+    level: Info

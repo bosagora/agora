@@ -113,7 +113,7 @@ public struct Config
     public immutable string[] dns_seeds;
 
     /// Logging config
-    public LoggingConfig logging;
+    public immutable(LoggerConfig)[] logging;
 
     /// Event handler config
     public EventHandlerConfig event_handlers;
@@ -242,16 +242,6 @@ public struct AdminConfig
 
     /// Bind port
     public ushort port = 0xB0B;
-}
-
-/// Configuration for logging
-public struct LoggingConfig
-{
-    static assert(!hasUnsharedAliasing!(typeof(this)),
-        "Type must be shareable accross threads");
-
-    /// The logging level
-    LogLevel level = LogLevel.Error;
 }
 
 /// Configuration for URLs to push a data when an event occurs
@@ -740,11 +730,42 @@ private BanManager.Config parseBanManagerConfig (Node* node, in CommandLine cmdl
 
 *******************************************************************************/
 
-private LoggingConfig parseLoggingSection (Node* ptr, in CommandLine c)
+private immutable(LoggerConfig)[] parseLoggingSection (Node* ptr, in CommandLine)
 {
-    LoggingConfig ret;
-    ret.level = get!(LogLevel, "logging", "level")(c, ptr);
-    return ret;
+    // By default, configure the root logger to be verbose enough for users
+    // to see what's happening
+    static immutable LoggerConfig[] DefaultConfig = [ {
+        name: null,
+        level: LogLevel.Info,
+        propagate: true,
+        console: true,
+        additive: true,
+    } ];
+
+    if (ptr is null)
+        return DefaultConfig;
+
+    immutable(LoggerConfig)[] result;
+    foreach (string name_, Node value; *ptr)
+    {
+        LoggerConfig c = { name: name_ != "root" ? name_ : null };
+        if (auto p = "level" in value)
+            c.level = (*p).as!string.to!LogLevel;
+        if (auto p = "propagate" in value)
+            c.propagate = (*p).as!bool;
+        if (auto p = "console" in value)
+            c.console = (*p).as!bool;
+        if (auto p = "additive" in value)
+            c.additive = (*p).as!bool;
+        if (auto p = "file" in value)
+            c.file = (*p).as!string;
+        if (auto p = "buffer_size" in value)
+            c.buffer_size = (*p).as!size_t;
+
+        result ~= c;
+    }
+
+    return result.length ? result : DefaultConfig;
 }
 
 ///
@@ -758,30 +779,31 @@ unittest
 foo:
   bar: Useless
 logging:
-  level: Trace
+  root:
+    level: Trace
+  agora.network:
+    level: Error
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseLoggingSection("logging" in node, cmdln);
-        assert(config.level == LogLevel.Trace);
-
-        cmdln.overrides["logging.level"] = [ "None" ];
-        auto config2 = parseLoggingSection("logging" in node, cmdln);
-        assert(config2.level == LogLevel.None);
+        assert(config[0].name.length == 0);
+        assert(config[0].level == LogLevel.Trace);
+        assert(config[1].name == "agora.network");
+        assert(config[1].level == LogLevel.Error);
     }
 
     {
         CommandLine cmdln;
         immutable conf_example = `
-logging:
+noLoggingSectionHere:
   foo: bar
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseLoggingSection("logging" in node, cmdln);
-        assert(config.level == LogLevel.Error);
-
-        cmdln.overrides["logging.level"] = [ "Trace" ];
-        auto config2 = parseLoggingSection("logging" in node, cmdln);
-        assert(config2.level == LogLevel.Trace);
+        assert(config.length == 1);
+        assert(config[0].name.length == 0);
+        assert(config[0].level == LogLevel.Info);
+        assert(config[0].console == true);
     }
 }
 

@@ -153,12 +153,57 @@ dns:
 
 ################################################################################
 ##                               Logging options                              ##
+##                                                                            ##
+## Our logging system is hierarchical: Logger names are, e.g. `a.b.c.d`.      ##
+## Inside agora, every module that logs have a module-level logger matching   ##
+## it's module name, e.g. `agora.node.main`.                                  ##
+##                                                                            ##
+## In addition, some modules can have more nested loggers: one such use case  ##
+## is for a module which deals with client connections, which we'll refer to  ##
+## as `agora.network.Client` here. Such a module would produce a confusing    ##
+## output if it was logging all clients interactions at module level, because ##
+## such interactions are intertwinned and requests/responses would be hard to ##
+## follow. Hence, using a predictable identifier to extend the hierarchy,     ##
+## such as the public key (when dealing with validators), would lead to the   ##
+## following loggers: `agora.network.Client.GABC`,                            ##
+## `agora.network.Client.GEFG`, `agora.network.Client.G1234`, etc...          ##
+##                                                                            ##
+## When configuring loggers, the configuration applies to the referenced      ##
+## hierarchy and any child. Using the previous example, configuring           ##
+## `agora.network` will lead to all clients having the same configuration,    ##
+## as well as the module `agora.network.Foobar`.                              ##
+##                                                                            ##
+## The 'root' name allows to configure the parent of all other loggers.       ##
 ################################################################################
 logging:
-  # Values: Trace, Info, Warn, Error, Fatal, None (default)
-  level: None
+  root:
+    # Set the log level for the root logger.
+    # This is the default log level, and is overriden by more specialized configs
+    #
+    # Values: Trace, Info, Warn, Error, Fatal, None (default)
+    level: Info
+    # Whether or not to log output to the console
+    console: true
+    # Output file to write the logging output to
+    # Note that output of a more specialized logger that uses another file won't be
+    # written to this file.
+    # The path is relative to `data_dir` unless an absolute path is supplied.
+    # Intermediate directories will be created as needed.
+    # This setting is optional, as no file would be written to if empty / not supplied.
+    file: log/root.log
 
-################################################################################
+  # Nested logger configuration
+  # Order does not matter as long as there is no duplication
+  - name: agora.network
+    level: Trace
+    console: false
+    file: log/network.log
+  - name: agora.node
+    level: Trace
+    console: false
+    file: log/node.log
+
+ ################################################################################
 ##                               Event Handlers                               ##
 ################################################################################
 event_handlers:
