@@ -18,6 +18,43 @@ import agora.common.Data;
 /// Type of delegate SerializeDg
 public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
 
+/// Default serializer implementation
+public mixin template DefaultSerializer ()
+{
+    static assert(is(typeof(this) == struct),
+        "`DefaultSerializer` needs to be mixed in a `struct` context");
+
+    /***************************************************************************
+
+        Serialize all members of this `struct`, in the order they appear.
+
+        Params:
+            dg = serialize function accumulator
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        foreach (const ref entry; this.tupleof)
+            serializePart(entry, dg);
+    }
+}
+
+///
+unittest
+{
+    static struct Foo
+    {
+        uint a;
+        ubyte[] b;
+
+        mixin DefaultSerializer!();
+    }
+
+    const Foo f = Foo(uint.max, [1, 2, 3]);
+    assert(serializeFull(f) == [255, 255, 255, 255, 3, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3]);
+}
+
 /*******************************************************************************
 
     Serialize a struct and return it as a ubyte[].
@@ -105,4 +142,12 @@ public void serializePart (scope cstring record, scope SerializeDg dg)
 {
     serializePart(record.length, dg);
     dg(cast(const ubyte[])record);
+}
+
+/// Ditto
+public void serializePart (scope const(ubyte)[] record, scope SerializeDg dg)
+    @safe
+{
+    serializePart(record.length, dg);
+    dg(record);
 }
