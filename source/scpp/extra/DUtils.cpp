@@ -27,9 +27,9 @@ int cpp_set_foreach(void* setptr, void* ctx, void* func)
     return 0;
 }
 
-std::set<unsigned int> makeTestSet()
+std::set<unsigned int>* makeTestSet()
 {
-    std::set<unsigned int> set = {1, 2, 3, 4, 5};
+    std::set<unsigned int>* set = new std::set<unsigned int>({1, 2, 3, 4, 5});
     return set;
 }
 

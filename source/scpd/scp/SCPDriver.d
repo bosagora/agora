@@ -14,6 +14,7 @@
 
 module scpd.scp.SCPDriver;
 
+import scpd.Cpp;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
@@ -95,10 +96,8 @@ public abstract class SCPDriver
 
     // `combineCandidates` computes the composite value based off a list
     // of candidate values.
-    //abstract Value combineCandidates(
-    // uint64 slotIndex, ref const(std::set!Value) candidates);
     abstract Value combineCandidates(
-        uint64_t slotIndex, ref const(Value)* candidates);
+        uint64_t slotIndex, ref const(set!Value) candidates);
 
     // `setupTimer`: requests to trigger 'cb' after timeout
     // if cb is nullptr, the timer is cancelled
