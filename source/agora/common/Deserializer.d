@@ -15,6 +15,7 @@ module agora.common.Deserializer;
 
 import agora.common.Types;
 import agora.common.crypto.Key;
+import std.range.primitives;
 
 import std.range;
 import std.traits;
@@ -152,6 +153,16 @@ public T deserializeFull (T) (scope DeserializeDg dg) @safe
 
 /// Ditto
 public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
+    if (isInputRange!T && hasLength!T)
+{
+    size_t length = deserializeVarInt!size_t(dg);
+    record.length = length;
+    foreach (ref v; record)
+        deserializePart(v, dg);
+}
+
+/// Ditto
+public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
     if (is(T == struct))
 {
     import geod24.bitblob;
@@ -235,17 +246,6 @@ public void deserializePart (ref uint[] record, scope DeserializeDg dg)
         foreach (ref uint elem; record)
             elem = swapEndian(elem);
     }
-}
-
-/// Ditto
-public void deserializePart (ref Hash[] record, scope DeserializeDg dg)
-    @trusted
-{
-    size_t length;
-    deserializePart(length, dg);
-    record = uninitializedArray!(Hash[])(length);
-    foreach (ref val; record)
-        deserializePart(val, dg);
 }
 
 /*******************************************************************************

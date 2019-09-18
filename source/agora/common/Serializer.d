@@ -14,6 +14,7 @@
 module agora.common.Serializer;
 
 import agora.common.Types;
+import std.range.primitives;
 
 ///
 unittest
@@ -52,12 +53,12 @@ private enum hasSerializeMethod (T) = is(T == struct)
 
 /*******************************************************************************
 
-    Serialize a struct and return it as a ubyte[].
+    Serialize a type and returns it as an `ubyte[]`.
 
     Params:
-        T = Type of struct to serialize
-        record = Instance of `T` to serialize
-        dg  = Serialization delegate, when this struct is a nested struct
+        T       = Top level type of data
+        record  = Data to serialize
+        dg      = Serialization delegate (equivalent to an output range)
         compact = Whether integers are serialized in variable-length form
 
     Returns:
@@ -67,7 +68,6 @@ private enum hasSerializeMethod (T) = is(T == struct)
 
 public ubyte[] serializeFull (T) (scope const auto ref T record)
     @safe
-    if (is(T == struct))
 {
     ubyte[] res;
     scope SerializeDg dg = (scope const(ubyte[]) data) @safe
@@ -75,8 +75,48 @@ public ubyte[] serializeFull (T) (scope const auto ref T record)
         res ~= data;
     };
     serializePart(record, dg);
-
     return res;
+}
+
+/// Ditto
+public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg)
+    if (!hasSerializeMethod!T && isInputRange!T && hasLength!T)
+{
+    serializePart(record.length, dg);
+    foreach (ref v; record)
+        serializePart(v, dg);
+}
+
+///
+unittest
+{
+    static struct Foo
+    {
+        const(ubyte)[] bar;
+    }
+
+    const(Foo)[] arr = [
+        { bar: [ 6, 5, 4,  3, 2, 1, 0 ], },
+        { bar: [ 9, 8, 7,  0], },
+        { bar: [ 4, 4, 4,  4], },
+        { bar: [ 2, 4, 8, 16], },
+        { bar: [ 0, 1, 2,  4], },
+    ];
+    immutable ubyte[] result = [
+        5,                   // arr.length
+        7,                   // arr[0].bar.length
+        6, 5, 4, 3, 2, 1, 0, // arr[0].bar
+        4,                   // arr[1].bar.length
+        9, 8, 7, 0,          // arr[1].bar
+        4,                   // arr[2].bar.length
+        4, 4, 4, 4,          // arr[2].bar
+        4,                   // arr[3].bar.length
+        2, 4, 8, 16,         // arr[3].bar
+        4,                   // arr[4].bar.length
+        0, 1, 2, 4,          // arr[4].bar
+    ];
+
+    assert(arr.serializeFull() == result);
 }
 
 /// Ditto
