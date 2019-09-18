@@ -113,13 +113,13 @@ extern(C++, `std`) {
     }
 }
 
-private extern(C++) set!uint makeTestSet();
+private extern(C++) set!uint* makeTestSet();
 
 unittest
 {
     auto set = makeTestSet;
     uint[] values;
-    foreach (val; set)
+    foreach (val; *set)
         values ~= val;
     assert(values == [1, 2, 3, 4, 5]);
 }
