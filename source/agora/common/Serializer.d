@@ -160,11 +160,27 @@ public void serializePart (ubyte record, scope SerializeDg dg)
     dg((cast(ubyte*)&record)[0 .. ubyte.sizeof]);
 }
 
+///
+unittest
+{
+    testSerialization(ubyte.max, [ubyte.max]);
+    testSerialization(ubyte(0),  [0]);
+    testSerialization(ubyte(127), [127]);
+}
+
 /// Ditto
 public void serializePart (ushort record, scope SerializeDg dg)
     @trusted
 {
     dg((cast(ubyte*)&record)[0 .. ushort.sizeof]);
+}
+
+///
+unittest
+{
+    testSerialization(ushort.max, [ubyte.max, ubyte.max]);
+    testSerialization(ushort(0),  [0, 0]);
+    testSerialization(ushort(ushort.max / 2), [ubyte.max, ubyte.max / 2]);
 }
 
 /// Ditto
@@ -174,11 +190,31 @@ public void serializePart (uint record, scope SerializeDg dg)
     dg((cast(ubyte*)&record)[0 .. uint.sizeof]);
 }
 
+///
+unittest
+{
+    testSerialization(uint.max, [ubyte.max, ubyte.max, ubyte.max, ubyte.max]);
+    testSerialization(uint(0),  [0, 0, 0, 0]);
+    testSerialization(uint.max / 2,
+        [ubyte.max, ubyte.max, ubyte.max, ubyte.max / 2]);
+}
+
 /// Ditto
 public void serializePart (ulong record, scope SerializeDg dg)
     @trusted
 {
     dg((cast(ubyte*)&record)[0 .. ulong.sizeof]);
+}
+
+///
+unittest
+{
+    testSerialization(ulong.max, [ubyte.max, ubyte.max, ubyte.max, ubyte.max,
+                                  ubyte.max, ubyte.max, ubyte.max, ubyte.max]);
+    testSerialization(ulong(0), [0, 0, 0, 0, 0, 0, 0, 0]);
+    testSerialization(ulong.max / 2,
+        [ubyte.max, ubyte.max, ubyte.max, ubyte.max, ubyte.max, ubyte.max,
+         ubyte.max, ubyte.max / 2]);
 }
 
 /// Ditto
@@ -189,10 +225,41 @@ public void serializePart (scope cstring record, scope SerializeDg dg)
     dg(cast(const ubyte[])record);
 }
 
+///
+unittest
+{
+    immutable string record = "Hello World";
+    immutable ubyte[] result = [11, 0, 0, 0, 0, 0, 0, 0,
+        'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'];
+    testSerialization(record, result);
+
+    testSerialization(string.init, [0, 0, 0, 0, 0, 0, 0, 0]);
+}
+
 /// Ditto
 public void serializePart (scope const(ubyte)[] record, scope SerializeDg dg)
     @safe
 {
     serializePart(record.length, dg);
     dg(record);
+}
+
+///
+unittest
+{
+    immutable ubyte[] record = [1, 2, 3, 42];
+    immutable ubyte[] result = [4, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 42];
+    testSerialization(record, result);
+}
+
+version (unittest)
+private void testSerialization (T) (scope T record, scope const(ubyte)[] result,
+    int line = __LINE__)
+{
+    import std.format;
+    ubyte[] serialized;
+    scope SerializeDg dg = (scope v) { serialized ~= v; };
+    serializePart(record, dg);
+    assert(serialized == result,
+           format("%s (%d): %s != %s", T.stringof, line, serialized, result));
 }
