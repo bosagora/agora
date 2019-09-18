@@ -19,6 +19,45 @@ import agora.common.crypto.Key;
 /// Type of delegate deserializeDg
 public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 
+/// Default deserializer implementation
+public mixin template DefaultDeserializer ()
+{
+    static assert(is(typeof(this) == struct),
+        "`DefaultDeserializer` needs to be mixed in a `struct` context");
+
+    /***************************************************************************
+
+        Deserialize all members of this `struct`, in the order they appear.
+
+        Params:
+            dg = source of binary data
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) @safe
+    {
+        foreach (ref entry; this.tupleof)
+            deserializePart(entry, dg);
+    }
+}
+
+///
+unittest
+{
+    static struct Foo
+    {
+        uint a;
+        ubyte[] b;
+
+        mixin DefaultDeserializer!();
+    }
+
+    /// See the example in `agora.common.Serializer` for the serialization part
+    ubyte[] data = [255, 255, 255, 255, 3, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3];
+    assert(deserializeFull!Foo(data) == Foo(uint.max, [1, 2, 3]));
+}
+
+
 /*******************************************************************************
 
     Deserialize a struct and return it.
@@ -123,6 +162,14 @@ public void deserializePart (ref char[] record, scope DeserializeDg dg)
 {
     auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
     record = cast(char[])dg(length);
+}
+
+/// Ditto
+public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
+    @trusted
+{
+    auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
+    record = dg(length);
 }
 
 /// test various serialization / deserialization of types
