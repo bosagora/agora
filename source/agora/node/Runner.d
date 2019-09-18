@@ -20,6 +20,7 @@ import agora.common.Ensure;
 import agora.common.Task : Periodic;
 import agora.flash.api.FlashAPI;
 import agora.flash.Node;
+import agora.network.RPC;
 import agora.node.admin.AdminInterface;
 import agora.node.Config;
 import agora.node.FullNode;
@@ -37,7 +38,7 @@ import vibe.http.router;
 import vibe.web.rest;
 import vibe.stream.tls;
 
-import std.algorithm : filter;
+import std.algorithm : any, filter;
 import std.file;
 import std.format;
 import std.typecons : Tuple, tuple;
@@ -79,25 +80,28 @@ public Listeners runNode (Config config)
     auto log = Logger(__MODULE__);
     log.trace("Config is: {}", config);
 
-    auto router = new URLRouter();
-
     mkdirRecurse(config.node.data_dir);
 
     Listeners result;
+    URLRouter router = config.interfaces.any!(i => i.type == InterfaceConfig.Type.http)
+        ? new URLRouter() : null;
+
     if (config.validator.enabled)
     {
         log.trace("Started Validator...");
         auto inst = new Validator(config);
-        router.registerRestInterface!(agora.api.Validator.API)(inst);
         if (config.admin.enabled)
             result.admin = inst.makeAdminInterface();
         result.node = inst;
+        if (router !is null)
+            router.registerRestInterface!(agora.api.Validator.API)(inst);
     }
     else
     {
         log.trace("Started FullNode...");
         result.node = new FullNode(config);
-        router.registerRestInterface!(agora.api.FullNode.API)(result.node);
+        if (router !is null)
+            router.registerRestInterface!(agora.api.FullNode.API)(result.node);
     }
 
     if (config.flash.enabled)
@@ -181,7 +185,7 @@ public Listeners runNode (Config config)
             settings.tlsContext = tls_ctx;
         }
         log.info("Node is listening on interface: http{}://{}:{}",
-            interface_.type == InterfaceConfig.Type.https ? "s" : "" , interface_.address, settings.port);
+            interface_.type == InterfaceConfig.Type.https ? "s" : "" , interface_.address, interface_.port);
         result.http ~= listenHTTP(settings, router);
     }
 
@@ -191,6 +195,16 @@ public Listeners runNode (Config config)
         log.info("Flash control interface is listening on {}:{}",
             config.flash.control_address, config.flash.control_port);
         result.http ~= result.flash.startControlInterface();
+    }
+
+    // TCP interfaces for the node
+    foreach (interface_; config.interfaces.filter!(i => i.type == InterfaceConfig.Type.tcp))
+    {
+        log.info("Node will be listening on TCP interface: {}:{}", interface_.address, interface_.port);
+        if (auto fl = cast(agora.api.Validator.API) result.node)
+            result.tcp ~= listenRPC!(agora.api.Validator.API)(fl, interface_.address, interface_.port);
+        else
+            result.tcp ~= listenRPC!(agora.api.FullNode.API)(result.node, interface_.address, interface_.port);
     }
 
     return result;

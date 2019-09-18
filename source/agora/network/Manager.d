@@ -1088,7 +1088,8 @@ public class NetworkManager
         Instantiates a client object implementing `API`
 
         This function simply returns a client object implementing `API`.
-        In the default implementation, this returns a `RestInterfaceClient`.
+        In the default implementation, this returns either an `RPCClient`
+        or a `RestInterfaceClient` according to the address schema.
         However, it can be overriden in test code to return an in-memory client.
 
         Params:
@@ -1102,16 +1103,31 @@ public class NetworkManager
 
     protected API getClient (Address address, Duration timeout)
     {
-        import vibe.http.client;
+        import std.algorithm.searching;
+        import vibe.inet.url;
+        const url = URL.parse(address);
 
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-        settings.httpClientSettings.proxyURL = this.proxy_url;
+        if (url.schema == "tcp")
+        {
+            import agora.network.RPC;
+            return new RPCClient!API(
+                url.host, url.port,
+                /* Disabled, we have our own method: */ 0.seconds, 1,
+                timeout, timeout, timeout);
+        }
 
-        return new RestInterfaceClient!API(settings);
+        if (url.schema.startsWith("http"))
+        {
+            import vibe.http.client;
+            auto settings = new RestInterfaceSettings;
+            settings.baseURL = url;
+            settings.httpClientSettings = new HTTPClientSettings;
+            settings.httpClientSettings.connectTimeout = timeout;
+            settings.httpClientSettings.readTimeout = timeout;
+            settings.httpClientSettings.proxyURL = this.proxy_url;
+            return new RestInterfaceClient!API(settings);
+        }
+        assert(0, "Unknown agora schema");
     }
 
     /***************************************************************************

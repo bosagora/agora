@@ -27,7 +27,7 @@ interfaces:
   - type: http
     address: 0.0.0.0
     port:    1826
-  - type: https
+  - type: tcp
     address: 0.0.0.0
     port:    1735
 
