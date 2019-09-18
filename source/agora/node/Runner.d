@@ -61,8 +61,13 @@ public alias Listeners = Tuple!(
 
 public Listeners runNode (Config config)
 {
-    setVibeLogLevel(config.logging.level);
-    Log.root.level(config.logging.level, true);
+    foreach (const ref settings; config.logging)
+    {
+        if (settings.name.length == 0 || settings.name == "vibe")
+            setVibeLogLevel(settings.level);
+        configureLogger(settings);
+    }
+
     auto log = Logger(__MODULE__);
     log.trace("Config is: {}", config);
 

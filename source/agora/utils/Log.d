@@ -137,16 +137,70 @@ public alias LogLevel = Ocean.Level;
 /// Ditto
 public alias Log = Ocean.Log;
 
-/// Initialize the logger
-static this ()
+/// Define options to configure a Logger
+/// Loosely inspired from `ocean.utils.log.Config`
+public struct LoggerConfig
 {
-    version (unittest)
-        auto appender = CircularAppender!()();
-    else
-        auto appender = new AppendConsole();
+    /// Name of the logger to configure
+    public string name;
 
-    appender.layout(new AgoraLayout());
-    Log.root.add(appender);
+    /// Level to set the logger to (messages at a lower level won't be printed)
+    public Ocean.Level level;
+
+    /// Whether to propagate that level to the children
+    public bool propagate;
+
+    /// Whether to use console output or not
+    public bool console;
+
+    /// Whether to use file output and if, which file path
+    public string file;
+
+    /// Whether this logger should be additive or not
+    public bool additive;
+
+    /// Buffer size of the buffer output
+    public size_t buffer_size = 16_384;
+}
+
+/***************************************************************************
+
+    Configure a Logger based on the provided `settings`
+
+    Params:
+        settings = Configuration to apply
+
+***************************************************************************/
+
+public void configureLogger (in LoggerConfig settings)
+{
+	auto log = settings.name ? Log.lookup(settings.name) : Log.root;
+
+    if (settings.buffer_size)
+        log.buffer(new char[](settings.buffer_size));
+
+    log.clear();
+
+	// if console/file/syslog is specifically set, don't inherit other
+    // appenders (unless we have been specifically asked to be additive)
+	log.additive = settings.additive ||
+        !(settings.console || settings.file.length);
+
+    if (settings.console)
+    {
+        auto appender = new AppendConsole();
+        appender.layout(new AgoraLayout());
+        log.add(appender);
+    }
+
+    if (settings.file.length)
+    {
+        auto appender = new PhobosFileAppender(settings.file);
+        appender.layout(new AgoraLayout());
+        log.add(appender);
+    }
+
+    log.level(settings.level, settings.propagate);
 }
 
 /// Circular appender which appends to an internal buffer
@@ -275,6 +329,49 @@ unittest
     // the internal buffer size is smaller than the length of the messages
     // that we are trying to log
     assert(get_log_output("0123456789") == "3456789");
+}
+
+/// A file appender that uses Phobos
+public class PhobosFileAppender : Appender
+{
+    /// Mask
+    private Mask mask_;
+
+    ///
+    private File file;
+
+    ///
+    public this (string path)
+    {
+        import std.file, std.path;
+        path.dirName.mkdirRecurse();
+        this.file = File(path, "a");
+    }
+
+    /// Returns: the name of this class
+    public override istring name ()
+    {
+        return this.classinfo.name;
+    }
+
+    /// Return the fingerprint for this class
+    public final override Mask mask ()
+    {
+        return this.mask_;
+    }
+
+    /// Append an event to the buffer
+    public final override void append (LogEvent event)
+    {
+        scope writer = this.file.lockingTextWriter();
+        this.layout.format(event,
+            (cstring content)
+            {
+                formattedWrite(writer, content);
+            });
+        version (Windows) writer.put("\r\n");
+        else              writer.put("\n");
+    }
 }
 
 /// A layout with colored LogLevel
