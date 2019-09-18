@@ -38,7 +38,9 @@ module agora.node.API;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.common.Data;
+import agora.common.Deserializer;
 import agora.common.Set;
+import agora.common.Serializer;
 import agora.consensus.data.Transaction;
 
 import vibe.data.json;
@@ -60,6 +62,9 @@ public struct NetworkInfo
 
     /// Partial or full view of the addresses of the node's quorum (based on is_complete)
     public Set!string addresses;
+
+    mixin DefaultDeserializer!();
+    mixin DefaultSerializer!();
 }
 
 /*******************************************************************************
