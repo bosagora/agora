@@ -197,6 +197,12 @@ public void deserializePart (ref ubyte record, scope DeserializeDg dg)
 }
 
 /// Ditto
+public void deserializePart (ref bool record, scope DeserializeDg dg) @safe
+{
+    record = !!dg(record.sizeof)[0];
+}
+
+/// Ditto
 public void deserializePart (ref ushort record, scope DeserializeDg dg)
     @trusted
 {
