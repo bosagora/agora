@@ -10,6 +10,7 @@
 		"libevent": { "path": "../../submodules/libevent/" },
 		"libsodiumd": {"path":"../../submodules/libsodiumd/"},
 		"mir-linux-kernel": { "path": "../../submodules/mir-linux-kernel/" },
+		"ocean": { "path": "../../submodules/ocean/" },
 		"openssl": { "path": "../../submodules/openssl/" },
 		"stdx-allocator": { "path": "../../submodules/stdx-allocator/" },
 		"taggedalgebraic": { "path": "../../submodules/taggedalgebraic/" },
