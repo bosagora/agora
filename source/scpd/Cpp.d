@@ -154,6 +154,19 @@ extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
             return ConstIterator(this._start, this);
         }
 
+        public inout(T[]) opSlice () inout pure nothrow @nogc @safe
+        {
+            return this.opSlice(0, this.length());
+        }
+
+        public inout(T[]) opSlice (size_t start, size_t end) inout pure nothrow @nogc @trusted
+        {
+            assert(end <= this.length());
+            return this._start[start .. end];
+        }
+
+        alias opDollar = length;
+
         string toString() const @trusted
         {
             bool first = true;
@@ -186,6 +199,7 @@ unittest
     import scpd.types.Utils;
     vector!ubyte vec;
     assert(vec.length == 0);
+    assert(vec[] == []);
 
     ubyte x = 1;
     vec.push_back(x);
@@ -194,4 +208,8 @@ unittest
     x = 3;
     vec.push_back(x);
     assert(vec.length == 3);
+    assert(vec[] == [1, 2, 3]);
+    assert(vec[0 .. $] == [1, 2, 3]);
+    assert(vec[0..2] == [1, 2]);
+    assert(vec[1..3] == [2, 3]);
 }
