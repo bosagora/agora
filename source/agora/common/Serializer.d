@@ -57,6 +57,43 @@ unittest
 
 /*******************************************************************************
 
+    A template to check if a type has a custom serialization policy
+
+*******************************************************************************/
+
+public template hasSerializeMethod (T)
+{
+    public enum hasSerializeMethod = is(T == struct)
+        && is(typeof(T.init.serialize(SerializeDg.init)));
+}
+
+///
+unittest
+{
+    static struct Struct
+    {
+        void serialize(scope SerializeDg) {}
+    }
+
+    static struct DefaultValue
+    {
+        void serialize(SerializeDg, int = 42) @safe pure nothrow @nogc {}
+    }
+
+    static class Class
+    {
+        void serialize(scope SerializeDg) {}
+    }
+
+    static assert(hasSerializeMethod!Struct);
+    static assert(hasSerializeMethod!DefaultValue);
+
+    static assert(!hasSerializeMethod!Class);
+    static assert(!hasSerializeMethod!int);
+}
+
+/*******************************************************************************
+
     Serialize a struct and return it as a ubyte[].
 
     Params:
@@ -88,10 +125,18 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     @safe
     if (is(T == struct))
 {
-    static assert(is(typeof(T.init.serialize(SerializeDg.init))),
-                "Struct `" ~ T.stringof ~
-                "` does not implement `serialize(scope SerializeDg) const nothrow` function");
+    import std.traits : fullyQualifiedName;
+
+    static assert(hasSerializeMethod!T, "Struct `" ~ fullyQualifiedName!T ~
+        "` does not implement `serialize(scope SerializeDg) const nothrow` function");
     record.serialize(dg);
+}
+
+unittest
+{
+    static struct DoesNotCompile { int a; }
+    DoesNotCompile inst;
+    static assert(!is(typeof(() { serializeFull(inst); })));
 }
 
 /// Ditto
