@@ -15,6 +15,7 @@ module agora.common.Deserializer;
 
 import agora.common.Types;
 import agora.common.crypto.Key;
+import std.range.primitives;
 
 /// test various serialization / deserialization of types
 unittest
@@ -147,6 +148,17 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 
     deserializePart(value, dg);
     return value;
+}
+
+/// Ditto
+public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
+    if (isInputRange!T && hasLength!T)
+{
+    size_t length;
+    deserializePart(length, dg);
+    record.length = length;
+    foreach (ref v; record)
+        deserializePart(v, dg);
 }
 
 /// Ditto

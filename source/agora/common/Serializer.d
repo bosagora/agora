@@ -14,6 +14,7 @@
 module agora.common.Serializer;
 
 import agora.common.Types;
+import std.range.primitives;
 
 /// Type of delegate SerializeDg
 public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
@@ -118,6 +119,48 @@ public ubyte[] serializeFull (T) (scope const auto ref T record)
     serializePart(record, dg);
 
     return res;
+}
+
+/// Ditto
+public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg)
+    if (isInputRange!T && hasLength!T && !hasSerializeMethod!T)
+{
+    serializePart(record.length, dg);
+    foreach (ref v; record)
+        serializePart(v, dg);
+}
+
+///
+unittest
+{
+    static struct Foo
+    {
+        const(ubyte)[] bar;
+        mixin DefaultSerializer!();
+    }
+
+    const(Foo)[] arr = [
+        { bar: [ 6, 5, 4,  3, 2, 1, 0 ], },
+        { bar: [ 9, 8, 7,  0], },
+        { bar: [ 4, 4, 4,  4], },
+        { bar: [ 2, 4, 8, 16], },
+        { bar: [ 0, 1, 2,  4], },
+    ];
+    immutable ubyte[] result = [
+        5, 0, 0, 0, 0, 0, 0, 0, // arr.length
+        7, 0, 0, 0, 0, 0, 0, 0, // arr[0].bar.length
+        6, 5, 4, 3, 2, 1, 0,    // arr[0].bar
+        4, 0, 0, 0, 0, 0, 0, 0, // arr[1].bar.length
+        9, 8, 7, 0,             // arr[1].bar
+        4, 0, 0, 0, 0, 0, 0, 0, // arr[2].bar.length
+        4, 4, 4, 4,             // arr[2].bar
+        4, 0, 0, 0, 0, 0, 0, 0, // arr[3].bar.length
+        2, 4, 8, 16,            // arr[3].bar
+        4, 0, 0, 0, 0, 0, 0, 0, // arr[4].bar.length
+        0, 1, 2, 4,             // arr[4].bar
+    ];
+
+    testSerialization(arr, result);
 }
 
 /// Ditto
