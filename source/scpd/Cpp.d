@@ -146,7 +146,7 @@ extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
 
         public size_t length () const pure nothrow @nogc
         {
-            return (this._end - this._start) / T.sizeof;
+            return this._end - this._start;
         }
 
         public ConstIterator constIterator () const pure nothrow @nogc @safe
@@ -179,4 +179,19 @@ extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
             return vec;
         }
     }
+}
+
+unittest
+{
+    import scpd.types.Utils;
+    vector!ubyte vec;
+    assert(vec.length == 0);
+
+    ubyte x = 1;
+    vec.push_back(x);
+    x = 2;
+    vec.push_back(x);
+    x = 3;
+    vec.push_back(x);
+    assert(vec.length == 3);
 }
