@@ -28,18 +28,35 @@ import std.stdio;
 import core.thread;
 import core.time;
 
-private immutable Addrs = [
-    "http://127.0.0.1:4000",
-    "http://127.0.0.1:4001",
-    "http://127.0.0.1:4002"
+/// Helper struct
+private struct Address
+{
+    ///
+    string host;
+    ///
+    ushort port;
+
+    /// Helper function to call make the address vibe.inet.URL friendly
+    public string withSchema () const @safe
+    {
+        import std.format;
+        return format("http://%s:%d", this.host, this.port);
+    }
+}
+
+/// Node addresses
+private immutable Address[] Addrs = [
+    { host: "127.0.0.1", port: 4000, },
+    { host: "127.0.0.1", port: 4001, },
+    { host: "127.0.0.1", port: 4002, },
 ];
 
 void main ()
 {
     {
         API[3] clients;
-        foreach (idx, addr; Addrs)
-            clients[idx] = new RestInterfaceClient!API(addr);
+        foreach (idx, const ref addr; Addrs)
+            clients[idx] = new RestInterfaceClient!API(addr.withSchema());
 
         foreach (idx, ref client; clients)
         {
@@ -71,8 +88,8 @@ void main ()
         // TODO: This is a hack because of issue #312
         // https://github.com/bpfkorea/agora/issues/312
         API[3] clients;
-        foreach (idx, addr; Addrs)
-            clients[idx] = new RestInterfaceClient!API(addr);
+        foreach (idx, const ref addr; Addrs)
+            clients[idx] = new RestInterfaceClient!API(addr.withSchema());
 
         Hash blockHash;
         size_t times; // Number of times we slept for 50 msecs
