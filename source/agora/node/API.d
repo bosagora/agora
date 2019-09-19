@@ -37,7 +37,7 @@ module agora.node.API;
 
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Set;
 import agora.common.Serializer;

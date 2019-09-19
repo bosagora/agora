@@ -14,7 +14,7 @@
 
 module agora.common.BanManager;
 
-import agora.common.Data;
+import agora.common.Types;
 import agora.utils.Log;
 
 import core.stdc.stdlib;

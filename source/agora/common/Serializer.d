@@ -13,7 +13,7 @@
 
 module agora.common.Serializer;
 
-import agora.common.Data;
+import agora.common.Types;
 
 /// Type of delegate SerializeDg
 public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;

@@ -13,7 +13,7 @@
 
 module agora.node.GossipProtocol;
 
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Set;
 import agora.consensus.data.Transaction;

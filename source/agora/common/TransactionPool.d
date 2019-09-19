@@ -14,7 +14,7 @@
 
 module agora.common.TransactionPool;
 
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;

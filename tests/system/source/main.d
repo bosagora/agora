@@ -16,8 +16,8 @@ module main;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.common.crypto.Key;
-import agora.common.Data;
 import agora.common.Hash;
+import agora.common.Set;
 import agora.node.API;
 import agora.utils.PrettyPrinter;
 

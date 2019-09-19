@@ -14,7 +14,7 @@
 module agora.common.crypto.Key;
 
 import agora.common.crypto.Crc16;
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;

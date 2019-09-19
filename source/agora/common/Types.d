@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Defines common data types used by the node
+    Defines common types used by Agora
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.common.Data;
+module agora.common.Types;
 
 import geod24.bitblob;
 
