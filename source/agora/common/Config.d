@@ -482,7 +482,7 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
 
     if (node)
         if (auto val = name in *node)
-            return (*val).as!T;
+            return (*val).as!string.to!T;
 
     throw new Exception(format(
         "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
