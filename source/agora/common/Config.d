@@ -162,7 +162,7 @@ public struct LoggingConfig
         "Type must be shareable accross threads");
 
     /// The logging level
-    LogLevel log_level = LogLevel.None;
+    LogLevel log_level = LogLevel.Error;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
@@ -261,6 +261,7 @@ private Config parseConfigFileImpl (ref const CommandLine cmdln)
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns", true)),
         quorum : parseQuorumSection("quorum" in root, cmdln),
+        logging: parseLoggingSection("logging" in root, cmdln),
     };
 
     enforce(conf.network.length > 0, "Network section is empty");
@@ -269,9 +270,6 @@ private Config parseConfigFileImpl (ref const CommandLine cmdln)
     conf.admin.enabled = opt!(bool,   "admin", "enabled")(cmdln, admin);
     conf.admin.address = opt!(string, "admin", "address")(cmdln, admin);
     conf.admin.port    = opt!(ushort, "admin", "port")(cmdln, admin);
-
-    conf.logging.log_level = opt!(LogLevel, "logging", "level")(
-        cmdln, "logging" in root, LogLevel.Error);
 
     return conf;
 }
@@ -320,6 +318,65 @@ private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLi
     conf.ban_duration = get!(size_t, "banman", "ban_duration")(cmdln, node);
     return conf;
 }
+
+/*******************************************************************************
+
+    Parse the `logging` config section
+
+    Params:
+        ptr = pointer to the Yaml node containing the loggers configuration
+        c = the parsed command line arguments, for override
+
+    Returns:
+        the parsed config section
+
+*******************************************************************************/
+
+private LoggingConfig parseLoggingSection (Node* ptr, const ref CommandLine c)
+{
+    LoggingConfig ret;
+    ret.log_level = opt!(LogLevel, "logging", "level")(c, ptr, LogLevel.Error);
+    return ret;
+}
+
+///
+unittest
+{
+    import dyaml.loader;
+
+    {
+        CommandLine cmdln;
+        immutable conf_example = `
+foo:
+  bar: Useless
+logging:
+  level: Trace
+`;
+        auto node = Loader.fromString(conf_example).load();
+        auto config = parseLoggingSection("logging" in node, cmdln);
+        assert(config.log_level == LogLevel.Trace);
+
+        cmdln.overrides["logging.level"] = [ "None" ];
+        auto config2 = parseLoggingSection("logging" in node, cmdln);
+        assert(config2.log_level == LogLevel.None);
+    }
+
+    {
+        CommandLine cmdln;
+        immutable conf_example = `
+logging:
+  foo: bar
+`;
+        auto node = Loader.fromString(conf_example).load();
+        auto config = parseLoggingSection("logging" in node, cmdln);
+        assert(config.log_level == LogLevel.Error);
+
+        cmdln.overrides["logging.level"] = [ "Trace" ];
+        auto config2 = parseLoggingSection("logging" in node, cmdln);
+        assert(config2.log_level == LogLevel.Trace);
+    }
+}
+
 
 /*******************************************************************************
 
