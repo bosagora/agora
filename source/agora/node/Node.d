@@ -18,7 +18,7 @@ import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;

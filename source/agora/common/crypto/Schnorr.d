@@ -45,7 +45,7 @@
 
 module agora.common.crypto.Schnorr;
 
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Hash;
 import agora.common.crypto.ECC;
 

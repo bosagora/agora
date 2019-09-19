@@ -13,7 +13,7 @@
 
 module agora.common.Deserializer;
 
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.crypto.Key;
 
 /// Type of delegate deserializeDg

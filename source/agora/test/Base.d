@@ -26,7 +26,7 @@ import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.UTXOSet;
 import agora.common.Config;
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Set;

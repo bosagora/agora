@@ -2,7 +2,7 @@
 
     Function definition and helper related to hashing
 
-    The actual definition of the `Hash` type is in `agora.common.Data`,
+    The actual definition of the `Hash` type is in `agora.common.Types`,
     as parts of the system might pass along `Hash` without having to know
     what / how they were produced.
 
@@ -39,7 +39,7 @@
 
 module agora.common.Hash;
 
-static import agora.common.Data;
+static import agora.common.Types;
 
 import libsodium;
 
@@ -75,10 +75,10 @@ nothrow @nogc @safe unittest
 }
 
 ///
-public alias Hash = agora.common.Data.Hash;
+public alias Hash = agora.common.Types.Hash;
 
 ///
-public alias Signature = agora.common.Data.Signature;
+public alias Signature = agora.common.Types.Signature;
 
 /// Type of delegate passed to `hash` function when there's a state
 public alias HashDg = void delegate(scope const(ubyte)[]) /*pure*/ nothrow @safe @nogc;

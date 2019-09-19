@@ -14,7 +14,7 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
-import agora.common.Data;
+import agora.common.Types;
 import agora.common.Hash;
 import agora.common.TransactionPool;
 import agora.consensus.data.Block;
@@ -347,7 +347,7 @@ public class Ledger
 unittest
 {
     import agora.common.crypto.Key;
-    import agora.common.Data;
+    import agora.common.Types;
     import agora.common.Hash;
 
     auto storage = new MemBlockStorage();
@@ -430,7 +430,7 @@ unittest
 unittest
 {
     import agora.common.crypto.Key;
-    import agora.common.Data;
+    import agora.common.Types;
     import agora.common.Hash;
 
     auto storage = new MemBlockStorage();
@@ -518,7 +518,7 @@ unittest
 unittest
 {
     import agora.common.crypto.Key;
-    import agora.common.Data;
+    import agora.common.Types;
     import agora.common.Hash;
 
     auto storage = new MemBlockStorage();

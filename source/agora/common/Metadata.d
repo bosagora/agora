@@ -13,11 +13,10 @@
 
 module agora.common.Metadata;
 
-import agora.common.Data;
 import agora.common.Deserializer;
 import agora.common.Serializer;
 import agora.common.Set;
-
+import agora.common.Types;
 
 import std.array;
 import std.file;
