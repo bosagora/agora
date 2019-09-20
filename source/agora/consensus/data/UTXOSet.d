@@ -126,11 +126,30 @@ public class UTXOSet
 
         Params:
             tx = the transaction
+            height = Height of the block where UTXO will be unlocked
 
     ***************************************************************************/
 
-    public void updateUTXOCache (const ref Transaction tx) @safe
+    public void updateUTXOCache (const ref Transaction tx, ulong height) @safe
     {
+        import std.algorithm : any;
+
+        // defaults to next block
+        ulong unlock_height = height + 1;
+
+        // for payments of frozen transactions, it will melt after 2016 blocks
+        if ((tx.type == TxType.Payment)
+            && tx.inputs.any!(input =>
+                (
+                    (input.previous != Hash.init) &&
+                    (this.getUTXOSetValue(input.previous, input.index).type == TxType.Freeze)
+                )
+            )
+        )
+        {
+            unlock_height = height + 2016;
+        }
+
         foreach (const ref input; tx.inputs)
         {
             auto utxo_hash = getHash(input.previous, input.index);
@@ -141,8 +160,65 @@ public class UTXOSet
         foreach (idx, output; tx.outputs)
         {
             auto utxo_hash = getHash(tx_hash, idx);
-            this.utxo_db[utxo_hash] = output;
+            auto utxo_value = UTXOSetValue(unlock_height, tx.type, output);
+            this.utxo_db[utxo_hash] = utxo_value;
         }
+    }
+
+    /***************************************************************************
+
+        get an UTXOSetValue in the UTXO set.
+
+        Params:
+            hash = the hash of transation
+            index = the index of the output
+
+        Return:
+            Return UTXOSetValue
+
+    ***************************************************************************/
+
+    private UTXOSetValue getUTXOSetValue (Hash hash, size_t index)
+        nothrow @safe
+    {
+        auto utxo_hash = getHash(hash, index);
+
+        UTXOSetValue value;
+        if (!this.utxo_db.find(utxo_hash, value))
+            assert(0);
+        return value;
+    }
+
+    /***************************************************************************
+
+        Find an UTXOSetValue in the UTXO set.
+
+        Params:
+            hash = the hash of transation
+            index = the index of the output
+            value = will contain the UTXOSetValue if found
+
+        Return:
+            Return true if the UTXO was found
+
+    ***************************************************************************/
+
+    private bool findUTXOSetValue (Hash hash, size_t index,
+                                        out UTXOSetValue value)
+        nothrow @safe
+    {
+        auto utxo_hash = getHash(hash, index);
+
+        if (utxo_hash in this.used_utxos)
+            return false;  // double-spend
+
+        if (this.utxo_db.find(utxo_hash, value))
+        {
+            this.used_utxos.put(utxo_hash);
+            return true;
+        }
+
+        return false;
     }
 
     /***************************************************************************
@@ -183,8 +259,10 @@ public class UTXOSet
         if (utxo_hash in this.used_utxos)
             return false;  // double-spend
 
-        if (this.utxo_db.find(utxo_hash, output))
+        UTXOSetValue value;
+        if (this.utxo_db.find(utxo_hash, value))
         {
+            output = value.output;
             this.used_utxos.put(utxo_hash);
             return true;
         }
@@ -280,18 +358,18 @@ private class UTXODB
 
     /***************************************************************************
 
-        Look up the output in the map, and store it to 'output' if found
+        Look up the UTXOSetValue in the map, and store it to 'output' if found
 
         Params:
             key = the key to find
-            output = will contain the Output if found
+            value = will contain the UTXOSetValue if found
 
         Returns:
-            true if the output was found
+            true if the value was found
 
     ***************************************************************************/
 
-    public bool find (Hash key, out Output output) nothrow @trusted
+    public bool find (Hash key, out UTXOSetValue value) nothrow @trusted
     {
         scope (failure) assert(0);
         auto results = db.execute("SELECT val FROM utxo_map WHERE key = ?",
@@ -299,7 +377,7 @@ private class UTXODB
 
         foreach (row; results)
         {
-            output = deserializeFull!Output(row.peek!(ubyte[])(0));
+            value = deserializeFull!UTXOSetValue(row.peek!(ubyte[])(0));
             return true;
         }
 
@@ -308,15 +386,15 @@ private class UTXODB
 
     /***************************************************************************
 
-        Add an Output to the map
+        Add an UTXOSetValue to the map
 
         Params:
-            output = the output to add
+            value = the UTXOSetValue to add
             key = the key to use
 
     ***************************************************************************/
 
-    public void opIndexAssign (const ref Output output, Hash key) @safe
+    public void opIndexAssign (const ref UTXOSetValue value, Hash key) @safe
     {
         static ubyte[] buffer;
         buffer.length = 0;
@@ -327,7 +405,7 @@ private class UTXODB
             buffer ~= data;
         };
 
-        serializePart(output, dg);
+        serializePart(value, dg);
 
         scope (failure) assert(0);
         () @trusted {
