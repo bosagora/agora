@@ -7,6 +7,8 @@
 [![codecov](https://codecov.io/gh/bpfkorea/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bpfkorea/agora)
 [![](https://images.microbadger.com/badges/image/bpfk/agora.svg)](https://microbadger.com/images/bpfk/agora)
 [![](https://images.microbadger.com/badges/version/bpfk/agora.svg)](https://microbadger.com/images/bpfk/agora)
+[![License](https://img.shields.io/github/license/bpfkorea/agora)](LICENSE)
+[![Documentation](https://img.shields.io/badge/Docs-Github%20Pages-blue)](https://bpfkorea.github.io/agora/)
 
 Node implementation for BOA CoinNet
 
