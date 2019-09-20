@@ -217,64 +217,24 @@ public int sendTxProcess (string[] args, ref string[] outputs,
 /// Test of send transaction
 unittest
 {
-    class TestCLINode : API
+    // BlackHole auto-implements interface methods and returns typeof(return).init
+    import std.typecons;
+    class TestCLINode : BlackHole!API
     {
+        @safe:
+
         /// Contains the transaction cache
         private Transaction[Hash] tx_cache;
 
-        private KeyPair key_pair;
-
-        /// Ctor
-        public this ()
-        {
-            key_pair = KeyPair.random();
-        }
-
-        /// GET /public_key
-        public override PublicKey getPublicKey () pure nothrow @safe @nogc
-        {
-            return this.key_pair.address;
-        }
-
-        /// GET: /network_info
-        public override NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
-        {
-            return NetworkInfo();
-        }
-
         public override void putTransaction (Transaction tx) @safe
         {
-            auto tx_hash = hashFull(tx);
-            if (this.hasTransactionHash(tx_hash))
-                return;
-
-            this.tx_cache[tx_hash] = tx;
+            this.tx_cache[hashFull(tx)] = tx;
         }
 
         /// GET: /hasTransactionHash
         public override bool hasTransactionHash (Hash tx) @safe
         {
             return (tx in this.tx_cache) !is null;
-        }
-
-        /// GET: /block_height
-        public ulong getBlockHeight ()
-        {
-            return 0;
-        }
-
-        /// GET: /blocks_from
-        public const(Block)[] getBlocksFrom
-            (ulong block_height, size_t max_blocks)
-            @safe
-        {
-            return null;
-        }
-
-        /// GET: /merkle_path
-        public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
-        {
-            return null;
         }
     }
 
