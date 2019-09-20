@@ -18,10 +18,11 @@ version (unittest):
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
-import agora.consensus.data.Block;
-import agora.common.Types;
 import agora.common.Hash;
+import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
@@ -270,8 +271,16 @@ unittest
 
     // make sure the transaction is still authentic (signature is correct),
     // even if it's double spending
-    assert(txs[0].isValid((Hash hash, size_t index, out Output output)
-        { output = GenesisTransaction.outputs[0]; return true; }));
+    assert(txs[0].isValid((Hash hash, size_t index, out UTXOSetValue value)
+        {
+            value =
+            UTXOSetValue(
+                0,
+                TxType.Payment,
+                GenesisTransaction.outputs[0]
+            );
+            return true;
+        }));
 
     txs.each!(tx => node_1.putTransaction(tx));
 

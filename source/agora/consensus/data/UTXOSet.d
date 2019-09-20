@@ -191,38 +191,6 @@ public class UTXOSet
 
     /***************************************************************************
 
-        Find an UTXOSetValue in the UTXO set.
-
-        Params:
-            hash = the hash of transation
-            index = the index of the output
-            value = will contain the UTXOSetValue if found
-
-        Return:
-            Return true if the UTXO was found
-
-    ***************************************************************************/
-
-    private bool findUTXOSetValue (Hash hash, size_t index,
-                                        out UTXOSetValue value)
-        nothrow @safe
-    {
-        auto utxo_hash = getHash(hash, index);
-
-        if (utxo_hash in this.used_utxos)
-            return false;  // double-spend
-
-        if (this.utxo_db.find(utxo_hash, value))
-        {
-            this.used_utxos.put(utxo_hash);
-            return true;
-        }
-
-        return false;
-    }
-
-    /***************************************************************************
-
         Prepare tracking double-spent transactions and
         return the UTXOFinder delegate
 
@@ -239,19 +207,19 @@ public class UTXOSet
 
     /***************************************************************************
 
-        Find an unspent Output in the UTXO set.
+        Find an UTXOSetValue in the UTXO set.
 
         Params:
             hash = the hash of transation
             index = the index of the output
-            output = will contain the UTXO if found
+            output = will contain the UTXOSetValue if found
 
         Return:
             Return true if the UTXO was found
 
     ***************************************************************************/
 
-    private bool findUTXO (Hash hash, size_t index, out Output output)
+    private bool findUTXO (Hash hash, size_t index, out UTXOSetValue value)
         nothrow @safe
     {
         auto utxo_hash = getHash(hash, index);
@@ -259,10 +227,8 @@ public class UTXOSet
         if (utxo_hash in this.used_utxos)
             return false;  // double-spend
 
-        UTXOSetValue value;
         if (this.utxo_db.find(utxo_hash, value))
         {
-            output = value.output;
             this.used_utxos.put(utxo_hash);
             return true;
         }

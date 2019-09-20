@@ -543,9 +543,9 @@ unittest
     auto new_txs = makeChainedTransactions(gen_key, txs, 1);
 
     assert(new_txs.length > 0);
-    Output _out;
+    UTXOSetValue _val;
     new_txs.each!(tx => assert(finder(tx.inputs[0].previous, tx.inputs[0].index,
-        _out)));
+        _val)));
 }
 
 // Use a transaction with the type 'TxType.Freeze' to create a block and test UTXOSet.

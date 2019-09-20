@@ -18,11 +18,12 @@ import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
 
 /// Delegate to find an unspent UTXO
 public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
-    out Output) @safe nothrow;
+    out UTXOSetValue) @safe nothrow;
 
 /*******************************************************************************
 
@@ -58,14 +59,14 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO)
     foreach (input; tx.inputs)
     {
         // all referenced outputs must be present
-        Output output;
-        if (!findUTXO(input.previous, input.index, output))
+        UTXOSetValue value;
+        if (!findUTXO(input.previous, input.index, value))
             return "Transaction: Input ref not in UTXO";
 
-        if (!output.address.verify(input.signature, tx_hash[]))
+        if (!value.output.address.verify(input.signature, tx_hash[]))
             return "Transaction: Input has invalid signature";
 
-        if (!sum_unspent.add(output.value))
+        if (!sum_unspent.add(value.output.value))
             return "Transaction: Input overflow";
     }
 
@@ -110,14 +111,16 @@ unittest
         ]
     );
 
-    // delegate for finding `Output`
-    scope findUTXO = (Hash hash, size_t index, out Output output)
+    // delegate for finding `UTXOSetValue`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
     {
         if (auto tx = hash in storage)
         {
             if (index < tx.outputs.length)
             {
-                output = tx.outputs[index];
+                value.unlock_height = 0;
+                value.type = TxType.Payment;
+                value.output = tx.outputs[index];
                 return true;
             }
         }
@@ -154,13 +157,15 @@ unittest
     storage[tx_1_hash] = tx_1;
 
     // delegate for finding `Output`
-    scope findUTXO = (Hash hash, size_t index, out Output output)
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
     {
         if (auto tx = hash in storage)
         {
             if (index < tx.outputs.length)
             {
-                output = tx.outputs[index];
+                value.unlock_height = 0;
+                value.type = TxType.Payment;
+                value.output = tx.outputs[index];
                 return true;
             }
         }
@@ -196,13 +201,15 @@ unittest
     key_pairs ~= KeyPair.random();
 
     // delegate for finding `Output`
-    scope findUTXO = (Hash hash, size_t index, out Output output)
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
     {
         if (auto tx = hash in storage)
         {
             if (index < tx.outputs.length)
             {
-                output = tx.outputs[index];
+                value.unlock_height = 0;
+                value.type = TxType.Payment;
+                value.output = tx.outputs[index];
                 return true;
             }
         }
@@ -339,13 +346,15 @@ unittest
 
     // note: using array as a workaround to be able to store const Transactions
     const(Transaction)[][Hash] tx_map;
-    scope findUTXO = (Hash hash, size_t index, out Output output)
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
     {
         if (auto tx = hash in tx_map)
         {
             if (index < (*tx).front.outputs.length)
             {
-                output = (*tx).front.outputs[index];
+                value.unlock_height = 0;
+                value.type = TxType.Payment;
+                value.output = (*tx).front.outputs[index];
                 return true;
             }
         }
@@ -435,7 +444,7 @@ unittest
 
     // contains the used set of UTXOs during validation (to prevent double-spend)
     Output[Hash] used_set;
-    UTXOFinder findNonSpent = (Hash hash, size_t index, out Output output)
+    UTXOFinder findNonSpent = (Hash hash, size_t index, out UTXOSetValue value)
     {
         auto utxo_hash = hashMulti(hash, index);
 
@@ -445,7 +454,9 @@ unittest
         if (auto utxo = utxo_hash in utxo_set)
         {
             used_set[utxo_hash] = *utxo;
-            output = *utxo;
+            value.unlock_height = 0;
+            value.type = TxType.Payment;
+            value.output = *utxo;
             return true;
         }
 
