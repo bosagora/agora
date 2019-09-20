@@ -88,53 +88,6 @@ unittest
     assert(node_1.getBlocksFrom(100, 10).length == 0);
 }
 
-/// test catch-up phase during booting
-unittest
-{
-    import std.algorithm;
-    import std.conv;
-    import std.format;
-    import std.range;
-    import core.time;
-
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
-
-    auto nodes = network.apis.values;
-    auto node_1 = nodes[0];
-
-    Transaction[] last_txs;
-    foreach (block_idx; 0 .. 10)  // create 10 blocks
-    {
-        // create enough tx's for a single block
-        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
-
-        // send it to one node
-        txs.each!(tx => node_1.putTransaction(tx));
-
-        retryFor(node_1.getBlockHeight() == block_idx + 1,
-            1.seconds,
-            format("Node 1 has block height %s. Expected: %s",
-                node_1.getBlockHeight().to!string, block_idx + 1));
-
-        last_txs = txs;
-    }
-
-    retryFor(node_1.getBlockHeight() == 10, 1.seconds);
-
-    foreach (empty_node; nodes[1 .. $])
-    {
-        assert(empty_node.getBlockHeight() == 0);
-    }
-
-    // now start the network, let other nodes catch-up the latest blocks
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    assert(network.getDiscoveredNodes().length == NodeCount);
-    containSameBlocks(nodes, 10).retryFor(8.seconds);
-}
-
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
