@@ -181,8 +181,9 @@ public class Ledger
     {
         scope (failure) assert(0);
 
+        const ulong height = block.header.height;
         // add the new UTXOs
-        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx));
+        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height));
 
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx.hashFull()));
@@ -545,4 +546,132 @@ unittest
     Output _out;
     new_txs.each!(tx => assert(finder(tx.inputs[0].previous, tx.inputs[0].index,
         _out)));
+}
+
+// Use a transaction with the type 'TxType.Freeze' to create a block and test UTXOSet.
+unittest
+{
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
+    import agora.common.Types;
+
+    auto storage = new MemBlockStorage();
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+
+    scope ledger = new Ledger(pool, utxo_set, storage);
+
+    Transaction[] makeTransactionForFreezing (
+        KeyPair[] in_key_pair,
+        KeyPair[] out_key_pair,
+        TxType tx_type,
+        Transaction[] prev_txs,
+        const Transaction default_tx)
+    {
+        import std.conv;
+
+        assert(in_key_pair.length == Block.TxsInBlock);
+        assert(out_key_pair.length == Block.TxsInBlock);
+
+        assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
+        const TxCount = Block.TxsInBlock;
+
+        Transaction[] transactions;
+
+        // always use the same amount, for simplicity
+        const Amount AmountPerTx = Amount(40_000);
+
+        foreach (idx; 0 .. TxCount)
+        {
+            Input input;
+            if (prev_txs.length == 0)  // refering to genesis tx's outputs
+                input = Input(hashFull(default_tx), idx.to!uint);
+            else  // refering to tx's in the previous block
+                input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
+
+            Transaction tx =
+            {
+                tx_type,
+                [input],
+                [Output(AmountPerTx, out_key_pair[idx % Block.TxsInBlock].address)]  // send to the same address
+            };
+
+            auto signature = in_key_pair[idx % Block.TxsInBlock].secret.sign(hashFull(tx)[]);
+            tx.inputs[0].signature = signature;
+            transactions ~= tx;
+
+            // new transactions will refer to the just created transactions
+            // which will be part of the previous block after the block is created
+            if (Block.TxsInBlock == 1 ||  // special case
+                (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
+            {
+                // refer to tx'es which will be in the previous block
+                prev_txs = transactions[$ - Block.TxsInBlock .. $];
+            }
+        }
+        return transactions;
+    }
+
+    KeyPair[] getGenKeyPairs ()
+    {
+        KeyPair[] res;
+        foreach (idx; 0 .. Block.TxsInBlock)
+            res ~= getGenesisKeyPair();
+        return res;
+    }
+
+    KeyPair[] getRandomKeyPairs ()
+    {
+        KeyPair[] res;
+        foreach (idx; 0 .. Block.TxsInBlock)
+            res ~= KeyPair.random;
+        return res;
+    }
+
+    KeyPair[] in_key_pairs;
+    KeyPair[] out_key_pairs;
+    Transaction[] last_txs;
+
+    in_key_pairs = getGenKeyPairs();
+    out_key_pairs = getRandomKeyPairs();
+
+    // generate transactions to form a block
+    void genBlockTransactions (size_t count, TxType tx_type)
+    {
+        foreach (idx; 0 .. count)
+        {
+            auto txes = makeTransactionForFreezing (
+                in_key_pairs,
+                out_key_pairs,
+                tx_type,
+                last_txs,
+                GenesisTransaction);
+
+            txes.each!((tx)
+                {
+                    assert(ledger.acceptTransaction(tx));
+                });
+
+            // keep track of last tx's to chain them to
+            last_txs = txes[$ - Block.TxsInBlock .. $];
+
+            in_key_pairs = out_key_pairs;
+            out_key_pairs = getRandomKeyPairs();
+        }
+    }
+
+    genBlockTransactions(1, TxType.Payment);
+    assert(ledger.getBlockHeight() == 1);
+    const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
+    assert(blocks.length == 2);
+    assert(blocks[1].header.height == 1);
+
+    genBlockTransactions(1, TxType.Freeze);
+    assert(ledger.getBlockHeight() == 2);
+    blocks = ledger.getBlocksFrom(0, 10);
+    assert(blocks.length == 3);
+    assert(blocks[2].header.height == 2);
 }
