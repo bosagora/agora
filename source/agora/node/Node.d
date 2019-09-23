@@ -38,6 +38,7 @@ import vibe.web.rest : RestException;
 import std.algorithm;
 import std.exception;
 import std.path : buildPath;
+import std.range;
 
 mixin AddLogger!();
 
@@ -191,8 +192,8 @@ public class Node : API
     public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
         @safe
     {
-        return this.ledger.getBlocksFrom(block_height,
-            min(max_blocks, MaxBatchBlocksSent));
+        return this.ledger.getBlocksFrom(block_height)
+            .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
 
     /***************************************************************************
