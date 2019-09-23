@@ -1,9 +1,21 @@
+# Part of the source tree, but not needed to build Agora
+.git/
 doc/
+hooks/
 tests/
 
 # Various build folders
-build/
-source/scpp/build/
 .dub/
+build/
+docs/
+source/scpp/build/
+
+# Dependency build files
 submodules/*/.dub/
+submodules/*/*.a
+
+# Vibe specific ignores
 submodules/vibe.d/*/.dub/
+submodules/vibe.d/*/*.a
+submodules/vibe.d/examples/
+submodules/vibe.d/tests/
