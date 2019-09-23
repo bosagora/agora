@@ -28,6 +28,7 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import std.algorithm;
+import std.range;
 
 mixin AddLogger!();
 
@@ -283,37 +284,30 @@ public class Ledger
 
     /***************************************************************************
 
-        Get the array of blocks starting from the provided block height.
-        The block at block_height is included in the array.
+        Get a range of blocks, starting from the provided block height.
 
         Params:
-            block_height = the starting block height to begin retrieval from
-            max_blocks   = the maximum blocks to return at once
+            start_height = the starting block height to begin retrieval from
 
         Returns:
-            the array of blocks starting from block_height,
-            up to `max_blocks`
+            the range of blocks starting from start_height
 
     ***************************************************************************/
 
-    public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
-        @safe
+    public auto getBlocksFrom (size_t start_height) @safe nothrow
     {
-        assert(max_blocks > 0);
+        start_height = min(start_height, this.getBlockHeight() + 1);
 
-        const MaxHeight
-            = min(block_height + max_blocks, this.getBlockHeight() + 1);
-        const(Block)[] res;
-        foreach (height; block_height .. MaxHeight)
+        const(Block) readBlock (size_t height)
         {
             Block block;
             if (!this.storage.readBlock(block, height))
                 assert(0);
-
-            res ~= block;
+            return block;
         }
 
-        return res;
+        return iota(start_height, this.getBlockHeight() + 1)
+            .map!(idx => readBlock(idx));
     }
 
     /***************************************************************************
@@ -359,7 +353,7 @@ unittest
     scope ledger = new Ledger(pool, utxo_set, storage);
     assert(ledger.getBlockHeight() == 0);
 
-    const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
+    auto blocks = ledger.getBlocksFrom(0).take(10);
     assert(blocks[$ - 1] == GenesisBlock);
 
     auto gen_key_pair = getGenesisKeyPair();
@@ -379,7 +373,7 @@ unittest
     }
 
     genBlockTransactions(2);
-    blocks = ledger.getBlocksFrom(0, 10);
+    blocks = ledger.getBlocksFrom(0).take(10);
     assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
@@ -388,43 +382,43 @@ unittest
     genBlockTransactions(98);
     assert(ledger.getBlockHeight() == 100);
 
-    blocks = ledger.getBlocksFrom(0, 10);
+    blocks = ledger.getBlocksFrom(0).takeExactly(10);
     assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 10);
 
     /// lower limit
-    blocks = ledger.getBlocksFrom(0, 5);
+    blocks = ledger.getBlocksFrom(0).takeExactly(5);
     assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 5);
 
     /// different indices
-    blocks = ledger.getBlocksFrom(1, 10);
+    blocks = ledger.getBlocksFrom(1).takeExactly(10);
     assert(blocks[0].header.height == 1);
     assert(blocks.length == 10);
 
-    blocks = ledger.getBlocksFrom(50, 10);
+    blocks = ledger.getBlocksFrom(50).takeExactly(10);
     assert(blocks[0].header.height == 50);
     assert(blocks.length == 10);
 
-    blocks = ledger.getBlocksFrom(95, 10);  // only 6 left from here (block 100 included)
-    assert(blocks[0].header.height == 95);
-    assert(blocks.length == 6);
+    blocks = ledger.getBlocksFrom(95).take(10);  // only 6 left from here (block 100 included)
+    assert(blocks.front.header.height == 95);
+    assert(blocks.walkLength() == 6);
 
-    blocks = ledger.getBlocksFrom(99, 10);  // only 2 left from here (ditto)
-    assert(blocks[0].header.height == 99);
-    assert(blocks.length == 2);
+    blocks = ledger.getBlocksFrom(99).take(10);  // only 2 left from here (ditto)
+    assert(blocks.front.header.height == 99);
+    assert(blocks.walkLength() == 2);
 
-    blocks = ledger.getBlocksFrom(100, 10);  // only 1 block available
-    assert(blocks[0].header.height == 100);
-    assert(blocks.length == 1);
+    blocks = ledger.getBlocksFrom(100).take(10);  // only 1 block available
+    assert(blocks.front.header.height == 100);
+    assert(blocks.walkLength() == 1);
 
     // over the limit => return up to the highest block
-    assert(ledger.getBlocksFrom(0, 1000).length == 101);
+    assert(ledger.getBlocksFrom(0).take(1000).walkLength() == 101);
 
     // higher index than available => return nothing
-    assert(ledger.getBlocksFrom(1000, 10).length == 0);
+    assert(ledger.getBlocksFrom(1000).take(10).walkLength() == 0);
 }
 
 /// basic block verification
@@ -665,13 +659,13 @@ unittest
 
     genBlockTransactions(1, TxType.Payment);
     assert(ledger.getBlockHeight() == 1);
-    const(Block)[] blocks = ledger.getBlocksFrom(0, 10);
+    auto blocks = ledger.getBlocksFrom(0).take(10).array;
     assert(blocks.length == 2);
     assert(blocks[1].header.height == 1);
 
     genBlockTransactions(1, TxType.Freeze);
     assert(ledger.getBlockHeight() == 2);
-    blocks = ledger.getBlocksFrom(0, 10);
+    blocks = ledger.getBlocksFrom(0).take(10).array;
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
 }
