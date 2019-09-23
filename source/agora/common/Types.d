@@ -28,6 +28,13 @@ public alias Address = string;
 /// The type of a signature
 public alias Signature = BitBlob!512;
 
+/// Whether integers are serialized in variable-length form
+public enum CompactMode : bool
+{
+    No,
+    Yes
+}
+
 unittest
 {
     // Check that our type match libsodium's definition

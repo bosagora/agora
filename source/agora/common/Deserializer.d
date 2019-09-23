@@ -107,19 +107,29 @@ public mixin template DefaultDeserializer ()
 ///
 unittest
 {
+    import agora.common.Amount;
+
     static struct Foo
     {
-        uint a;
-        ubyte[] b;
-
+        ubyte a;
+        ushort b;
+        uint c;
+        ulong d;
+        Amount e;
+        ubyte[] f;
         mixin DefaultDeserializer!();
     }
-
     /// See the example in `agora.common.Serializer` for the serialization part
-    ubyte[] data = [255, 255, 255, 255, 3, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3];
-    assert(deserializeFull!Foo(data) == Foo(uint.max, [1, 2, 3]));
+    ubyte[] data = [
+        1,                       // ubyte(1)
+        253, 255, 255,           // ushort.max
+        254, 255, 255, 255, 255, // uint.max
+        255, 255, 255, 255, 255, 255, 255, 255, 255, // ulong.max
+        100,                     // Amount(100)
+        3, 1, 2, 3];             // ubyte[1,2,3]
+    assert(deserializeFull!Foo(data) == Foo(1, ushort.max, uint.max, ulong.max,
+        Amount(100), [1, 2, 3]));
 }
-
 
 /*******************************************************************************
 
@@ -128,7 +138,7 @@ unittest
     Params:
         T = Type of struct to deserialize
         data = Binary serialized representation of `T` to be deserialized
-
+        compact = Whether integers are serialized in variable-length form
     Returns:
         The deserialized struct
 
@@ -188,28 +198,32 @@ public void deserializePart (ref ubyte record, scope DeserializeDg dg)
 public void deserializePart (ref ushort record, scope DeserializeDg dg)
     @trusted
 {
-    record = *cast(ushort*)(dg(record.sizeof).ptr);
+    deserializeVarInt(record, dg);
 }
 
 /// Ditto
 public void deserializePart (ref uint record, scope DeserializeDg dg)
     @trusted
 {
-    record = *cast(uint*)(dg(record.sizeof).ptr);
+    deserializeVarInt(record, dg);
 }
 
 /// Ditto
-public void deserializePart (ref ulong record, scope DeserializeDg dg)
+public void deserializePart (ref ulong record, scope DeserializeDg dg, CompactMode compact = CompactMode.Yes)
     @trusted
 {
-    record = *cast(ulong*)(dg(record.sizeof).ptr);
+    if (compact == CompactMode.Yes)
+        deserializeVarInt(record, dg);
+    else
+        record = *cast(ulong*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
 public void deserializePart (ref char[] record, scope DeserializeDg dg)
     @trusted
 {
-    auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
+    size_t length;
+    deserializeVarInt(length, dg);
     record = cast(char[])dg(length);
 }
 
@@ -217,6 +231,87 @@ public void deserializePart (ref char[] record, scope DeserializeDg dg)
 public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
     @trusted
 {
-    auto length = *cast(size_t*)(dg(size_t.sizeof).ptr);
+    size_t length;
+    deserializeVarInt(length, dg);
     record = dg(length);
+}
+
+/*******************************************************************************
+
+    Deserialize an integer of variable length using Bitcoin-style encoding
+
+    VarInt Size
+    size_tag is first a ubyte
+    size_tag <= 0xFC(252)  -- 1 byte   ubyte
+    size_tag == 0xFD       -- 3 bytes  (0xFD + ushort)
+    size_tag == 0xFE       -- 5 bytes  (0xFE + uint)
+    size_tag == 0xFF       -- 9 bytes  (0xFF + ulong)
+
+    Params:
+        T = Type of unsigned integer to deserialize
+        num = Value to store the result of deserialization into
+        dg = source of binary data
+
+    See_Also: https://learnmeabitcoin.com/glossary/varint
+*******************************************************************************/
+
+private void deserializeVarInt (T) (ref T num, scope DeserializeDg dg)
+    @safe
+    if (is(T == ushort) || is(T == uint) || is(T == ulong))
+{
+    const ubyte int_size = dg(ubyte.sizeof)[0];
+    assert(int_size >= 0);
+
+    T read (InType)() @trusted
+    {
+        import std.exception;
+        auto value = *cast(InType*)dg(InType.sizeof).ptr;
+        static if (T.max < InType.max)
+            enforce(value <= T.max);
+        return cast(T)value;
+    }
+
+    if (int_size <= 0xFC)
+        num = cast(T)(int_size);
+    else if (int_size == 0xFD)
+        num = read!ushort();
+    else if (int_size == 0xFE)
+        num = read!uint();
+    else if (int_size == 0xFF)
+        num = read!ulong();
+    else
+        assert(0);
+}
+
+/// For varint
+unittest
+{
+    ubyte[] data = [
+        0x00,                           // ulong.init
+        0xFC,                           // ulong(0xFC) == 1 byte
+        0xFD, 0xFD, 0x00,               // ulong(0xFD) == 3 bytes
+        0xFD, 0xFF, 0x00,               // ulong(0xFE) == 3 bytes
+        0xFD, 0xFF, 0xFF,               // ushort.max == 3 bytes
+        0xFE, 0x00, 0x00, 0x01, 0x00,   // 0x10000u   == 5 bytes
+        0xFE, 0xFF, 0xFF, 0xFF, 0xFF,   // uint.max   == 5 bytes
+        // 0x100000000u == 9bytes
+        0xFF, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+        // ulong.max == 9bytes
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+
+    static struct Foo
+    {
+        ulong a;
+        ulong b;
+        ulong c;
+        ulong d;
+        ushort e;
+        uint f;
+        uint g;
+        ulong h;
+        ulong i;
+        mixin DefaultDeserializer!();
+    }
+    assert(deserializeFull!Foo(data) == Foo(ulong.init, 252uL, 253uL, 255uL,
+        ushort.max, 0x10000u, uint.max, 0x100000000u, ulong.max));
 }
