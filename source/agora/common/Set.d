@@ -173,7 +173,7 @@ public T[] pickRandom (T) (Set!T input, size_t count = 0)
 ///
 unittest
 {
-    auto set = Set!int.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    auto set = Set!uint.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     auto randoms = set.pickRandom(5);
     sort(randoms);
     assert(randoms.uniq.count == 5);
@@ -186,9 +186,9 @@ unittest
 /// serialization test for Set!int
 unittest
 {
-    auto old_set = Set!int.from([2, 4, 6, 8]);
+    auto old_set = Set!uint.from([2, 4, 6, 8]);
     auto bytes = old_set.serializeFull();
-    auto new_set = deserializeFull!(Set!int)(bytes);
+    auto new_set = deserializeFull!(Set!uint)(bytes);
 
     assert(new_set.length == old_set.length);
     old_set.each!(value => assert(value in new_set));
@@ -224,7 +224,7 @@ private void dropIndex (T) (ref T[] arr, size_t index)
 ///
 unittest
 {
-    int[] arr = [1, 2, 3];
+    uint[] arr = [1, 2, 3];
     arr.dropIndex(1);
     assert(arr == [1, 3]);
 }
