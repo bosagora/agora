@@ -452,11 +452,15 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 .filter!(conf => conf != self)
                 .map!(conf => conf.key_pair.address.toString());
 
+        auto quorum_keys = assumeUnique(
+            node_confs.map!(conf => conf.key_pair.address).array);
+
         Config conf =
         {
             banman : ban_conf,
             node : self,
             network : configure_network ? assumeUnique(other_nodes.array) : null,
+            quorum : { nodes : quorum_keys }
         };
 
         return conf;
