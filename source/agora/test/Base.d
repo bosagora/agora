@@ -411,6 +411,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 {
     import std.algorithm;
     import std.array;
+    import std.range;
     import ocean.util.log.Logger;
 
     // by default emit only errors during unittests.
@@ -424,52 +425,49 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     assert(nodes >= 2, "Creating a network require at least 2 nodes");
 
+    NodeConfig makeNodeConfig ()
+    {
+        NodeConfig conf =
+        {
+            key_pair : KeyPair.random(),
+            retry_delay : retry_delay, // msecs
+            max_retries : max_retries,
+            timeout : timeout,
+            min_listeners : nodes - 1,
+        };
+
+        return conf;
+    }
+
+    Config makeConfig (NodeConfig self, NodeConfig[] node_confs)
+    {
+        BanManager.Config ban_conf =
+        {
+            max_failed_requests : max_failed_requests,
+            ban_duration: 300
+        };
+
+        auto other_nodes =
+            node_confs
+                .filter!(conf => conf != self)
+                .map!(conf => conf.key_pair.address.toString());
+
+        Config conf =
+        {
+            banman : ban_conf,
+            node : self,
+            network : configure_network ? assumeUnique(other_nodes.array) : null,
+        };
+
+        return conf;
+    }
+
     final switch (topology)
     {
     case NetworkTopology.Simple:
-        immutable(Config)[] configs;
-        immutable(KeyPair)[] key_pairs;
-        NodeConfig[] node_configs;
-
-        foreach (idx; 0 .. nodes)
-        {
-            key_pairs ~= KeyPair.random;
-
-            NodeConfig node_conf =
-            {
-                key_pair : key_pairs[idx],
-                retry_delay : retry_delay, // msecs
-                max_retries : max_retries,
-                timeout : timeout,
-                min_listeners : nodes - 1,
-            };
-
-            node_configs ~= node_conf;
-        }
-
-        foreach (idx; 0 .. nodes)
-        {
-            // note: cannot add our own key as a validator (there is a safety check)
-            // todo: add this check in the unittests
-            auto other_pairs = key_pairs[0 .. idx] ~ key_pairs[idx + 1 .. $];
-
-            BanManager.Config ban_conf =
-            {
-                max_failed_requests : max_failed_requests,
-                ban_duration: 300
-            };
-
-            Config conf =
-            {
-                banman : ban_conf,
-                node : node_configs[idx],
-                network : configure_network
-                    ? assumeUnique(other_pairs.map!(k => k.address.toString()).array)
-                    : null,
-            };
-
-            configs ~= conf;
-        }
+        auto node_configs = iota(nodes).map!(_ => makeNodeConfig()).array;
+        auto configs = iota(nodes)
+            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
 
         auto net = new APIManager();
         foreach (idx, ref conf; configs)
