@@ -48,7 +48,7 @@ import vibe.web.rest;
 import vibe.http.common;
 
 /// The network state (completed when sufficient validators are connected to)
-public enum NetworkState
+public enum NetworkState : ubyte
 {
     Incomplete,
     Complete
