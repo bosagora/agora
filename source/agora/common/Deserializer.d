@@ -56,7 +56,7 @@ unittest
     // test of various field types
     static struct S
     {
-        int i;
+        uint i;
         string s;
 
         void serialize (scope SerializeDg dg) const @safe
@@ -192,13 +192,6 @@ public void deserializePart (ref ushort record, scope DeserializeDg dg)
 }
 
 /// Ditto
-public void deserializePart (ref int record, scope DeserializeDg dg)
-    @trusted
-{
-    record = *cast(int*)(dg(record.sizeof).ptr);
-}
-
-/// Ditto
 public void deserializePart (ref uint record, scope DeserializeDg dg)
     @trusted
 {
@@ -210,13 +203,6 @@ public void deserializePart (ref ulong record, scope DeserializeDg dg)
     @trusted
 {
     record = *cast(ulong*)(dg(record.sizeof).ptr);
-}
-
-/// Ditto
-public void deserializePart (ref long record, scope DeserializeDg dg)
-    @trusted
-{
-    record = *cast(long*)(dg(record.sizeof).ptr);
 }
 
 /// Ditto
