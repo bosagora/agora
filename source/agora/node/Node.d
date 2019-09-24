@@ -25,11 +25,12 @@ import agora.consensus.data.UTXOSet;
 import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.BlockStorage;
+import agora.node.GossipProtocol;
 import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
-import agora.node.GossipProtocol;
+import scpd.types.Stellar_SCP;
 
 import vibe.data.json;
 import vibe.web.rest : RestException;
@@ -152,6 +153,26 @@ public class Node : API
     {
         log.trace("Received Transaction: {}", prettify(tx));
         this.gossip.receiveTransaction(tx);
+    }
+
+    /***************************************************************************
+
+        Receive an SCP envelope.
+
+        API:
+            GET /envelope
+
+        Params:
+            envelope = the SCP envelope
+
+        Returns:
+            true if the envelope was accepted
+
+    ***************************************************************************/
+
+    public bool receiveEnvelope (SCPEnvelope envelope)
+    {
+        return true;
     }
 
     /// GET: /has_transaction_hash

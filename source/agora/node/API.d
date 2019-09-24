@@ -43,6 +43,8 @@ import agora.common.Set;
 import agora.common.Serializer;
 import agora.consensus.data.Transaction;
 
+import scpd.types.Stellar_SCP;
+
 import vibe.data.json;
 import vibe.web.rest;
 import vibe.http.common;
@@ -145,6 +147,19 @@ public interface API
 
     public ulong getBlockHeight ();
 
+    /***************************************************************************
+
+        Receives an SCP envelope and processes it
+
+        Params:
+            envelope = Envelope to process (See Stellar_SCP)
+
+        Returns:
+            true if the envelope was successfully processed
+
+    ***************************************************************************/
+
+    public bool receiveEnvelope (SCPEnvelope envelope);
 
     /***************************************************************************
 

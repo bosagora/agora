@@ -21,6 +21,8 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Transaction;
 import agora.node.API;
+import scpd.types.Stellar_SCP;
+
 import agora.utils.Log;
 
 import std.algorithm;
@@ -153,6 +155,32 @@ class NetworkClient
 
             this.attemptRequest(this.api.putTransaction(tx), null);
         });
+    }
+
+
+    /***************************************************************************
+
+        Sends an envelope, and returns a status code if the target node
+        has processed the envelope with no errors (todo: this is blocking..)
+
+        Returns:
+            true if the client successfully processed the envelope
+
+    ***************************************************************************/
+
+    public bool sendEnvelope (SCPEnvelope envelope) nothrow
+    {
+        try
+        {
+            return this.attemptRequest(this.api.receiveEnvelope(envelope),
+                this.exception);
+        }
+        catch (Exception ex)
+        {
+            scope (failure) assert(0);
+            log.trace("Failed to send envelope: %s", ex.msg);
+            return false;
+        }
     }
 
     /***************************************************************************
