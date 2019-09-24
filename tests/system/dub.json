@@ -2,8 +2,9 @@
     "name": "systemtest-simple",
     "targetType": "executable",
     "targetPath": "build",
-    "lflags": [ "-lsodium" ],
+    "lflags": [ "-lsodium", "-lstdc++" ],
 
+    "preBuildCommands": [ "source/scpp/build.d" ],
     "sourceFiles": [
         "../../source/agora/common/crypto/Crc16.d",
         "../../source/agora/common/crypto/Key.d",
@@ -18,8 +19,17 @@
         "../../source/agora/consensus/Genesis.d",
         "../../source/agora/node/API.d",
         "../../source/agora/utils/PrettyPrinter.d",
+        "../../source/scpd/Cpp.d",
+        "../../source/scpd/Util.d",
+        "../../source/scpd/types/Stellar_SCP.d",
+        "../../source/scpd/types/Stellar_types.d",
+        "../../source/scpd/types/Utils.d",
+        "../../source/scpd/types/XDRBase.d",
+
+        "../../source/scpp/build/DUtils.o",
+        "../../source/scpp/build/marshal.o",
     ],
-    "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/*.d" ],
+    "excludedSourceFiles": [ "source/scpp/*.d" ],
 
     "dependencies": {
         "base32":           { "path": "../../submodules/base32/", "version": "*" },
