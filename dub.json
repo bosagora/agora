@@ -16,6 +16,7 @@
         "source/scpp/build/BallotProtocol.o",
         "source/scpp/build/ByteSliceHasher.o",
         "source/scpp/build/DUtils.o",
+        "source/scpp/build/DSCPUtils.o",
         "source/scpp/build/HashOfHash.o",
         "source/scpp/build/Hex.o",
         "source/scpp/build/KeyUtils.o",
