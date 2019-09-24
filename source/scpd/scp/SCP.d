@@ -36,6 +36,7 @@ extern(C++, class) public struct SCP
     /// Slot getter
     public inout(shared_ptr!Slot) getSlot(uint64_t slotIndex, bool create) inout;
 
+nothrow:
     /*
       Cannot have class ref in D, so it was modified to a class pointer
     SCP(SCPDriver& driver, NodeID const& nodeID, bool isValidator,

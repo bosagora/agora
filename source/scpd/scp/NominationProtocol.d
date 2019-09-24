@@ -28,6 +28,7 @@ extern (C++, `stellar`):
 
 extern(C++, class) public struct NominationProtocol
 {
+nothrow:
     Slot* mSlot;
 
     int32_t mRoundNumber;
