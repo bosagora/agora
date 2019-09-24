@@ -14,6 +14,7 @@
 module scpd.scp.QuorumSetUtils;
 
 import scpd.types.Stellar_SCP;
+import scpd.types.Stellar_types;
 
 extern(C++, `stellar`):
 
