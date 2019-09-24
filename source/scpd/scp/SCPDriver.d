@@ -25,6 +25,7 @@ extern(C++, `stellar`):
 
 public abstract class SCPDriver
 {
+nothrow:
     ~this() {}
 
     // Envelope signature/verification
