@@ -268,8 +268,8 @@ public class Ledger
 
     public string validateBlock (const ref Block block) nothrow @safe
     {
-        return block.isInvalidReason(last_block.header.height,
-            last_block.header.hashFull, this.utxo_set.getUTXOFinder());
+        return block.isInvalidReason(this.last_block.header.height,
+            this.last_block.header.hashFull, this.utxo_set.getUTXOFinder());
     }
 
     /***************************************************************************
