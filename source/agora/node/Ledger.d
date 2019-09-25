@@ -205,11 +205,12 @@ public class Ledger
     {
         Hash[] hashes;
         Transaction[] txs;
+        ulong expect_height = this.getBlockHeight() + 1;
 
         auto utxo_finder = this.utxo_set.getUTXOFinder();
         foreach (hash, tx; this.pool)
         {
-            if (tx.isValid(utxo_finder))
+            if (tx.isValid(utxo_finder, expect_height))
             {
                 hashes ~= hash;
                 txs ~= tx;
@@ -249,7 +250,8 @@ public class Ledger
 
     public bool isValidTransaction (const ref Transaction tx) nothrow @safe
     {
-        return tx.isValid(this.utxo_set.getUTXOFinder());
+        const ulong expect_height = this.getBlockHeight() + 1;
+        return tx.isValid(this.utxo_set.getUTXOFinder(), expect_height);
     }
 
     /***************************************************************************
@@ -576,7 +578,7 @@ unittest
         Transaction[] transactions;
 
         // always use the same amount, for simplicity
-        const Amount AmountPerTx = Amount(40_000);
+        const Amount AmountPerTx = Amount(400_000_000_000L);
 
         foreach (idx; 0 .. TxCount)
         {
