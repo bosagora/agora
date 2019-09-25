@@ -18,6 +18,8 @@ import scpd.scp.SCPDriver;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 
+extern (C++):
+
 /// SCP constructor wrapper
 SCP* createSCP (SCPDriver driver, ref const(NodeID) nodeID, bool isValidator,
     ref const(SCPQuorumSet) qSetLocal);
