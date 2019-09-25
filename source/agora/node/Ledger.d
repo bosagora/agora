@@ -134,13 +134,12 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        if (!this.isValidTransaction(tx))
+        if (!this.isValidTransaction(tx) || !this.pool.add(tx))
         {
             log.info("Rejected tx: {}", tx);
             return false;
         }
 
-        this.pool.add(tx);
         if (this.pool.length >= Block.TxsInBlock)
             this.tryCreateBlock();
 
@@ -188,7 +187,7 @@ public class Ledger
         block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height));
 
         // remove the TXs from the Pool
-        block.txs.each!(tx => this.pool.remove(tx.hashFull()));
+        block.txs.each!(tx => this.pool.remove(tx));
     }
 
     /***************************************************************************
