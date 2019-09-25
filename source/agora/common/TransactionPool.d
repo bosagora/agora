@@ -18,6 +18,7 @@ import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.common.Set;
 import agora.consensus.data.Transaction;
 import agora.utils.Log;
 
@@ -56,6 +57,8 @@ public class TransactionPool
     /// SQLite db instance
     private Database db;
 
+    /// Map for hashes for Input objects of each transaction in TX pool
+    private Set!Hash input_set;
 
     /***************************************************************************
 
@@ -80,6 +83,17 @@ public class TransactionPool
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
             "(key BLOB PRIMARY KEY, val BLOB NOT NULL)");
+
+        // insert Input objects to the set of Input hashes from the transactions stored in DB.
+        auto results = this.db.execute("SELECT key, val FROM tx_pool");
+
+        foreach (row; results)
+        {
+            auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(1));
+
+            foreach (input; tx.inputs)
+                input_set.put(input.hashFull());
+        }
     }
 
     /***************************************************************************
@@ -127,15 +141,24 @@ public class TransactionPool
         Params:
             tx = the transaction to add
 
-        Throws:
-            SqliteException if the transaction failed to be added
+        Returns:
+            true if the transaction has been added to the pool
 
     ***************************************************************************/
 
-    public void add (Transaction tx) @safe
+    public bool add (Transaction tx) @safe
     {
         static ubyte[] buffer;
         buffer.length = 0;
+
+        // check double-spend
+        if (!isValidTransaction(tx))
+            return false;
+
+        // insert each input information of the transaction
+        foreach (input; tx.inputs)
+            this.input_set.put(input.hashFull());
+
         () @trusted { assumeSafeAppend(buffer); }();
 
         scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
@@ -149,6 +172,8 @@ public class TransactionPool
             db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
                 hashFull(tx)[], buffer);
         }();
+
+        return true;
     }
 
     /***************************************************************************
@@ -201,12 +226,17 @@ public class TransactionPool
         Remove the transaction with the given key from the pool
 
         Params:
-            hash = the hash of the transaction
+            tx = the transaction to remove
 
     ***************************************************************************/
 
-    public void remove (Hash hash) @trusted
+    public void remove (const ref Transaction tx) @trusted
     {
+        // delete inputs of transaction from the set of Input hashes
+        foreach (ref input; tx.inputs)
+            this.input_set.remove(input.hashFull());
+
+        auto hash = tx.hashFull();
         this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash[]);
     }
 
@@ -226,20 +256,50 @@ public class TransactionPool
     {
         const len_prev = this.length();
         assert(len_prev >= count);
-        Hash[] hashes;
         Transaction[] txs;
 
         foreach (hash, tx; this)
         {
-            hashes ~= hash;
             txs ~= tx;
             if (txs.length == count)
                 break;
         }
 
-        hashes.each!(hash => this.remove(hash));
+        txs.each!(tx => this.remove(tx));
         assert(this.length() == len_prev - count);
         return txs;
+    }
+
+    /***************************************************************************
+
+        Check if the input transaction has any double spending input.
+
+        Params:
+            tx = the transaction to validate
+
+        Returns:
+            true if the transaction has no double spending input.
+
+    ***************************************************************************/
+
+    public bool isValidTransaction (const ref Transaction tx) @trusted
+    {
+        auto txHash = tx.hashFull();
+
+        auto results = this.db.execute("SELECT key, val FROM tx_pool " ~
+            "WHERE key = ?", txHash[]);
+
+        if (!results.empty)
+            return false;
+
+        foreach (input; tx.inputs)
+        {
+            auto hash = input.hashFull();
+            if (hash in this.input_set)
+                return false;
+        }
+
+        return true;
     }
 }
 
@@ -269,9 +329,9 @@ unittest
     assert(half_txs.length == txs.length / 2);
     assert(pool.length == txs.length / 2);
 
-    // adding duplicate tx hash => exception throw
+    // adding duplicate tx hash => return false
     pool.add(txs[0]);
-    assertThrown!SqliteException(pool.add(txs[0]));
+    assert(!pool.add(txs[0]));
 }
 
 /// memory reclamation tests
@@ -317,4 +377,59 @@ unittest
     auto pool_txs = pool.take(txs.length);
     assert(pool.length == 0);
     assert(txs == pool_txs);
+}
+
+/// test double-spending on the Transaction pool
+unittest
+{
+    import agora.common.Amount;
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
+
+    auto seed1 = "SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ";
+    auto seed2 = "SCTTRCMT7DVZHQS375GWIKYQYHKA3X4IC4EOBNPRGV7DFR3X6OM5VIWL";
+    auto seed3 = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
+    auto key_pair1 = KeyPair.fromSeed(Seed.fromString(seed1));
+    auto key_pair2 = KeyPair.fromSeed(Seed.fromString(seed2));
+    auto key_pair3 = KeyPair.fromSeed(Seed.fromString(seed3));
+
+    // create first transaction pool
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+
+    // create first transaction
+    Transaction tx1 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(0), key_pair2.address)]
+    };
+    auto signature = key_pair1.secret.sign(hashFull(tx1)[]);
+    tx1.inputs[0].signature = signature;
+
+    // create second transaction
+    Transaction tx2 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(0), key_pair3.address)]
+    };
+    signature = key_pair1.secret.sign(hashFull(tx2)[]);
+    tx2.inputs[0].signature = signature;
+
+    // add first tx to the pool
+    assert(pool.add(tx1));
+
+    // add duplicate tx => return false
+    assert(!pool.add(tx2));
+
+    // create second transaction pool
+    auto pool2 = new TransactionPool(":memory:");
+    scope(exit) pool2.shutdown();
+
+    // add duplicate tx into second pool => return true
+    assert(pool2.add(tx2));
+
+    // add first tx => return false
+    assert(!pool2.add(tx1));
 }
