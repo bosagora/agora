@@ -784,13 +784,22 @@ public class BlockStorage : IBlockStorage
 
             size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
             size_t record_count = idx_file.size / record_size;
+
+            scope DeserializeDg dg = (size) @safe
+            {
+                ubyte[] res;
+                res.length = size;
+                idx_file.rawRead(res);
+                return res;
+            };
+
             foreach (idx; 0 .. record_count)
             {
-                height = idx_file.readSizeType();
+                deserializePart(height, dg);
 
                 idx_file.rawRead(hash);
 
-                pos = idx_file.readSizeType();
+                deserializePart(pos, dg);
 
                 // add to index of heigth
                 this.height_idx.insert(HeightPosition(height, pos));
@@ -926,26 +935,6 @@ public class BlockStorage : IBlockStorage
         }
     }
 }
-
-/*******************************************************************************
-
-    Read type of `size_t` data for file
-
-    Params:
-        file = `File`
-
-    Returns:
-        type of `size_t`
-
-*******************************************************************************/
-
-public size_t readSizeType (File file) @trusted
-{
-    ubyte[size_t.sizeof] buffer;
-    file.rawRead(buffer);
-    return *cast(size_t*)&(buffer[0]);
-}
-
 
 /*******************************************************************************
 
