@@ -14,9 +14,10 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
-import agora.common.Types;
+import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.common.TransactionPool;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
@@ -544,6 +545,76 @@ unittest
         _val)));
 }
 
+version (unittest)
+private Transaction[] makeTransactionForFreezing (
+    KeyPair[] in_key_pair,
+    KeyPair[] out_key_pair,
+    TxType tx_type,
+    Transaction[] prev_txs,
+    const Transaction default_tx)
+{
+    import std.conv;
+
+    assert(in_key_pair.length == Block.TxsInBlock);
+    assert(out_key_pair.length == Block.TxsInBlock);
+
+    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
+    const TxCount = Block.TxsInBlock;
+
+    Transaction[] transactions;
+
+    // always use the same amount, for simplicity
+    const Amount AmountPerTx = Amount(400_000_000_000L);
+
+    foreach (idx; 0 .. TxCount)
+    {
+        Input input;
+        if (prev_txs.length == 0)  // refering to genesis tx's outputs
+            input = Input(hashFull(default_tx), idx.to!uint);
+        else  // refering to tx's in the previous block
+            input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
+
+        Transaction tx =
+        {
+            tx_type,
+            [input],
+            [Output(AmountPerTx, out_key_pair[idx % Block.TxsInBlock].address)]  // send to the same address
+        };
+
+        auto signature = in_key_pair[idx % Block.TxsInBlock].secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        transactions ~= tx;
+
+        // new transactions will refer to the just created transactions
+        // which will be part of the previous block after the block is created
+        if (Block.TxsInBlock == 1 ||  // special case
+            (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
+        {
+            // refer to tx'es which will be in the previous block
+            prev_txs = transactions[$ - Block.TxsInBlock .. $];
+        }
+    }
+    return transactions;
+}
+
+version (unittest)
+private KeyPair[] getGenKeyPairs ()
+{
+    KeyPair[] res;
+    foreach (idx; 0 .. Block.TxsInBlock)
+        res ~= getGenesisKeyPair();
+    return res;
+}
+
+version (unittest)
+private KeyPair[] getRandomKeyPairs ()
+{
+    KeyPair[] res;
+    foreach (idx; 0 .. Block.TxsInBlock)
+        res ~= KeyPair.random;
+    return res;
+}
+
 // Use a transaction with the type 'TxType.Freeze' to create a block and test UTXOSet.
 unittest
 {
@@ -559,73 +630,6 @@ unittest
     scope (exit) utxo_set.shutdown();
 
     scope ledger = new Ledger(pool, utxo_set, storage);
-
-    Transaction[] makeTransactionForFreezing (
-        KeyPair[] in_key_pair,
-        KeyPair[] out_key_pair,
-        TxType tx_type,
-        Transaction[] prev_txs,
-        const Transaction default_tx)
-    {
-        import std.conv;
-
-        assert(in_key_pair.length == Block.TxsInBlock);
-        assert(out_key_pair.length == Block.TxsInBlock);
-
-        assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
-        const TxCount = Block.TxsInBlock;
-
-        Transaction[] transactions;
-
-        // always use the same amount, for simplicity
-        const Amount AmountPerTx = Amount(400_000_000_000L);
-
-        foreach (idx; 0 .. TxCount)
-        {
-            Input input;
-            if (prev_txs.length == 0)  // refering to genesis tx's outputs
-                input = Input(hashFull(default_tx), idx.to!uint);
-            else  // refering to tx's in the previous block
-                input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
-
-            Transaction tx =
-            {
-                tx_type,
-                [input],
-                [Output(AmountPerTx, out_key_pair[idx % Block.TxsInBlock].address)]  // send to the same address
-            };
-
-            auto signature = in_key_pair[idx % Block.TxsInBlock].secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-            transactions ~= tx;
-
-            // new transactions will refer to the just created transactions
-            // which will be part of the previous block after the block is created
-            if (Block.TxsInBlock == 1 ||  // special case
-                (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
-            {
-                // refer to tx'es which will be in the previous block
-                prev_txs = transactions[$ - Block.TxsInBlock .. $];
-            }
-        }
-        return transactions;
-    }
-
-    KeyPair[] getGenKeyPairs ()
-    {
-        KeyPair[] res;
-        foreach (idx; 0 .. Block.TxsInBlock)
-            res ~= getGenesisKeyPair();
-        return res;
-    }
-
-    KeyPair[] getRandomKeyPairs ()
-    {
-        KeyPair[] res;
-        foreach (idx; 0 .. Block.TxsInBlock)
-            res ~= KeyPair.random;
-        return res;
-    }
 
     KeyPair[] in_key_pairs;
     KeyPair[] out_key_pairs;
@@ -670,4 +674,278 @@ unittest
     blocks = ledger.getBlocksFrom(0).take(10).array;
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
+}
+
+version (unittest)
+private Transaction[] splitGenesisTransaction (
+    KeyPair[] in_key,
+    KeyPair[] out_key, ulong amount = 400_000_000_000L)
+{
+    Transaction[] txes;
+    foreach (idx; 0 .. Block.TxsInBlock)
+    {
+        Transaction tx = {TxType.Payment, [], []};
+        tx.inputs ~= Input(hashFull(GenesisTransaction), idx);
+        foreach (idx2; 0 .. Block.TxsInBlock)
+            tx.outputs ~= Output(Amount(amount), out_key[idx].address);
+
+        auto signature = in_key[idx].secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        txes ~= tx;
+    }
+
+    return txes;
+}
+
+/// Test validation of transactions associated with freezing
+///
+/// Table of freezing status changes over time
+/// ---------------------------------------------------------------------------
+/// freezing status     / melted     / frozen     / melting    / melted
+/// ---------------------------------------------------------------------------
+/// block height        / N1         / N2         / N3         / N4
+/// ---------------------------------------------------------------------------
+/// condition to use    /            / N2 >= N1+1 / N3 >= N2+1 / N4 >= N3+2016
+/// ---------------------------------------------------------------------------
+/// utxo unlock height  / N1+1       / N2+1       / N3+2016    / N4+1
+/// ---------------------------------------------------------------------------
+/// utxo type           / Payment    / Freeze     / Payment    / Payment
+/// ---------------------------------------------------------------------------
+unittest
+{
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
+    import agora.common.Types;
+
+    auto storage = new MemBlockStorage();
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+
+    scope ledger = new Ledger(pool, utxo_set, storage);
+
+    KeyPair[] splited_keys = getRandomKeyPairs();
+
+    Transaction[] splited_txex;
+
+    // Divide 8 'Outputs' that are included in Genesis Block by 40,000
+    // It generates eight addresses and eight transactions,
+    // and one transaction has eight Outputs with a value of 40,000 values.
+    void splitGenesis ()
+    {
+        splited_txex = splitGenesisTransaction(getGenKeyPairs(), splited_keys, 400_000_000_000L);
+        splited_txex.each!((tx)
+        {
+            assert(ledger.acceptTransaction(tx));
+        });
+    }
+
+    KeyPair[] in_key_pairs_normal;
+    KeyPair[] out_key_pairs_normal;
+    Transaction[] last_txs_normal;
+
+    in_key_pairs_normal.length = 0;
+    foreach (idx; 0 .. Block.TxsInBlock)
+        in_key_pairs_normal ~= splited_keys[0];
+
+    out_key_pairs_normal = getRandomKeyPairs();
+
+    // generate nomal transactions to form a block
+    void genNormalBlockTransactions (size_t count, bool is_valid = true)
+    {
+        foreach (idx; 0 .. count)
+        {
+            auto txes = makeTransactionForFreezing (
+                in_key_pairs_normal,
+                out_key_pairs_normal,
+                TxType.Payment,
+                last_txs_normal,
+                splited_txex[0]);
+
+            txes.each!((tx)
+                {
+                    assert(ledger.acceptTransaction(tx) == is_valid);
+                });
+
+            if (is_valid)
+            {
+                // keep track of last tx's to chain them to
+                last_txs_normal = txes[$ - Block.TxsInBlock .. $];
+
+                in_key_pairs_normal = out_key_pairs_normal;
+                out_key_pairs_normal = getRandomKeyPairs();
+            }
+        }
+    }
+
+    KeyPair[] in_key_pairs_freeze;
+    KeyPair[] out_key_pairs_freeze;
+    Transaction[] last_txs_freeze;
+
+    in_key_pairs_freeze.length = 0;
+    foreach (idx; 0 .. Block.TxsInBlock)
+        in_key_pairs_freeze ~= splited_keys[1];
+
+    out_key_pairs_freeze = getRandomKeyPairs();
+
+    // generate freezing transactions to form a block
+    void genBlockTransactionsFreeze (size_t count, TxType tx_type, bool is_valid = true)
+    {
+        foreach (idx; 0 .. count)
+        {
+            auto txes = makeTransactionForFreezing (
+                in_key_pairs_freeze,
+                out_key_pairs_freeze,
+                tx_type,
+                last_txs_freeze,
+                splited_txex[1]);
+
+            txes.each!((tx)
+                {
+                    assert(ledger.acceptTransaction(tx) == is_valid);
+                });
+
+            if (is_valid)
+            {
+                // keep track of last tx's to chain them to
+                last_txs_freeze = txes[$ - Block.TxsInBlock .. $];
+
+                in_key_pairs_freeze = out_key_pairs_freeze;
+                out_key_pairs_freeze = getRandomKeyPairs();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Split Genesis Transaction
+    // Current height  : 0
+    // Current Status  : melted
+    // Expected height : 1
+    // Expected Status : melted
+    // Progress        : melted
+    // -------------------------------------------------------------------------
+    splitGenesis();
+    assert(ledger.getBlockHeight() == 1);
+
+    // -------------------------------------------------------------------------
+    // Create Payment block (Number of transactions Block.TxsInBlock)
+    // Current height  : 1
+    // Current Status  : melted
+    // Expected height : 2
+    // Expected Status : melted
+    // Result          : Success
+    // Progress        : melted
+    // -------------------------------------------------------------------------
+    genNormalBlockTransactions(1);
+    assert(ledger.getBlockHeight() == 2);
+
+    // -------------------------------------------------------------------------
+    // Creates freezing block (Number of transactions Block.TxsInBlock)
+    // Current height  : 2
+    // Current Status  : melted
+    // Expected height : 3
+    // Expected Status : frozen
+    // Result          : Success
+    // Progress        : melted -> frozen
+    // -------------------------------------------------------------------------
+    genBlockTransactionsFreeze(1, TxType.Freeze);
+    assert(ledger.getBlockHeight() == 3);
+
+    // -------------------------------------------------------------------------
+    // Creates 7 dummy payment blocks (Number of transactions Block.TxsInBlock * 7)
+    // Not related to previously frozen UTXO
+    // Current height  : 3
+    // Current Status  : frozen
+    // Expected height : 10
+    // Expected Status : frozen
+    // Result          : Success
+    // Progress        : melted -> frozen
+    // -------------------------------------------------------------------------
+    genNormalBlockTransactions(7);
+    assert(ledger.getBlockHeight() == 10);
+
+    // -------------------------------------------------------------------------
+    // Creates the payment transaction with frozen UTXO
+    // Current height  : 10
+    // Current Status  : frozen
+    // Expected height : 11
+    // Expected Status : melting
+    // Result          : Success
+    // Progress        : melted -> frozen -> melting
+    // -------------------------------------------------------------------------
+    genBlockTransactionsFreeze(1, TxType.Payment);
+    assert(ledger.getBlockHeight() == 11);
+
+    ulong melting_start = 11;
+    ulong melting_block_count;
+
+    // -------------------------------------------------------------------------
+    // Creates the payment transaction with melting UTXO
+    // Current height  : 11
+    // Current Status  : melting
+    // Expected height : 11
+    // Expected Status : melting
+    // Result          : Didn't change to melted not yet
+    // Progress        : melted -> frozen -> melting
+    // -------------------------------------------------------------------------
+    genBlockTransactionsFreeze(1, TxType.Payment, false);
+    assert(ledger.getBlockHeight() == 11);
+
+    // -------------------------------------------------------------------------
+    // Creates 2014 dummy payment blocks (Number of transactions Block.TxsInBlock * 2014)
+    // Not related to previously melting UTXO
+    // Current height  : 11
+    // Current Status  : melting
+    // Expected height : 11 + 2014
+    // Expected Status : melting
+    // Result          : Success
+    // Progress        : melted -> frozen -> melting
+    // -------------------------------------------------------------------------
+    genNormalBlockTransactions(2014);
+    assert(ledger.getBlockHeight() == 11 + 2014);
+
+    melting_block_count = ledger.getBlockHeight() - melting_start + 1;
+    assert(melting_block_count == 2015);
+
+    // -------------------------------------------------------------------------
+    // Creates the payment transaction with melting UTXO
+    // Current height  : 11 + 2014
+    // Current Status  : melting
+    // Expected height : 11 + 2014
+    // Expected Status : melting
+    // Result          : Didn't change to melted not yet
+    // Progress        : melted -> frozen -> melting
+    // -------------------------------------------------------------------------
+    genBlockTransactionsFreeze(1, TxType.Payment, false);
+    assert(ledger.getBlockHeight() == 11 + 2014);
+
+    // -------------------------------------------------------------------------
+    // Creates 1 dummy payment block (Number of transactions Block.TxsInBlock)
+    // Not related to previously melting UTXO
+    // Current height  : 11 + 2014
+    // Current Status  : melting
+    // Expected height : 11 + 2015
+    // Expected Status : melting
+    // Result          : Success
+    // Progress        : melted -> frozen -> melting
+    // -------------------------------------------------------------------------
+    genNormalBlockTransactions(1);
+    assert(ledger.getBlockHeight() == 11 + 2015);
+
+    melting_block_count = ledger.getBlockHeight() - melting_start + 1;
+    assert(melting_block_count == 2016);
+
+    // -------------------------------------------------------------------------
+    // Creates the payment transaction with melting UTXO
+    // Current height  : 11 + 2015
+    // Current Status  : melting
+    // Expected height : 11 + 2016
+    // Expected Status : melted
+    // Result          : Success, change to melted
+    // Progress        : melted -> frozen -> melting -> melted
+    // -------------------------------------------------------------------------
+    genBlockTransactionsFreeze(1, TxType.Payment);
+    assert(ledger.getBlockHeight() == 11 + 2016);
 }
