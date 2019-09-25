@@ -32,6 +32,7 @@ public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
     Params:
         tx = `Transaction`
         findUTXO = delegate for finding `Output`
+        height = height of block
 
     Return:
         `null` if the transaction is valid, a string explaining the reason it
@@ -39,7 +40,7 @@ public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
 
 *******************************************************************************/
 
-public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO)
+public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO, const ulong height)
     @safe nothrow
 {
     if (tx.inputs.length == 0)
@@ -79,10 +80,10 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO)
 }
 
 /// Ditto but returns a bool
-public bool isValid (const Transaction tx, UTXOFinder findUTXO)
+public bool isValid (const Transaction tx, UTXOFinder findUTXO, const ulong height)
     @safe nothrow
 {
-    return isInvalidReason(tx, findUTXO) is null;
+    return isInvalidReason(tx, findUTXO, height) is null;
 }
 
 /// verify transaction data
@@ -131,19 +132,19 @@ unittest
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(findUTXO, 0), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(findUTXO, 0), format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.isValid(findUTXO), format("Transaction data is not validated %s", secondTx));
+    assert(!secondTx.isValid(findUTXO, 0), format("Transaction data is not validated %s", secondTx));
 }
 
 /// negative output amounts disallowed
@@ -184,7 +185,7 @@ unittest
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
-    assert(!tx_2.isValid(findUTXO));
+    assert(!tx_2.isValid(findUTXO, 0));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -239,7 +240,7 @@ unittest
     tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage[tx1Hash] = tx1;
 
-    assert(tx1.isValid(findUTXO), format("Transaction signature is not validated %s", tx1));
+    assert(tx1.isValid(findUTXO, 0), format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
         TxType.Payment,
@@ -256,7 +257,7 @@ unittest
     tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage[tx2Hash] = tx2;
     // Signature verification must be error
-    assert(!tx2.isValid(findUTXO), format("Transaction signature is not validated %s", tx2));
+    assert(!tx2.isValid(findUTXO, 0), format("Transaction signature is not validated %s", tx2));
 }
 
 /*******************************************************************************
@@ -319,7 +320,7 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
 
     foreach (const ref tx; block.txs)
     {
-        if (auto fail_reason = tx.isInvalidReason(findUTXO))
+        if (auto fail_reason = tx.isInvalidReason(findUTXO, block.header.height))
             return fail_reason;
     }
 
