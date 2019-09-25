@@ -57,18 +57,63 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO, const 
     Amount sum_unspent;
 
     const tx_hash = hashFull(tx);
-    foreach (input; tx.inputs)
+
+    if (tx.type == TxType.Freeze)
     {
-        // all referenced outputs must be present
-        UTXOSetValue value;
-        if (!findUTXO(input.previous, input.index, value))
-            return "Transaction: Input ref not in UTXO";
+        foreach (input; tx.inputs)
+        {
+            // all referenced outputs must be present
+            UTXOSetValue utxo_value;
+            if (!findUTXO(input.previous, input.index, utxo_value))
+                return "Transaction: Input ref not in UTXO";
 
-        if (!value.output.address.verify(input.signature, tx_hash[]))
-            return "Transaction: Input has invalid signature";
+            if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
+                return "Transaction: Input has invalid signature";
 
-        if (!sum_unspent.add(value.output.value))
-            return "Transaction: Input overflow";
+            if (!sum_unspent.add(utxo_value.output.value))
+                return "Transaction: Input overflow";
+
+            if (utxo_value.type != TxType.Payment)
+                return "Transaction: Only available freeze on TxType.Payment";
+        }
+
+        if (sum_unspent != Amount(400_000_000_000L))
+            return "Transaction: Only available when the amount is 40,000";
+    }
+    else if (tx.type == TxType.Payment)
+    {
+        uint count_freeze = 0;
+
+        foreach (input; tx.inputs)
+        {
+            // all referenced outputs must be present
+            UTXOSetValue utxo_value;
+            if (!findUTXO(input.previous, input.index, utxo_value))
+                return "Transaction: Input ref not in UTXO";
+
+            if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
+                return "Transaction: Input has invalid signature";
+
+            if (!sum_unspent.add(utxo_value.output.value))
+                return "Transaction: Input overflow";
+
+            //  when status is frozen, it will begin to melt
+            //  In this case, all inputs must be frozen.
+            if (utxo_value.type == TxType.Freeze)
+                count_freeze++;
+
+            //  when status is (frozen->melting->melted) or (frozen->melting)
+            if (utxo_value.type == TxType.Payment)
+            {
+                //  when status is still melting
+                if (height < utxo_value.unlock_height)
+                    return "Transaction: Not available when melting UTXO";
+            }
+        }
+
+        //  In this case, all inputs must be frozen.
+        if ((count_freeze > 0) && (count_freeze != tx.inputs.length))
+            return "Transaction: TxType.Freeze and Payment are not handled together in Input";
     }
 
     Amount new_unspent;
@@ -258,6 +303,327 @@ unittest
     storage[tx2Hash] = tx2;
     // Signature verification must be error
     assert(!tx2.isValid(findUTXO, 0), format("Transaction signature is not validated %s", tx2));
+}
+
+/// verify transactions associated with freezing
+unittest
+{
+    UTXOSetValue[Hash] storage;
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    Transaction previousTx;
+    Transaction secondTx;
+    Hash previousHash;
+
+    // delegate for finding `UTXOSetValue`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
+    {
+        const Hash utxo_hash = hashMulti(hash, index);
+        if (auto utxo = utxo_hash in storage)
+        {
+            value = *utxo;
+            return true;
+        }
+
+        return false;
+    };
+
+    // When the privious transaction type is `Payment`, second transaction type is `Freeze`.
+    // Second transaction is valid.
+    {
+        storage.clear;
+        // Create the previous transaction with type `TxType.Payment`
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(400_000_000_000L));
+        previousHash = hashFull(previousTx);
+        foreach (idx, output; previousTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(previousHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: 0,
+                type: TxType.Payment,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+
+        // Creates the freezing transaction.
+        secondTx = Transaction(
+            TxType.Freeze,
+            [Input(previousHash, 0)],
+            [Output(Amount(400_000_000_000L), key_pairs[1].address)]
+        );
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+
+        // Second Transaction is valid.
+        assert(secondTx.isValid(findUTXO, 0));
+    }
+
+    // When the privious transaction type is `Freeze`, second transaction type is `Freeze`.
+    // Second transaction is invalid.
+    {
+        storage.clear;
+        // Create the previous transaction with type `TxType.Payment`
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(400_000_000_000L));
+        previousHash = hashFull(previousTx);
+        foreach (idx, output; previousTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(previousHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: 0,
+                type: TxType.Freeze,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+
+        // Creates the freezing transaction.
+        secondTx = Transaction(
+            TxType.Freeze,
+            [Input(previousHash, 0)],
+            [Output(Amount(400_000_000_000L), key_pairs[1].address)]
+        );
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+
+        // Second Transaction is invalid.
+        assert(!secondTx.isValid(findUTXO, 0));
+    }
+
+    // When the privious transaction with not enough amount at freezing.
+    // Second transaction is invalid.
+    {
+        storage.clear;
+        // Create the previous transaction with type `TxType.Payment`
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(100_000_000_000L));
+        previousHash = hashFull(previousTx);
+        foreach (idx, output; previousTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(previousHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: 0,
+                type: TxType.Payment,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+
+        // Creates the freezing transaction.
+        secondTx = Transaction(
+            TxType.Freeze,
+            [Input(previousHash, 0)],
+            [Output(Amount(100_000_000_000L), key_pairs[1].address)]
+        );
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+
+        // Second Transaction is invalid.
+        assert(!secondTx.isValid(findUTXO, 0));
+    }
+
+    // When the privious transaction with too many amount at freezings.
+    // Second transaction is invalid.
+    {
+        // Create the previous transaction with type `TxType.Payment`
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(500_000_000_000L));
+        previousHash = hashFull(previousTx);
+        foreach (idx, output; previousTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(previousHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: 0,
+                type: TxType.Payment,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+
+        // Creates the freezing transaction.
+        secondTx = Transaction(
+            TxType.Freeze,
+            [Input(previousHash, 0)],
+            [Output(Amount(500_000_000_000L), key_pairs[1].address)]
+        );
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+
+        // Second Transaction is invalid.
+        assert(!secondTx.isValid(findUTXO, 0));
+    }
+}
+
+/// Test validation of transactions associated with freezing
+///
+/// Table of freezing status changes over time
+/// ---------------------------------------------------------------------------
+/// freezing status     / melted     / frozen     / melting    / melted
+/// ---------------------------------------------------------------------------
+/// block height        / N1         / N2         / N3         / N4
+/// ---------------------------------------------------------------------------
+/// condition to use    /            / N2 >= N1+1 / N3 >= N2+1 / N4 >= N3+2016
+/// ---------------------------------------------------------------------------
+/// utxo unlock height  / N1+1       / N2+1       / N3+2016    / N4+1
+/// ---------------------------------------------------------------------------
+/// utxo type           / Payment    / Freeze     / Payment    / Payment
+/// ---------------------------------------------------------------------------
+unittest
+{
+    UTXOSetValue[Hash] storage;
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    ulong block_height = 0;
+
+    Transaction previousTx;
+    Transaction secondTx;
+    Transaction thirdTx;
+    Transaction fourthTx;
+    Transaction fifthTx;
+
+    Hash previousHash;
+    Hash secondHash;
+    Hash thirdHash;
+    Hash fifthHash;
+
+    // delegate for finding `UTXOSetValue`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
+    {
+        const Hash utxo_hash = hashMulti(hash, index);
+        if (auto utxo = utxo_hash in storage)
+        {
+            value = *utxo;
+            return true;
+        }
+
+        return false;
+    };
+
+    // Create the previous transaction with type `TxType.Payment`
+    // Expected height : 0
+    // Expected Status : melted
+    {
+        block_height = 0;
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(400_000_000_000L));
+
+        // Save to UTXOSet
+        previousHash = hashFull(previousTx);
+        foreach (idx, output; previousTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(previousHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: block_height+1,
+                type: TxType.Payment,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+    }
+
+    // Creates the second freezing transaction
+    // Current height  : 0
+    // Current Status  : melted
+    // Expected height : 1
+    // Expected Status : frozen
+    {
+        block_height = 1;
+        secondTx = Transaction(
+            TxType.Freeze,
+            [Input(previousHash, 0)],
+            [Output(Amount(400_000_000_000L), key_pairs[1].address)]
+        );
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+
+        // Second Transaction is VALID.
+        assert(secondTx.isValid(findUTXO, block_height));
+
+        // Save to UTXOSet
+        secondHash = hashFull(secondTx);
+        foreach (idx, output; secondTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(secondHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: block_height+1,
+                type: TxType.Freeze,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+    }
+
+    // Creates the third payment transaction
+    // Current height  : 1
+    // Current Status  : frozen
+    // Expected height : 2
+    // Expected Status : melting
+    {
+        block_height = 2;
+        thirdTx = Transaction(
+            TxType.Payment,
+            [Input(secondHash, 0)],
+            [Output(Amount(400_000_000_000L), key_pairs[2].address)]
+        );
+        thirdTx.inputs[0].signature = key_pairs[1].secret.sign(hashFull(thirdTx)[]);
+
+        // Third Transaction is VALID.
+        assert(thirdTx.isValid(findUTXO, block_height));
+
+        // Save to UTXOSet
+        thirdHash = hashFull(thirdTx);
+        foreach (idx, output; thirdTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(thirdHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: block_height+2016,
+                type: TxType.Payment,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+    }
+
+    // Creates the fourth payment transaction : didn't change to melted not yet
+    // Current height  : 2+2014
+    // Current Status  : melting
+    // Expected height : 2+2015
+    // Expected Status : melting
+    {
+        block_height = 2+2015;  //  this is melting, not melted
+        fourthTx = Transaction(
+            TxType.Payment,
+            [Input(thirdHash, 0)],
+            [Output(Amount(400_000_000_000L), key_pairs[3].address)]
+        );
+        fourthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
+
+        // Third Transaction is INVALID.
+        assert(!fourthTx.isValid(findUTXO, block_height));
+    }
+
+    // Creates the fifth payment transaction
+    // Current height  : 2+2015
+    // Current Status  : melting
+    // Expected height : 2+2016
+    // Expected Status : melted
+    {
+        block_height = 2+2016;  //  this is melted
+        fifthTx = Transaction(
+            TxType.Payment,
+            [Input(thirdHash, 0)],
+            [Output(Amount(400_000_000_000L), key_pairs[3].address)]
+        );
+        fifthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
+
+        // Third Transaction is VALID.
+        assert(fifthTx.isValid(findUTXO, block_height));
+
+        // Save to UTXOSet
+        fifthHash = hashFull(fifthTx);
+        foreach (idx, output; fifthTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(fifthHash, idx);
+            const UTXOSetValue utxo_value = {
+                unlock_height: block_height+1,
+                type: TxType.Payment,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+    }
 }
 
 /*******************************************************************************
