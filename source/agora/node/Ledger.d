@@ -564,7 +564,7 @@ private Transaction[] makeTransactionForFreezing (
     Transaction[] transactions;
 
     // always use the same amount, for simplicity
-    const Amount AmountPerTx = Amount(400_000_000_000L);
+    const Amount AmountPerTx = Amount.FreezeAmount;
 
     foreach (idx; 0 .. TxCount)
     {
@@ -679,7 +679,7 @@ unittest
 version (unittest)
 private Transaction[] splitGenesisTransaction (
     KeyPair[] in_key,
-    KeyPair[] out_key, ulong amount = 400_000_000_000L)
+    KeyPair[] out_key, Amount amount = Amount.FreezeAmount)
 {
     Transaction[] txes;
     foreach (idx; 0 .. Block.TxsInBlock)
@@ -687,7 +687,7 @@ private Transaction[] splitGenesisTransaction (
         Transaction tx = {TxType.Payment, [], []};
         tx.inputs ~= Input(hashFull(GenesisTransaction), idx);
         foreach (idx2; 0 .. Block.TxsInBlock)
-            tx.outputs ~= Output(Amount(amount), out_key[idx].address);
+            tx.outputs ~= Output(amount, out_key[idx].address);
 
         auto signature = in_key[idx].secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
@@ -735,7 +735,7 @@ unittest
     // and one transaction has eight Outputs with a value of 40,000 values.
     void splitGenesis ()
     {
-        splited_txex = splitGenesisTransaction(getGenKeyPairs(), splited_keys, 400_000_000_000L);
+        splited_txex = splitGenesisTransaction(getGenKeyPairs(), splited_keys);
         splited_txex.each!((tx)
         {
             assert(ledger.acceptTransaction(tx));
