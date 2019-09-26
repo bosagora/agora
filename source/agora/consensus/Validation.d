@@ -338,7 +338,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(400_000_000_000L));
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.FreezeAmount);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -355,7 +355,7 @@ unittest
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount(400_000_000_000L), key_pairs[1].address)]
+            [Output(Amount.FreezeAmount, key_pairs[1].address)]
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
@@ -368,7 +368,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(400_000_000_000L));
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.FreezeAmount);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -385,7 +385,7 @@ unittest
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount(400_000_000_000L), key_pairs[1].address)]
+            [Output(Amount.FreezeAmount, key_pairs[1].address)]
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
@@ -503,7 +503,7 @@ unittest
     // Expected Status : melted
     {
         block_height = 0;
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(400_000_000_000L));
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.FreezeAmount);
 
         // Save to UTXOSet
         previousHash = hashFull(previousTx);
@@ -529,7 +529,7 @@ unittest
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount(400_000_000_000L), key_pairs[1].address)]
+            [Output(Amount.FreezeAmount, key_pairs[1].address)]
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
@@ -560,7 +560,7 @@ unittest
         thirdTx = Transaction(
             TxType.Payment,
             [Input(secondHash, 0)],
-            [Output(Amount(400_000_000_000L), key_pairs[2].address)]
+            [Output(Amount.FreezeAmount, key_pairs[2].address)]
         );
         thirdTx.inputs[0].signature = key_pairs[1].secret.sign(hashFull(thirdTx)[]);
 
@@ -591,7 +591,7 @@ unittest
         fourthTx = Transaction(
             TxType.Payment,
             [Input(thirdHash, 0)],
-            [Output(Amount(400_000_000_000L), key_pairs[3].address)]
+            [Output(Amount.FreezeAmount, key_pairs[3].address)]
         );
         fourthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
@@ -609,7 +609,7 @@ unittest
         fifthTx = Transaction(
             TxType.Payment,
             [Input(thirdHash, 0)],
-            [Output(Amount(400_000_000_000L), key_pairs[3].address)]
+            [Output(Amount.FreezeAmount, key_pairs[3].address)]
         );
         fifthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
