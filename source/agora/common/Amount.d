@@ -41,6 +41,9 @@ public struct Amount
     /// Maximum amount of money that can ever be in circulation
     public static immutable Amount MaxUnitSupply =
         Amount(UnitPerCoin.value * MaxCoinSupply, true);
+    /// Exact amount that needs to be staked to make a freezing transaction
+    public static immutable Amount FreezeAmount =
+        Amount(UnitPerCoin.value * 40_000, true);
 
     /// Helper type for `toString`
     private alias SinkT = void delegate(scope const(char)[] v) @safe;

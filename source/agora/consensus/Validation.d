@@ -40,9 +40,12 @@ public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
 
 *******************************************************************************/
 
-public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO, const ulong height)
+public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO,
+    const ulong height)
     @safe nothrow
 {
+    import std.conv;
+
     if (tx.inputs.length == 0)
         return "Transaction: No input";
 
@@ -54,67 +57,69 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO, const 
         if (!output.value.isValid())
             return "Transaction: Output(s) overflow or underflow";
 
-    Amount sum_unspent;
-
     const tx_hash = hashFull(tx);
+
+    string isInvalidInput (const ref Input input, ref UTXOSetValue utxo_value,
+        ref Amount sum_unspent)
+    {
+        if (!findUTXO(input.previous, input.index, utxo_value))
+            return "Transaction: Input ref not in UTXO";
+
+        if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
+            return "Transaction: Input has invalid signature";
+
+        if (!sum_unspent.add(utxo_value.output.value))
+            return "Transaction: Input overflow";
+
+        return null;
+    }
+
+    Amount sum_unspent;
 
     if (tx.type == TxType.Freeze)
     {
         foreach (input; tx.inputs)
         {
-            // all referenced outputs must be present
             UTXOSetValue utxo_value;
-            if (!findUTXO(input.previous, input.index, utxo_value))
-                return "Transaction: Input ref not in UTXO";
-
-            if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
-                return "Transaction: Input has invalid signature";
-
-            if (!sum_unspent.add(utxo_value.output.value))
-                return "Transaction: Input overflow";
+            if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
+                return fail_reason;
 
             if (utxo_value.type != TxType.Payment)
-                return "Transaction: Only available freeze on TxType.Payment";
+                return "Transaction: Can only freeze a Payment transaction";
         }
 
-        if (sum_unspent != Amount(400_000_000_000L))
+        if (sum_unspent != Amount.FreezeAmount)
             return "Transaction: Only available when the amount is 40,000";
     }
     else if (tx.type == TxType.Payment)
     {
         uint count_freeze = 0;
-
         foreach (input; tx.inputs)
         {
-            // all referenced outputs must be present
             UTXOSetValue utxo_value;
-            if (!findUTXO(input.previous, input.index, utxo_value))
-                return "Transaction: Input ref not in UTXO";
+            if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
+                return fail_reason;
 
-            if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
-                return "Transaction: Input has invalid signature";
-
-            if (!sum_unspent.add(utxo_value.output.value))
-                return "Transaction: Input overflow";
-
-            //  when status is frozen, it will begin to melt
-            //  In this case, all inputs must be frozen.
+            // when status is frozen, it will begin to melt
+            // In this case, all inputs must be frozen.
             if (utxo_value.type == TxType.Freeze)
                 count_freeze++;
 
-            //  when status is (frozen->melting->melted) or (frozen->melting)
+            // when status is (frozen->melting->melted) or (frozen->melting)
             if (utxo_value.type == TxType.Payment)
             {
-                //  when status is still melting
+                // when status is still melting
                 if (height < utxo_value.unlock_height)
                     return "Transaction: Not available when melting UTXO";
             }
         }
 
-        //  In this case, all inputs must be frozen.
+        // current limitation: if any UTXO is frozen, they all must be frozen
         if ((count_freeze > 0) && (count_freeze != tx.inputs.length))
-            return "Transaction: TxType.Freeze and Payment are not handled together in Input";
+            return "Transaction: Rejected combined inputs (freeze & payment)";
     }
+    else
+        return "Transaction: Invalid transaction type";
 
     Amount new_unspent;
     if (!tx.getSumOutput(new_unspent))
