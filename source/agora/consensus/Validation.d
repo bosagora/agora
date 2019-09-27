@@ -129,8 +129,9 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO,
     return null;
 }
 
-/// Ditto but returns a bool
-public bool isValid (const Transaction tx, UTXOFinder findUTXO, const ulong height)
+/// Ditto but returns a bool, only used in unittests
+version (unittest)
+public bool isValid (const Transaction tx, UTXOFinder findUTXO, ulong height)
     @safe nothrow
 {
     return isInvalidReason(tx, findUTXO, height) is null;
@@ -702,9 +703,10 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
     return null;
 }
 
-/// Ditto but returns `bool`
-public bool isValid (const ref Block block, in ulong prev_height,
-    in Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
+/// Ditto but returns `bool`, only usable in unittests
+version (unittest)
+public bool isValid (const ref Block block, ulong prev_height,
+    Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
 {
     return isInvalidReason(block, prev_height, prev_hash, findUTXO) is null;
 }
