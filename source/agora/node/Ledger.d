@@ -210,14 +210,12 @@ public class Ledger
         auto utxo_finder = this.utxo_set.getUTXOFinder();
         foreach (hash, tx; this.pool)
         {
-            if (tx.isValid(utxo_finder, expect_height))
+            if (auto reason = tx.isInvalidReason(utxo_finder, expect_height))
+                log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
+            else
             {
                 hashes ~= hash;
                 txs ~= tx;
-            }
-            else
-            {
-                log.trace("Rejected double-spend tx: {}", tx);
             }
 
             if (txs.length >= Block.TxsInBlock)
@@ -251,7 +249,7 @@ public class Ledger
     public bool isValidTransaction (const ref Transaction tx) nothrow @safe
     {
         const ulong expect_height = this.getBlockHeight() + 1;
-        return tx.isValid(this.utxo_set.getUTXOFinder(), expect_height);
+        return tx.isInvalidReason(this.utxo_set.getUTXOFinder(), expect_height) is null;
     }
 
     /***************************************************************************
