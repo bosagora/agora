@@ -52,10 +52,16 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO,
     if (tx.outputs.length == 0)
         return "Transaction: No output";
 
-    // disallow negative amounts
     foreach (output; tx.outputs)
+    {
+        // disallow negative amounts
         if (!output.value.isValid())
             return "Transaction: Output(s) overflow or underflow";
+
+        // disallow 0 amount
+        if (output.value == Amount(0))
+            return "Transaction: Value of output is 0";
+    }
 
     const tx_hash = hashFull(tx);
 
@@ -237,6 +243,19 @@ unittest
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
     assert(!tx_2.isValid(findUTXO, 0));
+
+    // Creates the third transaction.
+    // Reject a transaction whose output value is zero
+    Transaction tx_3 =
+    {
+        TxType.Payment,
+        inputs  : [Input(tx_1_hash, 0)],
+        outputs : [Output(Amount.invalid(0), key_pairs[1].address)]
+    };
+
+    tx_3.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_3)[]);
+
+    assert(!tx_3.isValid(findUTXO, 0));
 }
 
 /// This creates a new transaction and signs it as a publickey
