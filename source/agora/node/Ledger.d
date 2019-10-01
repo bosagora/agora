@@ -423,6 +423,48 @@ unittest
     assert(ledger.getBlocksFrom(1000).take(10).walkLength() == 0);
 }
 
+// Reject a transaction whose output value is 0
+unittest
+{
+    import agora.common.crypto.Key;
+
+    auto storage = new MemBlockStorage();
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    scope ledger = new Ledger(pool, utxo_set, storage);
+
+    // Valid case
+    auto gen_key_pair = getGenesisKeyPair();
+    auto txs = makeChainedTransactions(gen_key_pair, null, 1);
+    foreach (ref tx; txs)
+    {
+        foreach (ref output; tx.outputs)
+            output.value = Amount(1_000_000L);
+        foreach (ref input; tx.inputs)
+            input.signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+    }
+
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    auto blocks = ledger.getBlocksFrom(0).take(10);
+    assert(blocks.length == 2);
+
+    // Invalid case
+    txs = makeChainedTransactions(gen_key_pair, txs, 1);
+    foreach (ref tx; txs)
+    {
+        foreach (ref output; tx.outputs)
+            output.value = Amount(0);
+        foreach (ref input; tx.inputs)
+            input.signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+    }
+
+    txs.each!(tx => assert(!ledger.acceptTransaction(tx)));
+    blocks = ledger.getBlocksFrom(0).take(10);
+    assert(blocks.length == 2);
+}
+
 /// basic block verification
 unittest
 {
