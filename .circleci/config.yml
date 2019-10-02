@@ -46,3 +46,4 @@ jobs:
           command: |
             source $HOME/dlang/dmd-2.088.0/activate
             ci/system_integration_test.d
+          no_output_timeout: 15m
