@@ -61,6 +61,7 @@ private int main (string[] args)
 /// Utility function to run a command and throw on error
 private void runCmd (const string[] cmd)
 {
+    writeln(cmd);
     auto pid = spawnProcess(cmd);
     if (pid.wait() != 0)
         throw new Exception(format("Command failed: %s", cmd));
