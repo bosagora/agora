@@ -301,6 +301,65 @@ public class TransactionPool
 
         return true;
     }
+
+    /***************************************************************************
+
+        Check if a transaction hash exists in the transaction pool.
+
+        Params:
+            tx = the transaction hash
+
+        Returns:
+            true if the transaction pool has the transaction hash.
+
+    ***************************************************************************/
+
+    public bool hasTransactionHash (const ref Hash tx) @trusted
+    {
+        auto results = this.db.execute("SELECT key FROM tx_pool " ~
+            "WHERE key = ?", tx[]);
+
+        return !results.empty;
+    }
+}
+
+/// hasTransactionHash tests
+unittest
+{
+    import agora.consensus.Genesis;
+
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();  // note: must call outside destructor
+
+    auto gen_key = getGenesisKeyPair();
+    auto txs = makeChainedTransactions(gen_key, null, 1);
+
+    txs.each!(tx => pool.add(tx));
+    assert(pool.length == txs.length);
+
+    foreach (tx; txs)
+    {
+        const(Hash) hash = hashFull(tx);
+        assert(pool.hasTransactionHash(hash));
+        pool.remove(tx);
+        assert(!pool.hasTransactionHash(hash));
+    }
+
+    txs.each!(tx => pool.add(tx));
+    assert(pool.length == txs.length);
+    const(Hash) hash = Hash.init;
+    assert(!pool.hasTransactionHash(hash));
+    // 'or 1=1-- SQL Injection attack Check
+    static immutable SqlInjectHash =
+        "0x276f7220313d312d2d20"
+        ~ "20202020202020202020"
+        ~ "20202020202020202020"
+        ~ "20202020202020202020"
+        ~ "20202020202020202020"
+        ~ "20202020202020202020"
+        ~ "20202020";
+    const(Hash) sql_inject_hash = Hash(SqlInjectHash);
+    assert(!pool.hasTransactionHash(sql_inject_hash));
 }
 
 /// add & opApply / remove tests (through take())
