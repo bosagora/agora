@@ -44,20 +44,28 @@ unittest
     nodes.each!(node => assert(node.getBlockHeight() == 0));
 
     Transaction[] last_txs;
-    foreach (block_idx; 0 .. 10)  // create 10 blocks
-    {
-        // create enough tx's for a single block
-        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
+    // create enough tx's for a single block
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
 
-        // send it to one node
-        txs.each!(tx => node_1.putTransaction(tx));
+    auto send_txs = txs[0..$-1];
+    // send it to tx to node
+    send_txs.each!(tx => node_1.putTransaction(tx));
+    // gossip was complete
+    nodes.each!(node =>
+       send_txs.each!(tx =>
+           node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)
+    ));
+    // When a block is created, the transaction is deleted from the transaction pool.
+    node_1.putTransaction(txs[$-1]);
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 1,
+        2.seconds,
+        format("Node %s has block height %s. Expected: %s",
+        idx,
+        node.getBlockHeight().to!string,
+        1)));
 
-        // gossip was complete
-        nodes.each!(node =>
-            txs.each!(tx =>
-                node.hasTransactionHash(hashFull(tx)).retryFor(1.seconds)
-        ));
-
-        last_txs = txs;
-    }
+    nodes.each!(node =>
+        txs.each!(tx =>
+            (!node.hasTransactionHash(hashFull(tx))).retryFor(2.seconds)));
 }

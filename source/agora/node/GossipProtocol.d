@@ -29,9 +29,6 @@ public class GossipProtocol
     /// Blockchain ledger
     private Ledger ledger;
 
-    /// Contains the transaction cache
-    private Transaction[Hash] tx_cache;
-
 
     /***************************************************************************
 
@@ -67,14 +64,13 @@ public class GossipProtocol
 
         if (this.ledger.acceptTransaction(tx))
         {
-            this.tx_cache[tx_hash] = tx;
             this.network.sendTransaction(tx);
         }
     }
 
     /***************************************************************************
 
-        Check if this transaction is in the transaction cache.
+        Check if this transaction is in the transaction pool.
 
         Params:
             hash = hash of a transaction
@@ -86,6 +82,6 @@ public class GossipProtocol
 
     public bool hasTransactionHash (Hash hash) @safe
     {
-        return (hash in this.tx_cache) !is null;
+        return this.ledger.hasTransactionHash(hash);
     }
 }

@@ -336,6 +336,23 @@ public class Ledger
             return null;
         return block.getMerklePath(index);
     }
+
+    /***************************************************************************
+
+        Check if a transaction hash exists in the transaction pool.
+
+        Params:
+            tx = the transaction hash
+
+        Returns:
+            true if the transaction pool has the transaction hash.
+
+    ***************************************************************************/
+
+    public bool hasTransactionHash (const ref Hash tx) @safe
+    {
+        return this.pool.hasTransactionHash(tx);
+    }
 }
 
 ///
