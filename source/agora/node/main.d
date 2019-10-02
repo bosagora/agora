@@ -38,13 +38,6 @@ import std.stdio;
 /// expects a main() function and invokes it after unittesting.
 version (unittest) void main () { } else:
 
-/// Required initialization
-shared static this ()
-{
-    import agora.common.TransactionPool;
-    TransactionPool.initialize();
-}
-
 mixin AddLogger!();
 
 /// Application entry point

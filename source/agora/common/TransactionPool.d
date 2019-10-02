@@ -20,12 +20,13 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
-import agora.utils.Log;
 
 import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
+
+import ocean.util.log.Logger;
 
 import std.algorithm;
 import std.conv : to;
@@ -33,25 +34,46 @@ import std.exception : collectException, enforce;
 import std.file : exists;
 import std.range;
 
-mixin AddLogger!();
+/*******************************************************************************
 
-/// Ditto
+    Initialize the logger and the transaction pool
+
+    Transaction pool initialization  should only be done once per process,
+    but `loggerCallback` uses `log` which is a TLS variable that might not
+    be initialized if `loggerCallback` was to be called immediately.
+
+*******************************************************************************/
+
+static this ()
+{
+    log = Log.lookup(__MODULE__);
+    TransactionPool.initialize();
+}
+
+/// Logger instance
+private Logger log;
+
+/// A transaction pool that is serializable to disk, backed by SQLite
 public class TransactionPool
 {
     /***************************************************************************
 
-        Initialization function. Must be called once per-process
-        (not per-thread!) before the class can be used.
+        Initialization function
+
+        Must be called once per process (not per thread!),
+        before the class can be used.
 
     ***************************************************************************/
 
     public static void initialize ()
     {
-        .shutdown();
-        .config(SQLITE_CONFIG_MULTITHREAD);
-        version (unittest) {} else
+        static import core.atomic;
+        static shared bool initialized;
+        if (core.atomic.cas(&initialized, false, true))
+        {
+            .config(SQLITE_CONFIG_MULTITHREAD);
             .config(SQLITE_CONFIG_LOG, &loggerCallback, null);
-        .initialize();
+        }
     }
 
     /// SQLite db instance
