@@ -123,7 +123,9 @@ public class Node : API
         log.info("Shutting down..");
         this.network.dumpMetadata();
         this.pool.shutdown();
+        this.pool = null;
         this.utxo_set.shutdown();
+        this.utxo_set = null;
     }
 
     /// GET /public_key
