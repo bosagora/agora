@@ -18,7 +18,7 @@
 	url = https://github.com/Geod24/libsodiumd.git
 [submodule "localrest"]
 	path = submodules/localrest
-	url = https://github.com/Geod24/localrest.git
+	url = https://github.com/AndrejMitrovic/localrest.git
 [submodule "memutils"]
 	path = submodules/memutils
 	url = https://github.com/etcimon/memutils.git
