@@ -105,6 +105,7 @@ public class UTXOSet
     public void shutdown ()
     {
         this.utxo_db.shutdown();
+        this.utxo_db = null;
     }
 
     /***************************************************************************

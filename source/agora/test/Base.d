@@ -154,7 +154,14 @@ public class TestAPIManager
 
     public void shutdown ()
     {
-        this.apis.each!(a => a.shutdown());
+        foreach (key, ref api; this.apis)
+        {
+            api.shutdown();
+            api.ctrl.shutdown();
+            api = null;
+        }
+
+        this.apis = null;
     }
 
     /// fill in the in-memory metadata with the peers before nodes are started
