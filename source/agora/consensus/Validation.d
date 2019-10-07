@@ -651,6 +651,274 @@ unittest
     }
 }
 
+/// test for transactions having no input or no output
+unittest
+{
+    import std.format;
+    import std.string;
+    import std.algorithm.searching;
+
+    Transaction[Hash] storage;
+    KeyPair key_pair = KeyPair.random;
+
+    // delegate for finding `Output`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
+    {
+        if (auto tx = hash in storage)
+        {
+            if (index < tx.outputs.length)
+            {
+                value.unlock_height = 0;
+                value.type = TxType.Payment;
+                value.output = tx.outputs[index];
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // create a transaction having no input
+    Transaction oneTx = Transaction(
+        TxType.Payment,
+        [],
+        [Output(Amount(50), key_pair.address)]
+    );
+    Hash oneHash = hashFull(oneTx);
+    storage[oneHash] = oneTx;
+
+    // test for Payment transaction having no input
+    assert(canFind(toLower(oneTx.isInvalidReason(findUTXO, 0)), "no input"), 
+        format("Tx having no input should not pass validation. tx: %s", oneTx));
+
+    // create a transaction
+    Transaction firstTx = newCoinbaseTX(key_pair.address, Amount(100_1000));
+    Hash firstHash = hashFull(firstTx);
+    storage[firstHash] = firstTx;
+    firstTx.inputs[0].signature = key_pair.secret.sign(firstHash[]);
+
+    // create a transaction having no output
+    Transaction secondTx = Transaction(
+        TxType.Payment,
+        [Input(firstHash, 0)],
+        []
+    );
+    Hash secondHash = hashFull(secondTx);
+    storage[secondHash] = secondTx;
+
+    // test for Freeze transaction having no output
+    assert(canFind(toLower(secondTx.isInvalidReason(findUTXO, 0)), "no output"), 
+        format("Tx having no output should not pass validation. tx: %s", secondTx));
+}
+
+/// test for transaction having combined inputs
+unittest
+{
+    import std.format;
+    Transaction[Hash] storage;
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    // delegate for finding `UTXOSetValue`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
+    {
+        if (auto tx = hash in storage)
+        {
+            if (index < tx.outputs.length)
+            {
+                value.unlock_height = 0;
+                value.type = tx.type;
+                value.output = tx.outputs[index];
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // create the first transaction.
+    Transaction firstTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100), key_pairs[0].address)]
+    );
+    Hash firstHash = hashFull(firstTx);
+    storage[firstHash] = firstTx;
+
+    // create the second transaction.
+    Transaction secondTx = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100), key_pairs[0].address)]
+    );
+    Hash secondHash = hashFull(secondTx);
+    storage[secondHash] = secondTx;
+
+    // create the third transaction
+    Transaction thirdTx = Transaction(
+        TxType.Payment,
+        [Input(firstHash, 0), Input(secondHash, 0)],
+        [Output(Amount(100), key_pairs[1].address)]
+    );
+    Hash thirdHash = hashFull(thirdTx);
+    storage[thirdHash] = thirdTx;
+    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
+
+    // test for transaction having combined inputs
+    assert(!thirdTx.isValid(findUTXO, 0), 
+        format("Tx having combined inputs should not pass validation. tx: %s", thirdTx));
+}
+
+/// test for unknown transaction type
+unittest
+{
+    import std.format;
+    Transaction[Hash] storage;
+    TxType unknown_type = cast(TxType)100; // any number is OK for test except 0 and 1
+    KeyPair key_pair = KeyPair.random;
+
+    // create a transaction having unknown transaction type
+    Transaction firstTx = Transaction(
+        unknown_type,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100), key_pair.address)]
+    );
+    Hash firstHash = hashFull(firstTx);
+    storage[firstHash] = firstTx;
+
+    // test for unknown transaction type
+    assert(!firstTx.isValid(null, 0), 
+        format("Tx having unknown type should not pass validation. tx: %s", firstTx));
+}
+
+/// test for checking input overflow for Payment and Freeze type transactions
+unittest
+{
+    import std.format;
+    Transaction[Hash] storage;
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    // delegate for finding `UTXOSetValue`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
+    {
+        if (auto tx = hash in storage)
+        {
+            if (index < tx.outputs.length)
+            {
+                value.unlock_height = 0;
+                value.type = tx.type;
+                value.output = tx.outputs[index];
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // create the first transaction
+    auto firstTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MaxUnitSupply, key_pairs[0].address)]
+    );
+    auto firstHash = hashFull(firstTx);
+    storage[firstHash] = firstTx;
+
+    // create the second transaction
+    auto secondTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100), key_pairs[0].address)]
+    );
+    auto secondHash = hashFull(secondTx);
+    storage[secondHash] = secondTx;
+
+    // create the third transaction
+    auto thirdTx = Transaction(
+        TxType.Payment,
+        [Input(firstHash, 0), Input(secondHash, 0)],
+        [Output(Amount(100), key_pairs[1].address)]
+    );
+    auto thirdHash = hashFull(thirdTx);
+    storage[thirdHash] = thirdTx;
+    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
+
+    // test for input overflow in Payment transaction
+    assert(!thirdTx.isValid(findUTXO, 0), 
+        format("Tx having input overflow should not pass validation. tx: %s", thirdTx));
+
+    // create the fourth transaction
+    auto fourthTx = Transaction(
+        TxType.Freeze,
+        [Input(firstHash, 0), Input(secondHash, 0)],
+        [Output(Amount(100), key_pairs[1].address)]
+    );
+    auto fourthHash = hashFull(fourthTx);
+    storage[fourthHash] = fourthTx;
+    fourthTx.inputs[0].signature = key_pairs[0].secret.sign(fourthHash[]);
+    fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
+
+    // test for input overflow in Freeze transaction
+    assert(!fourthTx.isValid(findUTXO, 0), 
+        format("Tx having input overflow should not pass validation. tx: %s", fourthTx));
+}
+
+/// test for checking output overflow for Payment type transaction
+unittest
+{
+    import std.format;
+    Transaction[Hash] storage;
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    // delegate for finding `UTXOSetValue`
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
+    {
+        if (auto tx = hash in storage)
+        {
+            if (index < tx.outputs.length)
+            {
+                value.unlock_height = 0;
+                value.type = tx.type;
+                value.output = tx.outputs[index];
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // create the first transaction
+    auto firstTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100), key_pairs[0].address)]
+    );
+    auto firstHash = hashFull(firstTx);
+    storage[firstHash] = firstTx;
+
+    // create the second transaction
+    auto secondTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100), key_pairs[0].address)]
+    );
+    auto secondHash = hashFull(secondTx);
+    storage[secondHash] = secondTx;
+
+    // create the third transaction
+    auto thirdTx = Transaction(
+        TxType.Payment,
+        [Input(firstHash, 0), Input(secondHash, 0)],
+        [Output(Amount.MaxUnitSupply, key_pairs[1].address), 
+            Output(Amount(100), key_pairs[1].address)]
+    );
+    auto thirdHash = hashFull(thirdTx);
+    storage[thirdHash] = thirdTx;
+    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
+
+    // test for output overflow in Payment transaction
+    assert(!thirdTx.isValid(findUTXO, 0),
+        format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
+}
+
 /*******************************************************************************
 
     Check the validity of a block.
@@ -742,6 +1010,7 @@ unittest
     scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
     {
         if (auto tx = hash in tx_map)
+
         {
             if (index < (*tx).front.outputs.length)
             {
