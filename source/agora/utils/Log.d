@@ -35,7 +35,15 @@ public template AddLogger (string moduleName = __MODULE__)
     private Logger log;
     static this ()
     {
+        import core.memory;
         log = Log.lookup(moduleName);
+        GC.addRoot(cast(void*)log);
+    }
+
+    static ~this()
+    {
+        import core.memory;
+        GC.removeRoot(cast(void*)log);
     }
 }
 

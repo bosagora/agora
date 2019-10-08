@@ -18,10 +18,6 @@ matrix:
   allow_failures:
     - d: dmd-nightly
     - d: ldc-latest-ci
-    - d: ldc-1.17.0
-      os: osx
-    - d: ldc-1.16.0
-      os: osx
   fast_finish: true
 
 # `brew install` is the slowest thing ever on OSX
