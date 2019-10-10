@@ -45,7 +45,58 @@ import std.algorithm.iteration;
 import std.exception;
 import std.format;
 
+import core.runtime;
 import core.time;
+
+shared static this()
+{
+    import core.runtime;
+    Runtime.extendedModuleUnitTester = &customModuleUnitTester;
+}
+
+/// Custom unnitest runner as a workaround for multi-threading issue:
+/// Agora unittests spawn threads, which allocate. The Ocean tests
+/// inspect GC stats for memory allocation changes, and potentially fail
+/// if during such a test a runaway Agora unnittest child thread allocates.
+/// Workaround: Don't run ocean submodule unittests
+private UnitTestResult customModuleUnitTester ()
+{
+    import std.algorithm;
+    import std.stdio;
+    import std.string;
+
+    UnitTestResult result;
+    foreach (ModuleInfo* mod; ModuleInfo)
+    {
+        if (mod is null)
+            continue;
+
+        auto fp = mod.unitTest;
+        if (fp is null)
+            continue;
+
+        if (mod.name.startsWith("agora") ||
+            mod.name.startsWith("scpd"))
+        {
+            ++result.executed;
+
+            try
+            {
+                //writefln("Unittesting %s..", mod.name());
+                fp();
+                ++result.passed;
+            }
+            catch (Throwable ex)
+            {
+                writeln(ex);
+            }
+        }
+    }
+
+    //result.summarize = true;
+    result.runMain = false;
+    return result;
+}
 
 /*******************************************************************************
 
