@@ -65,7 +65,7 @@ public struct Set (T)
     }
 
     /// Fill an existing set with elements from an array
-    public void fill (const(T)[] rhs)
+    public void fill (T[] rhs)
     {
         foreach (key; rhs)
             this.put(key);
