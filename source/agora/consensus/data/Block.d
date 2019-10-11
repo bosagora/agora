@@ -352,13 +352,15 @@ public struct Block
 
 *******************************************************************************/
 
-public Block makeNewBlock (const ref Block prev_block, Transaction[] txs) @safe
+public Block makeNewBlock (Transactions)(const ref Block prev_block,
+    Transactions txs) @safe
+    if (isInputRange!Transactions)
 {
     Block block;
 
     block.header.prev_block = prev_block.header.hashFull();
     block.header.height = prev_block.header.height + 1;
-    block.txs ~= txs;
+    txs.each!(tx => block.txs ~= tx);
     block.txs.sort;
 
     block.header.merkle_root = block.buildMerkleTree();
@@ -370,7 +372,9 @@ public Block makeNewBlock (const ref Block prev_block, Transaction[] txs) @safe
 @safe unittest
 {
     auto new_block = makeNewBlock(GenesisBlock, [Transaction.init]);
+    auto rng_block = makeNewBlock(GenesisBlock, [Transaction.init].take(1));
     assert(new_block.header.prev_block == hashFull(GenesisBlock.header));
+    assert(new_block == rng_block);
 }
 
 /// Test of Merkle Path and Merkle Proof
