@@ -8,12 +8,16 @@
 #include <sstream>
 #include <iostream>
 
-#define TRACE "trace"
-#define DEBUG "debug"
-#define INFO "info"
-#define ERROR "error"
-#define FATAL "fatal"
-#define CLOG(LEVEL, MOD) std::cout << "[" << LEVEL << ", " << MOD << "] "
+#define TRACE 0
+#define DEBUG 0
+#define INFO  1
+#define WARN  2
+#define ERROR 3
+#define FATAL 4
+#define CLOG(LEVEL, MOD) stellar::DLogger(LEVEL, MOD)
+
+// Logging function to D code
+void writeDLog(const char* logger, int level, const char* msg);
 
 namespace stellar
 {
@@ -26,5 +30,24 @@ class Logging
     static bool logDebug(std::string const& partition) { return true; }
     static bool logTrace(std::string const& partition) { return true; }
     static void rotate();
+};
+
+struct DLogger
+{
+  private:
+    std::string mLoggerName;
+    int mLevel;
+    std::ostringstream mOutStream;
+
+  public:
+    DLogger(int level, std::string const& loggerName);
+    ~DLogger();
+
+    template <class T>
+    DLogger &operator<<(const T &value)
+    {
+        mOutStream << value;
+        return *this;
+    }
 };
 }

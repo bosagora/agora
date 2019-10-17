@@ -115,3 +115,28 @@ public class AgoraLayout : Appender.Layout
         }
     }
 }
+
+/***************************************************************************
+
+    Logging function which is only called from C++ code
+
+    It's for C++ code to use agora's logger instead of C++ stdout 
+
+    Params:
+        logger = the logger name
+        level = the logging level
+        msg = the log message
+
+***************************************************************************/
+
+private extern (C++) void writeDLog (const char* logger, int level, const char* msg)
+{
+    if (level >= Level.min && level <= Level.max)
+    {
+        import std.string;
+
+        auto log = Log.lookup(fromStringz(logger));
+        assert(log !is null);
+        log.format(cast(Level) level, fromStringz(msg));
+    }
+}
