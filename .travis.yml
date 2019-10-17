@@ -51,8 +51,8 @@ env:
 # As a result, instead of relying on the Homebrew-provided formula,
 # the bottle used had been extracted, and is force-fed to brew.
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then ./ci/travis_osx_setup.sh; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./ci/travis_linux_setup.sh; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ];   then ./ci/ci_osx_setup.sh; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./ci/ci_linux_setup.sh; fi
 
 script:
   - ./ci/run.sh
