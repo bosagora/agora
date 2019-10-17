@@ -21,6 +21,7 @@
         "source/scpp/build/Hex.o",
         "source/scpp/build/KeyUtils.o",
         "source/scpp/build/LocalNode.o",
+        "source/scpp/build/Logging.o",
         "source/scpp/build/Math.o",
         "source/scpp/build/NominationProtocol.o",
         "source/scpp/build/QuorumSetUtils.o",
