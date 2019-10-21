@@ -39,6 +39,7 @@ unittest
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
@@ -129,6 +130,7 @@ unittest
     // now start the network, let other nodes catch-up the latest blocks
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
     containSameBlocks(nodes, 10).retryFor(8.seconds);
 }
@@ -145,6 +147,7 @@ unittest
         100, 20, 100);  // reduce timeout to 100 msecs
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
@@ -168,6 +171,7 @@ unittest
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
@@ -246,6 +250,7 @@ unittest
         100, 20, 100);  // reduce timeout to 100 msecs
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];

@@ -27,6 +27,7 @@ unittest
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
     // Check that each node knows of the others
     assert(network.apis.byKey().count == NodeCount);
