@@ -52,16 +52,21 @@ unittest
         ulong d;
         Amount e;
         ubyte[] f;
+        long g;
+        string h;
         mixin DefaultSerializer!();
     }
-    const Foo f = Foo(1, ushort.max, uint.max, ulong.max, Amount(100), [1, 2, 3]);
+    const Foo f = Foo(1, ushort.max, uint.max, ulong.max, Amount(100), [1, 2, 3],
+        42, "69");
     assert(serializeFull(f) == [
         1,                       // ubyte(1)     == 1 byte
         253,255, 255,            // ushort.max   == 3 bytes
         254, 255, 255, 255, 255, // uint.max     == 5 bytes
         255, 255, 255, 255, 255, 255, 255, 255, 255, // ulong.max == 9bytes
         100,                     // Amount(100)  == 1 byte
-        3, 1, 2, 3]);            // ubyte[1,2,3] == 4 bytes
+        3, 1, 2, 3,              // ubyte[1,2,3] == 4 bytes
+        42, 0, 0, 0, 0, 0, 0, 0, // long         == 8 bytes
+        2, 54, 57]);             // string       == 1 byte length + 2 char bytes
 }
 
 /*******************************************************************************
@@ -137,6 +142,13 @@ public void serializePart (uint record, scope SerializeDg dg)
     @trusted
 {
     toVarInt(record, dg);
+}
+
+/// Ditto
+public void serializePart (long record, scope SerializeDg dg)
+    @trusted
+{
+    dg((cast(ubyte*)&record)[0 .. long.sizeof]);
 }
 
 /// Ditto
