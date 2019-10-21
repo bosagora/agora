@@ -31,6 +31,7 @@ unittest
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.apis.values;
@@ -130,6 +131,7 @@ unittest
         NodeCount);
     network.start();
     scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.nodes;

@@ -38,6 +38,9 @@ import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.Ledger;
 import agora.node.Node;
+import agora.utils.Log;
+
+import ocean.util.log.Logger;
 
 import core.stdc.time;
 import std.array;
@@ -215,6 +218,24 @@ public class TestAPIManager
         this.apis = null;
     }
 
+    /***************************************************************************
+
+        Print out the logs for each node
+
+    ***************************************************************************/
+
+    public void printLogs ()
+    {
+        import std.stdio;
+        foreach (key, api; this.apis)
+        {
+            writefln("Log for node %s:", key);
+            writeln("======================================================================");
+            api.printLog();
+            writeln("======================================================================\n");
+        }
+    }
+
     /// fill in the in-memory metadata with the peers before nodes are started
     public void addMetadata ()
     {
@@ -354,6 +375,9 @@ public interface TestAPI : API
     ///
     public abstract void shutdown ();
 
+    /// Print out the contents of the log
+    public void printLog ();
+
     ///
     public abstract void metaAddPeer (string peer);
 }
@@ -377,6 +401,12 @@ public class TestNode : Node, TestAPI
     public override void shutdown ()
     {
         super.shutdown();
+    }
+
+    /// Prints out the log contents for this node
+    public void printLog ()
+    {
+        CircularAppender().printConsole();
     }
 
     /// Used by the node
