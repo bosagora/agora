@@ -83,6 +83,7 @@ private int main (string[] args)
         version (D_Coverage)
         {
             import core.runtime;
+            import std.path : buildPath;
             immutable coverPath = config.node.data_dir.buildPath("coverage");
             dmd_coverDestPath(coverPath);
         }
