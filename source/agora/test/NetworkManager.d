@@ -73,7 +73,7 @@ unittest
 
         /// return phony blocks
         public override const(Block)[] getBlocksFrom (ulong block_height,
-            size_t max_blocks)
+            uint max_blocks)
         {
             Block[] blocks;
             Transaction[] last_tx;

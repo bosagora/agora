@@ -43,7 +43,7 @@ import std.range;
 mixin AddLogger!();
 
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
-private enum MaxBatchBlocksSent = 1000;
+private enum uint MaxBatchBlocksSent = 1000;
 
 /*******************************************************************************
 
@@ -191,7 +191,7 @@ public class Node : API
     }
 
     /// GET: /blocks_from
-    public const(Block)[] getBlocksFrom (ulong block_height, size_t max_blocks)
+    public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks)
         @safe
     {
         return this.ledger.getBlocksFrom(block_height)
