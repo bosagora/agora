@@ -27,10 +27,16 @@
 module agora.utils.Log;
 
 import ocean.text.convert.Formatter;
+import ocean.transition;
 import ocean.util.log.AppendConsole;
 import ocean.util.log.Appender;
 import ocean.util.log.Event;
 import ocean.util.log.Logger;
+
+import std.algorithm : min;
+import std.format;
+import std.stdio;
+import std.range : Cycle, cycle, take;
 
 /// Insert a logger in the current scope, named log
 public template AddLogger (string moduleName = __MODULE__)
@@ -54,15 +60,90 @@ public template AddLogger (string moduleName = __MODULE__)
 /// Convenience alias
 public alias LogLevel = Level;
 
-version (unittest) {}
-else
+/// Initialize the logger
+static this ()
 {
-    /// Initialize the logger
-    static this ()
-    {
+    version (unittest)
+        auto appender = CircularAppender();
+    else
         auto appender = new AppendConsole();
-        appender.layout(new AgoraLayout());
-        Log.root.add(appender);
+
+    appender.layout(new AgoraLayout());
+    Log.root.add(appender);
+}
+
+/// Circular appender which appends to an internal buffer
+public class CircularAppender : Appender
+{
+    /// Mask
+    private Mask mask_;
+
+    /// Used length of the buffer, only grows, up to buffer.length
+    private size_t used_length;
+
+    /// Backing store for the cyclic buffer
+    private char[2 ^^ 16] buffer;
+
+    /// Cyclic Output range over buffer
+    private Cycle!(typeof(buffer)) cyclic;
+
+    /// Ctor
+    private this ()
+    {
+        this.mask_ = register(name);
+        this.cyclic = cycle(this.buffer);
+    }
+
+    public static CircularAppender opCall ()
+    {
+        static CircularAppender appender;
+        if (appender is null)
+            appender = new CircularAppender();
+
+        return appender;
+    }
+
+    /// Print the contents of the appender to the console
+    public void printConsole ()
+    {
+        // edge-case: if the buffer isn't filled yet,
+        // write from buffer index 0, not the cycle's current index
+        if (this.used_length <= this.buffer.length)
+            writeln(this.buffer[0 .. this.used_length]);
+        else
+            writeln(this.cyclic.take(this.used_length));
+    }
+
+    /// Returns: the name of this class
+    public override istring name ()
+    {
+        return this.classinfo.name;
+    }
+
+    /// Return the fingerprint for this class
+    public final override Mask mask ()
+    {
+        return this.mask_;
+    }
+
+    /// Append an event to the buffer
+    public final override void append (LogEvent event)
+    {
+        // add a newline only before a subsequent event is logged
+        // (avoids trailing empty lines with only a newline)
+        if (this.used_length > 0)
+        {
+            formattedWrite(this.cyclic, "\n");
+            this.used_length++;
+        }
+
+        this.layout.format(event,
+            (cstring content)
+            {
+                formattedWrite(this.cyclic, content);
+                this.used_length = min(this.buffer.length,
+                    this.used_length + content.length);
+            });
     }
 }
 
