@@ -14,8 +14,14 @@
 
 module agora.common.BanManager;
 
+import agora.common.Deserializer;
+import agora.common.Serializer;
 import agora.common.Types;
 import agora.utils.Log;
+
+import std.file;
+import std.path;
+import std.stdio;
 
 import core.stdc.stdlib;
 import core.stdc.time;
@@ -46,6 +52,9 @@ public class BanManager
         /// To set an IP as banned, we simply set its un-ban time in the future.
         /// By default it's set to the past (therefore un-banned)
         private time_t banned_until = 0;
+
+        mixin DefaultSerializer!();
+        mixin DefaultDeserializer!();
     }
 
     /// configuration
@@ -54,6 +63,9 @@ public class BanManager
     /// per-address status
     private Status[Address] ips;
 
+    /// Path to the ban file on disk
+    private const string banfile_path;
+
 
     /***************************************************************************
 
@@ -61,12 +73,49 @@ public class BanManager
 
         Params:
             config = the configuration
+            data_dir = path to the data directory
 
     ***************************************************************************/
 
-    public this (Config config) @safe nothrow pure @nogc
+    public this (Config config, cstring data_dir) @safe nothrow pure
     {
         this.config = config;
+        this.banfile_path = buildPath(data_dir, "banned.dat");
+    }
+
+    /***************************************************************************
+
+        Load the ban data from disk
+
+    ***************************************************************************/
+
+    public void load ()
+    {
+        if (!this.banfile_path.exists())
+            return;  // nothing to load
+
+        auto ban_file = File(this.banfile_path, "r");
+        scope DeserializeDg dg = (size) @safe
+        {
+            ubyte[] res;
+            res.length = size;
+            ban_file.rawRead(res);
+            return res;
+        };
+
+        this.deserialize(dg);
+    }
+
+    /***************************************************************************
+
+        Dump the ban data to disk
+
+    ***************************************************************************/
+
+    public void dump ()
+    {
+        auto ban_file = File(this.banfile_path, "w");
+        this.serialize((scope bytes) => ban_file.rawWrite(bytes));
     }
 
     /***************************************************************************
@@ -217,6 +266,53 @@ public class BanManager
         scope(failure) assert(0);  // it will never throw
         return &this.ips.require(address, Status.init);
     }
+
+    /***************************************************************************
+
+        Serialization support
+
+        Params:
+            dg = Serialize delegate
+
+    ***************************************************************************/
+
+    private void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.ips.length, dg);
+
+        foreach (const ref key; this.ips.byKey)
+            serializePart(key, dg);
+
+        foreach (const ref val; this.ips.byValue)
+            serializePart(val, dg);
+    }
+
+    /***************************************************************************
+
+        Deserialization support
+
+        Params:
+            dg = Deserialize delegate
+
+    ***************************************************************************/
+
+    private void deserialize (scope DeserializeDg dg) @safe
+    {
+        size_t length;
+        deserializePart(length, dg);
+
+        // deserialize and generate inputs
+        foreach (idx; 0 .. length)
+        {
+            Address key;
+            deserializePart(key, dg);
+
+            Status value;
+            deserializePart(value, dg);
+
+            this.ips[key] = value;
+        }
+    }
 }
 
 ///
@@ -225,8 +321,10 @@ unittest
     class UnitBanMan : BanManager
     {
         time_t time;
-        this () { super(Config(10, 86400)); }
+        this () { super(Config(10, 86400), null); }
         protected override time_t getCurTime () const { return this.time; }
+        public override void dump () { }
+        public override void load () { }
     }
 
     auto banman = new UnitBanMan();

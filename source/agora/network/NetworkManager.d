@@ -93,7 +93,7 @@ public class NetworkManager
         this.metadata = metadata;
         this.seed_peers = peers;
         this.dns_seeds = dns_seeds;
-        this.banman = this.getBanManager(banman_conf);
+        this.banman = this.getBanManager(banman_conf, node_config.data_dir);
     }
 
     /***************************************************************************
@@ -108,6 +108,8 @@ public class NetworkManager
 
     public NetworkClient[PublicKey] discover ()
     {
+        this.banman.load();
+
         // add our own IP to the list of banned IPs to avoid
         // the node communicating with itself
         this.banman.banUntil(format("http://%s:%s", this.node_config.address,
@@ -205,15 +207,17 @@ public class NetworkManager
 
         Params:
             banman_conf = ban manager config
+            data_dir = path to the data directory
 
         Returns:
             an instance of a BanManager
 
     ***************************************************************************/
 
-    protected BanManager getBanManager (in BanManager.Config banman_conf)
+    protected BanManager getBanManager (in BanManager.Config banman_conf,
+        cstring data_dir)
     {
-        return new BanManager(banman_conf);
+        return new BanManager(banman_conf, data_dir);
     }
 
     /***************************************************************************
@@ -291,6 +295,7 @@ public class NetworkManager
     /// Dump the metadata
     public void dumpMetadata ()
     {
+        this.banman.dump();
         this.metadata.dump();
     }
 
