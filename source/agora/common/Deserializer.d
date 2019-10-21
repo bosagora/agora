@@ -209,6 +209,13 @@ public void deserializePart (ref uint record, scope DeserializeDg dg)
 }
 
 /// Ditto
+public void deserializePart (ref long record, scope DeserializeDg dg)
+    @trusted
+{
+    record = *cast(long*)(dg(record.sizeof).ptr);
+}
+
+/// Ditto
 public void deserializePart (ref ulong record, scope DeserializeDg dg, CompactMode compact = CompactMode.Yes)
     @trusted
 {
@@ -225,6 +232,15 @@ public void deserializePart (ref char[] record, scope DeserializeDg dg)
     size_t length;
     deserializeVarInt(length, dg);
     record = cast(char[])dg(length);
+}
+
+/// Ditto
+public void deserializePart (ref string record, scope DeserializeDg dg)
+    @trusted
+{
+    size_t length;
+    deserializeVarInt(length, dg);
+    record = (cast(char[])dg(length)).idup;
 }
 
 /// Ditto
