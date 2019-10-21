@@ -181,7 +181,7 @@ public class FakeClockBanManager : BanManager
     /// Ctor
     public this (Config conf)
     {
-        super(conf);
+        super(conf, null);
     }
 
     /// Return the fake time
@@ -189,6 +189,12 @@ public class FakeClockBanManager : BanManager
     {
         return time;
     }
+
+    /// no-op
+    public override void load () { }
+
+    /// no-op
+    public override void dump () { }
 }
 
 /*******************************************************************************
@@ -395,7 +401,8 @@ public class TestNetworkManager : NetworkManager
 
     ***************************************************************************/
 
-    protected override BanManager getBanManager (in BanManager.Config conf)
+    protected override BanManager getBanManager (in BanManager.Config conf,
+        cstring _data_dir)
     {
         return new FakeClockBanManager(conf);
     }
