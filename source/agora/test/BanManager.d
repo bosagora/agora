@@ -25,7 +25,7 @@ import agora.consensus.Genesis;
 import agora.test.Base;
 
 /// test node banning after putTransaction fails a number of times
-version (none) unittest
+unittest
 {
     import core.thread;
     import std.algorithm;
