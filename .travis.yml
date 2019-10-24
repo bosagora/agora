@@ -3,15 +3,9 @@ language: d
 dist: xenial
 
 d:
-  - dmd-2.088.1
-  - dmd-2.087.1   # 2.087.0 has regressions
-  - ldc-1.18.0
   - ldc-1.17.0
-  - dmd-nightly   # Nightlies at the end so that `fast_finish` is useful
-  - ldc-latest-ci # The freshest LDC
 
 os:
-  - linux
   - osx
 
 matrix:
