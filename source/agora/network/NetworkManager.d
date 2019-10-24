@@ -269,8 +269,12 @@ public class NetworkManager
             do
             {
                 auto blocks = pair.client.getBlocksFrom(block_height, MaxBlocks);
-                log.info("Received blocks [{}..{}] out of {}..", block_height,
-                    block_height + blocks.length, pair.height + 1);  // genesis block
+                if (blocks.length == 0)
+                    continue LNextNode;
+
+                log.info("Received blocks [{}..{}] out of {}..",
+                    blocks[0].header.height, blocks[$ - 1].header.height,
+                    pair.height + 1);  // +1 for genesis block
 
                 // one or more blocks were rejected, stop retrieval from node
                 if (!onReceivedBlocks(blocks))
