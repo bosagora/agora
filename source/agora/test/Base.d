@@ -658,19 +658,31 @@ public const(Block)[] getAllBlocks (TestAPI node)
     return blocks;
 }
 
-/// Returns: true if all the nodes contain the same blocks
-public bool containSameBlocks (API)(API[] nodes, size_t height)
+/// Asserts that all the nodes contain the same blocks
+public void assertSameBlocks (API)(API[] nodes, size_t height,
+    string file = __FILE__, size_t line = __LINE__)
 {
+    import core.exception;
     auto first_blocks = nodes[0].getAllBlocks();
 
-    foreach (node; nodes)
+    foreach (idx, node; nodes)
     {
-        if (node.getBlockHeight() != height)
-            return false;
+        auto node_height = node.getBlockHeight();
+        if (node_height != height)
+        {
+            throw new AssertError(
+                format("Node %s: Expected height %s, got height %s",
+                    idx, height, node_height),
+                file, line);
+        }
 
-        if (node.getAllBlocks() != first_blocks)
-            return false;
+        auto node_blocks = node.getAllBlocks();
+        if (node_blocks != first_blocks)
+        {
+            throw new AssertError(
+                format("Node %s: Expected blocks:\n\n%s\n\nGot blocks:\n\n%s",
+                    idx, first_blocks, node_blocks),
+                file, line);
+        }
     }
-
-    return true;
 }

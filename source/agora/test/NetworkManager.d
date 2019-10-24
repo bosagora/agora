@@ -158,6 +158,8 @@ unittest
     node_good.clearFilter();
 
     // node_receiver will receive its blocks from node_good
-    retryFor(node_test.getBlockHeight() == 10, 4.seconds);
-    assert(containSameBlocks([node_test, node_good], 10));
+    [node_test, node_good].all!(node => node.getBlockHeight() == 10)
+        .retryFor(4.seconds, "Nodes should have same block height");
+
+    assertSameBlocks([node_test, node_good], 10);
 }

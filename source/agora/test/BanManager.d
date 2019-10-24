@@ -67,7 +67,10 @@ unittest
     genBlockTransactions(1).each!(tx => node_1.putTransaction(tx));
 
     // wait until the transactions were gossiped
-    containSameBlocks(nodes, 1).retryFor(3.seconds);
+    nodes.all!(node => node.getBlockHeight() == 1)
+        .retryFor(3.seconds, "Nodes should have same block height");
+
+    assertSameBlocks(nodes, 1);
 
     node_1.filter!(node_1.getBlocksFrom);  // node 2 can't retrieve blocks
     node_2.filter!(node_2.putTransaction); // node 1 can't gossip transactions

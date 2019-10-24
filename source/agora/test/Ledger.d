@@ -132,7 +132,9 @@ unittest
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
-    containSameBlocks(nodes, 10).retryFor(8.seconds);
+    nodes.all!(node => node.getBlockHeight() == 10)
+        .retryFor(8.seconds, "Nodes should have same block height");
+    assertSameBlocks(nodes, 10);
 }
 
 /// test catch-up phase after initial booting (periodic catch-up)
@@ -158,7 +160,9 @@ unittest
 
     auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 2);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(8.seconds);
+    nodes.all!(node => node.getBlockHeight() == 2)
+        .retryFor(8.seconds, "Nodes should have same block height");
+    assertSameBlocks(nodes, 2);
 }
 
 /// Merkle Proof
@@ -257,11 +261,15 @@ unittest
 
     auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 1).retryFor(3.seconds);
+    nodes.all!(node => node.getBlockHeight() == 1)
+        .retryFor(3.seconds, "Nodes should have same block height");
+    assertSameBlocks(nodes, 1);
 
     txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(3.seconds);
+    nodes.all!(node => node.getBlockHeight() == 2)
+        .retryFor(3.seconds, "Nodes should have same block height");
+    assertSameBlocks(nodes, 2);
 
     txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
 
@@ -290,8 +298,12 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation
-    containSameBlocks(nodes, 2).retryFor(3.seconds);  // no new block yet (1 rejected tx)
+    nodes.all!(node => node.getBlockHeight() == 2)
+        .retryFor(3.seconds, "Nodes should have same block height");
+    assertSameBlocks(nodes, 2);  // no new block yet (1 rejected tx)
 
     node_1.putTransaction(backup_tx);
-    containSameBlocks(nodes, 3).retryFor(3.seconds);  // new block finally created
+    nodes.all!(node => node.getBlockHeight() == 3)
+        .retryFor(3.seconds, "Nodes should have same block height");
+    assertSameBlocks(nodes, 3);  // new block finally created
 }
