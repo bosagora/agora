@@ -65,6 +65,7 @@ shared static this()
 private UnitTestResult customModuleUnitTester ()
 {
     import std.algorithm;
+    import std.parallelism;
     import std.process;
     import std.stdio;
     import std.string;
@@ -74,7 +75,15 @@ private UnitTestResult customModuleUnitTester ()
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
 
-    UnitTestResult result;
+    // can't use ModuleInfo[], opApply returns temporaries..
+    struct ModTest
+    {
+        string name;
+        void function() test;
+    }
+
+    ModTest[] mod_tests;
+
     foreach (ModuleInfo* mod; ModuleInfo)
     {
         if (mod is null)
@@ -94,18 +103,24 @@ private UnitTestResult customModuleUnitTester ()
                 continue;
             }
 
-            ++result.executed;
+            mod_tests ~= ModTest(mod.name, fp);
+        }
+    }
 
-            try
-            {
-                //writefln("Unittesting %s..", mod.name());
-                fp();
-                ++result.passed;
-            }
-            catch (Throwable ex)
-            {
-                writeln(ex);
-            }
+    UnitTestResult result;
+    foreach (mod; parallel(mod_tests))
+    {
+        ++result.executed;
+
+        try
+        {
+            //writefln("Unittesting %s..", mod.name);
+            mod.test();
+            ++result.passed;
+        }
+        catch (Throwable ex)
+        {
+            writeln(ex);
         }
     }
 
@@ -243,13 +258,16 @@ public class TestAPIManager
 
     public void printLogs ()
     {
-        import std.stdio;
-        foreach (key, api; this.apis)
+        synchronized  // make sure logging output is not interleaved
         {
-            writefln("Log for node %s:", key);
-            writeln("======================================================================");
-            api.printLog();
-            writeln("======================================================================\n");
+            import std.stdio;
+            foreach (key, api; this.apis)
+            {
+                writefln("Log for node %s:", key);
+                writeln("======================================================================");
+                api.printLog();
+                writeln("======================================================================\n");
+            }
         }
     }
 
