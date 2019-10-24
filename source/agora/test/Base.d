@@ -65,8 +65,14 @@ shared static this()
 private UnitTestResult customModuleUnitTester ()
 {
     import std.algorithm;
+    import std.process;
     import std.stdio;
     import std.string;
+    import std.uni;
+
+    //
+    auto filter = environment.get("dtest").toLower();
+    size_t filtered;
 
     UnitTestResult result;
     foreach (ModuleInfo* mod; ModuleInfo)
@@ -81,6 +87,13 @@ private UnitTestResult customModuleUnitTester ()
         if (mod.name.startsWith("agora") ||
             mod.name.startsWith("scpd"))
         {
+            if (filter.length > 0 &&
+                !canFind(mod.name.toLower(), filter.save))
+            {
+                filtered++;
+                continue;
+            }
+
             ++result.executed;
 
             try
@@ -95,6 +108,10 @@ private UnitTestResult customModuleUnitTester ()
             }
         }
     }
+
+    if (filtered > 0)
+        writefln("Ran %s/%s tests (%s filtered)", result.executed,
+            result.executed + filtered, filtered);
 
     //result.summarize = true;
     result.runMain = false;
