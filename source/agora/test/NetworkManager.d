@@ -79,18 +79,16 @@ unittest
             Block[] blocks;
             Transaction[] last_tx;
 
-            auto gen_key = () @trusted { return getGenesisKeyPair(); }();
+            auto prev_key = () @trusted { return KeyPair.random(); }();
 
             Block last_block;
             // make 20 blocks which have an invalid previous hash
             foreach (idx; 0 .. 20)
             {
-                auto txs = () @trusted { return makeChainedTransactions(gen_key, last_tx, 1); }();
+                auto txs = () @trusted { return makeChainedTransactions(prev_key, last_tx, 1); }();
                 last_tx = txs;
                 auto block = makeNewBlock(last_block, txs);
 
-                // currently the only block validation the Ledger does is the height
-                block.header.height = idx + 10;
                 blocks ~= block;
                 last_block = block;
             }
