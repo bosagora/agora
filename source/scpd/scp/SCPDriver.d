@@ -103,7 +103,7 @@ public abstract class SCPDriver
     // if cb is nullptr, the timer is cancelled
     /*
     abstract void setupTimer(uint64 slotIndex, int timerID,
-                             std::chrono::milliseconds timeout,
+                             milliseconds timeout,
                              std::function<void()> cb);
     */
     abstract void setupTimer();
@@ -111,8 +111,7 @@ public abstract class SCPDriver
     // `computeTimeout` computes a timeout given a round number
     // it should be sufficiently large such that nodes in a
     // quorum can exchange 4 messages
-    //std::chrono::milliseconds computeTimeout(uint32 roundNumber);
-    void computeTimeout(uint32_t roundNumber); // Slot in the vtable
+    milliseconds computeTimeout(uint32_t roundNumber);  // Slot in the vtable
 
     // Inform about events happening within the consensus algorithm.
 
