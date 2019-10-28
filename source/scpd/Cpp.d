@@ -111,6 +111,24 @@ extern(C++, `std`) {
     {
         void*[3] ptr;
     }
+
+    // only used at compile-time on the C++ side, here for mangling
+    struct ratio (int _Num, int _Den = 1)
+    {
+    }
+
+    /// Simple bindings to std::chrono
+    extern(C++, `chrono`)
+    {
+        public struct duration (_Rep, _Period = ratio!1)
+        {
+            _Rep __r;
+            alias __r this;
+        }
+
+        alias milli = ratio!(1, 1000);
+        alias milliseconds = duration!(long, milli);
+    }
 }
 
 private extern(C++) set!uint* makeTestSet();
