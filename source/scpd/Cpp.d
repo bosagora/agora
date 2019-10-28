@@ -129,7 +129,22 @@ extern(C++, `std`) {
         alias milli = ratio!(1, 1000);
         alias milliseconds = duration!(long, milli);
     }
+
+    /// Simple wrapper around std::function
+    /// note: pragma(mangle) doesn't currently work on types
+    align(1) public struct CPPDelegate (Callback)
+    {
+    align(1):
+        shared_ptr!int __ptr_;
+        ubyte[24] _1;
+        ubyte[24] _2;
+    }
+
+    static assert(CPPDelegate!SCPCallback.sizeof == 64);
 }
+
+/// Type of SCP function callback called by a timer
+public alias SCPCallback = extern(C++) void function();
 
 private extern(C++) set!uint* makeTestSet();
 
