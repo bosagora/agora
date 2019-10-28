@@ -4,6 +4,7 @@
 #include "DUtils.h"
 #include "xdrpp/marshal.h"
 #include "xdr/Stellar-SCP.h"
+#include <functional>
 
 using namespace xdr;
 using namespace stellar;
@@ -47,3 +48,10 @@ CPPSETFOREACHINST(Value)
 CPPSETFOREACHINST(SCPBallot)
 CPPSETFOREACHINST(PublicKey)
 CPPSETFOREACHINST(unsigned int)
+
+void callCPPDelegate (void* cb)
+{
+    auto callback = (std::function<void()>*)cb;
+    (*callback)();
+    delete callback;
+}

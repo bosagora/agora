@@ -101,12 +101,9 @@ public abstract class SCPDriver
 
     // `setupTimer`: requests to trigger 'cb' after timeout
     // if cb is nullptr, the timer is cancelled
-    /*
-    abstract void setupTimer(uint64 slotIndex, int timerID,
+    abstract void setupTimer(ulong slotIndex, int timerID,
                              milliseconds timeout,
-                             std::function<void()> cb);
-    */
-    abstract void setupTimer();
+                             CPPDelegate!(void function())*);
 
     // `computeTimeout` computes a timeout given a round number
     // it should be sufficiently large such that nodes in a

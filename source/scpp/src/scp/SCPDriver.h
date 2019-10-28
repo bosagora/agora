@@ -113,7 +113,7 @@ class SCPDriver
     // if cb is nullptr, the timer is cancelled
     virtual void setupTimer(uint64 slotIndex, int timerID,
                             std::chrono::milliseconds timeout,
-                            std::function<void()> cb) = 0;
+                            std::function<void()>* cb) = 0;
 
     // `computeTimeout` computes a timeout given a round number
     // it should be sufficiently large such that nodes in a
