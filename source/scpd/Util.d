@@ -94,3 +94,6 @@ private Tuple!(string, string) getParams (alias func)()
 
     return tuple(params.join(", "), args.join(", "));
 }
+
+/// Invoke an std::function pointer (note: must be void* due to mangling issues)
+extern(C++) void callCPPDelegate (void* cb);
