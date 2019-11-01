@@ -86,9 +86,10 @@ public class NetworkManager
 
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata)
+        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        TaskManager taskman)
     {
-        this.taskman = this.getTaskManager();
+        this.taskman = taskman;
         this.node_config = node_config;
         this.metadata = metadata;
         this.seed_peers = peers;
@@ -184,18 +185,6 @@ public class NetworkManager
                 this.taskman.wait(2.seconds);
             }
         });
-    }
-
-    /***************************************************************************
-
-        Returns:
-            an instance of a vibe.d-backed task manager
-
-    ***************************************************************************/
-
-    protected TaskManager getTaskManager ()
-    {
-        return new TaskManager();
     }
 
     /***************************************************************************

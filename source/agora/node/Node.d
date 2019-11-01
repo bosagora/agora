@@ -18,6 +18,7 @@ import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
+import agora.common.Task;
 import agora.common.Types;
 import agora.common.TransactionPool;
 import agora.consensus.data.Transaction;
@@ -61,6 +62,9 @@ public class Node : API
     /// Config instance
     private const Config config;
 
+    /// Task manager
+    private TaskManager taskman;
+
     /// Network of connected nodes
     private NetworkManager network;
 
@@ -88,8 +92,9 @@ public class Node : API
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
+        this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
-            config.network, config.dns_seeds, this.metadata);
+            config.network, config.dns_seeds, this.metadata, this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
@@ -210,6 +215,7 @@ public class Node : API
             peers = the peers to connect to
             dns_seeds = the DNS seeds to retrieve peers from
             metadata = metadata containing known peers and other meta info
+            taskman = task manager
 
         Returns:
             an instance of a NetworkManager
@@ -218,10 +224,27 @@ public class Node : API
 
     protected NetworkManager getNetworkManager (in NodeConfig node_config,
         in BanManager.Config banman_conf, in string[] peers,
-        in string[] dns_seeds, Metadata metadata)
+        in string[] dns_seeds, Metadata metadata, TaskManager taskman)
     {
         return new NetworkManager(node_config, banman_conf, peers, dns_seeds,
-            metadata);
+            metadata, taskman);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a TaskManager
+
+        Subclasses can override this method and return
+        a TaskManager backed by LocalRest.
+
+        Returns:
+            the task manager
+
+    ***************************************************************************/
+
+    protected TaskManager getTaskManager ()
+    {
+        return new TaskManager();
     }
 
     /***************************************************************************
