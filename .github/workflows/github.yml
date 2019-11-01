@@ -7,14 +7,14 @@ jobs:
     strategy:
       matrix:
         os: [macOS-10.14]
-        dc: [dmd-2.088.1, dmd-2.087.1, ldc-1.18.0, ldc-1.17.0, dmd-master]
+        dc: [dmd-2.088.1, dmd-2.087.1, ldc-1.18.0, ldc-1.17.0, dmd-master, ldc-master]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
       with:
         submodules: true
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.3.0
+      uses: mihails-strasuns/setup-dlang@v0.3.1
       with:
           compiler: ${{ matrix.dc }}
     - name: Install Dub & Sqlite3
@@ -34,14 +34,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        dc: [dmd-2.088.1, dmd-2.087.1, ldc-1.18.0, ldc-1.17.0, dmd-master]
+        dc: [dmd-2.088.1, dmd-2.087.1, ldc-1.18.0, ldc-1.17.0, dmd-master, ldc-master]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
       with:
         submodules: true
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.3.0
+      uses: mihails-strasuns/setup-dlang@v0.3.1
       with:
         compiler: ${{ matrix.dc }}
     - name: Build & test Agora
