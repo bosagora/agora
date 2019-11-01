@@ -363,9 +363,10 @@ public class TestNetworkManager : NetworkManager
 
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata)
+        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        TaskManager taskman)
     {
-        super(config, ban_conf, peers, dns_seeds, metadata);
+        super(config, ban_conf, peers, dns_seeds, metadata, taskman);
         // NetworkManager assumes IP are used but we use pubkey
         this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
     }
@@ -377,18 +378,6 @@ public class TestNetworkManager : NetworkManager
             return new RemoteAPI!API(*ptr, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
-    }
-
-    /***************************************************************************
-
-        Returns:
-            an instance of a LocalRest-backed task manager
-
-    ***************************************************************************/
-
-    protected override TaskManager getTaskManager ()
-    {
-        return new LocalRestTaskManager();
     }
 
     /***************************************************************************
@@ -475,13 +464,20 @@ public class TestNode : Node, TestAPI
         this.metadata.peers.put(peer);
     }
 
+    /// Return a LocalRest-backed task manager
+    protected override TaskManager getTaskManager ()
+    {
+        return new LocalRestTaskManager();
+    }
+
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
         in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata)
+        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        TaskManager taskman)
     {
         return new TestNetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata);
+            dns_seeds, metadata, taskman);
     }
 }
 
