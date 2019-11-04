@@ -64,6 +64,11 @@ public struct Scalar
     /// Internal state
     package BitBlob!(crypto_core_ed25519_SCALARBYTES * 8) data;
 
+    private this (typeof(this.data) data) @safe
+    {
+        this.data = data;
+    }
+
     /// Construct a scalar from its string representation or a `ubyte[]`
     public this (T) (T param)
         if (is(typeof(this.data = typeof(this.data)(param))))
@@ -82,6 +87,18 @@ public struct Scalar
         const @safe
     {
         this.data.toString(dg);
+    }
+
+    /// Ditto
+    public string toString () const @safe
+    {
+        return this.data.toString();
+    }
+
+    /// Vibe.d deserialization
+    public static Scalar fromString (scope const(char)[] str) @safe
+    {
+        return Scalar(typeof(this.data).fromString(str));
     }
 
     /// Operator overloads for `+`, `-`, `*`
@@ -147,6 +164,11 @@ public struct Point
     /// Internal state
     package BitBlob!(crypto_core_ed25519_BYTES * 8) data;
 
+    private this (typeof(this.data) data) @safe
+    {
+        this.data = data;
+    }
+
     /// Construct a point from its string representation or a `ubyte[]`
     public this (T) (T param)
         nothrow @nogc
@@ -160,6 +182,18 @@ public struct Point
         const @safe
     {
         this.data.toString(dg);
+    }
+
+    /// Ditto
+    public string toString () const @safe
+    {
+        return this.data.toString();
+    }
+
+    /// Vibe.d deserialization
+    public static Point fromString (scope const(char)[] str) @safe
+    {
+        return Point(typeof(this.data).fromString(str));
     }
 
     /// Operator overloads for points additions
