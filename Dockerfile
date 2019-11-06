@@ -9,7 +9,7 @@ RUN dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
 
 # Runner
 FROM alpine:edge
-COPY --from=Builder /root/agora/build/agora /root/agora
 RUN apk --no-cache add libexecinfo libgcc libsodium libstdc++ sqlite-libs
-WORKDIR /root/
-ENTRYPOINT [ "/root/agora" ]
+COPY --from=Builder /root/agora/build/agora /usr/local/bin/agora
+WORKDIR /agora/
+ENTRYPOINT [ "/usr/local/bin/agora" ]
