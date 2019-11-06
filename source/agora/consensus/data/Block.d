@@ -341,6 +341,29 @@ public struct Block
     }
 }
 
+///
+unittest
+{
+    immutable Hash merkle =
+        Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413` ~
+        `959ca4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
+
+    immutable Block block =
+    {
+        header:
+        {
+            prev_block:  Hash.init,
+            height:      0,
+            merkle_root: merkle,
+        },
+        txs: [ GenesisTransaction ],
+        merkle_tree: [ merkle ],
+    };
+
+    ubyte[] block_bytes = serializeFull(block);
+    assert(cast(const)deserializeFull!Block(block_bytes) == block);
+}
+
 /*******************************************************************************
 
     Create a new block, referencing the provided previous block.
