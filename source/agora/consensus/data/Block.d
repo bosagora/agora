@@ -16,7 +16,9 @@
 module agora.consensus.data.Block;
 
 import agora.common.Amount;
+import agora.common.BitField;
 import agora.common.crypto.Key;
+import agora.common.crypto.Schnorr : Signature;
 import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Hash;
@@ -48,10 +50,19 @@ public struct BlockHeader
     /// The hash of the merkle root of the transactions
     public Hash merkle_root;
 
+    /// Bitfield containing the validators' key indices which signed the block
+    public BitField validators;
+
+    /// Schnorr multisig of all validators which signed this block
+    public Signature signature;
+
 
     /***************************************************************************
 
         Implements hashing support
+
+        Note that validators bitfield & the signature are not hashed
+        since they must sign the block header hash.
 
         Params:
             dg = Hashing function accumulator
@@ -79,6 +90,8 @@ public struct BlockHeader
         dg(this.prev_block[]);
         serializePart(this.height, dg);
         dg(this.merkle_root[]);
+        serializePart(this.validators, dg);
+        serializePart(this.signature, dg);
     }
 
     /***************************************************************************
@@ -95,6 +108,8 @@ public struct BlockHeader
         this.prev_block = Hash(dg(Hash.sizeof));
         deserializePart(this.height, dg);
         this.merkle_root = Hash(dg(Hash.sizeof));
+        deserializePart(this.validators, dg);
+        deserializePart(this.signature, dg);
     }
 }
 
@@ -344,19 +359,47 @@ public struct Block
 ///
 unittest
 {
+    import agora.common.crypto.Schnorr;
     immutable Hash merkle =
         Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413` ~
         `959ca4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
 
-    immutable Block block =
+    immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+    PublicKey pubkey = PublicKey.fromString(address);
+
+    Transaction tx =
+    {
+        TxType.Payment,
+        inputs: [ Input.init ],
+        outputs: [
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+            Output(Amount(62_500_000L * 10_000_000L), pubkey),
+        ],
+    };
+
+    auto validators = BitField(6);
+    validators[0] = true;
+    validators[2] = true;
+    validators[4] = true;
+
+    const KP = Pair.random();
+    Block block =
     {
         header:
         {
             prev_block:  Hash.init,
             height:      0,
             merkle_root: merkle,
+            validators:  validators,
+            signature:   Signature(KP.V, KP.v)
         },
-        txs: [ GenesisTransaction ],
+        txs: [ tx ],
         merkle_tree: [ merkle ],
     };
 

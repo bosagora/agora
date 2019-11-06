@@ -7,8 +7,11 @@
     "preBuildCommands": [ "source/scpp/build.d" ],
     "sourceFiles": [
         "../../source/agora/common/crypto/Crc16.d",
+        "../../source/agora/common/crypto/ECC.d",
         "../../source/agora/common/crypto/Key.d",
+        "../../source/agora/common/crypto/Schnorr.d",
         "../../source/agora/common/Amount.d",
+        "../../source/agora/common/BitField.d",
         "../../source/agora/common/Deserializer.d",
         "../../source/agora/common/Hash.d",
         "../../source/agora/common/Serializer.d",
@@ -35,6 +38,7 @@
         "base32":           { "path": "../../submodules/base32/", "version": "*" },
         "bitblob":          { "path": "../../submodules/bitblob/", "version": "*" },
         "libsodiumd":       { "path": "../../submodules/libsodiumd/", "version": "*" },
+        "ocean":            { "path": "../../submodules/ocean/", "version": "*" },
         "vibe-d":           { "path": "../../submodules/vibe.d/", "version": "*" }
     }
 }
