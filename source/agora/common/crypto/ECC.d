@@ -17,7 +17,10 @@
 
 module agora.common.crypto.ECC;
 
+import agora.common.Deserializer;
 import agora.common.Hash;
+import agora.common.Serializer;
+
 import geod24.bitblob;
 import libsodium;
 
@@ -147,6 +150,42 @@ public struct Scalar
             assert(0);
         return ret;
     }
+
+    /***************************************************************************
+
+        Serialization
+
+        Params:
+            dg = serialize function accumulator
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        dg(this.data[]);
+    }
+
+    /***************************************************************************
+
+        Deserialization
+
+        Params:
+            dg = deserialize function accumulator
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) @safe
+    {
+        this.data = typeof(this.data)(dg(crypto_core_ed25519_SCALARBYTES));
+    }
+}
+
+///
+unittest
+{
+    Scalar scalar = Scalar.random();
+    auto bytes = scalar.serializeFull();
+    assert(bytes.deserializeFull!Scalar == scalar);
 }
 
 /*******************************************************************************
@@ -241,4 +280,40 @@ public struct Point
             assert(0);
         return result;
     }
+
+    /***************************************************************************
+
+        Serialization
+
+        Params:
+            dg = serialize function accumulator
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        dg(this.data[]);
+    }
+
+    /***************************************************************************
+
+        Deserialization
+
+        Params:
+            dg = deserialize function accumulator
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) @safe
+    {
+        this.data = typeof(this.data)(dg(crypto_core_ed25519_BYTES));
+    }
+}
+
+///
+unittest
+{
+    Point point = Scalar.random().toPoint();
+    auto bytes = point.serializeFull();
+    assert(bytes.deserializeFull!Point == point);
 }
