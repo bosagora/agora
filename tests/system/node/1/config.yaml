@@ -18,7 +18,7 @@ node:
   # Public address:  GBJABNUCDJCIL5YJQMB5OZ7VCFPKYLMTUXM2ZKQJACT7PXL7EVOMEKNZ
   seed:    SCTTRCMT7DVZHQS375GWIKYQYHKA3X4IC4EOBNPRGV7DFR3X6OM5VIWL
   # Path to the data directory (if the path doesn't exist it will be created)
-  data_dir: /root/wd/.cache/
+  data_dir: .cache/
 
 ################################################################################
 ##                         Ban manager configuration                          ##

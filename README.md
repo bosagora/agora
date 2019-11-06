@@ -24,7 +24,7 @@ before you first build agora.
 
 For a test run, try:
 ```console
-docker run -p 127.0.0.1:4000:2826/tcp -v `pwd`/doc/:/root/etc/ agora -c etc/config.example.yaml
+docker run -p 127.0.0.1:4000:2826/tcp -v `pwd`/doc/:/agora/etc/ agora -c etc/config.example.yaml
 ```
 This will start a node with the example config file,
 and make the port locally accessible (See http://127.0.0.1:4000/) .
