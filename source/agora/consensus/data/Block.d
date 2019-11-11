@@ -48,6 +48,8 @@ public struct BlockHeader
     /// The hash of the merkle root of the transactions
     public Hash merkle_root;
 
+    /// Signing the blockheader of Validators
+    public ValidatorSig[] validator_sigs;
 
     /***************************************************************************
 
@@ -63,6 +65,9 @@ public struct BlockHeader
         dg(this.prev_block[]);
         hashPart(this.height, dg);
         dg(this.merkle_root[]);
+
+        foreach (validator_sig; this.validator_sigs)
+            hashPart(validator_sig, dg);
     }
 
     /***************************************************************************
@@ -79,6 +84,10 @@ public struct BlockHeader
         dg(this.prev_block[]);
         serializePart(this.height, dg);
         dg(this.merkle_root[]);
+
+        serializePart(this.validator_sigs.length, dg);
+        foreach (const ref validator_sig; this.validator_sigs)
+            serializePart(validator_sig, dg);
     }
 
     /***************************************************************************
@@ -95,6 +104,13 @@ public struct BlockHeader
         this.prev_block = Hash(dg(Hash.sizeof));
         deserializePart(this.height, dg);
         this.merkle_root = Hash(dg(Hash.sizeof));
+
+        size_t sigs_size;
+        deserializePart(sigs_size, dg);
+        this.validator_sigs.length = sigs_size;
+
+        foreach (ref validator_sig; this.validator_sigs)
+            deserializePart(validator_sig, dg);
     }
 }
 
@@ -118,6 +134,72 @@ unittest
             "aaaf1100c87c250cec2f32c");
         assert(hash == exp_hash);
     }();
+}
+
+/*******************************************************************************
+
+    ValidatorSig must be signed with a valid freeze utxo of the Validator
+    in the blockheader.
+
+*******************************************************************************/
+
+public struct ValidatorSig
+{
+    /// publickey of the validator
+    public PublicKey key;
+
+    /// Valid Freeze UTXO hash for Validator
+    public Hash utxo_hash;
+
+    /// Signing the blockheader of the Validator
+    public Signature sig;
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.key, dg);
+        dg(this.utxo_hash[]);
+    }
+
+    /***************************************************************************
+
+        ValidatorSig Serialization
+
+        Params:
+            dg = serialize function accumulator
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.key, dg);
+        dg(this.utxo_hash[]);
+        serializePart(this.sig, dg);
+    }
+
+    /***************************************************************************
+
+        ValidatorSig Deserialization
+
+        Params:
+            dg = deserialize function accumulator
+
+    ***************************************************************************/
+
+    public void deserialize (scope DeserializeDg dg) @safe
+    {
+        deserializePart(this.key, dg);
+        this.utxo_hash = Hash(dg(Hash.sizeof));
+        deserializePart(this.sig, dg);
+    }
 }
 
 /*******************************************************************************

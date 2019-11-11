@@ -233,6 +233,19 @@ public class Ledger
             return;  // not enough valid txs
 
         auto block = makeNewBlock(this.last_block, txs);
+
+        // Sign the block as long as the Validator is enabled.
+        if (this.node_config.is_validator)
+        {
+            ValidatorSig validator_sig;
+            validator_sig.key = this.node_config.key_pair.address;
+            // When the operating process is introduced, the corresponding UTXO is applied.
+            // validator_sig.utxo_hash;
+            validator_sig.sig =
+                this.node_config.key_pair.secret.sign(hashFull(block.header)[]);
+            block.header.validator_sigs ~= validator_sig;
+        }
+
         if (!this.acceptBlock(block))  // txs should be valid
             assert(0);
     }

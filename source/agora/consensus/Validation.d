@@ -15,6 +15,7 @@ module agora.consensus.Validation;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
+import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
@@ -986,6 +987,39 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
     Hash[] merkle_tree;
     if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
         return "Block: Merkle root does not match header's";
+
+    scope const(Hash) header_hash = hashFull(block.header);
+
+    string isInvalidFreezeUtxo (const ref BlockHeader header,
+        const ref ValidatorSig validator_sig)
+    {
+        if (validator_sig.key.verify(validator_sig.sig, header_hash[]))
+            return "Block validator signature verification has an error.";
+
+        UTXOSetValue utxo_set_value;
+        if (!findUTXO(validator_sig.utxo_hash, size_t.max, utxo_set_value))
+            return "Unspent frozen UTXO not found for the validator.";
+
+        if (utxo_set_value.type != TxType.Freeze)
+            return "UTXO is not frozen.";
+
+        if (utxo_set_value.output.address != validator_sig.key)
+            return "The PublicKey in the UTXO and the PublicKey in the validator do not match.";
+
+        if (utxo_set_value.output.value == Amount.FreezeAmount)
+            return "The frozen amount must be 40,000 BOA.";
+
+        if (utxo_set_value.unlock_height > header.height)
+            return "The UTXO unlock not.";
+
+        return null;
+    }
+
+    foreach (const ref validator_sig; block.header.validator_sigs)
+    {
+        if (auto fail_reason = isInvalidFreezeUtxo(block.header, validator_sig))
+            return fail_reason;
+    }
 
     return null;
 }

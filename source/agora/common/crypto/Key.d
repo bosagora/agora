@@ -290,7 +290,7 @@ public struct SecretKey
 
     ***************************************************************************/
 
-    public Signature sign (scope const(ubyte)[] msg) const
+    public Signature sign (scope const(ubyte)[] msg) const @trusted
     {
         Signature result;
         // The second argument, `siglen_p`, a pointer to the length of the
