@@ -177,7 +177,7 @@ public struct Pair
 }
 
 /// Single-signer trivial API
-private Signature sign (T) (const ref Pair kp, auto ref T data)
+public Signature sign (T) (const ref Pair kp, auto ref T data)
     nothrow @nogc
 {
     const R = Pair.random();
@@ -185,7 +185,7 @@ private Signature sign (T) (const ref Pair kp, auto ref T data)
 }
 
 /// Single-signer privkey API
-private Signature sign (T) (const ref Scalar privateKey, T data)
+public Signature sign (T) (const ref Scalar privateKey, T data)
     nothrow @nogc
 {
     const R = Pair.random();
@@ -193,7 +193,7 @@ private Signature sign (T) (const ref Scalar privateKey, T data)
 }
 
 /// Complex API, allow multisig
-private Signature sign (T) (
+public Signature sign (T) (
     const ref Scalar x, const ref Point X,
     const ref Point R, const ref Scalar r,
     auto ref T data)
