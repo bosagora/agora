@@ -281,6 +281,18 @@ public struct Point
         return result;
     }
 
+    /// Support for comparison
+    public int opCmp (ref const typeof(this) s) const
+    {
+        return this.data.opCmp(s.data);
+    }
+
+    /// Support for comparison (rvalue overload)
+    public int opCmp (const typeof(this) s) const
+    {
+        return this.data.opCmp(s.data);
+    }
+
     /***************************************************************************
 
         Serialization
@@ -316,4 +328,15 @@ unittest
     Point point = Scalar.random().toPoint();
     auto bytes = point.serializeFull();
     assert(bytes.deserializeFull!Point == point);
+
+    Point[] points = [
+        Point.fromString(
+            "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81"),
+        Point.fromString(
+            "0x37e8a197247dd01cc27c178dc0465ce826b4f6e312f3ee4c1df0623ef38c51c5")];
+
+    import std.algorithm : sort;
+    points.sort;
+    assert(points[0] == Point.fromString(
+            "0x37e8a197247dd01cc27c178dc0465ce826b4f6e312f3ee4c1df0623ef38c51c5"));
 }
