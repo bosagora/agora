@@ -221,7 +221,7 @@ public struct Output
     public void deserialize (scope DeserializeDg dg) @safe
     {
         deserializePart(this.value, dg);
-        this.address = PublicKey.fromBinary(dg);
+        deserializePart(this.address, dg);
     }
 }
 

@@ -198,20 +198,17 @@ public struct PublicKey
 
     /***************************************************************************
 
-        PublicKey fromBinary
+        Key Deserialization
 
         Params:
             dg = deserialize function
 
-        Returns:
-            `PublicKey` Public key address
-
     ***************************************************************************/
 
-    public static PublicKey fromBinary (scope DeserializeDg dg) @safe
+    public void deserialize (scope DeserializeDg dg) @safe
     {
         alias DType = typeof(this.data);
-        return PublicKey(DType(dg(DType.sizeof)));
+        this.data = DType(dg(DType.sizeof));
     }
 
     ///
@@ -229,6 +226,15 @@ public struct PublicKey
                 "774bffea9918411d0c4c8ac403c");
             assert(hash == exp_hash);
         }();
+    }
+
+    /// PublicKey serialize & deserialize
+    unittest
+    {
+        KeyPair kp = KeyPair.random();
+        PublicKey address = kp.address;
+        auto bytes_address = serializeFull(address);
+        assert(deserializeFull!PublicKey(bytes_address) == address);
     }
 
     /***************************************************************************
