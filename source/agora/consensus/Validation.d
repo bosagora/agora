@@ -687,7 +687,7 @@ unittest
     storage[oneHash] = oneTx;
 
     // test for Payment transaction having no input
-    assert(canFind(toLower(oneTx.isInvalidReason(findUTXO, 0)), "no input"), 
+    assert(canFind(toLower(oneTx.isInvalidReason(findUTXO, 0)), "no input"),
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
@@ -706,7 +706,7 @@ unittest
     storage[secondHash] = secondTx;
 
     // test for Freeze transaction having no output
-    assert(canFind(toLower(secondTx.isInvalidReason(findUTXO, 0)), "no output"), 
+    assert(canFind(toLower(secondTx.isInvalidReason(findUTXO, 0)), "no output"),
         format("Tx having no output should not pass validation. tx: %s", secondTx));
 }
 
@@ -763,7 +763,7 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for transaction having combined inputs
-    assert(!thirdTx.isValid(findUTXO, 0), 
+    assert(!thirdTx.isValid(findUTXO, 0),
         format("Tx having combined inputs should not pass validation. tx: %s", thirdTx));
 }
 
@@ -785,7 +785,7 @@ unittest
     storage[firstHash] = firstTx;
 
     // test for unknown transaction type
-    assert(!firstTx.isValid(null, 0), 
+    assert(!firstTx.isValid(null, 0),
         format("Tx having unknown type should not pass validation. tx: %s", firstTx));
 }
 
@@ -842,7 +842,7 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for input overflow in Payment transaction
-    assert(!thirdTx.isValid(findUTXO, 0), 
+    assert(!thirdTx.isValid(findUTXO, 0),
         format("Tx having input overflow should not pass validation. tx: %s", thirdTx));
 
     // create the fourth transaction
@@ -857,7 +857,7 @@ unittest
     fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
 
     // test for input overflow in Freeze transaction
-    assert(!fourthTx.isValid(findUTXO, 0), 
+    assert(!fourthTx.isValid(findUTXO, 0),
         format("Tx having input overflow should not pass validation. tx: %s", fourthTx));
 }
 
@@ -906,7 +906,7 @@ unittest
     auto thirdTx = Transaction(
         TxType.Payment,
         [Input(firstHash, 0), Input(secondHash, 0)],
-        [Output(Amount.MaxUnitSupply, key_pairs[1].address), 
+        [Output(Amount.MaxUnitSupply, key_pairs[1].address),
             Output(Amount(100), key_pairs[1].address)]
     );
     auto thirdHash = hashFull(thirdTx);
