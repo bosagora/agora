@@ -213,6 +213,7 @@ public class UTXOSet
         Params:
             hash = the hash of transation
             index = the index of the output
+                If size_t.max, find the hash parameter by UTXO Hash.
             output = will contain the UTXOSetValue if found
 
         Return:
@@ -223,7 +224,12 @@ public class UTXOSet
     private bool findUTXO (Hash hash, size_t index, out UTXOSetValue value)
         nothrow @safe
     {
-        auto utxo_hash = getHash(hash, index);
+        Hash utxo_hash;
+
+        if (index == size_t.max)
+            utxo_hash = hash;
+        else
+            utxo_hash = getHash(hash, index);
 
         if (utxo_hash in this.used_utxos)
             return false;  // double-spend
