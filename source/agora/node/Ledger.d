@@ -599,6 +599,12 @@ unittest
     UTXOSetValue _val;
     new_txs.each!(tx => assert(finder(tx.inputs[0].previous, tx.inputs[0].index,
         _val)));
+
+    auto findUTXO = utxo_set.getUTXOFinder();
+    Transaction find_tx = new_txs[0];
+    Hash utxo_hash = utxo_set.getHash(find_tx.inputs[0].previous, find_tx.inputs[0].index);
+    UTXOSetValue value;
+    assert(findUTXO(utxo_hash, size_t.max, value));
 }
 
 version (unittest)
