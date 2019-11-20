@@ -98,7 +98,7 @@ public class Node : API
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
-        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage);
+        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, config.node);
         this.gossip = new GossipProtocol(this.network, this.ledger);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
