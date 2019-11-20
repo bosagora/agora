@@ -14,6 +14,7 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
+import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.common.TransactionPool;
@@ -48,6 +49,8 @@ public class Ledger
     /// UTXO set
     private UTXOSet utxo_set;
 
+    /// Node config
+    private NodeConfig node_config;
 
     /***************************************************************************
 
@@ -60,11 +63,15 @@ public class Ledger
 
     ***************************************************************************/
 
-    public this (TransactionPool pool, UTXOSet utxo_set, IBlockStorage storage)
+    public this (TransactionPool pool,
+        UTXOSet utxo_set,
+        IBlockStorage storage,
+        NodeConfig node_config)
     {
         this.pool = pool;
         this.utxo_set = utxo_set;
         this.storage = storage;
+        this.node_config = node_config;
         if (!this.storage.load())
             assert(0);
 
@@ -367,7 +374,8 @@ unittest
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(0).take(10);
@@ -448,7 +456,8 @@ unittest
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     // Valid case
     auto gen_key_pair = getGenesisKeyPair();
@@ -492,7 +501,8 @@ unittest
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
@@ -514,7 +524,8 @@ unittest
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
@@ -589,7 +600,8 @@ unittest
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     assert(utxo_set.length == 8);
     auto finder = utxo_set.getUTXOFinder();
@@ -691,7 +703,8 @@ unittest
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
 
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     KeyPair[] in_key_pairs;
     KeyPair[] out_key_pairs;
@@ -786,7 +799,8 @@ unittest
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
 
-    scope ledger = new Ledger(pool, utxo_set, storage);
+    auto config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     KeyPair[] splited_keys = getRandomKeyPairs();
 
