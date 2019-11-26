@@ -252,6 +252,23 @@ public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
     record = dg(length);
 }
 
+/// Ditto
+public void deserializePart (ref uint[] record, scope DeserializeDg dg)
+    @trusted
+{
+    size_t length;
+    deserializeVarInt(length, dg);
+
+    record = cast(uint[])dg(length * uint.sizeof);
+
+    // serialized in little-endian format
+    version (BigEndian)
+    {
+        foreach (ref uint elem; record)
+            elem = swapEndian(elem);
+    }
+}
+
 /*******************************************************************************
 
     Deserialize an integer of variable length using Bitcoin-style encoding
@@ -330,4 +347,18 @@ unittest
     }
     assert(deserializeFull!Foo(data) == Foo(ulong.init, 252uL, 253uL, 255uL,
         ushort.max, 0x10000u, uint.max, 0x100000000u, ulong.max));
+}
+
+/// endianess tests
+unittest
+{
+    static struct S
+    {
+        uint[] arr;
+        mixin DefaultDeserializer!();
+    }
+
+    S s;  // always serialized in little-endian format
+    assert([3, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
+        .deserializeFull!S.arr == [0, 1, 2]);
 }
