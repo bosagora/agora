@@ -18,6 +18,9 @@ import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
 
+extern(C++) public shared_ptr!SCPQuorumSet makeSharedSCPQuorumSet (
+    ref const(SCPQuorumSet));
+
 
 /// Utility function for SCP
 public inout(opaque_vec!()) toVec (scope ref inout(Hash) data)
@@ -57,6 +60,7 @@ public void push_back(T, VectorT) (ref VectorT this_, ref T value) @safe pure no
 public VectorT duplicate(VectorT)(ref const VectorT this_) @safe pure nothrow @nogc;
 public opaque_vec!() XDRToOpaque (const ref xvector!ubyte arg);
 public opaque_vec!() XDRToOpaque (const ref SCPQuorumSet arg);
+public opaque_vec!() XDRToOpaque (const ref SCPStatement arg);
 
 // Does not work, DMD bug
 //extern(C++, `xdr`)
