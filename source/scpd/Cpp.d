@@ -73,6 +73,9 @@ extern(C++, (StdNS!())) {
 /// C++ support for foreach
 extern(C++) private int cpp_set_foreach(T)(void* set, void* ctx, void* cb);
 
+/// std::set.empty() support
+nothrow pure @nogc extern(C++) private bool cpp_set_empty(T)(const(void)* set);
+
 extern(C++, `std`) {
     /// Binding: Needs to be instantiated on C++ side
     shared_ptr!T make_shared(T, Args...)(Args args);
@@ -103,6 +106,12 @@ extern(C++, `std`) {
 
             return cpp_set_foreach!Key(cast(void*)&this, cast(void*)&dg,
                 cast(void*)&wrapper);
+        }
+
+        /// Returns: true if the set is empty
+        extern(D) bool empty () const nothrow pure @nogc
+        {
+            return cpp_set_empty!Key(cast(const void*)&this);
         }
     }
 
@@ -151,6 +160,7 @@ private extern(C++) set!uint* makeTestSet();
 unittest
 {
     auto set = makeTestSet;
+    assert(!set.empty);
     uint[] values;
     foreach (val; *set)
         values ~= val;
