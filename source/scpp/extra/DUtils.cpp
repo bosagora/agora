@@ -49,6 +49,12 @@ CPPSETFOREACHINST(SCPBallot)
 CPPSETFOREACHINST(PublicKey)
 CPPSETFOREACHINST(unsigned int)
 
+#define CPPSETEMPTYINST(T) template bool cpp_set_empty<T>(const void*);
+CPPSETEMPTYINST(Value)
+CPPSETEMPTYINST(SCPBallot)
+CPPSETEMPTYINST(PublicKey)
+CPPSETEMPTYINST(unsigned int)
+
 void callCPPDelegate (void* cb)
 {
     auto callback = (std::function<void()>*)cb;

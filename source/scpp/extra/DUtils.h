@@ -24,6 +24,11 @@ int cpp_set_foreach(void* setptr, void* ctx, void* func)
     return 0;
 }
 
+template<typename T>
+bool cpp_set_empty(const void* setptr)
+{
+    return ((const std::set<T>*)setptr)->empty();
+}
 
 template<typename T, typename VectorT>
 void push_back(VectorT& this_, T& value)
