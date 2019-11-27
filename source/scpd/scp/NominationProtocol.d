@@ -96,7 +96,10 @@ extern(C++, class) public struct NominationProtocol
     Value getNewValueFromNomination(const ref SCPNomination nom);
 
   public:
-    //this(ref Slot slot);
+    // note: must call C++ ctor to properly call default ctors for
+    // all the fields of this class
+    @disable this();
+    this(ref Slot slot);
 
     SCP.EnvelopeState processEnvelope(const ref SCPEnvelope envelope);
 
