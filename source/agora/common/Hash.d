@@ -119,17 +119,15 @@ public void hashPart (T) (scope const auto ref T record, scope HashDg state)
     /*pure*/ nothrow @nogc
     if (is(T == struct))
 {
-    static assert(is(typeof(T.init.computeHash(HashDg.init))),
-                  "Struct `" ~ T.stringof ~
-                  "` does not implement `computeHash(scope HashDg) const nothrow @nogc` function");
-    record.computeHash(state);
-}
-
-/// Ditto
-public void hashPart () (scope const auto ref Hash record, scope HashDg state)
-    /*pure*/ nothrow @nogc @safe
-{
-    state(record[]);
+    static if (__traits(compiles, () { const ubyte[] r = T.init[]; }))
+        state(record[]);
+    else
+    {
+        static assert(is(typeof(T.init.computeHash(HashDg.init))),
+                      "Struct `" ~ T.stringof ~
+                      "` does not implement `computeHash(scope HashDg) const nothrow @nogc` function");
+        record.computeHash(state);
+    }
 }
 
 /// Ditto
