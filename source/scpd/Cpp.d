@@ -235,6 +235,24 @@ extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
             return this._start[start .. end];
         }
 
+        public bool opEquals (const ref vector rhs) const pure nothrow @nogc @safe
+        {
+            import std.range : zip;
+            if (this.length != rhs.length)
+                return false;
+
+            // note: cannot do 'return this.innerSets[] == rhs.innerSets[];'
+            // object.d(358,64): Error: `cast(const(vector))(cast(const(vector)*)r)[i]`
+            // is not an lvalue and cannot be modified
+            foreach (const ref left, const ref right; zip(this[], rhs[]))
+            {
+                if (left != right)
+                    return false;
+            }
+
+            return true;
+        }
+
         alias opDollar = length;
 
         string toString() const @trusted
@@ -282,4 +300,23 @@ unittest
     assert(vec[0 .. $] == [1, 2, 3]);
     assert(vec[0..2] == [1, 2]);
     assert(vec[1..3] == [2, 3]);
+
+    vector!ubyte vec2;
+    assert(vec2 != vec);
+
+    x = 1;
+    vec2.push_back(x);
+    x = 2;
+    vec2.push_back(x);
+    x = 3;
+    vec2.push_back(x);
+    assert(vec2 == vec);
+
+    vector!ubyte vec3;
+    vec3.push_back(x);
+    x = 2;
+    vec3.push_back(x);
+    x = 3;
+    vec3.push_back(x);
+    assert(vec3 != vec);
 }
