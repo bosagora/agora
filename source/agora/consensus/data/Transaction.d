@@ -68,12 +68,8 @@ public struct Transaction
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
         hashPart(this.type, dg);
-
-        foreach (input; this.inputs)
-            hashPart(input, dg);
-
-        foreach (output; this.outputs)
-            hashPart(output, dg);
+        hashPart(this.inputs, dg);
+        hashPart(this.outputs, dg);
     }
 
     /***************************************************************************
