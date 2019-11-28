@@ -1,0 +1,15 @@
+.row.mb-lg-5.mt-1
+  .col
+    h3 Network Options
+
+.row.mb-lg-3.mt-sm-1
+  .col
+    form
+      label(for="inetwork") Network
+      .field-container.mb-2
+        input#inetwork.form-control(type="text", name="network", placeholder="http://0.0.0.0:2826/", aria-label="Node address", oninput="false;")
+        i.far.fa-question-circle.fa-2x
+      label.mt-1(for="iseed") DNS
+      .field-container.mb-2
+        input#iseed.form-control(type="text", name="dns", placeholder="http://seed.bosagora.io", aria-label="DNS seed addressed", oninput="false;")
+        i.far.fa-question-circle.fa-2x

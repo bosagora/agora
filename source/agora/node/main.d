@@ -62,8 +62,18 @@ private int main (string[] args)
             ex.message);
     }
 
+
     FullNode node;
-    try
+    if (cmdln.initialize)
+    {
+        if (cmdln.config_check)
+        {
+            writeln("Error: Cannot have both `--initialize` and `--config-check` switch");
+            return 1;
+        }
+        runTask(() => initialize(cmdln.config_path, &node));
+    }
+    else try
     {
         auto config = parseConfigFile(cmdln);
         if (cmdln.config_check)
@@ -83,4 +93,23 @@ private int main (string[] args)
 
     scope(exit) if (node !is null) node.shutdown();
     return runEventLoop();
+}
+
+/*******************************************************************************
+
+    Starts the node in initialization mode
+
+    Params:
+      config_path = Path at which to write the config file (provided via CLI)
+
+*******************************************************************************/
+
+private void initialize (string config_path, Node* node)
+{
+    assert(node !is null);
+    import agora.node.AdminInterface;
+    log.info("Setup interface listening to 127.0.0.1:2827 and will write to {}",
+             config_path);
+    auto setup = new SetupInterface(config_path, &runNode, node);
+    setup.start();
 }

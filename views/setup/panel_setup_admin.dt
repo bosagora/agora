@@ -1,0 +1,7 @@
+.row.mb-lg-5.mt-1
+  .col
+    h3 Administrative Interface
+
+.row.mb-lg-3.mt-sm-1
+  .col
+    p This isn't implemented yet.

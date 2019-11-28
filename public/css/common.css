@@ -1,0 +1,189 @@
+/* Make sure our page takes the whole viewport */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+/* Bootstrap gives a different color to links with and without 'href'
+   However for 'btn-primary' we always want white on blue
+ */
+a:not([href])[class~="btn-primary"] {
+    color: #FFF;
+}
+
+/* Our fields have text help button.
+   The help button are little question mark on the RHS of the field.
+   We want to give the look of it being part of the field,
+   but we don't want the text to overlap, hence we use a container
+   and set the border of this container to be that of the input.
+   In essence, it's 2 items in a row with as much distance between them as possible.
+*/
+.field-container {
+    /* d-flex */
+    display: -ms-flexbox !important;
+    display: flex !important;
+    /* flex-column */
+    -ms-flex-direction: row !important;
+    flex-direction: row !important;
+    /* justify-content-between */
+    -ms-flex-pack: justify !important;
+    justify-content: space-between !important;
+    /* Border for the inner input */
+    border-bottom: 1px solid grey;
+}
+
+input[type="text"] {
+    border: none;
+    border-radius: 0;
+
+}
+/* Override bootstrap's default */
+.form-control:focus {
+    outline: none;
+    box-shadow: none;
+    background-color: inherit;
+}
+
+.form-control {
+    background: #F7F7F7;
+}
+
+.form-control.disabled {
+    background: #F0F0F0;
+}
+
+/* Agora's theme */
+.bg-grey {
+    background: #F7F7F7;
+}
+
+/* Make sure our font-size matches the ::after element of cards */
+.card-body {
+    font-size: 20px;
+}
+
+.row.h-100 * {
+    max-height: 100%;
+}
+
+img {
+    height: inherit;
+}
+
+/*
+TODO: At the moment tooltips are not enabled, as we need some JS
+See https://github.com/object505/tipso
+.help-button {
+    background: url('../img/01/Content/input/icons/question.png');
+    display: block;
+    height: ?;
+    width: ?;
+}
+*/
+
+/* When a field is disabled (e.g. Secret seed box), make sure colors match */
+.field-container.disabled > .help-button {
+    background: #e9ecef;
+    opacity: 1;
+}
+
+/* A flex column with two elements: A header and a footer
+   Use `mt-p20` (or any necessary value) to adjust the top margin,
+   same for the bottom margin.
+ */
+.column-with-footer {
+    /* d-flex */
+    display: -ms-flexbox !important;
+    display: flex !important;
+    /* flex-column */
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    /* justify-content-between */
+    -ms-flex-pack: justify !important;
+    justify-content: space-between !important;
+}
+
+/* A flex column with centered content */
+.column-centered {
+    /* d-flex */
+    display: -ms-flexbox !important;
+    display: flex !important;
+    /* flex-column */
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    /* justify-content-between */
+    -ms-flex-pack: center !important;
+    justify-content: center !important;
+    /* align-items-center */
+    -ms-flex-align: center !important;
+    align-items: center !important;
+}
+
+/* Navigation links */
+.nav-pills .nav-link.active {
+    color: var(--primary);
+    background-color: inherit;
+}
+a.nav-link.active::before {
+    content: '\e5c8';
+    color: var(--primary);
+    font-family: 'Material Icons';
+}
+a.nav-link:not(.disabled):not(.active)::before {
+    content: '\e5ca';
+    color: var(--secondary);
+    font-family: 'Material Icons';
+}
+
+/* Handles cards as a mean for selection (e.g. validator / full node) */
+.card-input-element+.card {
+    height: calc(36px + 2*1rem);
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    border: 1px solid var(--secondary);
+    border-radius: 4px;
+    color: var(--secondary);
+}
+.card-input-element+.card:hover {
+    cursor: pointer;
+}
+.card-input-element:checked+.card {
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    -webkit-transition: border .3s;
+    -o-transition: border .3s;
+    transition: border .3s;
+}
+.card-input-element:checked+.card .card-body::after {
+    content: '\e5ca';
+    color: var(--primary);
+    font-family: 'Material Icons';
+    font-size: 20px;
+    -webkit-animation-name: fadeInCheckbox;
+    animation-name: fadeInCheckbox;
+    -webkit-animation-duration: .5s;
+    animation-duration: .5s;
+    -webkit-animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+@-webkit-keyframes fadeInCheckbox {
+    from {
+        opacity: 0;
+        -webkit-transform: rotateZ(-20deg);
+    }
+    to {
+        opacity: 1;
+        -webkit-transform: rotateZ(0deg);
+    }
+}
+@keyframes fadeInCheckbox {
+    from {
+        opacity: 0;
+        transform: rotateZ(-20deg);
+    }
+    to {
+        opacity: 1;
+        transform: rotateZ(0deg);
+    }
+}

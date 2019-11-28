@@ -1,0 +1,28 @@
+.row.mb-lg-5.mt-1
+  .col
+    h3 Secret Seed
+
+.row.mb-lg-3.mt-sm-1
+  .card-group.col-12
+    label.col-md-6
+      input.card-input-element.d-none(type="radio", name="demo", alt="Be a validator", value="true", onchange='spa.current.handleCardChange(this);')
+      .card.bg-grey
+        .row.no-gutters.h-100
+          .col-4.h-100
+            img.card-img(src="#{req.rootDir}img/01/tab_validator/ill/validator/active.png", alt="Validator")
+          .col-8.h-100
+            .card-body.d-flex.flex-row.justify-content-between.align-items-center Validator
+    label.col-md-6
+      input.card-input-element.d-none(type="radio", name="demo", alt="Be a full node", value="false", onchange='spa.current.handleCardChange(this);')
+      .card.bg-grey
+        .row.no-gutters.h-100
+          .col-4.h-100
+            img.card-img(src="#{req.rootDir}img/01/tab_validator/ill/validator/active.png", alt="Full Node")
+          .col-8.h-100
+            .card-body.d-flex.flex-row.justify-content-between.align-items-center Full Node
+
+.row
+  .col
+    .field-container
+      input#seed.form-control(type="text", name="seed", maxlength="56", placeholder="Secret Seed", aria-label="Secret Seed", oninput="spa.current.handleFormChange(this);")
+      i.far.fa-question-circle.fa-2x.help-button

@@ -24,6 +24,7 @@ import agora.utils.Log;
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
+import vibe.data.json;
 import dyaml.node;
 import dyaml.loader;
 
@@ -42,6 +43,9 @@ public struct CommandLine
 {
     /// Path to the config file
     public string config_path = "config.yaml";
+
+    /// Whether or not we want to initialize this node
+    public bool initialize = false;
 
     /// check state of config file and exit early
     public bool config_check;
@@ -161,6 +165,10 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 {
     return getopt(
         args,
+        "initialize",
+            "The node will offer a web-based configuration interface at 127.0.0.1:2827",
+            &cmdline.initialize,
+
         "config|c",
             "Path to the config file. Defaults to: " ~ CommandLine.init.config_path,
             &cmdline.config_path,

@@ -1,0 +1,20 @@
+extends setup/layout
+
+block css
+  link(rel="stylesheet", type="text/css", href="#{req.rootDir}css/welcome.css")
+
+block body
+  .row
+    section#side-menu.col-md-4.bg-primary.column-with-footer
+      h1.mt-5 Welcome to BOSAGORA Full Node Client
+      footer.mb-1
+        img.img-fluid(src="#{req.rootDir}img/BI_basic_white.png")
+
+    .col-md-1
+    #content.col-md-6
+      .column-centered.mt-1.mb-1
+        h2.mb-1 This client will allow you to ...
+        p You are seeing this page because the agora node was started with the 'initialize' argument.
+          The next step will allow you to configure your node and save the configuration to the disk.
+        a#continue.btn.btn-primary(href="setup", role="button") Continue
+    .col-md-1

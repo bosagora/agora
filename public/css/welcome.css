@@ -1,0 +1,18 @@
+.row {
+    min-height: 100%;
+}
+
+#section {
+    background-color: var(--light);
+}
+
+@media (max-width: 767.98px) {
+    #side-menu {
+        max-height: 40vh !important;
+    }
+}
+@media (min-width: 768px) {
+    #side-menu {
+        min-height: 100vh !important;
+    }
+}

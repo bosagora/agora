@@ -1,0 +1,41 @@
+extends setup/layout
+
+block body
+  .row.h-100
+    section#side-menu.col-md-3.column-with-footer
+      .d-flex.flex-column.h-100.justify-content-center.align-items-left.text-align-center.ml-1
+        h2 Node Config
+        p.mt-1.
+          The following menus will allow you to configure your node, step by step.
+          You can jump back to any previous step at any time.
+          If you close this window, you will have to restart this process from the beginning.
+        nav#nav.nav.flex-md-column.nav-pills.mb-1(role="tablist", aria-orientation="vertical")
+          a.nav-link(onclick="spa.navigate(0);") Secret Seed
+          a.nav-link(onclick="spa.navigate(1);") Network Options
+          a.nav-link(onclick="spa.navigate(2);") Ban Management
+          a.nav-link(onclick="spa.navigate(3);") Administrative Interface
+      footer.mb-1
+        img.img-fluid(src="#{req.rootDir}img/BI_basic_blue.png")
+
+    .col-md-7.column-centered.bg-grey
+      #panel.w-100
+        .container-fluid
+          include setup/panel_setup_seed.dt
+        .container-fluid
+          include setup/panel_setup_network.dt
+        .container-fluid
+          include setup/panel_setup_ban.dt
+        .container-fluid
+          include setup/panel_setup_admin.dt
+
+      .container-fluid.bg-grey.mt-md-5.mt-sm-1
+        .row
+          .col-md-3.col-6
+            a.w-100.btn.btn-primary(role="button", onclick="spa.backward();") Previous
+          .col-md-3.col-6
+            a#continue.w-100.btn.btn-primary(role="button", onclick="spa.forward();") Next step
+          .col-md-6
+
+    .col-md-2.bg-grey
+
+  script(src="#{req.rootDir}js/setup.js")

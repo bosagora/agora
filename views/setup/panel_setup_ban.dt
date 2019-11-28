@@ -1,0 +1,10 @@
+.row
+  .col
+    h3 Ban Management
+
+.row.mb-2
+  form.col-md-6
+    p Maximum number of failed requests before an address is banned
+    input#ban_tolerance(type="number", name="ban_tolerance", alt="Maximum number of failed request before a ban", min="3", value="10", max="420")
+    p Ban duration (seconds)
+    input#ban_duration(type="number", name="ban_duration", alt="Duration of a ban in seconds", min="60", value="86400")
