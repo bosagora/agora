@@ -152,10 +152,7 @@ private struct Message (T)
     {
         dg(this.X.data[]);
         dg(this.R.data[]);
-        static if (is(T : const(ubyte)[]))
-            dg(this.message);
-        else
-            hashPart(this.message, dg);
+        hashPart(this.message, dg);
     }
 }
 
