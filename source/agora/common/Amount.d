@@ -67,12 +67,6 @@ public struct Amount
         this.value = units;
     }
 
-    /// Support for hashing
-    public void computeHash (scope HashDg dg) const nothrow @nogc @safe
-    {
-        hashPart(this.value, dg);
-    }
-
     /// Support for serialization
     public void serialize (scope SerializeDg dg) const @safe
     {

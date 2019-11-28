@@ -47,25 +47,33 @@ import libsodium;
 ///
 nothrow @nogc @safe unittest
 {
-    static struct Struct
+    static struct SimpleStruct
     {
         ulong foo;
         string bar;
+    }
+
+    static struct ComplexStruct
+    {
+        string irrelevant;
+        string bar;
+        ulong foo;
 
         void computeHash (scope HashDg dg) const nothrow @safe @nogc
         {
-            // We can hash in any order we want
-            hashPart(this.bar, dg);
+            // We can hash in any order we want, and ignore anything we want
             hashPart(this.foo, dg);
+            hashPart(this.bar, dg);
         }
     }
 
-    Struct st = Struct(42, "42");
+    const st = SimpleStruct(42, "42");
     // This gives the same result as if `foo` and the content of `bar` were
     // stored contiguously in memory and hashed
     Hash r2 = hashFull(st);
     // Result is stable
-    assert(hashFull(Struct(42, "42")) == r2);
+    assert(hashFull(SimpleStruct(42, "42")) == r2);
+    assert(hashFull(ComplexStruct("Hello World", "42", 42)) == r2);
 
     // Alternatively, simple string messages can be hashed
     Hash abc = hashFull("abc");
@@ -119,15 +127,13 @@ public void hashPart (T) (scope const auto ref T record, scope HashDg state)
     /*pure*/ nothrow @nogc
     if (is(T == struct))
 {
-    static if (__traits(compiles, () { const ubyte[] r = T.init[]; }))
+    static if(is(typeof(T.init.computeHash(HashDg.init))))
+        record.computeHash(state);
+    else static if (__traits(compiles, () { const ubyte[] r = T.init[]; }))
         state(record[]);
     else
-    {
-        static assert(is(typeof(T.init.computeHash(HashDg.init))),
-                      "Struct `" ~ T.stringof ~
-                      "` does not implement `computeHash(scope HashDg) const nothrow @nogc` function");
-        record.computeHash(state);
-    }
+        foreach (const ref field; record.tupleof)
+            hashPart(field, state);
 }
 
 /// Ditto

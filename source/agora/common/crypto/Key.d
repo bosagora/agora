@@ -16,7 +16,6 @@ module agora.common.crypto.Key;
 import agora.common.crypto.Crc16;
 import agora.common.Types;
 import agora.common.Deserializer;
-import agora.common.Hash;
 import agora.common.Serializer;
 
 import geod24.bitblob;
@@ -170,20 +169,6 @@ public struct PublicKey
 
     /***************************************************************************
 
-        Implements hashing support
-
-        Params:
-            dg = hashing function
-
-    ***************************************************************************/
-
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
-    {
-        dg(this.data[]);
-    }
-
-    /***************************************************************************
-
         Key Serialization
 
         Params:
@@ -214,6 +199,8 @@ public struct PublicKey
     ///
     unittest
     {
+        import agora.common.Hash;
+
         immutable address =
             `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
         PublicKey pubkey = PublicKey.fromString(address);
