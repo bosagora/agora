@@ -55,23 +55,6 @@ public struct Transaction
     /// The list of newly created outputs to put in the UTXO
     public Output[] outputs;
 
-
-    /***************************************************************************
-
-        Implements hashing support
-
-        Params:
-            dg = hashing function
-
-    ***************************************************************************/
-
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
-    {
-        hashPart(this.type, dg);
-        hashPart(this.inputs, dg);
-        hashPart(this.outputs, dg);
-    }
-
     /***************************************************************************
 
         Transactions Serialization
@@ -173,22 +156,6 @@ public struct Output
     /// The public key that can redeem this output (A = pubkey)
     /// Note that in Bitcoin, this is an address (the double hash of a pubkey)
     public PublicKey address;
-
-
-    /***************************************************************************
-
-        Implements hashing support
-
-        Params:
-            dg = hashing function
-
-    ***************************************************************************/
-
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
-    {
-        hashPart(this.value, dg);
-        hashPart(this.address, dg);
-    }
 
     /***************************************************************************
 

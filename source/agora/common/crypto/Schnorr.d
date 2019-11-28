@@ -146,14 +146,6 @@ private struct Message (T)
     public Point X;
     public Point R;
     public T     message;
-
-    ///
-    public void computeHash(scope HashDg dg) const nothrow @nogc
-    {
-        dg(this.X.data[]);
-        dg(this.R.data[]);
-        hashPart(this.message, dg);
-    }
 }
 
 
