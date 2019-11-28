@@ -161,6 +161,12 @@ public void hashPart (scope const(char)[] record, scope HashDg state) /*pure*/ n
 }
 
 /// Ditto
+public void hashPart (scope const(ubyte)[] record, scope HashDg state)
+{
+    state(record);
+}
+
+/// Ditto
 public void hashPart (T) (scope const auto ref T[] records, scope HashDg state)
 {
     foreach (ref record; records)
