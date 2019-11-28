@@ -18,28 +18,6 @@ import agora.common.Types;
 /// Type of delegate SerializeDg
 public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
 
-/// Default serializer implementation
-public mixin template DefaultSerializer ()
-{
-    static assert(is(typeof(this) == struct),
-        "`DefaultSerializer` needs to be mixed in a `struct` context");
-
-    /***************************************************************************
-
-        Serialize all members of this `struct`, in the order they appear.
-
-        Params:
-            dg = serialize function accumulator
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        foreach (const ref entry; this.tupleof)
-            serializePart(entry, dg);
-    }
-}
-
 ///
 unittest
 {
@@ -54,7 +32,6 @@ unittest
         ubyte[] f;
         long g;
         string h;
-        mixin DefaultSerializer!();
     }
     const Foo f = Foo(1, ushort.max, uint.max, ulong.max, Amount(100), [1, 2, 3],
         42, "69");
@@ -103,10 +80,11 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     @safe
     if (is(T == struct))
 {
-    static assert(is(typeof(T.init.serialize(SerializeDg.init))),
-                "Struct `" ~ T.stringof ~
-                "` does not implement `serialize(scope SerializeDg) const nothrow` function");
-    record.serialize(dg);
+    static if (is(typeof(T.init.serialize(SerializeDg.init))))
+        record.serialize(dg);
+    else
+        foreach (const ref field; record.tupleof)
+            serializePart(field, dg);
 }
 
 /// Ditto
@@ -287,7 +265,6 @@ unittest
     static struct S
     {
         uint[] arr = [0, 1, 2];
-        mixin DefaultSerializer!();
     }
 
     S s;  // always serialized in little-endian format

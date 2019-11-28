@@ -82,28 +82,6 @@ unittest
 /// Type of delegate deserializeDg
 public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 
-/// Default deserializer implementation
-public mixin template DefaultDeserializer ()
-{
-    static assert(is(typeof(this) == struct),
-        "`DefaultDeserializer` needs to be mixed in a `struct` context");
-
-    /***************************************************************************
-
-        Deserialize all members of this `struct`, in the order they appear.
-
-        Params:
-            dg = source of binary data
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        foreach (ref entry; this.tupleof)
-            deserializePart(entry, dg);
-    }
-}
-
 ///
 unittest
 {
@@ -117,7 +95,6 @@ unittest
         ulong d;
         Amount e;
         ubyte[] f;
-        mixin DefaultDeserializer!();
     }
     /// See the example in `agora.common.Serializer` for the serialization part
     ubyte[] data = [
@@ -163,10 +140,11 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
     if (is(T == struct))
 {
-    static assert(is(typeof(T.init.deserialize(DeserializeDg.init))),
-                "Struct `" ~ T.stringof ~
-                "` does not implement `deserialize(scope DeserializeDg) nothrow` function");
-    record.deserialize(dg);
+    static if (is(typeof(T.init.deserialize(DeserializeDg.init))))
+        record.deserialize(dg);
+    else
+        foreach (const ref field; record.tupleof)
+            deserializePart(field, dg);
 }
 
 /// Enum support
@@ -343,7 +321,6 @@ unittest
         uint g;
         ulong h;
         ulong i;
-        mixin DefaultDeserializer!();
     }
     assert(deserializeFull!Foo(data) == Foo(ulong.init, 252uL, 253uL, 255uL,
         ushort.max, 0x10000u, uint.max, 0x100000000u, ulong.max));
@@ -355,7 +332,6 @@ unittest
     static struct S
     {
         uint[] arr;
-        mixin DefaultDeserializer!();
     }
 
     S s;  // always serialized in little-endian format

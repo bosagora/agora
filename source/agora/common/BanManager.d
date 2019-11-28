@@ -52,9 +52,6 @@ public class BanManager
         /// To set an IP as banned, we simply set its un-ban time in the future.
         /// By default it's set to the past (therefore un-banned)
         private time_t banned_until = 0;
-
-        mixin DefaultSerializer!();
-        mixin DefaultDeserializer!();
     }
 
     /// configuration
