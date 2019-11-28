@@ -160,6 +160,13 @@ public void hashPart (scope const(char)[] record, scope HashDg state) /*pure*/ n
     state(cast(const ubyte[])record);
 }
 
+/// Ditto
+public void hashPart (T) (scope const auto ref T[] records, scope HashDg state)
+{
+    foreach (ref record; records)
+        hashPart(record, state);
+}
+
 // Test that the implementation actually matches what the RFC gives
 nothrow @nogc @safe unittest
 {
@@ -243,6 +250,9 @@ nothrow @nogc @safe unittest
         "c2e756f276c112342ff1d6f1e74d05bdb9bf880abd74a2e512654e12d171a74");
 
     assert(hashMulti(foo, bar) == merged);
+
+    const Hash[2] array = [foo, bar];
+    assert(hashFull(array[]) == merged);
 
     static struct S
     {
