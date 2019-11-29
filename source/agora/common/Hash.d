@@ -168,12 +168,14 @@ public void hashPart (scope const(char)[] record, scope HashDg state) /*pure*/ n
 
 /// Ditto
 public void hashPart (scope const(ubyte)[] record, scope HashDg state)
+    /*pure*/ nothrow @nogc @safe
 {
     state(record);
 }
 
 /// Ditto
 public void hashPart (T) (scope const auto ref T[] records, scope HashDg state)
+    /*pure*/ nothrow @nogc @safe
 {
     foreach (ref record; records)
         hashPart(record, state);
