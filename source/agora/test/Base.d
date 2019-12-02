@@ -120,6 +120,7 @@ private UnitTestResult customModuleUnitTester ()
         }
         catch (Throwable ex)
         {
+            writefln("Module tests failed: %s", mod.name);
             writeln(ex);
         }
     }
