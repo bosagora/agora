@@ -80,25 +80,17 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     @safe
     if (is(T == struct))
 {
+    import geod24.bitblob;
+
     static if (is(typeof(T.init.serialize(SerializeDg.init))))
         record.serialize(dg);
+    // BitBlob are fixed size and thus, value types
+    // If we use an `ubyte[]` overload, the length gets serialized
+    else static if (is(T : BitBlob!N, size_t N))
+        dg(record[]);
     else
         foreach (const ref field; record.tupleof)
             serializePart(field, dg);
-}
-
-/// Ditto
-public void serializePart () (scope const auto ref Hash record, scope SerializeDg dg)
-    @safe
-{
-    dg(record[]);
-}
-
-/// Ditto
-public void serializePart (scope const Signature record, scope SerializeDg dg)
-    @trusted
-{
-   dg(record[]);
 }
 
 /// Ditto
@@ -269,4 +261,13 @@ unittest
 
     S s;  // always serialized in little-endian format
     assert(s.serializeFull == [3, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]);
+}
+
+/// BitBlob tests
+unittest
+{
+    Hash /* BitBlob!512 */ val;
+    ubyte[] serialized = val.serializeFull();
+    assert(serialized.length == 64);
+    assert(serialized == (ubyte[64]).init);
 }

@@ -140,8 +140,14 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
     if (is(T == struct))
 {
+    import geod24.bitblob;
+
     static if (is(typeof(T.init.deserialize(DeserializeDg.init))))
         record.deserialize(dg);
+    // BitBlob are fixed size and thus, value types
+    // If we use an `ubyte[]` overload, the deserializer looks for the length
+    else static if (is(T : BitBlob!N, size_t N))
+        record = T(dg(T.Width));
     else
         foreach (const ref field; record.tupleof)
             deserializePart(field, dg);
@@ -156,13 +162,6 @@ public void deserializePart (T)(ref T record, scope DeserializeDg dg)
     OriginalType!T orig_val;
     deserializePart(orig_val, dg);
     record = cast(T)(orig_val);
-}
-
-/// Ditto
-public void deserializePart (ref Hash record, scope DeserializeDg dg)
-    @safe
-{
-    record = Hash(dg(Hash.sizeof));
 }
 
 /// Ditto
@@ -337,4 +336,16 @@ unittest
     S s;  // always serialized in little-endian format
     assert([3, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
         .deserializeFull!S.arr == [0, 1, 2]);
+}
+
+/// BitBlob tests
+unittest
+{
+    ubyte[64] serialized;
+    serialized[$/2] = 0xFF;
+    Hash /* BitBlob!512 */ val = deserializeFull!Hash(serialized);
+    assert(val == Hash(
+        `0x00000000000000000000000000000000000000000000000000000000000000FF`
+        ~ `0000000000000000000000000000000000000000000000000000000000000000`));
+
 }
