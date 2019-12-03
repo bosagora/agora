@@ -49,9 +49,6 @@ import agora.common.Types;
 import agora.common.Hash;
 import agora.common.crypto.ECC;
 
-import agora.common.Deserializer;
-import agora.common.Serializer;
-
 import std.algorithm;
 import std.range;
 
@@ -99,41 +96,14 @@ public struct Signature
     public Point R;
     /// Proof
     public Scalar s;
-
-    /***************************************************************************
-
-        Serialization
-
-        Params:
-            dg = serialize function accumulator
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        serializePart(this.R, dg);
-        serializePart(this.s, dg);
-    }
-
-    /***************************************************************************
-
-        Deserialization
-
-        Params:
-            dg = deserialize function accumulator
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        deserializePart(this.R, dg);
-        deserializePart(this.s, dg);
-    }
 }
 
 ///
 unittest
 {
+    import agora.common.Deserializer;
+    import agora.common.Serializer;
+
     const KP = Pair.random();
     auto signature = Signature(KP.V, KP.v);
     auto bytes = signature.serializeFull();
