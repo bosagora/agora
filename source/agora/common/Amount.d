@@ -28,10 +28,6 @@ module agora.common.Amount;
 /// Defines a monetary type used in the blockchain
 public struct Amount
 {
-    import agora.common.Deserializer;
-    import agora.common.Hash;
-    import agora.common.Serializer;
-
     import core.checkedint;
 
     /// Number of units ('cents') per coins
@@ -65,18 +61,6 @@ public struct Amount
     {
         assert(Amount.isInRange(units));
         this.value = units;
-    }
-
-    /// Support for serialization
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        serializePart(this.value, dg);
-    }
-
-    /// Support for deserialization
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        deserializePart(this.value, dg);
     }
 
     /// Pretty-print this value
@@ -275,4 +259,14 @@ pure @safe nothrow @nogc unittest
 
     assert(Amount(100_500_000).integral() == 10);
     assert(Amount(100_500_000).decimal() == 500_000);
+}
+
+unittest
+{
+    import agora.common.Deserializer;
+    import agora.common.Serializer;
+
+    Amount val = Amount.UnitPerCoin;
+    ubyte[] serialized = val.serializeFull();
+    assert(serialized.deserializeFull!Amount() == val);
 }
