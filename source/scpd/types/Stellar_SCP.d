@@ -15,6 +15,8 @@ module scpd.types.Stellar_SCP;
 
 import vibe.data.json;
 
+import agora.common.Serializer;
+
 import scpd.Cpp;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
@@ -153,6 +155,101 @@ struct SCPStatement {
             else
                 throw new Exception("Unrecognized envelope type");
             return ret;
+        }
+
+        ///
+        extern(D) void serialize (scope SerializeDg dg) const @trusted
+        {
+            serializePart(this.type_, dg);
+            switch (this.type_)
+            {
+            case SCPStatementType.SCP_ST_PREPARE:
+                return serializePart(this.prepare_, dg);
+            case SCPStatementType.SCP_ST_CONFIRM:
+                return serializePart(this.confirm_, dg);
+            case SCPStatementType.SCP_ST_EXTERNALIZE:
+                return serializePart(this.externalize_, dg);
+            case SCPStatementType.SCP_ST_NOMINATE:
+                return serializePart(this.nominate_, dg);
+            default:
+                assert(0);
+            }
+        }
+
+        ///
+        extern(D) public static QT fromBinary (QT) (scope DeserializeDg dg,
+            scope const ref DeserializerOptions opts) @safe
+        {
+            auto type = deserializeFull!(typeof(QT.type_))(dg, opts);
+            final switch (type)
+            {
+            case SCPStatementType.SCP_ST_PREPARE:
+                return enableNRVO!(QT, SCPStatementType.SCP_ST_PREPARE)(dg, opts);
+            case SCPStatementType.SCP_ST_CONFIRM:
+                return enableNRVO!(QT, SCPStatementType.SCP_ST_CONFIRM)(dg, opts);
+            case SCPStatementType.SCP_ST_EXTERNALIZE:
+                return enableNRVO!(QT, SCPStatementType.SCP_ST_EXTERNALIZE)(dg, opts);
+            case SCPStatementType.SCP_ST_NOMINATE:
+                return enableNRVO!(QT, SCPStatementType.SCP_ST_NOMINATE)(dg, opts);
+            }
+        }
+
+        /***********************************************************************
+
+            Allow `fromBinary` to do NRVO
+
+            We need to initialize using a literal to account for type
+            constructors, but we can't initialize the `union` in a generic way
+            (because we need to use a different name based on the `type`).
+            The normal solution is to put it in a `switch`, but since we
+            declare multiple variable (one per `switch` branch),
+            NRVO is disabled.
+            The solution is to use `static if` to ensure the compiler only sees
+            one temporary and does NRVO on this function, which in turn enables
+            NRVO on the caller.
+
+            See_Also:
+              https://forum.dlang.org/thread/miuevyfxbujwrhghmiuw@forum.dlang.org
+
+        ***********************************************************************/
+
+        extern(D) private static QT enableNRVO (QT, SCPStatementType type) (
+            scope DeserializeDg dg, scope const ref DeserializerOptions opts) @safe
+        {
+            static if (type == SCPStatementType.SCP_ST_PREPARE)
+            {
+                QT ret = {
+                    type_: type,
+                    prepare_: deserializeFull!(typeof(QT.prepare_))(dg, opts)
+                };
+                return ret;
+            }
+            else static if (type == SCPStatementType.SCP_ST_CONFIRM)
+            {
+                QT ret = {
+                    type_: type,
+                    confirm_: deserializeFull!(typeof(QT.confirm_))(dg, opts)
+                };
+                return ret;
+            }
+            else static if (type == SCPStatementType.SCP_ST_EXTERNALIZE)
+            {
+                QT ret = {
+                    type_: type,
+                    externalize_: deserializeFull!(typeof(QT.externalize_))(dg, opts)
+                };
+                return ret;
+            }
+            else static if (type == SCPStatementType.SCP_ST_NOMINATE)
+            {
+                QT ret = {
+                    type_: type,
+                    nominate_: deserializeFull!(typeof(QT.nominate_))(dg, opts)
+                };
+                return ret;
+            }
+            else
+                static assert(0, "Unsupported statement type: " ~ type.stringof);
         }
     }
 
