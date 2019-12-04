@@ -27,6 +27,8 @@
 
 module scpd.Cpp;
 
+import agora.common.Serializer;
+
 //import core.stdcpp.exception;
 import core.stdcpp.xutility;
 import std.meta;
@@ -252,6 +254,8 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
     T* _end;
     T* _end_of_storage;
 
+    alias ElementType = T;
+
     extern(D)
     {
         /// TODO: Separate from `vector` definition
@@ -348,6 +352,31 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
                 vec.push_back(item);
             return vec;
         }
+
+        public void serialize (scope SerializeDg dg) const @safe
+        {
+            serializePart(this.length, dg);
+            foreach (ref entry; this.constIterator())
+                serializePart(entry, dg);
+        }
+
+        static QT fromBinary (QT) (scope DeserializeDg data,
+            scope const ref DeserializerOptions opts) @safe
+        {
+            import std.traits;
+            import scpd.types.Utils;
+
+            // Note: Unqual necessary because we can't construct an
+            // `immutable` vector yet
+            Unqual!(vector!(Unqual!(QT.ElementType))) ret;
+            immutable len = deserializeLength(data, opts.maxLength);
+            foreach (idx; 0 .. len)
+            {
+                auto entry = deserializeFull!(QT.ElementType)(data, opts);
+                push_back(cast() ret, entry);
+            }
+            return () @trusted { return cast(QT) ret; }();
+        }
     }
 }
 
@@ -388,6 +417,11 @@ unittest
     x = 3;
     vec3.push_back(x);
     assert(vec3 != vec);
+}
+
+unittest
+{
+    checkFromBinary!(vector!ubyte);
 }
 
 /// Invoke an std::function pointer (note: must be void* due to mangling issues)
