@@ -259,6 +259,9 @@ pure @safe nothrow @nogc unittest
 
     assert(Amount(100_500_000).integral() == 10);
     assert(Amount(100_500_000).decimal() == 500_000);
+
+    assert(Amount.FreezeAmount.decimal() == 0);
+    assert(Amount.FreezeAmount.integral() == 40_000);
 }
 
 unittest
