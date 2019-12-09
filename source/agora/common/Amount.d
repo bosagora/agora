@@ -38,7 +38,7 @@ public struct Amount
     public static immutable Amount MaxUnitSupply =
         Amount(UnitPerCoin.value * MaxCoinSupply, true);
     /// Exact amount that needs to be staked to make a freezing transaction
-    public static immutable Amount FreezeAmount =
+    public static immutable Amount MinFreezeAmount =
         Amount(UnitPerCoin.value * 40_000, true);
 
     /// Helper type for `toString`
@@ -260,8 +260,8 @@ pure @safe nothrow @nogc unittest
     assert(Amount(100_500_000).integral() == 10);
     assert(Amount(100_500_000).decimal() == 500_000);
 
-    assert(Amount.FreezeAmount.decimal() == 0);
-    assert(Amount.FreezeAmount.integral() == 40_000);
+    assert(Amount.MinFreezeAmount.decimal() == 0);
+    assert(Amount.MinFreezeAmount.integral() == 40_000);
 }
 
 unittest

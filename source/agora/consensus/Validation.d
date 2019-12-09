@@ -94,8 +94,8 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO,
                 return "Transaction: Can only freeze a Payment transaction";
         }
 
-        if (sum_unspent != Amount.FreezeAmount)
-            return "Transaction: Only available when the amount is 40,000";
+        if (sum_unspent.integral() < Amount.MinFreezeAmount.integral())
+            return "Transaction: available when the amount is at least 40,000 BOA";
     }
     else if (tx.type == TxType.Payment)
     {
@@ -358,7 +358,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.FreezeAmount);
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.MinFreezeAmount);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -375,7 +375,7 @@ unittest
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount.FreezeAmount, key_pairs[1].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
@@ -388,7 +388,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.FreezeAmount);
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.MinFreezeAmount);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -405,7 +405,7 @@ unittest
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount.FreezeAmount, key_pairs[1].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
@@ -444,7 +444,7 @@ unittest
     }
 
     // When the privious transaction with too many amount at freezings.
-    // Second transaction is invalid.
+    // Second transaction is valid.
     {
         // Create the previous transaction with type `TxType.Payment`
         previousTx = newCoinbaseTX(key_pairs[0].address, Amount(500_000_000_000L));
@@ -468,8 +468,8 @@ unittest
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
-        // Second Transaction is invalid.
-        assert(!secondTx.isValid(findUTXO, 0));
+        // Second Transaction is valid.
+        assert(secondTx.isValid(findUTXO, 0));
     }
 }
 
@@ -523,7 +523,7 @@ unittest
     // Expected Status : melted
     {
         block_height = 0;
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.FreezeAmount);
+        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.MinFreezeAmount);
 
         // Save to UTXOSet
         previousHash = hashFull(previousTx);
@@ -549,7 +549,7 @@ unittest
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount.FreezeAmount, key_pairs[1].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
@@ -580,7 +580,7 @@ unittest
         thirdTx = Transaction(
             TxType.Payment,
             [Input(secondHash, 0)],
-            [Output(Amount.FreezeAmount, key_pairs[2].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[2].address)]
         );
         thirdTx.inputs[0].signature = key_pairs[1].secret.sign(hashFull(thirdTx)[]);
 
@@ -611,7 +611,7 @@ unittest
         fourthTx = Transaction(
             TxType.Payment,
             [Input(thirdHash, 0)],
-            [Output(Amount.FreezeAmount, key_pairs[3].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
         fourthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
@@ -629,7 +629,7 @@ unittest
         fifthTx = Transaction(
             TxType.Payment,
             [Input(thirdHash, 0)],
-            [Output(Amount.FreezeAmount, key_pairs[3].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
         fifthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 

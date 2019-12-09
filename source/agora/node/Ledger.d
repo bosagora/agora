@@ -638,7 +638,7 @@ private Transaction[] makeTransactionForFreezing (
     Transaction[] transactions;
 
     // always use the same amount, for simplicity
-    const Amount AmountPerTx = Amount.FreezeAmount;
+    const Amount AmountPerTx = Amount.MinFreezeAmount;
 
     foreach (idx; 0 .. TxCount)
     {
@@ -754,7 +754,7 @@ unittest
 version (unittest)
 private Transaction[] splitGenesisTransaction (
     KeyPair[] in_key,
-    KeyPair[] out_key, Amount amount = Amount.FreezeAmount)
+    KeyPair[] out_key, Amount amount = Amount.MinFreezeAmount)
 {
     Transaction[] txes;
     foreach (idx; 0 .. Block.TxsInBlock)
