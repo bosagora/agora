@@ -23,6 +23,7 @@ import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 
@@ -56,6 +57,8 @@ public struct BlockHeader
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
 
+    /// Enrolled validators
+    public Enrollment[] enrollments;
 
     /***************************************************************************
 
@@ -74,6 +77,8 @@ public struct BlockHeader
         dg(this.prev_block[]);
         hashPart(this.height, dg);
         dg(this.merkle_root[]);
+        foreach (enrollment; this.enrollments)
+            hashPart(enrollment, dg);
     }
 
     /***************************************************************************
@@ -92,6 +97,9 @@ public struct BlockHeader
         dg(this.merkle_root[]);
         serializePart(this.validators, dg);
         serializePart(this.signature, dg);
+        serializePart(this.enrollments.length, dg);
+        foreach (enrollment; this.enrollments)
+            serializePart(enrollment, dg);
     }
 
     /***************************************************************************
@@ -110,6 +118,12 @@ public struct BlockHeader
         this.merkle_root = Hash(dg(Hash.sizeof));
         deserializePart(this.validators, dg);
         deserializePart(this.signature, dg);
+
+        size_t enrollments_size;
+        deserializePart(enrollments_size, dg);
+        this.enrollments = uninitializedArray!(Enrollment[])(enrollments_size);
+        foreach (ref val; this.enrollments)
+            deserializePart(val, dg);
     }
 }
 
@@ -388,6 +402,10 @@ unittest
     validators[2] = true;
     validators[4] = true;
 
+    Enrollment[] enrollments;
+    enrollments ~= Enrollment.init;
+    enrollments ~= Enrollment.init;
+
     const KP = Pair.random();
     Block block =
     {
@@ -397,7 +415,8 @@ unittest
             height:      0,
             merkle_root: merkle,
             validators:  validators,
-            signature:   Signature(KP.V, KP.v)
+            signature:   Signature(KP.V, KP.v),
+            enrollments: enrollments,
         },
         txs: [ tx ],
         merkle_tree: [ merkle ],
