@@ -18,6 +18,7 @@
         "../../source/agora/common/Set.d",
         "../../source/agora/common/Types.d",
         "../../source/agora/consensus/data/Block.d",
+        "../../source/agora/consensus/data/Enrollment.d",
         "../../source/agora/consensus/data/Transaction.d",
         "../../source/agora/consensus/Genesis.d",
         "../../source/agora/node/API.d",
