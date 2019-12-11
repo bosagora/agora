@@ -182,7 +182,7 @@ public class EnrollmentManager
         Make an enrollment data for enrollment process
 
         Params:
-            frozen_utxo_hash = the hash of a frozen UTXO used to identify 
+            frozen_utxo_hash = the hash of a frozen UTXO used to identify
                                 a validator and to generate a siging key
 
         Returns:
@@ -219,7 +219,7 @@ public class EnrollmentManager
         };
 
         serializePart(this.signature_noise, dg);
-        
+
         () @trusted {
             auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM node_enroll_data " ~
                 "WHERE key = ?)", "signature_noise");
@@ -247,7 +247,7 @@ public class EnrollmentManager
         Check if the enrollment data exists in the validator set.
 
         Params:
-            enroll_hash = key for an enrollment data which is hash of frozen UTXO 
+            enroll_hash = key for an enrollment data which is hash of frozen UTXO
 
         Returns:
             true if the enrollment manager has the enrollment data
@@ -261,13 +261,13 @@ public class EnrollmentManager
 
         return results.front().peek!bool(0);
     }
-    
+
     /***************************************************************************
 
         Check if the enrollment data exists in the validator set.
 
         Params:
-            enroll_hash = key for an enrollment data which is a hash of a frozen 
+            enroll_hash = key for an enrollment data which is a hash of a frozen
                             UTXO
             enroll = will contain the enrollment data if found
 
