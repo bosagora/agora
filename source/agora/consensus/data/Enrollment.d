@@ -30,7 +30,7 @@ public struct Enrollment
     /// X: random seed, The nth image of random value
     public Hash random_seed;
 
-    /// n: cycle length, the number of rounds a validator will participate in 
+    /// n: cycle length, the number of rounds a validator will participate in
     /// (currently fixed to (freezing period / 2)
     public uint cycle_length;
 
