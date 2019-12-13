@@ -141,9 +141,14 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        if (!this.isValidTransaction(tx) || !this.pool.add(tx))
+        const expect_height = this.getBlockHeight() + 1;
+        auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
+            expect_height);
+
+        if (reason !is null || !this.pool.add(tx))
         {
-            log.info("Rejected tx: {}", tx);
+            log.info("Rejected tx. Reason: {}. Tx: {}",
+                reason !is null ? reason : "double-spend", tx);
             return false;
         }
 
@@ -235,28 +240,6 @@ public class Ledger
         auto block = makeNewBlock(this.last_block, txs);
         if (!this.acceptBlock(block))  // txs should be valid
             assert(0);
-    }
-
-    /***************************************************************************
-
-        Check whether the transaction is valid and may be added to the pool.
-
-        A transaction is valid if it references a previous UTXO in the
-        blockchain. Note that double-spend transactions are not tracked here,
-        they are only tracked during the creation of a block.
-
-        Params:
-            transaction = the transaction to validate
-
-        Returns:
-            true if the transaction may be added to the pool
-
-    ***************************************************************************/
-
-    public bool isValidTransaction (const ref Transaction tx) nothrow @safe
-    {
-        const ulong expect_height = this.getBlockHeight() + 1;
-        return tx.isInvalidReason(this.utxo_set.getUTXOFinder(), expect_height) is null;
     }
 
     /***************************************************************************
