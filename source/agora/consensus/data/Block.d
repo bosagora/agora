@@ -419,7 +419,7 @@ unittest
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs) @safe
+    Transactions txs) @safe nothrow
     if (isInputRange!Transactions)
 {
     Block block;
@@ -435,7 +435,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
 }
 
 ///
-@safe unittest
+@safe nothrow unittest
 {
     auto new_block = makeNewBlock(GenesisBlock, [Transaction.init]);
     auto rng_block = makeNewBlock(GenesisBlock, [Transaction.init].take(1));
