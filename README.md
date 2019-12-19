@@ -43,10 +43,10 @@ Additionally, the following are dependencies:
 - `sqlite3`:    Development library
 - `zlib`:       Development library
 
-Additionally, on OSX, `PKG_CONFIG_PATH` needs to be properly set to pick up `sqlite3`.
-Provided you installed `sqlite-dev` via `brew`, you can run the following command prior to building:
+Additionally, on OSX, `PKG_CONFIG_PATH` needs to be properly set to pick up `sqlite3` and `openssl`.
+Provided you installed those packages via `brew`, you can run the following command prior to building:
 ```console
-export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
+export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig"
 ```
 Since this setting does not persist, we recommend you follow Homebrew's instructions
 and add it to your `.bashrc`, `.zshrc`, etc...
