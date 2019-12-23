@@ -14,6 +14,7 @@
 module agora.common.crypto.Key;
 
 import agora.common.crypto.Crc16;
+import agora.common.crypto.ECC;
 import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Serializer;
@@ -365,4 +366,50 @@ unittest
     import std.string : representation;
     Signature sig = kp.secret.sign("Hello World".representation);
     assert(kp.address.verify(sig, "Hello World".representation));
+}
+
+/*******************************************************************************
+
+    Util to convert SecretKey(Ed25519) to Scalar(X25519)
+    The secretKeyToCurveScalar() function converts an SecretKey(Ed25519)
+    to a Scalar(X25519) secret key and stores it into x25519_sk.
+
+    Params:
+      secret = Secretkey in Ed25519 format
+
+    Returns:
+      Converted X25519 secret key
+
+*******************************************************************************/
+
+public static Scalar secretKeyToCurveScalar (SecretKey secret) nothrow @nogc
+{
+    Scalar x25519_sk;
+    if (crypto_sign_ed25519_sk_to_curve25519(x25519_sk.data[].ptr, secret[].ptr) != 0)
+        assert(0);
+    return x25519_sk;
+}
+
+///
+unittest
+{
+    import agora.common.crypto.Schnorr;
+
+    KeyPair kp = KeyPair.fromSeed(
+        Seed.fromString(
+            "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
+
+    Scalar scalar = secretKeyToCurveScalar(kp.secret);
+    assert(scalar ==
+        Scalar(`0x44245dd23bd7453bf5fe07ec27a29be3dfe8e18d35bba28c7b222b71a4802db8`));
+
+    Pair pair;
+    pair.v = scalar;
+    pair.V = pair.v.toPoint();
+
+    assert(pair.V.data == kp.address.data);
+    Signature enroll_sig = sign(pair, "BOSAGORA");
+
+    Point point_Address = Point(kp.address);
+    assert(verify(point_Address, enroll_sig, "BOSAGORA"));
 }
