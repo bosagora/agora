@@ -79,8 +79,8 @@ public class EnrollmentManager
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
             "(key CHAR(128) PRIMARY KEY, val BLOB NOT NULL)");
 
-        // set node's KeyPair object
-        this.key_pair.v = Scalar(key_pair.secret);
+        // create Pair object from KeyPair object
+        this.key_pair.v = secretKeyToCurveScalar(key_pair.secret);
         this.key_pair.V = this.key_pair.v.toPoint();
 
         // load signature noise
