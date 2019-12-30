@@ -15,9 +15,10 @@ jobs:
       with:
         submodules: true
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.3.1
+      uses: mihails-strasuns/setup-dlang@v0.4.1
       with:
           compiler: ${{ matrix.dc }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install Dub & Sqlite3
       run: |
         brew install pkg-config
@@ -42,9 +43,10 @@ jobs:
       with:
         submodules: true
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.3.1
+      uses: mihails-strasuns/setup-dlang@v0.4.1
       with:
         compiler: ${{ matrix.dc }}
+        gh_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Build & test Agora
       run: |
         ./ci/ci_linux_setup.sh
