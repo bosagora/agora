@@ -20,6 +20,7 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.UTXOSet;
 import agora.utils.Log;
 
 import d2sqlite3.database;
@@ -120,18 +121,28 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool addEnrollment (Enrollment enroll) @safe
+    public bool addEnrollment (const ref Enrollment enroll) @safe nothrow
     {
         static ubyte[] buffer;
-        buffer.length = 0;
 
         // check if already exists
-        if (this.hasEnrollment(enroll.utxo_key))
+        try
         {
-            log.info("Rejected already existing enrollment: {}", enroll);
+            if (this.hasEnrollment(enroll.utxo_key))
+            {
+                this.logMessage("Rejected already existing enrollment",
+                    enroll);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Exception occured in checking if " ~
+                "the enrollment data exists", enroll, ex);
             return false;
         }
 
+        buffer.length = 0;
         () @trusted { assumeSafeAppend(buffer); } ();
 
         scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
@@ -139,12 +150,29 @@ public class EnrollmentManager
             buffer ~= data;
         };
 
-        serializePart(enroll, dg);
+        try
+        {
+            serializePart(enroll, dg);
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Serialization error", enroll, ex);
+            return false;
+        }
 
-        () @trusted {
-            this.db.execute("INSERT INTO validator_set (key, val) VALUES (?, ?)",
-                enroll.utxo_key[], buffer);
-        }();
+        try
+        {
+            () @trusted {
+                this.db.execute("INSERT INTO validator_set (key, val) VALUES (?, ?)",
+                    enroll.utxo_key[], buffer);
+            }();
+
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Database operation error", enroll, ex);
+            return false;
+        }
 
         return true;
     }
@@ -182,15 +210,16 @@ public class EnrollmentManager
         Make an enrollment data for enrollment process
 
         Params:
-            frozen_utxo_hash = the hash of a frozen UTXO used to identify
-                                a validator and to generate a siging key
+            frozen_utxo_hash = the hash of a frozen UTXO used to identify a validator
+                        and to generate a siging key
+            enroll = will contain the Enrollment if created
 
         Returns:
-            an enrollment data
+            true if the enrollment manager succeeded in creating the Enrollment
 
     ***************************************************************************/
 
-    public ref const(Enrollment) createEnrollment (const ref Hash frozen_utxo_hash) @trusted
+    public bool createEnrollment (Hash frozen_utxo_hash, out Enrollment enroll) @trusted nothrow
     {
         static ubyte[] buffer;
         buffer.length = 0;
@@ -218,39 +247,56 @@ public class EnrollmentManager
             buffer ~= data;
         };
 
-        serializePart(this.signature_noise, dg);
+        try
+        {
+            serializePart(this.signature_noise, dg);
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Serialization error", enroll, ex);
+            return false;
+        }
 
-        () @trusted {
-            auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM node_enroll_data " ~
-                "WHERE key = ?)", "signature_noise");
-            if (results.oneValue!(bool))
-            {
-                this.db.execute("UPDATE node_enroll_data SET val = ? WHERE key = ?",
-                    buffer, "signature_noise");
-            }
-            else
-            {
-                this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
-                    "signature_noise", buffer);
-            }
-        }();
+        try
+        {
+            () @trusted {
+                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM node_enroll_data " ~
+                    "WHERE key = ?)", "signature_noise");
+                if (results.oneValue!(bool))
+                {
+                    this.db.execute("UPDATE node_enroll_data SET val = ? WHERE key = ?",
+                        buffer, "signature_noise");
+                }
+                else
+                {
+                    this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
+                        "signature_noise", buffer);
+                }
+            }();
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Database operation error", enroll, ex);
+            return false;
+        }
 
         // signature
         data.enroll_sig = sign(this.key_pair.v, this.key_pair.V, this.signature_noise.V,
             this.signature_noise.v, this.data);
 
-        return this.data;
+        enroll = this.data;
+        return true;
     }
 
     /***************************************************************************
 
-        Check if the enrollment data exists in the validator set.
+        Check if a enrollment data exists in the validator set.
 
         Params:
             enroll_hash = key for an enrollment data which is hash of frozen UTXO
 
         Returns:
-            true if the enrollment manager has the enrollment data
+            true if the validator set has the enrollment data
 
     ***************************************************************************/
 
@@ -264,7 +310,7 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Check if the enrollment data exists in the validator set.
+        Get the enrollment data with the key, and store it to 'enroll' if found
 
         Params:
             enroll_hash = key for an enrollment data which is a hash of a frozen
@@ -290,6 +336,35 @@ public class EnrollmentManager
 
         return false;
     }
+
+    /***************************************************************************
+
+        Logs message
+
+        Params:
+            msg = the log message to be logged
+            enroll = the Enrollment object, the information of which will be logged
+            ex = the Exception object, the message of which will be logged
+
+    ***************************************************************************/
+
+    private static void logMessage (string msg, const ref Enrollment enroll,
+        const Exception ex = null) @safe nothrow
+    {
+        try
+        {
+            if (ex !is null)
+            {
+                log.error("{}, enrollment:{}, exception:{}", msg, enroll, ex);
+            }
+            else
+            {
+                log.info("{}, enrollment:{}", msg, enroll);
+            }
+        }
+        catch (Exception ex)
+        {}
+    }
 }
 
 /// tests for member functions of EnrollmentManager
@@ -300,33 +375,50 @@ unittest
     import agora.consensus.data.UTXOSet;
     import std.format;
 
-    KeyPair[] key_pairs = [KeyPair.random];
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
     // create the first transaction
-    Transaction firstTx = Transaction(
+    Transaction tx1 = Transaction(
         TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output(Amount(100_000), key_pairs[0].address)]
+        [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
     );
-    Hash firstHash = hashFull(firstTx);
 
     // create the second transaction
-    Transaction secondTx = Transaction(
+    Transaction tx2 = Transaction(
         TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output(Amount(50_000), key_pairs[0].address)]
+        [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address)]
     );
-    Hash secondHash = hashFull(secondTx);
 
-    // create an EnrollmentManager object
+    // create the third transaction
+    Transaction tx3 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+    );
+
+    // create and UTXO set and an EnrollmentManager object
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
     auto man = new EnrollmentManager(":memory:", key_pairs[0]);
     scope (exit) man.shutdown();
 
+    utxo_set.updateUTXOCache(tx1, 1);
+    utxo_set.updateUTXOCache(tx2, 1);
+    utxo_set.updateUTXOCache(tx3, 1);
+
+    // find UTXOs to use in making enrollment data
+    Hash[] utxo_hashes;
+    auto utxos = utxo_set.getUTXOs(key_pairs[0].address);
+    foreach (key, value; utxos) {
+        utxo_hashes ~= key;
+    }
+
     // create and add the first Enrollment object
-    auto utxo_hash = utxo_set.getHash(firstHash, 0);
-    auto enroll = man.createEnrollment(utxo_hash);
+    auto utxo_hash = utxo_hashes[0];
+    Enrollment enroll;
+    man.createEnrollment(utxo_hash, enroll);
     assert(man.hasEnrollment(utxo_hash) == false);
     man.addEnrollment(enroll);
     assert(man.getEnrollmentLength() == 1);
@@ -334,8 +426,9 @@ unittest
     assert(man.addEnrollment(enroll) == false);
 
     // create and add the second Enrollment object
-    auto utxo_hash2 = utxo_set.getHash(secondHash, 0);
-    auto enroll2 = man.createEnrollment(utxo_hash2);
+    auto utxo_hash2 = utxo_hashes[1];
+    Enrollment enroll2;
+    man.createEnrollment(utxo_hash2, enroll2);
     man.addEnrollment(enroll2);
     assert(man.getEnrollmentLength() == 2);
 
