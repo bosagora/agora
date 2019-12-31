@@ -15,7 +15,7 @@ jobs:
       with:
         submodules: true
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.4.1
+      uses: mihails-strasuns/setup-dlang@v0.4.2
       with:
           compiler: ${{ matrix.dc }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
       with:
         submodules: true
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.4.1
+      uses: mihails-strasuns/setup-dlang@v0.4.2
       with:
         compiler: ${{ matrix.dc }}
         gh_token: ${{ secrets.GITHUB_TOKEN }}
