@@ -13,6 +13,7 @@
 
 module agora.consensus.data.UTXOSet;
 
+import agora.common.crypto.Key;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
@@ -208,6 +209,23 @@ public class UTXOSet
 
     /***************************************************************************
 
+        Get UTXOs from the UTXO set
+
+        Params:
+            pubkey = the key by which the UTXO set search UTXOs
+
+        Returns:
+            the associative array for UTXOs
+
+    ***************************************************************************/
+
+    public UTXOSetValue[Hash] getUTXOs (const ref PublicKey pubkey) @safe nothrow
+    {
+        return this.utxo_db.getUTXOs(pubkey);
+    }
+
+    /***************************************************************************
+
         Find an UTXOSetValue in the UTXO set.
 
         Params:
@@ -297,7 +315,7 @@ private class UTXODB
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~
-            "(key BLOB PRIMARY KEY, val BLOB NOT NULL)");
+            "(key BLOB PRIMARY KEY, val BLOB NOT NULL, pubkey_hash BLOB NOT NULL)");
     }
 
     /***************************************************************************
@@ -359,6 +377,36 @@ private class UTXODB
 
     /***************************************************************************
 
+        Get UTXOs from the UTXO set
+
+        Params:
+            pubkey = the key by which the UTXO set search UTXOs
+
+        Returns:
+            the associative array for UTXOs
+
+    ***************************************************************************/
+
+    public UTXOSetValue[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @trusted
+    {
+        scope (failure) assert(0);
+
+        UTXOSetValue[Hash] utxos;
+        auto results = db.execute("SELECT key, val FROM utxo_map WHERE pubkey_hash = ?",
+            pubkey[]);
+
+        foreach (row; results)
+        {
+            auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
+            auto value = deserializeFull!UTXOSetValue(row.peek!(ubyte[])(1));
+            utxos[hash] = value;
+        }
+
+        return utxos;
+    }
+
+    /***************************************************************************
+
         Add an UTXOSetValue to the map
 
         Params:
@@ -382,8 +430,8 @@ private class UTXODB
 
         scope (failure) assert(0);
         () @trusted {
-            db.execute("INSERT INTO utxo_map (key, val) VALUES (?, ?)",
-                key[], buffer); }();
+            db.execute("INSERT INTO utxo_map (key, val, pubkey_hash) VALUES (?, ?, ?)",
+                key[], buffer, value.output.address[]); }();
     }
 
     /***************************************************************************
@@ -401,4 +449,55 @@ private class UTXODB
         () @trusted {
             db.execute("DELETE FROM utxo_map WHERE key = ?", key[]); }();
     }
+}
+
+/// test for get UTXOs with a node's public key
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.data.UTXOSet;
+
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+
+    // create the first transaction
+    Transaction tx1 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
+    );
+    utxo_set.updateUTXOCache(tx1, 0);
+    Hash hash1 = hashFull(tx1);
+    auto utxo_hash = utxo_set.getHash(hash1, 0);
+
+    // test for getting UTXOs
+    auto utxos = utxo_set.getUTXOs(key_pairs[0].address);
+    assert(utxos[utxo_hash].output.address == key_pairs[0].address);
+
+    // create the second transaction
+    Transaction tx2 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address)]
+    );
+    utxo_set.updateUTXOCache(tx2, 0);
+
+    // create the third transaction
+    Transaction tx3 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+    );
+    utxo_set.updateUTXOCache(tx3, 0);
+
+    // test for getting UTXOs for the first KeyPair
+    utxos = utxo_set.getUTXOs(key_pairs[0].address);
+    assert(utxos.length == 2);
+
+    // test for getting UTXOs for the second KeyPair
+    utxos = utxo_set.getUTXOs(key_pairs[1].address);
+    assert(utxos.length == 1);
 }
