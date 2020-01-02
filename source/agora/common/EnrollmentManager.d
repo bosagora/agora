@@ -74,7 +74,7 @@ public class EnrollmentManager
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key BLOB PRIMARY KEY, val BLOB NOT NULL)");
+            "(key BLOB PRIMARY KEY, val BLOB NOT NULL, enrolled_height INTEGER)");
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
@@ -203,6 +203,72 @@ public class EnrollmentManager
     public void removeEnrollment (const ref Hash enroll_hash) @trusted
     {
         this.db.execute("DELETE FROM validator_set WHERE key = ?", enroll_hash[]);
+    }
+
+    /***************************************************************************
+
+        In validatorSet DB, return the enrolled block height.
+
+        Params:
+            enroll_hash = key for an enrollment block height
+
+        Returns:
+            the enrolled block height, or 0 if no matching key exists
+
+    ***************************************************************************/
+
+    public size_t getEnrolledHeight (const ref Hash enroll_hash) @trusted
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT enrolled_height FROM validator_set" ~
+                " WHERE key = ?", enroll_hash[]);
+            if (results.empty)
+                return size_t.init;
+
+            return results.oneValue!(size_t);
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error {}", ex);
+            return size_t.init;
+        }
+    }
+
+    /***************************************************************************
+
+        Update the enrolled height of the validatorSet DB.
+
+        Params:
+            enroll_hash = enrollment blockheight to update enroll hash
+            block_height = enrolled blockheight
+
+        Returns:
+            true if the update operation was successful, false otherwise
+
+    ***************************************************************************/
+
+    public bool updateEnrolledHeight (const ref Hash enroll_hash,
+        const size_t block_height) @safe
+    {
+        try
+        {
+            if (this.getEnrolledHeight(enroll_hash) > 0)
+                return false;
+
+            () @trusted {
+                this.db.execute(
+                    "UPDATE validator_set SET enrolled_height = ? WHERE key = ?",
+                    block_height, enroll_hash[]);
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error, updateEnrolledHeight:{}, exception:{}",
+                enroll_hash, ex);
+            return false;
+        }
+        return true;
     }
 
     /***************************************************************************
@@ -443,4 +509,11 @@ unittest
 
     // test for getEnrollment with removed enrollment
     assert(!man.getEnrollment(utxo_hash2, stored_enroll));
+
+    // test for enrollment block height update
+    assert(!man.getEnrolledHeight(utxo_hash));
+    assert(man.updateEnrolledHeight(utxo_hash, 9));
+    assert(man.getEnrolledHeight(utxo_hash) == 9);
+    assert(!man.updateEnrolledHeight(utxo_hash, 9));
+    assert(man.getEnrolledHeight(utxo_hash2) == 0);
 }
