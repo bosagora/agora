@@ -14,12 +14,17 @@
 module agora.consensus.Validation;
 
 import agora.common.Amount;
+import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
+import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
+
+import std.conv;
 
 /// Delegate to find an unspent UTXO
 public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
@@ -988,6 +993,71 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
         return "Block: Merkle root does not match header's";
 
     return null;
+}
+
+/*******************************************************************************
+
+    Check the validity of an enrollment.
+
+    A Validator's enrollment is considered valid if:
+        - UTXO is unspent frozen utxo
+        - Signatures are authentic
+        - The frozen amount must be equal to or greater than 40,000 BOA
+        - The block height must be at least unlock_height or greater of the UTXO.
+
+    Params:
+        block_height = the height of the direct ancestor of this block
+        enrollment = The enrollment of the target to be verified
+        findUTXO = delegate to find the referenced unspent UTXOs with
+
+    Returns:
+        `null` if the validator's UTXO is valid, otherwise a string
+        explaining the reason it is invalid.
+
+*******************************************************************************/
+
+public string isInvalidEnrollmentReason (const ulong block_height,
+    const ref Enrollment enrollment, UTXOFinder findUTXO) nothrow @safe
+{
+    UTXOSetValue utxo_set_value;
+    if (!findUTXO(enrollment.utxo_key, size_t.max, utxo_set_value))
+        return "Unspent frozen UTXO not found for the validator.";
+
+    if (utxo_set_value.type != TxType.Freeze)
+        return "UTXO is not frozen.";
+
+    Point address;
+    try
+    {
+        address = Point(utxo_set_value.output.address);
+    }
+    catch (Exception ex)
+    {
+        return "Error converting address to point";
+    }
+
+    if (!verify(address, enrollment.enroll_sig, enrollment))
+        return "Enrollment signature verification has an error.";
+
+    if (utxo_set_value.output.value.integral() < Amount.MinFreezeAmount.integral())
+    {
+        static immutable Message = "The frozen amount must be equal to or greater than " ~
+            Amount.MinFreezeAmount.integral().to!string ~ " BOA.";
+        return Message;
+    }
+
+    if (block_height < utxo_set_value.unlock_height)
+        return "The UTXO is not unlocked.";
+
+    return null;
+}
+
+/// Ditto but returns `bool`, only usable in unittests
+version (unittest)
+public bool isValidEnrollment (const ulong block_height,
+    const ref Enrollment enrollment, UTXOFinder findUTXO) nothrow @safe
+{
+    return isInvalidEnrollmentReason(block_height, enrollment, findUTXO) is null;
 }
 
 /// Ditto but returns `bool`, only usable in unittests
