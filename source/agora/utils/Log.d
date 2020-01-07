@@ -41,19 +41,54 @@ import std.range : Cycle, cycle, take;
 /// Insert a logger in the current scope, named log
 public template AddLogger (string moduleName = __MODULE__)
 {
-    import ocean.util.log.Logger;
+    import Ocean = ocean.util.log.Logger;
+    import agora.common.Types;
+
+    /// nothrow wrapper around Ocean's Logger
+    public static struct Logger
+    {
+        private Ocean.Logger logger;
+
+        // workaround: weird CT bug in NetworkManager.d call:
+        // log.info("Discovery reached. {} peers connected.", this.peers.length);
+        // source/agora/network/NetworkManager.d(149,12): Error: no property info for type Logger
+        public void info (Args...) (Args args) @safe nothrow
+        {
+            try
+            {
+                this.logger.info(args);
+            }
+            catch (Exception ex)
+            {
+                assert(0, ex.msg);
+            }
+        }
+
+        public void opDispatch (string call, Args...) (Args args) @safe nothrow
+        {
+            try
+            {
+                mixin("this.logger." ~ call ~ "(args);");
+            }
+            catch (Exception ex)
+            {
+                assert(0, ex.msg);
+            }
+        }
+    }
+
     private Logger log;
     static this ()
     {
         import core.memory;
-        log = Log.lookup(moduleName);
-        GC.addRoot(cast(void*)log);
+        log = Logger(Ocean.Log.lookup(moduleName));
+        GC.addRoot(cast(void*)log.logger);
     }
 
     static ~this()
     {
         import core.memory;
-        GC.removeRoot(cast(void*)log);
+        GC.removeRoot(cast(void*)log.logger);
     }
 }
 

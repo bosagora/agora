@@ -182,7 +182,6 @@ public class BanManager
 
     public void banUntil (Address address, time_t banned_until) @safe nothrow
     {
-        scope (failure) assert(0);
         log.trace("BanManager: Address {} banned until {}", address, banned_until);
         this.get(address).banned_until = banned_until;
     }
