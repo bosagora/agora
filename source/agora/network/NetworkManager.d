@@ -279,9 +279,8 @@ public class NetworkManager
         }
         catch (Exception ex)
         {
-            scope (failure) assert(0);
             log.error("Couldn't retrieve blocks: {}. Will try again later..",
-                ex.message);
+                ex.msg);
         }
     }
 
