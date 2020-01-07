@@ -106,7 +106,7 @@ public struct Scalar
 
     /// Operator overloads for `+`, `-`, `*`
     public Scalar opBinary (string op)(const scope auto ref Scalar rhs)
-        const nothrow @nogc
+        const nothrow @nogc @trusted
     {
         Scalar result = void;
         static if (op == "+")
@@ -125,7 +125,7 @@ public struct Scalar
 
     /// Get the complement of this scalar
     public Scalar opUnary (string s)()
-        const nothrow @nogc
+        const nothrow @nogc @trusted
         if (s == "-")
     {
         Scalar result = void;
@@ -134,7 +134,7 @@ public struct Scalar
     }
 
     /// Generate a random scalar
-    public static Scalar random () nothrow @nogc
+    public static Scalar random () nothrow @nogc @trusted
     {
         Scalar ret = void;
         crypto_core_ed25519_scalar_random(ret.data[].ptr);
@@ -142,7 +142,7 @@ public struct Scalar
     }
 
     /// Return the point corresponding to this scalar multiplied by the generator
-    public Point toPoint () const nothrow @nogc
+    public Point toPoint () const nothrow @nogc @trusted
     out (val) { assert(crypto_core_ed25519_is_valid_point(val.data[].ptr)); }
     do {
         Point ret = void;
@@ -237,7 +237,7 @@ public struct Point
 
     /// Operator overloads for points additions
     public Point opBinary (string op)(const scope auto ref Point rhs)
-        const nothrow @nogc
+        const nothrow @nogc @trusted
         if (op == "+" || op == "-")
     {
         Point result = void;
@@ -259,7 +259,7 @@ public struct Point
 
     /// Operator overloads for scalar multiplication
     public Point opBinary (string op)(const scope auto ref Scalar rhs)
-        const nothrow @nogc
+        const nothrow @nogc @trusted
         if (op == "*")
     {
         Point result = void;
@@ -271,7 +271,7 @@ public struct Point
 
     /// Ditto
     public Point opBinaryRight (string op)(const scope auto ref Scalar lhs)
-        const nothrow @nogc
+        const nothrow @nogc @trusted
         if (op == "*")
     {
         Point result = void;

@@ -54,7 +54,7 @@ import std.range;
 
 
 /// Single signature example
-nothrow @nogc unittest
+nothrow @nogc @safe unittest
 {
     Pair kp = Pair.random();
     auto signature = sign(kp, "Hello world");
@@ -62,7 +62,7 @@ nothrow @nogc unittest
 }
 
 /// Multi-signature example
-nothrow @nogc unittest
+nothrow @nogc @safe unittest
 {
     // Setup
     static immutable string secret = "BOSAGORA for the win";
@@ -128,7 +128,7 @@ public struct Pair
     public Point V;
 
     /// Generate a random value `v` and a point on the curve `V` where `V = v.G`
-    public static Pair random () nothrow @nogc
+    public static Pair random () nothrow @nogc @safe
     {
         Scalar sc = Scalar.random();
         return Pair(sc, sc.toPoint());
@@ -137,7 +137,7 @@ public struct Pair
 
 /// Single-signer trivial API
 public Signature sign (T) (const ref Pair kp, auto ref T data)
-    nothrow @nogc
+    nothrow @nogc @safe
 {
     const R = Pair.random();
     return sign!T(kp.v, kp.V, R.V, R.v, data);
@@ -145,7 +145,7 @@ public Signature sign (T) (const ref Pair kp, auto ref T data)
 
 /// Single-signer privkey API
 public Signature sign (T) (const ref Scalar privateKey, T data)
-    nothrow @nogc
+    nothrow @nogc @safe
 {
     const R = Pair.random();
     return sign!T(privateKey, privateKey.toPoint(), R.V, R.v, data);
@@ -156,7 +156,7 @@ public Signature sign (T) (
     const ref Scalar x, const ref Point X,
     const ref Point R, const ref Scalar r,
     auto ref T data)
-    nothrow @nogc
+    nothrow @nogc @trusted
 {
     /*
       G := Generator point:
@@ -198,7 +198,7 @@ public Signature sign (T) (
 *******************************************************************************/
 
 public bool verify (T) (const ref Point X, const ref Signature s, auto ref T data)
-    nothrow @nogc
+    nothrow @nogc @trusted
 {
     // Compute the challenge and reduce the hash to a scalar
     Scalar c = hashFull(Message!T(X, s.R, data));
@@ -210,7 +210,7 @@ public bool verify (T) (const ref Point X, const ref Signature s, auto ref T dat
 }
 
 ///
-nothrow @nogc unittest
+nothrow @nogc @safe unittest
 {
     Scalar key = Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`);
     Pair kp = Pair(key, key.toPoint());
@@ -218,7 +218,7 @@ nothrow @nogc unittest
     assert(verify(kp.V, signature, "Hello world"));
 }
 
-nothrow @nogc unittest
+nothrow @nogc @safe unittest
 {
     Scalar key = Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`);
     Pair kp = Pair(key, key.toPoint());
@@ -226,7 +226,7 @@ nothrow @nogc unittest
     assert(!verify(kp.V, signature, "Hello world"));
 }
 
-nothrow @nogc unittest
+nothrow @nogc @safe unittest
 {
     static immutable string secret = "BOSAGORA for the win";
     Pair kp1 = Pair.random();
