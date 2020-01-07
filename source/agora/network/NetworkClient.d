@@ -178,7 +178,7 @@ class NetworkClient
         catch (Exception ex)
         {
             scope (failure) assert(0);
-            log.trace("Failed to send envelope: %s", ex.msg);
+            log.trace("Failed to send envelope: {}", ex.msg);
             return false;
         }
     }
