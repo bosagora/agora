@@ -201,7 +201,7 @@ public class AgoraLayout : Appender.Layout
 
     Logging function which is only called from C++ code
 
-    It's for C++ code to use agora's logger instead of C++ stdout 
+    It's for C++ code to use agora's logger instead of C++ stdout
 
     Params:
         logger = the logger name
