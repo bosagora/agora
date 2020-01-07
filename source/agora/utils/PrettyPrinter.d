@@ -45,7 +45,7 @@ unittest
 
 /// Returns:
 /// A formatting struct for a type, or the value if no such struct exists
-public auto prettify (T) (const ref T input)
+public auto prettify (T) (const ref T input) nothrow
 {
     static if (is(T : const Amount))
         return AmountFmt(input);
@@ -70,21 +70,28 @@ private struct AmountFmt
 {
     private Amount value;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
-        formattedWrite(sink, "%,d", this.value.integral());
-        if (auto dec = this.value.decimal())
+        try
         {
-            sink(".");
-            size_t mask = 1_000_000;
-            while (dec)
+            formattedWrite(sink, "%,d", this.value.integral());
+            if (auto dec = this.value.decimal())
             {
-                if (mask == 100_000 || mask == 100)
-                    sink(",");
-                sink("0123456789"[dec / mask .. (dec / mask) + 1]);
-                dec %= mask;
-                mask /= 10;
+                sink(".");
+                size_t mask = 1_000_000;
+                while (dec)
+                {
+                    if (mask == 100_000 || mask == 100)
+                        sink(",");
+                    sink("0123456789"[dec / mask .. (dec / mask) + 1]);
+                    dec %= mask;
+                    mask /= 10;
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
         }
     }
 }
@@ -103,29 +110,36 @@ private struct HashFmt
 {
     private const(Hash) value;
 
-    public this (ref const Hash r) @safe
+    public this (ref const Hash r) @safe nothrow
     {
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
-        // Only format `0xABCD..EFGH`
-        enum StartUntil = 6;
-        enum EndFrom    = Hash.StringBufferSize - 4;
-        size_t count;
-        scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
-                if (count < StartUntil)
-                {
-                    sink(data);
-                    if (count + data.length >= StartUntil)
-                        sink("...");
-                }
-                if (count >= EndFrom)
-                    sink(data);
-                count += data.length;
-            };
-        this.value.toString(wrapper);
+        try
+        {
+            // Only format `0xABCD..EFGH`
+            enum StartUntil = 6;
+            enum EndFrom    = Hash.StringBufferSize - 4;
+            size_t count;
+            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
+                    if (count < StartUntil)
+                    {
+                        sink(data);
+                        if (count + data.length >= StartUntil)
+                            sink("...");
+                    }
+                    if (count >= EndFrom)
+                        sink(data);
+                    count += data.length;
+                };
+            this.value.toString(wrapper);
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -142,30 +156,37 @@ private struct PublicKeyFmt
 {
     private const(PublicKey) value;
 
-    public this (ref const PublicKey r) @safe
+    public this (ref const PublicKey r) @safe nothrow
     {
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
-        // e.g. GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW
-        enum StringBufferSize = 56;
-        enum StartUntil = 4;  // Only format `ABCD..EFGH`
-        enum EndFrom    = StringBufferSize - 4;
-        size_t count;
-        scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
-                if (count < StartUntil)
-                {
-                    sink(data);
-                    if (count + data.length >= StartUntil)
-                        sink("...");
-                }
-                if (count >= EndFrom)
-                    sink(data);
-                count += data.length;
-            };
-        this.value.toString(wrapper);
+        try
+        {
+            // e.g. GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW
+            enum StringBufferSize = 56;
+            enum StartUntil = 4;  // Only format `ABCD..EFGH`
+            enum EndFrom    = StringBufferSize - 4;
+            size_t count;
+            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
+                    if (count < StartUntil)
+                    {
+                        sink(data);
+                        if (count + data.length >= StartUntil)
+                            sink("...");
+                    }
+                    if (count >= EndFrom)
+                        sink(data);
+                    count += data.length;
+                };
+            this.value.toString(wrapper);
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -182,30 +203,37 @@ private struct PubKeyFmt
 {
     private const(PublicKey) value;
 
-    public this (ref const PublicKey r) @safe
+    public this (ref const PublicKey r) @safe nothrow
     {
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
-        // Public keys are 56 characters, only take the first and last 4
-        // Only format `0xABCD..EFGH`
-        enum StartUntil = 4;
-        enum EndFrom    = 56 - 4;
-        size_t count;
-        scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
-                if (count < StartUntil)
-                {
-                    sink(data);
-                    if (count + data.length >= StartUntil)
-                        sink("...");
-                }
-                if (count >= EndFrom)
-                    sink(data);
-                count += data.length;
-            };
-        this.value.toString(wrapper);
+        try
+        {
+            // Public keys are 56 characters, only take the first and last 4
+            // Only format `0xABCD..EFGH`
+            enum StartUntil = 4;
+            enum EndFrom    = 56 - 4;
+            size_t count;
+            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
+                    if (count < StartUntil)
+                    {
+                        sink(data);
+                        if (count + data.length >= StartUntil)
+                            sink("...");
+                    }
+                    if (count >= EndFrom)
+                        sink(data);
+                    count += data.length;
+                };
+            this.value.toString(wrapper);
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -221,16 +249,23 @@ private struct InputFmt
 {
     private const(Input) value;
 
-    public this (ref const Input r) @safe
+    public this (ref const Input r) @safe nothrow
     {
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
-        formattedWrite(sink, "%s[%d]:%s",
-            HashFmt(this.value.previous), this.value.index,
-            HashFmt(this.value.signature));
+        try
+        {
+            formattedWrite(sink, "%s[%d]:%s",
+                HashFmt(this.value.previous), this.value.index,
+                HashFmt(this.value.signature));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -245,15 +280,22 @@ private struct OutputFmt
 {
     private const(Output) value;
 
-    public this (ref const Output r) @safe
+    public this (ref const Output r) @safe nothrow
     {
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
-        formattedWrite(sink, "%s(%s)",
-            PubKeyFmt(this.value.address), AmountFmt(this.value.value));
+        try
+        {
+            formattedWrite(sink, "%s(%s)",
+                PubKeyFmt(this.value.address), AmountFmt(this.value.value));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -268,25 +310,32 @@ private struct TransactionFmt
 {
     private const(Transaction) value;
 
-    public this (ref const Transaction r) @safe
+    public this (ref const Transaction r) @safe nothrow
     {
         this.value = r;
     }
 
     public void toString (scope void delegate(scope const(char)[]) @safe sink)
-        @safe
+        @safe nothrow
     {
-        enum InputPerLine = 3;
-        enum OutputPerLine = 3;
+        try
+        {
+            enum InputPerLine = 3;
+            enum OutputPerLine = 3;
 
-        formattedWrite(sink, "Type : %s, Inputs (%d): %(%(%s, %),\n%)\n",
-            this.value.type,
-            this.value.inputs.length,
-            this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
+            formattedWrite(sink, "Type : %s, Inputs (%d): %(%(%s, %),\n%)\n",
+                this.value.type,
+                this.value.inputs.length,
+                this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
 
-        formattedWrite(sink, "Outputs (%d): %(%(%s, %),\n%)",
-            this.value.outputs.length,
-            this.value.outputs.map!(v => OutputFmt(v)).chunks(OutputPerLine));
+            formattedWrite(sink, "Outputs (%d): %(%(%s, %),\n%)",
+                this.value.outputs.length,
+                this.value.outputs.map!(v => OutputFmt(v)).chunks(OutputPerLine));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -305,16 +354,23 @@ private struct BlockHeaderFmt
 {
     private const(BlockHeader) value;
 
-    public this (ref const BlockHeader r) @safe
+    public this (ref const BlockHeader r) @safe nothrow
     {
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate(scope const(char)[]) @safe sink) nothrow
         @safe
     {
-        formattedWrite(sink, "Height: %d, Prev: %s, Root: %s",
-            this.value.height, HashFmt(this.value.prev_block), HashFmt(this.value.merkle_root));
+        try
+        {
+            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s",
+                this.value.height, HashFmt(this.value.prev_block), HashFmt(this.value.merkle_root));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
@@ -330,17 +386,24 @@ private struct BlockFmt
 {
     private const(Block) value;
 
-    public this (ref const Block r) @safe
+    public this (ref const Block r) @safe nothrow
     {
         this.value = r;
     }
 
     public void toString (scope void delegate(scope const(char)[]) @safe sink)
-        @safe
+        @safe nothrow
     {
-        formattedWrite(sink, "%s, Transactions: %d\n",
-            BlockHeaderFmt(this.value.header), this.value.txs.length);
-        formattedWrite(sink, "%(%s\n%)", this.value.txs.map!(v => TransactionFmt(v)));
+        try
+        {
+            formattedWrite(sink, "%s, Transactions: %d\n",
+                BlockHeaderFmt(this.value.header), this.value.txs.length);
+            formattedWrite(sink, "%(%s\n%)", this.value.txs.map!(v => TransactionFmt(v)));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
     }
 }
 
