@@ -26,10 +26,6 @@ import agora.consensus.Genesis;
 
 import std.conv;
 
-/// Delegate to find an unspent UTXO
-public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
-    out UTXOSetValue) @safe nothrow;
-
 /*******************************************************************************
 
     Get result of transaction data and signature verification

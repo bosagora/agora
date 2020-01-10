@@ -19,7 +19,6 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
-import agora.consensus.Validation;
 import agora.utils.Log;
 
 import d2sqlite3.database;
@@ -27,6 +26,10 @@ import d2sqlite3.database;
 import std.file;
 
 mixin AddLogger!();
+
+/// Delegate to find an unspent UTXO
+public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
+    out UTXOSetValue) @safe nothrow;
 
 /// The structure of spendable transaction output
 public struct UTXOSetValue
