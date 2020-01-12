@@ -61,15 +61,16 @@ unittest
     import agora.common.crypto.Key;
     import core.time;
     import geod24.LocalRest;
+    import geod24.Registry;
     import std.algorithm;
 
     /// node which returns bad blocks
     static class BadNode : TestNode
     {
         ///
-        public this (Config config)
+        public this (Config config, Registry* reg)
         {
-            super(config);
+            super(config, reg);
         }
 
         /// return phony blocks
@@ -110,15 +111,11 @@ unittest
         {
             RemoteAPI!TestAPI api;
             if (this.nodes.length == 0)
-            {
-                api = RemoteAPI!TestAPI.spawn!(BadNode)(conf);
-            }
+                api = RemoteAPI!TestAPI.spawn!(BadNode)(conf, &this.reg);
             else
-            {
-                api = RemoteAPI!TestAPI.spawn!(TestNode)(conf);
-            }
+                api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg);
 
-            TestNetworkManager.tbn[address.toString()] = api.tid();
+            this.reg.register(address.toString(), api.tid());
             this.apis[address] = api;
             this.nodes ~= api;
         }
