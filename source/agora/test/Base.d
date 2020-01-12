@@ -42,6 +42,9 @@ import agora.utils.Log;
 
 import ocean.util.log.Logger;
 
+import geod24.LocalRest;
+import geod24.Registry;
+
 import core.stdc.time;
 import std.array;
 import std.algorithm.iteration;
@@ -142,6 +145,8 @@ private UnitTestResult customModuleUnitTester ()
 
 public class LocalRestTaskManager : TaskManager
 {
+    static import geod24.LocalRest;
+
     /***************************************************************************
 
         Run an asynchronous task in LocalRest's event loop.
@@ -153,7 +158,6 @@ public class LocalRestTaskManager : TaskManager
 
     public override void runTask (void delegate() dg)
     {
-        static import geod24.LocalRest;
         geod24.LocalRest.runTask(dg);
     }
 
@@ -168,7 +172,6 @@ public class LocalRestTaskManager : TaskManager
 
     public override void wait (Duration dur)
     {
-        static import geod24.LocalRest;
         geod24.LocalRest.sleep(dur);
     }
 }
@@ -207,8 +210,6 @@ public class FakeClockBanManager : BanManager
 
 public class TestAPIManager
 {
-    static import std.concurrency;
-    import geod24.LocalRest;
     import core.time;
     import core.stdc.time;
 
@@ -217,11 +218,20 @@ public class TestAPIManager
     /// Also kept here to avoid any eager garbage collection.
     public RemoteAPI!TestAPI[PublicKey] apis;
 
+    /// Registry holding the nodes
+    protected Registry reg;
+
+    ///
+    public this ()
+    {
+        this.reg.initialize();
+    }
+
     /// Initialize a new node
     public void createNewNode (PublicKey address, Config conf)
     {
-        auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf);
-        TestNetworkManager.tbn[address.toString()] = api.tid();
+        auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg);
+        this.reg.register(address.toString(), api.tid());
         this.apis[address] = api;
     }
 
@@ -351,22 +361,21 @@ public class TestAPIManager
     not do IO (or appear not to).
 
     In the current design, all nodes should be instantiated upfront,
-    registered via `std.concurrency.register`, and located by `getClient`.
+    registered via `geod24.Registry`, and located by `getClient`.
 
 *******************************************************************************/
 
 public class TestNetworkManager : NetworkManager
 {
-    import geod24.LocalRest;
-
-    /// Workaround compiler bug that triggers in `std.concurrency`
-    public __gshared std.concurrency.Tid[string] tbn;
+    ///
+    public Registry* registry;
 
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
         in string[] peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman)
+        TaskManager taskman, Registry* reg)
     {
+        this.registry = reg;
         super(config, ban_conf, peers, dns_seeds, metadata, taskman);
         // NetworkManager assumes IP are used but we use pubkey
         this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
@@ -375,8 +384,9 @@ public class TestNetworkManager : NetworkManager
     ///
     protected final override API getClient (Address address, Duration timeout)
     {
-        if (auto ptr = address in tbn)
-            return new RemoteAPI!API(*ptr, timeout);
+        auto tid = this.registry.locate(address);
+        if (tid != typeof(tid).init)
+            return new RemoteAPI!API(tid, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
     }
@@ -417,9 +427,12 @@ public interface TestAPI : API
 /// Ditto
 public class TestNode : Node, TestAPI
 {
+    private Registry* registry;
+
     ///
-    public this (Config config)
+    public this (Config config, Registry* reg)
     {
+        this.registry = reg;
         super(config);
     }
 
@@ -478,7 +491,7 @@ public class TestNode : Node, TestAPI
         TaskManager taskman)
     {
         return new TestNetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata, taskman);
+            dns_seeds, metadata, taskman, this.registry);
     }
 }
 
