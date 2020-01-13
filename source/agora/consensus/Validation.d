@@ -1002,7 +1002,8 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
         - The block height must be at least unlock_height or greater of the UTXO.
 
     Params:
-        block_height = the height of the direct ancestor of this block
+        block_height = the height at which the enrollment wants to be
+        added to the block
         enrollment = The enrollment of the target to be verified
         findUTXO = delegate to find the referenced unspent UTXOs with
 
