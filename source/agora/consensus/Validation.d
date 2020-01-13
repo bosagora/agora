@@ -902,8 +902,8 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
 
 *******************************************************************************/
 
-public string isInvalidEnrollmentReason (const ulong block_height,
-    const ref Enrollment enrollment, UTXOFinder findUTXO) nothrow @safe
+public string isInvalidEnrollmentReason (const ref Enrollment enrollment,
+    const ulong block_height, UTXOFinder findUTXO) nothrow @safe
 {
     UTXOSetValue utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, size_t.max, utxo_set_value))
@@ -940,10 +940,10 @@ public string isInvalidEnrollmentReason (const ulong block_height,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValidEnrollment (const ulong block_height,
-    const ref Enrollment enrollment, UTXOFinder findUTXO) nothrow @safe
+public bool isValidEnrollment (const ref Enrollment enrollment,
+    const ulong block_height, UTXOFinder findUTXO) nothrow @safe
 {
-    return isInvalidEnrollmentReason(block_height, enrollment, findUTXO) is null;
+    return isInvalidEnrollmentReason(enrollment, block_height, findUTXO) is null;
 }
 
 /// Ditto but returns `bool`, only usable in unittests
@@ -1225,10 +1225,10 @@ unittest
     enroll4.enroll_sig = sign(node_key_pair_4.v, node_key_pair_4.V, signature_noise.V,
         signature_noise.v, enroll4);
 
-    assert(!isValidEnrollment(1, enroll1, utxoFinder));
-    assert(!isValidEnrollment(1, enroll2, utxoFinder));
-    assert(!isValidEnrollment(1, enroll3, utxoFinder));
-    assert(!isValidEnrollment(1, enroll4, utxoFinder));
+    assert(!isValidEnrollment(enroll1, 1, utxoFinder));
+    assert(!isValidEnrollment(enroll2, 1, utxoFinder));
+    assert(!isValidEnrollment(enroll3, 1, utxoFinder));
+    assert(!isValidEnrollment(enroll4, 1, utxoFinder));
 
     utxo_set.updateUTXOCache(tx1, 0);
     utxo_set.updateUTXOCache(tx2, 0);
@@ -1245,17 +1245,17 @@ unittest
     assert(utxos4[utxo_hash4].output.address == key_pairs[3].address);
 
     // Nomal
-    assert(isValidEnrollment(1, enroll1, utxoFinder));
+    assert(isValidEnrollment(enroll1, 1, utxoFinder));
 
     // Unspent frozen UTXO not found for the validator.
-    assert(!isValidEnrollment(1, enroll1, utxoFinder));
+    assert(!isValidEnrollment(enroll1, 1, utxoFinder));
 
     // UTXO is not frozen.
-    assert(!isValidEnrollment(1, enroll2, utxoFinder));
+    assert(!isValidEnrollment(enroll2, 1, utxoFinder));
 
     // The frozen amount must be equal to or greater than 40,000 BOA.
-    assert(!isValidEnrollment(1, enroll3, utxoFinder));
+    assert(!isValidEnrollment(enroll3, 1, utxoFinder));
 
     // Enrollment signature verification has an error.
-    assert(!isValidEnrollment(1, enroll4, utxoFinder));
+    assert(!isValidEnrollment(enroll4, 1, utxoFinder));
 }

@@ -140,8 +140,8 @@ public class EnrollmentManager
         static ubyte[] buffer;
 
         // check validity of the enrollment data
-        if (auto reason = isInvalidEnrollmentReason(block_height + 1,
-            enroll, finder))
+        if (auto reason = isInvalidEnrollmentReason(enroll, block_height + 1,
+            finder))
         {
             this.logMessage("Invalid enrollment data, Reason: " ~ reason,
                 enroll);
