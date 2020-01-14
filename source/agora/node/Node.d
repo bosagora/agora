@@ -64,34 +64,34 @@ public class Node : API
     protected Metadata metadata;
 
     /// Config instance
-    private const Config config;
+    protected const Config config;
 
     /// Task manager
-    private TaskManager taskman;
+    protected TaskManager taskman;
 
     /// Network of connected nodes
-    private NetworkManager network;
+    protected NetworkManager network;
 
     /// Reusable exception object
-    private RestException exception;
+    protected RestException exception;
 
     /// Procedure of peer-to-peer communication
-    private GossipProtocol gossip;
+    protected GossipProtocol gossip;
 
     /// Transaction pool
-    private TransactionPool pool;
+    protected TransactionPool pool;
 
     /// Set of unspent transaction outputs
-    private UTXOSet utxo_set;
+    protected UTXOSet utxo_set;
 
     ///
-    private Ledger ledger;
+    protected Ledger ledger;
 
     /// Blockstorage
-    private IBlockStorage storage;
+    protected IBlockStorage storage;
 
     /// Nominator instance
-    private Nominator nominator;
+    protected Nominator nominator;
 
     /// Ctor
     public this (const Config config)
