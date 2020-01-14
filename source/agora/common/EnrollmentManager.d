@@ -564,9 +564,9 @@ unittest
     Enrollment enroll1;
     Enrollment enroll2;
     Enrollment enroll3;
-    man.createEnrollment(utxo_hash1, enroll1);
-    man.createEnrollment(utxo_hash2, enroll2);
-    man.createEnrollment(utxo_hash3, enroll3);
+    assert(man.createEnrollment(utxo_hash1, enroll1));
+    assert(man.createEnrollment(utxo_hash2, enroll2));
+    assert(man.createEnrollment(utxo_hash3, enroll3));
 
     assert(!isValidEnrollment(1, enroll1, utxoFinder));
     assert(!isValidEnrollment(1, enroll2, utxoFinder));
