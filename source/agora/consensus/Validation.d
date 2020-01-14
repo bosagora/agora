@@ -1239,3 +1239,133 @@ unittest
     assert(!block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 }
+
+///
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Enrollment;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.data.UTXOSet;
+    import agora.consensus.Validation;
+
+    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    UTXOFinder utxoFinder = utxo_set.getUTXOFinder();
+
+    // normal frozen transaction
+    Transaction tx1 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
+    );
+
+    // payment transaction
+    Transaction tx2 = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+    );
+
+    // Insufficient freeze amount transaction
+    Transaction tx3 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount(1), key_pairs[2].address)]
+    );
+
+    // normal freeze amount transaction
+    Transaction tx4 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
+    );
+
+    auto utxo_hash1 = utxo_set.getHash(hashFull(tx1), 0);
+    auto utxo_hash2 = utxo_set.getHash(hashFull(tx2), 0);
+    auto utxo_hash3 = utxo_set.getHash(hashFull(tx3), 0);
+    auto utxo_hash4 = utxo_set.getHash(hashFull(tx4), 0);
+
+    Pair signature_noise = Pair.random;
+
+    Pair node_key_pair_1;
+    node_key_pair_1.v = secretKeyToCurveScalar(key_pairs[0].secret);
+    node_key_pair_1.V = node_key_pair_1.v.toPoint();
+
+    Enrollment enroll1;
+    enroll1.utxo_key = utxo_hash1;
+    enroll1.random_seed = hashFull(Scalar.random());
+    enroll1.cycle_length = 1008;
+    enroll1.enroll_sig = sign(node_key_pair_1.v, node_key_pair_1.V, signature_noise.V,
+        signature_noise.v, enroll1);
+
+    Pair node_key_pair_2;
+    node_key_pair_2.v = secretKeyToCurveScalar(key_pairs[1].secret);
+    node_key_pair_2.V = node_key_pair_2.v.toPoint();
+
+    Enrollment enroll2;
+    enroll2.utxo_key = utxo_hash2;
+    enroll2.random_seed = hashFull(Scalar.random());
+    enroll2.cycle_length = 1008;
+    enroll2.enroll_sig = sign(node_key_pair_2.v, node_key_pair_2.V, signature_noise.V,
+        signature_noise.v, enroll2);
+
+    Pair node_key_pair_3;
+    node_key_pair_3.v = secretKeyToCurveScalar(key_pairs[2].secret);
+    node_key_pair_3.V = node_key_pair_3.v.toPoint();
+
+    Enrollment enroll3;
+    enroll3.utxo_key = utxo_hash3;
+    enroll3.random_seed = hashFull(Scalar.random());
+    enroll3.cycle_length = 1008;
+    enroll3.enroll_sig = sign(node_key_pair_3.v, node_key_pair_3.V, signature_noise.V,
+        signature_noise.v, enroll3);
+
+    Pair node_key_pair_4;
+    // Invalid secret key
+    node_key_pair_4.v = secretKeyToCurveScalar(key_pairs[1].secret);
+    node_key_pair_4.V = node_key_pair_4.v.toPoint();
+
+    Enrollment enroll4;
+    enroll4.utxo_key = utxo_hash4;
+    enroll4.random_seed = hashFull(Scalar.random());
+    enroll4.cycle_length = 1008;
+    enroll4.enroll_sig = sign(node_key_pair_4.v, node_key_pair_4.V, signature_noise.V,
+        signature_noise.v, enroll4);
+
+    assert(!isValidEnrollment(1, enroll1, utxoFinder));
+    assert(!isValidEnrollment(1, enroll2, utxoFinder));
+    assert(!isValidEnrollment(1, enroll3, utxoFinder));
+    assert(!isValidEnrollment(1, enroll4, utxoFinder));
+
+    utxo_set.updateUTXOCache(tx1, 0);
+    utxo_set.updateUTXOCache(tx2, 0);
+    utxo_set.updateUTXOCache(tx3, 0);
+    utxo_set.updateUTXOCache(tx4, 0);
+
+    auto utxos1 = utxo_set.getUTXOs(key_pairs[0].address);
+    assert(utxos1[utxo_hash1].output.address == key_pairs[0].address);
+    auto utxos2 = utxo_set.getUTXOs(key_pairs[1].address);
+    assert(utxos2[utxo_hash2].output.address == key_pairs[1].address);
+    auto utxos3 = utxo_set.getUTXOs(key_pairs[2].address);
+    assert(utxos3[utxo_hash3].output.address == key_pairs[2].address);
+    auto utxos4 = utxo_set.getUTXOs(key_pairs[3].address);
+    assert(utxos4[utxo_hash4].output.address == key_pairs[3].address);
+
+    // Nomal
+    assert(isValidEnrollment(1, enroll1, utxoFinder));
+
+    // Unspent frozen UTXO not found for the validator.
+    assert(!isValidEnrollment(1, enroll1, utxoFinder));
+
+    // UTXO is not frozen.
+    assert(!isValidEnrollment(1, enroll2, utxoFinder));
+
+    // The frozen amount must be equal to or greater than 40,000 BOA.
+    assert(!isValidEnrollment(1, enroll3, utxoFinder));
+
+    // Enrollment signature verification has an error.
+    assert(!isValidEnrollment(1, enroll4, utxoFinder));
+}
