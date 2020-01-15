@@ -28,7 +28,7 @@ jobs:
         ./ci/ci_osx_setup.sh
         export PATH="${PATH-}:$HOME/bin/"
         export LIBRARY_PATH="${LD_LIBRARY_PATH-}:/usr/local/lib/"
-        export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig"
+        export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/"
         ./ci/run.sh
 
   linux_build:
