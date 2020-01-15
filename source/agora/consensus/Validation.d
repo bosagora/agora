@@ -877,6 +877,16 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
     if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
         return "Block: Merkle root does not match header's";
 
+    if (!isStrictlyMonotonic!"a.utxo_key < b.utxo_key"(block.header.enrollments))
+        return "Block: The enrollments are not sorted in ascending order";
+
+    foreach (const ref enrollment; block.header.enrollments)
+    {
+        if (auto fail_reason = enrollment.isInvalidEnrollmentReason(
+            block.header.height, findUTXO))
+            return fail_reason;
+    }
+
     return null;
 }
 
@@ -1139,6 +1149,9 @@ unittest
     import agora.consensus.data.UTXOSet;
     import agora.consensus.Validation;
 
+    import std.algorithm.searching;
+    import std.string;
+
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     auto utxo_set = new UTXOSet(":memory:");
@@ -1251,11 +1264,139 @@ unittest
     assert(!isValidEnrollment(enroll1, 1, utxoFinder));
 
     // UTXO is not frozen.
-    assert(!isValidEnrollment(enroll2, 1, utxoFinder));
+    assert(canFind(isInvalidEnrollmentReason(enroll2, 1, utxoFinder),
+        "UTXO is not frozen."));
 
     // The frozen amount must be equal to or greater than 40,000 BOA.
     assert(!isValidEnrollment(enroll3, 1, utxoFinder));
 
     // Enrollment signature verification has an error.
     assert(!isValidEnrollment(enroll4, 1, utxoFinder));
+}
+
+///
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Enrollment;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.data.UTXOSet;
+    import agora.consensus.Genesis;
+    import agora.consensus.Validation;
+
+    import std.algorithm;
+    import std.range;
+
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    UTXOFinder findUTXO = utxo_set.getUTXOFinder();
+
+    auto gen_key = getGenesisKeyPair();
+    assert(GenesisBlock.isValid(GenesisBlock.header.height, Hash.init, null));
+    auto gen_hash = GenesisBlock.header.hashFull();
+    foreach (ref tx; GenesisBlock.txs)
+        utxo_set.updateUTXOCache(tx, GenesisBlock.header.height);
+
+    auto txs_1 = makeChainedTransactions(gen_key, null, 1,
+        400_000_000_000 * Block.TxsInBlock).sort.array;
+
+    auto block1 = makeNewBlock(GenesisBlock, txs_1);
+    assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+
+    foreach (ref tx; txs_1)
+        utxo_set.updateUTXOCache(tx, block1.header.height);
+
+    KeyPair keypair = KeyPair.random();
+    Transaction[] txs_2;
+    foreach (idx, pre_tx; txs_1)
+    {
+        Input input = Input(hashFull(pre_tx), 0);
+
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [input],
+        };
+        if (idx > 3)
+            tx.type = TxType.Payment;
+
+        if (idx == 7)
+        {
+            foreach (_; 0 .. Block.TxsInBlock)
+            {
+                Output output;
+                output.value = Amount(100);
+                output.address = keypair.address;
+                tx.outputs ~= output;
+            }
+        }
+        else
+        {
+            Output output;
+            output.value = Amount.MinFreezeAmount;
+            output.address = keypair.address;
+            tx.outputs ~= output;
+        }
+
+        tx.inputs[0].signature = gen_key.secret.sign(hashFull(tx)[]);
+        txs_2 ~= tx;
+    }
+
+    auto block2 = makeNewBlock(block1, txs_2);
+    assert(block2.isValid(block1.header.height, hashFull(block1.header), findUTXO));
+    foreach (ref tx; txs_2)
+        utxo_set.updateUTXOCache(tx, block2.header.height);
+
+    KeyPair keypair2 = KeyPair.random();
+    Transaction[] txs_3;
+    foreach (idx; 0 .. Block.TxsInBlock)
+    {
+        Input input = Input(hashFull(txs_2[7]), idx);
+
+        Transaction tx =
+        {
+            TxType.Payment,
+            [input],
+            [Output(Amount(1), keypair2.address)]
+        };
+        tx.inputs[0].signature = keypair.secret.sign(hashFull(tx)[]);
+        txs_3 ~= tx;
+    }
+    auto block3 = makeNewBlock(block2, txs_3);
+
+    Pair signature_noise = Pair.random;
+    Pair node_key_pair;
+    node_key_pair.v = secretKeyToCurveScalar(keypair.secret);
+    node_key_pair.V = node_key_pair.v.toPoint();
+
+    auto utxo_hash1 = utxo_set.getHash(hashFull(txs_2[0]), 0);
+    Enrollment enroll1;
+    enroll1.utxo_key = utxo_hash1;
+    enroll1.random_seed = hashFull(Scalar.random());
+    enroll1.cycle_length = 1008;
+    enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
+        signature_noise.v, enroll1);
+ 
+    auto utxo_hash2 = utxo_set.getHash(hashFull(txs_2[1]), 0);
+    Enrollment enroll2;
+    enroll2.utxo_key = utxo_hash2;
+    enroll2.random_seed = hashFull(Scalar.random());
+    enroll2.cycle_length = 1008;
+    enroll2.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
+        signature_noise.v, enroll2);
+
+    Enrollment[] enrollments;
+    enrollments ~= enroll1;
+    enrollments ~= enroll2;
+    enrollments.sort!("a.utxo_key < b.utxo_key");
+    block3.header.enrollments.length = 0;
+    block3.header.enrollments = enrollments;
+    assert(block3.isValid(block2.header.height, hashFull(block2.header), findUTXO));
+
+    enrollments.sort!("a.utxo_key > b.utxo_key");
+    block3.header.enrollments.length = 0;
+    block3.header.enrollments = enrollments;
+    findUTXO = utxo_set.getUTXOFinder();
+    // Block: The enrollments are not sorted in ascending order
+    assert(!block3.isValid(block2.header.height, hashFull(block2.header), findUTXO));
 }
