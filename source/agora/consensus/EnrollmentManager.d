@@ -584,8 +584,23 @@ unittest
     // create and add the first Enrollment object
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
+    Enrollment enroll2;
+    Enrollment fail_enroll;
+
+    Pair signature_noise = Pair.random;
+    Pair fail_enroll_key_pair;
+    fail_enroll_key_pair.v = secretKeyToCurveScalar(gen_key_pair.secret);
+    fail_enroll_key_pair.V = fail_enroll_key_pair.v.toPoint();
+
+    fail_enroll.utxo_key = utxo_hash;
+    fail_enroll.random_seed = hashFull(Scalar.random());
+    fail_enroll.cycle_length = 1008;
+    fail_enroll.enroll_sig = sign(fail_enroll_key_pair.v, fail_enroll_key_pair.V,
+        signature_noise.V, signature_noise.v, fail_enroll);
+
     assert(man.createEnrollment(utxo_hash, enroll));
     assert(!man.hasEnrollment(utxo_hash));
+    assert(!man.addEnrollment(0, &storage.findUTXO, fail_enroll));
     assert(man.addEnrollment(0, &storage.findUTXO, enroll));
     assert(man.getEnrollmentLength() == 1);
     assert(man.hasEnrollment(utxo_hash));
@@ -593,7 +608,6 @@ unittest
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
-    Enrollment enroll2;
     assert(man.createEnrollment(utxo_hash2, enroll2));
     assert(man.addEnrollment(0, &storage.findUTXO, enroll2));
     assert(man.getEnrollmentLength() == 2);
