@@ -15,6 +15,7 @@ module agora.network.NetworkClient;
 
 import agora.common.BanManager;
 import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Set;
@@ -269,4 +270,31 @@ class NetworkClient
         static if (!is(T == void))
             return T.init;
     }
+
+    /***************************************************************************
+
+        Send a enrollment request asynchronously to the node.
+        Any errors are reported to the debugging log.
+
+        The request is retried up to 'this.max_retries',
+        any failures are logged and ignored.
+
+        Params:
+            enroll = the enrollment data to send
+
+    ***************************************************************************/
+
+    public void sendEnrollment (Enrollment enroll) @trusted
+    {
+        this.taskman.runTask(
+        {
+            // if the node already has this enrollment, don't send it
+            if (this.attemptRequest!(LogLevel.Trace)(
+                this.api.hasEnrollment(enroll.utxo_key), null))
+                    return;
+
+            this.attemptRequest(this.api.enrollValidator(enroll), null);
+        });
+    }
+
 }

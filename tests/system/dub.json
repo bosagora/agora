@@ -3,6 +3,10 @@
     "targetType": "executable",
     "targetPath": "build",
     "lflags": [ "-lsodium", "-lstdc++" ],
+    "importPaths": [
+        "../../source",
+        "../../submodules/d2sqlite3/source",
+    ],
 
     "preBuildCommands": [ "source/scpp/build.d" ],
     "sourceFiles": [
@@ -20,8 +24,11 @@
         "../../source/agora/consensus/data/Block.d",
         "../../source/agora/consensus/data/Enrollment.d",
         "../../source/agora/consensus/data/Transaction.d",
+        "../../source/agora/consensus/data/UTXOSet.d",
+        "../../source/agora/consensus/Validation.d",
         "../../source/agora/consensus/Genesis.d",
         "../../source/agora/node/API.d",
+        "../../source/agora/utils/Log.d",
         "../../source/agora/utils/PrettyPrinter.d",
         "../../source/scpd/Cpp.d",
         "../../source/scpd/Util.d",
@@ -38,6 +45,7 @@
     "dependencies": {
         "base32":           { "path": "../../submodules/base32/", "version": "*" },
         "bitblob":          { "path": "../../submodules/bitblob/", "version": "*" },
+        "d2sqlite3":        { "path": "../../submodules/d2sqlite3/", "version": "*" },
         "libsodiumd":       { "path": "../../submodules/libsodiumd/", "version": "*" },
         "ocean":            { "path": "../../submodules/ocean/", "version": "*" },
         "vibe-d":           { "path": "../../submodules/vibe.d/", "version": "*" }

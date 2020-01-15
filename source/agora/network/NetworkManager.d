@@ -24,6 +24,7 @@ module agora.network.NetworkManager;
 
 import agora.common.BanManager;
 import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.Types;
@@ -490,6 +491,29 @@ public class NetworkManager
             }
 
             node.sendTransaction(tx);
+        }
+    }
+
+    /***************************************************************************
+
+        Sends the enrollment request to all the listeners.
+
+        Params:
+            enroll = the enrollment data to send
+
+    ***************************************************************************/
+
+    public void sendEnrollment (Enrollment enroll) @safe
+    {
+        foreach (ref node; this.peers)
+        {
+            if (this.banman.isBanned(node.address))
+            {
+                log.trace("Not sending to {} as it's banned", node.address);
+                continue;
+            }
+
+            node.sendEnrollment(enroll);
         }
     }
 }
