@@ -22,10 +22,13 @@ module agora.test.Base;
 
 version (unittest):
 
+import agora.common.Amount;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.UTXOSet;
 import agora.common.Config;
+import agora.common.EnrollmentManager;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Metadata;
@@ -427,6 +430,9 @@ public interface TestAPI : API
 
     ///
     public abstract void metaAddPeer (string peer);
+
+    ///
+    public abstract Enrollment createEnrollmentData();
 }
 
 /// Ditto
@@ -498,6 +504,36 @@ public class TestNode : Node, TestAPI
         assert(taskman !is null);
         return new TestNetworkManager(node_config, banman_conf, peers,
             dns_seeds, metadata, taskman, this.registry);
+    }
+
+    /// Return an enrollment manager backed by an in-memory SQLite db
+    protected override EnrollmentManager getEnrollmentManager (
+        string data_dir, in NodeConfig node_config, Ledger ledger,
+        UTXOSet utxo_set)
+    {
+        return new EnrollmentManager(":memory:", node_config.key_pair, ledger,
+            utxo_set);
+    }
+
+    /// Create an enrollment data used as information for an validator
+    public override Enrollment createEnrollmentData ()
+    {
+        Hash[] utxo_hashes;
+        auto pubkey = this.getPublicKey();
+        auto utxos = this.utxo_set.getUTXOs(pubkey);
+        foreach (key, utxo; utxos)
+        {
+            if (utxo.type == TxType.Freeze &&
+                utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
+            {
+                utxo_hashes ~= key;
+            }
+        }
+
+        // create an Enrollment object to be used for the enrollment process
+        auto enroll = this.createEnrollment(utxo_hashes[0]);
+
+        return enroll;
     }
 }
 

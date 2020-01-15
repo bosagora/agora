@@ -14,13 +14,16 @@
 module agora.node.Node;
 
 import agora.consensus.data.Block;
+import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.Config;
+import agora.common.EnrollmentManager;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Task;
 import agora.common.Types;
 import agora.common.TransactionPool;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.protocol.Nominator;
@@ -93,6 +96,9 @@ public class Node : API
     /// Nominator instance
     protected Nominator nominator;
 
+    /// Enrollment manager
+    protected EnrollmentManager enroll_man;
+
     /// Ctor
     public this (const Config config)
     {
@@ -106,7 +112,9 @@ public class Node : API
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, config.node);
-        this.gossip = new GossipProtocol(this.network, this.ledger);
+        this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node,
+            this.ledger, this.utxo_set);
+        this.gossip = new GossipProtocol(this.network, this.ledger, this.enroll_man);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
@@ -176,6 +184,8 @@ public class Node : API
         this.pool = null;
         this.utxo_set.shutdown();
         this.utxo_set = null;
+        this.enroll_man.shutdown();
+        this.enroll_man = null;
     }
 
     /// GET /public_key
@@ -387,9 +397,64 @@ public class Node : API
         }
     }
 
+    /***************************************************************************
+
+        Returns an instance of a EnrollmentManager
+
+        Params:
+            data_dir = path to the data dirctory
+            node_config = the node config
+
+        Returns:
+            the enrollment manager
+
+    ***************************************************************************/
+
+    protected EnrollmentManager getEnrollmentManager (string data_dir,
+        in NodeConfig node_config, Ledger ledger, UTXOSet utxo_set)
+    {
+        return new EnrollmentManager(buildPath(data_dir, "validator_set.dat"),
+            node_config.key_pair, ledger, utxo_set);
+    }
+
+    /***************************************************************************
+
+        Create an enrollment data for enrollment process
+
+        Params:
+            frozen_utxo_hash = the hash of a frozen UTXO used to identify
+                        a validator or an enrollment data
+
+        Returns:
+            the Enrollment object created
+
+    ***************************************************************************/
+
+    protected Enrollment createEnrollment (Hash frozen_utxo_hash) @safe
+    {
+        Enrollment enroll;
+        this.enroll_man.createEnrollment(frozen_utxo_hash, enroll);
+
+        return enroll;
+    }
+
     /// GET: /merkle_path
     public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
         return this.ledger.getMerklePath(block_height, hash);
+    }
+
+    /// PUT: /enroll_validator
+    public void enrollValidator (Enrollment enroll) @safe
+    {
+        log.trace("Received Enrollment: {}", prettify(enroll));
+
+        this.gossip.receiveEnrollment(enroll);
+    }
+
+    /// GET: /has_enrollment
+    public bool hasEnrollment (Hash enroll_hash) @safe
+    {
+        return this.enroll_man.hasEnrollment(enroll_hash);
     }
 }

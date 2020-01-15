@@ -37,6 +37,7 @@ module agora.node.API;
 
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.common.Types;
 import agora.common.Set;
 import agora.common.Serializer;
@@ -198,4 +199,37 @@ public interface API
     ***************************************************************************/
 
     public Hash[] getMerklePath (ulong block_height, Hash hash);
+
+    /***************************************************************************
+
+        Enroll as a validator
+
+        API:
+            PUT /enroll_validator
+
+        Params:
+            enroll = the Enrollment object, the information about an validator
+
+    ***************************************************************************/
+
+    public void enrollValidator (Enrollment enroll);
+
+
+    /***************************************************************************
+
+        Check if an enrollment data exists in the validator set
+
+        API:
+            GET /has_enrollment
+
+        Params:
+            enroll_hash = key for an enrollment data which is hash of frozen UTXO
+
+        Returns:
+            true if the validator set has the enrollment data
+
+    ***************************************************************************/
+
+    @method(HTTPMethod.GET)
+    public bool hasEnrollment (Hash enroll_hash);
 }

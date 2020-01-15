@@ -15,10 +15,15 @@ module agora.node.GossipProtocol;
 
 import agora.common.Types;
 import agora.common.Hash;
+import agora.common.EnrollmentManager;
 import agora.common.Set;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
+
+import agora.utils.Log;
+mixin AddLogger!();
 
 /// Ditto
 public class GossipProtocol
@@ -29,6 +34,9 @@ public class GossipProtocol
     /// Blockchain ledger
     private Ledger ledger;
 
+    /// Enrollment manager
+    private EnrollmentManager enroll_man;
+
 
     /***************************************************************************
 
@@ -37,13 +45,16 @@ public class GossipProtocol
         Params:
             network = the network manager used for transaction propagation
             ledger = the blockchain ledger
+            enroll_man = the enrollment manager
 
     ***************************************************************************/
 
-    public this (NetworkManager network, Ledger ledger)
+    public this (NetworkManager network, Ledger ledger,
+        EnrollmentManager enroll_man)
     {
         this.network = network;
         this.ledger = ledger;
+        this.enroll_man = enroll_man;
     }
 
     /***************************************************************************
@@ -84,5 +95,23 @@ public class GossipProtocol
     public bool hasTransactionHash (Hash hash) @safe
     {
         return this.ledger.hasTransactionHash(hash);
+    }
+
+    /***************************************************************************
+
+        If this is the first time this enrollment was received,
+        propagate it to the network.
+
+        Params:
+            enroll = the received data for the enrollment
+
+    ***************************************************************************/
+
+    public void receiveEnrollment (Enrollment enroll) @safe
+    {
+        if (this.enroll_man.addEnrollment(enroll))
+        {
+            this.network.sendEnrollment(enroll);
+        }
     }
 }
