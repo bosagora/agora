@@ -26,8 +26,10 @@ import std.range;
 private void main ()
 {
     string path = buildPath(getcwd, ".cache");
-    if (path.exists)
-        rmdirRecurse(path);
+    // Note: The following path is only triggered when rebuilding locally,
+    // code coverage is run from a clean slate so the `rmdirRecurse`
+    // is never tested.
+    if (path.exists) rmdirRecurse(path);
     mkdir(path);
 
     BanManager.Config conf = { max_failed_requests : 10, ban_duration : 60 };

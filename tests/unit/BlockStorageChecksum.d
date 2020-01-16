@@ -68,8 +68,7 @@ private void corruptBlocks (string dir_path)
 {
     foreach (string path; dirEntries(dir_path, SpanMode.shallow))
     {
-        if (!path.isFile)
-            continue;
+        assert(path.isFile);
 
         auto block_file = File(path, "r+b");
         block_file.seek(5, SEEK_SET);
