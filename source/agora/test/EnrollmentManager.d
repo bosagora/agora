@@ -17,11 +17,11 @@ module agora.test.EnrollmentManager;
 version (unittest):
 
 import agora.common.Amount;
-import agora.common.EnrollmentManager;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
