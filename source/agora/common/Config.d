@@ -293,24 +293,29 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
 
-    string node_seed = get!(string, "node", "seed")(cmdln, node);
-    auto key_pair = KeyPair.fromSeed(Seed.fromString(node_seed));
-
-    NodeConfig conf =
+    NodeConfig makeConf (KeyPair key_pair)
     {
-        is_validator : is_validator,
-        min_listeners : min_listeners,
-        max_listeners : max_listeners,
-        address : address,
-        port : port,
-        key_pair : key_pair,
-        retry_delay : retry_delay,
-        max_retries : max_retries,
-        timeout : timeout,
-        data_dir : data_dir,
-    };
+        NodeConfig r = {
+            is_validator : is_validator,
+            min_listeners : min_listeners,
+            max_listeners : max_listeners,
+            address : address,
+            port : port,
+            key_pair : key_pair,
+            retry_delay : retry_delay,
+            max_retries : max_retries,
+            timeout : timeout,
+            data_dir : data_dir,
+        };
+        return r;
+    }
 
-    return conf;
+    if (is_validator)
+    {
+        string node_seed = get!(string, "node", "seed")(cmdln, node);
+        return makeConf(KeyPair.fromSeed(Seed.fromString(node_seed)));
+    }
+    return makeConf(KeyPair.init);
 }
 
 /// Parse the banman config section
