@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.common.EnrollmentManager;
+module agora.consensus.EnrollmentManager;
 
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;

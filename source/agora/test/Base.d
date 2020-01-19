@@ -24,11 +24,7 @@ version (unittest):
 
 import agora.common.Amount;
 import agora.common.BanManager;
-import agora.consensus.data.Block;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.UTXOSet;
 import agora.common.Config;
-import agora.common.EnrollmentManager;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Metadata;
@@ -36,7 +32,11 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.TransactionPool;
 import agora.common.crypto.Key;
+import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSet;
+import agora.consensus.EnrollmentManager;
 import agora.network.NetworkManager;
 import agora.node.API;
 import agora.node.Ledger;
