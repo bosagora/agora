@@ -1,0 +1,57 @@
+name: push
+on: [push]
+
+jobs:
+  test_mac:
+    name: MacOS
+    strategy:
+      matrix:
+        os: [macOS-latest]
+        dc: [dmd-master, ldc-master]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Prepare compiler
+      uses: mihails-strasuns/setup-dlang@v0.5.0
+      with:
+          compiler: ${{ matrix.dc }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install Dub & Sqlite3
+      run: |
+        brew install pkg-config
+        brew install sqlite3
+    - name: Build & test agora
+      run: |
+        ./ci/ci_osx_setup.sh
+        export PATH="${PATH-}:$HOME/bin/"
+        export LIBRARY_PATH="${LD_LIBRARY_PATH-}:/usr/local/lib/"
+        export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/"
+        ./ci/run.sh
+
+  linux_build:
+    name: Linux
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        dc: [dmd-master, ldc-master]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Prepare compiler
+      uses: mihails-strasuns/setup-dlang@v0.5.0
+      with:
+        compiler: ${{ matrix.dc }}
+        gh_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build & test Agora
+      run: |
+        ./ci/ci_linux_setup.sh
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install libsqlite3-dev
+        sudo apt-get install libsodium-dev
+        sudo apt-get install g++-9
+        ./ci/run.sh
