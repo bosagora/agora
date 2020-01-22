@@ -75,7 +75,7 @@ public class EnrollmentManager
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key BLOB PRIMARY KEY, val BLOB NOT NULL, enrolled_height INTEGER)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, enrolled_height INTEGER)");
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
@@ -177,7 +177,7 @@ public class EnrollmentManager
         {
             () @trusted {
                 this.db.execute("INSERT INTO validator_set (key, val) VALUES (?, ?)",
-                    enroll.utxo_key[], buffer);
+                    enroll.utxo_key.toString(), buffer);
             }();
 
         }
@@ -215,7 +215,8 @@ public class EnrollmentManager
 
     public void removeEnrollment (const ref Hash enroll_hash) @trusted
     {
-        this.db.execute("DELETE FROM validator_set WHERE key = ?", enroll_hash[]);
+        this.db.execute("DELETE FROM validator_set WHERE key = ?",
+            enroll_hash.toString());
     }
 
     /***************************************************************************
@@ -235,7 +236,7 @@ public class EnrollmentManager
         try
         {
             auto results = this.db.execute("SELECT enrolled_height FROM validator_set" ~
-                " WHERE key = ?", enroll_hash[]);
+                " WHERE key = ?", enroll_hash.toString());
             if (results.empty)
                 return size_t.init;
 
@@ -272,7 +273,7 @@ public class EnrollmentManager
             () @trusted {
                 this.db.execute(
                     "UPDATE validator_set SET enrolled_height = ? WHERE key = ?",
-                    block_height, enroll_hash[]);
+                    block_height, enroll_hash.toString());
             }();
         }
         catch (Exception ex)
@@ -382,7 +383,7 @@ public class EnrollmentManager
     public bool hasEnrollment (const ref Hash enroll_hash) @trusted
     {
         auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM validator_set " ~
-            "WHERE key = ?)", enroll_hash[]);
+            "WHERE key = ?)", enroll_hash.toString());
 
         return results.front().peek!bool(0);
     }
@@ -405,7 +406,7 @@ public class EnrollmentManager
         out Enrollment enroll) @trusted
     {
         auto results = this.db.execute("SELECT key, val FROM validator_set " ~
-            "WHERE key = ?", enroll_hash[]);
+            "WHERE key = ?", enroll_hash.toString());
 
         foreach (row; results)
         {
@@ -414,6 +415,33 @@ public class EnrollmentManager
         }
 
         return false;
+    }
+
+    /***************************************************************************
+
+        Get the unregistered enrollments in the block
+        And this is arranged in ascending order with the utxo_key
+
+        Params:
+            enrolls = will contain the unregistered enrollments data if found
+
+        Returns:
+            The unregistered enrollments data
+
+    ***************************************************************************/
+
+    public Enrollment[] getUnregisteredEnrollments (ref Enrollment[] enrolls)
+        @trusted
+    {
+        enrolls.length = 0;
+        assumeSafeAppend(enrolls);
+        auto results = this.db.execute("SELECT val FROM validator_set" ~
+            " WHERE enrolled_height is null ORDER BY key ASC");
+
+        foreach (row; results)
+            enrolls ~= deserializeFull!Enrollment(row.peek!(ubyte[])(0));
+
+        return enrolls;
     }
 
     /***************************************************************************
@@ -511,6 +539,17 @@ unittest
     assert(man.addEnrollment(0, findUTXO, enroll2));
     assert(man.getEnrollmentLength() == 2);
 
+    auto utxo_hash3 = utxo_hashes[2];
+    Enrollment enroll3;
+    assert(man.createEnrollment(utxo_hash3, enroll3));
+    assert(man.addEnrollment(0, findUTXO, enroll3));
+    assert(man.getEnrollmentLength() == 3);
+
+    Enrollment[] enrolls;
+    man.getUnregisteredEnrollments(enrolls);
+    assert(enrolls.length == 3);
+    assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
+
     // get a stored Enrollment object
     Enrollment stored_enroll;
     assert(man.getEnrollment(utxo_hash2, stored_enroll));
@@ -518,7 +557,7 @@ unittest
 
     // remove an Enrollment object
     man.removeEnrollment(utxo_hash2);
-    assert(man.getEnrollmentLength() == 1);
+    assert(man.getEnrollmentLength() == 2);
 
     // test for getEnrollment with removed enrollment
     assert(!man.getEnrollment(utxo_hash2, stored_enroll));
@@ -529,4 +568,23 @@ unittest
     assert(man.getEnrolledHeight(utxo_hash) == 9);
     assert(!man.updateEnrolledHeight(utxo_hash, 9));
     assert(man.getEnrolledHeight(utxo_hash2) == 0);
+    man.getUnregisteredEnrollments(enrolls);
+    assert(enrolls.length == 1);
+
+    man.removeEnrollment(utxo_hash);
+    man.removeEnrollment(utxo_hash2);
+    man.removeEnrollment(utxo_hash3);
+    assert(man.getUnregisteredEnrollments(enrolls).length == 0);
+
+    Enrollment[] ordered_enrollments;
+    ordered_enrollments ~= enroll;
+    ordered_enrollments ~= enroll2;
+    ordered_enrollments ~= enroll3;
+    // Reverse ordering
+    ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
+    foreach (ordered_enroll; ordered_enrollments)
+        assert(man.addEnrollment(0, findUTXO, ordered_enroll));
+    man.getUnregisteredEnrollments(enrolls);
+    assert(enrolls.length == 3);
+    assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 }
