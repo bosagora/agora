@@ -18,6 +18,7 @@ import agora.common.Hash;
 import agora.common.Set;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
@@ -104,12 +105,14 @@ public class GossipProtocol
 
         Params:
             enroll = the received data for the enrollment
+            finder = the UTXO finder delegate
 
     ***************************************************************************/
 
-    public void receiveEnrollment (Enrollment enroll) @safe
+    public void receiveEnrollment (Enrollment enroll, scope UTXOFinder finder) @safe
     {
-        if (this.enroll_man.addEnrollment(enroll))
+        if (this.enroll_man.addEnrollment(this.ledger.getBlockHeight(), finder,
+            enroll))
         {
             this.network.sendEnrollment(enroll);
         }

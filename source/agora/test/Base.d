@@ -508,11 +508,9 @@ public class TestNode : Node, TestAPI
 
     /// Return an enrollment manager backed by an in-memory SQLite db
     protected override EnrollmentManager getEnrollmentManager (
-        string data_dir, in NodeConfig node_config, Ledger ledger,
-        UTXOSet utxo_set)
+        string data_dir, in NodeConfig node_config)
     {
-        return new EnrollmentManager(":memory:", node_config.key_pair, ledger,
-            utxo_set);
+        return new EnrollmentManager(":memory:", node_config.key_pair);
     }
 
     /// Create an enrollment data used as information for an validator
