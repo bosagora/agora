@@ -112,8 +112,7 @@ public class Node : API
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, config.node);
-        this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node,
-            this.ledger, this.utxo_set);
+        this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
         this.gossip = new GossipProtocol(this.network, this.ledger, this.enroll_man);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
@@ -411,10 +410,10 @@ public class Node : API
     ***************************************************************************/
 
     protected EnrollmentManager getEnrollmentManager (string data_dir,
-        in NodeConfig node_config, Ledger ledger, UTXOSet utxo_set)
+        in NodeConfig node_config)
     {
         return new EnrollmentManager(buildPath(data_dir, "validator_set.dat"),
-            node_config.key_pair, ledger, utxo_set);
+            node_config.key_pair);
     }
 
     /***************************************************************************
@@ -449,7 +448,7 @@ public class Node : API
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
 
-        this.gossip.receiveEnrollment(enroll);
+        this.gossip.receiveEnrollment(enroll, this.utxo_set.getUTXOFinder());
     }
 
     /// GET: /has_enrollment

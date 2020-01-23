@@ -22,7 +22,6 @@ import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Validation;
-import agora.node.Ledger;
 import agora.utils.Log;
 
 import d2sqlite3.database;
@@ -59,12 +58,6 @@ public class EnrollmentManager
     /// Enrollment data object
     private Enrollment data;
 
-    /// The ledger
-    private Ledger ledger;
-
-    /// Set of unspent transaction outputs
-    private UTXOSet utxo_set;
-
     /***************************************************************************
 
         Constructor
@@ -76,11 +69,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public this (string db_path, KeyPair key_pair, Ledger ledger,
-        UTXOSet utxo_set)
+    public this (string db_path, KeyPair key_pair)
     {
-        this.ledger = ledger;
-        this.utxo_set = utxo_set;
         this.db = Database(db_path);
 
         // create the table for validator set if it doesn't exist yet
@@ -125,6 +115,8 @@ public class EnrollmentManager
         Add a enrollment data to the validators set
 
         Params:
+            block_height = the current block height in the ledger
+            finder = the delegate to find UTXOs with
             enroll = the enrollment data to add
 
         Returns:
@@ -132,13 +124,14 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool addEnrollment (const ref Enrollment enroll) @safe nothrow
+    public bool addEnrollment (ulong block_height, scope UTXOFinder finder,
+        const ref Enrollment enroll) @safe nothrow
     {
         static ubyte[] buffer;
 
         // check validity of the enrollment data
-        if (auto reason = isInvalidEnrollmentReason(this.ledger.getBlockHeight() + 1,
-            enroll, this.utxo_set.getUTXOFinder()))
+        if (auto reason = isInvalidEnrollmentReason(block_height + 1,
+            enroll, finder))
         {
             this.logMessage("Invalid enrollment data, Reason: " ~ reason,
                 enroll);
@@ -457,21 +450,30 @@ public class EnrollmentManager
 unittest
 {
     import agora.common.Amount;
-    import agora.common.Config;
-    import agora.common.TransactionPool;
-    import agora.consensus.data.Block;
     import agora.consensus.data.Transaction;
-    import agora.consensus.data.UTXOSet;
     import agora.consensus.Genesis;
-    import agora.node.BlockStorage;
     import std.format;
     import std.conv;
 
-    auto gen_key_pair = getGenesisKeyPair();
-    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+    Transaction[Hash] storage;
+    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value) @trusted
+    {
+        assert(index == size_t.max);
+        if (auto tx = hash in storage)
+        {
+            value.unlock_height = 0;
+            value.type = tx.type;
+            value.output = tx.outputs[0];
+            return true;
+        }
 
-    Transaction[] txs;
-    foreach (idx; 0 .. Block.TxsInBlock)
+        return false;
+    };
+
+    auto gen_key_pair = getGenesisKeyPair();
+    KeyPair key_pair = KeyPair.random();
+
+    foreach (idx; 0 .. 8)
     {
         auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
 
@@ -479,50 +481,34 @@ unittest
         {
             TxType.Freeze,
             [input],
-            [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
+            [Output(Amount.MinFreezeAmount, key_pair.address)]
         };
 
         auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
-        txs ~= tx;
+        storage[hashFull(tx)] = tx;
     }
-
-    auto storage = new MemBlockStorage();
-    auto block = makeNewBlock(GenesisBlock, txs);
-    assert(storage.saveBlock(block));
-    auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
-    auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
-    auto config = new Config();
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
 
     // create an EnrollmentManager object
-    auto man = new EnrollmentManager(":memory:", key_pairs[0], ledger, utxo_set);
+    auto man = new EnrollmentManager(":memory:", key_pair);
     scope (exit) man.shutdown();
-
-    // find UTXOs to use in making enrollment data
-    Hash[] utxo_hashes;
-    auto utxos = utxo_set.getUTXOs(key_pairs[0].address);
-    foreach (key, value; utxos) {
-        utxo_hashes ~= key;
-    }
+    Hash[] utxo_hashes = storage.keys;
 
     // create and add the first Enrollment object
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
     assert(man.createEnrollment(utxo_hash, enroll));
     assert(!man.hasEnrollment(utxo_hash));
-    assert(man.addEnrollment(enroll));
+    assert(man.addEnrollment(0, findUTXO, enroll));
     assert(man.getEnrollmentLength() == 1);
     assert(man.hasEnrollment(utxo_hash));
-    assert(!man.addEnrollment(enroll));
+    assert(!man.addEnrollment(0, findUTXO, enroll));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     Enrollment enroll2;
     assert(man.createEnrollment(utxo_hash2, enroll2));
-    assert(man.addEnrollment(enroll2));
+    assert(man.addEnrollment(0, findUTXO, enroll2));
     assert(man.getEnrollmentLength() == 2);
 
     // get a stored Enrollment object
