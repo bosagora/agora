@@ -67,6 +67,7 @@ private int main (string[] args)
             ex.message);
     }
 
+    Node node;
     try
     {
         auto config = parseConfigFile(cmdln);
@@ -75,31 +76,47 @@ private int main (string[] args)
             writefln("Config file '%s' succesfully parsed.", cmdln.config_path);
             return 0;
         }
-
-        Log.root.level(config.logging.log_level, true);
-        log.trace("Config is: {}", config);
-
-        auto settings = new HTTPServerSettings(config.node.address);
-        settings.port = config.node.port;
-        auto router = new URLRouter();
-
-        mkdirRecurse(config.node.data_dir);
-
-        auto node = new Node(config);
-        scope(exit) node.shutdown();
-
-        router.registerRestInterface(node);
-        runTask({ node.start(); });
-
-        log.info("About to listen to HTTP: {}", settings.port);
-        listenHTTP(settings, router);
-
-        return runEventLoop();
+        runTask(() => node = runNode(config));
     }
-    catch (ConfigException ex)
+    catch (Exception ex)
     {
         writefln("Failed to parse config file '%s'. Error: %s",
             cmdln.config_path, ex.message);
         return 1;
     }
+
+    scope(exit) if (node !is null) node.shutdown();
+    return runEventLoop();
+}
+
+/*******************************************************************************
+
+    Boots up a node that listen for network requests and blockchain data
+
+    This is called either directly from main, or after the initialization
+    process is complete.
+
+    Params:
+      config = A parsed and validated config file
+
+*******************************************************************************/
+
+private Node runNode (Config config)
+{
+    Log.root.level(config.logging.log_level, true);
+    log.trace("Config is: {}", config);
+
+    auto settings = new HTTPServerSettings(config.node.address);
+    settings.port = config.node.port;
+    auto router = new URLRouter();
+
+    mkdirRecurse(config.node.data_dir);
+
+    auto node = new Node(config);
+    router.registerRestInterface(node);
+    runTask({ node.start(); });
+
+    log.info("About to listen to HTTP: {}", settings.port);
+    listenHTTP(settings, router);
+    return node;
 }
