@@ -419,10 +419,12 @@ private immutable(QuorumConfig) parseQuorumSection (Node* node_ptr,
         foreach (string nodeKeyStr; *nodeKeyArray)
             nodes ~= PublicKey.fromString(nodeKeyStr);
     else if (node_ptr is null)
-        throw new Exception("Section 'quorum.nodes' is mandatory but not present");
-    else
-        foreach (string nodeKeyStr; (*node_ptr)["nodes"])
+        throw new Exception("Section 'quorum' is mandatory but not present");
+    else if (auto qnodes = "nodes" in *node_ptr)
+        foreach (string nodeKeyStr; *qnodes)
             nodes ~= PublicKey.fromString(nodeKeyStr);
+    else
+        throw new Exception("Section 'quorum.nodes' is mandatory but not present");
 
     immutable(QuorumConfig)[] sub_quorums;
     // Node: Providing sub_quorums via command line is currently not supported
