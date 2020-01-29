@@ -35,10 +35,10 @@ public class BanManager
     public struct Config
     {
         /// max failed requests until an address is banned
-        public size_t max_failed_requests;
+        public size_t max_failed_requests = 10;
 
-        /// the default duration of a ban
-        public time_t ban_duration;
+        /// How long does a ban lasts, in seconds (default: 1 day)
+        public time_t ban_duration = 60 * 60 * 24;
     }
 
     ///
