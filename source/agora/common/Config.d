@@ -105,10 +105,10 @@ public struct NodeConfig
     public size_t max_listeners = 10;
 
     /// Bind address
-    public string address;
+    public string address = "0.0.0.0";
 
     /// Bind port
-    public ushort port;
+    public ushort port = 0xB0A;
 
     /// The seed to use for the keypair of this node
     public immutable KeyPair key_pair;
@@ -123,7 +123,7 @@ public struct NodeConfig
     public long timeout = 500;
 
     /// Path to the data directory to store metadata and blockchain data
-    public string data_dir;
+    public string data_dir = "/var/lib/agora/";
 }
 
 /// Admin API config
@@ -136,10 +136,10 @@ public struct AdminConfig
     public bool enabled;
 
     /// Bind address
-    public string address;
+    public string address = "127.0.0.1";
 
     /// Bind port
-    public ushort port;
+    public ushort port = 0xB0B;
 }
 
 /// Configuration for a peer we trust
@@ -271,9 +271,11 @@ private Config parseConfigFileImpl (ref const CommandLine cmdln)
 
     Node* admin = "admin" in root;
     conf.admin.enabled = opt!(bool,   "admin", "enabled")(cmdln, admin);
-    conf.admin.address = opt!(string, "admin", "address")(cmdln, admin);
-    conf.admin.port    = opt!(ushort, "admin", "port")(cmdln, admin);
-
+    if (conf.admin.enabled)
+    {
+        conf.admin.address = get!(string, "admin", "address")(cmdln, admin);
+        conf.admin.port    = get!(ushort, "admin", "port")(cmdln, admin);
+    }
     return conf;
 }
 
@@ -324,14 +326,14 @@ unittest
     import dyaml.loader;
 
     CommandLine cmdln;
-    immutable conf_example = `
+
+    {
+        immutable conf_example = `
 node:
   address: 0.0.0.0
   port: 2926
   data_dir: .cache
 `;
-
-    {
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
         assert(config.min_listeners == 2);
@@ -340,8 +342,12 @@ node:
         assert(config.data_dir == ".cache");
     }
     {
+    immutable conf_example = `
+node:
+  is_validator: true
+`;
         auto node = Loader.fromString(conf_example).load();
-        assertThrown!Exception(parseNodeConfig(null, cmdln));
+        assertThrown!Exception(parseNodeConfig("node" in node, cmdln));
     }
 }
 
