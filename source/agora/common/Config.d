@@ -189,17 +189,6 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
         );
 }
 
-/// Thrown when parsing the config fails
-class ConfigException : Exception
-{
-    ///
-    public this (string msg, string file = __FILE__, size_t line = __LINE__)
-        @nogc @safe pure nothrow
-    {
-        super(msg, file, line);
-    }
-}
-
 /*******************************************************************************
 
     Parses the config file and returns a `Config` instance.
@@ -208,7 +197,7 @@ class ConfigException : Exception
         cmdln = command-line arguments (containing the path to the config)
 
     Throws:
-        `ConfigException` if parsing the config file failed.
+        `Exception` if parsing the config file failed.
 
     Returns:
         `Config` instance
@@ -217,14 +206,7 @@ class ConfigException : Exception
 
 public Config parseConfigFile (ref const CommandLine cmdln)
 {
-    try
-    {
-        return parseConfigFileImpl(cmdln);
-    }
-    catch (Exception ex)
-    {
-        throw new ConfigException(ex.msg, ex.file, ex.line);
-    }
+    return parseConfigFileImpl(cmdln);
 }
 
 /// ditto
