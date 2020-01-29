@@ -318,6 +318,33 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     return makeConf(KeyPair.init);
 }
 
+///
+unittest
+{
+    import dyaml.loader;
+
+    CommandLine cmdln;
+    immutable conf_example = `
+node:
+  address: 0.0.0.0
+  port: 2926
+  data_dir: .cache
+`;
+
+    {
+        auto node = Loader.fromString(conf_example).load();
+        auto config = parseNodeConfig("node" in node, cmdln);
+        assert(config.min_listeners == 2);
+        assert(config.max_listeners == 10);
+        assert(config.is_validator == false);
+        assert(config.data_dir == ".cache");
+    }
+    {
+        auto node = Loader.fromString(conf_example).load();
+        assertThrown!Exception(parseNodeConfig(null, cmdln));
+    }
+}
+
 /// Parse the banman config section
 private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLine cmdln)
 {
@@ -549,9 +576,18 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
         if (auto val = name in *node)
             return (*val).as!string.to!T;
 
-    throw new Exception(format(
-        "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
-        name, section, QualifiedName));
+    // If the user sets a default value, just return it
+    static if (is(typeof(mixin(`Config.` ~ QualifiedName)) : T)
+               && mixin(`Config.init.` ~ QualifiedName) != T.init)
+        return mixin(`Config.init.` ~ QualifiedName);
+    // Additionally, `bool` is special cased, as a `bool` that is mandatory
+    // does not make sense: it defaults to either `true` or `false`
+    else static if (is(T == bool))
+        return false;
+    else
+        throw new Exception(format(
+            "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
+            name, section, QualifiedName));
 }
 
 /*******************************************************************************
