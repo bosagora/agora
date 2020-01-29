@@ -237,8 +237,6 @@ class SPA {
             },
             node: {
                 is_validator: (seed.length != 0),
-                min_listeners: 2,
-                max_listeners: 10,
                 address: node_url.hostname,
                 port: node_url.port,
             },

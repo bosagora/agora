@@ -23,7 +23,8 @@ module agora.node.AdminInterface;
 
 import agora.common.Config;
 import agora.common.crypto.Key;
-import agora.node.Node;
+import agora.node.FullNode;
+import agora.node.Runner;
 import agora.utils.Log;
 
 import vibe.core.core;
@@ -60,25 +61,19 @@ public class SetupInterface
     private string path;
     /// HTTP listener, to stop listening once we wrote the config file
     private HTTPListener listener;
-    /// Callback to run after we're done with the initial setup
-    private RunFn run;
-    /// Ditto
-    private alias RunFn = Node function(Config);
-    /// The variable in which to store the results of `run`
-    private Node* runResult;
+    /// The variable in which to store the results of `runNode`
+    private FullNode* runResult;
 
     ///
-    public this (string config_path, RunFn runNode, Node* result)
+    public this (string config_path, FullNode* result)
     in
     {
         assert(config_path.length);
-        assert(runNode !is null);
         assert(result !is null);
     }
     do
     {
         this.path = config_path;
-        this.run = runNode;
         this.runResult = result;
     }
 
@@ -115,13 +110,14 @@ public class SetupInterface
         try
         {
             string body = req.bodyReader.readAllUTF8();
+            log.error("Received configuration from admin interface: {}", body);
             auto config = parseConfigString(body, this.path);
             std.file.write(this.path, body);
             scope (failure) std.file.remove(this.path);
             res.writeVoidBody();
             this.listener.stopListening();
             log.info("Config written to {}, starting node", this.path);
-            runTask(() => *this.runResult = this.run(config));
+            runTask(() => *this.runResult = runNode(config));
         }
         catch (Exception e)
         {

@@ -104,12 +104,13 @@ private int main (string[] args)
 
 *******************************************************************************/
 
-private void initialize (string config_path, Node* node)
+private void initialize (string config_path, FullNode* node)
 {
-    assert(node !is null);
     import agora.node.AdminInterface;
-    log.info("Setup interface listening to 127.0.0.1:2827 and will write to {}",
+
+    assert(node !is null);
+    log.info("Setup interface listening to http://127.0.0.1:2827 and will write to {}",
              config_path);
-    auto setup = new SetupInterface(config_path, &runNode, node);
+    auto setup = new SetupInterface(config_path, node);
     setup.start();
 }
