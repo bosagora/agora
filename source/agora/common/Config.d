@@ -25,6 +25,7 @@ import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
 import dyaml.node;
+import dyaml.loader;
 
 import std.algorithm;
 import std.conv;
@@ -181,7 +182,7 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 
 /*******************************************************************************
 
-    Parses the config file and returns a `Config` instance.
+    Parses the config file or string and returns a `Config` instance.
 
     Params:
         cmdln = command-line arguments (containing the path to the config)
@@ -196,17 +197,51 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 
 public Config parseConfigFile (ref const CommandLine cmdln)
 {
-    return parseConfigFileImpl(cmdln);
+    Node root = Loader.fromFile(cmdln.config_path).load();
+    return parseConfigImpl(cmdln, root);
 }
 
 /// ditto
-private Config parseConfigFileImpl (ref const CommandLine cmdln)
+public Config parseConfigString (string data, string path)
 {
-    import std.conv;
-    import dyaml;
+    CommandLine cmdln = { config_path: path };
+    Node root = Loader.fromString(data).load();
+    return parseConfigImpl(cmdln, root);
+}
 
-    Node root = Loader.fromFile(cmdln.config_path).load();
+///
+unittest
+{
+    assertThrown!Exception(parseConfigString("", "/dev/null"));
+    // Missing 'network' section
+    {
+        immutable conf_str = `
+node:
+  validator: false
+`;
+        assertThrown!Exception(parseConfigString(conf_str, "/dev/null"));
+    }
 
+    {
+        immutable conf_str = `
+network:
+  - http://192.168.0.42:2826
+quorum:
+  threshold: 66%
+  nodes:
+    - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
+`;
+        auto conf = parseConfigString(conf_str, "/dev/null");
+        assert(conf.network == [ `http://192.168.0.42:2826` ]);
+        assert(conf.quorum.threshold == 1);
+        assert(conf.quorum.nodes == [ PublicKey.fromString(
+            `GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN`) ]);
+    }
+}
+
+/// ditto
+private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
+{
     const(string)[] parseSequence (string section, bool optional = false)
     {
         if (auto val = section in cmdln.overrides)
