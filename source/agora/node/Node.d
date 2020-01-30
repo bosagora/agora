@@ -36,8 +36,6 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import scpd.types.Stellar_SCP;
-
-import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
 import vibe.data.json;
