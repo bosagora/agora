@@ -16,6 +16,8 @@ module agora.common.Deserializer;
 import agora.common.Types;
 import agora.common.crypto.Key;
 
+import std.range;
+
 /// test various serialization / deserialization of types
 unittest
 {
@@ -244,6 +246,17 @@ public void deserializePart (ref uint[] record, scope DeserializeDg dg)
         foreach (ref uint elem; record)
             elem = swapEndian(elem);
     }
+}
+
+/// Ditto
+public void deserializePart (ref Hash[] record, scope DeserializeDg dg)
+    @trusted
+{
+    size_t length;
+    deserializePart(length, dg);
+    record = uninitializedArray!(Hash[])(length);
+    foreach (ref val; record)
+        deserializePart(val, dg);
 }
 
 /*******************************************************************************
