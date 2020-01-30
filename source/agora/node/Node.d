@@ -125,8 +125,21 @@ public class Node : API
         if (!this.config.node.is_validator)
             return;
 
+        // TODO: This is a workaround as we want to test nodes
+        // before quorum balancing is implemented
+        // Remove in the future and infer from the network.
+        QuorumConfig default_;
+        scope const(QuorumConfig)* ptr = &this.config.quorum;
+        if (this.config.quorum.nodes.length == 0)
+        {
+            default_.nodes = peers.keys().idup;
+            // 66% or more
+            default_.threshold = default_.nodes.length - (default_.nodes.length / 3);
+            ptr = &default_;
+        }
+
         import agora.network.NetworkClient;
-        auto quorum_set = toSCPQuorumSet(this.config.quorum);
+        auto quorum_set = toSCPQuorumSet(*ptr);
         normalizeQSet(quorum_set);
 
         // todo: assertion fails do the misconfigured(?) threshold of 1 which
