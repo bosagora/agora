@@ -35,6 +35,19 @@ import std.path;
 
 mixin AddLogger!();
 
+
+/*******************************************************************************
+
+    Define preimage data for a preimage at a certain round and the round number
+
+*******************************************************************************/
+
+public struct PreimageInfo
+{
+    public Hash hash;
+    public uint round;
+}
+
 /*******************************************************************************
 
     Handle enrollment data and manage the validators set
@@ -60,6 +73,13 @@ public class EnrollmentManager
 
     /// Enrollment data object
     private Enrollment data;
+
+    /// The round period for revealing a preimage
+    /// It is an hour interval if a block is made in every 10 minutes
+    public static immutable uint PreimagePeriod = 6;
+
+    /// The cycle length for a valdator
+    public static immutable uint ValidatorCycleLength = 1008; // freezing period / 2
 
     /***************************************************************************
 
@@ -318,7 +338,7 @@ public class EnrollmentManager
         this.data.utxo_key = frozen_utxo_hash;
 
         // N, cycle length
-        this.data.cycle_length = 1008; // freezing period / 2
+        this.data.cycle_length = ValidatorCycleLength;
 
         // generate random seed value
         this.random_seed_src = Scalar.random();
@@ -414,6 +434,30 @@ public class EnrollmentManager
             this.signature_noise.v, this.data);
 
         enroll = this.data;
+        return true;
+    }
+
+    /***************************************************************************
+
+        Get a pre-image at a certain round
+
+        Params:
+            round = the number of a round at which the pre-image is in
+            preimage = will contain the PreimageInfo if exists
+
+        Returns:
+            true if the pre-image exists
+
+    ***************************************************************************/
+
+    public bool getPreimage (uint round, out PreimageInfo preimage)
+        @trusted nothrow
+    {
+        if (round < 1 && round > ValidatorCycleLength)
+            return false;
+
+        preimage.round = round;
+        preimage.hash = this.preimages[round-1];
         return true;
     }
 
