@@ -152,7 +152,7 @@ public struct QuorumConfig
     public size_t threshold = 1;
 
     /// List of nodes in this quorum
-    public immutable PublicKey[] nodes;
+    public immutable(PublicKey)[] nodes;
 
     /// List of any sub-quorums
     public immutable QuorumConfig[] quorums;
@@ -263,7 +263,6 @@ private Config parseConfigFileImpl (ref const CommandLine cmdln)
         node : parseNodeConfig("node" in root, cmdln),
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns", true)),
-        quorum : parseQuorumSection("quorum" in root, cmdln),
         logging: parseLoggingSection("logging" in root, cmdln),
     };
 
@@ -410,146 +409,6 @@ logging:
         auto config2 = parseLoggingSection("logging" in node, cmdln);
         assert(config2.log_level == LogLevel.Trace);
     }
-}
-
-
-/*******************************************************************************
-
-    Parse the quorum config section
-
-    Params:
-        node_ptr = pointer to the Yaml node containing the quorum configuration
-        cmdln = the parsed command line arguments, for override
-        level = the nesting level of the quorum. The maximum nesting is 3.
-
-    Returns:
-        the parsed quorum config section
-
-*******************************************************************************/
-
-private QuorumConfig parseQuorumSection (Node* node_ptr,
-    const ref CommandLine cmdln, size_t level = 1)
-{
-    import std.algorithm;
-    import std.exception;
-    enforce(level <= 3, "Cannot have more than 2 levels of sub-quorums.");
-
-    PublicKey[] nodes;
-    if (auto nodeKeyArray = "quorum.nodes" in cmdln.overrides)
-        foreach (string nodeKeyStr; *nodeKeyArray)
-            nodes ~= PublicKey.fromString(nodeKeyStr);
-    else if (node_ptr is null)
-        throw new Exception("Section 'quorum.nodes' is mandatory but not present");
-    else
-        foreach (string nodeKeyStr; (*node_ptr)["nodes"])
-            nodes ~= PublicKey.fromString(nodeKeyStr);
-
-    QuorumConfig[] sub_quorums;
-    // Node: Providing sub_quorums via command line is currently not supported
-    if (node_ptr)
-        if (auto subs = "sub_quorums" in *node_ptr)
-        {
-            foreach (ref Node sub; *subs)
-                sub_quorums ~= parseQuorumSection(&sub, cmdln, level + 1);
-        }
-
-    const thresholdRaw = cmdln.get!(string, "quorum", "threshold")(node_ptr);
-    const threshold = getThreshold(thresholdRaw.stripRight('%').to!float,
-        nodes.length + sub_quorums.length);
-
-    return QuorumConfig(threshold, nodes.assumeUnique, sub_quorums.assumeUnique);
-}
-
-///
-unittest
-{
-    import dyaml.loader;
-    CommandLine cmdln;
-
-    immutable conf_example = `
-    quorum:
-        # threshold as a percentage
-        threshold: 66%
-        # the list of nodes
-        nodes:
-          - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
-          - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-        sub_quorums:
-          - threshold: 66%
-            nodes:
-              - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
-              - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-            sub_quorums:
-              - threshold: 66%
-                nodes:
-                  - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
-                  - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-                  - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5`;
-
-    auto node = Loader.fromString(conf_example).load();
-    auto quorum = parseQuorumSection("quorum" in node, cmdln);
-
-    auto expected = QuorumConfig(2,
-        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
-        [QuorumConfig(2,
-            [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-             PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
-            [QuorumConfig(2,
-                [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5"),
-                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])])]);
-
-    assert(quorum == expected);
-
-    immutable bad_nesting = `
-        threshold: 66%
-        nodes:
-          - GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN
-        sub_quorums:
-          - threshold: 66%
-            nodes:
-              - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-            sub_quorums:
-              - threshold: 66%
-                nodes:
-                  - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5
-                sub_quorums:
-                  - threshold: 66%
-                    nodes:
-                      - GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5`;
-
-    node = Loader.fromString(bad_nesting).load();
-    assertThrown(parseQuorumSection("quorum" in node, cmdln));
-}
-
-/*******************************************************************************
-
-    Return the threshold in an N of M form, rounding up (same as Stellar)
-
-    Params:
-        percentage = the threshold in percentage
-        count = the M in N of M
-
-    Returns:
-        The N of M based on the percentage
-
-*******************************************************************************/
-
-private uint getThreshold ( float percentage, size_t count )
-{
-    return cast(uint)(((count * percentage - 1) / 100) + 1);
-}
-
-///
-unittest
-{
-    assert(getThreshold(10.0, 10) == 1);
-    assert(getThreshold(50.0, 10) == 5);
-    assert(getThreshold(100.0, 10) == 10);
-    assert(getThreshold(33.3, 10) == 4);  // round up
-    assert(getThreshold(100.0, 1) == 1);
-    assert(getThreshold(1, 1) == 1);  // round up
 }
 
 /// Optionally get a value
