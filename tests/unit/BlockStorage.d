@@ -66,7 +66,7 @@ private void main ()
             ]
         );
         tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        blocks ~= makeNewBlock(blocks[$ - 1], [tx]);
+        blocks ~= makeNewBlock(blocks[$ - 1], [tx], null);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
     }

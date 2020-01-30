@@ -383,11 +383,12 @@ unittest
     Params:
         prev_block = the previous block
         txs = the transactions that will be contained in the new block
+        enrollments = the enrollments that will be contained in the new block
 
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs) @safe nothrow
+    Transactions txs, Enrollment[] enrollments) @safe nothrow
     if (isInputRange!Transactions)
 {
     Block block;
@@ -398,8 +399,21 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     block.txs.sort;
 
     block.header.merkle_root = block.buildMerkleTree();
-
+    block.header.enrollments = enrollments;
+    assert(block.header.enrollments.isStrictlyMonotonic!
+        ("a.utxo_key < b.utxo_key"));
     return block;
+}
+
+/// only used in unittests
+version (unittest)
+{
+    public Block makeNewBlock (Transactions)(const ref Block prev_block,
+        Transactions txs) @safe nothrow
+        if (isInputRange!Transactions)
+    {
+        return makeNewBlock(prev_block, txs, null);
+    }
 }
 
 ///
