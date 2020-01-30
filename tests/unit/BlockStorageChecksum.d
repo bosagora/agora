@@ -53,7 +53,7 @@ private void writeBlocks (string path)
     foreach (block_idx; 0 .. BlockCount)
     {
         Transaction[8] txs;
-        auto block = makeNewBlock(blocks[$ - 1], txs[]);
+        auto block = makeNewBlock(blocks[$ - 1], txs[], null);
         storage.saveBlock(block);
         blocks ~= block;
     }

@@ -53,7 +53,7 @@ private void main ()
         // create enough tx's for a single block
         auto txs = makeChainedTransactions(gen_key_pair, last_txs, 1);
 
-        auto block = makeNewBlock(blocks[$ - 1], txs);
+        auto block = makeNewBlock(blocks[$ - 1], txs, null);
         storage.saveBlock(block);
         blocks ~= block;
         last_txs = txs;

@@ -22,6 +22,7 @@ import agora.common.TransactionPool;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -118,7 +119,8 @@ public class Ledger
         nothrow @trusted
     {
         scope (failure) assert(0);
-        auto block = makeNewBlock(this.last_block, data.tx_set.byKey());
+        auto block = makeNewBlock(this.last_block, data.tx_set.byKey(),
+            data.enrolls);
         return this.acceptBlock(block);
     }
 
@@ -188,6 +190,9 @@ public class Ledger
 
         Add a validated block to the Ledger,
         and add all of its outputs to the UTXO set.
+        If there are any enrollments in the block,
+        update the enrollments' starting block heights
+        in the enrollment manager.
 
         Params:
             block = the block to add
@@ -201,6 +206,11 @@ public class Ledger
         this.updateUTXOSet(block);
         if (!this.storage.saveBlock(block))
             assert(0);
+
+        foreach (enrollment; block.header.enrollments)
+            if (!this.enroll_man.updateEnrolledHeight(enrollment.utxo_key,
+                block.header.height))
+                assert(0);
 
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
@@ -833,6 +843,202 @@ unittest
     blocks = ledger.getBlocksFrom(0).take(10).array;
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
+}
+
+// Create freeze transactions and create enrollments to
+// test if it is stored in a block.
+unittest
+{
+    import agora.common.crypto.ECC;
+    import agora.common.crypto.Key;
+    import agora.common.crypto.Schnorr;
+    import agora.common.Hash;
+    import agora.common.Types;
+
+    auto gen_key = getGenesisKeyPair();
+
+    KeyPair[] splited_keys = getRandomKeyPairs();
+    KeyPair[] in_key_pairs_normal;
+    KeyPair[] out_key_pairs_normal;
+    Transaction[] last_txs_normal;
+    KeyPair[] in_key_pairs_freeze;
+    KeyPair[] out_key_pairs_freeze;
+    Transaction[] last_txs_freeze;
+
+    auto storage = new MemBlockStorage();
+    auto pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    auto utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key);
+    scope (exit) enroll_man.shutdown();
+    config.node.is_validator = true;
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+
+    Transaction[] splited_txex;
+    // Divide 8 'Outputs' that are included in Genesis Block by 40,000
+    // It generates eight addresses and eight transactions,
+    // and one transaction has eight Outputs with a value of 40,000 values.
+    void splitGenesis ()
+    {
+        splited_txex = splitGenesisTransaction(getGenKeyPairs(), splited_keys);
+        splited_txex.each!((tx)
+        {
+            assert(ledger.acceptTransaction(tx));
+        });
+        ledger.forceCreateBlock();
+    }
+
+    in_key_pairs_normal.length = 0;
+    foreach (idx; 0 .. Block.TxsInBlock)
+        in_key_pairs_normal ~= splited_keys[0];
+
+    out_key_pairs_normal = getRandomKeyPairs();
+
+    // generate nomal transactions to form a block
+    void genNormalBlockTransactions (size_t count, bool is_valid = true)
+    {
+        foreach (idx; 0 .. count)
+        {
+            auto txes = makeTransactionForFreezing (
+                in_key_pairs_normal,
+                out_key_pairs_normal,
+                TxType.Payment,
+                last_txs_normal,
+                splited_txex[0]);
+
+            txes.each!((tx)
+                {
+                    assert(ledger.acceptTransaction(tx) == is_valid);
+                });
+            ledger.forceCreateBlock();
+
+            if (is_valid)
+            {
+                // keep track of last tx's to chain them to
+                last_txs_normal = txes[$ - Block.TxsInBlock .. $];
+
+                in_key_pairs_normal = out_key_pairs_normal;
+                out_key_pairs_normal = getRandomKeyPairs();
+            }
+        }
+    }
+
+    in_key_pairs_freeze.length = 0;
+    foreach (idx; 0 .. Block.TxsInBlock)
+        in_key_pairs_freeze ~= splited_keys[1];
+
+    out_key_pairs_freeze = getRandomKeyPairs();
+
+    // generate freezing transactions to form a block
+    void genBlockTransactionsFreeze (size_t count, TxType tx_type, bool is_valid = true)
+    {
+        foreach (idx; 0 .. count)
+        {
+            auto txes = makeTransactionForFreezing (
+                in_key_pairs_freeze,
+                out_key_pairs_freeze,
+                tx_type,
+                last_txs_freeze,
+                splited_txex[1]);
+
+            txes.each!((tx)
+                {
+                    assert(ledger.acceptTransaction(tx) == is_valid);
+                });
+            ledger.forceCreateBlock();
+
+            if (is_valid)
+            {
+                // keep track of last tx's to chain them to
+                last_txs_freeze = txes[$ - Block.TxsInBlock .. $];
+
+                in_key_pairs_freeze = out_key_pairs_freeze;
+                out_key_pairs_freeze = getRandomKeyPairs();
+            }
+        }
+    }
+
+    splitGenesis();
+    assert(ledger.getBlockHeight() == 1);
+
+    genNormalBlockTransactions(1);
+    assert(ledger.getBlockHeight() == 2);
+
+    genBlockTransactionsFreeze(1, TxType.Freeze);
+    assert(ledger.getBlockHeight() == 3);
+
+    auto blocks = ledger.getBlocksFrom(0).take(10);
+
+    // make enrollments
+    KeyPair[] enroll_key_pair;
+    foreach (txid, tx; blocks[3].txs)
+        foreach (key_pair; in_key_pairs_freeze)
+            if (tx.outputs[0].address == key_pair.address)
+                enroll_key_pair ~= key_pair;
+
+    auto utxo_hash_1 = utxo_set.getHash(hashFull(blocks[3].txs[0]),0);
+    auto utxo_hash_2 = utxo_set.getHash(hashFull(blocks[3].txs[1]),0);
+    auto utxo_hash_3 = utxo_set.getHash(hashFull(blocks[3].txs[2]),0);
+
+    Pair signature_noise = Pair.random;
+    Pair node_key_pair_1;
+    node_key_pair_1.v = secretKeyToCurveScalar(enroll_key_pair[0].secret);
+    node_key_pair_1.V = node_key_pair_1.v.toPoint();
+
+    Pair node_key_pair_2;
+    node_key_pair_2.v = secretKeyToCurveScalar(enroll_key_pair[1].secret);
+    node_key_pair_2.V = node_key_pair_2.v.toPoint();
+
+    Pair node_key_pair_3;
+    node_key_pair_3.v = secretKeyToCurveScalar(enroll_key_pair[2].secret);
+    node_key_pair_3.V = node_key_pair_3.v.toPoint();
+
+    Enrollment enroll_1;
+    enroll_1.utxo_key = utxo_hash_1;
+    enroll_1.random_seed = hashFull(Scalar.random());
+    enroll_1.cycle_length = 1008;
+    enroll_1.enroll_sig = sign(node_key_pair_1.v, node_key_pair_1.V, signature_noise.V,
+        signature_noise.v, enroll_1);
+
+    Enrollment enroll_2;
+    enroll_2.utxo_key = utxo_hash_2;
+    enroll_2.random_seed = hashFull(Scalar.random());
+    enroll_2.cycle_length = 1008;
+    enroll_2.enroll_sig = sign(node_key_pair_2.v, node_key_pair_2.V, signature_noise.V,
+        signature_noise.v, enroll_2);
+
+    Enrollment enroll_3;
+    enroll_3.utxo_key = utxo_hash_3;
+    enroll_3.random_seed = hashFull(Scalar.random());
+    enroll_3.cycle_length = 1008;
+    enroll_3.enroll_sig = sign(node_key_pair_3.v, node_key_pair_3.V, signature_noise.V,
+        signature_noise.v, enroll_3);
+
+    Enrollment[] enrollments ;
+    enrollments ~= enroll_1;
+    enrollments ~= enroll_2;
+    enrollments ~= enroll_3;
+
+    auto findUTXO = utxo_set.getUTXOFinder();
+    assert(enroll_man.add(3, findUTXO, enroll_1));
+    assert(enroll_man.add(3, findUTXO, enroll_2));
+    assert(enroll_man.add(3, findUTXO, enroll_3));
+    assert(enroll_man.hasEnrollment(utxo_hash_1));
+    assert(enroll_man.hasEnrollment(utxo_hash_2));
+    assert(enroll_man.hasEnrollment(utxo_hash_3));
+    assert(enroll_man.count() == 3);
+
+    genNormalBlockTransactions(1);
+    assert(ledger.getBlockHeight() == 4);
+
+    // Check if there are any unregistered enrollments
+    Enrollment[] unreg_enrollments;
+    assert(enroll_man.getUnregistered(unreg_enrollments) is null);
+    auto block_4 = ledger.getBlocksFrom(4);
+    enrollments.sort!("a.utxo_key < b.utxo_key");
+    assert(block_4[0].header.enrollments == enrollments);
 }
 
 version (unittest)

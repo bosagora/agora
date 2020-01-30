@@ -1362,7 +1362,6 @@ unittest
         tx.inputs[0].signature = keypair.secret.sign(hashFull(tx)[]);
         txs_3 ~= tx;
     }
-    auto block3 = makeNewBlock(block2, txs_3);
 
     Pair signature_noise = Pair.random;
     Pair node_key_pair;
@@ -1376,7 +1375,7 @@ unittest
     enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
- 
+
     auto utxo_hash2 = utxo_set.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
@@ -1389,13 +1388,9 @@ unittest
     enrollments ~= enroll1;
     enrollments ~= enroll2;
     enrollments.sort!("a.utxo_key < b.utxo_key");
-    block3.header.enrollments.length = 0;
-    block3.header.enrollments = enrollments;
+    auto block3 = makeNewBlock(block2, txs_3, enrollments);
     assert(block3.isValid(block2.header.height, hashFull(block2.header), findUTXO));
-
     enrollments.sort!("a.utxo_key > b.utxo_key");
-    block3.header.enrollments.length = 0;
-    block3.header.enrollments = enrollments;
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     assert(!block3.isValid(block2.header.height, hashFull(block2.header), findUTXO));
