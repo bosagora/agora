@@ -119,6 +119,20 @@ public struct BitField
     {
         return this.num_bits;
     }
+
+    /// nothrow wrapper around BitArray.opApply (todo: fix BitArray)
+    public int opApply( scope int delegate(ref bool) nothrow dg ) @trusted nothrow
+    {
+        scope (failure) assert(0);
+        return this.bit_array.opApply(dg);
+    }
+
+    /// ditto
+    public int opApply (scope int delegate(ref size_t, ref bool) nothrow dg) @trusted nothrow
+    {
+        scope (failure) assert(0);
+        return this.bit_array.opApply(dg);
+    }
 }
 
 /// opEquals tests
