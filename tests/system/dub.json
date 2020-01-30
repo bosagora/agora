@@ -8,7 +8,7 @@
         "../../submodules/d2sqlite3/source",
     ],
 
-    "preBuildCommands": [ "source/scpp/build.d" ],
+    "preBuildCommands": [ "../../source/scpp/build.d" ],
     "sourceFiles": [
         "../../source/agora/common/crypto/Crc16.d",
         "../../source/agora/common/crypto/ECC.d",

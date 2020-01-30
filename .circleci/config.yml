@@ -28,7 +28,7 @@ jobs:
           command: |
             mkdir -p $HOME/dlang && wget https://dlang.org/install.sh -O $HOME/dlang/install.sh
             chmod +x $HOME/dlang/install.sh
-            $HOME/dlang/install.sh install dmd-2.089.1
+            $HOME/dlang/install.sh install dmd-2.090.0
       - run:
           name: Install libsodium
           command: |
@@ -44,7 +44,7 @@ jobs:
       - run:
           name: Build & test docker image
           command: |
-            source $HOME/dlang/dmd-2.089.1/activate
+            source $HOME/dlang/dmd-2.090.0/activate
             ci/system_integration_test.d
             # Work around druntime setting the permissions to 600..
             sudo chmod 644 tests/system/node/*/*.lst
