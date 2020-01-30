@@ -14,6 +14,7 @@
 module agora.consensus.Validation;
 
 import agora.common.Amount;
+import agora.common.Config;
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
@@ -23,8 +24,105 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
+import agora.node.Ledger;
 
 import std.conv;
+
+/// Node ID => Block #index => Preimage
+public alias PreimagesMap = Hash[ulong][ushort];
+
+/// Node ID => Block #Index => Expected R value
+/// (based on R2 = R1 + X1, where X1 is the preimage for block #1)
+public alias PubRMap = Point[ulong][ushort];
+
+/*******************************************************************************
+
+    Check the validation of the block header's signature
+
+    Params:
+        header = the block header to validate
+        preimage_map = the currently revealed preimage_map of all the nodes
+        pub_R_map = the map of the expected R's based on the revealed preimage_map
+                      (e.g. R2 = R1 + X1, a map of R2 for each validator node)
+        pub_keys = public keys of all validators, sorted alphabetically
+                   to enable bitmask index lookup
+
+    Return:
+        `null` if the block is valid, otherwise a string explaining the
+        reason it is invalid.
+
+*******************************************************************************/
+
+public string isInvalidSignatureReason (BlockHeader header,
+    PreimagesMap preimages_map, PubRMap pub_R_map, Point[] pub_keys)
+    nothrow @safe
+{
+    import agora.common.crypto.Schnorr : verify;
+
+    Point P;  // sum of P for the validators which signed
+    Point R;  // ditto for R
+    size_t num_signers;
+
+    foreach (idx, has_signed; header.validators)
+    {
+        if (!has_signed)
+            continue;
+
+        /// node indices are ushort
+        assert(idx < ushort.max);
+        const node_idx = cast(ushort)idx;
+
+        /// verification: the pubkeys & preimages are known and the R's were calculated
+        if (node_idx >= pub_keys.length)
+            return "Validator is not enrolled";
+
+        auto preimages = node_idx in preimages_map;
+        if (preimages is null)
+            return "Validator has not revealed any preimages";
+
+        if (header.height !in *preimages)
+            return "Validator has not revealed the preimage for this block height";
+
+        // sanity checks: if preimages exist then the R values should have been calculated
+        auto rand_map = node_idx in pub_R_map;
+        assert(rand_map !is null);
+        auto rand_val = header.height in *rand_map;
+        assert(rand_val !is null);
+
+        /// Add the validator's P
+        if (P == Point.init)  // note: Point.init + Point != Point, must use assignment here
+            P = pub_keys[idx];
+        else
+            P = P + pub_keys[idx];
+
+        /// Add the validator's R
+        const Point node_R = *rand_val;
+        if (R == Point.init)  // note: Point.init + Point != Point, must use assignment here
+            R = node_R;
+        else
+            R = R + node_R;
+
+        num_signers++;
+    }
+
+    // todo: could have a rule: at least 50% + 1 must have signed the block
+    // in order for the signature to be considered valid
+    if (num_signers == 0)
+        return "Not enough validators signed this block";
+
+    if (!verify(P, header.signature, header))
+        return "Signature is invalid";
+
+    return null;
+}
+
+/// Ditto but returns `bool`, only usable in unittests
+version (unittest)
+public bool isValidSignature (BlockHeader header, PreimagesMap preimage_map,
+    PubRMap pub_R_map, Point[] pub_keys) nothrow @safe
+{
+    return isInvalidSignatureReason(header, preimage_map, pub_R_map, pub_keys) is null;
+}
 
 /*******************************************************************************
 
@@ -1399,4 +1497,217 @@ unittest
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     assert(!block3.isValid(block2.header.height, hashFull(block2.header), findUTXO));
+}
+
+/// isInvalidSignatureReason tests
+unittest
+{
+    import agora.consensus.data.Block;
+    import agora.consensus.Genesis;
+    import agora.common.Deserializer;
+    import agora.common.Serializer;
+    import agora.common.BitField;
+    import agora.common.crypto.Schnorr;
+    import agora.consensus.data.Enrollment;
+    import agora.consensus.data.Transaction;
+
+    import std.algorithm;
+    import std.format;
+    import std.range;
+    import std.stdio;
+
+    Point[] pub_keys;
+
+    /// Return the index of the key into the public key array.
+    /// The index is 'ushort' to match the validators bitfield array
+    ushort getKeyIndex (Point key)
+    {
+        assert(pub_keys.isSorted(), "Keys must be sorted!");
+        auto res = pub_keys.countUntil(key);
+        assert(res >= 0);
+        assert(res < ushort.max);
+        return cast(ushort)res;
+    }
+
+    /// A simplified example of a node which signs blocks
+    class Node
+    {
+        /// these should be calculated by other validating nodes, here for convenience
+        public Point[ulong] pub_R_map;
+
+        /// preimages of this node, which the node openly shares (could also share subset, as per YP)
+        public Hash[ulong] preimage_map;
+
+        /// note: not signed, used only for testing
+        public Enrollment enroll;
+
+        /// Key pair of this node
+        private Pair pair;
+
+        /// A Node's private map of r's for each block height which it wants to sign
+        private Scalar[ulong] priv_r_map;
+
+        this ()
+        {
+            auto v = KeyPair.random().secret.secretKeyToCurveScalar();
+            this.pair = Pair(v, v.toPoint());
+
+            this.enroll.cycle_length = 1008;
+            auto rand_src = Scalar.random();
+
+            Hash[] preimages;
+            preimages ~= hashFull(rand_src);
+            foreach (idx; 0 .. this.enroll.cycle_length - 1)
+                preimages ~= hashFull(preimages[idx]);
+
+            auto r = Pair.random().v;
+            foreach (idx, preimage; preimages.retro.enumerate)
+            {
+                this.preimage_map[idx] = preimage;
+
+                r = r + Scalar(preimage);
+                this.priv_r_map[idx] = r;
+
+                this.pub_R_map[idx] = r.toPoint();
+            }
+        }
+
+        ///
+        void signBlock (ref Block block, Point[] pub_keys, Point P, Point R)
+        {
+            this.signBlock(getKeyIndex(this.pair.V), block, pub_keys, P, R);
+        }
+
+        /// overload which can be called with a different signer index to test signature forgery
+        void signBlock (ushort signer_index, ref Block block, Point[] pub_keys, Point P, Point R)
+        {
+            auto r = this.priv_r_map[block.header.height];
+            auto sig = sign(this.pair.v, P, R, r, block.header);
+
+            block.header.signature = combine(R, sig, block.header.signature);
+            block.header.validators[signer_index] = true;  // mark that we signed this block
+        }
+    }
+
+    // the public preimage data, and the R's calculated from the preimage data
+    PreimagesMap preimages_map;
+    PubRMap pub_R_map;
+
+    scope node_1 = new Node();
+    scope node_2 = new Node();
+
+    // validator keys should be sorted in some defined order
+    pub_keys = [node_1.pair.V, node_2.pair.V];
+    sort(pub_keys);
+
+    // populate the preimages and public R's (calculated)
+    preimages_map[getKeyIndex(node_1.pair.V)] = node_1.preimage_map;
+    preimages_map[getKeyIndex(node_2.pair.V)] = node_2.preimage_map;
+    pub_R_map[getKeyIndex(node_1.pair.V)] = node_1.pub_R_map;
+    pub_R_map[getKeyIndex(node_2.pair.V)] = node_2.pub_R_map;
+
+    // prepare block 1 containing enrollment data (this should actually be genesis block)
+    auto gen_key = getGenesisKeyPair();
+    auto txs = makeChainedTransactions(gen_key, null, 1).sort.array;
+    auto block_1 = makeNewBlock(GenesisBlock, txs);
+    block_1.header.enrollments ~= node_1.enroll;  // validate blocks #2+
+    block_1.header.enrollments ~= node_2.enroll;  // ditto
+
+    // introduce node 3, which will validate Block #3+
+    scope node_3 = new Node();
+
+    // prepare block 2 which will be signed by nodes 1 & 2
+    auto txs_2 = makeChainedTransactions(gen_key, txs, 1).sort.array;
+    auto block_2 = makeNewBlock(block_1, txs_2);
+    block_2.header.validators = BitField(2);  // two validators
+    block_2.header.enrollments ~= node_3.enroll;  // validate blocks #3+
+
+    // P is the sum of all validators' public keys for block #2
+    Point P = pub_keys[0] + pub_keys[1];
+
+    // R is the sum of all the validators' Rs
+    Point R = pub_R_map[getKeyIndex(node_1.pair.V)][block_2.header.height] +
+              pub_R_map[getKeyIndex(node_2.pair.V)][block_2.header.height];
+
+    // none of the nodes signed
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys)
+        == "Not enough validators signed this block");
+
+    // not all nodes which agreed signed => Fail
+    node_1.signBlock(block_2, pub_keys, P, R);
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys)
+        == "Signature is invalid");
+
+    // all nodes signed => Ok
+    node_2.signBlock(block_2, pub_keys, P, R);
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys) is null);
+
+    // forge test: node 3 tried to add a forged signature to the block
+    auto backup = block_2.serializeFull.deserializeFull!Block;
+    auto validators = BitField(3);
+    validators[0] = block_2.header.validators[0];
+    validators[1] = block_2.header.validators[1];
+    block_2.header.validators = validators;
+    node_3.signBlock(2, block_2, pub_keys, P, R);  // additional signature at index #2
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys)
+        == "Validator is not enrolled");
+
+    // forge test: node 3 tried to replace a signature of an existing node with its own
+    block_2 = backup;
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys) is null);  // sanity check
+    node_3.signBlock(0, block_2, pub_keys, P, R);  // fake signature at index #0
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys)
+        == "Signature is invalid");
+
+    block_2 = backup;  // restore good block
+    assert(isInvalidSignatureReason(block_2.header, preimages_map, pub_R_map, pub_keys) is null);  // sanity check
+
+    // prepare block 3
+    auto txs_3 = makeChainedTransactions(gen_key, txs_2, 1).sort.array;
+    auto block_3 = makeNewBlock(block_2, txs_3);
+    block_3.header.validators = BitField(3);  // three validators
+
+    // update the list of public keys and preimages
+    pub_keys = [node_1.pair.V, node_2.pair.V, node_3.pair.V];
+    sort(pub_keys);
+
+    // populate the preimages and public R's (calculated)
+    preimages_map[getKeyIndex(node_1.pair.V)] = node_1.preimage_map;
+    preimages_map[getKeyIndex(node_2.pair.V)] = node_2.preimage_map;
+    preimages_map[getKeyIndex(node_3.pair.V)] = node_3.preimage_map;
+    pub_R_map[getKeyIndex(node_1.pair.V)] = node_1.pub_R_map;
+    pub_R_map[getKeyIndex(node_2.pair.V)] = node_2.pub_R_map;
+    pub_R_map[getKeyIndex(node_3.pair.V)] = node_3.pub_R_map;
+
+    // P is the sum of all validators' public keys
+    P = pub_keys[0] + pub_keys[1] + pub_keys[2];
+
+    // R is the sum of all the validators' Rs
+    R = pub_R_map[getKeyIndex(node_1.pair.V)][block_3.header.height] +
+        pub_R_map[getKeyIndex(node_2.pair.V)][block_3.header.height] +
+        pub_R_map[getKeyIndex(node_3.pair.V)][block_3.header.height];
+
+    // 1 / 3 signed => Fail
+    node_1.signBlock(block_3, pub_keys, P, R);
+    assert(isInvalidSignatureReason(block_3.header, preimages_map, pub_R_map, pub_keys)
+        == "Signature is invalid");
+
+    // 2 / 3 signed => Fail
+    node_2.signBlock(block_3, pub_keys, P, R);
+    assert(isInvalidSignatureReason(block_3.header, preimages_map, pub_R_map, pub_keys)
+        == "Signature is invalid");
+
+    // 3 / 3 signed => Ok
+    node_3.signBlock(block_3, pub_keys, P, R);
+    assert(isInvalidSignatureReason(block_3.header, preimages_map, pub_R_map, pub_keys) is null);
+
+    // test-case: validator 3 did not provide the preimage for this block height
+    preimages_map[getKeyIndex(node_3.pair.V)].remove(block_3.header.height);
+    assert(isInvalidSignatureReason(block_3.header, preimages_map, pub_R_map, pub_keys)
+        == "Validator has not revealed the preimage for this block height");
+
+    // test-case: validator 3 did not provide any preimages
+    preimages_map.remove(getKeyIndex(node_3.pair.V));
+    assert(isInvalidSignatureReason(block_3.header, preimages_map, pub_R_map, pub_keys)
+        == "Validator has not revealed any preimages");
 }
