@@ -168,6 +168,15 @@ public void serializePart (scope const(uint)[] record, scope SerializeDg dg)
     }
 }
 
+/// Ditto
+public void serializePart (scope const(Hash)[] record, scope SerializeDg dg)
+    @trusted
+{
+    serializePart(record.length, dg);
+    foreach (hash; record)
+        serializePart(hash, dg);
+}
+
 /*******************************************************************************
 
     Unsigned Integers to Serialized variable length integer
