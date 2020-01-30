@@ -52,6 +52,9 @@ public class EnrollmentManager
     /// Random seed
     private Scalar random_seed_src;
 
+    /// Preimages of hashes of random value
+    public Hash[] preimages;
+
     /// Random key for enrollment
     private Pair signature_noise;
 
@@ -94,6 +97,13 @@ public class EnrollmentManager
             signature_noise = deserializeFull!Pair(row.peek!(ubyte[])(0));
             break;
         }
+
+        // load preimages
+        results = this.db.execute("SELECT val FROM node_enroll_data " ~
+            "WHERE key = ?", "preimages");
+
+        if (!results.empty)
+            this.preimages = results.oneValue!(ubyte[]).deserializeFull!(Hash[]);
     }
 
     /***************************************************************************
@@ -313,10 +323,13 @@ public class EnrollmentManager
         // generate random seed value
         this.random_seed_src = Scalar.random();
 
-        // X, nth image of random seed
-        this.data.random_seed = hashFull(this.random_seed_src);
+        // X, final seed data and preimages of hashes
+        this.preimages.length = 0;
+        assumeSafeAppend(this.preimages);
+        this.preimages ~= hashFull(this.random_seed_src);
         foreach (i; 0 .. this.data.cycle_length-1)
-            this.data.random_seed = hashFull(this.data.random_seed);
+            this.preimages ~= hashFull(this.preimages[i]);
+        this.data.random_seed = this.preimages[$-1];
 
         // R, signature noise
         this.signature_noise = Pair.random();
@@ -351,6 +364,42 @@ public class EnrollmentManager
                 {
                     this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
                         "signature_noise", buffer);
+                }
+            }();
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Database operation error", enroll, ex);
+            return false;
+        }
+
+        // serialize preimages
+        buffer.length = 0;
+        assumeSafeAppend(buffer);
+        try
+        {
+            serializePart(this.preimages, dg);
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Serialization error of preimages", enroll, ex);
+            return false;
+        }
+
+        try
+        {
+            () @trusted {
+                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM node_enroll_data " ~
+                    "WHERE key = ?)", "preimages");
+                if (results.oneValue!(bool))
+                {
+                    this.db.execute("UPDATE node_enroll_data SET val = ? WHERE key = ?",
+                        buffer, "preimages");
+                }
+                else
+                {
+                    this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
+                        "preimages", buffer);
                 }
             }();
         }
@@ -472,6 +521,28 @@ public class EnrollmentManager
         catch (Exception ex)
         {}
     }
+
+    /***************************************************************************
+
+        Load pre-images from the storage
+
+        Returns:
+            an array of hashes of pre-images
+
+    ***************************************************************************/
+
+    version (unittest) public Hash[] loadPreimages () @safe
+    {
+        Hash[] preimages;
+        () @trusted {
+            auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
+                "WHERE key = ?", "preimages");
+            if (!results.empty)
+                preimages = results.oneValue!(ubyte[]).deserializeFull!(Hash[]);
+        }();
+
+        return preimages;
+    }
 }
 
 /// tests for member functions of EnrollmentManager
@@ -480,6 +551,7 @@ unittest
     import agora.common.Amount;
     import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
+    import std.algorithm;
     import std.format;
     import std.conv;
 
@@ -587,4 +659,11 @@ unittest
     man.getUnregisteredEnrollments(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
+
+    // check if the pre-images have right value
+    assert(equal!((a, b) => a.hashFull() == b) (man.preimages[0 .. $-1],
+        man.preimages[1 .. $]));
+
+    // test serialization/deserializetion for pre-images
+    assert(man.preimages[] == man.loadPreimages());
 }
