@@ -22,6 +22,7 @@ module agora.test.Base;
 
 version (unittest):
 
+import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.Config;
@@ -38,7 +39,6 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.network.NetworkManager;
-import agora.node.API;
 import agora.node.Ledger;
 import agora.node.Node;
 import agora.utils.Log;

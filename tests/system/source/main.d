@@ -13,12 +13,12 @@
 
 module main;
 
+import agora.api.FullNode;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.common.Set;
-import agora.node.API;
 import agora.utils.PrettyPrinter;
 
 import vibe.web.rest;
@@ -60,7 +60,6 @@ void main ()
 
         foreach (idx, ref client; clients)
         {
-            writefln("[%s] getPublicKey: %s", idx, client.getPublicKey());
             writefln("[%s] getNetworkInfo: %s", idx, client.getNetworkInfo());
             const height = client.getBlockHeight();
             writefln("[%s] getBlockHeight: %s", idx, height);

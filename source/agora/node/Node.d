@@ -13,6 +13,7 @@
 
 module agora.node.Node;
 
+import agora.api.Validator;
 import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -28,7 +29,6 @@ import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.network.NetworkManager;
-import agora.node.API;
 import agora.node.BlockStorage;
 import agora.node.GossipProtocol;
 import agora.node.Ledger;
