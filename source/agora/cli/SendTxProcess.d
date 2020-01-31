@@ -13,6 +13,7 @@
 
 module agora.cli.SendTxProcess;
 
+import agora.api.FullNode;
 import agora.cli.CLIResult;
 import agora.common.Amount;
 import agora.common.crypto.Key;
@@ -20,7 +21,6 @@ import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
-import agora.node.API;
 
 import std.format;
 import std.getopt;

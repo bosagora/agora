@@ -51,7 +51,15 @@
             "name": "cli",
             "targetName": "agora-cli",
             "mainSourceFile": "source/agora/cli/main.d",
-            "excludedSourceFiles": [ "source/agora/node/main.d" ]
+            "excludedSourceFiles": [
+                "source/agora/api/Validator.d",
+                "source/agora/common/Config.d",
+                "source/agora/network/*",
+                "source/agora/node/*",
+                "source/scpp/*",
+                "source/scpd/*",
+                "source/agora/consensus/protocol/*"
+            ]
         },
         {
             "name": "unittest",
