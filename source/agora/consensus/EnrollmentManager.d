@@ -586,7 +586,7 @@ unittest
 
         auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
-        storage[hashFull(tx)] = tx;
+        storage[hashMulti(hashFull(tx), idx)] = tx;
     }
 
     // create an EnrollmentManager object
