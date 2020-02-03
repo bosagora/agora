@@ -555,20 +555,7 @@ unittest
     import std.format;
     import std.conv;
 
-    Transaction[Hash] storage;
-    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value) @trusted
-    {
-        assert(index == size_t.max);
-        if (auto tx = hash in storage)
-        {
-            value.unlock_height = 0;
-            value.type = tx.type;
-            value.output = tx.outputs[0];
-            return true;
-        }
-
-        return false;
-    };
+    scope storage = new TestUTXOSet;
 
     auto gen_key_pair = getGenesisKeyPair();
     KeyPair key_pair = KeyPair.random();
@@ -586,7 +573,7 @@ unittest
 
         auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
-        storage[hashFull(tx)] = tx;
+        storage.put(tx);
     }
 
     // create an EnrollmentManager object
@@ -599,22 +586,22 @@ unittest
     Enrollment enroll;
     assert(man.createEnrollment(utxo_hash, enroll));
     assert(!man.hasEnrollment(utxo_hash));
-    assert(man.addEnrollment(0, findUTXO, enroll));
+    assert(man.addEnrollment(0, &storage.findUTXO, enroll));
     assert(man.getEnrollmentLength() == 1);
     assert(man.hasEnrollment(utxo_hash));
-    assert(!man.addEnrollment(0, findUTXO, enroll));
+    assert(!man.addEnrollment(0, &storage.findUTXO, enroll));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     Enrollment enroll2;
     assert(man.createEnrollment(utxo_hash2, enroll2));
-    assert(man.addEnrollment(0, findUTXO, enroll2));
+    assert(man.addEnrollment(0, &storage.findUTXO, enroll2));
     assert(man.getEnrollmentLength() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
     assert(man.createEnrollment(utxo_hash3, enroll3));
-    assert(man.addEnrollment(0, findUTXO, enroll3));
+    assert(man.addEnrollment(0, &storage.findUTXO, enroll3));
     assert(man.getEnrollmentLength() == 3);
 
     Enrollment[] enrolls;
@@ -655,7 +642,7 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(man.addEnrollment(0, findUTXO, ordered_enroll));
+        assert(man.addEnrollment(0, &storage.findUTXO, ordered_enroll));
     man.getUnregisteredEnrollments(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
