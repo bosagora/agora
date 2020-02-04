@@ -544,6 +544,9 @@ public enum NetworkTopology
     /// Same as Simple, with one additional non-validating node
     OneNonValidator,
 
+    /// Only one of the nodes is a validator, the rest are full nodes
+    OneValidator,
+
     /// 4 nodes, 3 required, correspond to Figure 2 in the SCP paper
     Balanced,
 
@@ -601,11 +604,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     assert(nodes >= 2, "Creating a network require at least 2 nodes");
 
-    NodeConfig makeNodeConfig ()
+    NodeConfig makeNodeConfig (bool is_validator)
     {
         NodeConfig conf =
         {
-            is_validator : true,
+            is_validator : is_validator,
             key_pair : KeyPair.random(),
             retry_delay : retry_delay, // msecs
             max_retries : max_retries,
@@ -673,20 +676,27 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     final switch (topology)
     {
     case NetworkTopology.Simple:
-        node_configs = iota(nodes).map!(_ => makeNodeConfig()).array;
+        node_configs = iota(nodes).map!(_ => makeNodeConfig(true)).array;
         configs = iota(nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneNonValidator:
-        node_configs ~= iota(nodes).map!(_ => makeNodeConfig()).array;
+        node_configs ~= iota(nodes).map!(_ => makeNodeConfig(true)).array;
         node_configs[$ - 1].is_validator = false;
         configs = iota(nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
+    case NetworkTopology.OneValidator:
+        node_configs ~= iota(nodes).map!(_ => makeNodeConfig(false)).array;
+        node_configs[0].is_validator = true;
+        configs = iota(nodes)
+            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+        break;
+
     case NetworkTopology.Cyclic:
-        node_configs = iota(nodes).map!(_ => makeNodeConfig()).array;
+        node_configs = iota(nodes).map!(_ => makeNodeConfig(true)).array;
         node_configs.each!((ref conf) => conf.min_listeners = 1);
         configs = iota(nodes)
             .map!(idx => makeCyclicConfig(idx, node_configs[idx], node_configs))
