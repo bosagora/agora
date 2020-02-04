@@ -96,14 +96,15 @@ unittest
     import core.time;
 
     const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount, true,
+    auto network = makeTestNetwork(NetworkTopology.OneValidator, NodeCount, true,
         100, 20, 100);  // reduce timeout to 100 msecs
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     assert(network.getDiscoveredNodes().length == NodeCount);
 
-    auto nodes = network.apis.values;
+    // node_1 is the validator
+    auto nodes = network.keys.map!(key => network.apis[key]).array;
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
