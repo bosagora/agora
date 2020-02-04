@@ -63,6 +63,10 @@ unittest
     import geod24.LocalRest;
     import geod24.Registry;
     import std.algorithm;
+    import std.array;
+    import std.conv;
+    import std.format;
+    import std.range;
 
     /// node which returns bad blocks
     static class BadNode : TestNode
@@ -110,7 +114,7 @@ unittest
         public override void createNewNode (PublicKey address, Config conf)
         {
             RemoteAPI!TestAPI api;
-            if (this.nodes.length == 0)
+            if (this.nodes.length == 2)
                 api = RemoteAPI!TestAPI.spawn!(BadNode)(conf, &this.reg);
             else
                 api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg);
@@ -122,7 +126,7 @@ unittest
     }
 
     const NodeCount = 3;
-    auto network = makeTestNetwork!BadAPIManager(NetworkTopology.OneNonValidator,
+    auto network = makeTestNetwork!BadAPIManager(NetworkTopology.OneValidator,
         NodeCount);
     network.start();
     scope(exit) network.shutdown();
@@ -130,29 +134,45 @@ unittest
     assert(network.getDiscoveredNodes().length == NodeCount);
 
     auto nodes = network.nodes;
-    auto node_bad = nodes[0];
-    auto node_good = nodes[1];
-    auto node_test = nodes[2];
+    auto node_validator = nodes[0];  // validator, creates blocks
+    auto node_test = nodes[1];  // full node, does not create blocks
+    auto node_bad = nodes[2];  // full node, returns bad blocks in getBlocksFrom()
 
     // enable filtering first
-    node_good.filter!(API.getBlocksFrom);
+    node_validator.filter!(API.getBlocksFrom);
     node_bad.filter!(API.getBlocksFrom);
     node_test.filter!(API.putTransaction);
 
-    // make 10 good blocks
-    auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 10);
-    txes.each!(tx => node_good.putTransaction(tx));
+    Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
+    Transaction[] last_txs;
+    foreach (block_idx; 0 .. 10)  // create 10 blocks
+    {
+        // create enough tx's for a single block
+        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
 
-    // at this point both the good node and bad node have same amount of blocks,
-    // but bad node pretends to have + 10
-    assert(node_good.getBlockHeight() == 10);
+        // send it to one node
+        txs.each!(tx => node_validator.putTransaction(tx));
+
+        [node_validator].enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == block_idx + 1,
+                4.seconds,
+                format("Node %s has block height %s. Expected: %s",
+                    idx, node.getBlockHeight(), block_idx + 1)));
+
+        block_txes ~= txs.sort.array;
+        last_txs = txs;
+    }
+
+    // the validator node has 10 blocks, but bad node pretends to have 20
+    assert(node_validator.getBlockHeight() == 10, node_validator.getBlockHeight().to!string);
     assert(node_bad.getBlockHeight() == 20);
     assert(node_test.getBlockHeight() == 0);  // only genesis
 
     node_bad.clearFilter();
-    node_good.clearFilter();
+    node_validator.clearFilter();
 
-    // node_receiver will receive its blocks from node_good
+    // node test will accept its blocks from node_validator,
+    // as the blocks in node_bad do not pass validation
     retryFor(node_test.getBlockHeight() == 10, 4.seconds);
-    assert(containSameBlocks([node_test, node_good], 10));
+    assert(containSameBlocks([node_test, node_validator], 10));
 }
