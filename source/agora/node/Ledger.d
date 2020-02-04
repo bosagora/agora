@@ -59,6 +59,9 @@ public class Ledger
     /// Node config
     private NodeConfig node_config;
 
+    /// Whether the Node is currently in the process of nominating a block
+    private bool is_nominating;
+
     /***************************************************************************
 
         Constructor
@@ -258,6 +261,12 @@ public class Ledger
 
     public void tryNominateTXSet () @safe
     {
+        // if we received another transaction while we're nominating, don't nominate again.
+        // todo: when we change nomination to be time-based (rather than input-based),
+        // then remove this part as it will be handled by a timer
+        if (this.is_nominating)
+            return;
+
         if (this.pool.length < Block.TxsInBlock)
             return;
 
@@ -282,6 +291,9 @@ public class Ledger
 
         if (txs.length != Block.TxsInBlock)
             return;  // not enough valid txs
+
+        this.is_nominating = true;
+        scope (exit) this.is_nominating = false;
 
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
