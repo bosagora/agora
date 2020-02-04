@@ -211,22 +211,6 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void tryNominate ()
-    {
-        if (this.pool.length >= Block.TxsInBlock)
-            this.tryNominateTXSet();
-    }
-
-    /***************************************************************************
-
-        Add a validated block to the Ledger,
-        and add all of its outputs to the UTXO set.
-
-        Params:
-            block = the block to add
-
-    ***************************************************************************/
-
     private void addValidatedBlock (const ref Block block) nothrow @safe
     {
         scope (failure) assert(0);
