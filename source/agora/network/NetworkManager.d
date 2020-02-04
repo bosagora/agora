@@ -181,7 +181,10 @@ public class NetworkManager
             {
                 this.getBlocksFrom(
                     ledger.getBlockHeight() + 1,
-                    blocks => blocks.all!(block => ledger.acceptBlock(block)));
+                    blocks => blocks.all!(block =>
+                        // do not alter the state of the ledger if
+                        // we're currently nominating
+                        !ledger.isNominating() && ledger.acceptBlock(block)));
 
                 this.taskman.wait(2.seconds);
             }

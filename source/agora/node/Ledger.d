@@ -250,6 +250,20 @@ public class Ledger
 
     /***************************************************************************
 
+        Returns:
+            true if there is currently a nomination round in progress.
+            Blocks should not be added to the Ledger via getBlocksFrom()
+            when this node is currently in the process of nominating a block.
+
+    ***************************************************************************/
+
+    public bool isNominating () nothrow @safe pure @nogc
+    {
+        return this.is_nominating;
+    }
+
+    /***************************************************************************
+
         Try making a new block if there are enough valid and non double-spending
         transactions in the pool
 
