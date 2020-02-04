@@ -30,6 +30,7 @@ unittest
     import core.thread;
     import std.algorithm;
     import std.conv;
+    import std.format;
     import std.range;
     const NodeCount = 3;
 
@@ -79,42 +80,43 @@ unittest
     // leftover txs which node 3 will reject due to its filter
     Transaction[] left_txs;
 
-    auto new_tx = genBlockTransactions(4);
-    left_txs ~= new_tx;
-    new_tx.each!(tx => node_1.putTransaction(tx));
+    foreach (block_idx; 0 .. 4)
+    {
+        auto new_tx = genBlockTransactions(1);
+        left_txs ~= new_tx;
+        new_tx.each!(tx => node_1.putTransaction(tx));
+
+        [node_1, node_2].enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == 1 + (block_idx + 1),
+                4.seconds,
+                format("Block %s Node %s has block height %s. Expected: %s",
+                    block_idx + 1, idx, node.getBlockHeight(), 1 + (block_idx + 1))));
+
+        retryFor(node_3.getBlockHeight() == 1, 1.seconds, node_3.getBlockHeight().to!string);
+    }
 
     // wait for node 3 to be banned and all putTransaction requests to time-out
     Thread.sleep(2.seconds);
 
-    import std.conv;
-    retryFor(node_1.getBlockHeight() == 5, 1.seconds, node_1.getBlockHeight().to!string);
-    retryFor(node_2.getBlockHeight() == 5, 1.seconds, node_2.getBlockHeight().to!string);
-    retryFor(node_3.getBlockHeight() == 1, 1.seconds, node_3.getBlockHeight().to!string);
-
-    // clear putTransaction filter
+    // sanity check: block height should not updated, node 3 is not a validator and cannot make new blocks,
+    // it may only add to its ledger through the getBlocksFrom() API.
     node_3.clearFilter();
-    left_txs.each!(tx => node_3.putTransaction(tx));  // add leftover txs manually
-    retryFor(node_3.getBlockHeight() == 5, 1.seconds);
+    left_txs.each!(tx => node_3.putTransaction(tx));
+    retryFor(node_3.getBlockHeight() == 1, 1.seconds);
 
-    // node 3 should be banned by this point, now we test if it is really banned
-    new_tx = genBlockTransactions(1);
-    left_txs ~= new_tx;
-    new_tx.each!(tx => node_1.putTransaction(tx));
-    retryFor(node_1.getBlockHeight() == 6, 1.seconds);
-    retryFor(node_2.getBlockHeight() == 6, 1.seconds);
-    retryFor(node_3.getBlockHeight() == 5, 1.seconds);  // node was banned
-
-    left_txs.each!(tx => node_3.putTransaction(tx));  // add leftover txs manually
-    retryFor(node_1.getBlockHeight() == 6, 1.seconds);
-    retryFor(node_2.getBlockHeight() == 6, 1.seconds);
-    retryFor(node_3.getBlockHeight() == 6, 1.seconds);
+    // clear the filter
+    node_1.clearFilter();
+    node_2.clearFilter();
 
     FakeClockBanManager.time += 500;  // node 3 should be unbanned now
 
-    new_tx = genBlockTransactions(1);
+    auto new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
     new_tx.each!(tx => node_1.putTransaction(tx));
-    retryFor(node_1.getBlockHeight() == 7, 1.seconds);
-    retryFor(node_2.getBlockHeight() == 7, 1.seconds);
-    retryFor(node_3.getBlockHeight() == 7, 1.seconds);  // node was un-banned
+
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 6,
+            4.seconds,
+            format("Node %s has block height %s. Expected: %s",
+                idx, node.getBlockHeight(), 6)));
 }
