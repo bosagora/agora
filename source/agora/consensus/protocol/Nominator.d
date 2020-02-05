@@ -15,7 +15,7 @@ module agora.consensus.protocol.Nominator;
 
 import agora.common.crypto.Key;
 import agora.common.Config;
-import agora.common.Hash : hashFull;
+import agora.common.Hash : Hash, HashDg, hashPart, hashFull;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
@@ -520,4 +520,206 @@ extern(D):
             callCPPDelegate(callback);
         });
     }
+}
+
+/// Adds hashing support to SCPStatement
+private struct SCPStatementHash
+{
+    // sanity check in case a new field gets added.
+    // todo: use .tupleof tricks for a more reliable field layout change check
+    static assert(SCPNomination.sizeof == 80);
+
+    /// instance pointer
+    private const SCPStatement* st;
+
+    /// Ctor
+    public this (const SCPStatement* st) @safe @nogc nothrow pure
+    {
+        assert(st !is null);
+        this.st = st;
+    }
+
+    /***************************************************************************
+
+        Compute the hash for SCPStatement.
+        Note: trusted due to union access.
+
+        Params:
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @trusted @nogc
+    {
+        hashPart(this.st.nodeID, dg);
+        hashPart(this.st.slotIndex, dg);
+        hashPart(this.st.pledges.type_, dg);
+
+        final switch (this.st.pledges.type_)
+        {
+            case SCPStatementType.SCP_ST_PREPARE:
+                computeHash(this.st.pledges.prepare_, dg);
+                break;
+
+            case SCPStatementType.SCP_ST_CONFIRM:
+                computeHash(this.st.pledges.confirm_, dg);
+                break;
+
+            case SCPStatementType.SCP_ST_EXTERNALIZE:
+                computeHash(this.st.pledges.externalize_, dg);
+                break;
+
+            case SCPStatementType.SCP_ST_NOMINATE:
+                computeHash(this.st.pledges.nominate_, dg);
+                break;
+        }
+    }
+
+    /***************************************************************************
+
+        Compute the hash for a prepare pledge statement.
+
+        Params:
+            prep = the prepare pledge statement
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public static void computeHash (
+        const ref SCPStatement._pledges_t._prepare_t prep,
+        scope HashDg dg) nothrow @safe @nogc
+    {
+        hashPart(prep.quorumSetHash[], dg);
+        hashPart(prep.ballot, dg);
+
+        /// these two can legitimately be null in the protocol
+        if (prep.prepared !is null)
+            hashPart(*prep.prepared, dg);
+
+        /// ditto
+        if (prep.preparedPrime !is null)
+            hashPart(*prep.preparedPrime, dg);
+
+        hashPart(prep.nC, dg);
+        hashPart(prep.nH, dg);
+    }
+
+    /***************************************************************************
+
+        Compute the hash for a confirm pledge statement.
+
+        Params:
+            conf = the confirm pledge statement
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public static void computeHash (
+        const ref SCPStatement._pledges_t._confirm_t conf,
+        scope HashDg dg) nothrow @safe @nogc
+    {
+        hashPart(conf.ballot, dg);
+        hashPart(conf.nPrepared, dg);
+        hashPart(conf.nCommit, dg);
+        hashPart(conf.nH, dg);
+        hashPart(conf.quorumSetHash[], dg);
+    }
+
+    /***************************************************************************
+
+        Compute the hash for an externalize pledge statement.
+
+        Params:
+            ext = the externalize pledge statement
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public static void computeHash (
+        const ref SCPStatement._pledges_t._externalize_t ext, scope HashDg dg)
+        nothrow @safe @nogc
+    {
+        hashPart(ext.commit, dg);
+        hashPart(ext.nH, dg);
+        hashPart(ext.commitQuorumSetHash[], dg);
+    }
+
+    /***************************************************************************
+
+        Compute the hash for a nomination pledge statement.
+
+        Params:
+            nom = the nomination pledge statement
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public static void computeHash (const ref SCPNomination nom, scope HashDg dg)
+        nothrow @safe @nogc
+    {
+        hashPart(nom.quorumSetHash[], dg);
+        hashPart(nom.votes[], dg);
+        hashPart(nom.accepted[], dg);
+    }
+}
+
+/// ditto
+@safe unittest
+{
+    SCPStatement st;
+    SCPBallot prep;
+    SCPBallot prep_prime;
+
+    import std.conv;
+
+    () @trusted {
+        st.pledges.prepare_ = SCPStatement._pledges_t._prepare_t.init;
+        st.pledges.prepare_.prepared = &prep;
+        st.pledges.prepare_.preparedPrime = &prep_prime;
+        st.pledges.type_ = SCPStatementType.SCP_ST_PREPARE;
+    }();
+
+    auto getStHash () @trusted { return SCPStatementHash(&st); }
+
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0x266223f3385aecddc64e02e21cb655d1693002d5da8e49e2c9a73afe0cf3ceac4" ~
+        "90b28fdfb42b0d67e7796593907947fb227b1045cf9b14785ba7d34c4305dbf"));
+
+    prep.counter++;
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0xdc8135b6c7757a1f68db0d792be67764ae3337e02b9cb2cd460fe3fa051a435b1" ~
+        "7a82ebd71d9ae00b36a9fcb90fd2b1e1d01bffbe335e1eda7de14ebf1c70a8d"));
+
+    prep_prime.counter++;
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0x0f4629c0571c806488b6ff737053963e42dc72427ac4de8293b69c674102efbd5" ~
+        "709928a32c60008359bd518da08c8a79a0ed38b722f61f741fc7df0f96bd99a"));
+
+    () @trusted { st.pledges.prepare_.prepared = null; }();
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0x6f056828fa1f7d59fca4279d37a3a933da1360718270872f9c37be67ab10aabdb" ~
+        "e0e4d889509f27f4957dc13b0082ac61d1acce19e599a89440679d36fe42ff9"));
+
+    () @trusted { st.pledges.prepare_.preparedPrime = null; }();
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0x328bcea198398bb6a52036b641f0fcc50ae7d3b97490bfe1e020441d158104458" ~
+        "29a63bb892da3ce2e539e1aa5a9f688695aefd54f967c197415ff834f0f0b22"));
+
+    () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
+    st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0xc359847b8ddce220c896386c6b05fd12acb36fb850bd4b3959cf97516b9360eda" ~
+        "98f9728911e678c342e23e38e300b1872faeddfa4ccd619404f3d9b7fc17439"));
+
+    () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
+    st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0x118121cc790639f11190bb5ea1f8023c7889f8484b69b2d13b7056f831b2b5741" ~
+        "afe7511a59d24f193fcce5c19080a5ca74ebc8487f1f340d70092066cd11f90"));
+
+    () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
+    st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
+    assert(getStHash().hashFull() == Hash.fromString(
+        "0x3c5a1a66ecf0c1e8992f448718fb1f4a6cbfb9527adba408644caefda8c1b1353" ~
+        "98dbc0c33174280e8b0a5fb835dc707f06394c1205f8be545e5f70c771b421d"));
 }
