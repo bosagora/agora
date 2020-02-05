@@ -399,29 +399,29 @@ extern(D):
 
         Params:
             slot_idx = the slot index we're currently reaching consensus for.
-            timer_ID = the timer ID. required in case the timer gets cancelled.
+            timer_type = the timer type (see Slot.timerIDs).
             timeout = the timeout of the timer, in milliseconds.
             callback = the C++ callback to call.
 
     ***************************************************************************/
 
-    public override void setupTimer (ulong slot_idx, int timer_ID,
+    public override void setupTimer (ulong slot_idx, int timer_type,
         milliseconds timeout, CPPDelegate!SCPCallback* callback)
     {
         scope (failure) assert(0);
 
         if (callback is null || timeout == 0)
         {
-            this.timers.remove(timer_ID);
+            this.timers.remove(timer_type);
             return;
         }
 
-        this.timers.put(timer_ID);
+        this.timers.put(timer_type);
 
         this.taskman.runTask(
         {
             this.taskman.wait(timeout.msecs);
-            if (timer_ID !in this.timers)  // timer was cancelled
+            if (timer_type !in this.timers)  // timer was cancelled
                 return;
 
             callCPPDelegate(callback);
