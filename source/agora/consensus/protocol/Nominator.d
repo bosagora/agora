@@ -29,6 +29,7 @@ import agora.utils.PrettyPrinter;
 import scpd.Cpp;
 import scpd.scp.SCP;
 import scpd.scp.SCPDriver;
+import scpd.scp.Slot;
 import scpd.scp.Utils;
 import scpd.types.Stellar_types;
 import scpd.types.Stellar_types : StellarHash = Hash;
@@ -69,6 +70,15 @@ public extern (C++) class Nominator : SCPDriver
 
     /// The quorum set
     private SCPQuorumSetPtr[Hash] quorum_set;
+
+    private alias TimerType = Slot.timerIDs;
+    static assert(TimerType.max == 1);
+
+    /// Tracks unique incremental timer IDs
+    private ulong[TimerType.max + 1] last_timer_id;
+
+    /// Timer IDs with >= of the active timer will be allowed to run
+    private ulong[TimerType.max + 1] active_timer_ids;
 
 extern(D):
 
@@ -410,18 +420,22 @@ extern(D):
     {
         scope (failure) assert(0);
 
+        const type = cast(TimerType) timer_type;
+        assert(type >= TimerType.min && type <= TimerType.max);
         if (callback is null || timeout == 0)
         {
-            this.timers.remove(timer_type);
+            // signal deactivation of all current timers with this timer type
+            this.active_timer_ids[type] = this.last_timer_id[type] + 1;
             return;
         }
 
-        this.timers.put(timer_type);
-
+        const timer_id = ++this.last_timer_id[type];
         this.taskman.runTask(
         {
             this.taskman.wait(timeout.msecs);
-            if (timer_type !in this.timers)  // timer was cancelled
+
+            // timer was cancelled
+            if (timer_id < this.active_timer_ids[type])
                 return;
 
             callCPPDelegate(callback);
