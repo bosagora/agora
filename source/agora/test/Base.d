@@ -412,7 +412,7 @@ public extern (C++) class TestNominator : Nominator
 {
 extern(D):
     /// number of txs required for nomination
-    private ulong txs_to_nominate;
+    protected ulong txs_to_nominate;
 
     ///
     public this (immutable(ConsensusParams) params, Clock clock,
