@@ -23,13 +23,13 @@ extern(C++) public shared_ptr!SCPQuorumSet makeSharedSCPQuorumSet (
 
 
 /// Utility function for SCP
-public inout(opaque_vec!()) toVec (scope ref inout(Hash) data)
+public inout(opaque_vec!()) toVec (scope ref inout(Hash) data) nothrow @nogc
 {
     return (cast(inout(ubyte[]))data[]).toVec();
 }
 
 /// Ditto
-public inout(opaque_vec!()) toVec (scope inout ubyte[] data)
+public inout(opaque_vec!()) toVec (scope inout ubyte[] data) nothrow @nogc
 {
     inout opaque_vec!() ret =
     {
