@@ -69,7 +69,7 @@ public extern (C++) class Nominator : SCPDriver
     private Set!uint64_t externalized_slots;
 
     /// The quorum set
-    private SCPQuorumSetPtr[Hash] quorum_set;
+    private SCPQuorumSetPtr[StellarHash] quorum_set;
 
     private alias TimerType = Slot.timerIDs;
     static assert(TimerType.max == 1);
