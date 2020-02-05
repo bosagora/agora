@@ -63,7 +63,7 @@ unittest
         2.seconds,
         format("Node %s has block height %s. Expected: %s",
         idx,
-        node.getBlockHeight().to!string,
+        node.getBlockHeight(),
         1)));
 
     nodes.each!(node =>

@@ -59,7 +59,7 @@ unittest
             retryFor(node.getBlockHeight() == block_idx + 1,
                 4.seconds,
                 format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight().to!string, block_idx + 1)));
+                    idx, node.getBlockHeight(), block_idx + 1)));
 
         block_txes ~= txs.sort.array;
         last_txs = txs;
