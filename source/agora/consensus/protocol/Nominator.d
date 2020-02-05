@@ -512,8 +512,10 @@ extern(D):
 
     public override void signEnvelope (ref SCPEnvelope envelope)
     {
-        envelope.signature = sign(this.schnorr_pair,
-            SCPStatementHash(&envelope.statement).hashFull());
+        const challenge = SCPStatementHash(&envelope.statement).hashFull();
+        const R = Pair.random();
+        const sig = sign(this.schnorr_pair.v, this.schnorr_pair.V, R.V, R.v, challenge);
+        envelope.signature = sig;
     }
 
     /***************************************************************************
