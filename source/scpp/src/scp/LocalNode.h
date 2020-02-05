@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "scp/SCP.h"
-#include "util/HashOfHash.h"
 
 namespace stellar
 {
