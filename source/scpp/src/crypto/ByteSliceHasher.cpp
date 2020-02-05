@@ -9,7 +9,7 @@ namespace stellar
 {
 namespace shortHash
 {
-static unsigned char sKey[crypto_shorthash_KEYBYTES];
+thread_local unsigned char sKey[crypto_shorthash_KEYBYTES];
 void
 initialize()
 {
