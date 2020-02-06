@@ -32,15 +32,18 @@ unittest
     import std.conv;
     import std.format;
     import std.range;
-    const NodeCount = 3;
 
-    const long retry_delay = 10;
-    const size_t max_retries = 10;
-    const long timeout = 10;
-    const size_t max_failed_requests = 4 * Block.TxsInBlock;
+    TestConf conf =
+    {
+        topology : NetworkTopology.OneNonValidator,
+        nodes : 3,
+        retry_delay : 10,
+        max_retries : 10,
+        timeout : 10,
+        max_failed_requests : 4 * Block.TxsInBlock
+    };
 
-    auto network = makeTestNetwork(NetworkTopology.OneNonValidator, NodeCount, true,
-        retry_delay, max_retries, timeout, max_failed_requests);
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

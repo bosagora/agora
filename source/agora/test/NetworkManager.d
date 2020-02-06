@@ -27,8 +27,7 @@ unittest
     import std.range;
     import core.thread;
 
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -125,9 +124,8 @@ unittest
         }
     }
 
-    const NodeCount = 3;
-    auto network = makeTestNetwork!BadAPIManager(NetworkTopology.OneValidator,
-        NodeCount);
+    TestConf conf = { topology : NetworkTopology.OneValidator, nodes : 3 };
+    auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
