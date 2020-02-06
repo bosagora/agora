@@ -32,9 +32,8 @@ unittest
     import std.range;
     import core.time;
 
-    const NodeCount = 6;
-    auto network = makeTestNetwork(NetworkTopology.Cyclic, NodeCount, true,
-        100, 20, 100);
+    TestConf conf = { nodes : 6, topology : NetworkTopology.Cyclic, };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

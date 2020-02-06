@@ -35,8 +35,7 @@ unittest
     import std.range;
     import core.time;
 
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -95,9 +94,9 @@ unittest
     import std.range;
     import core.time;
 
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.OneValidator, NodeCount, true,
-        100, 20, 100);  // reduce timeout to 100 msecs
+    // also reduced timeout to 100 msecs
+    TestConf conf = { topology : NetworkTopology.OneValidator, timeout : 100 };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -121,8 +120,7 @@ unittest
     import core.time;
     import std.algorithm;
 
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
+    auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -199,9 +197,9 @@ unittest
     import core.thread;
     import agora.consensus.Validation;
 
-    const NodeCount = 2;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount, true,
-        100, 20, 100);  // reduce timeout to 100 msecs
+    // reduce timeout to 100 msecs
+    TestConf conf = { nodes : 2, timeout : 100 };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

@@ -29,8 +29,7 @@ import std.algorithm;
 ///
 unittest
 {
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount, false);
+    auto network = makeTestNetwork(TestConf.init);
     network.addMetadata();
     network.start();
     scope(exit) network.shutdown();

@@ -542,6 +542,31 @@ public enum NetworkTopology
     SinglePoF,
 }
 
+/// Node / Network / Quorum configuration for use with makeTestNetwork
+public struct TestConf
+{
+    /// Network topology to use
+    NetworkTopology topology = NetworkTopology.Simple;
+
+    /// Number of nodes to instantiate
+    size_t nodes = 4;
+
+    /// whether to set up the peers in the config
+    bool configure_network = true;
+
+    /// the delay between request retries (in msecs)
+    long retry_delay = 100;
+
+    /// max retries before a request is considered failed
+    size_t max_retries = 20;
+
+    /// request timeout (in msecs)
+    long timeout = 500;
+
+    /// max failed requests before a node is banned
+    size_t max_failed_requests = 100;
+}
+
 /*******************************************************************************
 
     Creates a test network with the desired topology
@@ -552,23 +577,15 @@ public enum NetworkTopology
 
     Params:
         APIManager = Type of API manager to instantiate
-        topology = Network topology to adopt
-        nodes    = Number of nodes to instantiated
-        configure_network = whether to set up the peers in the config
-        retry_delay = the delay between request retries (in msecs)
-        max_retries = max retries before a request is considered failed
-        timeout = request timeout (in msecs)
-        max_failed_requests = max failed requests before a node is banned
+        test_conf = the test configuration
 
     Returns:
         The set of public key added to the node
 
 *******************************************************************************/
 
-public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
-    (NetworkTopology topology, size_t nodes, bool configure_network = true,
-        long retry_delay = 100, size_t max_retries = 20, long timeout = 500,
-        size_t max_failed_requests = 100)
+public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)(
+    in TestConf test_conf)
 {
     import std.algorithm;
     import std.array;
@@ -584,7 +601,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
-    assert(nodes >= 2, "Creating a network require at least 2 nodes");
+    assert(test_conf.nodes >= 2, "Creating a network require at least 2 nodes");
 
     NodeConfig makeNodeConfig (bool is_validator)
     {
@@ -592,10 +609,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             is_validator : is_validator,
             key_pair : KeyPair.random(),
-            retry_delay : retry_delay, // msecs
-            max_retries : max_retries,
-            timeout : timeout,
-            min_listeners : nodes - 1,
+            retry_delay : test_conf.retry_delay, // msecs
+            max_retries : test_conf.max_retries,
+            timeout : test_conf.timeout,
+            min_listeners : test_conf.nodes - 1,
         };
 
         return conf;
@@ -603,7 +620,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     BanManager.Config ban_conf =
     {
-        max_failed_requests : max_failed_requests,
+        max_failed_requests : test_conf.max_failed_requests,
         ban_duration: 300
     };
 
@@ -623,7 +640,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : self,
-            network : configure_network ? assumeUnique(other_nodes.array) : null,
+            network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null,
             quorum : { nodes : quorum_keys }
         };
 
@@ -645,7 +662,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : self,
-            network : configure_network ? assumeUnique(other_nodes.array) : null,
+            network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null,
             quorum : { nodes : quorum_keys /*, threshold : 2*/ }  // fails with 2
         };
 
@@ -655,32 +672,32 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     NodeConfig[] node_configs;
     Config[] configs;
 
-    final switch (topology)
+    final switch (test_conf.topology)
     {
     case NetworkTopology.Simple:
-        node_configs = iota(nodes).map!(_ => makeNodeConfig(true)).array;
-        configs = iota(nodes)
+        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneNonValidator:
-        node_configs ~= iota(nodes).map!(_ => makeNodeConfig(true)).array;
+        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
         node_configs[$ - 1].is_validator = false;
-        configs = iota(nodes)
+        configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneValidator:
-        node_configs ~= iota(nodes).map!(_ => makeNodeConfig(false)).array;
+        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(false)).array;
         node_configs[0].is_validator = true;
-        configs = iota(nodes)
+        configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.Cyclic:
-        node_configs = iota(nodes).map!(_ => makeNodeConfig(true)).array;
+        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
         node_configs.each!((ref conf) => conf.min_listeners = 1);
-        configs = iota(nodes)
+        configs = iota(test_conf.nodes)
             .map!(idx => makeCyclicConfig(idx, node_configs[idx], node_configs))
                 .array;
 

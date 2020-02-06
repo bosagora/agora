@@ -23,18 +23,17 @@ unittest
     import std.algorithm;
     import std.format;
 
-    const NodeCount = 4;
-    auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
+    TestConf conf = { nodes : 4 };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
-    // Check that each node knows of the others
-    assert(network.apis.byKey().count == NodeCount);
+
     foreach (key, node; network.apis)
     {
         auto addresses = node.getNetworkInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == NodeCount - 1,
+        assert(addresses.sort.uniq.count == conf.nodes - 1,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
