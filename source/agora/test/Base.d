@@ -314,48 +314,30 @@ public class TestAPIManager
 
     /***************************************************************************
 
-        Keep polling and waiting for nodes to all reach discovery,
-        up to 10 attempts and a sleep time between each attempt;
+        Keep polling for nodes to reach discovery, up to 5 seconds.
 
-        Returns:
-            the public keys of the nodes which reached discovery
+        If network discovery isn't reached, it will throw an Error.
 
     ***************************************************************************/
 
-    public PublicKey[] getDiscoveredNodes ()
+    public void waitForDiscovery (string file = __FILE__, size_t line = __LINE__)
     {
-        import std.stdio;
-        import core.thread;
-
-        const attempts = 10;
-
-        bool[PublicKey] fully_discovered;
-
-        foreach (_; 0 .. attempts)
+        try
         {
-            foreach (key, api; this.apis)
-            try
-            {
-                if (api.getNetworkInfo().state == NetworkState.Complete)
-                    fully_discovered[key] = true;
-            }
-            catch (Exception ex)
-            {
-                // just continue
-            }
-
-            // we're done
-            if (fully_discovered.length == this.apis.length)
-                break;
-
-            // try again
-            auto sleep_time = 1.seconds;  // should be enough time
-            writefln("Sleeping for %s. Discovered %s/%s nodes", sleep_time,
-                fully_discovered.length, this.apis.length);
-            Thread.sleep(sleep_time);
+            const timeout = 5.seconds;
+            this.apis.byKeyValue.each!(pair =>
+                retryFor(pair.value.getNetworkInfo().ifThrown(NetworkInfo.init)
+                    .state == NetworkState.Complete,
+                    timeout,
+                    format("Node %s has not completed discovery after %s.",
+                        pair.key, timeout)));
         }
-
-        return fully_discovered.byKey.array;
+        catch (Error ex)  // better UX
+        {
+            ex.file = file;
+            ex.line = line;
+            throw ex;
+        }
     }
 }
 

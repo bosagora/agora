@@ -28,7 +28,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    assert(network.getDiscoveredNodes().length == NodeCount);
+    network.waitForDiscovery();
     // Check that each node knows of the others
     assert(network.apis.byKey().count == NodeCount);
     foreach (key, node; network.apis)
