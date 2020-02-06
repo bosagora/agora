@@ -641,7 +641,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             banman : ban_conf,
             node : self,
             network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null,
-            quorum : { nodes : quorum_keys }
+            quorum : { nodes : quorum_keys, threshold : quorum_keys.length }
         };
 
         return conf;
