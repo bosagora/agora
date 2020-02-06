@@ -35,5 +35,5 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    assert(network.getDiscoveredNodes().length == NodeCount);
+    network.waitForDiscovery();
 }

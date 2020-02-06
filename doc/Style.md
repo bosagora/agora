@@ -349,7 +349,7 @@ unittest
     const NodeCount = 4;
     auto network = makeTestNetwork(NetworkTopology.Simple, NodeCount);
     network.start();
-    assert(network.getDiscoveredNodes().length == NodeCount);
+    network.waitForDiscovery();
 
    /// Use API as needed
    foreach (/*PublicKey*/ key, ref /*API*/ node; network.apis)

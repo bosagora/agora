@@ -35,7 +35,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    assert(network.getDiscoveredNodes().length == NodeCount);
+    network.waitForDiscovery();
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
@@ -72,7 +72,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    assert(network.getDiscoveredNodes().length == NodeCount);
+    network.waitForDiscovery();
 
     auto nodes = network.apis.values;
     auto node_1 = nodes[0];
