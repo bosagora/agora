@@ -77,7 +77,16 @@ int main(string[] args)
     // That's a lesser approach than the dependency tracking Makefile do,
     // but we don't expect those files to change very often.
     // If the build script has changed, we also rebuild.
-    if (objs.length == sources.length)
+    if (objs.length > sources.length)
+    {
+        writeln(objs.length - sources.length,
+                " sources files were deleted, cleaning up build directory and doing a full rebuild...");
+        std.file.chdir("../");
+        std.file.rmdirRecurse(BuildPath);
+        std.file.mkdir(BuildPath);
+        std.file.chdir(BuildPath);
+    }
+    else if (objs.length == sources.length)
     {
         auto buildTs = objs.map!((v) => FileInfo(v, std.file.timeLastModified(v)))
             .minElement!((a) => a.lastModified);
@@ -97,6 +106,8 @@ int main(string[] args)
             return 0;
         }
     }
+    else
+        writeln("First build / new source files added: Doing a full build...");
 
     auto cmd = chain(CppCmd, Includes.map!((v) => "-I " ~ v), sources);
     auto strCmd = cmd.join(" ");
