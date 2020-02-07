@@ -63,9 +63,9 @@ cd agora/
 # Initialize and update the list of submodules
 git submodule update --init
 # Build the application
-dub build --skip-registry=all
+dub build
 # Build & run the tests
-dub test --skip-registry=all
+dub test
 ```
 
 ## Running tests
