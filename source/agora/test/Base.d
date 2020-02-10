@@ -22,6 +22,7 @@ module agora.test.Base;
 
 version (unittest):
 
+import agora.node.Ledger;
 import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -590,6 +591,9 @@ public struct TestConf
 
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
+
+    /// The threshold. If not set, it will default to the number of nodes
+    size_t threshold;
 }
 
 /*******************************************************************************
@@ -666,7 +670,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             banman : ban_conf,
             node : self,
             network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null,
-            quorum : { nodes : quorum_keys, threshold : quorum_keys.length }
+            quorum :
+            {
+                nodes : quorum_keys,
+                threshold : (test_conf.threshold == 0) ? quorum_keys.length : test_conf.threshold
+            }
         };
 
         return conf;
