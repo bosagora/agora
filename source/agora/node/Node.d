@@ -45,6 +45,7 @@ import std.algorithm;
 import std.exception;
 import std.path : buildPath;
 import std.range;
+import core.time;
 
 mixin AddLogger!();
 
@@ -205,7 +206,7 @@ public class Node : API
 
     ***************************************************************************/
 
-    public override void putTransaction (Transaction tx) @safe
+    public override void putTransaction (Transaction tx) @trusted
     {
         log.trace("Received Transaction: {}", prettify(tx));
         auto tx_hash = hashFull(tx);
@@ -215,6 +216,7 @@ public class Node : API
         if (this.ledger.acceptTransaction(tx))
         {
             this.network.sendTransaction(tx);
+            this.taskman.wait(100.msecs);
             this.ledger.tryNominateTXSet();
         }
     }
