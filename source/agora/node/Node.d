@@ -18,6 +18,7 @@ import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.Config;
+import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.common.Task;
@@ -30,7 +31,6 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
-import agora.node.GossipProtocol;
 import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
@@ -76,9 +76,6 @@ public class Node : API
     /// Reusable exception object
     protected RestException exception;
 
-    /// Procedure of peer-to-peer communication
-    protected GossipProtocol gossip;
-
     /// Transaction pool
     protected TransactionPool pool;
 
@@ -111,7 +108,6 @@ public class Node : API
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, config.node);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
-        this.gossip = new GossipProtocol(this.network, this.ledger, this.enroll_man);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
@@ -212,7 +208,15 @@ public class Node : API
     public override void putTransaction (Transaction tx) @safe
     {
         log.trace("Received Transaction: {}", prettify(tx));
-        this.gossip.receiveTransaction(tx);
+        auto tx_hash = hashFull(tx);
+        if (this.hasTransactionHash(tx_hash))
+            return;
+
+        if (this.ledger.acceptTransaction(tx))
+        {
+            this.network.sendTransaction(tx);
+            this.ledger.tryNominateTXSet();
+        }
     }
 
     /***************************************************************************
@@ -242,7 +246,7 @@ public class Node : API
     /// GET: /has_transaction_hash
     public override bool hasTransactionHash (Hash tx) @safe
     {
-        return this.gossip.hasTransactionHash(tx);
+        return this.ledger.hasTransactionHash(tx);
     }
 
     /// GET: /block_height
@@ -445,8 +449,11 @@ public class Node : API
     public void enrollValidator (Enrollment enroll) @safe
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
-
-        this.gossip.receiveEnrollment(enroll, this.utxo_set.getUTXOFinder());
+        if (this.enroll_man.addEnrollment(this.ledger.getBlockHeight(),
+            this.utxo_set.getUTXOFinder(), enroll))
+        {
+            this.network.sendEnrollment(enroll);
+        }
     }
 
     /// GET: /has_enrollment
