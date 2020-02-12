@@ -197,6 +197,13 @@ public struct Amount
         return this;
     }
 
+    /// Support for comparison
+    pragma(inline, true)
+    public int opCmp (Amount other) const pure nothrow @nogc
+    {
+        return this.value < other.value ? -1 : (this.value > other.value ? 1 : 0);
+    }
+
     /// Make a value without checking bounds
     /// Used to initialize the bounds themselves, and to make invalid values
     /// in unittests
@@ -272,4 +279,25 @@ unittest
     Amount val = Amount.UnitPerCoin;
     ubyte[] serialized = val.serializeFull();
     assert(serialized.deserializeFull!Amount() == val);
+}
+
+/// comparisons
+pure nothrow unittest
+{
+    assert(Amount(100) > Amount(99));
+    assert(Amount(99) < Amount(100));
+    assert(Amount(100) >= Amount(100));
+    assert(!(Amount(100) > Amount(100)));
+
+    const am1 = Amount(99);
+    const am2 = Amount(100);
+    assert(am1 < am2);  // const
+
+    import std.algorithm;  // array
+    auto arr = [Amount(300), Amount(100), Amount(100), Amount(200)];
+    arr.sort!((a, b) => a > b);
+    assert(arr == [Amount(300), Amount(200), Amount(100), Amount(100)]);
+
+    arr.sort!((a, b) => a < b);
+    assert(arr == [Amount(100), Amount(100), Amount(200), Amount(300)]);
 }
