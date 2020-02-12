@@ -203,7 +203,8 @@ public class EnrollmentManager
     /***************************************************************************
 
         Returns:
-            the number of validators in the validator set
+            the number of enrollments being managed by this EnrollmentManager.
+            Note: this includes both registered and un-registered enrollments.
 
     ***************************************************************************/
 
@@ -643,6 +644,7 @@ unittest
     assert(man.getEnrolledHeight(utxo_hash2) == 0);
     man.getUnregisteredEnrollments(enrolls);
     assert(enrolls.length == 1);
+    assert(man.getEnrollmentLength() == 2);  // has not changed
 
     man.removeEnrollment(utxo_hash);
     man.removeEnrollment(utxo_hash2);
