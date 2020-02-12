@@ -75,6 +75,22 @@ public template AddLogger (string moduleName = __MODULE__)
                 assert(0, ex.msg);
             }
         }
+
+        // Supports `log = Log.lookup("yo")`,
+        // where `log` is of `typeof(this)` type
+        public ref Logger opAssign (Ocean.Logger newLogger)
+            @safe pure nothrow @nogc
+        {
+            this.logger = newLogger;
+            return this;
+        }
+
+        // Support `Logger log = Log.lookup("yo")` (initialization)
+        public this (Ocean.Logger initRef)
+            @safe pure nothrow @nogc
+        {
+            this.logger = initRef;
+        }
     }
 
     private Logger log;
