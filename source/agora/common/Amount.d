@@ -63,6 +63,11 @@ public struct Amount
         this.value = units;
     }
 
+    public this (Amount amount) nothrow pure @nogc @safe
+    {
+        this.value = amount.value;
+    }
+
     /// Pretty-print this value
     public void toString (SinkT dg) const @safe
     {
