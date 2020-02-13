@@ -17,6 +17,7 @@ import agora.common.Types;
 import agora.common.crypto.Key;
 
 import std.range;
+import std.traits;
 
 /// test various serialization / deserialization of types
 unittest
@@ -101,6 +102,7 @@ unittest
         ulong d;
         Amount e;
         ubyte[] f;
+        bool g;
     }
     /// See the example in `agora.common.Serializer` for the serialization part
     ubyte[] data = [
@@ -109,7 +111,9 @@ unittest
         254, 255, 255, 255, 255, // uint.max
         255, 255, 255, 255, 255, 255, 255, 255, 255, // ulong.max
         100,                     // Amount(100)
-        3, 1, 2, 3];             // ubyte[1,2,3]
+        3, 1, 2, 3,              // ubyte[1,2,3]
+        0,                       // bool(false)
+    ];
     assert(deserializeFull!Foo(data) == Foo(1, ushort.max, uint.max, ulong.max,
         Amount(100), [1, 2, 3]));
 }
@@ -168,48 +172,30 @@ public void deserializePart (T)(ref T record, scope DeserializeDg dg)
     @trusted
     if (is(T == enum))
 {
-    import std.traits;
     OriginalType!T orig_val;
     deserializePart(orig_val, dg);
     record = cast(T)(orig_val);
 }
 
 /// Ditto
-public void deserializePart (ref ubyte record, scope DeserializeDg dg)
+public void deserializePart (T) (ref T record, scope DeserializeDg dg,
+    CompactMode compact = CompactMode.Yes)
     @trusted
+    if (isScalarType!T)
 {
-    record = dg(record.sizeof)[0];
-}
-
-/// Ditto
-public void deserializePart (ref ushort record, scope DeserializeDg dg)
-    @trusted
-{
-    record = deserializeVarInt!ushort(dg);
-}
-
-/// Ditto
-public void deserializePart (ref uint record, scope DeserializeDg dg)
-    @trusted
-{
-    record = deserializeVarInt!uint(dg);
-}
-
-/// Ditto
-public void deserializePart (ref long record, scope DeserializeDg dg)
-    @trusted
-{
-    record = *cast(long*)(dg(record.sizeof).ptr);
-}
-
-/// Ditto
-public void deserializePart (ref ulong record, scope DeserializeDg dg, CompactMode compact = CompactMode.Yes)
-    @trusted
-{
-    if (compact == CompactMode.Yes)
-        record = deserializeVarInt!ulong(dg);
+    static if (is(Unqual!T == bool))
+        record = !!dg(T.sizeof)[0];
+    else static if (T.sizeof == 1)
+        record = dg(T.sizeof)[0];
+    else static if (isUnsigned!T)
+    {
+        if (compact == CompactMode.Yes)
+            record = deserializeVarInt!T(dg);
+        else
+            record = *cast(T*)(dg(T.sizeof).ptr);
+    }
     else
-        record = *cast(ulong*)(dg(record.sizeof).ptr);
+        record = *cast(T*)(dg(T.sizeof).ptr);
 }
 
 /// Ditto
