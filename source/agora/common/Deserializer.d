@@ -125,15 +125,19 @@ unittest
 
 public T deserializeFull (T) (scope ubyte[] data) @safe
 {
-    T value;
-
     scope DeserializeDg dg = (size) @safe
     {
         ubyte[] res = data[0 .. size];
         data = data[size .. $];
         return res;
     };
+    return deserializeFull!T(dg);
+}
 
+/// Ditto
+public T deserializeFull (T) (scope DeserializeDg dg) @safe
+{
+    T value;
     deserializePart(value, dg);
     return value;
 }
