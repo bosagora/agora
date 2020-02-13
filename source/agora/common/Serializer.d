@@ -15,9 +15,6 @@ module agora.common.Serializer;
 
 import agora.common.Types;
 
-/// Type of delegate SerializeDg
-public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
-
 ///
 unittest
 {
@@ -45,6 +42,9 @@ unittest
         42, 0, 0, 0, 0, 0, 0, 0, // long         == 8 bytes
         2, 54, 57]);             // string       == 1 byte length + 2 char bytes
 }
+
+/// Type of delegate SerializeDg
+public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
 
 /*******************************************************************************
 
