@@ -46,6 +46,10 @@ unittest
 /// Type of delegate SerializeDg
 public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
 
+/// Traits to check if a given type has a custom serialization behavior
+private enum hasSerializeMethod (T) = is(T == struct)
+    && is(typeof(T.init.serialize(SerializeDg.init)));
+
 /*******************************************************************************
 
     Serialize a struct and return it as a ubyte[].
@@ -82,7 +86,7 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
 {
     import geod24.bitblob;
 
-    static if (is(typeof(T.init.serialize(SerializeDg.init))))
+    static if (hasSerializeMethod!T)
         record.serialize(dg);
     // BitBlob are fixed size and thus, value types
     // If we use an `ubyte[]` overload, the length gets serialized
