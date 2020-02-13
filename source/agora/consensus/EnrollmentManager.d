@@ -61,6 +61,9 @@ public class EnrollmentManager
     /// Enrollment data object
     private Enrollment data;
 
+    /// The cycle length for a valdator
+    public static immutable uint ValidatorCycle = 1008; // freezing period / 2
+
     /***************************************************************************
 
         Constructor
@@ -319,7 +322,7 @@ public class EnrollmentManager
         this.data.utxo_key = frozen_utxo_hash;
 
         // N, cycle length
-        this.data.cycle_length = 1008; // freezing period / 2
+        this.data.cycle_length = ValidatorCycle;
 
         // generate random seed value
         this.random_seed_src = Scalar.random();
