@@ -152,61 +152,70 @@ public T deserializeFull (T) (scope DeserializeDg dg) @safe
 }
 
 /// Ditto
-public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
-    if (isInputRange!T && hasLength!T)
-{
-    size_t length = deserializeVarInt!size_t(dg);
-    record.length = length;
-    foreach (ref v; record)
-        deserializePart(v, dg);
-}
-
-/// Ditto
-public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
-    if (is(T == struct))
+public void deserializePart (T) (
+    ref T record, scope DeserializeDg dg,
+    CompactMode compact = CompactMode.Yes)
+    @safe
 {
     import geod24.bitblob;
 
+    // Custom deserialization trumps everything
     static if (hasDeserializeMethod!T)
         record.deserialize(dg);
+
     // BitBlob are fixed size and thus, value types
     // If we use an `ubyte[]` overload, the deserializer looks for the length
     else static if (is(T : BitBlob!N, size_t N))
         record = T(dg(T.Width));
-    else
-        foreach (const ref field; record.tupleof)
-            deserializePart(field, dg);
-}
 
-/// Enum support
-public void deserializePart (T)(ref T record, scope DeserializeDg dg)
-    @trusted
-    if (is(T == enum))
-{
-    OriginalType!T orig_val;
-    deserializePart(orig_val, dg);
-    record = cast(T)(orig_val);
-}
+    // Range deserialization
+    else static if (isInputRange!T && hasLength!T)
+    {
+        size_t length = deserializeVarInt!size_t(dg);
+        record.length = length;
+        foreach (ref v; record)
+            deserializePart(v, dg);
+    }
 
-/// Ditto
-public void deserializePart (T) (ref T record, scope DeserializeDg dg,
-    CompactMode compact = CompactMode.Yes)
-    @trusted
-    if (isScalarType!T)
-{
-    static if (is(Unqual!T == bool))
+    // Enum deserialize as their base type
+    else static if (is(T == enum))
+    {
+        OriginalType!T orig_val;
+        deserializePart(orig_val, dg);
+        record = cast(T)(orig_val);
+    }
+
+    // 'bool' need to be converted explicitly
+    else static if (is(Unqual!T == bool))
         record = !!dg(T.sizeof)[0];
-    else static if (T.sizeof == 1)
-        record = dg(T.sizeof)[0];
+
+    // Possibly encoding integer
     else static if (isUnsigned!T)
     {
-        if (compact == CompactMode.Yes)
-            record = deserializeVarInt!T(dg);
+        // `ubyte` don't need binary encoding since they are already the
+        // smallest possible size
+        static if (is(Unqual!T == ubyte))
+            record = dg(ubyte.sizeof)[0];
         else
-            record = *cast(T*)(dg(T.sizeof).ptr);
+        {
+            if (compact == CompactMode.Yes)
+                record = deserializeVarInt!T(dg);
+            else
+                record = () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
+        }
     }
+
+    // Other integers / scalars
+    else static if (isScalarType!T)
+        record = () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
+
+    // Default to per-field deserialization for struct
+    else static if (is(T == struct))
+        foreach (const ref field; record.tupleof)
+            deserializePart(field, dg);
+
     else
-        record = *cast(T*)(dg(T.sizeof).ptr);
+        static assert(0, "Unhandled type: " ~ T.stringof);
 }
 
 /// Ditto
