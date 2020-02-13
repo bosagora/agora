@@ -185,14 +185,14 @@ public void deserializePart (ref ubyte record, scope DeserializeDg dg)
 public void deserializePart (ref ushort record, scope DeserializeDg dg)
     @trusted
 {
-    deserializeVarInt(record, dg);
+    record = deserializeVarInt!ushort(dg);
 }
 
 /// Ditto
 public void deserializePart (ref uint record, scope DeserializeDg dg)
     @trusted
 {
-    deserializeVarInt(record, dg);
+    record = deserializeVarInt!uint(dg);
 }
 
 /// Ditto
@@ -207,7 +207,7 @@ public void deserializePart (ref ulong record, scope DeserializeDg dg, CompactMo
     @trusted
 {
     if (compact == CompactMode.Yes)
-        deserializeVarInt(record, dg);
+        record = deserializeVarInt!ulong(dg);
     else
         record = *cast(ulong*)(dg(record.sizeof).ptr);
 }
@@ -216,8 +216,7 @@ public void deserializePart (ref ulong record, scope DeserializeDg dg, CompactMo
 public void deserializePart (ref char[] record, scope DeserializeDg dg)
     @trusted
 {
-    size_t length;
-    deserializeVarInt(length, dg);
+    size_t length = deserializeVarInt!size_t(dg);
     record = cast(char[])dg(length);
 }
 
@@ -225,8 +224,7 @@ public void deserializePart (ref char[] record, scope DeserializeDg dg)
 public void deserializePart (ref string record, scope DeserializeDg dg)
     @trusted
 {
-    size_t length;
-    deserializeVarInt(length, dg);
+    size_t length = deserializeVarInt!size_t(dg);
     record = (cast(char[])dg(length)).idup;
 }
 
@@ -234,8 +232,7 @@ public void deserializePart (ref string record, scope DeserializeDg dg)
 public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
     @trusted
 {
-    size_t length;
-    deserializeVarInt(length, dg);
+    size_t length = deserializeVarInt!size_t(dg);
     record = dg(length);
 }
 
@@ -243,9 +240,7 @@ public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
 public void deserializePart (ref uint[] record, scope DeserializeDg dg)
     @trusted
 {
-    size_t length;
-    deserializeVarInt(length, dg);
-
+    size_t length = deserializeVarInt!size_t(dg);
     record = cast(uint[])dg(length * uint.sizeof);
 
     // serialized in little-endian format
@@ -280,18 +275,24 @@ public void deserializePart (ref Hash[] record, scope DeserializeDg dg)
 
     Params:
         T = Type of unsigned integer to deserialize
-        num = Value to store the result of deserialization into
         dg = source of binary data
 
+    Returns:
+      The deserialized value, typed as `T`
+
+    Throws:
+      If the deserialized value does not fit into a `T`.
+      Note that for `ulong`, this function is `nothrow`.
+
     See_Also: https://learnmeabitcoin.com/glossary/varint
+
 *******************************************************************************/
 
-private void deserializeVarInt (T) (ref T num, scope DeserializeDg dg)
+private T deserializeVarInt (T) (scope DeserializeDg dg)
     @safe
     if (is(T == ushort) || is(T == uint) || is(T == ulong))
 {
     const ubyte int_size = dg(ubyte.sizeof)[0];
-    assert(int_size >= 0);
 
     T read (InType)() @trusted
     {
@@ -303,15 +304,16 @@ private void deserializeVarInt (T) (ref T num, scope DeserializeDg dg)
     }
 
     if (int_size <= 0xFC)
-        num = cast(T)(int_size);
+        return cast(T)(int_size);
     else if (int_size == 0xFD)
-        num = read!ushort();
+        return read!ushort();
     else if (int_size == 0xFE)
-        num = read!uint();
-    else if (int_size == 0xFF)
-        num = read!ulong();
+        return read!uint();
     else
-        assert(0);
+    {
+        assert(int_size == 0xFF);
+        return read!ulong();
+    }
 }
 
 /// For varint
