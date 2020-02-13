@@ -168,6 +168,28 @@ public void deserializePart (T) (
     else static if (is(T : BitBlob!N, size_t N))
         record = T(dg(T.Width));
 
+    // Array deserialization can be optimized in many occasions
+    else static if (is(T : E[], E) && !hasIndirections!E)
+    {
+        size_t length = deserializeVarInt!size_t(dg);
+        record = () @trusted { return cast(T) (dg(E.sizeof * length).dup); }();
+
+        // Special case for narrow string
+        debug static if (isNarrowString!T)
+        {
+            import std.utf;
+            record.validate();
+        }
+
+        // serialized in little-endian format
+        version (BigEndian)
+        {
+            static if (E.sizeof > 1)
+                foreach (ref elem; record)
+                    elem = swapEndian(elem);
+        }
+    }
+
     // Range deserialization
     else static if (isInputRange!T && hasLength!T)
     {
@@ -216,45 +238,6 @@ public void deserializePart (T) (
 
     else
         static assert(0, "Unhandled type: " ~ T.stringof);
-}
-
-/// Ditto
-public void deserializePart (ref char[] record, scope DeserializeDg dg)
-    @trusted
-{
-    size_t length = deserializeVarInt!size_t(dg);
-    record = cast(char[])dg(length);
-}
-
-/// Ditto
-public void deserializePart (ref string record, scope DeserializeDg dg)
-    @trusted
-{
-    size_t length = deserializeVarInt!size_t(dg);
-    record = (cast(char[])dg(length)).idup;
-}
-
-/// Ditto
-public void deserializePart (ref ubyte[] record, scope DeserializeDg dg)
-    @trusted
-{
-    size_t length = deserializeVarInt!size_t(dg);
-    record = dg(length);
-}
-
-/// Ditto
-public void deserializePart (ref uint[] record, scope DeserializeDg dg)
-    @trusted
-{
-    size_t length = deserializeVarInt!size_t(dg);
-    record = cast(uint[])dg(length * uint.sizeof);
-
-    // serialized in little-endian format
-    version (BigEndian)
-    {
-        foreach (ref uint elem; record)
-            elem = swapEndian(elem);
-    }
 }
 
 /*******************************************************************************
@@ -366,4 +349,13 @@ unittest
         `0x00000000000000000000000000000000000000000000000000000000000000FF`
         ~ `0000000000000000000000000000000000000000000000000000000000000000`));
 
+}
+
+// Test for invalid string
+unittest
+{
+    import std.exception;
+    import std.utf;
+    ubyte[] data = [3, 167, 133, 175];
+    assertThrown!UTFException(data.deserializeFull!string);
 }
