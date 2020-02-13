@@ -20,6 +20,7 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Validation;
 import agora.utils.Log;
@@ -48,6 +49,9 @@ public class EnrollmentManager
 
     /// Node's key pair
     private Pair key_pair;
+
+    /// Key used for enrollment which is actually an UTXO hash
+    private Hash enroll_key;
 
     /// Random seed
     private Scalar random_seed_src;
@@ -107,6 +111,13 @@ public class EnrollmentManager
 
         if (!results.empty)
             this.preimages = results.oneValue!(ubyte[]).deserializeFull!(Hash[]);
+
+        // load enroll_key
+        results = this.db.execute("SELECT val FROM node_enroll_data " ~
+            "WHERE key = ?", "enroll_key");
+
+        if (!results.empty)
+            this.enroll_key = results.oneValue!(ubyte[]).deserializeFull!(Hash);
     }
 
     /***************************************************************************
@@ -319,6 +330,7 @@ public class EnrollmentManager
 
         // K, frozen UTXO hash
         this.data.utxo_key = frozen_utxo_hash;
+        this.enroll_key = frozen_utxo_hash;
 
         // N, cycle length
         this.data.cycle_length = ValidatorCycle;
@@ -332,7 +344,8 @@ public class EnrollmentManager
         this.preimages ~= hashFull(this.random_seed_src);
         foreach (i; 0 .. this.data.cycle_length-1)
             this.preimages ~= hashFull(this.preimages[i]);
-        this.data.random_seed = this.preimages[$-1];
+        reverse(this.preimages);
+        this.data.random_seed = this.preimages[0];
 
         // R, signature noise
         this.signature_noise = Pair.random();
@@ -404,6 +417,38 @@ public class EnrollmentManager
                     this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
                         "preimages", buffer);
                 }
+            }();
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Database operation error", enroll, ex);
+            return false;
+        }
+
+        // save enroll_key
+        buffer.length = 0;
+        assumeSafeAppend(buffer);
+        try
+        {
+            serializePart(this.enroll_key, dg);
+        }
+        catch (Exception ex)
+        {
+            this.logMessage("Serialization error of enroll_key", enroll, ex);
+            return false;
+        }
+
+        try
+        {
+            () @trusted {
+                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
+                    "node_enroll_data WHERE key = ?)", "enroll_key");
+                if (results.oneValue!(bool))
+                    this.db.execute("UPDATE node_enroll_data SET val = ? " ~
+                        "WHERE key = ?", buffer, "enroll_key");
+                else
+                    this.db.execute("INSERT INTO node_enroll_data (key, val)" ~
+                        " VALUES (?, ?)", "enroll_key", buffer);
             }();
         }
         catch (Exception ex)
@@ -494,6 +539,32 @@ public class EnrollmentManager
             enrolls ~= deserializeFull!Enrollment(row.peek!(ubyte[])(0));
 
         return enrolls;
+    }
+
+    /***************************************************************************
+
+        Get a pre-image at a certain height
+
+        Params:
+            height = the number of the height at which the pre-image exists
+            preimage = will contain the PreimageInfo if exists
+
+        Returns:
+            true if the pre-image exists
+
+    ***************************************************************************/
+
+    public bool getPreimage (ulong height, out PreimageInfo preimage) @safe
+    {
+        const start_height = this.getEnrolledHeight(this.enroll_key) + 1;
+        if (height < start_height ||
+            (height - start_height) > ValidatorCycle - 1)
+            return false;
+
+        preimage.enroll_key = this.data.utxo_key;
+        preimage.height = height;
+        preimage.hash = this.preimages[height - start_height];
+        return true;
     }
 
     /***************************************************************************
@@ -665,9 +736,20 @@ unittest
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
     // check if the pre-images have right value
-    assert(equal!((a, b) => a.hashFull() == b) (man.preimages[0 .. $-1],
-        man.preimages[1 .. $]));
+    assert(equal!((a, b) => a.hashFull() == b) (man.preimages[1 .. $],
+        man.preimages[0 .. $-1]));
 
     // test serialization/deserializetion for pre-images
     assert(man.preimages[] == man.loadPreimages());
+
+    // get a pre-image at a certain height
+    // A validation can start at the height of the enrolled height plus 1.
+    // So, a pre-image can only be got from the start height.
+    PreimageInfo preimage;
+    assert(man.createEnrollment(utxo_hash, enroll));
+    assert(man.updateEnrolledHeight(utxo_hash, 10));
+    assert(!man.getPreimage(10, preimage));
+    assert(man.getPreimage(11, preimage));
+    assert(man.getPreimage(10 + EnrollmentManager.ValidatorCycle, preimage));
+    assert(!man.getPreimage(11 + EnrollmentManager.ValidatorCycle, preimage));
 }
