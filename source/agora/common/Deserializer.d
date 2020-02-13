@@ -84,6 +84,10 @@ unittest
 /// Type of delegate deserializeDg
 public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 
+/// Traits to check if a given type has an in place deserialization routine
+private enum hasDeserializeMethod (T) = is(T == struct)
+    && is(typeof(T.init.deserialize(DeserializeDg.init)));
+
 ///
 unittest
 {
@@ -148,7 +152,7 @@ public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
 {
     import geod24.bitblob;
 
-    static if (is(typeof(T.init.deserialize(DeserializeDg.init))))
+    static if (hasDeserializeMethod!T)
         record.deserialize(dg);
     // BitBlob are fixed size and thus, value types
     // If we use an `ubyte[]` overload, the deserializer looks for the length
