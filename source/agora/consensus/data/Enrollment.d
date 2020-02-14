@@ -1,9 +1,20 @@
 /*******************************************************************************
 
-    Contains supporting code for a enrollment data used in enrollment process.
+    Data definition for enrollment of validator
+
+    In order to become validators in the network, nodes must perform an action
+    we refer to as 'enrollment', which consists of posting a collateral,
+    providing a random value, and signing the result.
+
+    This module provide the data definition for the struct,
+    allowing it to be passed around without depending on the internals of
+    the process.
+
+    More details on the enrollment process can be found in
+    `agora.consensus.EnrollmentManager`.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
