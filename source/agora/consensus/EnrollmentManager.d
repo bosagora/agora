@@ -314,6 +314,7 @@ public class EnrollmentManager
     {
         static ubyte[] buffer;
         buffer.length = 0;
+        () @trusted { assumeSafeAppend(buffer); }();
 
         // K, frozen UTXO hash
         this.data.utxo_key = frozen_utxo_hash;
@@ -334,7 +335,6 @@ public class EnrollmentManager
 
         // R, signature noise
         this.signature_noise = Pair.random();
-        () @trusted { assumeSafeAppend(buffer); }();
 
         scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
         {
