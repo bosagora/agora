@@ -73,9 +73,9 @@ nothrow @nogc @safe unittest
     Point R = R1.V + R2.V;
     Point X = kp1.V + kp2.V;
 
-    auto sig1 = sign(kp1.v, X, R, R1.v, secret);
-    auto sig2 = sign(kp2.v, X, R, R2.v, secret);
-    auto sig3 = Signature(R, sig1.s + sig2.s);
+    const sig1 = sign(kp1.v, X, R, R1.v, secret);
+    const sig2 = sign(kp2.v, X, R, R2.v, secret);
+    const sig3 = Sig(R, Sig.fromBlob(sig1).s + Sig.fromBlob(sig2).s).toBlob();
 
     // No one can verify any of those individually
     assert(!verify(kp1.V, sig1, secret));
@@ -89,13 +89,38 @@ nothrow @nogc @safe unittest
     assert(verify(X, sig3, secret));
 }
 
-/// Represent a signature (R, s)
-public struct Signature
+/*******************************************************************************
+
+    Represent a signature (R, s)
+
+    Note that signatures get passed around as binary blobs
+    (see `agora.common.Types`), so this type is named `Sig` to avoid ambiguity.
+
+*******************************************************************************/
+
+package struct Sig
 {
     /// Commitment
     public Point R;
     /// Proof
     public Scalar s;
+
+    static assert(Signature.sizeof == typeof(this).sizeof);
+
+    /// Converts this signature to a BitBlob matching `agora.common.Types`
+    public Signature toBlob () const pure nothrow @nogc @safe
+    {
+        typeof(return) ret;
+        ret[0 .. Point.sizeof][] = this.R.data[];
+        ret[Point.sizeof .. $][] = this.s.data[];
+        return ret;
+    }
+
+    /// Deserialize a binary blob into a signature
+    public static Sig fromBlob (const ref Signature s) pure nothrow @nogc @safe
+    {
+        return Sig(Point(s[0 .. Point.sizeof]), Scalar(s[Point.sizeof .. $]));
+    }
 }
 
 ///
@@ -105,7 +130,7 @@ unittest
     import agora.common.Serializer;
 
     const KP = Pair.random();
-    auto signature = Signature(KP.V, KP.v);
+    auto signature = Sig(KP.V, KP.v).toBlob();
     auto bytes = signature.serializeFull();
     assert(bytes.deserializeFull!Signature == signature);
 }
@@ -179,7 +204,7 @@ public Signature sign (T) (
     Scalar c = hashFull(Message!T(X, R, data));
     // Compute `s` part of the proof
     Scalar s = r + (c * x);
-    return Signature(R, s);
+    return Sig(R, s).toBlob();
 }
 
 /*******************************************************************************
@@ -189,7 +214,7 @@ public Signature sign (T) (
     Params:
       T = Type of data being signed
       X = The point corresponding to the public key
-      s = Signature to verify
+      sig = Signature to verify
       data = Data to sign (the hash will be signed)
 
     Returns:
@@ -197,9 +222,10 @@ public Signature sign (T) (
 
 *******************************************************************************/
 
-public bool verify (T) (const ref Point X, const ref Signature s, auto ref T data)
+public bool verify (T) (const ref Point X, const ref Signature sig, auto ref T data)
     nothrow @nogc @trusted
 {
+    Sig s = Sig.fromBlob(sig);
     // Compute the challenge and reduce the hash to a scalar
     Scalar c = hashFull(Message!T(X, s.R, data));
     // Compute `R + c*X`

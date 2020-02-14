@@ -18,7 +18,6 @@ module agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr : Signature;
 import agora.common.Types;
 import agora.common.Deserializer;
 import agora.common.Hash;
@@ -406,7 +405,7 @@ unittest
     enrollments ~= Enrollment.init;
     enrollments ~= Enrollment.init;
 
-    const KP = Pair.random();
+    const ubyte[Signature.sizeof] sig_data = 42;
     Block block =
     {
         header:
@@ -415,7 +414,7 @@ unittest
             height:      0,
             merkle_root: merkle,
             validators:  validators,
-            signature:   Signature(KP.V, KP.v),
+            signature:   Signature(sig_data),
             enrollments: enrollments,
         },
         txs: [ tx ],
