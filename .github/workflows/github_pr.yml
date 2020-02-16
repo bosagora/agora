@@ -19,7 +19,7 @@ jobs:
       with:
           compiler: ${{ matrix.dc }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Install Dub & Sqlite3
+    - name: Install dependencies
       run: |
         brew install pkg-config
         brew install sqlite3
