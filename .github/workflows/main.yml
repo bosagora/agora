@@ -14,7 +14,7 @@ jobs:
         submodules: true
     - name: Install D and Dub
       run: |
-        DMD_VERSION=2.090.0
+        DMD_VERSION=2.090.1
         wget http://downloads.dlang.org/releases/2.x/${DMD_VERSION}/dmd_${DMD_VERSION}-0_amd64.deb
         sudo dpkg -i dmd_${DMD_VERSION}-0_amd64.deb
         sudo apt install -f
