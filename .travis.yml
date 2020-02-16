@@ -3,8 +3,8 @@ language: d
 dist: xenial
 
 d:
-  - dmd-2.090.0,dub
-  - ldc-1.19.0,dub
+  - dmd-2.090.1,dub
+  - ldc-1.20.0,dub
   - dmd-nightly   # Nightlies at the end so that `fast_finish` is useful
   - ldc-latest-ci # The freshest LDC
 
