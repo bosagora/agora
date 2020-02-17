@@ -337,8 +337,11 @@ extern(D):
         {
             foreach (key, node; this.peers)
             {
-                // note: cannot deal with const parameter types in the API
-                auto env = cast()envelope;
+                SCPEnvelope env = cast()envelope;
+
+                // deep-dup as SCP stores pointers to memory on the stack
+                env.statement.pledges = SCPStatement._pledges_t.fromString(
+                    env.statement.pledges.toString());
 
                 // note: several error-cases not considered here yet:
                 // A) request failure after N attepts => we might have to retry,
