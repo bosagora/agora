@@ -342,12 +342,6 @@ extern(D):
                 // deep-dup as SCP stores pointers to memory on the stack
                 env.statement.pledges = SCPStatement._pledges_t.fromString(
                     env.statement.pledges.toString());
-
-                // note: several error-cases not considered here yet:
-                // A) request failure after N attepts => we might have to retry,
-                // but exactly how much time do we have before the next round??
-                // B) Node rejects the envelope. Possible in circular scenarios,
-                // e.g. A => B => C => A (A rejects the envelope because it sent it first)
                 node.sendEnvelope(env);
             }
         }
