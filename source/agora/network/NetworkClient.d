@@ -161,25 +161,26 @@ class NetworkClient
 
     /***************************************************************************
 
-        Sends an envelope, and returns a status code if the target node
-        has processed the envelope with no errors (todo: this is blocking..)
+        Sends an SCP envelope to another node.
 
-        Returns:
-            true if the client successfully processed the envelope
+        Params:
+            envelope = the envelope to send
 
     ***************************************************************************/
 
-    public bool sendEnvelope (SCPEnvelope envelope) nothrow
+    public void sendEnvelope (SCPEnvelope envelope) nothrow
     {
         try
         {
-            return this.attemptRequest(this.api.receiveEnvelope(envelope),
-                this.exception);
+            this.taskman.runTask(
+            {
+                this.attemptRequest(this.api.receiveEnvelope(envelope),
+                    null);
+            });
         }
         catch (Exception ex)
         {
-            log.trace("Failed to send envelope: {}", ex.msg);
-            return false;
+            assert(0, "attemptRequest should have caught it");
         }
     }
 
