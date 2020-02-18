@@ -24,6 +24,7 @@ import agora.common.Task;
 import agora.common.Types;
 import agora.common.TransactionPool;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -453,5 +454,19 @@ public class Node : API
     public bool hasEnrollment (Hash enroll_hash) @safe
     {
         return this.enroll_man.hasEnrollment(enroll_hash);
+    }
+
+    /// PUT: /receive_preimage
+    public void receivePreimage (PreimageInfo preimage) @safe
+    {
+        log.trace("Received Preimage: {}", prettify(preimage));
+
+        this.gossip.receivePreimage(preimage);
+    }
+
+    /// GET: /has_preimage
+    public bool hasPreimage (Hash enroll_key, ulong height)
+    {
+        return this.enroll_man.hasPreimage(enroll_key, height);
     }
 }
