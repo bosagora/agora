@@ -33,6 +33,7 @@ import d2sqlite3.sqlite3;
 import std.algorithm;
 import std.file;
 import std.path;
+import std.string;
 
 mixin AddLogger!();
 
@@ -85,7 +86,8 @@ public class EnrollmentManager
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, enrolled_height INTEGER)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, " ~
+            "enrolled_height INTEGER, preimage BLOB)");
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
@@ -570,6 +572,135 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Check if a pre-image exists
+
+        Params:
+            enroll_key = The key for the enrollment in which the pre-image is
+                contained.
+            height = The block height of the preimage to check existence
+
+        Returns:
+            true if the pre-image exists
+
+    ***************************************************************************/
+
+    public bool hasPreimage (const ref Hash enroll_key, ulong height) @safe
+        nothrow
+    {
+        bool result = false;
+        try
+        {
+            () @trusted {
+                auto results = this.db.execute("SELECT preimage from validator_set" ~
+                            " WHERE key = ?", enroll_key.toString());
+                if (!results.empty && results.oneValue!(byte[]).length != 0)
+                {
+                    PreimageInfo loaded_image =
+                        results.oneValue!(ubyte[]).deserializeFull!(PreimageInfo);
+                    if (height <= loaded_image.height)
+                        result = true;
+                }
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured, hasPreimage:{}, exception:{}",
+                enroll_key, ex);
+            return false;
+        }
+        return result;
+    }
+
+    /***************************************************************************
+
+        Add a pre-image information to a validator data
+
+        Params:
+            preimage = the pre-image information to add
+
+        Returns:
+            true if the pre-image information has been added to the validator
+
+    ***************************************************************************/
+
+    public bool addPreimage (const ref PreimageInfo preimage) @safe nothrow
+    {
+        static ubyte[] buffer;
+        buffer.length = 0;
+
+        // check if the enrollment data exists
+        Enrollment stored_enroll;
+        try
+        {
+            if (!this.getEnrollment(preimage.enroll_key, stored_enroll))
+            {
+                log.info("Rejected adding a pre-image for non-existing" ~
+                    "enrollment, preimage:{}", preimage);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error, addPreimage:{}, exception:{}",
+                preimage, ex);
+            return false;
+        }
+
+        // check if already exists
+        try
+        {
+            if (this.hasPreimage(preimage.enroll_key, preimage.height))
+            {
+                log.info("Rejected already existing pre-image, preimage:{}",
+                    preimage);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation errort, addPreimage:{}, exception:{}",
+                preimage, ex);
+            return false;
+        }
+
+        // insert the pre-image into the table
+        () @trusted { assumeSafeAppend(buffer); } ();
+
+        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+        {
+            buffer ~= data;
+        };
+
+        try
+        {
+            serializePart(preimage, dg);
+        }
+        catch (Exception ex)
+        {
+            log.error("Serialization error, addPreimage:{}, exception:{}",
+                preimage, ex);
+            return false;
+        }
+
+        try
+        {
+            () @trusted {
+                this.db.execute("UPDATE validator_set SET preimage = ? " ~
+                    "WHERE key = ?", buffer, preimage.enroll_key.toString());
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error, addPreimage:{}, exception:{}",
+                preimage, ex);
+            return false;
+        }
+
+        return true;
+    }
+
+    /***************************************************************************
+
         Logs message
 
         Params:
@@ -754,4 +885,48 @@ unittest
     assert(man.getPreimage(11, preimage));
     assert(man.getPreimage(10 + EnrollmentManager.ValidatorCycle, preimage));
     assert(!man.getPreimage(11 + EnrollmentManager.ValidatorCycle, preimage));
+}
+
+/// tests for addPreimage and hasPreimage
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.Genesis;
+    import std.conv;
+
+    scope storage = new TestUTXOSet;
+    auto gen_key_pair = getGenesisKeyPair();
+    KeyPair key_pair = KeyPair.random();
+
+    foreach (idx; 0 .. 8)
+    {
+        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [input],
+            [Output(Amount.MinFreezeAmount, key_pair.address)]
+        };
+
+        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        storage.put(tx);
+    }
+
+    auto man = new EnrollmentManager(":memory:", key_pair);
+    scope (exit) man.shutdown();
+    Hash[] utxo_hashes = storage.keys;
+
+    auto utxo_hash = utxo_hashes[0];
+    Enrollment enroll;
+    assert(man.createEnrollment(utxo_hash, enroll));
+    assert(man.addEnrollment(0, &storage.findUTXO, enroll));
+    assert(man.hasEnrollment(utxo_hash));
+
+    auto preimage = PreimageInfo(utxo_hash, enroll.random_seed, 1);
+    assert(man.addPreimage(preimage));
+    assert(man.hasPreimage(utxo_hash, 1));
+    assert(!man.hasPreimage(utxo_hash, 10));
 }
