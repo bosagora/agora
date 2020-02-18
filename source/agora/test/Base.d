@@ -444,6 +444,9 @@ public interface TestAPI : API
 
     ///
     public abstract PreimageInfo getPreimage (uint height);
+
+    ///
+    public abstract void updateEnrolledHeight (Hash enroll_key, ulong height);
 }
 
 /// Ditto
@@ -551,6 +554,12 @@ public class TestNode : Node, TestAPI
         PreimageInfo preimage;
         this.enroll_man.getPreimage(height, preimage);
         return preimage;
+    }
+
+    /// Set a enrolled height for the enrollment
+    public override void updateEnrolledHeight (Hash enroll_key, ulong height)
+    {
+        this.enroll_man.updateEnrolledHeight(enroll_key, height);
     }
 }
 
