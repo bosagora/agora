@@ -75,7 +75,7 @@ nothrow @nogc @safe unittest
 
     const sig1 = sign(kp1.v, X, R, R1.v, secret);
     const sig2 = sign(kp2.v, X, R, R2.v, secret);
-    const sig3 = Sig(R, Sig.fromBlob(sig1).s + Sig.fromBlob(sig2).s).toBlob();
+    const sig3 = combine(R, sig1, sig2);
 
     // No one can verify any of those individually
     assert(!verify(kp1.V, sig1, secret));
@@ -205,6 +205,26 @@ public Signature sign (T) (
     // Compute `s` part of the proof
     Scalar s = r + (c * x);
     return Sig(R, s).toBlob();
+}
+
+/*******************************************************************************
+
+    Combine two Schnorr signatures, using the provided R.
+
+    Params:
+        R = the R to use
+        sig1 = the first signature
+        sig2 = the second signature
+
+    Returns:
+        the combined signature, as a binary blob
+
+*******************************************************************************/
+
+public Signature combine (Point R, Signature sig1, Signature sig2)
+    @safe @nogc nothrow
+{
+    return Sig(R, Sig.fromBlob(sig1).s + Sig.fromBlob(sig2).s).toBlob();
 }
 
 /*******************************************************************************
