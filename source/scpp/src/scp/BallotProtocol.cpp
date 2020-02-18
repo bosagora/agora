@@ -247,10 +247,17 @@ bool
 BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
 {
     auto qSet = mSlot.getQuorumSetFromStatement(st);
-    bool res = qSet != nullptr && isQuorumSetSane(*qSet, false);
+    const char* reason = nullptr;
+    bool res = qSet != nullptr && isQuorumSetSane(*qSet, false, &reason);
     if (!res)
     {
         CLOG(DEBUG, "SCP") << "Invalid quorum set received";
+        if (reason != nullptr)
+        {
+            std::string msg(reason);
+            CLOG(DEBUG, "SCP") << msg;
+        }
+
         return false;
     }
 
