@@ -42,38 +42,6 @@ public struct UTXOSetValue
 
     /// Unspend transaction output
     Output output;
-
-    /***************************************************************************
-
-        Input Serialization
-
-        Params:
-             dg = serialize function
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        serializePart(this.unlock_height, dg);
-        serializePart(this.type, dg);
-        serializePart(this.output, dg);
-    }
-
-    /***************************************************************************
-
-        Input deserialization
-
-        Params:
-             dg = deserialize function
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        deserializePart(this.unlock_height, dg);
-        deserializePart(this.type, dg);
-        deserializePart(this.output, dg);
-    }
 }
 
 /// ditto
