@@ -17,6 +17,7 @@ import agora.common.Types;
 import agora.common.crypto.Key;
 
 import std.algorithm;
+import std.format;
 import std.range;
 import std.traits;
 
@@ -133,6 +134,10 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 {
     scope DeserializeDg dg = (size) @safe
     {
+        if (size > data.length)
+            throw new Exception(
+                format("Requested %d bytes but only %d bytes available", size, data.length));
+
         ubyte[] res = data[0 .. size];
         data = data[size .. $];
         return res;
