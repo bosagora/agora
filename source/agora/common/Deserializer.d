@@ -117,6 +117,42 @@ unittest
 
 /*******************************************************************************
 
+    Deserialize a length, checks if it's within reasonable bound, and return it
+
+    This is a convenience function that calls `deserializeFull`, and checks
+    the result matches a certain bound.
+
+    It is used everywhere an array is deserialized, for example to prevent
+    a DoS if we received crafted binary data that would lead us to allocates
+    large amounts of memory, either exceeding our available memory,
+    or overloading the GC.
+
+    Params:
+        dg         = Delegate to read binary data for deserialization
+        upperBound = The value of the upper bound (inclusive).
+                     Default to `DefaultMaxLength`.
+
+
+    Throws:
+        if the length is > to `upperBound`
+
+    Returns:
+        The deserialized length
+
+*******************************************************************************/
+
+public size_t deserializeLength (
+    scope DeserializeDg dg, size_t upperBound = DefaultMaxLength)
+    @safe
+{
+    size_t len = deserializeFull!size_t(dg);
+    if (len > upperBound)
+        throw new Exception(format("Value of 'length' exceeds upper bound (%d > %d)", len, upperBound));
+    return len;
+}
+
+/*******************************************************************************
+
     Deserialize a data type and return it
 
     Params:
@@ -146,9 +182,8 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 }
 
 /// Ditto
-public T deserializeFull (T) (
-    scope DeserializeDg dg, CompactMode compact = CompactMode.Yes)
-    @safe
+public T deserializeFull (T) (scope DeserializeDg dg,
+    DeserializerOptions opts = DeserializerOptions.init) @safe
 {
     import geod24.bitblob;
 
@@ -169,8 +204,7 @@ public T deserializeFull (T) (
     else static if (isNarrowString!T)
     {
         alias E = ElementEncodingType!T;
-        size_t length = deserializeVarInt!size_t(dg);
-
+        size_t length = deserializeLength(dg, opts.maxLength);
         T process () @trusted
         out (record)
         {
@@ -187,21 +221,21 @@ public T deserializeFull (T) (
     // If it's binary data, just copy it
     else static if (is(immutable(T) == immutable(ubyte[])))
     {
-        size_t length = deserializeVarInt!size_t(dg);
+        size_t length = deserializeLength(dg, opts.maxLength);
         return dg(ubyte.sizeof * length).dup;
     }
 
     // Array deserialization
     else static if (is(T : E[], E))
     {
-        size_t length = deserializeVarInt!size_t(dg);
-        return iota(length).map!(_ => dg.deserializeFull!(ElementType!T)).array();
+        size_t length = deserializeLength(dg, opts.maxLength);
+        return iota(length).map!(_ => dg.deserializeFull!(ElementType!T)(opts)).array();
     }
 
     // Enum deserialize as their base type
     else static if (is(T == enum))
     {
-        return cast(T) deserializeFull!(OriginalType!T)(dg);
+        return cast(T) deserializeFull!(OriginalType!T)(dg, opts);
     }
 
     // 'bool' need to be converted explicitly
@@ -217,7 +251,7 @@ public T deserializeFull (T) (
             return dg(ubyte.sizeof)[0];
         else
         {
-            if (compact == CompactMode.Yes)
+            if (opts.compact == CompactMode.Yes)
                 return deserializeVarInt!T(dg);
             else
                 return () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
@@ -233,7 +267,7 @@ public T deserializeFull (T) (
     {
         Target convert (Target) ()
         {
-            return deserializeFull!Target(dg, compact);
+            return deserializeFull!Target(dg, opts);
         }
         return T(staticMap!(convert, Fields!T));
     }
@@ -241,6 +275,28 @@ public T deserializeFull (T) (
     else
         static assert(0, "Unhandled type: " ~ T.stringof);
 }
+
+/// Options that configure the behavior of the deserializer
+public struct DeserializerOptions
+{
+    /// The bound to apply to a length deserialization (e.g. for arrays)
+    public size_t maxLength = DefaultMaxLength;
+
+    /// Whether or not to use compact notation for unsigned integer
+    public CompactMode compact = CompactMode.Yes;
+}
+
+/*******************************************************************************
+
+    Default upper bound for `deserializeLength` and friends
+
+    The value is 0x09D0, which is a bit less than a the smaller page size  on
+    most systems, and allows to have allocations taking a full page,
+    as the GC puts some metadata on each page.
+
+*******************************************************************************/
+
+public enum DefaultMaxLength = 0x09D0;
 
 /*******************************************************************************
 
@@ -360,4 +416,17 @@ unittest
     import std.utf;
     ubyte[] data = [3, 167, 133, 175];
     assertThrown!UTFException(data.deserializeFull!string);
+}
+
+// Test for out of bound length
+unittest
+{
+    import std.exception;
+
+    static struct Bomb { ubyte[] data; }
+    ushort length = 0x2000;
+    ubyte[16192] bomb;
+    bomb[0] = 0xFD;
+    bomb[1 .. 3] = (cast(ubyte*)&length)[0 .. ushort.sizeof];
+    assertThrown!(Exception)(deserializeFull!Bomb(bomb));
 }

@@ -294,7 +294,7 @@ public class BanManager
 
     private void deserialize (scope DeserializeDg dg) @safe
     {
-        size_t length = deserializeFull!size_t(dg);
+        size_t length = deserializeLength(dg);
 
         // deserialize and generate inputs
         foreach (idx; 0 .. length)
