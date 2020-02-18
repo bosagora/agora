@@ -20,6 +20,7 @@ import agora.common.Amount;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
@@ -74,4 +75,12 @@ unittest
     // check if nodes contains enrollment data previously sent.
     nodes.each!(node =>
         retryFor(node.hasEnrollment(enroll.utxo_key) == true, 5.seconds));
+
+    // tests for revealing a pre-image
+    auto preimage = node_1.getPreimage(1000);
+    node_1.receivePreimage(preimage);
+
+    // check if nodes contains the pre-image previously sent.
+    nodes.each!(node =>
+        retryFor(node.hasPreimage(preimage.enroll_key, 999) == true, 5.seconds));
 }
