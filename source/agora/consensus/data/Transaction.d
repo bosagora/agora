@@ -156,36 +156,6 @@ public struct Output
     /// The public key that can redeem this output (A = pubkey)
     /// Note that in Bitcoin, this is an address (the double hash of a pubkey)
     public PublicKey address;
-
-    /***************************************************************************
-
-        Output Serialization
-
-        Params:
-            dg = Serialize function
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        serializePart(this.value, dg);
-        serializePart(this.address, dg);
-    }
-
-    /***************************************************************************
-
-        Output Deserialization
-
-        Params:
-            dg = deserialize function
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        deserializePart(this.value, dg);
-        deserializePart(this.address, dg);
-    }
 }
 
 /// The input of the transaction, which spends a previously received `Output`
@@ -200,7 +170,6 @@ public struct Input
     /// A signature that should be verified using the `previous[index].address` public key
     public Signature signature;
 
-
     /***************************************************************************
 
         Implements hashing support
@@ -214,38 +183,6 @@ public struct Input
     {
         hashPart(this.previous, dg);
         hashPart(this.index, dg);
-    }
-
-    /***************************************************************************
-
-        Input Serialization
-
-        Params:
-             dg = serialize function
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        serializePart(this.previous, dg);
-        serializePart(this.index, dg);
-        serializePart(this.signature, dg);
-    }
-
-    /***************************************************************************
-
-        Input deserialization
-
-        Params:
-             dg = deserialize function
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        this.previous = Hash(dg(Hash.sizeof));
-        deserializePart(this.index, dg);
-        this.signature = Hash(dg(Hash.sizeof));
     }
 }
 
