@@ -35,6 +35,7 @@ import agora.common.TransactionPool;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -415,6 +416,9 @@ public interface TestAPI : API
 
     ///
     public abstract Enrollment createEnrollmentData();
+
+    ///
+    public abstract PreimageInfo getPreimage (uint height);
 }
 
 /// Ditto
@@ -514,6 +518,14 @@ public class TestNode : Node, TestAPI
         auto enroll = this.createEnrollment(utxo_hashes[0]);
 
         return enroll;
+    }
+
+    /// Get a node's own pre-image information used when revealing it
+    public override PreimageInfo getPreimage (uint height)
+    {
+        PreimageInfo preimage;
+        this.enroll_man.getPreimage(height, preimage);
+        return preimage;
     }
 }
 
