@@ -17,6 +17,7 @@ import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Set;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -115,6 +116,24 @@ public class GossipProtocol
             enroll))
         {
             this.network.sendEnrollment(enroll);
+        }
+    }
+
+    /***************************************************************************
+
+        If this is new pre-image, add it to the enrollment manager,
+        propagate it to the network.
+
+        Params:
+            enroll = the pre-image information to add & propagate
+
+    ***************************************************************************/
+
+    public void receivePreimage (PreimageInfo preimage) @safe
+    {
+        if (this.enroll_man.addPreimage(preimage))
+        {
+            this.network.sendPreimage(preimage);
         }
     }
 }

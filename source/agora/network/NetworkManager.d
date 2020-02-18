@@ -26,6 +26,7 @@ import agora.api.Validator;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.Types;
@@ -517,6 +518,29 @@ public class NetworkManager
             }
 
             node.sendEnrollment(enroll);
+        }
+    }
+
+    /***************************************************************************
+
+        Sends the pre-image to all the listeners.
+
+        Params:
+            preimage = the pre-image information to send
+
+    ***************************************************************************/
+
+    public void sendPreimage (PreimageInfo preimage) @safe
+    {
+        foreach (ref node; this.peers)
+        {
+            if (this.banman.isBanned(node.address))
+            {
+                log.trace("Not sending to {} as it's banned", node.address);
+                continue;
+            }
+
+            node.sendPreimage(preimage);
         }
     }
 }

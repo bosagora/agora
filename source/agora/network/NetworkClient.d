@@ -17,6 +17,7 @@ import agora.api.Validator;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Set;
@@ -297,4 +298,24 @@ class NetworkClient
         });
     }
 
+    /***************************************************************************
+
+        Send a preimage asynchronously to the node.
+        Any errors are reported to the debugging log.
+
+        The request is retried up to 'this.max_retries',
+        any failures are logged and ignored.
+
+        Params:
+            preimage = the pre-image information to send
+
+    ***************************************************************************/
+
+    public void sendPreimage (ref PreimageInfo preimage) @trusted
+    {
+        this.taskman.runTask(
+        {
+            this.attemptRequest(this.api.receivePreimage(preimage), null);
+        });
+    }
 }

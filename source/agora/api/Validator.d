@@ -43,6 +43,8 @@
 module agora.api.Validator;
 
 import agora.common.crypto.Key;
+import agora.common.Hash;
+import agora.consensus.data.PreimageInfo;
 static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
@@ -93,4 +95,31 @@ public interface API : agora.api.FullNode.API
     ***************************************************************************/
 
     public bool receiveEnvelope (SCPEnvelope envelope);
+
+    /***************************************************************************
+
+        Reveals a pre-image
+
+        Params:
+            preimage = a PreimageInfo object which contains a hash and a height
+
+    ***************************************************************************/
+
+    public void receivePreimage (PreimageInfo preimage);
+
+    /***************************************************************************
+
+        Checks if a pre-image exists
+
+        Params:
+            enroll_key = The key for the enrollment in which the pre-image is
+                contained.
+            height = The block height of the preimage to check existence
+
+        Returns:
+            true if the pre-image exists
+
+    ***************************************************************************/
+
+    public bool hasPreimage (Hash enroll_key, ulong height);
 }
