@@ -780,11 +780,13 @@ public class BlockStorage : IBlockStorage
 
         size_t height, pos;
         ubyte[Hash.sizeof] hash;
+        const DeserializerOptions opts = { compact: CompactMode.No };
         foreach (idx; 0 .. record_count)
         {
-            height = deserializeFull!size_t(dg, CompactMode.No);
+
+            height = deserializeFull!size_t(dg, opts);
             idx_file.rawRead(hash);
-            pos    = deserializeFull!size_t(dg, CompactMode.No);
+            pos    = deserializeFull!size_t(dg, opts);
             // add to index of heigth
             this.height_idx.insert(HeightPosition(height, pos));
             // add to index of hash
