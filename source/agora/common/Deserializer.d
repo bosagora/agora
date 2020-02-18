@@ -116,14 +116,16 @@ unittest
 
 /*******************************************************************************
 
-    Deserialize a struct and return it.
+    Deserialize a data type and return it
 
     Params:
-        T = Type of struct to deserialize
+        T = Type of data to deserialize
         data = Binary serialized representation of `T` to be deserialized
+        dg   = Delegate to read binary data for deserialization
         compact = Whether integers are serialized in variable-length form
+
     Returns:
-        The deserialized struct
+        The deserialized data type
 
 *******************************************************************************/
 
