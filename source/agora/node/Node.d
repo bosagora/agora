@@ -248,6 +248,16 @@ public class Node : API
             this.network.sendTransaction(tx);
             this.ledger.tryNominateTXSet();
         }
+
+        if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
+        {
+            PreimageInfo preimage;
+            if (this.enroll_man.getNextPreimage(preimage))
+            {
+                this.receivePreimage(preimage);
+                this.enroll_man.increaseNextRevealHeight();
+            }
+        }
     }
 
     /***************************************************************************
