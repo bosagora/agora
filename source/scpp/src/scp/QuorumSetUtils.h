@@ -9,7 +9,8 @@
 namespace stellar
 {
 
-bool isQuorumSetSane(SCPQuorumSet const& qSet, bool extraChecks);
+bool isQuorumSetSane(SCPQuorumSet const& qSet, bool extraChecks,
+    const char** reason = nullptr);
 
 // normalize the quorum set, optionally removing idToRemove
 void normalizeQSet(SCPQuorumSet& qSet, NodeID const* idToRemove = nullptr);

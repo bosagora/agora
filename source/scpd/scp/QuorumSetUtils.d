@@ -18,7 +18,8 @@ import scpd.types.Stellar_types;
 
 extern(C++, `stellar`):
 
-bool isQuorumSetSane(ref const SCPQuorumSet qSet, bool extraChecks);
+bool isQuorumSetSane(ref const SCPQuorumSet qSet, bool extraChecks,
+    const(char)** reason = null);
 
 // normalize the quorum set, optionally removing idToRemove
 void normalizeQSet(ref SCPQuorumSet qSet, const NodeID* idToRemove = null);
