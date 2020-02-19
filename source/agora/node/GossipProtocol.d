@@ -112,7 +112,7 @@ public class GossipProtocol
 
     public void receiveEnrollment (Enrollment enroll, scope UTXOFinder finder) @safe
     {
-        if (this.enroll_man.addEnrollment(this.ledger.getBlockHeight(), finder,
+        if (this.enroll_man.add(this.ledger.getBlockHeight(), finder,
             enroll))
         {
             this.network.sendEnrollment(enroll);

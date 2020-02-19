@@ -150,7 +150,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool addEnrollment (ulong block_height, scope UTXOFinder finder,
+    public bool add (ulong block_height, scope UTXOFinder finder,
         const ref Enrollment enroll) @safe nothrow
     {
         static ubyte[] buffer;
@@ -806,22 +806,22 @@ unittest
 
     assert(man.createEnrollment(utxo_hash, enroll));
     assert(!man.hasEnrollment(utxo_hash));
-    assert(!man.addEnrollment(0, &storage.findUTXO, fail_enroll));
-    assert(man.addEnrollment(0, &storage.findUTXO, enroll));
+    assert(!man.add(0, &storage.findUTXO, fail_enroll));
+    assert(man.add(0, &storage.findUTXO, enroll));
     assert(man.count() == 1);
     assert(man.hasEnrollment(utxo_hash));
-    assert(!man.addEnrollment(0, &storage.findUTXO, enroll));
+    assert(!man.add(0, &storage.findUTXO, enroll));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     assert(man.createEnrollment(utxo_hash2, enroll2));
-    assert(man.addEnrollment(0, &storage.findUTXO, enroll2));
+    assert(man.add(0, &storage.findUTXO, enroll2));
     assert(man.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
     assert(man.createEnrollment(utxo_hash3, enroll3));
-    assert(man.addEnrollment(0, &storage.findUTXO, enroll3));
+    assert(man.add(0, &storage.findUTXO, enroll3));
     assert(man.count() == 3);
 
     Enrollment[] enrolls;
@@ -863,7 +863,7 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(man.addEnrollment(0, &storage.findUTXO, ordered_enroll));
+        assert(man.add(0, &storage.findUTXO, ordered_enroll));
     man.getUnregistered(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
@@ -922,7 +922,7 @@ unittest
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
     assert(man.createEnrollment(utxo_hash, enroll));
-    assert(man.addEnrollment(0, &storage.findUTXO, enroll));
+    assert(man.add(0, &storage.findUTXO, enroll));
     assert(man.hasEnrollment(utxo_hash));
 
     auto preimage = PreimageInfo(utxo_hash, enroll.random_seed, 1);
