@@ -530,7 +530,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Enrollment[] getUnregisteredEnrollments (ref Enrollment[] enrolls)
+    public Enrollment[] getUnregistered (ref Enrollment[] enrolls)
         @trusted
     {
         enrolls.length = 0;
@@ -825,7 +825,7 @@ unittest
     assert(man.getEnrollmentLength() == 3);
 
     Enrollment[] enrolls;
-    man.getUnregisteredEnrollments(enrolls);
+    man.getUnregistered(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -847,14 +847,14 @@ unittest
     assert(man.getEnrolledHeight(utxo_hash) == 9);
     assert(!man.updateEnrolledHeight(utxo_hash, 9));
     assert(man.getEnrolledHeight(utxo_hash2) == 0);
-    man.getUnregisteredEnrollments(enrolls);
+    man.getUnregistered(enrolls);
     assert(enrolls.length == 1);
     assert(man.getEnrollmentLength() == 2);  // has not changed
 
     man.removeEnrollment(utxo_hash);
     man.removeEnrollment(utxo_hash2);
     man.removeEnrollment(utxo_hash3);
-    assert(man.getUnregisteredEnrollments(enrolls).length == 0);
+    assert(man.getUnregistered(enrolls).length == 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -864,7 +864,7 @@ unittest
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
         assert(man.addEnrollment(0, &storage.findUTXO, ordered_enroll));
-    man.getUnregisteredEnrollments(enrolls);
+    man.getUnregistered(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
