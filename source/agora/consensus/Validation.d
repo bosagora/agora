@@ -1376,7 +1376,7 @@ unittest
     enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
- 
+
     auto utxo_hash2 = utxo_set.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
