@@ -202,7 +202,7 @@ extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
         private static struct ConstIterator
         {
             const(T)* ptr;
-            const(vector!T) orig;
+            const(vector!T)* orig;
 
             public ref const(T) front () const pure nothrow @nogc
             {
@@ -234,7 +234,7 @@ extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
 
         public ConstIterator constIterator () const pure nothrow @nogc @safe
         {
-            return ConstIterator(this._start, this);
+            return ConstIterator(this._start, &this);
         }
 
         public inout(T[]) opSlice () inout pure nothrow @nogc @safe
