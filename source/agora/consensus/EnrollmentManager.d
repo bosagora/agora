@@ -224,7 +224,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public size_t getEnrollmentLength () @safe
+    public size_t count () @safe
     {
         return () @trusted {
             return this.db.execute("SELECT count(*) FROM validator_set").oneValue!size_t;
@@ -808,7 +808,7 @@ unittest
     assert(!man.hasEnrollment(utxo_hash));
     assert(!man.addEnrollment(0, &storage.findUTXO, fail_enroll));
     assert(man.addEnrollment(0, &storage.findUTXO, enroll));
-    assert(man.getEnrollmentLength() == 1);
+    assert(man.count() == 1);
     assert(man.hasEnrollment(utxo_hash));
     assert(!man.addEnrollment(0, &storage.findUTXO, enroll));
 
@@ -816,13 +816,13 @@ unittest
     auto utxo_hash2 = utxo_hashes[1];
     assert(man.createEnrollment(utxo_hash2, enroll2));
     assert(man.addEnrollment(0, &storage.findUTXO, enroll2));
-    assert(man.getEnrollmentLength() == 2);
+    assert(man.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
     assert(man.createEnrollment(utxo_hash3, enroll3));
     assert(man.addEnrollment(0, &storage.findUTXO, enroll3));
-    assert(man.getEnrollmentLength() == 3);
+    assert(man.count() == 3);
 
     Enrollment[] enrolls;
     man.getUnregistered(enrolls);
@@ -836,7 +836,7 @@ unittest
 
     // remove an Enrollment object
     man.removeEnrollment(utxo_hash2);
-    assert(man.getEnrollmentLength() == 2);
+    assert(man.count() == 2);
 
     // test for getEnrollment with removed enrollment
     assert(!man.getEnrollment(utxo_hash2, stored_enroll));
@@ -849,7 +849,7 @@ unittest
     assert(man.getEnrolledHeight(utxo_hash2) == 0);
     man.getUnregistered(enrolls);
     assert(enrolls.length == 1);
-    assert(man.getEnrollmentLength() == 2);  // has not changed
+    assert(man.count() == 2);  // has not changed
 
     man.removeEnrollment(utxo_hash);
     man.removeEnrollment(utxo_hash2);
