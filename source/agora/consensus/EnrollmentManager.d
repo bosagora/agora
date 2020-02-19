@@ -240,7 +240,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void removeEnrollment (const ref Hash enroll_hash) @trusted
+    public void remove (const ref Hash enroll_hash) @trusted
     {
         this.db.execute("DELETE FROM validator_set WHERE key = ?",
             enroll_hash.toString());
@@ -835,7 +835,7 @@ unittest
     assert(stored_enroll == enroll2);
 
     // remove an Enrollment object
-    man.removeEnrollment(utxo_hash2);
+    man.remove(utxo_hash2);
     assert(man.count() == 2);
 
     // test for getEnrollment with removed enrollment
@@ -851,9 +851,9 @@ unittest
     assert(enrolls.length == 1);
     assert(man.count() == 2);  // has not changed
 
-    man.removeEnrollment(utxo_hash);
-    man.removeEnrollment(utxo_hash2);
-    man.removeEnrollment(utxo_hash3);
+    man.remove(utxo_hash);
+    man.remove(utxo_hash2);
+    man.remove(utxo_hash3);
     assert(man.getUnregistered(enrolls).length == 0);
 
     Enrollment[] ordered_enrollments;
