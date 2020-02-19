@@ -77,6 +77,7 @@ private UnitTestResult customModuleUnitTester ()
     import std.stdio;
     import std.string;
     import std.uni;
+    import core.atomic;
 
     //
     auto filter = environment.get("dtest").toLower();
@@ -114,16 +115,17 @@ private UnitTestResult customModuleUnitTester ()
         }
     }
 
-    UnitTestResult result;
+    shared size_t executed;
+    shared size_t passed;
     foreach (mod; parallel(mod_tests))
     {
-        ++result.executed;
+        atomicOp!"+="(executed, 1);
 
         try
         {
             //writefln("Unittesting %s..", mod.name);
             mod.test();
-            ++result.passed;
+            atomicOp!"+="(passed, 1);
         }
         catch (Throwable ex)
         {
@@ -132,6 +134,7 @@ private UnitTestResult customModuleUnitTester ()
         }
     }
 
+    UnitTestResult result = { executed : executed, passed : passed };
     if (filtered > 0)
         writefln("Ran %s/%s tests (%s filtered)", result.executed,
             result.executed + filtered, filtered);
