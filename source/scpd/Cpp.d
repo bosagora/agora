@@ -172,11 +172,24 @@ unittest
 /// In this case we just need to get the name right for `vector`
 extern(C++, (StdNS!())) struct allocator (T) {}
 
-/// Simple bindings from `std::vector`
-/// Note: It's very easy to get the memory management wrong
-/// Extra items, like `ConstIterator` and `toString` / `fromString`
-/// are for ease of use
-/// `to/fromString` actually allows vibe.d to deserialize it
+/*******************************************************************************
+
+    Simple bindings from `std::vector`
+
+    Note that this binding is incomplete and possibly incorrect.
+    There is a druntime version but it's likely buggy and much harder to
+    reason about because it supports all runtimes:
+    https://github.com/dlang/druntime/pull/2448
+
+    It's very easy to get the memory management wrong, so prefer passing this
+    by ref and do anything that modifies the memory on the C++ side
+    (e.g. push_back).
+
+    Extra items, like `ConstIterator` and `toString` / `fromString` are for
+     ease of use (e.g. `to/fromString` actually allows vibe.d to deserialize it)
+
+*******************************************************************************/
+
 extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
 {
     T* _start;
