@@ -96,12 +96,16 @@ public class Node : API
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
+    /// The SCP Quorum set
+    protected SCPQuorumSet scp_quorum;
+
     /// Ctor
     public this (const Config config)
     {
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
+        this.scp_quorum = verifyBuildSCPConfig(config.quorum);
         this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman);
@@ -114,10 +118,44 @@ public class Node : API
             400, Json("The query was incorrect"), string.init, int.init);
     }
 
+    /***************************************************************************
+
+        Verify the quorum configuration, and create a normalized SCPQuorum.
+
+        Params:
+            config = the quorum configuration
+
+        Throws:
+            an Exception if the quorum configuration is invalid
+
+    ***************************************************************************/
+
+    private static SCPQuorumSet verifyBuildSCPConfig (QuorumConfig config)
+    {
+        import scpd.scp.QuorumSetUtils;
+
+        import agora.network.NetworkClient;
+        auto scp_quorum = toSCPQuorumSet(config);
+        normalizeQSet(scp_quorum);
+
+        // todo: assertion fails do the misconfigured(?) threshold of 1 which
+        // is lower than vBlockingSize in QuorumSetSanityChecker::checkSanity
+        const ExtraChecks = false;
+        const(char)* reason;
+        if (!isQuorumSetSane(scp_quorum, ExtraChecks, &reason))
+        {
+            import std.conv;
+            string failure = reason.to!string;
+            log.fatal(failure);
+            throw new Exception(failure);
+        }
+
+        return scp_quorum;
+    }
+
     /// The first task method, loading from disk, node discovery, etc
     public void start ()
     {
-        import scpd.scp.QuorumSetUtils;
         log.info("Doing network discovery..");
         auto peers = this.network.discover();
         this.network.retrieveLatestBlocks(this.ledger);
@@ -125,16 +163,6 @@ public class Node : API
         // nothing to do
         if (!this.config.node.is_validator)
             return;
-
-        import agora.network.NetworkClient;
-        auto quorum_set = toSCPQuorumSet(this.config.quorum);
-        normalizeQSet(quorum_set);
-
-        // todo: assertion fails do the misconfigured(?) threshold of 1 which
-        // is lower than vBlockingSize in QuorumSetSanityChecker::checkSanity
-        const ExtraChecks = false;
-        enforce(isQuorumSetSane(quorum_set, ExtraChecks),
-            "Configured quorum set is not considered valid by SCP");
 
         import agora.common.Set;
         import std.typecons;
@@ -158,7 +186,7 @@ public class Node : API
             .assocArray();
 
         this.nominator = new Nominator(this.config.node.key_pair,
-            this.ledger, this.taskman, quorum_peers, quorum_set);
+            this.ledger, this.taskman, quorum_peers, this.scp_quorum);
     }
 
     /***************************************************************************
