@@ -52,7 +52,7 @@ import geod24.Registry;
 
 import core.stdc.time;
 import std.array;
-import std.algorithm.iteration;
+import std.algorithm;
 import std.exception;
 import std.format;
 
@@ -209,6 +209,18 @@ public class FakeClockBanManager : BanManager
     public override void dump () { }
 }
 
+/// We use a pair of (key, client) rather than a hashmap client[key],
+/// since we want to know the order of the nodes which were configured
+/// in the makeTestNetwork() call.
+public struct NodePair
+{
+    ///
+    public PublicKey key;
+
+    ///
+    public RemoteAPI!TestAPI client;
+}
+
 /*******************************************************************************
 
     Used by unittests to send messages to individual nodes.
@@ -224,14 +236,16 @@ public class TestAPIManager
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
-    public RemoteAPI!TestAPI[PublicKey] apis;
+    public NodePair[] nodes;
+
+    /// convenience: returns a random-access range which lets us access clients
+    auto clients ()
+    {
+        return nodes.map!(np => np.client);
+    }
 
     /// Registry holding the nodes
     protected Registry reg;
-
-    /// Keeps the order of creation as createNewNode() was called.
-    /// Needed to know which node was the first / last one in some tests.
-    public PublicKey[] keys;
 
     ///
     public this ()
@@ -254,8 +268,7 @@ public class TestAPIManager
         auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg,
             conf.node.timeout.msecs);
         this.reg.register(address.toString(), api.tid());
-        this.apis[address] = api;
-        this.keys ~= address;
+        this.nodes ~= NodePair(address, api);
     }
 
     /***************************************************************************
@@ -269,7 +282,7 @@ public class TestAPIManager
 
     public void start ()
     {
-        this.apis.each!(a => a.start());
+        this.nodes.each!(a => a.client.start());
     }
 
     /***************************************************************************
@@ -280,14 +293,14 @@ public class TestAPIManager
 
     public void shutdown ()
     {
-        foreach (key, ref api; this.apis)
+        foreach (ref node; this.nodes)
         {
-            api.shutdown();
-            api.ctrl.shutdown();
-            api = null;
+            node.client.shutdown();
+            node.client.ctrl.shutdown();
+            node.client = null;
         }
 
-        this.apis = null;
+        this.nodes = null;
     }
 
     /***************************************************************************
@@ -301,11 +314,11 @@ public class TestAPIManager
         synchronized  // make sure logging output is not interleaved
         {
             import std.stdio;
-            foreach (key, api; this.apis)
+            foreach (node; this.nodes)
             {
-                writefln("Log for node %s:", key);
+                writefln("Log for node %s:", node.key);
                 writeln("======================================================================");
-                api.printLog();
+                node.client.printLog();
                 writeln("======================================================================\n");
             }
         }
@@ -314,16 +327,14 @@ public class TestAPIManager
     /// fill in the in-memory metadata with the peers before nodes are started
     public void addMetadata ()
     {
-        auto keys = this.apis.keys.array;
-
-        foreach (key_x; keys)
-        foreach (key_y; keys)
+        foreach (api_a; this.nodes)
+        foreach (api_b; this.nodes)
         {
-            if (key_x == key_y)
+            if (api_a.key == api_b.key)
                 continue;
 
-            this.apis[key_x].metaAddPeer(key_y.toString());
-            this.apis[key_y].metaAddPeer(key_x.toString());
+            api_a.client.metaAddPeer(api_b.key.toString());
+            api_b.client.metaAddPeer(api_a.key.toString());
         }
     }
 
@@ -340,12 +351,12 @@ public class TestAPIManager
         try
         {
             const timeout = 5.seconds;
-            this.apis.byKeyValue.each!(pair =>
-                retryFor(pair.value.getNetworkInfo().ifThrown(NetworkInfo.init)
+            this.nodes.each!(node =>
+                retryFor(node.client.getNetworkInfo().ifThrown(NetworkInfo.init)
                     .state == NetworkState.Complete,
                     timeout,
                     format("Node %s has not completed discovery after %s.",
-                        pair.key, timeout)));
+                        node.key, timeout)));
         }
         catch (Error ex)  // better UX
         {
@@ -840,7 +851,7 @@ public const(Block)[] getAllBlocks (TestAPI node)
 }
 
 /// Returns: true if all the nodes contain the same blocks
-public bool containSameBlocks (API)(API[] nodes, size_t height)
+public bool containSameBlocks (APIS)(APIS nodes, size_t height)
 {
     auto first_blocks = nodes[0].getAllBlocks();
 

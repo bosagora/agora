@@ -352,7 +352,7 @@ unittest
     network.waitForDiscovery();
 
    /// Use API as needed
-   foreach (/*PublicKey*/ key, ref /*API*/ node; network.apis)
+   foreach (/*PublicKey*/ key, ref /*API*/ node; network.nodes)
        node.sendTransaction(...);
 }
 ```

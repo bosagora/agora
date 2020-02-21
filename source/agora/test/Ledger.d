@@ -41,7 +41,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.apis.values;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
@@ -102,7 +102,7 @@ unittest
     network.waitForDiscovery();
 
     // node_1 is the validator
-    auto nodes = network.keys.map!(key => network.apis[key]).array;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
@@ -125,7 +125,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.apis.values;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     auto gen_key_pair = getGenesisKeyPair();
@@ -163,7 +163,7 @@ unittest
     nodes.each!(node => retryFor(node.getBlockHeight() == 1, 4.seconds));
 
     Hash[] merkle_path;
-    foreach (key, ref node; nodes)
+    foreach (node; nodes)
     {
         merkle_path = node.getMerklePath(1, hc);
         assert(merkle_path.length == 3);
@@ -202,7 +202,7 @@ unittest
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
 
-    auto nodes = network.apis.values;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
