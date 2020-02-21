@@ -49,10 +49,9 @@ unittest
     network.waitForDiscovery();
 
     // three nodes, two validators, and 1 non-validator
-    auto keys = network.keys;
-    auto node_1 = network.apis[keys[0]];
-    auto node_2 = network.apis[keys[1]];
-    auto node_3 = network.apis[keys[2]];  // non-validator
+    auto node_1 = network.nodes[0].client;
+    auto node_2 = network.nodes[1].client;
+    auto node_3 = network.nodes[2].client;  // non-validator
     auto nodes = [node_1, node_2, node_3];
     auto gen_key = getGenesisKeyPair();
 

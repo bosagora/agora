@@ -36,7 +36,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.apis.values;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     // block periodic getBlocksFrom
@@ -71,7 +71,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.apis.values;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     // block periodic getBlocksFrom

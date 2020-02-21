@@ -30,9 +30,9 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    foreach (key, node; network.apis)
+    foreach (key, node; network.nodes)
     {
-        auto addresses = node.getNetworkInfo().addresses.keys;
+        auto addresses = node.client.getNetworkInfo().addresses.keys;
         assert(addresses.sort.uniq.count == conf.nodes - 1,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }

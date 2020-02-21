@@ -33,7 +33,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.apis.values;
+    auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     // first two nodes will fail, second two should work
@@ -106,9 +106,6 @@ unittest
 
     static class BadAPIManager : TestAPIManager
     {
-        // base class uses a hashmap, can't depend on the order of nodes
-        public RemoteAPI!TestAPI[] nodes;
-
         /// see base class
         public override void createNewNode (PublicKey address, Config conf)
         {
@@ -125,8 +122,7 @@ unittest
             }
 
             this.reg.register(address.toString(), api.tid());
-            this.apis[address] = api;
-            this.nodes ~= api;
+            this.nodes ~= NodePair(address, api);
         }
     }
 
@@ -137,7 +133,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.nodes;
+    auto nodes = network.clients;
     auto node_validator = nodes[0];  // validator, creates blocks
     auto node_test = nodes[1];  // full node, does not create blocks
     auto node_bad = nodes[2];  // full node, returns bad blocks in getBlocksFrom()
