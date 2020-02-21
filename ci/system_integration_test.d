@@ -47,7 +47,7 @@ private int main (string[] args)
     // Now run the tests
     runCmd(DockerComposeUp);
     scope (exit) runCmd(DockerComposeDown);
-    scope (failure)
+    scope (exit)
     {
         runCmd(DockerComposeLogs ~ "node-0");
         runCmd(DockerComposeLogs ~ "node-1");
