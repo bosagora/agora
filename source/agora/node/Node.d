@@ -120,6 +120,7 @@ public class Node : API
     /// The first task method, loading from disk, node discovery, etc
     public void start ()
     {
+        import std.stdio;
         import scpd.scp.QuorumSetUtils;
         log.info("Doing network discovery..");
         auto peers = this.network.discover();
@@ -135,6 +136,7 @@ public class Node : API
 
         // todo: assertion fails do the misconfigured(?) threshold of 1 which
         // is lower than vBlockingSize in QuorumSetSanityChecker::checkSanity
+        writefln("-- Checking quorum set: %s", quorum_set);
         const ExtraChecks = false;
         enforce(isQuorumSetSane(quorum_set, ExtraChecks),
             "Configured quorum set is not considered valid by SCP");
@@ -154,11 +156,13 @@ public class Node : API
         // can't use Set(), requires serialization support
         bool[PublicKey] quorum_keys;
         getNodes(this.config.quorum, quorum_keys);
+        writefln("-- Quorum keys: %s", quorum_set);
 
         auto quorum_peers = peers.byKeyValue
             .filter!(item => item.key in quorum_keys)
             .map!(item => tuple(item.key, item.value))
             .assocArray();
+        writefln("-- Quorum peers: %s", quorum_set);
 
         this.nominator = new Nominator(this.config.node.key_pair,
             this.ledger, this.taskman, quorum_peers, quorum_set);
