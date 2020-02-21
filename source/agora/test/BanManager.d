@@ -39,7 +39,6 @@ unittest
         nodes : 3,
         retry_delay : 10,
         max_retries : 10,
-        timeout : 10,
         max_failed_requests : 4 * Block.TxsInBlock
     };
 

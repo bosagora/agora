@@ -238,10 +238,20 @@ public class TestAPIManager
         this.reg.initialize();
     }
 
-    /// Initialize a new node
+    /***************************************************************************
+
+        Create a new node
+
+        Params:
+            address = the address of the node, using PublicKey in unittests
+            conf = the configuration passed on to the Node constructor
+
+    ***************************************************************************/
+
     public void createNewNode (PublicKey address, Config conf)
     {
-        auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg);
+        auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg,
+            conf.node.timeout.msecs);
         this.reg.register(address.toString(), api.tid());
         this.apis[address] = api;
         this.keys ~= address;
@@ -575,8 +585,8 @@ public struct TestConf
     /// max retries before a request is considered failed
     size_t max_retries = 20;
 
-    /// request timeout (in msecs)
-    long timeout = 500;
+    /// request timeout for each node (in msecs)
+    long timeout = 2000;
 
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
