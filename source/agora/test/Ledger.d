@@ -94,8 +94,7 @@ unittest
     import std.range;
     import core.time;
 
-    // also reduced timeout to 100 msecs
-    TestConf conf = { topology : NetworkTopology.OneValidator, timeout : 100 };
+    TestConf conf = { topology : NetworkTopology.OneValidator };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -197,8 +196,7 @@ unittest
     import core.thread;
     import agora.consensus.Validation;
 
-    // reduce timeout to 100 msecs
-    TestConf conf = { nodes : 2, timeout : 100 };
+    TestConf conf = { nodes : 2 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
