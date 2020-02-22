@@ -111,9 +111,12 @@ public class Node : API
             config.network, config.dns_seeds, this.metadata, this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
+        scope (failure) this.pool.shutdown();
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
+        scope (failure) this.utxo_set.shutdown();
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, config.node);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
+        scope (failure) this.enroll_man.shutdown();
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
