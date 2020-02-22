@@ -169,10 +169,13 @@ public class NetworkManager
 
         Params:
             ledger = the Ledger to apply received blocks to
+            isNominating = if we're currently nominating then do not
+                           alter the state of the ledger
 
     ***************************************************************************/
 
-    public void startPeriodicCatchup (Ledger ledger)
+    public void startPeriodicCatchup (Ledger ledger,
+        bool delegate() @safe isNominating)
     {
         this.taskman.runTask(
         ()
@@ -185,7 +188,7 @@ public class NetworkManager
                     blocks => blocks.all!(block =>
                         // do not alter the state of the ledger if
                         // we're currently nominating
-                        !ledger.isNominating() && ledger.acceptBlock(block)));
+                        !isNominating() && ledger.acceptBlock(block)));
 
                 this.taskman.wait(2.seconds);
             }
