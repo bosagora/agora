@@ -21,15 +21,28 @@ import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.common.Set;
 import agora.utils.PrettyPrinter;
+import agora.utils.Test;
 
 import vibe.web.rest;
 
 import std.algorithm;
 import std.exception;
+import std.format;
+import std.range;
 import std.stdio;
 import core.thread;
 import core.time;
 
+// keep polling the nodes for a complete network discovery, until a timeout
+private void waitForDiscovery (API[] clients, Duration timeout)
+{
+    clients.enumerate.each!((idx, api) =>
+        retryFor(api.getNetworkInfo().ifThrown(NetworkInfo.init)
+            .state == NetworkState.Complete,
+            timeout,
+            format("Node %s has not completed discovery after %s.",
+                idx, timeout)));
+}
 
 int main (string[] args)
 {
@@ -47,6 +60,8 @@ int main (string[] args)
         API[] clients;
         foreach (const ref addr; addresses)
             clients ~= new RestInterfaceClient!API(addr);
+
+        waitForDiscovery(clients, 5.seconds);
 
         foreach (idx, ref client; clients)
         {
