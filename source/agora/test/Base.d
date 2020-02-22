@@ -293,6 +293,9 @@ public class TestAPIManager
 
     public void shutdown ()
     {
+        foreach (node; this.nodes)
+            enforce(this.reg.unregister(node.key.toString()));
+
         foreach (ref node; this.nodes)
         {
             node.client.shutdown();
