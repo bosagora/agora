@@ -161,7 +161,14 @@ public class Node : API
     {
         log.info("Doing network discovery..");
         auto peers = this.network.discover();
-        this.network.startPeriodicCatchup(this.ledger);
+
+        bool isNominating ()
+        {
+            return this.config.node.is_validator &&
+                this.ledger.isNominating();
+        }
+
+        this.network.startPeriodicCatchup(this.ledger, &isNominating);
 
         // nothing to do
         if (!this.config.node.is_validator)
