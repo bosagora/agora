@@ -161,7 +161,7 @@ public class Node : API
     {
         log.info("Doing network discovery..");
         auto peers = this.network.discover();
-        this.network.retrieveLatestBlocks(this.ledger);
+        this.network.startPeriodicCatchup(this.ledger);
 
         // nothing to do
         if (!this.config.node.is_validator)

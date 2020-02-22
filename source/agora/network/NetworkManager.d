@@ -172,7 +172,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void retrieveLatestBlocks (Ledger ledger)
+    public void startPeriodicCatchup (Ledger ledger)
     {
         this.taskman.runTask(
         ()
