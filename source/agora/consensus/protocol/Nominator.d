@@ -14,6 +14,7 @@
 module agora.consensus.protocol.Nominator;
 
 import agora.common.crypto.Key;
+import agora.common.Config;
 import agora.common.Hash : hashFull;
 import agora.common.Serializer;
 import agora.common.Set;
@@ -79,6 +80,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Timer IDs with >= of the active timer will be allowed to run
     private ulong[TimerType.max + 1] active_timer_ids;
 
+    /// Quorum config
+    private const QuorumConfig quorum_conf;
+
 extern(D):
 
     /***************************************************************************
@@ -90,17 +94,18 @@ extern(D):
             ledger = needed for SCP state restoration & block validation
             taskman = used to run timers
             peers = the set of clients to the peers in the quorum
-            quorum_set = the quorum set of this node
+            config = the quorum configuration
 
     ***************************************************************************/
 
-    public this (KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, NetworkClient[PublicKey] peers,
-        SCPQuorumSet quorum_set)
+    public this (KeyPair key_pair, Ledger ledger, TaskManager taskman,
+        NetworkClient[PublicKey] peers, ref const QuorumConfig config)
     {
+        this.quorum_conf = config;
         this.key_pair = key_pair;
         auto node_id = NodeID(StellarHash(key_pair.address[]));
         const IsValidator = true;
+        auto quorum_set = verifyBuildSCPConfig(config);
         this.scp = createSCP(this, node_id, IsValidator, quorum_set);
         this.taskman = taskman;
         this.ledger = ledger;
@@ -115,6 +120,43 @@ extern(D):
         this.restoreSCPState(ledger);
         this.ledger.setNominator(&this.nominateTransactionSet);
     }
+
+    /***************************************************************************
+
+        Verify the quorum configuration, and create a normalized SCPQuorum.
+
+        Params:
+            config = the quorum configuration
+
+        Throws:
+            an Exception if the quorum configuration is invalid
+
+    ***************************************************************************/
+
+    private static SCPQuorumSet verifyBuildSCPConfig (
+        ref const QuorumConfig config)
+    {
+        import scpd.scp.QuorumSetUtils;
+
+        import agora.network.NetworkClient;
+        auto scp_quorum = toSCPQuorumSet(config);
+        normalizeQSet(scp_quorum);
+
+        // todo: assertion fails do the misconfigured(?) threshold of 1 which
+        // is lower than vBlockingSize in QuorumSetSanityChecker::checkSanity
+        const ExtraChecks = false;
+        const(char)* reason;
+        if (!isQuorumSetSane(scp_quorum, ExtraChecks, &reason))
+        {
+            import std.conv;
+            string failure = reason.to!string;
+            log.fatal(failure);
+            throw new Exception(failure);
+        }
+
+        return scp_quorum;
+    }
+
 
     /***************************************************************************
 
