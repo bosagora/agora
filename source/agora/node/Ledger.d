@@ -708,7 +708,6 @@ unittest
     UTXOSetValue _val;
     new_txs.each!(tx => assert(finder(tx.inputs[0].previous, tx.inputs[0].index,
         _val)));
-    ledger.tryNominateTXSet();
 
     auto findUTXO = utxo_set.getUTXOFinder();
     Transaction find_tx = new_txs[0];
