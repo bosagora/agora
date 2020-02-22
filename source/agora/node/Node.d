@@ -60,6 +60,7 @@ private enum uint MaxBatchBlocksSent = 1000;
     Communication with the other nodes is handled by the `Network` class.
 
 *******************************************************************************/
+
 public class Node : API
 {
     /// Metadata instance
