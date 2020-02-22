@@ -277,44 +277,53 @@ public class Ledger
         if (!this.node_config.is_validator)
             return;
 
-        // if we received another transaction while we're nominating, don't nominate again.
-        // todo: when we change nomination to be time-based (rather than input-based),
-        // then remove this part as it will be handled by a timer
-        if (this.is_nominating)
-            return;
-
-        if (this.pool.length < Block.TxsInBlock)
-            return;
-
-        Hash[] hashes;
-        Set!Transaction txs;
-        ulong expect_height = this.getBlockHeight() + 1;
-
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
-        foreach (hash, tx; this.pool)
-        {
-            if (auto reason = tx.isInvalidReason(utxo_finder, expect_height))
-                log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
-            else
-            {
-                hashes ~= hash;
-                txs.put(tx);
-            }
-
-            if (txs.length >= Block.TxsInBlock)
-                break;
-        }
-
-        if (txs.length != Block.TxsInBlock)
-            return;  // not enough valid txs
-
         this.is_nominating = true;
         scope (exit) this.is_nominating = false;
+
+        Set!Transaction txs;
+        this.prepareNominatingSet(txs);
+        if (txs.length == 0)
+            return;
 
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
         auto slot_idx = this.last_block.header.height + 1;
         this.nominate(slot_idx, Set!Transaction.init, txs);
+    }
+
+    /***************************************************************************
+
+        Try to collect a set of transactions to nominate.
+
+        Params:
+            txs = will contain the transaction set to nominate,
+                  or empty if not enough txs were found
+
+    ***************************************************************************/
+
+    private void prepareNominatingSet (ref Set!Transaction txs) @safe
+    {
+        assert(txs.length == 0);
+
+        if (this.pool.length < Block.TxsInBlock)
+            return;
+
+        const ulong next_height = this.getBlockHeight() + 1;
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
+
+        foreach (hash, tx; this.pool)
+        {
+            if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
+                log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
+            else
+                txs.put(tx);
+
+            if (txs.length >= Block.TxsInBlock)
+                return;
+        }
+
+        // not enough txs were found
+        () @trusted { txs.clear(); }();
     }
 
     /***************************************************************************
