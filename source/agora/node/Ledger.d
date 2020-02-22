@@ -34,10 +34,6 @@ import std.range;
 
 mixin AddLogger!();
 
-/// Starts a nomination round for a new transaction set
-public alias NominateDg = void delegate (ulong slot_idx,
-    Set!Transaction prev, Set!Transaction next) @safe;
-
 /// Ditto
 public class Ledger
 {
@@ -53,14 +49,8 @@ public class Ledger
     /// UTXO set
     private UTXOSet utxo_set;
 
-    /// Callback when a transaction set is ready to be nominated
-    private NominateDg nominate;
-
     /// Node config
     private NodeConfig node_config;
-
-    /// Whether the Node is currently in the process of nominating a block
-    private bool is_nominating;
 
     /***************************************************************************
 
@@ -99,24 +89,6 @@ public class Ledger
                 this.updateUTXOSet(block);
             }
         }
-
-        // by default the ledger will externalize without consenus.
-        // if the node is a validator, it should set the proper nominator
-        this.setNominator((idx, prev, next) { this.onTXSetExternalized(next); });
-    }
-
-    /***************************************************************************
-
-        Set the nominator callback.
-
-        Params:
-            nominate = the nominator callback
-
-    ***************************************************************************/
-
-    public void setNominator (NominateDg nominate) @safe
-    {
-        this.nominate = nominate;
     }
 
     /***************************************************************************
@@ -248,51 +220,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Returns:
-            true if there is currently a nomination round in progress.
-            Blocks should not be added to the Ledger via getBlocksFrom()
-            when this node is currently in the process of nominating a block.
-
-    ***************************************************************************/
-
-    public bool isNominating () nothrow @safe pure @nogc
-    {
-        return this.is_nominating;
-    }
-
-    /***************************************************************************
-
-        Try making a new block if there are enough valid and non double-spending
-        transactions in the pool
-
-        Double-spending transactions will be skipped over while iterating
-        over the pool. If there are not enough valid transactions,
-        a block will not be created.
-
-    ***************************************************************************/
-
-    public void tryNominateTXSet () @safe
-    {
-        // not a validator, the node should not create blocks
-        if (!this.node_config.is_validator)
-            return;
-
-        this.is_nominating = true;
-        scope (exit) this.is_nominating = false;
-
-        Set!Transaction txs;
-        this.prepareNominatingSet(txs);
-        if (txs.length == 0)
-            return;
-
-        // note: we are not passing the previous tx set as we don't really
-        // need it at this point (might later be necessary for chain upgrades)
-        auto slot_idx = this.last_block.header.height + 1;
-        this.nominate(slot_idx, Set!Transaction.init, txs);
-    }
-
-    /***************************************************************************
-
         Try to collect a set of transactions to nominate.
 
         Params:
@@ -301,7 +228,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void prepareNominatingSet (ref Set!Transaction txs) @safe
+    public void prepareNominatingSet (ref Set!Transaction txs) @safe
     {
         assert(txs.length == 0);
 
@@ -455,6 +382,18 @@ public class Ledger
     }
 }
 
+/// simulate block creation as if a nomination and externalize round completed
+version (unittest)
+{
+    private void forceCreateBlock (Ledger ledger)
+    {
+        Set!Transaction txs;
+        ledger.prepareNominatingSet(txs);
+        assert(txs.length > 0);
+        assert(ledger.onTXSetExternalized(txs));
+    }
+}
+
 ///
 unittest
 {
@@ -487,7 +426,7 @@ unittest
         {
             assert(ledger.acceptTransaction(tx));
             if ((idx + 1) % Block.TxsInBlock == 0)
-                ledger.tryNominateTXSet();
+                ledger.forceCreateBlock();
         }
 
         // keep track of last tx's to chain them to
@@ -569,7 +508,7 @@ unittest
     }
 
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-    ledger.tryNominateTXSet();
+    ledger.forceCreateBlock();
     auto blocks = ledger.getBlocksFrom(0).take(10);
     assert(blocks.length == 2);
 
@@ -631,7 +570,7 @@ unittest
     auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-    ledger.tryNominateTXSet();
+    ledger.forceCreateBlock();
 
     Hash[] hashes;
     hashes.reserve(txs.length);
@@ -832,7 +771,7 @@ unittest
                 {
                     assert(ledger.acceptTransaction(tx));
                 });
-            ledger.tryNominateTXSet();
+            ledger.forceCreateBlock();
 
             // keep track of last tx's to chain them to
             last_txs = txes[$ - Block.TxsInBlock .. $];
@@ -921,7 +860,7 @@ unittest
         {
             assert(ledger.acceptTransaction(tx));
         });
-        ledger.tryNominateTXSet();
+        ledger.forceCreateBlock();
     }
 
     KeyPair[] in_key_pairs_normal;
@@ -950,7 +889,7 @@ unittest
                 {
                     assert(ledger.acceptTransaction(tx) == is_valid);
                 });
-            ledger.tryNominateTXSet();
+            ledger.forceCreateBlock();
 
             if (is_valid)
             {
@@ -992,7 +931,7 @@ unittest
 
             if (is_valid)
             {
-                ledger.tryNominateTXSet();
+		ledger.forceCreateBlock();
 
                 // keep track of last tx's to chain them to
                 last_txs_freeze = txes[$ - Block.TxsInBlock .. $];

@@ -83,6 +83,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Quorum config
     private const QuorumConfig quorum_conf;
 
+    /// Whether we're in the process of nominating
+    private bool is_nominating;
+
 extern(D):
 
     /***************************************************************************
@@ -116,7 +119,49 @@ extern(D):
         this.quorum_set[quorum_hash] = localQSet;
 
         this.restoreSCPState(ledger);
-        this.ledger.setNominator(&this.nominateTransactionSet);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            true if we're currently in the process of nominating
+
+    ***************************************************************************/
+
+    public bool isNominating () @safe @nogc nothrow
+    {
+        return this.is_nominating;
+    }
+
+    /***************************************************************************
+
+        Try to begin a nomination round.
+
+        If there is already one in progress, or if there are not enough
+        transactions in the tx pool, return early.
+
+    ***************************************************************************/
+
+    public void tryNominate () @safe
+    {
+        // if we received another transaction while we're nominating, don't nominate again.
+        // todo: when we change nomination to be time-based (rather than input-based),
+        // then remove this part as it will be handled by a timer
+        if (this.is_nominating)
+            return;
+
+        this.is_nominating = true;
+        scope (exit) this.is_nominating = false;
+
+        Set!Transaction txs;
+        this.ledger.prepareNominatingSet(txs);
+        if (txs.length == 0)
+            return;  // not ready yet
+
+        // note: we are not passing the previous tx set as we don't really
+        // need it at this point (might later be necessary for chain upgrades)
+        auto slot_idx = this.ledger.getBlockHeight() + 1;
+        this.nominateTransactionSet(slot_idx, Set!Transaction.init, txs);
     }
 
     /***************************************************************************

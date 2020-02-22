@@ -133,7 +133,7 @@ public class Node : API
         bool isNominating ()
         {
             return this.config.node.is_validator &&
-                this.ledger.isNominating();
+                this.nominator.isNominating();
         }
 
         this.network.startPeriodicCatchup(this.ledger, &isNominating);
@@ -195,8 +195,12 @@ public class Node : API
 
         if (this.ledger.acceptTransaction(tx))
         {
+            // gossip first
             this.network.sendTransaction(tx);
-            this.ledger.tryNominateTXSet();
+
+            // then nominate
+            if (this.config.node.is_validator)
+                this.nominator.tryNominate();
         }
 
         if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
