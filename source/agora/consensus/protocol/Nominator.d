@@ -93,13 +93,12 @@ extern(D):
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
             taskman = used to run timers
-            peers = the set of clients to the peers in the quorum
             config = the quorum configuration
 
     ***************************************************************************/
 
     public this (KeyPair key_pair, Ledger ledger, TaskManager taskman,
-        NetworkClient[PublicKey] peers, ref const QuorumConfig config)
+        ref const QuorumConfig config)
     {
         this.quorum_conf = config;
         this.key_pair = key_pair;
@@ -109,7 +108,6 @@ extern(D):
         this.scp = createSCP(this, node_id, IsValidator, quorum_set);
         this.taskman = taskman;
         this.ledger = ledger;
-        this.peers = peers;
 
         auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
 
@@ -157,6 +155,42 @@ extern(D):
         return scp_quorum;
     }
 
+    /***************************************************************************
+
+        Set up the clients to which we'll be exchanging consensus messages with.
+
+        Params:
+            clients = the set of all clients we're networked with. A subset
+                      of the clients are in our quorum set, these will be
+                      the clients we exchange SCP messages with.
+
+    ***************************************************************************/
+
+    public void setupNetwork (NetworkClient[PublicKey] clients)
+    {
+        import agora.common.Set;
+        import std.algorithm;
+        import std.array;
+        import std.typecons;
+
+        void getNodes (in QuorumConfig conf, ref bool[PublicKey] nodes)
+        {
+            foreach (node; conf.nodes)
+                nodes[node] = true;
+
+            foreach (sub_conf; conf.quorums)
+                getNodes(sub_conf, nodes);
+        }
+
+        // can't use Set(), requires serialization support
+        bool[PublicKey] quorum_keys;
+        getNodes(this.quorum_conf, quorum_keys);
+
+        this.peers = clients.byKeyValue
+            .filter!(item => item.key in quorum_keys)
+            .map!(item => tuple(item.key, item.value))
+            .assocArray();
+    }
 
     /***************************************************************************
 

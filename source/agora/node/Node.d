@@ -115,6 +115,10 @@ public class Node : API
         scope (failure) this.enroll_man.shutdown();
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
+
+        if (this.config.node.is_validator)
+            this.nominator = new Nominator(this.config.node.key_pair,
+                this.ledger, this.taskman, this.config.quorum);
     }
 
     /// The first task method, loading from disk, node discovery, etc
@@ -123,6 +127,9 @@ public class Node : API
         log.info("Doing network discovery..");
         auto peers = this.network.discover();
 
+        if (this.config.node.is_validator)
+            this.nominator.setupNetwork(peers);
+
         bool isNominating ()
         {
             return this.config.node.is_validator &&
@@ -130,34 +137,6 @@ public class Node : API
         }
 
         this.network.startPeriodicCatchup(this.ledger, &isNominating);
-
-        // nothing to do
-        if (!this.config.node.is_validator)
-            return;
-
-        import agora.common.Set;
-        import std.typecons;
-
-        void getNodes (in QuorumConfig conf, ref bool[PublicKey] nodes)
-        {
-            foreach (node; conf.nodes)
-                nodes[node] = true;
-
-            foreach (sub_conf; conf.quorums)
-                getNodes(sub_conf, nodes);
-        }
-
-        // can't use Set(), requires serialization support
-        bool[PublicKey] quorum_keys;
-        getNodes(this.config.quorum, quorum_keys);
-
-        auto quorum_peers = peers.byKeyValue
-            .filter!(item => item.key in quorum_keys)
-            .map!(item => tuple(item.key, item.value))
-            .assocArray();
-
-        this.nominator = new Nominator(this.config.node.key_pair,
-            this.ledger, this.taskman, quorum_peers, this.config.quorum);
     }
 
     /***************************************************************************
