@@ -984,10 +984,11 @@ unittest
                 {
                     assert(ledger.acceptTransaction(tx) == is_valid);
                 });
-            ledger.tryNominateTXSet();
 
             if (is_valid)
             {
+                ledger.tryNominateTXSet();
+
                 // keep track of last tx's to chain them to
                 last_txs_freeze = txes[$ - Block.TxsInBlock .. $];
 
