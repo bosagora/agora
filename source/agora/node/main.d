@@ -24,6 +24,7 @@ import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
 import agora.utils.Log;
+import agora.utils.Workarounds;
 
 import vibe.core.core;
 import vibe.http.server;
@@ -31,13 +32,6 @@ import vibe.http.server;
 import std.getopt;
 import std.stdio;
 import std.typecons : Nullable;
-
-/**
- * Workaround for segfault similar (or identical) to https://github.com/dlang/dub/issues/1812
- * https://dlang.org/changelog/2.087.0.html#gc_parallel
- */
-static if (__VERSION__ >= 2087)
-    extern(C) __gshared string[] rt_options = [ "gcopt=parallel:0" ];
 
 /// Workaround for issue likely related to dub #225,
 /// expects a main() function and invokes it after unittesting.
