@@ -18,6 +18,15 @@
 
 module agora.node.main;
 
+/// Workaround for issue likely related to dub #225,
+/// expects a main() function and invokes it after unittesting.
+version (unittest)
+{
+    import agora.utils.Workarounds;
+    void main () { }
+}
+else:
+
 import agora.common.Config;
 import agora.common.FileBasedLock;
 import agora.node.FullNode;
@@ -32,10 +41,6 @@ import vibe.http.server;
 import std.getopt;
 import std.stdio;
 import std.typecons : Nullable;
-
-/// Workaround for issue likely related to dub #225,
-/// expects a main() function and invokes it after unittesting.
-version (unittest) void main () { } else:
 
 mixin AddLogger!();
 
