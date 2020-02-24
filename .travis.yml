@@ -53,6 +53,8 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./ci/ci_linux_setup.sh; fi
 
 script:
+  - ${DC} --version
+  - dub --version
   - ./ci/run.sh
 
 after_success:
