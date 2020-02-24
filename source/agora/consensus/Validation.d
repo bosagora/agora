@@ -20,6 +20,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
@@ -956,6 +957,58 @@ public bool isValidEnrollment (const ref Enrollment enrollment,
     return isInvalidEnrollmentReason(enrollment, block_height, findUTXO) is null;
 }
 
+/*******************************************************************************
+
+    Check the validity of a new pre-image information
+
+    Pre-image infomation is considered valid if:
+        - The keys for enrollment in two pieces of pre-image information are
+            same
+        - Height for a pre-image is greater than height for a current image
+        - A current image is same as n times hashed value of a pre-image
+            (n = difference of two heights).
+
+    Params:
+        new_image = The pre-image information to check
+        prev_image = The previous pre-image information
+        validator_cycle = The defined period as a validator
+
+    Returns:
+        `null` if the pre-image is valid, otherwise a string
+        explaining the reason it is invalid.
+
+*******************************************************************************/
+
+public string isInvalidPreimageReason (const ref PreimageInfo new_image,
+    const ref PreimageInfo prev_image, uint validator_cycle) nothrow @safe
+{
+    if (new_image.enroll_key != prev_image.enroll_key)
+        return "The pre-image's enrollment key differs from its descendant";
+
+    if (new_image.height < prev_image.height)
+        return "The height of new pre-image is smaller than that of previous one";
+
+    if (new_image.height - prev_image.height >= validator_cycle)
+        return "The hashing count of two pre-images is above the validator cycle";
+
+    Hash temp_hash = new_image.hash;
+    for (uint i = 0; i < new_image.height - prev_image.height; i++)
+        temp_hash = hashFull(temp_hash);
+    if (temp_hash != prev_image.hash)
+        return "The pre-image has a invalid hash value";
+
+    return null;
+}
+
+/// Ditto but returns `bool`, only usable in unittests
+version (unittest)
+public bool isValidPreimage (const ref PreimageInfo prev_image,
+    const ref PreimageInfo new_image, uint validator_cycle) nothrow @safe
+{
+    return isInvalidPreimageReason(prev_image, new_image, validator_cycle)
+        is null;
+}
+
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
 public bool isValid (const ref Block block, ulong prev_height,
@@ -1394,4 +1447,35 @@ unittest
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     assert(!block3.isValid(block2.header.height, hashFull(block2.header), findUTXO));
+}
+
+/// test for validity of pre-image
+unittest
+{
+    import agora.consensus.ValidatorSet;
+    import std.algorithm;
+
+    Hash[] preimages;
+    preimages ~= hashFull(Scalar.random());
+    foreach (i; 0 .. 1007)
+        preimages ~= hashFull(preimages[i]);
+    reverse(preimages);
+
+    PreimageInfo prev_image = PreimageInfo(hashFull("abc"), preimages[0], 1);
+
+    // valid pre-image
+    PreimageInfo new_image = PreimageInfo(hashFull("abc"), preimages[100], 101);
+    assert(isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+
+    // invalid pre-image with wrong enrollment key
+    new_image = PreimageInfo(hashFull("xyz"), preimages[100], 101);
+    assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+
+    // invalid pre-image with wrong height number
+    new_image = PreimageInfo(hashFull("abc"), preimages[1], 3);
+    assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+
+    // invalid pre-image with wrong hash value
+    new_image = PreimageInfo(hashFull("abc"), preimages[100], 100);
+    assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
 }
