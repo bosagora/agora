@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Entry point for the Agora CLI
+    Entry point for the Agora client
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -14,7 +14,7 @@
 module agora.client.main;
 
 import agora.api.FullNode;
-import agora.client.CLIResult;
+import agora.client.Result;
 import agora.client.DefaultProcess;
 import agora.client.SendTxProcess;
 
@@ -45,7 +45,7 @@ int runProcess (string[] args, ref string[] outputs)
     if (args.length < 2)
     {
         printDefaultHelp(outputs);
-        return CLI_SUCCESS;
+        return CLIENT_SUCCESS;
     }
 
     const string command = args[1];

@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    The Agora CLI sub-function for default command
+    The Agora client sub-function for default command
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -13,7 +13,7 @@
 
 module agora.client.DefaultProcess;
 
-import agora.client.CLIResult;
+import agora.client.Result;
 
 import std.getopt;
 
@@ -45,7 +45,7 @@ public GetoptResult parseDefaultOption (ref DefaultOption basic, string[] args)
 /// Print help
 public void printDefaultHelp (ref string[] outputs)
 {
-    outputs ~= "usage: agora-cli [--help]";
+    outputs ~= "usage: agora-client [--help]";
     outputs ~= "                  <command> [<args>]";
     outputs ~= "";
     outputs ~= "These are commands:";
@@ -64,19 +64,19 @@ public int defaultProcess (string[] args, ref string[] outputs)
         if (basic.help)
         {
             printDefaultHelp(outputs);
-            return CLI_SUCCESS;
+            return CLIENT_SUCCESS;
         }
 
         if (basic.ver)
         {
-            outputs ~= "agora-cli version 1.00.0";
-            return CLI_SUCCESS;
+            outputs ~= "agora-client version 1.00.0";
+            return CLIENT_SUCCESS;
         }
-        return CLI_INVALID_ARGUMENTS;
+        return CLIENT_INVALID_ARGUMENTS;
     }
     catch (Exception ex)
     {
         printDefaultHelp(outputs);
-        return CLI_EXCEPTION;
+        return CLIENT_EXCEPTION;
     }
 }
