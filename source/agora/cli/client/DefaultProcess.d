@@ -11,9 +11,9 @@
 
 *******************************************************************************/
 
-module agora.cli.DefaultProcess;
+module agora.client.DefaultProcess;
 
-import agora.cli.CLIResult;
+import agora.client.CLIResult;
 
 import std.getopt;
 

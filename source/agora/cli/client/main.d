@@ -11,12 +11,12 @@
 
 *******************************************************************************/
 
-module agora.cli.main;
+module agora.client.main;
 
 import agora.api.FullNode;
-import agora.cli.CLIResult;
-import agora.cli.DefaultProcess;
-import agora.cli.SendTxProcess;
+import agora.client.CLIResult;
+import agora.client.DefaultProcess;
+import agora.client.SendTxProcess;
 
 import vibe.core.core;
 import vibe.web.rest;
