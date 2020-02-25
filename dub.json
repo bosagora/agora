@@ -46,8 +46,8 @@
             "excludedSourceFiles": [ "source/agora/cli/client/*" ]
         },
         {
-            "name": "cli",
-            "targetName": "agora-cli",
+            "name": "client",
+            "targetName": "agora-client",
             "mainSourceFile": "source/agora/cli/client/main.d",
             "excludedSourceFiles": [
                 "source/agora/api/Validator.d",
