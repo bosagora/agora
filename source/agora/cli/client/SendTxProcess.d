@@ -11,10 +11,10 @@
 
 *******************************************************************************/
 
-module agora.cli.SendTxProcess;
+module agora.client.SendTxProcess;
 
 import agora.api.FullNode;
-import agora.cli.CLIResult;
+import agora.client.CLIResult;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Hash;

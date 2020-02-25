@@ -43,12 +43,12 @@
             "name": "server",
             "targetName": "agora",
             "mainSourceFile": "source/agora/node/main.d",
-            "excludedSourceFiles": [ "source/agora/cli/*" ]
+            "excludedSourceFiles": [ "source/agora/cli/client/*" ]
         },
         {
             "name": "cli",
             "targetName": "agora-cli",
-            "mainSourceFile": "source/agora/cli/main.d",
+            "mainSourceFile": "source/agora/cli/client/main.d",
             "excludedSourceFiles": [
                 "source/agora/api/Validator.d",
                 "source/agora/common/Config.d",
@@ -62,7 +62,7 @@
         {
             "name": "unittest",
             "targetName": "agora-unittests",
-            "excludedSourceFiles": [ "source/agora/cli/main.d" ],
+            "excludedSourceFiles": [ "source/agora/cli/client/main.d" ],
             "sourceFiles": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o"

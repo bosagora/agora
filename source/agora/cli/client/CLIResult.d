@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.cli.CLIResult;
+module agora.client.CLIResult;
 
 public immutable int CLI_SUCCESS = 0;
 public immutable int CLI_INVALID_ARGUMENTS = 1;
