@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    The Agora CLI sub-function for sendtx command
+    The Agora client sub-function for sendtx command
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -14,7 +14,7 @@
 module agora.client.SendTxProcess;
 
 import agora.api.FullNode;
-import agora.client.CLIResult;
+import agora.client.Result;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Hash;
@@ -99,7 +99,7 @@ public GetoptResult parseSendTxOption (ref SendTxOption op, string[] args)
 /// Print help
 public void printSendTxHelp (ref string[] outputs)
 {
-    outputs ~= "usage: agora-cli sendtx [--dump] [--ip addr] [--port port] --txhash --index --amount --dest --key";
+    outputs ~= "usage: agora-client sendtx [--dump] [--ip addr] [--port port] --txhash --index --amount --dest --key";
     outputs ~= "";
     outputs ~= "   sendtx      Send a transaction to node";
     outputs ~= "";
@@ -122,7 +122,7 @@ public void printSendTxHelp (ref string[] outputs)
     Input an arguments, generate the transaction and send it to the node
 
     Params:
-        args = Cli command line arguments
+        args = client command line arguments
 
 *******************************************************************************/
 
@@ -138,13 +138,13 @@ public int sendTxProcess (string[] args, ref string[] outputs,
         if (res.helpWanted)
         {
             printSendTxHelp(outputs);
-            return CLI_SUCCESS;
+            return CLIENT_SUCCESS;
         }
     }
     catch (Exception ex)
     {
         printSendTxHelp(outputs);
-        return CLI_EXCEPTION;
+        return CLIENT_EXCEPTION;
     }
 
     bool isValid = true;
@@ -178,7 +178,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
     }
 
     if (!isValid)
-        return CLI_INVALID_ARGUMENTS;
+        return CLIENT_INVALID_ARGUMENTS;
 
     // create the transaction
     auto key_pair = KeyPair.fromSeed(Seed.fromString(op.key));
@@ -201,7 +201,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
         outputs ~= format("address = %s", op.address);
         outputs ~= format("key = %s", op.key);
         outputs ~= format("hash of new transaction = %s", hashFull(tx).toString);
-        return CLI_SUCCESS;
+        return CLIENT_SUCCESS;
     }
 
     // connect to the node
@@ -211,7 +211,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
     // send the transaction
     node.putTransaction(tx);
 
-    return CLI_SUCCESS;
+    return CLIENT_SUCCESS;
 }
 
 /// Test of send transaction
@@ -267,7 +267,7 @@ unittest
     auto res = sendTxProcess(args, outputs, (address) {
         return node;
     });
-    assert (res == CLI_SUCCESS);
+    assert (res == CLIENT_SUCCESS);
 
     Transaction tx =
     {
