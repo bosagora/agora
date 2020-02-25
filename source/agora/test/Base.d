@@ -665,6 +665,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
             min_listeners : test_conf.nodes - 1,
+            max_listeners : test_conf.nodes - 1,
         };
 
         return conf;
