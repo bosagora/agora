@@ -534,6 +534,78 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get all the current validators
+
+        Params:
+            validators = will be filled with all the validators during
+                their validation cycles
+
+        Returns:
+            Return true if there is no error in getting validators
+
+    ***************************************************************************/
+
+    public bool getValidators (out Enrollment[] validators) @safe nothrow
+    {
+        try
+        {
+            () @trusted {
+                auto results = this.db.execute("SELECT val FROM validator_set" ~
+                    " WHERE enrolled_height is not null");
+                foreach (row; results)
+                {
+                    validators ~=
+                        deserializeFull!Enrollment(row.peek!(ubyte[])(0));
+                }
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error, exception:{}", ex);
+            return false;
+        }
+
+        return true;
+    }
+
+    /***************************************************************************
+
+        Set current block height
+
+        The enrollment manager can weed out expired validators from the set
+        based on the block height. Validators are deleted if their enrolled
+        height is less than or equal to the value of the passed block height
+        minus the validator cycle.
+
+        Params:
+            block_height = current block height
+
+    ***************************************************************************/
+
+    public void setCurrentBlockHeight (ulong block_height) @safe nothrow
+    {
+        // the smallest enrolled height would be 1, so the passed block height
+        // should be greater than the validator cycle for deleting validators.
+        if (block_height > ValidatorCycle)
+        {
+            try
+            {
+                () @trusted {
+                    this.db.execute("DELETE FROM validator_set " ~
+                        "WHERE enrolled_height <= ?",
+                        block_height - ValidatorCycle);
+
+                }();
+            }
+            catch (Exception ex)
+            {
+                log.error("Database operation error, exception:{}", ex);
+            }
+        }
+    }
+
+    /***************************************************************************
+
         Get the unregistered enrollments in the block
         And this is arranged in ascending order with the utxo_key
 
@@ -1019,6 +1091,33 @@ unittest
     assert(man.needRevealPreimage(10));
     man.increaseNextRevealHeight();
     assert(man.needRevealPreimage(16));
+
+    // test for getting validators
+    Enrollment[] validators;
+
+    // validator A with the `utxo_hash` and the enrolled height of 10.
+    // validator B with the 'utxo_hash2' and the enrolled height of 11.
+    // validator C with the 'utxo_hash3' and no enrolled height.
+    assert(man.updateEnrolledHeight(utxo_hash2, 11));
+
+    // current block height is 1017
+    // So, valid validator are validator A and validator B
+    man.setCurrentBlockHeight(1017);
+    assert(man.getValidators(validators));
+    assert(validators.length == 2);
+
+    // change the block height to 1018, which means validator A is expired.
+    man.setCurrentBlockHeight(1018);
+    assert(man.getValidators(validators));
+    assert(validators[0].utxo_key == utxo_hash2);
+
+    // set an enrolled height for validator C
+    // set the block height to 1019, which means validator B is expired.
+    // there is only one validator in the middle of 1020th block being made.
+    assert(man.updateEnrolledHeight(utxo_hash3, 12));
+    man.setCurrentBlockHeight(1019);
+    assert(man.getValidators(validators));
+    assert(validators[0].utxo_key == utxo_hash3);
 }
 
 /// tests for addPreimage and hasPreimage
