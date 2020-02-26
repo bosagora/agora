@@ -192,27 +192,6 @@ public void serializePart (scope const(ubyte)[] record, scope SerializeDg dg)
 }
 
 /// Ditto
-public void serializePart (scope const(uint)[] record, scope SerializeDg dg)
-    @trusted
-{
-    serializePart(record.length, dg);
-
-    // always serialize in little-endian format
-    version (BigEndian)
-    {
-        foreach (uint elem; record)
-        {
-            auto swapped = swapEndian(elem);
-            dg((cast(ubyte*)&swapped)[0 .. uint.sizeof]);
-        }
-    }
-    else
-    {
-        dg(cast(ubyte[])record);
-    }
-}
-
-/// Ditto
 public void serializePart (scope const(Hash)[] record, scope SerializeDg dg)
     @trusted
 {
@@ -313,7 +292,7 @@ unittest
     }
 
     S s;  // always serialized in little-endian format
-    assert(s.serializeFull == [3, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]);
+    assert(s.serializeFull == [3, 0, 1, 2, ]);
 }
 
 /// BitBlob tests
