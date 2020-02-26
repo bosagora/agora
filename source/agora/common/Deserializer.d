@@ -169,25 +169,23 @@ public void deserializePart (T) (
         record = T(dg(T.Width));
 
     // Array deserialization can be optimized in many occasions
-    else static if (is(T : E[], E) && !hasIndirections!E)
+    else static if (isNarrowString!T)
     {
+        alias E = ElementEncodingType!T;
         size_t length = deserializeVarInt!size_t(dg);
-        record = () @trusted { return cast(T) (dg(E.sizeof * length).dup); }();
-
-        // Special case for narrow string
-        debug static if (isNarrowString!T)
+        record = () @trusted { return cast(E[]) (dg(E.sizeof * length).dup); }();
+        debug
         {
             import std.utf;
             record.validate();
         }
+    }
 
-        // serialized in little-endian format
-        version (BigEndian)
-        {
-            static if (E.sizeof > 1)
-                foreach (ref elem; record)
-                    elem = swapEndian(elem);
-        }
+    // If it's binary data, just copy it
+    else static if (is(immutable(T) == immutable(ubyte[])))
+    {
+        size_t length = deserializeVarInt!size_t(dg);
+        record = dg(ubyte.sizeof * length).dup;
     }
 
     // Range deserialization
@@ -335,7 +333,7 @@ unittest
     }
 
     S s;  // always serialized in little-endian format
-    assert([3, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
+    assert([3, 0, 1, 2, ]
         .deserializeFull!S.arr == [0, 1, 2]);
 }
 
