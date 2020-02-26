@@ -233,7 +233,7 @@ public void deserializePart (T) (
 
     // Default to per-field deserialization for struct
     else static if (is(T == struct))
-        foreach (const ref field; record.tupleof)
+        foreach (ref field; record.tupleof)
             deserializePart(field, dg);
 
     else
