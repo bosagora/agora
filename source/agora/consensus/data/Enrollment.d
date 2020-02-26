@@ -82,3 +82,25 @@ unittest
     Enrollment enroll = Enrollment.init;
     assert(enroll.hashFull() == enroll_exp);
 }
+
+unittest
+{
+    testSymmetry!Enrollment();
+
+    Hash key = Hash("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f" ~
+                    "1b60a8ce26f000000000019d6689c085ae165831e934ff763ae46a2" ~
+                    "a6c172b3f1b60a8ce26f");
+    Hash seed = Hash("0X4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E2CC77AB212" ~
+                     "7B7AFDEDA33B4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E" ~
+                     "2CC77AB2127B7AFDEDA33B");
+    Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+                              "c2467c18e38b36367be78000000000000000000016f60" ~
+                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
+    Enrollment record = {
+        utxo_key: key,
+        random_seed: seed,
+        cycle_length: 42,
+        enroll_sig: sig,
+    };
+    testSymmetry(record);
+}

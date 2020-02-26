@@ -349,19 +349,21 @@ unittest
 /// Transaction type serialize & deserialize for unittest
 unittest
 {
+    testSymmetry!Transaction();
+
     Transaction payment_tx = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
         [Output.init]
     );
-    assert(agora.common.Deserializer.deserializeFull!Transaction(serializeFull(payment_tx)) == payment_tx);
+    testSymmetry(payment_tx);
 
     Transaction freeze_tx = Transaction(
         TxType.Freeze,
         [Input(Hash.init, 0)],
         [Output.init]
     );
-    assert(agora.common.Deserializer.deserializeFull!Transaction(serializeFull(freeze_tx)) == freeze_tx);
+    testSymmetry(freeze_tx);
 }
 
 /// Transaction type hashing for unittest

@@ -21,6 +21,7 @@ module agora.common.BitField;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.common.Types;
 
 import ocean.core.BitArray;
 
@@ -147,12 +148,12 @@ unittest
 /// Serialization tests
 unittest
 {
+    testSymmetry!BitField();
     // less than 1 byte
     {
         auto bf = BitField(6);
         bf[0] = bf[5] = true;
-        auto bytes = bf.serializeFull();
-        assert(bytes.deserializeFull!BitField == bf);
+        testSymmetry(bf);
     }
 
     // exactly 1 byte
@@ -160,31 +161,27 @@ unittest
         auto bf = BitField(8);
         assert(bf.storage.length == 1);
         bf[0] = bf[7] = true;
-        auto bytes = bf.serializeFull();
-        assert(bytes.deserializeFull!BitField == bf);
+        testSymmetry(bf);
     }
 
     // more than 1 byte
     {
         auto bf = BitField(12);
         bf[0] = bf[1] = true;
-        auto bytes = bf.serializeFull();
-        assert(bytes.deserializeFull!BitField == bf);
+        testSymmetry(bf);
     }
 
     // 3 bytes
     {
         auto bf = BitField(28);
         bf[0] = bf[27] = true;
-        auto bytes = bf.serializeFull();
-        assert(bytes.deserializeFull!BitField == bf);
+        testSymmetry(bf);
     }
 
     // more than 4 bytes (backing store is uint)
     {
         auto bf = BitField(40);
         bf[0] = bf[39] = true;
-        auto bytes = bf.serializeFull();
-        assert(bytes.deserializeFull!BitField == bf);
+        testSymmetry(bf);
     }
 }
