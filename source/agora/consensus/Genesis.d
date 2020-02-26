@@ -115,3 +115,9 @@ version (unittest)
         assert(getGenesisKeyPair().address == GenesisOutputAddress);
     }
 }
+
+unittest
+{
+    testSymmetry(GenesisTransaction);
+    testSymmetry(GenesisBlock);
+}

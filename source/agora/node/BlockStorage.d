@@ -782,9 +782,9 @@ public class BlockStorage : IBlockStorage
         ubyte[Hash.sizeof] hash;
         foreach (idx; 0 .. record_count)
         {
-            deserializePart(height, dg, CompactMode.No);
+            height = deserializeFull!size_t(dg, CompactMode.No);
             idx_file.rawRead(hash);
-            deserializePart(pos, dg, CompactMode.No);
+            pos    = deserializeFull!size_t(dg, CompactMode.No);
             // add to index of heigth
             this.height_idx.insert(HeightPosition(height, pos));
             // add to index of hash

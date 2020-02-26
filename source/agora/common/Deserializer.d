@@ -16,6 +16,7 @@ module agora.common.Deserializer;
 import agora.common.Types;
 import agora.common.crypto.Key;
 
+import std.algorithm;
 import std.range;
 import std.traits;
 
@@ -143,70 +144,73 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 }
 
 /// Ditto
-public T deserializeFull (T) (scope DeserializeDg dg) @safe
+public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
 {
-    T value;
-    deserializePart(value, dg);
-    return value;
+    record = deserializeFull!T(dg);
 }
 
 /// Ditto
-public void deserializePart (T) (
-    ref T record, scope DeserializeDg dg,
-    CompactMode compact = CompactMode.Yes)
+public T deserializeFull (T) (
+    scope DeserializeDg dg, CompactMode compact = CompactMode.Yes)
     @safe
 {
     import geod24.bitblob;
 
     // Custom deserialization trumps everything
     static if (hasDeserializeMethod!T)
-        record.deserialize(dg);
+    {
+        T retval = T.init;
+        retval.deserialize(dg);
+        return retval;
+    }
 
     // BitBlob are fixed size and thus, value types
     // If we use an `ubyte[]` overload, the deserializer looks for the length
     else static if (is(T : BitBlob!N, size_t N))
-        record = T(dg(T.Width));
+        return T(dg(T.Width));
 
     // Array deserialization can be optimized in many occasions
     else static if (isNarrowString!T)
     {
         alias E = ElementEncodingType!T;
         size_t length = deserializeVarInt!size_t(dg);
-        record = () @trusted { return cast(E[]) (dg(E.sizeof * length).dup); }();
-        debug
+
+        T process () @trusted
+        out (record)
         {
-            import std.utf;
-            record.validate();
+            debug
+            {
+                import std.utf;
+                record.validate();
+            }
         }
+        do { return cast(E[]) (dg(E.sizeof * length)); }
+        return process().dup;
     }
 
     // If it's binary data, just copy it
     else static if (is(immutable(T) == immutable(ubyte[])))
     {
         size_t length = deserializeVarInt!size_t(dg);
-        record = dg(ubyte.sizeof * length).dup;
+        return dg(ubyte.sizeof * length).dup;
     }
 
-    // Range deserialization
-    else static if (isInputRange!T && hasLength!T)
+    // Array deserialization
+    else static if (is(T : E[], E))
     {
         size_t length = deserializeVarInt!size_t(dg);
-        record.length = length;
-        foreach (ref v; record)
-            deserializePart(v, dg);
+        return iota(length).map!(_ => dg.deserializeFull!(ElementType!T)).array();
     }
 
     // Enum deserialize as their base type
     else static if (is(T == enum))
     {
-        OriginalType!T orig_val;
-        deserializePart(orig_val, dg);
-        record = cast(T)(orig_val);
+        return cast(T) deserializeFull!(OriginalType!T)(dg);
     }
 
     // 'bool' need to be converted explicitly
     else static if (is(Unqual!T == bool))
-        record = !!dg(T.sizeof)[0];
+        return !!dg(T.sizeof)[0];
 
     // Possibly encoding integer
     else static if (isUnsigned!T)
@@ -214,24 +218,29 @@ public void deserializePart (T) (
         // `ubyte` don't need binary encoding since they are already the
         // smallest possible size
         static if (is(Unqual!T == ubyte))
-            record = dg(ubyte.sizeof)[0];
+            return dg(ubyte.sizeof)[0];
         else
         {
             if (compact == CompactMode.Yes)
-                record = deserializeVarInt!T(dg);
+                return deserializeVarInt!T(dg);
             else
-                record = () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
+                return () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
         }
     }
 
     // Other integers / scalars
     else static if (isScalarType!T)
-        record = () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
+        return () @trusted { return *cast(T*)(dg(T.sizeof).ptr); }();
 
     // Default to per-field deserialization for struct
     else static if (is(T == struct))
-        foreach (ref field; record.tupleof)
-            deserializePart(field, dg);
+    {
+        Target convert (Target) ()
+        {
+            return deserializeFull!Target(dg, compact);
+        }
+        return T(staticMap!(convert, Fields!T));
+    }
 
     else
         static assert(0, "Unhandled type: " ~ T.stringof);
