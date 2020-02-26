@@ -268,7 +268,7 @@ public void deserializePart (T) (
 
 private T deserializeVarInt (T) (scope DeserializeDg dg)
     @safe
-    if (is(T == ushort) || is(T == uint) || is(T == ulong))
+    if (is(Unqual!T == ushort) || is(Unqual!T == uint) || is(Unqual!T == ulong))
 {
     const ubyte int_size = dg(ubyte.sizeof)[0];
 
