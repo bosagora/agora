@@ -273,12 +273,12 @@ pure @safe nothrow @nogc unittest
 
 unittest
 {
-    import agora.common.Deserializer;
-    import agora.common.Serializer;
+    import agora.common.Types;
 
-    Amount val = Amount.UnitPerCoin;
-    ubyte[] serialized = val.serializeFull();
-    assert(serialized.deserializeFull!Amount() == val);
+    testSymmetry!Amount();
+    // FIXME: Deserializer does not yet support deserializing immutable values
+    Amount mutable = Amount.UnitPerCoin;
+    testSymmetry(mutable);
 }
 
 /// comparisons

@@ -421,8 +421,8 @@ unittest
         merkle_tree: [ merkle ],
     };
 
-    ubyte[] block_bytes = serializeFull(block);
-    assert(cast(const)deserializeFull!Block(block_bytes) == block);
+    testSymmetry!Block();
+    testSymmetry(block);
 }
 
 /*******************************************************************************

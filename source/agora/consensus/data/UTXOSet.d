@@ -18,6 +18,7 @@ import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
+import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.utils.Log;
 
@@ -533,4 +534,9 @@ version (unittest) public class TestUTXOSet
     {
         this.storage.clear();
     }
+}
+
+unittest
+{
+    testSymmetry!UTXOSetValue();
 }
