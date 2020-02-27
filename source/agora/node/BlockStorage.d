@@ -534,11 +534,9 @@ public class BlockStorage : IBlockStorage
     private void readBlockAtPosition (ref Block block, size_t position) @safe
     {
         size_t pos = position + size_t.sizeof;
-        scope DeserializeDg dg = (size) nothrow @safe
+        scope DeserializeDg dg = (size) @safe
         {
-            ubyte[] res;
-            if (!this.read(pos, size, res))
-                assert(0);
+            ubyte[] res = this.read(pos, size);
             pos += size;
             return res;
         };
@@ -581,12 +579,14 @@ public class BlockStorage : IBlockStorage
 
     private bool readSizeT (size_t pos, ref size_t value) @trusted nothrow
     {
-        ubyte[] data;
-        if (!this.read(pos, pos+size_t.sizeof, data))
+        try
+        {
+            ubyte[] data = this.read(pos, pos+size_t.sizeof);
+            value = *cast(size_t*)(data.ptr);
+            return true;
+        }
+        catch (Exception e)
             return false;
-
-        value = *cast(size_t*)(data.ptr);
-        return true;
     }
 
     /***************************************************************************
@@ -596,41 +596,39 @@ public class BlockStorage : IBlockStorage
         Params:
             from   = Start position of range to read
             length = Amount of data to read
-            data = Array of unsigned bytes read
+
+        Throws:
+            `Exception` on error (e.g. IO) or if the position is out of bound.
 
         Returns:
-            Returns true if success, otherwise returns false.
+            Data read, if successfull
 
     ***************************************************************************/
 
-    private bool read (size_t from, size_t length, ref ubyte[] data)
-        @trusted nothrow
+    private ubyte[] read (size_t from, size_t length) @trusted
     {
+        // If the read is within the same file
         if (
             (this.file !is null) &&
             (from / DataSize == this.file_index) &&
             ((from + length) / DataSize == this.file_index))
         {
-            try
-            {
-                const size_t x0 = from - this.file_base + ChecksumSize;
-                const size_t x1 = x0 + length;
-                data = cast(ubyte[])this.file[x0 .. x1];
-                return true;
-            }
-            catch (Exception ex)
-            {
-                log.error("BlockStorage.read(from:{}, length:{}): {}", from, length, ex);
-                return false;
-            }
+            const size_t x0 = from - this.file_base + ChecksumSize;
+            const size_t x1 = x0 + length;
+            return cast(ubyte[])this.file[x0 .. x1];
         }
         else
         {
-            data.length = length;
-            foreach (idx, ref val; data)
-                if (!this.readByte(from + idx, val))
-                    return false;
-            return true;
+            // Otherwise we're slow as we have to read accross files
+            ubyte[] data = new ubyte[](length);
+            foreach (idx, ref b; data)
+            {
+                const size_t pos = (from + idx);
+                if (!this.map(pos / DataSize))
+                    throw new Exception(format("Unabled to map data at position %d", pos));
+                b = this.file[pos - this.file_base + ChecksumSize];
+            }
+            return data;
         }
     }
 
@@ -671,36 +669,6 @@ public class BlockStorage : IBlockStorage
         catch (Exception ex)
         {
             log.error("BlockStorage.write: {}", ex);
-            return false;
-        }
-    }
-
-    /***************************************************************************
-
-        Read unsigned byte to the file.
-
-        Params:
-            pos = Position to read
-            data = Unsigned bytes read from file
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    private bool readByte (size_t pos, ref ubyte data) @trusted nothrow
-    {
-        try
-        {
-            if (!this.map(pos / DataSize))
-                return false;
-
-            data = this.file[pos - this.file_base + ChecksumSize];
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.error("BlockStorage.readBytes({}): {}", pos, ex);
             return false;
         }
     }
