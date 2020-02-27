@@ -620,7 +620,7 @@ public class BlockStorage : IBlockStorage
             }
             catch (Exception ex)
             {
-                log.error("BlockStorage.read(from:{}, to:{}): ", from, to, ex);
+                log.error("BlockStorage.read(from:{}, length:{}): {}", from, length, ex);
                 return false;
             }
         }
