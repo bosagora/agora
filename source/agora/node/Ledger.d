@@ -679,14 +679,13 @@ unittest
     import agora.common.Types;
     import agora.common.Hash;
 
-    auto storage = new MemBlockStorage();
     auto gen_key = getGenesisKeyPair();
+    auto storage = new MemBlockStorage();
+    storage.load();
+
+    // First block
     auto txs = makeChainedTransactions(gen_key, null, 1);
     auto block = makeNewBlock(GenesisBlock, txs);
-    assert(storage.saveBlock(block));
-
-    txs = makeChainedTransactions(gen_key, txs, 1);
-    block = makeNewBlock(block, txs);
     assert(storage.saveBlock(block));
 
     auto pool = new TransactionPool(":memory:");
