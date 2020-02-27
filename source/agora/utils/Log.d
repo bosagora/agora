@@ -201,11 +201,11 @@ public class CircularAppender : Appender
 /// A layout with colored LogLevel
 public class AgoraLayout : Appender.Layout
 {
+    import ocean.time.WallClock;
+
     /// Format the message
     public override void format (LogEvent event, scope FormatterSink dg)
     {
-        import ocean.time.WallClock;
-
         // convert time to field values
         const tm = event.time;
         const dt = WallClock.toDate(tm);
