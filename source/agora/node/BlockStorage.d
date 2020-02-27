@@ -23,6 +23,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.Genesis;
+import agora.utils.Log;
 
 import std.algorithm;
 import std.container.rbtree;
@@ -33,6 +34,9 @@ import std.format;
 import std.mmfile;
 import std.path;
 import std.stdio;
+
+
+mixin AddLogger!();
 
 /*******************************************************************************
 
@@ -362,7 +366,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.map: ", ex);
+            log.error("BlockStorage.map: {}", ex);
             return false;
         }
     }
@@ -473,7 +477,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.saveBlock: ", ex);
+            log.error("BlockStorage.saveBlock: {}", ex);
             return false;
         }
     }
@@ -498,7 +502,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.readBlock: ", ex);
+            log.trace("BlockStorage.readBlock({}): {}", height, ex);
             return false;
         }
     }
@@ -521,7 +525,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.readBlock: ", ex);
+            log.trace("BlockStorage.readBlock({}): {}", hash, ex);
             return false;
         }
     }
@@ -616,7 +620,7 @@ public class BlockStorage : IBlockStorage
             }
             catch (Exception ex)
             {
-                this.writeLog("BlockStorage.read: ", ex);
+                log.error("BlockStorage.read(from:{}, to:{}): ", from, to, ex);
                 return false;
             }
         }
@@ -666,7 +670,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.write: ", ex);
+            log.error("BlockStorage.write: {}", ex);
             return false;
         }
     }
@@ -696,7 +700,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            writeLog("BlockStorage.readBytes: ", ex);
+            log.error("BlockStorage.readBytes({}): {}", pos, ex);
             return false;
         }
     }
@@ -726,7 +730,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.writeByte: ", ex);
+            log.error("BlockStorage.writeByte({}): {}", pos, ex);
             return false;
         }
     }
@@ -765,7 +769,8 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.saveIndex: ", ex);
+            log.error("BlockStorage.saveIndex(height:{}, pos:{}): {}",
+                      height, pos, ex);
             return false;
         }
     }
@@ -826,7 +831,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.loadAllIndexes: ", ex);
+            log.error("BlockStorage.loadAllIndexes: {}", ex);
             return false;
         }
     }
@@ -845,22 +850,6 @@ public class BlockStorage : IBlockStorage
         string name = buildPath(path, "index.dat");
         if (name.exists)
             name.remove();
-    }
-
-    /***************************************************************************
-
-        Write error message
-
-        Params:
-            func = function name
-            ex = Instance of `Exception`
-
-    ***************************************************************************/
-
-    private void writeLog (string func, Exception ex) @trusted nothrow
-    {
-        scope (failure) assert(0);
-        stderr.writeln(func, ex.message);
     }
 
     /*******************************************************************************
@@ -907,14 +896,15 @@ public class BlockStorage : IBlockStorage
             const expected = makeChecksum(data);
             if (actual != expected)
             {
-                stderr.writefln("[ERROR] %s Block file is corrupt.", file_name);
+                log.error("Block file {} is corrupt. Actual: {}, expected: {}",
+                          file_name, actual, expected);
                 return false;
             }
             return true;
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.validateChecksum: ", ex);
+            log.error("BlockStorage.validateChecksum: {}", ex);
             return false;
         }
     }
@@ -943,7 +933,7 @@ public class BlockStorage : IBlockStorage
         }
         catch (Exception ex)
         {
-            this.writeLog("BlockStorage.writeChecksum: ", ex);
+            log.error("BlockStorage.writeChecksum: {}", ex);
             return false;
         }
     }
@@ -1073,22 +1063,6 @@ public class MemBlockStorage : IBlockStorage
         try block = deserializeFull!Block(this.blocks[finds.front.position]);
         catch (Exception e) return false;
         return true;
-    }
-
-    /***************************************************************************
-
-        Write error message
-
-        Params:
-            func = function name
-            ex = Instance of `Exception`
-
-    ***************************************************************************/
-
-    private void writeLog (string func, Exception ex) @trusted nothrow
-    {
-        scope (failure) assert(0);
-        stderr.writeln(func, ex.message);
     }
 }
 
