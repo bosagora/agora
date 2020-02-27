@@ -929,6 +929,17 @@ public class MemBlockStorage : IBlockStorage
         return true;
     }
 
+    invariant ()
+    {
+        // Basic consistenty checks
+        assert(this.height_idx.length == this.hash_idx.length);
+        assert(this.height_idx.length == this.blocks.length);
+
+        // Make sure we have no empty block
+        foreach (blk; this.blocks)
+            assert(blk.length > 0);
+    }
+
     /***************************************************************************
 
         Read the last block from array.
