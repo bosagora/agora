@@ -44,7 +44,7 @@ private void main ()
     Hash[] block_hashes;
 
     blocks ~= GenesisBlock;
-    storage.saveBlock(blocks[$ - 1]);
+    assert(storage.load());
 
     // We can use a random keypair because blocks are not validated
     auto gen_key_pair = KeyPair.random();

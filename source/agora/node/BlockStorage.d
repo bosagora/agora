@@ -919,11 +919,15 @@ public class MemBlockStorage : IBlockStorage
     {
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
-        this.saveBlock(GenesisBlock);
     }
 
     /// No-op: MemBlockStorage does no I/O
-    public override bool load () { return true; }
+    public override bool load ()
+    {
+        if (this.blocks.length == 0)
+            this.saveBlock(GenesisBlock);
+        return true;
+    }
 
     /***************************************************************************
 
