@@ -20,7 +20,7 @@ jobs:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Print compiler and dub's version
       run: |
-        ${{ matrix.dc }} --version
+        ${DC} --version
         dub --version
     - name: Install dependencies
       run: |
@@ -50,6 +50,10 @@ jobs:
       with:
         compiler: ${{ matrix.dc }}
         gh_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Print compiler and dub's version
+      run: |
+        ${DC} --version
+        dub --version
     - name: Build & test Agora
       run: |
         ./ci/ci_linux_setup.sh
