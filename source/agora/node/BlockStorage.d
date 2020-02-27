@@ -537,7 +537,7 @@ public class BlockStorage : IBlockStorage
         scope DeserializeDg dg = (size) nothrow @safe
         {
             ubyte[] res;
-            if (!this.read(pos, pos + size, res))
+            if (!this.read(pos, size, res))
                 assert(0);
             pos += size;
             return res;
@@ -594,8 +594,8 @@ public class BlockStorage : IBlockStorage
         Read data from the file.
 
         Params:
-            from = Start position of range to read
-            to   = End position of range to read
+            from   = Start position of range to read
+            length = Amount of data to read
             data = Array of unsigned bytes read
 
         Returns:
@@ -603,18 +603,18 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    private bool read (size_t from, size_t to, ref ubyte[] data)
+    private bool read (size_t from, size_t length, ref ubyte[] data)
         @trusted nothrow
     {
         if (
             (this.file !is null) &&
             (from / DataSize == this.file_index) &&
-            (to / DataSize == this.file_index))
+            ((from + length) / DataSize == this.file_index))
         {
             try
             {
                 const size_t x0 = from - this.file_base + ChecksumSize;
-                const size_t x1 = to - this.file_base + ChecksumSize;
+                const size_t x1 = x0 + length;
                 data = cast(ubyte[])this.file[x0 .. x1];
                 return true;
             }
@@ -626,9 +626,9 @@ public class BlockStorage : IBlockStorage
         }
         else
         {
-            data.length = to - from;
-            foreach (idx; from .. to)
-                if (!this.readByte(idx, data[idx-from]))
+            data.length = length;
+            foreach (idx, ref val; data)
+                if (!this.readByte(from + idx, val))
                     return false;
             return true;
         }
