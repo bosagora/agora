@@ -89,7 +89,7 @@ public interface IBlockStorage
 
     /***************************************************************************
 
-        Read block from the storage.
+        Attempt to read a block at a specified height from the storage.
 
         Params:
             block = `Block` to read
@@ -100,12 +100,11 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, size_t height);
-
+    public bool tryReadBlock (ref Block block, size_t height) nothrow;
 
     /***************************************************************************
 
-        Read block from the storage.
+        Attempt to read a block with a specified hash from the storage.
 
         Params:
             block = `Block` to read
@@ -116,7 +115,45 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool readBlock (ref Block block, Hash hash);
+    public bool tryReadBlock (ref Block block, Hash hash) nothrow;
+
+    /***************************************************************************
+
+        Read a block at a specified height from the storage
+
+        Params:
+            block = `Block` to read
+            height = height of `Block`
+
+        Throws:
+            If the block cannot be read
+
+    ***************************************************************************/
+
+    public final void readBlock (ref Block block, size_t height)
+    {
+        if (!this.tryReadBlock(block, height))
+            throw new Exception(format("Reading block at height %d failed", height));
+    }
+
+    /***************************************************************************
+
+        Read a block with a specified hash from the storage
+
+        Params:
+            block = `Block` to read
+            hash = `Hash` of `Block`
+
+        Throws:
+            If the block cannot be read
+
+    ***************************************************************************/
+
+    public final void readBlock (ref Block block, Hash hash)
+    {
+        if (!this.tryReadBlock(block, hash))
+            throw new Exception(format("Reading block failed. Hash: %s", hash));
+    }
 }
 
 
@@ -273,7 +310,7 @@ public class BlockStorage : IBlockStorage
         if (this.height_idx.length == 0)
             return false;
 
-        return this.readBlock(block, this.height_idx.back.height);
+        return this.tryReadBlock(block, this.height_idx.back.height);
     }
 
     /***************************************************************************
@@ -441,20 +478,8 @@ public class BlockStorage : IBlockStorage
         }
     }
 
-    /***************************************************************************
-
-        Read block from the file.
-
-        Params:
-            block = `Block` to read
-            height = height of `Block`
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public override bool readBlock (ref Block block, size_t height) @safe nothrow
+    /// See `BlockStorage.tryReadBlock(ref Block, size_t)`
+    public override bool tryReadBlock (ref Block block, size_t height) @safe nothrow
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -478,20 +503,8 @@ public class BlockStorage : IBlockStorage
         }
     }
 
-    /***************************************************************************
-
-        Read block from the file.
-
-        Params:
-            block = `Block` to read
-            hash = `Hash` of `Block`
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public override bool readBlock (ref Block block, Hash hash) @safe nothrow
+    /// See `BlockStorage.tryReadBlock(ref Block, Hash)`
+    public override bool tryReadBlock (ref Block block, Hash hash) @safe nothrow
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
@@ -983,7 +996,7 @@ public class MemBlockStorage : IBlockStorage
         if (this.height_idx.length == 0)
             return false;
 
-        return this.readBlock(block, this.height_idx.back.height);
+        return this.tryReadBlock(block, this.height_idx.back.height);
     }
 
     /***************************************************************************
@@ -1028,20 +1041,8 @@ public class MemBlockStorage : IBlockStorage
         return true;
     }
 
-    /***************************************************************************
-
-        Read block from array.
-
-        Params:
-            block = `Block` to read
-            height = height of `Block`
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public bool readBlock (ref Block block, size_t height) @safe
+    /// See `IBlockStorage.tryReadBlock(ref Block, size_t)`
+    public bool tryReadBlock (ref Block block, size_t height) @safe nothrow
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -1053,24 +1054,13 @@ public class MemBlockStorage : IBlockStorage
         if (finds.empty)
             return false;
 
-        block = deserializeFull!Block(this.blocks[finds.front.position]);
+        try block = deserializeFull!Block(this.blocks[finds.front.position]);
+        catch (Exception e) return false;
         return true;
     }
 
-    /***************************************************************************
-
-        Read block from array.
-
-        Params:
-            block = `Block` to read
-            hash = `Hash` of `Block`
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public bool readBlock (ref Block block, Hash hash) @safe
+    /// See `IBlockStorage.tryReadBlock(ref Block, hash)`
+    public bool tryReadBlock (ref Block block, Hash hash) @safe nothrow
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
@@ -1080,7 +1070,8 @@ public class MemBlockStorage : IBlockStorage
         if (finds.empty)
             return false;
 
-        block = deserializeFull!Block(this.blocks[finds.front.position]);
+        try block = deserializeFull!Block(this.blocks[finds.front.position]);
+        catch (Exception e) return false;
         return true;
     }
 

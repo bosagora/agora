@@ -95,9 +95,7 @@ public class Ledger
             Block block;
             foreach (height; 0 .. this.last_block.header.height + 1)
             {
-                if (!this.storage.readBlock(block, height))
-                    assert(0);
-
+                this.storage.readBlock(block, height);
                 this.updateUTXOSet(block);
             }
         }
@@ -395,7 +393,7 @@ public class Ledger
         const(Block) readBlock (size_t height)
         {
             Block block;
-            if (!this.storage.readBlock(block, height))
+            if (!this.storage.tryReadBlock(block, height))
                 assert(0);
             return block;
         }
@@ -423,8 +421,7 @@ public class Ledger
             return null;
 
         Block block;
-        if (!this.storage.readBlock(block, block_height))
-            assert(0);
+        this.storage.readBlock(block, block_height);
         size_t index = block.findHashIndex(hash);
         if (index >= block.txs.length)
             return null;
