@@ -408,7 +408,7 @@ public class BlockStorage : IBlockStorage
                 (this.height_idx.back.height >= block.header.height))
                 return false;
 
-            size_t last_pos, last_size, block_position, data_position;
+            size_t last_pos, last_size;
             if (this.length == ulong.max)
             {
                 if (this.height_idx.length > 0)
@@ -428,8 +428,8 @@ public class BlockStorage : IBlockStorage
                 }
             }
 
-            block_position = this.length;
-            data_position = block_position + size_t.sizeof;
+            const size_t block_position = this.length;
+            const size_t data_position = block_position + size_t.sizeof;
 
             this.is_saving = true;
             scope(exit) this.is_saving = false;
