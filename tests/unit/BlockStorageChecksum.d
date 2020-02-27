@@ -17,6 +17,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.node.BlockStorage;
+import agora.utils.Test;
 
 import std.file;
 import std.path;
@@ -28,15 +29,12 @@ const size_t BlockCount = 300;
 ///
 private void main ()
 {
-    string dir_path = buildPath(getcwd, ".cache");
-    if (dir_path.exists)
-        rmdirRecurse(dir_path);
+    auto path = makeCleanTempDir();
 
-    mkdir(dir_path);
-    writeBlocks(dir_path);
-    corruptBlocks(dir_path);
+    writeBlocks(path);
+    corruptBlocks(path);
 
-    BlockStorage storage = new BlockStorage(dir_path);
+    BlockStorage storage = new BlockStorage(path);
     scope (exit) storage.release();
 
     Block block;
