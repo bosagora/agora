@@ -263,12 +263,13 @@ public class BlockStorage : IBlockStorage
 
     public override bool load () @safe nothrow
     {
-        try if (!this.root_path.exists)
-            mkdirRecurse(this.root_path);
+        try
+        {
+            if (!this.root_path.exists)
+                mkdirRecurse(this.root_path);
+            this.loadAllIndexes();
+        }
         catch (Exception e)
-            return false;
-
-        if (!this.loadAllIndexes())
             return false;
 
         // Add Genesis if the storage is empty
@@ -453,7 +454,7 @@ public class BlockStorage : IBlockStorage
             if (!this.writeChecksum())
                 assert(0);
 
-            // add to index of heigth
+            // add to index of height
             this.height_idx.insert(
                 HeightPosition(
                     block.header.height,
@@ -747,54 +748,47 @@ public class BlockStorage : IBlockStorage
 
         Read the index data stored in the index file.
 
-        Returns:
-            Returns true if success, otherwise returns false.
+        If the data file does not exists, this function will simply clear
+        the indexes.
+
+        Throws:
+            In case of IO or deserialization error
 
     ***************************************************************************/
 
-    private bool loadAllIndexes () @safe nothrow
+    private void loadAllIndexes () @safe
     {
-        try
+        this.height_idx.clear();
+        this.hash_idx.clear();
+
+        if (!this.index_path.exists)
+            return;
+
+        File idx_file = File(this.index_path, "rb");
+        scope (exit) idx_file.close();
+
+        size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
+        size_t record_count = idx_file.size / record_size;
+
+        scope DeserializeDg dg = (size) @safe
         {
-            this.height_idx.clear();
-            this.hash_idx.clear();
+            ubyte[] res;
+            res.length = size;
+            idx_file.rawRead(res);
+            return res;
+        };
 
-            if (!this.index_path.exists)
-                return true;
-
-            File idx_file = File(this.index_path, "rb");
-
-            size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
-            size_t record_count = idx_file.size / record_size;
-
-            scope DeserializeDg dg = (size) @safe
-            {
-                ubyte[] res;
-                res.length = size;
-                idx_file.rawRead(res);
-                return res;
-            };
-
-            size_t height, pos;
-            ubyte[Hash.sizeof] hash;
-            foreach (idx; 0 .. record_count)
-            {
-                deserializePart(height, dg, CompactMode.No);
-                idx_file.rawRead(hash);
-                deserializePart(pos, dg, CompactMode.No);
-                // add to index of heigth
-                this.height_idx.insert(HeightPosition(height, pos));
-                // add to index of hash
-                this.hash_idx.insert(HashPosition(hash, pos));
-            }
-
-            idx_file.close();
-            return true;
-        }
-        catch (Exception ex)
+        size_t height, pos;
+        ubyte[Hash.sizeof] hash;
+        foreach (idx; 0 .. record_count)
         {
-            log.error("BlockStorage.loadAllIndexes: {}", ex);
-            return false;
+            deserializePart(height, dg, CompactMode.No);
+            idx_file.rawRead(hash);
+            deserializePart(pos, dg, CompactMode.No);
+            // add to index of heigth
+            this.height_idx.insert(HeightPosition(height, pos));
+            // add to index of hash
+            this.hash_idx.insert(HashPosition(hash, pos));
         }
     }
 
