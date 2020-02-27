@@ -756,10 +756,6 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            size_t height;
-            ubyte[Hash.sizeof] hash;
-            size_t pos;
-
             this.height_idx.clear();
             this.hash_idx.clear();
 
@@ -779,17 +775,15 @@ public class BlockStorage : IBlockStorage
                 return res;
             };
 
+            size_t height, pos;
+            ubyte[Hash.sizeof] hash;
             foreach (idx; 0 .. record_count)
             {
                 deserializePart(height, dg, CompactMode.No);
-
                 idx_file.rawRead(hash);
-
                 deserializePart(pos, dg, CompactMode.No);
-
                 // add to index of heigth
                 this.height_idx.insert(HeightPosition(height, pos));
-
                 // add to index of hash
                 this.hash_idx.insert(HashPosition(hash, pos));
             }
