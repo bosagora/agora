@@ -14,6 +14,7 @@
 module unit.BanManager;
 
 import agora.common.BanManager;
+import agora.utils.Test;
 
 import ocean.time.WallClock;
 
@@ -25,12 +26,7 @@ import std.range;
 ///
 private void main ()
 {
-    string path = buildPath(getcwd, ".cache");
-    // Note: The following path is only triggered when rebuilding locally,
-    // code coverage is run from a clean slate so the `rmdirRecurse`
-    // is never tested.
-    if (path.exists) rmdirRecurse(path);
-    mkdir(path);
+    auto path = makeCleanTempDir();
 
     BanManager.Config conf = { max_failed_requests : 10, ban_duration : 60 };
     auto banman = new BanManager(conf, path);

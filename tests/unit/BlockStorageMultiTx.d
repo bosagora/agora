@@ -22,6 +22,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.node.BlockStorage;
+import agora.utils.Test;
 
 import std.algorithm.comparison;
 import std.file;
@@ -36,17 +37,11 @@ const size_t BlockCount = 300;
 ///
 private void main ()
 {
-    string path = buildPath(getcwd, ".cache");
-    if (path.exists)
-        rmdirRecurse(path);
+    auto path = makeCleanTempDir();
 
-    mkdir(path);
-
-    BlockStorage.removeIndexFile(path);
     BlockStorage storage = new BlockStorage(path);
     storage.load();
     const(Block)[] blocks;
-
     blocks ~= GenesisBlock;
 
     // We can use a random keypair because blocks are not validated
