@@ -20,6 +20,7 @@ module agora.common.crypto.ECC;
 import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.common.Types;
 
 import geod24.bitblob;
 import libsodium;
@@ -164,28 +165,13 @@ public struct Scalar
     {
         dg(this.data[]);
     }
-
-    /***************************************************************************
-
-        Deserialization
-
-        Params:
-            dg = deserialize function accumulator
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        this.data = typeof(this.data)(dg(crypto_core_ed25519_SCALARBYTES));
-    }
 }
 
 ///
 unittest
 {
-    Scalar scalar = Scalar.random();
-    auto bytes = scalar.serializeFull();
-    assert(bytes.deserializeFull!Scalar == scalar);
+    testSymmetry!Scalar();
+    testSymmetry(Scalar.random());
 }
 
 /*******************************************************************************
@@ -306,29 +292,18 @@ public struct Point
     {
         dg(this.data[]);
     }
-
-    /***************************************************************************
-
-        Deserialization
-
-        Params:
-            dg = deserialize function accumulator
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        this.data = typeof(this.data)(dg(crypto_core_ed25519_BYTES));
-    }
 }
 
-///
+// Test serialization
 unittest
 {
-    Point point = Scalar.random().toPoint();
-    auto bytes = point.serializeFull();
-    assert(bytes.deserializeFull!Point == point);
+    testSymmetry!Point();
+    testSymmetry(Scalar.random().toPoint());
+}
 
+// Test sorting (`opCmp`)
+unittest
+{
     Point[] points = [
         Point.fromString(
             "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81"),
