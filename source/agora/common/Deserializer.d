@@ -30,8 +30,7 @@ unittest
     import agora.consensus.Genesis;
 
     ubyte[] block_bytes = serializeFull(GenesisBlock);
-    // TODO: This trigger a DMD bug about array comparison
-    assert(cast(const)deserializeFull!Block(block_bytes) == GenesisBlock);
+    assert(deserializeFull!(const(Block))(block_bytes) == GenesisBlock);
 
     // Check that there is no trailing data
     ubyte[] blocks_data = serializeFull(GenesisBlock) ~ serializeFull(GenesisBlock);
@@ -44,10 +43,8 @@ unittest
             return blocks_data[0 .. size];
         };
 
-        Block newblock;
-        newblock.deserialize(dg);
-        // TODO: This trigger a DMD bug about array comparison
-        assert(cast(const)newblock == GenesisBlock);
+        const newblock = deserializeFull!Block(dg);
+        assert(newblock == GenesisBlock);
     }
 
     deserializeArrayEntry();
