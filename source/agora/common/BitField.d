@@ -1,14 +1,25 @@
 /*******************************************************************************
 
-    Contains a BitField implementation based on Ocean's BitArray struct.
+    Contains a templated BitField implementation
 
-    The choice of Ocean's over Phobos' implementation of BitArray is
-    because the Phobos implementation requires the backing store length to be
-    a multiple of size_t, which makes it platform-specific and hard to code for.
-    This structure cannot be platform-specific as it's stored in the blockchain.
+    This module implement a clean room bit field type, with a configurable
+    backing store type.
+
+    The reason to provide a configurable type is to allow users to control
+    exactly the size (and alignment) of their bit fields,
+    which is needed when the data type is serialized, either for network
+    communication or blockchain storage.
+
+    This also explains why we cannot rely on Phobos' own bitfield type,
+    as it is backed by `size_t`.
+
+    Note:
+    Currently BitField does not implement any optimization.
+    Eventually, using some functions from `core.bitop`, ensuring word-sized
+    operations (e.g. when setting / testing multiple values) might be beneficial
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -23,109 +34,165 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
 
-import ocean.core.BitArray;
-
 import std.algorithm;
 import std.math;
+import std.traits;
 
-/// Ditto
-public struct BitField
+///
+unittest
 {
-    /// Bitfield implementation
-    public BitArray bit_array;
+    // Create a bitfield with `ubyte` (8 bits) granularity
+    auto bf1 = BitField!ubyte(6);
+    // The number of bits available is always rounded up
+    // to be a multiple of `T.sizeof`
+    assert(bf1.length == 8);
 
-    /// Expose the bitfield API
-    public alias bit_array this;
+    // Test with `uint` (32 bits granularity)
+    auto bf2 = BitField!uint(6);
+    assert(bf2.length == 32);
 
-    /// Backing store (BitArray requires integer arrays)
-    private uint[] storage;
+    // BitField of different type can compare
+    assert(bf1 != bf2);
+    // And will compare equal when their length and content match
+    auto bf3 = BitField!ubyte(32);
+    assert(bf3.length == 32); // Same length as `bf2`
+    assert(bf2 == bf3);
+    assert(bf3 == bf2);
 
-    /// The number of bits used (workaround for: BitArray.length() is not @nogc)
-    private size_t num_bits;
+    // One can trivially set and get individual bits
+    bf2[10] = true;
+    assert(bf2[10]);
+    assert(bf2 != bf3);
+    bf2[10] = false;
+    assert(!bf2[10]);
+    assert(bf2 == bf3);
+}
 
+/// See module documentation
+public struct BitField (T = uint)
+{
+    @safe pure nothrow:
 
-    /***************************************************************************
+    static assert (isUnsigned!T,
+                   "BitField only accepts unsigned integer types, not: " ~ T.stringof);
 
-        Constructor
+    ///
+    private enum BitsPerT = (T.sizeof * 8);
 
-        Params:
-            num_bits = the number of bits to be used.
-
-    ***************************************************************************/
-
-    public this ( size_t num_bits ) @trusted
-    {
-        // BitArray uses ints as storage, we have to use multiples of 32
-        this.storage.length = (num_bits + 31) / 32;
-        this.num_bits = num_bits;
-        this.bit_array.initialize(this.storage, num_bits);
-    }
-
-    /***************************************************************************
-
-        Serialization. The data is packed tightly by
-        removing unused bytes from the uint[] storage,
-        and the length of bits is encoded instead of
-        the length of bytes.
-
-        Params:
-            dg = serialize function accumulator
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @trusted
-    {
-        serializePart(this.num_bits, dg);
-        serializePart(this.storage, dg);
-    }
+    /// Backing store: Should be private but Vibe.d cannot serialize it...
+    public T[] _storage;
 
     /***************************************************************************
 
-        Deserialization.
+        Construct a BitField to hold at least `min_num_bits`
+
+        This constructor is the allocating counterpart of the one that takes
+        an array as argument. Essentially the following two constructs are
+        identical in the object they produce:
+        ---
+        auto bf1 = BitField!uint(new uint[5]);
+        auto bf2 = BitField!uint(160 /* 160 = 5 uints * 32 bits per uint)
+        ---
+        The argument is a *minimum* value, and will be rounded up to a multiple
+        of `T.sizeof * 8`.
+        This is because, when making a BitField of size 6 (less than a byte),
+        we would require extra logic to store the actual size of the bit field
+        and prohibit out of bound usage.
+        Instead, `BitField`s are always of a multiple of `T` size, but we give
+        the user control over `T`.
 
         Params:
-            dg = deserialize function accumulator
+          min_num_bits = Minimum number of bits this BitField must support
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) @safe
+    public this (size_t min_num_bits) inout
     {
-        uint num_bits;
-        deserializePart(num_bits, dg);
-
-        deserializePart(this.storage, dg);
-        () @trusted { this.bit_array.initialize(this.storage, num_bits); }();
-        this.num_bits = num_bits;
+        this._storage = new inout(T)[(min_num_bits + BitsPerT - 1) / BitsPerT];
     }
 
-    /// Custom equality support
-    public int opEquals ( in BitField rhs_ ) const nothrow @trusted
-    {
-        scope (failure) assert(0);  // BitArray lacks nothrow support
+    @nogc:
 
-        // cast: BitArray does not support const yet
-        auto lhs = cast()this.bit_array;
-        auto rhs = cast()rhs_.bit_array;
-        return lhs.opEquals(rhs);
+    /***************************************************************************
+
+        Build a `BitField` from an existing storage
+
+        Params:
+          storage = Backing store to use for BitField.
+
+    ***************************************************************************/
+
+    public this (inout(T)[] storage) inout
+    {
+        this._storage = storage;
     }
 
-    /// Hashing support
-    public void computeHash (scope HashDg dg) const nothrow @nogc
+    /// Returns the number of bits in the bitfield
+    public size_t length () const
     {
-        dg(cast(const(ubyte)[])this.storage[]);
+        return this._storage.length * BitsPerT;
     }
 
-    /// Returns: the length of this bitfield
-    public size_t length () const nothrow @nogc
+    /// Supports setting a single bit to a value
+    public bool opIndexAssign (bool value, size_t index)
     {
-        return this.num_bits;
+        if (index >= this.length())
+            assert(0);
+
+        if (value)
+            this._storage[index / BitsPerT] |= mask(index);
+        else
+            // This line triggers an annoying deprecation which we can't
+            // seem to get rid of. TODO: Report to DMD
+            this._storage[index / BitsPerT] &= ~mask(index);
+        return value;
+    }
+
+    /// Gets a single bit's value
+    public bool opIndex (size_t index)
+    {
+        if (index >= this.length())
+            assert(0);
+        return !!(this._storage[index / BitsPerT] & mask(index));
+    }
+
+    /// Compare BitField of same length
+    public bool opEquals (OtherT) (const auto ref BitField!OtherT other) const
+    {
+        // Always do the comparison from the PoV of the BitField with
+        // the largest data type
+        static if (OtherT.sizeof > T.sizeof)
+            return other.opEquals(this);
+        else
+        {
+            if (this.length() != other.length())
+                return false;
+
+            ref T get (size_t idx) @trusted
+            {
+                return (cast(T*) other._storage.ptr)[idx];
+            }
+
+            foreach (idx, ref v; this._storage)
+                if (v != get(idx))
+                    return false;
+
+            return true;
+        }
+    }
+
+    /// Gets a bit mask which only include a given index within a `T`
+    pragma(inline, true)
+    private static T mask (size_t index)
+    {
+        return (1 << (BitsPerT - 1 - (index % BitsPerT)));
     }
 }
 
-/// opEquals tests
+// opEquals tests
 unittest
 {
-    auto bf1 = BitField(6);
+    auto bf1 = BitField!uint(6);
     bf1[0] = true;
     bf1[2] = true;
     bf1[4] = true;
@@ -133,7 +200,7 @@ unittest
     auto bf2 = bf1;
     assert(bf1 == bf2);
 
-    bf2 = BitField(6);
+    bf2 = BitField!uint(6);
     assert(bf2 != bf1);
 
     bf2[0] = true;
@@ -145,42 +212,45 @@ unittest
     assert(bf2 != bf1);
 }
 
-/// Serialization tests
+// Serialization tests
 unittest
 {
-    testSymmetry!BitField();
+    testSymmetry!(BitField!ubyte)();
+    testSymmetry!(BitField!ushort)();
+    testSymmetry!(BitField!uint)();
+    testSymmetry!(BitField!ulong)();
+
     // less than 1 byte
     {
-        auto bf = BitField(6);
+        auto bf = BitField!uint(6);
         bf[0] = bf[5] = true;
         testSymmetry(bf);
     }
 
     // exactly 1 byte
     {
-        auto bf = BitField(8);
-        assert(bf.storage.length == 1);
+        auto bf = BitField!uint(8);
         bf[0] = bf[7] = true;
         testSymmetry(bf);
     }
 
     // more than 1 byte
     {
-        auto bf = BitField(12);
+        auto bf = BitField!uint(12);
         bf[0] = bf[1] = true;
         testSymmetry(bf);
     }
 
     // 3 bytes
     {
-        auto bf = BitField(28);
+        auto bf = BitField!uint(28);
         bf[0] = bf[27] = true;
         testSymmetry(bf);
     }
 
     // more than 4 bytes (backing store is uint)
     {
-        auto bf = BitField(40);
+        auto bf = BitField!uint(40);
         bf[0] = bf[39] = true;
         testSymmetry(bf);
     }

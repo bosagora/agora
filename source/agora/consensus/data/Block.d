@@ -51,7 +51,7 @@ public struct BlockHeader
     public Hash merkle_root;
 
     /// Bitfield containing the validators' key indices which signed the block
-    public BitField validators;
+    public BitField!uint validators;
 
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
@@ -396,7 +396,7 @@ unittest
         ],
     };
 
-    auto validators = BitField(6);
+    auto validators = typeof(BlockHeader.validators)(6);
     validators[0] = true;
     validators[2] = true;
     validators[4] = true;
