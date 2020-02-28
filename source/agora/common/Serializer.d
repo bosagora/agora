@@ -152,11 +152,17 @@ unittest
             serializePart(this.s, dg);
         }
 
-        void deserialize (scope DeserializeDg dg) @safe
+        static QT fromBinary (QT) (
+            scope DeserializeDg dg, const ref DeserializerOptions opts)
+            @safe
         {
-            this.values = deserializeFull!(Amount[])(dg);
-            this.i = deserializeFull!uint(dg);
-            this.s = deserializeFull!string(dg);
+            // One need to use temporary values for this,
+            // as D currently does not support returning a struct literal
+            // Additionally, https://issues.dlang.org/show_bug.cgi?id=20633
+            auto values = deserializeFull!(typeof(QT.values))(dg, opts);
+            auto i = deserializeFull!(typeof(QT.i))(dg, opts);
+            auto s = deserializeFull!(typeof(QT.s))(dg, opts);
+            return QT(values, s, i);
         }
     }
 
@@ -201,6 +207,43 @@ unittest
     assert(serialized.deserializeFull!Foo() == instance);
 }
 
+/// Provides more details about `fromBinary` requirements
+unittest
+{
+    static struct Example
+    {
+        ubyte[] data;
+
+        public static QT fromBinary (QT) (
+            scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+        {
+            // The following is incorrect because it doesn't account for
+            // type constructors (e.g. `immutable`).
+            // More precisely, it would trigger the following error:
+            // ---
+            // cannot implicitly convert expression
+            // `deserializeFull(dg, DeserializerOptions.init)`
+            // of type `ubyte[]` to `immutable(ubyte[])`
+            // ---
+            version (none)
+                return QT(deserializeFull!(ubyte[])(dg, opts));
+
+            // The following is the correct version
+            return QT(deserializeFull!(typeof(QT.data))(dg, opts));
+        }
+    }
+
+    ubyte[] data = [3, 1, 2, 3];
+    scope DeserializeDg dg = (size) {
+        scope (success) data = data[size .. $];
+        return data[0 .. size];
+    };
+
+    immutable ex = Example([1, 2, 3]);
+    assert(Example.fromBinary!(immutable(Example))(dg, DeserializerOptions.Default)
+           ==  ex);
+}
+
 /*******************************************************************************
 
     Sink for serialized data, writing to an underlying stream / buffer
@@ -230,9 +273,9 @@ public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
 private enum hasSerializeMethod (T) = is(T == struct)
     && is(typeof(T.init.serialize(SerializeDg.init)));
 
-/// Traits to check if a given type has an in place deserialization routine
-private enum hasDeserializeMethod (T) = is(T == struct)
-    && is(typeof(T.init.deserialize(DeserializeDg.init)));
+/// Traits to check if a given type has a custom deserialization routine
+private enum hasFromBinaryFunction (T) = is(T == struct)
+    && is(typeof(&T.fromBinary!T));
 
 /*******************************************************************************
 
@@ -365,6 +408,9 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
 /// Options that configure the behavior of the deserializer
 public struct DeserializerOptions
 {
+    /// Default value, need to be a lvalue to be passed as `ref`
+    static immutable DeserializerOptions Default = DeserializerOptions();
+
     /// The bound to apply to a length deserialization (e.g. for arrays)
     public size_t maxLength = DefaultMaxLength;
 
@@ -452,17 +498,13 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
 
 /// Ditto
 public T deserializeFull (T) (scope DeserializeDg dg,
-    DeserializerOptions opts = DeserializerOptions.init) @safe
+    const ref DeserializerOptions opts = DeserializerOptions.Default) @safe
 {
     import geod24.bitblob;
 
     // Custom deserialization trumps everything
-    static if (hasDeserializeMethod!T)
-    {
-        T retval = T.init;
-        retval.deserialize(dg);
-        return retval;
-    }
+    static if (hasFromBinaryFunction!T)
+        return T.fromBinary!T(dg, opts);
 
     // BitBlob are fixed size and thus, value types
     // If we use an `ubyte[]` overload, the deserializer looks for the length

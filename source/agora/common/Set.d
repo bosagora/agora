@@ -19,6 +19,9 @@ import agora.common.Serializer;
 import libsodium.randombytes;
 
 import std.algorithm;
+import std.array;
+import std.range;
+import std.typecons;
 
 import core.stdc.string;
 
@@ -55,9 +58,9 @@ public struct Set (T)
     }
 
     /// Build a new Set out of the provided range
-    public static Set from (Range) (Range range)
+    public static SetT from (SetT = Set, Range) (Range range)
     {
-        typeof(return) map;
+        Set map;
         foreach (T item; range)
             map.put(item);
         return map;
@@ -88,19 +91,24 @@ public struct Set (T)
 
     /***************************************************************************
 
-        Deserialization support
+        Returns a newly instantiated Set of type `SetT`
 
         Params:
-            dg = Deserialize delegate
+            SetT = Qualified type of Set to return
+            dg   = Delegate to read binary data
+            opts = Deserialization options (should be forwarded)
+
+        Returns:
+            A new instance of type `SetT`
 
     ***************************************************************************/
 
-    public void deserialize (scope DeserializeDg dg) @safe
+    public static SetT fromBinary (SetT) (
+        scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
     {
-        size_t length = deserializeLength(dg);
-        // deserialize and generate inputs
-        foreach (idx; 0 .. length)
-            this._set[deserializeFull!T(dg)] = true;
+        size_t length = deserializeLength(dg, opts.maxLength);
+        return SetT.from!(SetT)(
+            iota(length).map!(_ => deserializeFull!(T)(dg, opts)));
     }
 }
 
