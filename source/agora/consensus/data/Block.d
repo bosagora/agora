@@ -100,30 +100,6 @@ public struct BlockHeader
         foreach (enrollment; this.enrollments)
             serializePart(enrollment, dg);
     }
-
-    /***************************************************************************
-
-        Block Header Deserialization
-
-        Params:
-            dg = deserialize function accumulator
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        this.prev_block = Hash(dg(Hash.sizeof));
-        deserializePart(this.height, dg);
-        this.merkle_root = Hash(dg(Hash.sizeof));
-        deserializePart(this.validators, dg);
-        deserializePart(this.signature, dg);
-
-        size_t enrollments_size;
-        deserializePart(enrollments_size, dg);
-        this.enrollments = uninitializedArray!(Enrollment[])(enrollments_size);
-        foreach (ref val; this.enrollments)
-            deserializePart(val, dg);
-    }
 }
 
 /// hashing test
@@ -191,31 +167,6 @@ public struct Block
         serializePart(this.merkle_tree.length, dg);
         foreach (ref merkle; this.merkle_tree)
             dg(merkle[]);
-    }
-
-    /***************************************************************************
-
-        Block Deserialization
-
-        Params:
-            dg = deserialize function accumulator
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        deserializePart(this.header, dg);
-
-        size_t size;
-        deserializePart(size, dg);
-        this.txs.length = size;
-        foreach (ref tx; this.txs)
-            deserializePart(tx, dg);
-
-        deserializePart(size, dg);
-        this.merkle_tree.length = size;
-        foreach (ref h; this.merkle_tree)
-            deserializePart(h, dg);
     }
 
     /***************************************************************************

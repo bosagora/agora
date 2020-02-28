@@ -77,36 +77,6 @@ public struct Transaction
             serializePart(output, dg);
     }
 
-    /***************************************************************************
-
-        Transactions deserialization
-
-        Params:
-            dg = Deserialize function
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        deserializePart(this.type, dg);
-
-        size_t input_size;
-        deserializePart(input_size, dg);
-        this.inputs.length = input_size;
-
-        // deserialize and generate inputs
-        foreach (ref input; this.inputs)
-            deserializePart(input , dg);
-
-        size_t output_size;
-        deserializePart(output_size, dg);
-        this.outputs.length = output_size;
-
-        // deserialize and generate outputs
-        foreach (ref output; this.outputs)
-            deserializePart(output, dg);
-    }
-
     /// Support for sorting transactions
     public int opCmp (ref const(Transaction) other) const nothrow @safe @nogc
     {

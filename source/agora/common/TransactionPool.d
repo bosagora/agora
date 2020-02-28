@@ -443,7 +443,6 @@ unittest
     // deserialize the transactions
     txs_bytes.each!((data)
         {
-            Transaction tx;
             scope DeserializeDg dg = (size) nothrow @safe
             {
                 ubyte[] res = data[0 .. size];
@@ -451,8 +450,7 @@ unittest
                 return res;
             };
 
-            tx.deserialize(dg);
-            txs ~= tx;
+            txs ~= deserializeFull!Transaction(dg);
         });
 
     auto pool_txs = pool.take(txs.length);
