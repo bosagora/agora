@@ -61,13 +61,6 @@ public struct KeyPair
     /// Seed
     public const Seed seed;
 
-
-    /// Constructor accepting only 3 arguments
-    private this (typeof(KeyPair.tupleof) args) pure nothrow @safe @nogc
-    {
-        this.tupleof = args;
-    }
-
     /// Create a keypair from a `Seed`
     public static KeyPair fromSeed (Seed seed) nothrow @nogc
     {
@@ -97,6 +90,13 @@ public struct KeyPair
             assert(0);
         return KeyPair(pk, sk, seed);
     }
+}
+
+// Test (de)serialization
+unittest
+{
+    testSymmetry!KeyPair();
+    testSymmetry(KeyPair.random());
 }
 
 /// Represent a public key / address
@@ -242,14 +242,22 @@ public struct PublicKey
 public struct SecretKey
 {
     nothrow @nogc:
+    /// Alias to the BitBlob type
+    private alias DataType = BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8);
 
-    /*private*/ BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) data;
+    /*private*/ DataType data;
     alias data this;
 
-    /// Constructor accepting only 1 argument
-    private this (typeof(this.tupleof) args)
+    /// Construct an instance from binary data
+    public this (const DataType args) pure nothrow @safe @nogc
     {
-        this.tupleof = args;
+        this.data = args;
+    }
+
+    /// Ditto
+    public this (const ubyte[] args) pure nothrow @safe @nogc
+    {
+        this.data = args;
     }
 
     /***************************************************************************
@@ -275,16 +283,33 @@ public struct SecretKey
     }
 }
 
+
+// Test (de)serialization
+unittest
+{
+    testSymmetry!SecretKey();
+    testSymmetry(KeyPair.random().secret);
+}
+
 /// A Stellar seed
 public struct Seed
 {
-    /*private*/ BitBlob!(crypto_sign_ed25519_SEEDBYTES * 8) data;
+    /// Alias to the BitBlob type
+    private alias DataType = BitBlob!(crypto_sign_ed25519_SEEDBYTES * 8);
+
+    /*private*/ DataType data;
     alias data this;
 
-    /// Constructor accepting only 1 argument
-    private this (typeof(Seed.tupleof) args)
+    /// Construct an instance from binary data
+    public this (const DataType args) pure nothrow @safe @nogc
     {
-        this.tupleof = args;
+        this.data = args;
+    }
+
+    /// Ditto
+    public this (const ubyte[] args) pure nothrow @safe @nogc
+    {
+        this.data = args;
     }
 
     /// Uses Stellar's representation instead of hex
@@ -316,6 +341,13 @@ public struct Seed
         assert(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
         return Seed(typeof(this.data)(bin[1 .. $ - 2]));
     }
+}
+
+// Test (de)serialization
+unittest
+{
+    testSymmetry!Seed();
+    testSymmetry(KeyPair.random().seed);
 }
 
 /// Discriminant for Stellar binary-encoded user-facing data
