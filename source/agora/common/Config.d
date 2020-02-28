@@ -82,7 +82,7 @@ public struct Config
     public immutable string[] dns_seeds;
 
     /// The quorum config
-    public QuorumConfig quorum;
+    public immutable QuorumConfig quorum;
 
     /// Logging config
     public LoggingConfig logging;
@@ -145,17 +145,14 @@ public struct AdminConfig
 /// Configuration for a peer we trust
 public struct QuorumConfig
 {
-    static assert(!hasUnsharedAliasing!(typeof(this)),
-        "Type must be shareable accross threads");
-
     /// Threshold of this quorum set
     public size_t threshold = 1;
 
     /// List of nodes in this quorum
-    public immutable PublicKey[] nodes;
+    public PublicKey[] nodes;
 
     /// List of any sub-quorums
-    public immutable QuorumConfig[] quorums;
+    public QuorumConfig[] quorums;
 }
 
 /// Configuration for logging
@@ -415,7 +412,7 @@ logging:
 
 *******************************************************************************/
 
-private QuorumConfig parseQuorumSection (Node* node_ptr,
+private immutable(QuorumConfig) parseQuorumSection (Node* node_ptr,
     const ref CommandLine cmdln, size_t level = 1)
 {
     import std.algorithm;
@@ -432,7 +429,7 @@ private QuorumConfig parseQuorumSection (Node* node_ptr,
         foreach (string nodeKeyStr; (*node_ptr)["nodes"])
             nodes ~= PublicKey.fromString(nodeKeyStr);
 
-    QuorumConfig[] sub_quorums;
+    immutable(QuorumConfig)[] sub_quorums;
     // Node: Providing sub_quorums via command line is currently not supported
     if (node_ptr)
         if (auto subs = "sub_quorums" in *node_ptr)
@@ -445,7 +442,7 @@ private QuorumConfig parseQuorumSection (Node* node_ptr,
     const threshold = getThreshold(thresholdRaw.stripRight('%').to!float,
         nodes.length + sub_quorums.length);
 
-    return QuorumConfig(threshold, nodes.assumeUnique, sub_quorums.assumeUnique);
+    return immutable(QuorumConfig)(threshold, nodes.assumeUnique, sub_quorums);
 }
 
 ///
@@ -477,13 +474,13 @@ unittest
     auto node = Loader.fromString(conf_example).load();
     auto quorum = parseQuorumSection("quorum" in node, cmdln);
 
-    auto expected = QuorumConfig(2,
+    auto expected = immutable(QuorumConfig)(2,
         [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
          PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
-        [QuorumConfig(2,
+        [immutable(QuorumConfig)(2,
             [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
              PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
-            [QuorumConfig(2,
+            [immutable(QuorumConfig)(2,
                 [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
                  PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5"),
                  PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])])]);
@@ -590,7 +587,7 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
 
 *******************************************************************************/
 
-public SCPQuorumSet toSCPQuorumSet ( QuorumConfig quorum_conf )
+public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf )
 {
     import std.conv;
     import scpd.types.Stellar_types : Hash, NodeID;
@@ -643,8 +640,8 @@ public QuorumConfig toQuorumConfig ( in SCPQuorumSet scp_quorum )
     QuorumConfig quorum =
     {
         threshold : scp_quorum.threshold.to!uint,
-        nodes : assumeUnique(nodes),
-        quorums : assumeUnique(quorums),
+        nodes : nodes,
+        quorums : quorums,
     };
 
     return quorum;

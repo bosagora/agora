@@ -133,7 +133,7 @@ public class Node : API
 
     ***************************************************************************/
 
-    private static SCPQuorumSet verifyBuildSCPConfig (QuorumConfig config)
+    private static SCPQuorumSet verifyBuildSCPConfig (in QuorumConfig config)
     {
         import scpd.scp.QuorumSetUtils;
 
@@ -170,7 +170,7 @@ public class Node : API
         import agora.common.Set;
         import std.typecons;
 
-        void getNodes (QuorumConfig conf, ref bool[PublicKey] nodes)
+        void getNodes (in QuorumConfig conf, ref bool[PublicKey] nodes)
         {
             foreach (node; conf.nodes)
                 nodes[node] = true;
