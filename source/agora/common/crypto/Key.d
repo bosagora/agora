@@ -102,13 +102,16 @@ public struct KeyPair
 /// Represent a public key / address
 public struct PublicKey
 {
-    /*private*/ BitBlob!(crypto_sign_ed25519_PUBLICKEYBYTES * 8) data;
+    /// Alias to the BitBlob type
+    private alias DataType = BitBlob!(crypto_sign_ed25519_PUBLICKEYBYTES * 8);
+
+    /*private*/ DataType data;
     alias data this;
 
-    /// Construct an instance from the binary representation
-    private this (typeof(PublicKey.tupleof) args) pure nothrow @safe @nogc
+    /// Construct an instance from binary data
+    public this (const DataType args) pure nothrow @safe @nogc
     {
-        this.tupleof = args;
+        this.data = args;
     }
 
     /// Ditto
@@ -182,21 +185,6 @@ public struct PublicKey
         dg(this.data[]);
     }
 
-    /***************************************************************************
-
-        Key Deserialization
-
-        Params:
-            dg = deserialize function
-
-    ***************************************************************************/
-
-    public void deserialize (scope DeserializeDg dg) @safe
-    {
-        alias DType = typeof(this.data);
-        this.data = DType(dg(DType.sizeof));
-    }
-
     ///
     unittest
     {
@@ -219,10 +207,8 @@ public struct PublicKey
     /// PublicKey serialize & deserialize
     unittest
     {
-        KeyPair kp = KeyPair.random();
-        PublicKey address = kp.address;
-        auto bytes_address = serializeFull(address);
-        assert(deserializeFull!PublicKey(bytes_address) == address);
+        testSymmetry!PublicKey();
+        testSymmetry(KeyPair.random().address);
     }
 
     /***************************************************************************
