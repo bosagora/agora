@@ -541,7 +541,7 @@ public class BlockStorage : IBlockStorage
             pos += size;
             return res;
         };
-        block.deserialize(dg);
+        block = deserializeFull!Block(dg);
     }
 
     /***************************************************************************
