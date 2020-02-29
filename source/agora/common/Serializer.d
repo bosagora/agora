@@ -14,7 +14,9 @@
 module agora.common.Serializer;
 
 import agora.common.Types;
+
 import std.range.primitives;
+import std.traits;
 
 ///
 unittest
@@ -78,15 +80,6 @@ public ubyte[] serializeFull (T) (scope const auto ref T record)
     return res;
 }
 
-/// Ditto
-public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg)
-    if (!hasSerializeMethod!T && isInputRange!T && hasLength!T)
-{
-    serializePart(record.length, dg);
-    foreach (ref v; record)
-        serializePart(v, dg);
-}
-
 ///
 unittest
 {
@@ -117,87 +110,72 @@ unittest
     ];
 
     assert(arr.serializeFull() == result);
+
+    testSymmetry!Foo();
+    testSymmetry(arr);
 }
 
 /// Ditto
-public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg)
+public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg,
+                               CompactMode compact = CompactMode.Yes)
     @safe
-    if (is(T == struct))
 {
     import geod24.bitblob;
 
+    // Custom serialization handling trumps everything else
     static if (hasSerializeMethod!T)
         record.serialize(dg);
+
     // BitBlob are fixed size and thus, value types
     // If we use an `ubyte[]` overload, the length gets serialized
     else static if (is(T : BitBlob!N, size_t N))
         dg(record[]);
-    else
+
+    // Strings can be encoded as binary data
+    else static if (isNarrowString!T)
+    {
+        toVarInt(record.length, dg);
+        dg(cast(const(ubyte[]))record);
+    }
+
+    // If it's binary data, just copy it
+    else static if (is(immutable(T) == immutable(ubyte[])))
+    {
+        toVarInt(record.length, dg);
+        dg(record);
+    }
+
+    // If there's not fast path for array optimization, just recurse
+    else static if (is(T : E[], E))
+    {
+        toVarInt(record.length, dg);
+        foreach (const ref entry; record)
+            entry.serializePart(dg);
+    }
+
+    // Unsigned integer may be encoded (e.g. sizes)
+    // However `ubyte` doesn't need binary encoding since they it already is the
+    // smallest possible size
+    else static if (is(Unqual!T == ubyte))
+        () @trusted { dg((&record)[0 .. T.sizeof]); }();
+    else static if (isUnsigned!T)
+    {
+        if (compact == CompactMode.Yes)
+            toVarInt(record, dg);
+        else
+            () @trusted { dg((cast(const(ubyte)*)&record)[0 .. T.sizeof]); }();
+    }
+    // Other integers / scalars
+    else static if (isScalarType!T)
+        () @trusted { dg((cast(const(ubyte)*)&record)[0 .. T.sizeof]); }();
+
+    // Recursively serialize fields for structs
+    else static if (is(T == struct))
         foreach (const ref field; record.tupleof)
             serializePart(field, dg);
-}
 
-/// Ditto
-public void serializePart (ubyte record, scope SerializeDg dg)
-    @trusted
-{
-    dg((cast(ubyte*)&record)[0 .. ubyte.sizeof]);
-}
-
-/// Ditto
-public void serializePart (ushort record, scope SerializeDg dg)
-    @trusted
-{
-    toVarInt(record, dg);
-}
-
-/// Ditto
-public void serializePart (uint record, scope SerializeDg dg)
-    @trusted
-{
-    toVarInt(record, dg);
-}
-
-/// Ditto
-public void serializePart (long record, scope SerializeDg dg)
-    @trusted
-{
-    dg((cast(ubyte*)&record)[0 .. long.sizeof]);
-}
-
-/// Ditto
-public void serializePart (ulong record, scope SerializeDg dg, CompactMode compact = CompactMode.Yes)
-    @trusted
-{
-    if (compact == CompactMode.Yes)
-        toVarInt(record, dg);
     else
-        dg((cast(ubyte*)&record)[0 .. ulong.sizeof]);
-}
-
-/// Ditto
-public void serializePart (scope cstring record, scope SerializeDg dg)
-    @trusted
-{
-    serializePart(record.length, dg);
-    dg(cast(const ubyte[])record);
-}
-
-/// Ditto
-public void serializePart (scope const(ubyte)[] record, scope SerializeDg dg)
-    @safe
-{
-    serializePart(record.length, dg);
-    dg(record);
-}
-
-/// Ditto
-public void serializePart (scope const(Hash)[] record, scope SerializeDg dg)
-    @trusted
-{
-    serializePart(record.length, dg);
-    foreach (hash; record)
-        serializePart(hash, dg);
+        static assert(0, "Unhandled type: " ~ T.stringof);
 }
 
 /*******************************************************************************
@@ -222,7 +200,7 @@ public void serializePart (scope const(Hash)[] record, scope SerializeDg dg)
 
 private void toVarInt (T) (const T var, scope SerializeDg dg)
     @trusted
-    if (is(T == ushort) || is(T == uint) || is(T == ulong))
+    if (isUnsigned!T)
 {
     assert(var >= 0);
     static immutable ubyte[] type = [0xFD, 0xFE, 0xFF];
