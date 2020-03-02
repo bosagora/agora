@@ -95,7 +95,7 @@ private void testSymmetryImpl (T) (const auto ref T value, string typename)
                 stderr.writeln("Deserialization of ", typename, " failed. Binary data:");
                 stderr.writeln(serialized);
             }
-        T deserialized = serialized.deserializeFull!T();
+        const deserialized = serialized.deserializeFull!(T)();
         testing = true;
         assert(deserialized == value,
                format("Serialization mismatch for %s! Expected:\n%s\n\ngot:\n%s\n\nBinary data:\n%s",
