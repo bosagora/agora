@@ -19,7 +19,7 @@ services:
   node-1:
     image: "agora:latest"
     ports:
-      - "4001:2826"
+      - "4001:3826"
     volumes:
       - "./node/1/:/agora/"
       - "../../source:/agora/source/"
@@ -27,7 +27,7 @@ services:
   node-2:
     image: "agora:latest"
     ports:
-      - "4002:2826"
+      - "4002:4826"
     volumes:
       - "./node/2/:/agora/"
       - "../../source:/agora/source/"

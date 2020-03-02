@@ -6,7 +6,7 @@ node:
   min_listeners: 2
   max_listeners: 10
   address: 0.0.0.0
-  port:    2826
+  port:    3826
   retry_delay: 1.5
   max_retries: 5
   timeout: 1000
@@ -45,7 +45,7 @@ admin:
 network:
   # Supported value: IPv4, IPv6
   - http://node-0:2826
-  - http://node-2:2826
+  - http://node-2:4826
 
 
 ################################################################################
