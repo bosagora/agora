@@ -294,18 +294,13 @@ public class BanManager
 
     private void deserialize (scope DeserializeDg dg) @safe
     {
-        size_t length;
-        deserializePart(length, dg);
+        size_t length = deserializeFull!size_t(dg);
 
         // deserialize and generate inputs
         foreach (idx; 0 .. length)
         {
-            Address key;
-            deserializePart(key, dg);
-
-            Status value;
-            deserializePart(value, dg);
-
+            Address key = deserializeFull!Address(dg);
+            Status value = deserializeFull!Status(dg);
             this.ips[key] = value;
         }
     }

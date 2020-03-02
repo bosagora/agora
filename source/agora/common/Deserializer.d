@@ -68,10 +68,8 @@ unittest
 
         void deserialize (scope DeserializeDg dg) @safe
         {
-            deserializePart(this.i, dg);
-            char[] buffer;
-            deserializePart(buffer, dg);
-            this.s = buffer.idup;
+            this.i = deserializeFull!uint( dg);
+            this.s = deserializeFull!string(dg);
         }
     }
 
@@ -138,12 +136,6 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
         return res;
     };
     return deserializeFull!T(dg);
-}
-
-/// Ditto
-public void deserializePart (T) (ref T record, scope DeserializeDg dg) @safe
-{
-    record = deserializeFull!T(dg);
 }
 
 /// Ditto

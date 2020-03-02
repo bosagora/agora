@@ -336,6 +336,13 @@ unittest
     testSymmetry(freeze_tx);
 }
 
+unittest
+{
+    import agora.common.Set;
+    auto tx_set = Set!Transaction.from([Transaction.init]);
+    testSymmetry(tx_set);
+}
+
 /// Transaction type hashing for unittest
 unittest
 {

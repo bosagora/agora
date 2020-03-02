@@ -98,29 +98,11 @@ public struct Set (T)
 
     public void deserialize (scope DeserializeDg dg) @safe
     {
-        size_t length;
-        deserializePart(length, dg);
+        size_t length = deserializeFull!size_t(dg);
 
         // deserialize and generate inputs
         foreach (idx; 0 .. length)
-        {
-            import std.range;
-            import std.traits;
-
-            static if (isArray!T)  // special-case
-            {
-                alias MutableArray(T) = Unqual!(ElementEncodingType!T)[];
-                MutableArray!T value;
-                deserializePart(value, dg);
-                this._set[value.idup] = true;
-            }
-            else
-            {
-                T value;
-                deserializePart(value, dg);
-                this._set[value] = true;
-            }
-        }
+            this._set[deserializeFull!T(dg)] = true;
     }
 }
 
