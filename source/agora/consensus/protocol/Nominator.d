@@ -107,9 +107,7 @@ extern(D):
         this.ledger = ledger;
         this.peers = peers;
 
-        // cast: see makeSharedSCPQuorumSet() in Cpp.d
-        auto local_quorum_set = this.scp.getLocalQuorumSet();
-        auto localQSet = makeSharedSCPQuorumSet(local_quorum_set);
+        auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
 
         const bytes = ByteSlice.make(XDRToOpaque(*localQSet));
         auto quorum_hash = sha256(bytes);

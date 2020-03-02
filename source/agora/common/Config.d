@@ -623,7 +623,7 @@ public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf )
 
 *******************************************************************************/
 
-public QuorumConfig toQuorumConfig ( in SCPQuorumSet scp_quorum )
+public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
 {
     import std.conv;
     import scpd.types.Stellar_types : Hash, NodeID;
@@ -634,7 +634,7 @@ public QuorumConfig toQuorumConfig ( in SCPQuorumSet scp_quorum )
         nodes ~= PublicKey(node[]);
 
     QuorumConfig[] quorums;
-    foreach (sub_quorum; scp_quorum.innerSets.constIterator)
+    foreach (ref sub_quorum; scp_quorum.innerSets.constIterator)
         quorums ~= toQuorumConfig(sub_quorum);
 
     QuorumConfig quorum =
