@@ -719,6 +719,43 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get validator's pre-image from the validator set
+
+        Params:
+            enroll_key = The key for the enrollment in which the pre-image is
+                contained.
+            result_image = will contain the PreimageInfo if exists
+
+        Returns:
+            true if getting pre-image is successfully processed
+
+    ***************************************************************************/
+
+    public bool getValidatorPreimage (const ref Hash enroll_key,
+        out PreimageInfo result_image) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT preimage from validator_set" ~
+                        " WHERE key = ?", enroll_key.toString());
+            if (!results.empty && results.oneValue!(byte[]).length != 0)
+            {
+                result_image =
+                    results.oneValue!(ubyte[]).deserializeFull!(PreimageInfo);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured, getValidatorPreimage:{}, exception:{}",
+                enroll_key, ex);
+            return false;
+        }
+
+        return true;
+    }
+
+    /***************************************************************************
+
         Add a pre-image information to a validator data
 
         Params:
@@ -1119,7 +1156,7 @@ unittest
     assert(validators[0].utxo_key == utxo_hash3);
 }
 
-/// tests for addPreimage and hasPreimage
+/// tests for addPreimage and getValidatorPreimage
 unittest
 {
     import agora.common.Amount;
@@ -1157,8 +1194,13 @@ unittest
     assert(man.add(0, &storage.findUTXO, enroll));
     assert(man.hasEnrollment(utxo_hash));
 
-    auto preimage = PreimageInfo(utxo_hash, enroll.random_seed, 1);
+    PreimageInfo result_image;
+    assert(man.getValidatorPreimage(utxo_hash, result_image));
+    assert(result_image == PreimageInfo.init);
+    auto preimage = PreimageInfo(utxo_hash, man.preimages[100], 1100);
     assert(man.addPreimage(preimage));
-    assert(man.hasPreimage(utxo_hash, 1));
-    assert(!man.hasPreimage(utxo_hash, 10));
+    assert(man.getValidatorPreimage(utxo_hash, result_image));
+    assert(result_image.enroll_key == utxo_hash);
+    assert(result_image.hash == man.preimages[100]);
+    assert(result_image.height == 1100);
 }
