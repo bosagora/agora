@@ -76,7 +76,6 @@ public void testSymmetry (T) (auto ref T value = T.init)
 
 private void testSymmetryImpl (T) (const auto ref T value, string typename)
 {
-    import agora.common.Deserializer;
     import agora.common.Serializer;
     import std.format;
     import std.stdio;

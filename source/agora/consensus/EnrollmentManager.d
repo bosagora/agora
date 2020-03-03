@@ -16,7 +16,6 @@ module agora.consensus.EnrollmentManager;
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
-import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;

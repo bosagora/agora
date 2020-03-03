@@ -17,7 +17,6 @@
 
 module agora.common.crypto.ECC;
 
-import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;

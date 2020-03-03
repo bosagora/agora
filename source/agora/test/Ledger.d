@@ -189,12 +189,12 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    import agora.common.Deserializer;
     import agora.common.Serializer;
+    import agora.consensus.Validation;
+
     import std.algorithm;
     import core.time;
     import core.thread;
-    import agora.consensus.Validation;
 
     TestConf conf = { nodes : 2 };
     auto network = makeTestNetwork(conf);

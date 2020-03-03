@@ -126,7 +126,6 @@ package struct Sig
 ///
 unittest
 {
-    import agora.common.Deserializer;
     import agora.common.Serializer;
 
     const KP = Pair.random();

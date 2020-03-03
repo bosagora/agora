@@ -14,7 +14,6 @@
 
 module agora.common.BanManager;
 
-import agora.common.Deserializer;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.utils.Log;

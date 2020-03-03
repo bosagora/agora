@@ -14,7 +14,6 @@
 module agora.consensus.protocol.Nominator;
 
 import agora.common.crypto.Key;
-import agora.common.Deserializer;
 import agora.common.Hash : hashFull;
 import agora.common.Serializer;
 import agora.common.Set;
