@@ -14,6 +14,7 @@
 module main;
 
 import agora.api.FullNode;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.common.crypto.Key;
@@ -51,10 +52,13 @@ private immutable Address[] Addrs = [
     { host: "127.0.0.1", port: 4002, },
 ];
 
+/// Test node count
+private immutable uint NodeCnt = 3;
+
 void main ()
 {
     {
-        API[3] clients;
+        API[NodeCnt] clients;
         foreach (idx, const ref addr; Addrs)
             clients[idx] = new RestInterfaceClient!API(addr.withSchema());
 
@@ -69,7 +73,7 @@ void main ()
 
         auto kp = getGenesisKeyPair();
 
-        foreach (idx; 0 .. 8)
+        foreach (idx; 0 .. Block.TxsInBlock)
         {
             Transaction tx = {
                 type: TxType.Payment,
@@ -86,7 +90,7 @@ void main ()
     {
         // TODO: This is a hack because of issue #312
         // https://github.com/bpfkorea/agora/issues/312
-        API[3] clients;
+        API[NodeCnt] clients;
         foreach (idx, const ref addr; Addrs)
             clients[idx] = new RestInterfaceClient!API(addr.withSchema());
 
