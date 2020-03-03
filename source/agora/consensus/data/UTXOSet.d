@@ -14,7 +14,6 @@
 module agora.consensus.data.UTXOSet;
 
 import agora.common.crypto.Key;
-import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;

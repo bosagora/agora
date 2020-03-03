@@ -16,7 +16,6 @@
         "../../source/agora/common/crypto/Schnorr.d",
         "../../source/agora/common/Amount.d",
         "../../source/agora/common/BitField.d",
-        "../../source/agora/common/Deserializer.d",
         "../../source/agora/common/Hash.d",
         "../../source/agora/common/Serializer.d",
         "../../source/agora/common/Set.d",

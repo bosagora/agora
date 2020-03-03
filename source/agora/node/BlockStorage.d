@@ -18,7 +18,6 @@ module agora.node.BlockStorage;
 
 import agora.common.Amount;
 import agora.common.Types;
-import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Block;

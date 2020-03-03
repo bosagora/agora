@@ -15,7 +15,6 @@
 module agora.common.TransactionPool;
 
 import agora.common.Types;
-import agora.common.Deserializer;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
@@ -418,8 +417,6 @@ unittest
 /// memory reclamation tests
 unittest
 {
-    import agora.common.Deserializer;
-    import agora.common.Serializer;
     import agora.consensus.data.Block;
     import agora.consensus.Genesis;
     import std.exception;
