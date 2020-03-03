@@ -85,36 +85,43 @@ void main ()
             tx.inputs[0].signature = signature;
             clients[0].putTransaction(tx);
         }
+
+        checkBlockHeight(1);
     }
 
-    {
-        // TODO: This is a hack because of issue #312
-        // https://github.com/bpfkorea/agora/issues/312
-        API[NodeCnt] clients;
-        foreach (idx, const ref addr; Addrs)
-            clients[idx] = new RestInterfaceClient!API(addr.withSchema());
+}
 
-        Hash blockHash;
-        size_t times; // Number of times we slept for 50 msecs
-        foreach (idx, ref client; clients)
+/// Check block generation
+private void checkBlockHeight (ulong height)
+{
+    // TODO: This is a hack because of issue #312
+    // https://github.com/bpfkorea/agora/issues/312
+    API[NodeCnt] clients;
+    foreach (idx, const ref addr; Addrs)
+        clients[idx] = new RestInterfaceClient!API(addr.withSchema());
+
+    Hash blockHash;
+    size_t times; // Number of times we slept for 50 msecs
+    foreach (idx, ref client; clients)
+    {
+        ulong getHeight;
+        do
         {
-        Start:
             Thread.sleep(50.msecs);
-            const height = client.getBlockHeight();
-            // Retry if we're too early
-            if (height < 1 && times++ < 100) goto Start;
-            const blocks = client.getBlocksFrom(0, 42);
-            writefln("[%s] getBlockHeight: %s", idx, height);
-            writefln("[%s] getBlocksFrom: %s", idx, blocks.map!prettify);
-            writeln("----------------------------------------");
-            assert(height == 1);
-            assert(blocks.length == 2);
-            if (idx != 0)
-                assert(blockHash == hashFull(blocks[1].header));
-            else
-                blockHash = hashFull(blocks[1].header);
-            times = 0;
+            getHeight = client.getBlockHeight();
         }
+        while (getHeight < height && times++ < 100); // Retry if we're too early
+        const blocks = client.getBlocksFrom(0, 42);
+        writefln("[%s] getBlockHeight: %s", idx, getHeight);
+        writefln("[%s] getBlocksFrom: %s", idx, blocks.map!prettify);
+        writeln("----------------------------------------");
+        assert(getHeight == height);
+        assert(blocks.length == height+1);
+        if (idx != 0)
+            assert(blockHash == hashFull(blocks[height].header));
+        else
+            blockHash = hashFull(blocks[height].header);
+        times = 0;
     }
 }
 
