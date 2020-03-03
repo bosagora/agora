@@ -168,22 +168,20 @@ extern(D):
 
     public void setupNetwork (NetworkClient[PublicKey] clients)
     {
-        import agora.common.Set;
         import std.algorithm;
         import std.array;
         import std.typecons;
 
-        void getNodes (in QuorumConfig conf, ref bool[PublicKey] nodes)
+        void getNodes (in QuorumConfig conf, ref Set!PublicKey nodes)
         {
             foreach (node; conf.nodes)
-                nodes[node] = true;
+                nodes.put(node);
 
             foreach (sub_conf; conf.quorums)
                 getNodes(sub_conf, nodes);
         }
 
-        // can't use Set(), requires serialization support
-        bool[PublicKey] quorum_keys;
+        Set!PublicKey quorum_keys;
         getNodes(this.quorum_conf, quorum_keys);
 
         this.peers = clients.byKeyValue
