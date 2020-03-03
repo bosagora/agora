@@ -231,18 +231,15 @@ public class Node : API
         Params:
             envelope = the SCP envelope
 
-        Returns:
-            true if the envelope was accepted
-
     ***************************************************************************/
 
-    public bool receiveEnvelope (SCPEnvelope envelope)
+    public void receiveEnvelope (SCPEnvelope envelope)
     {
         // we should not receive SCP messages unless we're a validator node
         if (!this.config.node.is_validator)
-            return false;
+            return;
 
-        return this.nominator.receiveEnvelope(envelope);
+        this.nominator.receiveEnvelope(envelope);
     }
 
     /// GET: /has_transaction_hash

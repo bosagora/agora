@@ -84,17 +84,16 @@ public interface API : agora.api.FullNode.API
 
     /***************************************************************************
 
-        Receives an SCP envelope and processes it
+        Receives an SCP envelope and processes it.
+        The node does not respond with any status code,
+        clients which call this API can & should call it asynchronously.
 
         Params:
             envelope = Envelope to process (See Stellar_SCP)
 
-        Returns:
-            true if the envelope was successfully processed
-
     ***************************************************************************/
 
-    public bool receiveEnvelope (SCPEnvelope envelope);
+    public void receiveEnvelope (SCPEnvelope envelope);
 
     /***************************************************************************
 

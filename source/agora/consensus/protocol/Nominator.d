@@ -327,9 +327,10 @@ extern(D):
 
     ***************************************************************************/
 
-    public bool receiveEnvelope (SCPEnvelope envelope) @trusted
+    public void receiveEnvelope (SCPEnvelope envelope) @trusted
     {
-        return this.scp.receiveEnvelope(envelope) == SCP.EnvelopeState.VALID;
+        if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
+            log.info("Rejected invalid envelope: {}", envelope);
     }
 
     extern (C++):
