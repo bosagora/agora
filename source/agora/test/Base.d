@@ -450,7 +450,7 @@ public interface TestAPI : API
     public abstract Enrollment createEnrollmentData();
 
     ///
-    public abstract PreimageInfo getPreimage (uint height);
+    public abstract void broadcastPreimage (uint height);
 
     ///
     public abstract void updateEnrolledHeight (Hash enroll_key, ulong height);
@@ -555,12 +555,12 @@ public class TestNode : Node, TestAPI
         return enroll;
     }
 
-    /// Get a node's own pre-image information used when revealing it
-    public override PreimageInfo getPreimage (uint height)
+    /// Broadcast a pre-image information to the network
+    public override void broadcastPreimage (uint height)
     {
         PreimageInfo preimage;
         this.enroll_man.getPreimage(height, preimage);
-        return preimage;
+        this.receivePreimage(preimage);
     }
 
     /// Set a enrolled height for the enrollment
