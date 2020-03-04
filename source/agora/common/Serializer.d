@@ -469,21 +469,18 @@ public T deserializeFull (T) (scope DeserializeDg dg,
     else static if (is(T : BitBlob!N, size_t N))
         return T(dg(T.Width));
 
-    // Array deserialization can be optimized in many occasions
+    // Validate strings as they are supposed to be UTF-8 encoded
     else static if (isNarrowString!T)
     {
         alias E = ElementEncodingType!T;
         size_t length = deserializeLength(dg, opts.maxLength);
         T process () @trusted
-        out (record)
         {
-            debug
-            {
-                import std.utf;
-                record.validate();
-            }
+            import std.utf;
+            auto record = cast(E[]) (dg(E.sizeof * length));
+            record.validate();
+            return record;
         }
-        do { return cast(E[]) (dg(E.sizeof * length)); }
         return process().dup;
     }
 
