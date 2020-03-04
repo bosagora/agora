@@ -21,6 +21,7 @@ import agora.common.Set;
 import agora.common.TransactionPool;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -101,22 +102,23 @@ public class Ledger
 
     /***************************************************************************
 
-        Called when a transaction set is externalized.
+        Called when a consensus data set is externalized.
 
         This will create a new block and add it to the ledger.
 
         Params:
-            txs = the transaction set which was externalized
+            data = the consensus data which was externalized
 
         Returns:
-            true if the transaction set was accepted
+            true if the consensus data was accepted
 
     ***************************************************************************/
 
-    public bool onTXSetExternalized (Set!Transaction txs) nothrow @trusted
+    public bool onExternalized (ConsensusData data)
+        nothrow @trusted
     {
         scope (failure) assert(0);
-        auto block = makeNewBlock(this.last_block, txs.byKey());
+        auto block = makeNewBlock(this.last_block, data.tx_set.byKey());
         return this.acceptBlock(block);
     }
 
@@ -236,9 +238,9 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void prepareNominatingSet (ref Set!Transaction txs) @safe
+    public void prepareNominatingSet (ref ConsensusData data) @safe
     {
-        assert(txs.length == 0);
+        assert(data.tx_set.length == 0);
 
         if (this.pool.length < Block.TxsInBlock)
             return;
@@ -246,43 +248,56 @@ public class Ledger
         const ulong next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
+        this.enroll_man.getUnregistered(data.enrolls);
+
         foreach (hash, tx; this.pool)
         {
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
-                txs.put(tx);
+                data.tx_set.put(tx);
 
-            if (txs.length >= Block.TxsInBlock)
+            if (data.tx_set.length >= Block.TxsInBlock)
                 return;
         }
 
         // not enough txs were found
-        () @trusted { txs.clear(); }();
+        () @trusted {
+            data = ConsensusData.init;
+        }();
     }
 
     /***************************************************************************
 
-        Check whether the transaction set is valid.
+        Check whether the consensus data is valid.
 
         Params:
-            txs = transaction set to validate
+            data = consensus data
 
         Returns:
             the error message if validation failed, otherwise null
 
     ***************************************************************************/
 
-    public string validateTxSet (Set!Transaction txs) nothrow @trusted
+    public string validateConsensusData (ConsensusData data) nothrow @trusted
     {
         scope (failure) assert(0);
         const ulong expect_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        foreach (tx; txs)
+        foreach (tx; data.tx_set)
         {
             if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height))
                 return fail_reason;
+        }
+
+        foreach (enroll; data.enrolls)
+        {
+            if (auto fail_reason = enroll.isInvalidEnrollmentReason(
+                expect_height, utxo_finder))
+            {
+                return fail_reason;
+            }
         }
 
         return null;
@@ -395,10 +410,10 @@ version (unittest)
 {
     private void forceCreateBlock (Ledger ledger)
     {
-        Set!Transaction txs;
-        ledger.prepareNominatingSet(txs);
-        assert(txs.length > 0);
-        assert(ledger.onTXSetExternalized(txs));
+        ConsensusData data;
+        ledger.prepareNominatingSet(data);
+        assert(data.tx_set.length > 0);
+        assert(ledger.onExternalized(data));
     }
 }
 
@@ -961,7 +976,7 @@ unittest
 
             if (is_valid)
             {
-		ledger.forceCreateBlock();
+                ledger.forceCreateBlock();
 
                 // keep track of last tx's to chain them to
                 last_txs_freeze = txes[$ - Block.TxsInBlock .. $];

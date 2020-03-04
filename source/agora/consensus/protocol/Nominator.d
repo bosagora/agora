@@ -20,6 +20,8 @@ import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Block;
+import agora.consensus.data.ConsensusData;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.network.NetworkClient;
 import agora.node.Ledger;
@@ -46,7 +48,7 @@ mixin AddLogger!();
 public extern (C++) class Nominator : SCPDriver
 {
     /// SCP instance
-    private SCP* scp;
+    protected SCP* scp;
 
     /// Key pair of this node
     private KeyPair key_pair;
@@ -153,15 +155,15 @@ extern(D):
         this.is_nominating = true;
         scope (exit) this.is_nominating = false;
 
-        Set!Transaction txs;
-        this.ledger.prepareNominatingSet(txs);
-        if (txs.length == 0)
+        ConsensusData data;
+        this.ledger.prepareNominatingSet(data);
+        if (data.tx_set.length == 0)
             return;  // not ready yet
 
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
         auto slot_idx = this.ledger.getBlockHeight() + 1;
-        this.nominateTransactionSet(slot_idx, Set!Transaction.init, txs);
+        this.nominate(slot_idx, data);
     }
 
     /***************************************************************************
@@ -237,22 +239,20 @@ extern(D):
 
     /***************************************************************************
 
-        Nominate a new transaction set to the quorum.
+        Nominate a new data set to the quorum.
         Failure to nominate is only logged.
 
         Params:
             slot_idx = the index of the slot to nominate for
-            prev = the transaction set of the previous slot
-            next = the proposed transaction set for the provided slot index
+            next = the proposed data set for the provided slot index
 
     ***************************************************************************/
 
-    private void nominateTransactionSet (ulong slot_idx, Set!Transaction prev,
-        Set!Transaction next) @trusted
+    private void nominate (ulong slot_idx, ConsensusData next) @trusted
     {
         log.info("{}(): Proposing tx set for slot {}", __FUNCTION__, slot_idx);
 
-        auto prev_value = prev.serializeFull().toVec();
+        auto prev_value = ConsensusData.init.serializeFull().toVec();
         auto next_value = next.serializeFull().toVec();
         if (this.scp.nominate(slot_idx, next_value, prev_value))
         {
@@ -369,10 +369,9 @@ extern(D):
 
         try
         {
-            auto tx_set = deserializeFull!(Set!Transaction)(
-                cast(ubyte[])value[]);
+            auto data = deserializeFull!ConsensusData(cast(ubyte[])value[]);
 
-            if (auto fail_reason = this.ledger.validateTxSet(tx_set))
+            if (auto fail_reason = this.ledger.validateConsensusData(data))
             {
                 log.error("validateValue(): Invalid tx set: {}", fail_reason);
                 return ValidationLevel.kInvalidValue;
@@ -410,13 +409,14 @@ extern(D):
         this.externalized_slots.put(slot_idx);
 
         auto bytes = cast(ubyte[])value[];
-        auto tx_set = deserializeFull!(Set!Transaction)(bytes);
+        auto data = deserializeFull!ConsensusData(bytes);
 
-        if (tx_set.length == 0)
+        // enrollment data may be empty, but not transaction set
+        if (data.tx_set.length == 0)
             assert(0, "Transaction set empty");
 
-        log.info("Externalized transaction set at {}: {}", slot_idx, tx_set);
-        if (!this.ledger.onTXSetExternalized(tx_set))
+        log.info("Externalized consensus data set at {}: {}", slot_idx, data);
+        if (!this.ledger.onExternalized(data))
             assert(0);
     }
 
@@ -490,12 +490,11 @@ extern(D):
 
         foreach (ref const(Value) candidate; candidates)
         {
-            auto tx_set = deserializeFull!(Set!Transaction)(
-                cast(ubyte[])candidate[]);
+            auto data = deserializeFull!ConsensusData(cast(ubyte[])candidate[]);
 
-            if (auto msg = this.ledger.validateTxSet(tx_set))
+            if (auto msg = this.ledger.validateConsensusData(data))
             {
-                log.error("combineCandidates(): Invalid tx set: {}", msg);
+                log.error("combineCandidates(): Invalid consensus data: {}", msg);
                 continue;
             }
             else
@@ -505,7 +504,7 @@ extern(D):
 
             // todo: currently we just pick the first of the candidate values,
             // but we should ideally pick tx's out of the combined set
-            return tx_set.serializeFull().toVec();
+            return data.serializeFull().toVec();
         }
 
         assert(0);  // should not reach here
