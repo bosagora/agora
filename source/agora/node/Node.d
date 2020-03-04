@@ -40,11 +40,17 @@ import agora.utils.PrettyPrinter;
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
+import vibe.core.core;
 import vibe.data.json;
-import vibe.web.rest : RestException;
+import vibe.http.router;
+import vibe.http.server;
+import vibe.web.rest;
+
+import ocean.util.log.Logger;
 
 import std.algorithm;
 import std.exception;
+import std.file;
 import std.path : buildPath;
 import std.range;
 
@@ -498,4 +504,37 @@ public class Node : API
     {
         return this.enroll_man.hasPreimage(enroll_key, height);
     }
+}
+
+
+/*******************************************************************************
+
+    Boots up a node that listen for network requests and blockchain data
+
+    This is called from the main or CLI.
+    The initialization process of the node is then completed.
+
+    Params:
+      config = A parsed and validated config file
+
+*******************************************************************************/
+
+public Node runNode (Config config)
+{
+    Log.root.level(config.logging.log_level, true);
+    log.trace("Config is: {}", config);
+
+    auto settings = new HTTPServerSettings(config.node.address);
+    settings.port = config.node.port;
+    auto router = new URLRouter();
+
+    mkdirRecurse(config.node.data_dir);
+
+    auto node = new Node(config);
+    router.registerRestInterface(node);
+    runTask({ node.start(); });
+
+    log.info("About to listen to HTTP: {}", settings.port);
+    listenHTTP(settings, router);
+    return node;
 }
