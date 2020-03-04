@@ -105,20 +105,4 @@ public interface API : agora.api.FullNode.API
     ***************************************************************************/
 
     public void receivePreimage (PreimageInfo preimage);
-
-    /***************************************************************************
-
-        Checks if a pre-image exists
-
-        Params:
-            enroll_key = The key for the enrollment in which the pre-image is
-                contained.
-            height = The block height of the preimage to check existence
-
-        Returns:
-            true if the pre-image exists
-
-    ***************************************************************************/
-
-    public bool hasPreimage (Hash enroll_key, ulong height);
 }
