@@ -76,12 +76,18 @@ unittest
     nodes.each!(node =>
         retryFor(node.hasEnrollment(enroll.utxo_key) == true, 5.seconds));
 
+    // check if nodes don't have a pre-image yet
+    nodes.each!(node =>
+        retryFor(node.getPreimage(enroll.utxo_key) == PreimageInfo.init,
+            5.seconds));
+
     // tests for revealing a pre-image
     node_1.broadcastPreimage(1000);
 
-    // check if nodes contains the pre-image previously sent.
+    // check if nodes have a pre-image previously sent
     nodes.each!(node =>
-        retryFor(node.hasPreimage(enroll.utxo_key, 999) == true, 5.seconds));
+        retryFor(node.getPreimage(enroll.utxo_key) != PreimageInfo.init,
+            5.seconds));
 }
 
 /// test for revealing a pre-image periodically
@@ -140,6 +146,11 @@ unittest
     // making block but now the code is not merged so calling it is needed.
     nodes.each!(node => node.updateEnrolledHeight(enroll.utxo_key, 1));
 
+    // check if nodes don't have a validator's pre-image yet
+    nodes.each!(node =>
+        retryFor(node.getPreimage(enroll.utxo_key) == PreimageInfo.init,
+            5.seconds));
+
     // make a block with height of 2
     Transaction[] txs2;
     foreach (idx; 0 .. Block.TxsInBlock)
@@ -163,6 +174,6 @@ unittest
     // check if nodes have a pre-image newly sent
     // during creating transactions for the new block
     nodes.each!(node =>
-        retryFor(node.hasPreimage(enroll.utxo_key,
-            EnrollmentManager.PreimageRevealPeriod + 2), 5.seconds));
+        retryFor(node.getPreimage(enroll.utxo_key) != PreimageInfo.init,
+            5.seconds));
 }

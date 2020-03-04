@@ -502,6 +502,14 @@ public class Node : API
     {
         return this.enroll_man.hasPreimage(enroll_key, height);
     }
+
+    /// GET: /get_preimage
+    public PreimageInfo getPreimage (Hash enroll_key)
+    {
+        PreimageInfo preimage;
+        this.enroll_man.getValidatorPreimage(enroll_key, preimage);
+        return preimage;
+    }
 }
 
 
