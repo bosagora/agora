@@ -23,7 +23,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.network.NetworkClient;
+import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
@@ -50,6 +50,9 @@ public extern (C++) class Nominator : SCPDriver
     /// SCP instance
     protected SCP* scp;
 
+    /// Network manager for gossiping SCPEnvelopes
+    private NetworkManager network;
+
     /// Key pair of this node
     private KeyPair key_pair;
 
@@ -58,9 +61,6 @@ public extern (C++) class Nominator : SCPDriver
 
     /// Ledger instance
     private Ledger ledger;
-
-    /// This node's quorum node clients
-    private NetworkClient[PublicKey] peers;
 
     /// The set of active timers
     /// Todo: SCPTests.cpp uses fake timers,
@@ -95,6 +95,7 @@ extern(D):
         Constructor
 
         Params:
+            network = the network manager for gossiping SCP messages
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
             taskman = used to run timers
@@ -102,9 +103,10 @@ extern(D):
 
     ***************************************************************************/
 
-    public this (KeyPair key_pair, Ledger ledger, TaskManager taskman,
-        ref const QuorumConfig config)
+    public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
+        TaskManager taskman, ref const QuorumConfig config)
     {
+        this.network = network;
         this.quorum_conf = config;
         this.key_pair = key_pair;
         auto node_id = NodeID(StellarHash(key_pair.address[]));
@@ -183,7 +185,6 @@ extern(D):
     {
         import scpd.scp.QuorumSetUtils;
 
-        import agora.network.NetworkClient;
         auto scp_quorum = toSCPQuorumSet(config);
         normalizeQSet(scp_quorum);
 
@@ -200,41 +201,6 @@ extern(D):
         }
 
         return scp_quorum;
-    }
-
-    /***************************************************************************
-
-        Set up the clients to which we'll be exchanging consensus messages with.
-
-        Params:
-            clients = the set of all clients we're networked with. A subset
-                      of the clients are in our quorum set, these will be
-                      the clients we exchange SCP messages with.
-
-    ***************************************************************************/
-
-    public void setupNetwork (NetworkClient[PublicKey] clients)
-    {
-        import std.algorithm;
-        import std.array;
-        import std.typecons;
-
-        void getNodes (in QuorumConfig conf, ref Set!PublicKey nodes)
-        {
-            foreach (node; conf.nodes)
-                nodes.put(node);
-
-            foreach (sub_conf; conf.quorums)
-                getNodes(sub_conf, nodes);
-        }
-
-        Set!PublicKey quorum_keys;
-        getNodes(this.quorum_conf, quorum_keys);
-
-        this.peers = clients.byKeyValue
-            .filter!(item => item.key in quorum_keys)
-            .map!(item => tuple(item.key, item.value))
-            .assocArray();
     }
 
     /***************************************************************************
@@ -452,15 +418,12 @@ extern(D):
     {
         try
         {
-            foreach (key, node; this.peers)
-            {
-                SCPEnvelope env = cast()envelope;
+            SCPEnvelope env = cast()envelope;
 
-                // deep-dup as SCP stores pointers to memory on the stack
-                env.statement.pledges = SCPStatement._pledges_t.fromString(
-                    env.statement.pledges.toString());
-                node.sendEnvelope(env);
-            }
+            // deep-dup as SCP stores pointers to memory on the stack
+            env.statement.pledges = SCPStatement._pledges_t.fromString(
+                env.statement.pledges.toString());
+            this.network.gossipEnvelope(env);
         }
         catch (Exception ex)
         {
