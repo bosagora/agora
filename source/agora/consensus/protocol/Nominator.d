@@ -220,7 +220,10 @@ extern(D):
         void getNodes (in QuorumConfig conf, ref Set!PublicKey nodes)
         {
             foreach (node; conf.nodes)
-                nodes.put(node);
+            {
+                if (node != this.key_pair.address)  // filter ourselves
+                    nodes.put(node);
+            }
 
             foreach (sub_conf; conf.quorums)
                 getNodes(sub_conf, nodes);
