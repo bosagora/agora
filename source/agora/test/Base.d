@@ -396,8 +396,12 @@ public class TestNetworkManager : NetworkManager
     {
         this.registry = reg;
         super(config, ban_conf, peers, dns_seeds, metadata, taskman);
-        // NetworkManager assumes IP are used but we use pubkey
-        this.banman.banUntil(config.key_pair.address.toString(), time_t.max);
+    }
+
+    /// We don't use IPs in tests
+    protected final override string getAddress ()
+    {
+        return this.node_config.key_pair.address.toString();
     }
 
     ///

@@ -57,7 +57,7 @@ mixin AddLogger!();
 public class NetworkManager
 {
     /// Config instance
-    private const NodeConfig node_config = NodeConfig.init;
+    protected const NodeConfig node_config = NodeConfig.init;
 
     /// Task manager
     private TaskManager taskman;
@@ -103,6 +103,20 @@ public class NetworkManager
 
     /***************************************************************************
 
+        Returns:
+            the address of this node (can be overriden in unittests)
+
+    ***************************************************************************/
+
+    protected string getAddress ()
+    {
+        // allocates, called infrequently though
+        return format("http://%s:%s", this.node_config.address,
+            this.node_config.port);
+    }
+
+    /***************************************************************************
+
         Discover the network.
 
         Go through the list of peers in the node configuration,
@@ -116,10 +130,9 @@ public class NetworkManager
     {
         this.banman.load();
 
-        // add our own IP to the list of banned IPs to avoid
+        // add our own address to the list of banned addresses to avoid
         // the node communicating with itself
-        this.banman.banUntil(format("http://%s:%s", this.node_config.address,
-            this.node_config.port), time_t.max);
+        this.banman.banUntil(this.getAddress(), time_t.max);
 
         assert(this.metadata !is null, "Metadata is null");
         this.metadata.load();
