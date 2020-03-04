@@ -203,7 +203,7 @@ public class Node : API
         if (this.ledger.acceptTransaction(tx))
         {
             // gossip first
-            this.network.sendTransaction(tx);
+            this.network.gossipTransaction(tx);
 
             // then nominate
             if (this.config.node.is_validator)
