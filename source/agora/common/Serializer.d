@@ -428,7 +428,7 @@ public size_t deserializeLength (
         T = Type of data to deserialize
         data = Binary serialized representation of `T` to be deserialized
         dg   = Delegate to read binary data for deserialization
-        compact = Whether integers are serialized in variable-length form
+        opts = Deserialization options (see the type's documentation for a list)
 
     Returns:
         The deserialized data type
