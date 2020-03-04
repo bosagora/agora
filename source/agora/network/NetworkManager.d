@@ -322,7 +322,13 @@ public class NetworkManager
             try
             {
                 node.handshake();
-                this.onNodeConnected(node);
+                this.connecting_addresses.remove(node.address);
+                if (this.peerLimitReached())
+                    return;
+
+                log.info("Established new connection with peer: {}", node.key);
+                this.peers[node.key] = node;
+                this.metadata.peers.put(node.address);
                 break;
             }
             catch (Exception ex)
@@ -371,18 +377,6 @@ public class NetworkManager
                 }
             }
         }
-    }
-
-    private void onNodeConnected (NetworkClient node)
-    {
-        this.connecting_addresses.remove(node.address);
-
-        if (this.peerLimitReached())
-            return;
-
-        log.info("Established new connection with peer: {}", node.key);
-        this.peers[node.key] = node;
-        this.metadata.peers.put(node.address);
     }
 
     /// Received new set of addresses, put them in the todo & known IP list
