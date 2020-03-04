@@ -38,6 +38,8 @@ import agora.network.NetworkClient;
 import agora.node.Ledger;
 import agora.utils.Log;
 
+import scpd.types.Stellar_SCP;
+
 import vibe.web.rest;
 
 import std.algorithm;
@@ -101,15 +103,16 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Try to discover the network until we found
-        all the validator nodes from our quorum set.
+        Discover the network.
 
-        Returns:
-            the map of public key => validator node client
+        Go through the list of peers in the node configuration,
+        connect to all of the validators (if we're a validator node),
+        and keep discovering more full nodes nodes in the network
+        until maxPeersConnected() returns true.
 
     ***************************************************************************/
 
-    public NetworkClient[PublicKey] discover ()
+    public void discover ()
     {
         this.banman.load();
 
@@ -158,8 +161,6 @@ public class NetworkManager
                 this.taskman.wait(this.node_config.retry_delay.msecs);
             }
         });
-
-        return this.peers;
     }
 
     /***************************************************************************
@@ -498,6 +499,29 @@ public class NetworkManager
             }
 
             node.sendTransaction(tx);
+        }
+    }
+
+    /***************************************************************************
+
+        Gossips the SCPEnvelope to the network of connected validators.
+
+        Params:
+            envelope = the SCPEnvelope to gossip to the network.
+
+    ***************************************************************************/
+
+    public void gossipEnvelope (SCPEnvelope envelope)
+    {
+        foreach (ref node; this.peers)
+        {
+            if (this.banman.isBanned(node.address))
+            {
+                log.trace("Not sending to {} as it's banned", node.address);
+                continue;
+            }
+
+            node.sendEnvelope(envelope);
         }
     }
 
