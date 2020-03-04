@@ -380,6 +380,18 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
             entry.serializePart(dg);
     }
 
+    // Pointers are handled as arrays, only their size must be 0 or 1
+    else static if (is(T : E*, E))
+    {
+        if (record is null)
+            toVarInt(uint(0), dg);
+        else
+        {
+            toVarInt(uint(1), dg);
+            serializePart(*record, dg);
+        }
+    }
+
     // Unsigned integer may be encoded (e.g. sizes)
     // However `ubyte` doesn't need binary encoding since they it already is the
     // smallest possible size
@@ -540,6 +552,18 @@ public T deserializeFull (T) (scope DeserializeDg dg,
         return iota(length).map!(_ => dg.deserializeFull!(ElementType!T)(opts)).array();
     }
 
+    // Pointers are handled as arrays, only their size must be 0 or 1
+    else static if (is(T : E*, E))
+    {
+        if (ubyte len = deserializeFull!ubyte(dg, opts))
+        {
+            if (len != 1)
+                throw new Exception(format("Pointer expected to have length of 0 or 1, got: %d", len));
+            return &[ deserializeFull!(typeof(T.init[0]))(dg, opts) ][0];
+        }
+        return T.init;
+    }
+
     // Enum deserialize as their base type
     else static if (is(T == enum))
     {
@@ -633,6 +657,34 @@ unittest
     bomb[0] = 0xFD;
     bomb[1 .. 3] = (cast(ubyte*)&length)[0 .. ushort.sizeof];
     assertThrown!(Exception)(deserializeFull!Bomb(bomb));
+}
+
+// Test for pointers
+unittest
+{
+    import agora.consensus.data.Block;
+    import agora.consensus.Genesis;
+
+    static struct OptionalHash
+    {
+        uint a;
+        const(Block)* perhaps;
+        string name;
+
+        // Need those for `testSymmetry`, other it compares pointer values
+        public bool opEquals (ref const OptionalHash o) const
+            pure @nogc nothrow @safe
+        {
+            return this.a == o.a &&
+                !(!!this.perhaps ^ !!o.perhaps) &&
+                (this.perhaps is null || *this.perhaps == *o.perhaps) &&
+                this.name == o.name;
+        }
+    }
+
+    testSymmetry!OptionalHash();
+    testSymmetry(OptionalHash(42, &GenesisBlock, "Baguettes are good"));
+    testSymmetry(OptionalHash(24, null, "Good, Baguettes are"));
 }
 
 /*******************************************************************************
