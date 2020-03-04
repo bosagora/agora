@@ -43,7 +43,7 @@
             "name": "server",
             "targetName": "agora",
             "mainSourceFile": "source/agora/node/main.d",
-            "excludedSourceFiles": [ "source/agora/cli/client/*" ]
+            "excludedSourceFiles": ["source/agora/cli/*/*"]
         },
         {
             "name": "client",
@@ -56,16 +56,26 @@
                 "source/agora/node/*",
                 "source/scpp/*",
                 "source/scpd/*",
-                "source/agora/consensus/protocol/*"
+                "source/agora/consensus/protocol/*",
+                "source/agora/cli/multi/*"
             ]
         },
         {
             "name": "unittest",
             "targetName": "agora-unittests",
-            "excludedSourceFiles": [ "source/agora/cli/client/main.d" ],
+            "excludedSourceFiles": ["source/agora/cli/*/main.d"],
             "sourceFiles": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o"
+            ]
+        },
+        {
+            "name": "multi",
+            "targetName": "agora-multi",
+            "mainSourceFile": "source/agora/cli/multi/main.d",
+            "excludedSourceFiles": [
+                "source/agora/cli/client/*",
+                "source/agora/node/main.d"
             ]
         }
     ],
