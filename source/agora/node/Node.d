@@ -497,12 +497,6 @@ public class Node : API
             this.network.sendPreimage(preimage);
     }
 
-    /// GET: /has_preimage
-    public bool hasPreimage (Hash enroll_key, ulong height)
-    {
-        return this.enroll_man.hasPreimage(enroll_key, height);
-    }
-
     /// GET: /get_preimage
     public PreimageInfo getPreimage (Hash enroll_key)
     {
