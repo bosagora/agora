@@ -19,18 +19,12 @@
 module agora.node.main;
 
 import agora.common.Config;
-import agora.network.NetworkManager;
 import agora.node.Node;
 import agora.utils.Log;
 
 import vibe.core.core;
-import vibe.http.router;
-import vibe.http.server;
-import vibe.web.rest;
-
 import ocean.util.log.Logger;
 
-import std.file;
 import std.getopt;
 import std.stdio;
 
@@ -87,36 +81,4 @@ private int main (string[] args)
 
     scope(exit) if (node !is null) node.shutdown();
     return runEventLoop();
-}
-
-/*******************************************************************************
-
-    Boots up a node that listen for network requests and blockchain data
-
-    This is called either directly from main, or after the initialization
-    process is complete.
-
-    Params:
-      config = A parsed and validated config file
-
-*******************************************************************************/
-
-private Node runNode (Config config)
-{
-    Log.root.level(config.logging.log_level, true);
-    log.trace("Config is: {}", config);
-
-    auto settings = new HTTPServerSettings(config.node.address);
-    settings.port = config.node.port;
-    auto router = new URLRouter();
-
-    mkdirRecurse(config.node.data_dir);
-
-    auto node = new Node(config);
-    router.registerRestInterface(node);
-    runTask({ node.start(); });
-
-    log.info("About to listen to HTTP: {}", settings.port);
-    listenHTTP(settings, router);
-    return node;
 }
