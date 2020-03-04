@@ -480,14 +480,14 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Sends the transaction to all the listeners.
+        Gossips the transaction to all the listeners.
 
         Params:
-            tx = the transaction to send
+            tx = the transaction to gossip
 
     ***************************************************************************/
 
-    public void sendTransaction (Transaction tx) @safe
+    public void gossipTransaction (Transaction tx) @safe
     {
         foreach (ref node; this.peers)
         {
