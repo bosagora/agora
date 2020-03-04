@@ -95,12 +95,8 @@ unittest
 
     auto send_txs = txs[0 .. $ - 1];  // 1 short of making a block (don't start consensus)
     send_txs.each!(tx => node_1.putTransaction(tx));
-    nodes[0 .. $ - 1].each!(node =>
+    nodes.each!(node =>
        send_txs.each!(tx =>
            node.hasTransactionHash(hashFull(tx)).retryFor(3.seconds)
     ));
-
-    // outsider node doesn't have the txs, it's not part of the network
-    send_txs.each!(tx =>
-       (!nodes[$ - 1].hasTransactionHash(hashFull(tx))).retryFor(3.seconds));
 }

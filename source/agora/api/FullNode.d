@@ -69,6 +69,22 @@ public interface API
 {
 // The REST generator requires @safe methods
 @safe:
+
+    /***************************************************************************
+
+        Register the given address to listen for gossiping messages.
+
+        Params:
+            address = the address of the node to register
+
+        API:
+            GET /register_listener
+
+    ***************************************************************************/
+
+    @method(HTTPMethod.PUT)
+    public void registerListener (Address address);
+
     /***************************************************************************
 
         Returns:

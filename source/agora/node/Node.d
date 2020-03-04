@@ -168,6 +168,12 @@ public class Node : API
         this.enroll_man = null;
     }
 
+    /// PUT /register_listener
+    public override void registerListener (Address address) @trusted
+    {
+        this.network.registerListener(address);
+    }
+
     /// GET /public_key
     public override PublicKey getPublicKey () pure nothrow @safe @nogc
     {

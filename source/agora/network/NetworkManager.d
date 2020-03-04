@@ -103,6 +103,29 @@ public class NetworkManager
 
     /***************************************************************************
 
+        Register the given address as a listener for gossip / consensus messages.
+
+        This adds the given address to the connecting queue, but does not
+        immediately connect to it. Addresses are currently handled in the
+        start() loop, which will exit as soon as 'min_listeners' are reached.
+
+        Params:
+            address = the address of node to register
+
+    ***************************************************************************/
+
+    public void registerListener (Address address)
+    {
+        // make a note of it
+        this.known_addresses.put(address);
+
+        // not connecting? connect later
+        if (address !in this.connecting_addresses)
+            this.todo_addresses.put(address);
+    }
+
+    /***************************************************************************
+
         Returns:
             the address of this node (can be overriden in unittests)
 
@@ -352,6 +375,11 @@ public class NetworkManager
                     return;
 
                 log.info("Established new connection with peer: {}", node.key);
+
+                // only if it's a trusted node, we also want to receive gossiping
+                if (!is_incoming)
+                    node.registerListener(this.getAddress());
+
                 this.peers[node.key] = node;
                 this.metadata.peers.put(node.address);
                 break;

@@ -109,6 +109,24 @@ class NetworkClient
 
     /***************************************************************************
 
+        Register the given address as this node's listener
+
+        Params:
+            address = the address to register
+
+        Throws:
+            `Exception` if the request failed.
+
+    ***************************************************************************/
+
+    public void registerListener (Address address)
+    {
+        return this.attemptRequest(this.api.registerListener(address),
+            this.exception);
+    }
+
+    /***************************************************************************
+
         Get the network info of the node, stored in the
         `net_info` parameter if the request succeeded.
 
