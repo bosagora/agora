@@ -25,42 +25,28 @@ import agora.utils.PrettyPrinter;
 import vibe.web.rest;
 
 import std.algorithm;
+import std.exception;
 import std.stdio;
 import core.thread;
 import core.time;
 
-/// Helper struct
-private struct Address
-{
-    ///
-    string host;
-    ///
-    ushort port;
 
-    /// Helper function to call make the address vibe.inet.URL friendly
-    public string withSchema () const @safe
+int main (string[] args)
+{
+    if (args.length < 2)
     {
-        import std.format;
-        return format("http://%s:%d", this.host, this.port);
+        writeln("You must enter addresses of the nodes to connect to.");
+        writeln("   ex) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...");
+        return 1;
     }
-}
 
-/// Node addresses
-private immutable Address[] Addrs = [
-    { host: "127.0.0.1", port: 4000, },
-    { host: "127.0.0.1", port: 4001, },
-    { host: "127.0.0.1", port: 4002, },
-];
+    /// Address array of nodes
+    const addresses = args[1..$];
 
-/// Test node count
-private immutable uint NodeCnt = 3;
-
-void main ()
-{
     {
-        API[NodeCnt] clients;
-        foreach (idx, const ref addr; Addrs)
-            clients[idx] = new RestInterfaceClient!API(addr.withSchema());
+        API[] clients;
+        foreach (const ref addr; addresses)
+            clients ~= new RestInterfaceClient!API(addr);
 
         foreach (idx, ref client; clients)
         {
@@ -86,19 +72,20 @@ void main ()
             clients[0].putTransaction(tx);
         }
 
-        checkBlockHeight(1);
+        checkBlockHeight(addresses, 1);
     }
 
+    return 0;
 }
 
 /// Check block generation
-private void checkBlockHeight (ulong height)
+private void checkBlockHeight (const string[] addresses, ulong height)
 {
     // TODO: This is a hack because of issue #312
     // https://github.com/bpfkorea/agora/issues/312
-    API[NodeCnt] clients;
-    foreach (idx, const ref addr; Addrs)
-        clients[idx] = new RestInterfaceClient!API(addr.withSchema());
+    API[] clients;
+    foreach (const ref addr; addresses)
+        clients ~= new RestInterfaceClient!API(addr);
 
     Hash blockHash;
     size_t times; // Number of times we slept for 50 msecs
