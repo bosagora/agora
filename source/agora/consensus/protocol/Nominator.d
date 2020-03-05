@@ -373,8 +373,8 @@ extern(D):
 
             if (auto fail_reason = this.ledger.validateConsensusData(data))
             {
-                log.error("validateValue(): Invalid tx set: {}. Reason: {}",
-                    tx_set, fail_reason);
+                log.error("validateValue(): Validation failed: {}. Data: {}",
+                    fail_reason, data);
                 return ValidationLevel.kInvalidValue;
             }
         }
