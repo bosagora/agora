@@ -374,7 +374,8 @@ extern(D):
 
             if (auto fail_reason = this.ledger.validateTxSet(tx_set))
             {
-                log.error("validateValue(): Invalid tx set: {}", fail_reason);
+                log.error("validateValue(): Invalid tx set: {}. Reason: {}",
+                    tx_set, fail_reason);
                 return ValidationLevel.kInvalidValue;
             }
         }
