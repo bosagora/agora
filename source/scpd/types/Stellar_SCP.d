@@ -93,7 +93,7 @@ struct SCPStatement {
         //using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
         //private:
         //_xdr_case_type type_;
-        int32_t type_;
+        SCPStatementType type_;
         union {
             _prepare_t prepare_;
             _confirm_t confirm_;
@@ -104,7 +104,7 @@ struct SCPStatement {
         /// Support (de)serialization from Vibe.d
         extern(D) string toString () const @trusted
         {
-            switch (this.type_)
+            final switch (this.type_)
             {
             case SCPStatementType.SCP_ST_PREPARE:
                 return "0" ~ serializeToJsonString(this.prepare_);
@@ -114,8 +114,6 @@ struct SCPStatement {
                 return "2" ~ serializeToJsonString(this.externalize_);
             case SCPStatementType.SCP_ST_NOMINATE:
                 return "3" ~ serializeToJsonString(this.nominate_);
-            default:
-                assert(0);
             }
         }
 
