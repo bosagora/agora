@@ -381,9 +381,8 @@ extern(D):
         }
         catch (Exception ex)
         {
-            log.error("{}: Received invalid tx set. Error: {}",
-                __FUNCTION__, ex.message);
-
+            log.error("validateValue(): Received un-deserializable tx set. " ~
+                "Error: {}", ex.message);
             return ValidationLevel.kInvalidValue;
         }
 
