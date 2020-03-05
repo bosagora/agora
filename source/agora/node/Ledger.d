@@ -23,6 +23,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.BlockStorage;
@@ -49,6 +50,9 @@ public class Ledger
     /// UTXO set
     private UTXOSet utxo_set;
 
+    /// Enrollment manager
+    private EnrollmentManager enroll_man;
+
     /// Node config
     private NodeConfig node_config;
 
@@ -60,17 +64,21 @@ public class Ledger
             pool = the transaction pool
             utxo_set = the set of unspent outputs
             storage = the block storage
+            enroll_man = the enrollmentManager
+            node_config = the node config
 
     ***************************************************************************/
 
     public this (TransactionPool pool,
         UTXOSet utxo_set,
         IBlockStorage storage,
+        EnrollmentManager enroll_man,
         NodeConfig node_config)
     {
         this.pool = pool;
         this.utxo_set = utxo_set;
         this.storage = storage;
+        this.enroll_man = enroll_man;
         this.node_config = node_config;
         if (!this.storage.load())
             assert(0);
@@ -401,20 +409,23 @@ unittest
     import agora.common.Types;
     import agora.common.Hash;
 
+    auto gen_key_pair = getGenesisKeyPair();
+
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(0).take(10);
     assert(blocks[$ - 1] == GenesisBlock);
 
-    auto gen_key_pair = getGenesisKeyPair();
     Transaction[] last_txs;
 
     // generate enough transactions to form a block
@@ -487,17 +498,20 @@ unittest
 {
     import agora.common.crypto.Key;
 
+    auto gen_key_pair = getGenesisKeyPair();
+
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
     // Valid case
-    auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
     foreach (ref tx; txs)
     {
@@ -534,19 +548,22 @@ unittest
     import agora.common.Types;
     import agora.common.Hash;
 
+    auto gen_key_pair = getGenesisKeyPair();
+
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
 
-    auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
 
     auto valid_block = makeNewBlock(GenesisBlock, txs);
@@ -558,16 +575,19 @@ unittest
 {
     import agora.common.crypto.Key;
 
+    auto gen_key_pair = getGenesisKeyPair();
+
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
-    auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
@@ -641,8 +661,10 @@ unittest
     auto utxo_set = new UTXOSet(":memory:");
     scope (exit) utxo_set.shutdown();
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
     assert(utxo_set.length == 8);
     auto finder = utxo_set.getUTXOFinder();
@@ -737,6 +759,8 @@ unittest
     import agora.common.Hash;
     import agora.common.Types;
 
+    auto gen_key_pair = getGenesisKeyPair();
+
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
@@ -745,8 +769,10 @@ unittest
     scope (exit) utxo_set.shutdown();
 
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
     KeyPair[] in_key_pairs;
     KeyPair[] out_key_pairs;
@@ -835,6 +861,8 @@ unittest
     import agora.common.Hash;
     import agora.common.Types;
 
+    auto gen_key_pair = getGenesisKeyPair();
+
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     scope(exit) pool.shutdown();
@@ -843,8 +871,10 @@ unittest
     scope (exit) utxo_set.shutdown();
 
     auto config = new Config();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
     KeyPair[] splited_keys = getRandomKeyPairs();
 

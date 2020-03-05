@@ -117,9 +117,9 @@ public class Node : API
         scope (failure) this.pool.shutdown();
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         scope (failure) this.utxo_set.shutdown();
-        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, config.node);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
         scope (failure) this.enroll_man.shutdown();
+        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, this.enroll_man, config.node);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 
