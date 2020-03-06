@@ -67,9 +67,6 @@ public extern (C++) class Nominator : SCPDriver
     /// Similar to how we use FakeClockBanManager!
     private Set!ulong timers;
 
-    /// The set of externalized slot indices
-    private Set!uint64_t externalized_slots;
-
     /// The quorum set
     private SCPQuorumSetPtr[StellarHash] quorum_set;
 
@@ -371,9 +368,8 @@ extern(D):
     {
         scope (failure) assert(0);
 
-        if (slot_idx in this.externalized_slots)
+        if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
-        this.externalized_slots.put(slot_idx);
 
         auto bytes = cast(ubyte[])value[];
         auto data = deserializeFull!ConsensusData(bytes);
