@@ -52,7 +52,7 @@ public auto prettify (T) (const ref T input) nothrow
     else static if (is(T : const Hash))
         return HashFmt(input);
     else static if (is(T : const PublicKey))
-        return PublicKeyFmt(input);
+        return PubKeyFmt(input);
     else static if (is(T : const Input))
         return InputFmt(input);
     else static if (is(T : const Output))
@@ -149,53 +149,6 @@ private struct HashFmt
         "0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
         ~ "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
     assert(format("%s", HashFmt(SomeHash)) == "0x0000...e26f");
-}
-
-/// Formatting struct for `PublicKey`
-private struct PublicKeyFmt
-{
-    private const(PublicKey) value;
-
-    public this (ref const PublicKey r) @safe nothrow
-    {
-        this.value = r;
-    }
-
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
-    {
-        try
-        {
-            // e.g. GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW
-            enum StringBufferSize = 56;
-            enum StartUntil = 4;  // Only format `ABCD..EFGH`
-            enum EndFrom    = StringBufferSize - 4;
-            size_t count;
-            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
-                    if (count < StartUntil)
-                    {
-                        sink(data);
-                        if (count + data.length >= StartUntil)
-                            sink("...");
-                    }
-                    if (count >= EndFrom)
-                        sink(data);
-                    count += data.length;
-                };
-            this.value.toString(wrapper);
-        }
-        catch (Exception ex)
-        {
-            assert(0, ex.msg);
-        }
-    }
-}
-
-@safe unittest
-{
-    static immutable PublicKey SomeKey =
-        PublicKey.fromString(
-            "GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW");
-    assert(format("%s", PublicKeyFmt(SomeKey)) == "GDD5...LQFW");
 }
 
 /// Formatting struct for `PublicKey`
