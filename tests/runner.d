@@ -70,11 +70,20 @@ private string[] getImportPaths ()
 /// Get the linker flags from dub
 private string[] getLflags ()
 {
-    auto pp = pipeProcess(["dub", "--root=" ~ RootPath, "describe", "--data=lflags", "--data-list"]);
-    if (pp.pid.wait() != 0)
+    /// TODO: Those flags need to be hardcoded because of DUB issue
+    /// https://github.com/dlang/dub/issues/1032
+    version (none)
     {
-        pp.stderr.byLine.each!(a => writeln("[fatal]\t", a));
-        return null;
+        auto pp = pipeProcess(["dub", "--root=" ~ RootPath, "describe", "--data=lflags", "--data-list"]);
+        if (pp.pid.wait() != 0)
+        {
+            pp.stderr.byLine.each!(a => writeln("[fatal]\t", a));
+            return null;
+        }
+        return pp.stdout.byLineCopy.array;
     }
-    return pp.stdout.byLineCopy.array;
+    else
+    {
+        return [ "-lsodium" ];
+    }
 }

@@ -39,7 +39,7 @@
     ],
 
     "dflags": [ "-extern-std=c++14" ],
-    "lflags": [ "-lsodium", "-lstdc++", "-lsqlite3" ],
+    "lflags": [ "-lstdc++", "-lsqlite3" ],
     "buildRequirements": [ "allowWarnings" ],
 
     "configurations": [
