@@ -2,34 +2,12 @@
     "name": "systemtest-simple",
     "targetType": "executable",
     "targetPath": "build",
+    "dflags": [ "-i" ],
     "lflags": [ "-lsodium" ],
     "importPaths": [
         "../../source",
         "../../submodules/d2sqlite3/source",
     ],
-
-    "sourceFiles": [
-        "../../source/agora/api/FullNode.d",
-        "../../source/agora/common/crypto/Crc16.d",
-        "../../source/agora/common/crypto/ECC.d",
-        "../../source/agora/common/crypto/Key.d",
-        "../../source/agora/common/crypto/Schnorr.d",
-        "../../source/agora/common/Amount.d",
-        "../../source/agora/common/BitField.d",
-        "../../source/agora/common/Hash.d",
-        "../../source/agora/common/Serializer.d",
-        "../../source/agora/common/Set.d",
-        "../../source/agora/common/Types.d",
-        "../../source/agora/consensus/data/Block.d",
-        "../../source/agora/consensus/data/Enrollment.d",
-        "../../source/agora/consensus/data/Transaction.d",
-        "../../source/agora/consensus/data/UTXOSet.d",
-        "../../source/agora/consensus/Validation.d",
-        "../../source/agora/consensus/Genesis.d",
-        "../../source/agora/utils/Log.d",
-        "../../source/agora/utils/PrettyPrinter.d"
-    ],
-    "excludedSourceFiles": [ "source/scpp/*.d" ],
 
     "dependencies": {
         "base32":           { "path": "../../submodules/base32/", "version": "*" },
