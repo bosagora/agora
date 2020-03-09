@@ -300,6 +300,9 @@ extern(D):
             return;  // slot was already externalized, ignore outdated message
         }
 
+        import core.thread;
+        Thread.sleep(500.msecs);
+
         if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
             log.info("Rejected invalid envelope: {}", envelope);
     }
