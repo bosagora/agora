@@ -11,7 +11,7 @@
     "targetType": "executable",
     "targetPath": "build",
     "excludedSourceFiles": [ "source/scpp/*.d" ],
-    "preBuildCommands": [ "source/scpp/build.d" ],
+    "preGenerateCommands": [ "source/scpp/build.d" ],
     "sourceFiles": [
         "source/scpp/build/BallotProtocol.o",
         "source/scpp/build/DUtils.o",
