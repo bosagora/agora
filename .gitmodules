@@ -19,9 +19,6 @@
 [submodule "localrest"]
 	path = submodules/localrest
 	url = https://github.com/Geod24/localrest.git
-[submodule "memutils"]
-	path = submodules/memutils
-	url = https://github.com/etcimon/memutils.git
 [submodule "mir-linux-kernel"]
 	path = submodules/mir-linux-kernel
 	url = https://github.com/libmir/mir-linux-kernel.git
