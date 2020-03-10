@@ -13,7 +13,6 @@
 		"libevent": { "path": "submodules/libevent/" },
 		"libsodiumd": { "path": "submodules/libsodiumd/" },
 		"localrest": { "path": "submodules/localrest/" },
-		"memutils": { "path": "submodules/memutils/" },
 		"mir-linux-kernel": { "path": "submodules/mir-linux-kernel/" },
 		"openssl": { "path": "submodules/openssl/" },
 		"protobuf": { "path": "submodules/protobuf-d/" },
