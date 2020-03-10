@@ -69,3 +69,38 @@ unittest
         txs.each!(tx =>
             (!node.hasTransactionHash(hashFull(tx))).retryFor(2.seconds)));
 }
+
+/// test gossiping behavior for an outsider node
+unittest
+{
+    import std.algorithm;
+    import std.conv;
+    import std.format;
+    import std.range;
+    import core.time;
+
+    // node #5 is the outsider, so actually 5 total nodes
+    TestConf conf = { nodes : 4, max_listeners : 5,
+        topology : NetworkTopology.OneOutsider };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+
+    auto send_txs = txs[0 .. $ - 1];  // 1 short of making a block (don't start consensus)
+    send_txs.each!(tx => node_1.putTransaction(tx));
+    nodes[0 .. $ - 1].each!(node =>
+       send_txs.each!(tx =>
+           node.hasTransactionHash(hashFull(tx)).retryFor(3.seconds)
+    ));
+
+    // outsider node doesn't have the txs, it's not part of the network
+    send_txs.each!(tx =>
+       (!nodes[$ - 1].hasTransactionHash(hashFull(tx))).retryFor(3.seconds));
+}

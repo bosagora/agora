@@ -582,6 +582,9 @@ public enum NetworkTopology
     /// Only one of the nodes is a validator, the rest are full nodes
     OneValidator,
 
+    /// One node is not part of the network for any other nodes
+    OneOutsider,
+
     /// 4 nodes, 3 required, correspond to Figure 2 in the SCP paper
     Balanced,
 
@@ -757,6 +760,16 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         node_configs[0].is_validator = true;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+        break;
+
+    case NetworkTopology.OneOutsider:
+        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        configs = iota(test_conf.nodes)
+            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+
+        // add one non-validator outside the network
+        node_configs ~= makeNodeConfig(false);
+        configs ~= makeConfig(node_configs[$ - 1], node_configs);
         break;
 
     case NetworkTopology.Cyclic:
