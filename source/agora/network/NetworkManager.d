@@ -313,8 +313,20 @@ public class NetworkManager
         this.metadata.dump();
     }
 
-    /// Attempt connecting with the given address
-    private void tryConnecting (Address address)
+    /***************************************************************************
+
+        Attempt connecting with the given address.
+
+        If this is an incoming connection, we will not attemp to do network
+        discovery through this connection since it's likely untrusted.
+
+        Params:
+            address = the address to connect to
+            is_incoming = whether this is an incoming connection
+
+    ***************************************************************************/
+
+    private void tryConnecting (Address address, bool is_incoming)
     {
         // banned address, try later
         if (this.banman.isBanned(address))
@@ -357,6 +369,9 @@ public class NetworkManager
                 }
             }
         }
+
+        if (is_incoming)
+            return;  // don't do network discovery on incoming connections
 
         // keep asynchronously polling for complete network info,
         // until complete peer info is returned, or we've
@@ -430,7 +445,7 @@ public class NetworkManager
                 address !in this.connecting_addresses)
             {
                 this.connecting_addresses.put(address);
-                this.taskman.runTask(() { this.tryConnecting(address); });
+                this.taskman.runTask(() { this.tryConnecting(address, false); });
             }
         }
     }
