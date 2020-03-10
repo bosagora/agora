@@ -95,19 +95,14 @@ class NetworkClient
 
     /***************************************************************************
 
-        Handshake with the node.
-
-        Currently only the node's public key is retrieved,
-        later version checks should be added here.
-
-        Note that it is currently blocking until handshake is considered complete.
+        Get the node's public key.
 
         Throws:
-            Exception if the handshake did not complete.
+            `Exception` if the request failed.
 
     ***************************************************************************/
 
-    public void handshake ()
+    public void getPublicKey ()
     {
         this.key = this.attemptRequest(this.api.getPublicKey(), this.exception);
     }

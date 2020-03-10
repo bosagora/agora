@@ -334,7 +334,7 @@ public class NetworkManager
         {
             try
             {
-                node.handshake();
+                node.getPublicKey();
                 this.connecting_addresses.remove(node.address);
                 if (this.peerLimitReached())
                     return;
@@ -351,7 +351,7 @@ public class NetworkManager
                 {
                     this.connecting_addresses.remove(node.address);
                     this.todo_addresses.put(node.address);  // try later
-                    log.info("Handshake with node {} failed: {}. Node banned until {}",
+                    log.info("Couldn't get public key of node {}: {}. Node banned until {}",
                         node.address, ex.message, this.banman.getUnbanTime(node.address));
                     return;
                 }
