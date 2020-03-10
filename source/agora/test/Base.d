@@ -619,6 +619,9 @@ public struct TestConf
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
 
+    /// max listener nodes. If set to 0, set to this.nodes - 1
+    size_t max_listeners;
+
     /// The threshold. If not set, it will default to the number of nodes
     size_t threshold;
 }
@@ -669,7 +672,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
             min_listeners : test_conf.nodes - 1,
-            max_listeners : test_conf.nodes - 1,
+            max_listeners : (test_conf.max_listeners == 0)
+                ? test_conf.nodes - 1 : test_conf.max_listeners
         };
 
         return conf;
