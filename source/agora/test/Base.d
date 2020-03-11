@@ -576,6 +576,10 @@ public enum NetworkTopology
     /// A number of nodes which all know about each other. Figure 9 in the SCP paper.
     Simple,
 
+    /// Set a minimal networking config, the node should use network discovery
+    /// to connect to a min_listeners number of nodes
+    FindNetwork,
+
     /// Same as Simple, with one additional non-validating node
     OneNonValidator,
 
@@ -719,6 +723,27 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
+    // each node only has another node in its network, but will discover the
+    // entire network through the network discovery phase
+    Config makeMinimalNetwork (size_t idx, NodeConfig self, NodeConfig[] node_confs)
+    {
+        auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
+
+        auto quorum_keys =
+            node_confs
+                .filter!(conf => conf.is_validator)
+                .map!(conf => conf.key_pair.address).array.assumeUnique;
+
+        Config conf =
+        {
+            banman : ban_conf,
+            node : self,
+            network : test_conf.configure_network ? [prev_node.key_pair.address.toString()] : null
+        };
+
+        return conf;
+    }
+
     Config makeCyclicConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs)
     {
         auto prev_idx = idx == 0 ? node_confs.length - 1 : idx - 1;
@@ -750,6 +775,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+        break;
+
+    case NetworkTopology.FindNetwork:
+        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(false)).array;
+        configs = iota(test_conf.nodes)
+            .map!(idx => makeMinimalNetwork(idx, node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneNonValidator:
