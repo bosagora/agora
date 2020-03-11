@@ -201,6 +201,7 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
+    network.waitForDiscovery();
 
     auto nodes = network.clients;
     auto node_1 = nodes[0];
