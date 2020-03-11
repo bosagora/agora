@@ -134,16 +134,19 @@ public class Node : API
     /// The first task method, loading from disk, node discovery, etc
     public void start ()
     {
-        log.info("Doing network discovery..");
-        this.network.discover();
-
-        bool isNominating ()
+        this.taskman.runTask(
         {
-            return this.config.node.is_validator &&
-                this.nominator.isNominating();
-        }
+            log.info("Doing network discovery..");
+            this.network.discover();
 
-        this.network.startPeriodicCatchup(this.ledger, &isNominating);
+            bool isNominating ()
+            {
+                return this.config.node.is_validator &&
+                    this.nominator.isNominating();
+            }
+
+            this.network.startPeriodicCatchup(this.ledger, &isNominating);
+        });
     }
 
     /***************************************************************************
