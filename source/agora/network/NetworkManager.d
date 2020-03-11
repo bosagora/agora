@@ -410,6 +410,7 @@ public class NetworkManager
             try
             {
                 auto net_info = node.getNetworkInfo();
+                this.addAddresses(net_info.addresses);
                 if (net_info.state == NetworkState.Complete)
                     return;  // done
 
