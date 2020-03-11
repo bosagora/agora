@@ -55,16 +55,12 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
+    network.waitForDiscovery();
 
-    try
+    foreach (key, node; network.nodes)
     {
-        network.waitForDiscovery();
+        auto addresses = node.client.getNetworkInfo().addresses.keys;
+        assert(addresses.sort.uniq.count == 3,
+               format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
-    catch (Throwable ex)
-    {
-        // discovery never reached
-        return;
-    }
-
-    assert(0);  // should not be reached
 }
