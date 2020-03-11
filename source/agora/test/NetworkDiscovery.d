@@ -37,3 +37,34 @@ unittest
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
+
+/// test network discovery through the getNetworkInfo() API
+unittest
+{
+    import std.algorithm;
+    import std.format;
+
+    TestConf conf =
+    {
+        topology : NetworkTopology.FindNetwork,
+        nodes : 4,
+        min_listeners : 3,
+    };
+    auto network = makeTestNetwork(conf);
+
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+
+    try
+    {
+        network.waitForDiscovery();
+    }
+    catch (Throwable ex)
+    {
+        // discovery never reached
+        return;
+    }
+
+    assert(0);  // should not be reached
+}
