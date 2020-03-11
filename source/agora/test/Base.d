@@ -613,6 +613,9 @@ public struct TestConf
     /// the delay between request retries (in msecs)
     long retry_delay = 100;
 
+    /// minimum clients to connect to (defaults to nodes.length - 1)
+    size_t min_listeners;
+
     /// max retries before a request is considered failed
     size_t max_retries = 20;
 
@@ -674,7 +677,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             retry_delay : test_conf.retry_delay, // msecs
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
-            min_listeners : test_conf.nodes - 1,
+            min_listeners : test_conf.min_listeners == 0
+                ? test_conf.nodes - 1 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
                 ? test_conf.nodes - 1 : test_conf.max_listeners
         };
