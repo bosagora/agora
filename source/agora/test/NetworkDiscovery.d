@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains tests for the node network (P2P) behavior
+    Contains tests for the node discovery behavior
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.test.Network;
+module agora.test.NetworkDiscovery;
 
 version (unittest):
 
