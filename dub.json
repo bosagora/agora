@@ -12,7 +12,7 @@
     "targetPath": "build",
     "excludedSourceFiles": [ "source/scpp/*.d" ],
     "preGenerateCommands": [ "$DUB source/scpp/build.d" ],
-    "sourceFiles": [
+    "sourceFiles-posix": [
         "source/scpp/build/BallotProtocol.o",
         "source/scpp/build/ByteSliceHasher.o",
         "source/scpp/build/DSCPUtils.o",
@@ -37,9 +37,35 @@
         "source/scpp/build/numeric.o",
         "source/scpp/build/uint128_t.o"
     ],
+    "sourceFiles-windows": [
+        "source/scpp/build/BallotProtocol.obj",
+        "source/scpp/build/ByteSliceHasher.obj",
+        "source/scpp/build/DSCPUtils.obj",
+        "source/scpp/build/DUtils.obj",
+        "source/scpp/build/HashOfHash.obj",
+        "source/scpp/build/Hex.obj",
+        "source/scpp/build/KeyUtils.obj",
+        "source/scpp/build/LocalNode.obj",
+        "source/scpp/build/Logging.obj",
+        "source/scpp/build/Math.obj",
+        "source/scpp/build/NominationProtocol.obj",
+        "source/scpp/build/QuorumSetUtils.obj",
+        "source/scpp/build/SCP.obj",
+        "source/scpp/build/SCPDriver.obj",
+        "source/scpp/build/SHA.obj",
+        "source/scpp/build/SecretKey.obj",
+        "source/scpp/build/Slot.obj",
+        "source/scpp/build/StrKey.obj",
+        "source/scpp/build/crc16.obj",
+        "source/scpp/build/jsoncpp.obj",
+        "source/scpp/build/marshal.obj",
+        "source/scpp/build/numeric.obj",
+        "source/scpp/build/uint128_t.obj"
+    ],
 
     "dflags": [ "-extern-std=c++14" ],
-    "lflags": [ "-lstdc++", "-lsqlite3" ],
+    "lflags-posix": [ "-lstdc++", "-lsqlite3" ],
+    "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],
     "buildRequirements": [ "allowWarnings" ],
 
     "configurations": [
@@ -68,9 +94,13 @@
             "name": "unittest",
             "targetName": "agora-unittests",
             "excludedSourceFiles": ["source/agora/cli/*/main.d"],
-            "sourceFiles": [
+            "sourceFiles-posix": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o"
+            ],
+            "sourceFiles-windows": [
+                "source/scpp/build/DSizeChecks.obj",
+                "source/scpp/build/DLayoutChecks.obj"
             ]
         },
         {

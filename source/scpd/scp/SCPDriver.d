@@ -71,18 +71,42 @@ nothrow:
     // returning Value() means no valid value could be extracted
     Value extractValidValue(uint64_t slotIndex, ref const(Value) value);
 
-    // `getValueString` is used for debugging
-    // default implementation is the hash of the value
-    //std::string getValueString(ref const(Value) v) const;
-    void* getValueString(ref const(Value) v) const;
+    version (Windows)
+    {
+        // TODO: Take temporary action to support mangling in Windows MSVC
+        // MSVC mangles the return value, while POSIX does not,
+        // and `getValueString`, `toStrKey`, and `toShortString` return `std::string` for which we need bindings
+        // `getValueString` is used for debugging
+        // default implementation is the hash of the value
+        //std::string getValueString(ref const(Value) v) const;
+        pragma(mangle, `?getValueString@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBU?$xvector@E$0PPPPPPPM@@xdr@@@Z`)
+        void* getValueString(ref const(Value) v) const;
 
-    // `toStrKey` returns StrKey encoded string representation
-    //std::string toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
-    void* toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+        // `toStrKey` returns StrKey encoded string representation
+        //std::string toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+        pragma(mangle, `?toStrKey@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBUPublicKey@2@_N@Z`)
+        void* toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
 
-    // `toShortString` converts to the common name of a key if found
-    //std::string toShortString(ref const(PublicKey) pk) const;
-    void* toShortString(ref const(PublicKey) pk) const;
+        // `toShortString` converts to the common name of a key if found
+        //std::string toShortString(ref const(PublicKey) pk) const;
+        pragma(mangle, `?toShortString@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBUPublicKey@2@@Z`)
+        void* toShortString(ref const(PublicKey) pk) const;
+    }
+    else
+    {
+        // `getValueString` is used for debugging
+        // default implementation is the hash of the value
+        //std::string getValueString(ref const(Value) v) const;
+        void* getValueString(ref const(Value) v) const;
+
+        // `toStrKey` returns StrKey encoded string representation
+        //std::string toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+        void* toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+
+        // `toShortString` converts to the common name of a key if found
+        //std::string toShortString(ref const(PublicKey) pk) const;
+        void* toShortString(ref const(PublicKey) pk) const;
+    }
 
     // `computeHashNode` is used by the nomination protocol to
     // randomize the order of messages between nodes.
@@ -109,8 +133,17 @@ nothrow:
     // `computeTimeout` computes a timeout given a round number
     // it should be sufficiently large such that nodes in a
     // quorum can exchange 4 messages
-    milliseconds computeTimeout(uint32_t roundNumber);  // Slot in the vtable
-
+    version (Windows)
+    {
+        // TODO Temporary action due to MSVC mangling problem
+        // https://issues.dlang.org/show_bug.cgi?id=20700
+        pragma(mangle, `?computeTimeout@SCPDriver@stellar@@UEAA?AV?$duration@_JU?$ratio@$00$0DOI@@std@@@chrono@std@@I@Z`)
+        milliseconds computeTimeout(uint32_t roundNumber);  // Slot in the vtable
+    }
+    else
+    {
+        milliseconds computeTimeout(uint32_t roundNumber);  // Slot in the vtable
+    }
     // Inform about events happening within the consensus algorithm.
 
     // `valueExternalized` is called at most once per slot when the slot

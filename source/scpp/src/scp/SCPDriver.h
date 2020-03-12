@@ -77,10 +77,7 @@ class SCPDriver
     // validateValue did not return `kFullyValidatedValue` for this value).
     // returning Value() means no valid value could be extracted
     virtual Value
-    extractValidValue(uint64 slotIndex, Value const& value)
-    {
-        return Value();
-    }
+    extractValidValue(uint64 slotIndex, Value const& value);
 
     // `getValueString` is used for debugging
     // default implementation is the hash of the value
@@ -132,9 +129,7 @@ class SCPDriver
     // ``nominatingValue`` is called every time the local instance nominates
     // a new value.
     virtual void
-    nominatingValue(uint64 slotIndex, Value const& value)
-    {
-    }
+    nominatingValue(uint64 slotIndex, Value const& value);
 
     // the following methods are used for monitoring of the SCP subsystem
     // most implementation don't really need to do anything with these
@@ -143,41 +138,29 @@ class SCPDriver
     // is included in the candidate set, the value passed in is
     // a composite value
     virtual void
-    updatedCandidateValue(uint64 slotIndex, Value const& value)
-    {
-    }
+    updatedCandidateValue(uint64 slotIndex, Value const& value);
 
     // `startedBallotProtocol` is called when the ballot protocol is started
     // (ie attempts to prepare a new ballot)
     virtual void
-    startedBallotProtocol(uint64 slotIndex, SCPBallot const& ballot)
-    {
-    }
+    startedBallotProtocol(uint64 slotIndex, SCPBallot const& ballot);
 
     // `acceptedBallotPrepared` every time a ballot is accepted as prepared
     virtual void
-    acceptedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
-    {
-    }
+    acceptedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot);
 
     // `confirmedBallotPrepared` every time a ballot is confirmed prepared
     virtual void
-    confirmedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
-    {
-    }
+    confirmedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot);
 
     // `acceptedCommit` every time a ballot is accepted commit
     virtual void
-    acceptedCommit(uint64 slotIndex, SCPBallot const& ballot)
-    {
-    }
+    acceptedCommit(uint64 slotIndex, SCPBallot const& ballot);
 
     // `ballotDidHearFromQuorum` is called when we received messages related to
     // the current `mBallot` from a set of node that is a transitive quorum for
     // the local node.
     virtual void
-    ballotDidHearFromQuorum(uint64 slotIndex, SCPBallot const& ballot)
-    {
-    }
+    ballotDidHearFromQuorum(uint64 slotIndex, SCPBallot const& ballot);
 };
 }

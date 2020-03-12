@@ -45,7 +45,8 @@ private:
 
     // keeps track of all statements seen so far for this slot.
     // it is used for debugging purpose
-    struct HistoricalStatement
+    // https://issues.dlang.org/show_bug.cgi?id=20701
+    extern(C++, struct) struct HistoricalStatement
     {
         time_t mWhen;
         SCPStatement mStatement;

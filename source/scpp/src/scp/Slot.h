@@ -25,6 +25,9 @@ class Node;
  */
 class Slot : public std::enable_shared_from_this<Slot>
 {
+    // BPFK note: cannot be private as we require runtime layout checks
+  public:
+
     const uint64 mSlotIndex; // the index this slot is tracking
     SCP& mSCP;
 
