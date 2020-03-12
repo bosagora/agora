@@ -98,4 +98,37 @@ SCPDriver::computeTimeout(uint32 roundNumber)
     }
     return std::chrono::seconds(timeoutInSeconds);
 }
+
+Value SCPDriver::extractValidValue(uint64 slotIndex, Value const& value)
+{
+    return Value();
+}
+
+void SCPDriver::nominatingValue(uint64 slotIndex, Value const& value)
+{
+}
+
+void SCPDriver::updatedCandidateValue(uint64 slotIndex, Value const& value)
+{
+}
+
+void SCPDriver::startedBallotProtocol(uint64 slotIndex, SCPBallot const& ballot)
+{
+}
+
+void SCPDriver::acceptedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
+{
+}
+
+void SCPDriver::confirmedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
+{
+}
+
+void SCPDriver::acceptedCommit(uint64 slotIndex, SCPBallot const& ballot)
+{
+}
+
+void SCPDriver::ballotDidHearFromQuorum(uint64 slotIndex, SCPBallot const& ballot)
+{
+}
 }

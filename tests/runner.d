@@ -19,6 +19,7 @@ import std.file;
 import std.path;
 import std.process;
 import std.stdio;
+import std.string : strip;
 
 /// Directory where simple tests live
 private immutable UnitPath = __FILE_FULL_PATH__.dirName.buildPath("unit");
@@ -64,7 +65,7 @@ private string[] getImportPaths ()
         pp.stderr.byLine.each!(a => writeln("[fatal]\t", a));
         return null;
     }
-    return pp.stdout.byLineCopy.array;
+    return pp.stdout.byLineCopy.map!strip.array;
 }
 
 /// Get the linker flags from dub
@@ -80,10 +81,17 @@ private string[] getLflags ()
             pp.stderr.byLine.each!(a => writeln("[fatal]\t", a));
             return null;
         }
-        return pp.stdout.byLineCopy.array;
+        return pp.stdout.byLineCopy.map!strip.array;
     }
-    else
+    else version (Posix)
     {
         return [ "-lsodium" ];
     }
+    else version (Windows)
+    {
+        // Note: Only works with LDC, see https://github.com/dlang/dub/issues/1914
+        return [ "-llibsodium" ];
+    }
+    else
+        static assert(0, "Unhandled platform");
 }

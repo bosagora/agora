@@ -35,7 +35,8 @@ immutable SourcePath  = RootPath;
 immutable BuildPath   = RootPath.buildPath("build");
 immutable BuildTarget = BuildPath.buildPath("libscp.o");
 
-/// Path passed to `-I`
+/// Include path for C++ dependency - libsodium must be in the include path
+/// (INCLUDE on Windows, and /usr/include/ or similar on POSIX)
 immutable Includes = [
     SourcePath,
     SourcePath.buildPath("src"),
@@ -43,19 +44,81 @@ immutable Includes = [
     SourcePath.buildPath("lib", "xdrpp"),
 ];
 
-immutable CppFlags = [
-    "-c",
-    "-g",
-    "-W",
-    "-Wall",
-    "-Wno-unused-parameter",
-    "-Wno-comment",
-    "-fPIC",
-    "-D_GLIBCXX_USE_CXX11_ABI=0",
-    "-std=c++14",
-];
-
-immutable CppCmd = ["gcc" ] ~ CppFlags;
+version (Posix)
+{
+    immutable ObjPattern = "*.o";
+    immutable CompilerIncludeFlag = "-I ";
+    immutable CppFlags = [
+        "-c",
+        "-g",
+        "-W",
+        "-Wall",
+        "-Wno-unused-parameter",
+        "-fPIC",
+        "-D_GLIBCXX_USE_CXX11_ABI=0",
+        "-std=c++14",
+    ];
+    immutable CppCmd = [ "gcc" ] ~ CppFlags;
+}
+else version (Windows)
+{
+    immutable ObjPattern = "*.obj";
+    immutable CompilerIncludeFlag = "/I ";
+    immutable CppFlags = [
+        "/JMC",
+        "/MP",
+        "/GS",
+        "/W4",
+        // https://docs.microsoft.com/en/cpp/error-messages/tool-errors/linker-tools-warning-lnk4099?view=vs-2019
+        // Remove warning : PDB file not found
+        "/wd\"4099\"",
+        // https://docs.microsoft.com/en/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4100?view=vs-2019
+        // Remove warning 'identifier' : unreferenced formal parameter
+        "/wd\"4100\"",
+        // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127?view=vs-2019
+        // Remove warning : conditional expression is constant
+        "/wd\"4127\"",
+        // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4324?view=vs-2019
+        // Remove warning 'struct_name' : structure was padded due to __declspec(align())
+        "/wd\"4324\"",
+        // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4408?view=vs-2019
+        // Remove warning : anonymous struct or union did not declare any data members
+        "/wd\"4408\"",
+        // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4510?view=vs-2019
+        // Remove warning 'class' : default constructor could not be generated
+        "/wd\"4510\"",
+        // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4512?view=vs-2019
+        // Remove warning 'class' : assignment operator could not be generated
+        "/Zc:wchar_t",
+        "/Zi",
+        "/Gm-",
+        "/Od",
+        "/sdl",
+        "/fp:precise",
+        "/D \"BUILD_TESTS\"",
+        "/D \"WIN32_LEAN_AND_MEAN\"",
+        "/D \"NOMINMAX\"",
+        "/D \"_WINSOCK_DEPRECATED_NO_WARNINGS\"",
+        "/D \"SODIUM_STATIC\"",
+        "/D \"_CRT_SECURE_NO_WARNINGS\"",
+        "/D \"_WIN32_WINNT=0x0601\"",
+        "/D \"WIN32\"",
+        "/D \"_MBCS\"",
+        "/D \"_CRT_NONSTDC_NO_DEPRECATE\"",
+        "/errorReport:prompt",
+        "/WX-",
+        "/Zc:forScope",
+        "/RTC1",
+        "/Gd",
+        "/std:c++14",
+        "/FC",
+        "/EHsc",
+        "/c"
+    ];
+    immutable CppCmd = [ "cl" ] ~ CppFlags;
+}
+else
+    static assert(0, "Unsupported platform");
 
 struct FileInfo
 {
@@ -78,7 +141,7 @@ int main(string[] args)
     auto sources = std.file.dirEntries(
         SourcePath, "*.c*", std.file.SpanMode.depth).array;
     auto objs = std.file.dirEntries(
-        BuildPath, "*.o", std.file.SpanMode.depth).array;
+        BuildPath, ObjPattern, std.file.SpanMode.depth).array;
 
     // If one of the obj file is older than one of the source file, rebuild
     // That's a lesser approach than the dependency tracking Makefile do,
@@ -116,7 +179,7 @@ int main(string[] args)
     else
         writeln("First build / new source files added: Doing a full build...");
 
-    auto cmd = chain(CppCmd, Includes.map!((v) => "-I " ~ v), sources);
+    auto cmd = chain(CppCmd, Includes.map!((v) => CompilerIncludeFlag ~ v), sources);
     auto strCmd = cmd.join(" ");
     // writeln(strCmd);
     auto pid = executeShell(strCmd);

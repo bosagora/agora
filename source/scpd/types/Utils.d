@@ -68,7 +68,6 @@ public opaque_vec!() XDRToOpaque (const ref SCPStatement arg);
 
 extern(C++, `stellar`)
 {
-    public uint256 sha256(const ref ByteSlice bin);
 
     public extern(C++, class) struct ByteSlice
     {
@@ -91,4 +90,10 @@ extern(C++, `stellar`)
             return (cast(T*)this.mData)[0 .. this.mSize / T.sizeof];
         }
     }
+
+    // Note: This needs to be after `ByteSlice` because the frontend doesn't take
+    // `extern(C++, class)` into account otherwise
+    // https://issues.dlang.org/show_bug.cgi?id=20700
+    public uint256 sha256(const ref ByteSlice bin);
+
 }

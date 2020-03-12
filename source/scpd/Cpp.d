@@ -192,16 +192,20 @@ extern(C++, `std`) {
 /// Type of SCP function callback called by a timer
 public alias SCPCallback = extern(C++) void function();
 
-private extern(C++) set!uint* makeTestSet();
-
-unittest
+// TODO : MSVC mangling issue w.r.t. the return type
+version (Posix)
 {
-    auto set = makeTestSet;
-    assert(!set.empty);
-    uint[] values;
-    foreach (val; *set)
-        values ~= val;
-    assert(values == [1, 2, 3, 4, 5]);
+    private extern(C++) set!uint* makeTestSet();
+
+    unittest
+    {
+        auto set = makeTestSet;
+        assert(!set.empty);
+        uint[] values;
+        foreach (val; *set)
+            values ~= val;
+        assert(values == [1, 2, 3, 4, 5]);
+    }
 }
 
 /// Can't import `core.stdcpp.allocator` because it transitively imports
