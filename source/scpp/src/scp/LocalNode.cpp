@@ -14,6 +14,7 @@
 #include "util/numeric.h"
 #include "xdrpp/marshal.h"
 #include <algorithm>
+#include <functional>
 #include <unordered_set>
 
 namespace stellar
@@ -325,7 +326,8 @@ LocalNode::findClosestVBlocking(SCPQuorumSet const& qset,
     struct orderBySize
     {
         bool
-        operator()(std::vector<NodeID> const& v1, std::vector<NodeID> const& v2) const
+        operator()(std::vector<NodeID> const& v1,
+                   std::vector<NodeID> const& v2) const
         {
             return v1.size() < v2.size();
         }
@@ -373,16 +375,25 @@ LocalNode::findClosestVBlocking(SCPQuorumSet const& qset,
 Json::Value
 LocalNode::toJson(SCPQuorumSet const& qSet, bool fullKeys) const
 {
+    return toJson(qSet, [&](PublicKey const& k) {
+        return mSCP->getDriver().toStrKey(k, fullKeys);
+    });
+}
+
+Json::Value
+LocalNode::toJson(SCPQuorumSet const& qSet,
+                  std::function<std::string(PublicKey const&)> r)
+{
     Json::Value ret;
     ret["t"] = qSet.threshold;
     auto& entries = ret["v"];
     for (auto const& v : qSet.validators)
     {
-        entries.append(mSCP->getDriver().toStrKey(v, fullKeys));
+        entries.append(r(v));
     }
     for (auto const& s : qSet.innerSets)
     {
-        entries.append(toJson(s, fullKeys));
+        entries.append(toJson(s, r));
     }
     return ret;
 }
