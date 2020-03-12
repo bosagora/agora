@@ -69,9 +69,6 @@ public class EnrollmentManager
     /// Next height for pre-image revelation
     private ulong next_reveal_height;
 
-    /// The cycle length for a validator
-    public static immutable uint ValidatorCycle = 1008; // freezing period / 2
-
     /// The period for revealing a preimage
     /// It is an hour interval if a block is made in every 10 minutes
     public static immutable uint PreimageRevealPeriod = 6;
@@ -263,7 +260,7 @@ public class EnrollmentManager
         this.enroll_key = frozen_utxo_hash;
 
         // N, cycle length
-        this.data.cycle_length = ValidatorCycle;
+        this.data.cycle_length = ValidatorSet.ValidatorCycle;
 
         // generate random seed value
         this.random_seed_src = Scalar.random();
@@ -502,8 +499,8 @@ public class EnrollmentManager
     public bool getNextPreimage (out PreimageInfo preimage) @safe
     {
         auto height = this.next_reveal_height + PreimageRevealPeriod * 2;
-        if (height > ValidatorCycle - 1)
-            height = ValidatorCycle - 1;
+        if (height > ValidatorSet.ValidatorCycle - 1)
+            height = ValidatorSet.ValidatorCycle - 1;
         return getPreimage(height, preimage);
     }
 
@@ -525,7 +522,7 @@ public class EnrollmentManager
         const start_height =
             this.validator_set.getEnrolledHeight(this.enroll_key) + 1;
         if (height < start_height ||
-            (height - start_height) > ValidatorCycle - 1)
+            (height - start_height) > ValidatorSet.ValidatorCycle - 1)
             return false;
 
         preimage.enroll_key = this.data.utxo_key;
@@ -869,8 +866,8 @@ unittest
     assert(man.updateEnrolledHeight(utxo_hash, 10));
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
-    assert(man.getPreimage(10 + EnrollmentManager.ValidatorCycle, preimage));
-    assert(!man.getPreimage(11 + EnrollmentManager.ValidatorCycle, preimage));
+    assert(man.getPreimage(10 + ValidatorSet.ValidatorCycle, preimage));
+    assert(!man.getPreimage(11 + ValidatorSet.ValidatorCycle, preimage));
 
     /// test for the functions about periodic revelation of a pre-image
     assert(man.needRevealPreimage(10));
