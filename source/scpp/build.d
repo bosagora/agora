@@ -43,6 +43,7 @@ immutable CppFlags = [
     "-W",
     "-Wall",
     "-Wno-unused-parameter",
+    "-Wno-comment",
     "-fPIC",
     "-D_GLIBCXX_USE_CXX11_ABI=0",
     "-std=c++14",
