@@ -6,8 +6,8 @@ It is built as a dependency of `agora`, and bindings are written in [the D Progr
 The path of each file matches the path in `stellar-core` relative to the root of the git repository, in order to make comparison and updating simpler.
 Files in `extra` are extra C++ files added to the build (e.g. to instantiate templates so the D side can use it).
 
-Commit used for extraction: [324c1bd61b0e9bada63e0d696d799421b00a7950](https://github.com/stellar/stellar-core/commit/324c1bd61b0e9bada63e0d696d799421b00a7950)
-Timestamp of commit: Monday 2019-05-20 21:24:29 UTC
+Commit used for extraction: [v11.2.0](https://github.com/stellar/stellar-core/releases/tag/v11.2.0)
+Timestamp of commit: Wed Jun 26 11:16:38 2019 -0700
 
 # Update process
 
