@@ -22,6 +22,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Validation;
+import agora.consensus.ValidatorSet;
 import agora.utils.Log;
 
 import d2sqlite3.database;
@@ -75,6 +76,10 @@ public class EnrollmentManager
     /// It is an hour interval if a block is made in every 10 minutes
     public static immutable uint PreimageRevealPeriod = 6;
 
+    /// Validator set managing validators' information such as Enrollment object
+    /// enrolled height, and preimages.
+    private ValidatorSet validator_set;
+
     /***************************************************************************
 
         Constructor
@@ -88,12 +93,9 @@ public class EnrollmentManager
 
     public this (string db_path, KeyPair key_pair)
     {
-        this.db = Database(db_path);
+        this.validator_set = new ValidatorSet(db_path);
 
-        // create the table for validator set if it doesn't exist yet
-        this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, " ~
-            "enrolled_height INTEGER, preimage BLOB)");
+        this.db = Database(db_path);
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
@@ -143,6 +145,7 @@ public class EnrollmentManager
     public void shutdown ()
     {
         this.db.close();
+        this.validator_set.shutdown();
     }
 
     /***************************************************************************
@@ -162,67 +165,7 @@ public class EnrollmentManager
     public bool add (ulong block_height, scope UTXOFinder finder,
         const ref Enrollment enroll) @safe nothrow
     {
-        static ubyte[] buffer;
-
-        // check validity of the enrollment data
-        if (auto reason = isInvalidEnrollmentReason(enroll, block_height + 1,
-            finder))
-        {
-            this.logMessage("Invalid enrollment data, Reason: " ~ reason,
-                enroll);
-            return false;
-        }
-
-        // check if already exists
-        try
-        {
-            if (this.hasEnrollment(enroll.utxo_key))
-            {
-                this.logMessage("Rejected already existing enrollment",
-                    enroll);
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Exception occured in checking if " ~
-                "the enrollment data exists", enroll, ex);
-            return false;
-        }
-
-        buffer.length = 0;
-        () @trusted { assumeSafeAppend(buffer); } ();
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-        {
-            buffer ~= data;
-        };
-
-        try
-        {
-            serializePart(enroll, dg);
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Serialization error", enroll, ex);
-            return false;
-        }
-
-        try
-        {
-            () @trusted {
-                this.db.execute("INSERT INTO validator_set (key, val) VALUES (?, ?)",
-                    enroll.utxo_key.toString(), buffer);
-            }();
-
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Database operation error", enroll, ex);
-            return false;
-        }
-
-        return true;
+        return this.validator_set.add(block_height, finder, enroll);
     }
 
     /***************************************************************************
@@ -235,9 +178,7 @@ public class EnrollmentManager
 
     public size_t count () @safe
     {
-        return () @trusted {
-            return this.db.execute("SELECT count(*) FROM validator_set").oneValue!size_t;
-        }();
+        return this.validator_set.count();
     }
 
     /***************************************************************************
@@ -251,8 +192,7 @@ public class EnrollmentManager
 
     public void remove (const ref Hash enroll_hash) @trusted
     {
-        this.db.execute("DELETE FROM validator_set WHERE key = ?",
-            enroll_hash.toString());
+        this.validator_set.remove(enroll_hash);
     }
 
     /***************************************************************************
@@ -269,20 +209,7 @@ public class EnrollmentManager
 
     public size_t getEnrolledHeight (const ref Hash enroll_hash) @trusted
     {
-        try
-        {
-            auto results = this.db.execute("SELECT enrolled_height FROM validator_set" ~
-                " WHERE key = ?", enroll_hash.toString());
-            if (results.empty)
-                return size_t.init;
-
-            return results.oneValue!(size_t);
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error {}", ex);
-            return size_t.init;
-        }
+        return this.validator_set.getEnrolledHeight(enroll_hash);
     }
 
     /***************************************************************************
@@ -301,23 +228,8 @@ public class EnrollmentManager
     public bool updateEnrolledHeight (const ref Hash enroll_hash,
         const size_t block_height) @safe
     {
-        try
-        {
-            if (this.getEnrolledHeight(enroll_hash) > 0)
-                return false;
-
-            () @trusted {
-                this.db.execute(
-                    "UPDATE validator_set SET enrolled_height = ? WHERE key = ?",
-                    block_height, enroll_hash.toString());
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error, updateEnrolledHeight:{}, exception:{}",
-                enroll_hash, ex);
+        if (!this.validator_set.updateEnrolledHeight(enroll_hash, block_height))
             return false;
-        }
 
         // set next height for revealing a pre-image
         if (enroll_hash == this.enroll_key)
@@ -496,10 +408,7 @@ public class EnrollmentManager
 
     public bool hasEnrollment (const ref Hash enroll_hash) @trusted
     {
-        auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM validator_set " ~
-            "WHERE key = ?)", enroll_hash.toString());
-
-        return results.front().peek!bool(0);
+        return this.validator_set.hasEnrollment(enroll_hash);
     }
 
     /***************************************************************************
@@ -519,16 +428,7 @@ public class EnrollmentManager
     public bool getEnrollment (const ref Hash enroll_hash,
         out Enrollment enroll) @trusted
     {
-        auto results = this.db.execute("SELECT key, val FROM validator_set " ~
-            "WHERE key = ?", enroll_hash.toString());
-
-        foreach (row; results)
-        {
-            enroll = deserializeFull!Enrollment(row.peek!(ubyte[])(1));
-            return true;
-        }
-
-        return false;
+        return this.validator_set.getEnrollment(enroll_hash, enroll);
     }
 
     /***************************************************************************
@@ -546,25 +446,7 @@ public class EnrollmentManager
 
     public bool getValidators (out Enrollment[] validators) @safe nothrow
     {
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT val FROM validator_set" ~
-                    " WHERE enrolled_height is not null");
-                foreach (row; results)
-                {
-                    validators ~=
-                        deserializeFull!Enrollment(row.peek!(ubyte[])(0));
-                }
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error, exception:{}", ex);
-            return false;
-        }
-
-        return true;
+        return this.validator_set.getValidators(validators);
     }
 
     /***************************************************************************
@@ -583,24 +465,7 @@ public class EnrollmentManager
 
     public void setCurrentBlockHeight (ulong block_height) @safe nothrow
     {
-        // the smallest enrolled height would be 1, so the passed block height
-        // should be greater than the validator cycle for deleting validators.
-        if (block_height > ValidatorCycle)
-        {
-            try
-            {
-                () @trusted {
-                    this.db.execute("DELETE FROM validator_set " ~
-                        "WHERE enrolled_height <= ?",
-                        block_height - ValidatorCycle);
-
-                }();
-            }
-            catch (Exception ex)
-            {
-                log.error("Database operation error, exception:{}", ex);
-            }
-        }
+        this.validator_set.setCurrentBlockHeight(block_height);
     }
 
     /***************************************************************************
@@ -619,15 +484,7 @@ public class EnrollmentManager
     public Enrollment[] getUnregistered (ref Enrollment[] enrolls)
         @trusted
     {
-        enrolls.length = 0;
-        assumeSafeAppend(enrolls);
-        auto results = this.db.execute("SELECT val FROM validator_set" ~
-            " WHERE enrolled_height is null ORDER BY key ASC");
-
-        foreach (row; results)
-            enrolls ~= deserializeFull!Enrollment(row.peek!(ubyte[])(0));
-
-        return enrolls;
+        return this.validator_set.getUnregistered(enrolls);
     }
 
     /***************************************************************************
@@ -665,7 +522,8 @@ public class EnrollmentManager
 
     public bool getPreimage (ulong height, out PreimageInfo preimage) @safe
     {
-        const start_height = this.getEnrolledHeight(this.enroll_key) + 1;
+        const start_height =
+            this.validator_set.getEnrolledHeight(this.enroll_key) + 1;
         if (height < start_height ||
             (height - start_height) > ValidatorCycle - 1)
             return false;
@@ -693,28 +551,7 @@ public class EnrollmentManager
     public bool hasPreimage (const ref Hash enroll_key, ulong height) @safe
         nothrow
     {
-        bool result = false;
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT preimage from validator_set" ~
-                            " WHERE key = ?", enroll_key.toString());
-                if (!results.empty && results.oneValue!(byte[]).length != 0)
-                {
-                    PreimageInfo loaded_image =
-                        results.oneValue!(ubyte[]).deserializeFull!(PreimageInfo);
-                    if (height <= loaded_image.height)
-                        result = true;
-                }
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("Exception occured, hasPreimage:{}, exception:{}",
-                enroll_key, ex);
-            return false;
-        }
-        return result;
+        return this.validator_set.hasPreimage(enroll_key, height);
     }
 
     /***************************************************************************
@@ -734,24 +571,7 @@ public class EnrollmentManager
     public bool getValidatorPreimage (const ref Hash enroll_key,
         out PreimageInfo result_image) @trusted nothrow
     {
-        try
-        {
-            auto results = this.db.execute("SELECT preimage from validator_set" ~
-                        " WHERE key = ?", enroll_key.toString());
-            if (!results.empty && results.oneValue!(byte[]).length != 0)
-            {
-                result_image =
-                    results.oneValue!(ubyte[]).deserializeFull!(PreimageInfo);
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Exception occured, getValidatorPreimage:{}, exception:{}",
-                enroll_key, ex);
-            return false;
-        }
-
-        return true;
+        return this.validator_set.getPreimage(enroll_key, result_image);
     }
 
     /***************************************************************************
@@ -768,78 +588,7 @@ public class EnrollmentManager
 
     public bool addPreimage (const ref PreimageInfo preimage) @safe nothrow
     {
-        static ubyte[] buffer;
-        buffer.length = 0;
-
-        // check if the enrollment data exists
-        Enrollment stored_enroll;
-        try
-        {
-            if (!this.getEnrollment(preimage.enroll_key, stored_enroll))
-            {
-                log.info("Rejected adding a pre-image for non-existing" ~
-                    "enrollment, preimage:{}", preimage);
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error, addPreimage:{}, exception:{}",
-                preimage, ex);
-            return false;
-        }
-
-        // check if already exists
-        try
-        {
-            if (this.hasPreimage(preimage.enroll_key, preimage.height))
-            {
-                log.info("Rejected already existing pre-image, preimage:{}",
-                    preimage);
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation errort, addPreimage:{}, exception:{}",
-                preimage, ex);
-            return false;
-        }
-
-        // insert the pre-image into the table
-        () @trusted { assumeSafeAppend(buffer); } ();
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-        {
-            buffer ~= data;
-        };
-
-        try
-        {
-            serializePart(preimage, dg);
-        }
-        catch (Exception ex)
-        {
-            log.error("Serialization error, addPreimage:{}, exception:{}",
-                preimage, ex);
-            return false;
-        }
-
-        try
-        {
-            () @trusted {
-                this.db.execute("UPDATE validator_set SET preimage = ? " ~
-                    "WHERE key = ?", buffer, preimage.enroll_key.toString());
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error, addPreimage:{}, exception:{}",
-                preimage, ex);
-            return false;
-        }
-
-        return true;
+        return this.validator_set.addPreimage(preimage);
     }
 
     /***************************************************************************
