@@ -541,7 +541,7 @@ public Node runNode (Config config)
 
     auto node = new Node(config);
     router.registerRestInterface(node);
-    runTask({ node.start(); });
+    node.start();  // asynchronous
 
     log.info("About to listen to HTTP: {}", settings.port);
     listenHTTP(settings, router);
