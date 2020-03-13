@@ -26,6 +26,13 @@ import core.stdc.inttypes;
 
 extern(C++, `stellar`):
 
+// needed for some utility hashing routines
+extern(C++, `shortHash`) private void initialize_byteslice_hasher ();
+shared static this ()
+{
+    initialize_byteslice_hasher();
+}
+
 // typedef std::shared_ptr<SCPQuorumSet> SCPQuorumSetPtr;
 
 extern(C++, class) public struct SCP

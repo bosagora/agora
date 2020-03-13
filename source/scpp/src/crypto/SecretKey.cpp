@@ -5,6 +5,7 @@
 #include "crypto/SecretKey.h"
 #include "crypto/Hex.h"
 #include "crypto/StrKey.h"
+#include "util/HashOfHash.h"
 #include "util/Math.h"
 #include <sodium.h>
 
@@ -331,5 +332,16 @@ HashUtils::random()
     Hash res;
     randombytes_buf(res.data(), res.size());
     return res;
+}
+}
+
+namespace std
+{
+size_t
+hash<stellar::PublicKey>::operator()(stellar::PublicKey const& k) const noexcept
+{
+    assert(k.type() == stellar::PUBLIC_KEY_TYPE_ED25519);
+
+    return std::hash<stellar::uint256>()(k.ed25519());
 }
 }
