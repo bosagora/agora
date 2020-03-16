@@ -67,6 +67,21 @@ extern(C++) private int cpp_set_foreach(T)(void* set, void* ctx, void* cb);
 /// std::set.empty() support
 nothrow pure @nogc extern(C++) private bool cpp_set_empty(T)(const(void)* set);
 
+/// unordered map assignment support
+private nothrow @nogc extern(C++) void cpp_unordered_map_assign (K, V)(
+    void* map, ref const(K) key, ref const(V) value);
+
+/// unordered map length support
+private pure nothrow @nogc @safe extern(C++) size_t cpp_unordered_map_length (K, V)(
+    const(void)* map);
+
+// @bug with substitution
+// https://issues.dlang.org/show_bug.cgi?id=20679
+//private pure nothrow @nogc @safe extern(C++) unordered_map!(K, V)* cpp_unordered_map_create (K, V)();
+
+/// Create a new unordered map with the given Key/T types, and return a pointer to it
+private pure nothrow @nogc @safe extern(C++) void* cpp_unordered_map_create (K, V)();
+
 extern(C++, `std`) {
     /// Binding: Needs to be instantiated on C++ side
     shared_ptr!T make_shared(T, Args...)(Args args);
@@ -110,6 +125,37 @@ extern(C++, `std`) {
     public extern(C++, class) struct map (Key, Value)
     {
         void*[3] ptr;
+    }
+
+    /// Rudimentary bindings for std::unordered_map
+    public struct unordered_map (Key, T, Hash = hash!Key, KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
+    {
+        private void* ptr;
+
+        extern(D) void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
+        {
+            cpp_unordered_map_assign!(Key, T)(this.ptr, key, value);
+        }
+
+        extern(D) size_t length () pure nothrow @safe @nogc
+        {
+            return cpp_unordered_map_length!(Key, T)(this.ptr);
+        }
+
+        /// create a new unordered map allocated on the C++ side.
+        /// Note that we currently only use this in unittests
+        extern(D) static unordered_map create () pure @trusted @nogc nothrow
+        {
+            return unordered_map(cpp_unordered_map_create!(Key, T)());
+        }
+    }
+
+    unittest
+    {
+        auto map = unordered_map!(int, int).create();
+        assert(map.length() == 0);
+        map[1] = 1;
+        assert(map.length() == 1);
     }
 
     // only used at compile-time on the C++ side, here for mangling
@@ -161,7 +207,21 @@ unittest
 /// Can't import `core.stdcpp.allocator` because it transitively imports
 /// `core.stdcpp.exception`
 /// In this case we just need to get the name right for `vector`
+
 extern(C++, (StdNamespace)) extern(C++, class) struct allocator (T) {}
+
+// simplistic std::pair bindings
+public extern(C++, (StdNamespace)) struct pair (T1, T2)
+{
+    T1 first;
+    T2 second;
+}
+
+// fake std::hash (for mangling)
+public extern(C++, (StdNamespace))  struct hash (T) {}
+
+// fake std::equal_to (for mangling)
+public extern(C++, (StdNamespace))  struct equal_to (T = void) {}
 
 /*******************************************************************************
 

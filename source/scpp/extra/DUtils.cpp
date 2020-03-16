@@ -59,6 +59,21 @@ CPPSETEMPTYINST(SCPBallot)
 CPPSETEMPTYINST(PublicKey)
 CPPSETEMPTYINST(unsigned int)
 
+#define CPPUNORDEREDMAPASSIGNINST(K, V) template void cpp_unordered_map_assign<K, V>(void*, const K&, const V&);
+CPPUNORDEREDMAPASSIGNINST(NodeID, std::shared_ptr<SCPQuorumSet>)
+CPPUNORDEREDMAPASSIGNINST(int, int)
+
+#define CPPUNORDEREDMAPLENGTHINST(K, V) template std::size_t cpp_unordered_map_length<K, V>(const void*);
+CPPUNORDEREDMAPLENGTHINST(NodeID, std::shared_ptr<SCPQuorumSet>)
+CPPUNORDEREDMAPLENGTHINST(int, int)
+
+// @bug with substitution
+// https://issues.dlang.org/show_bug.cgi?id=20679
+// #define CPPUNORDEREDMAPCREATEINST(K, V) template std::unordered_map<K, V>* cpp_unordered_map_create<K, V>();
+#define CPPUNORDEREDMAPCREATEINST(K, V) template void* cpp_unordered_map_create<K, V>();
+CPPUNORDEREDMAPCREATEINST(NodeID, std::shared_ptr<SCPQuorumSet>)
+CPPUNORDEREDMAPCREATEINST(int, int)
+
 void callCPPDelegate (void* cb)
 {
     auto callback = (std::function<void()>*)cb;
