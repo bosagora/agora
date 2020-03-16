@@ -467,7 +467,8 @@ public class Node : API
     protected Enrollment createEnrollment (Hash frozen_utxo_hash) @safe
     {
         Enrollment enroll;
-        this.enroll_man.createEnrollment(frozen_utxo_hash, enroll);
+        this.enroll_man.createEnrollment(frozen_utxo_hash,
+            this.ledger.getBlockHeight(), enroll);
 
         return enroll;
     }

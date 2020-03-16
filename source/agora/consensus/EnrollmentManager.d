@@ -54,11 +54,11 @@ public class EnrollmentManager
     /// Key used for enrollment which is actually an UTXO hash
     private Hash enroll_key;
 
-    /// Random seed
-    private Scalar random_seed_src;
+    /// Pre-images for each point with the interval of validator cycle
+    private Hash[ulong] preimage_rounds;
 
-    /// Preimages of hashes of random value
-    public Hash[] preimages;
+    /// Pre-images for current validator cycle
+    private Hash[ulong] cycle_preimages;
 
     /// Random key for enrollment
     private Pair signature_noise;
@@ -76,6 +76,9 @@ public class EnrollmentManager
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
     private ValidatorSet validator_set;
+
+    /// The count for generating pre-images
+    private immutable uint AllCountPreimages = ValidatorSet.ValidatorCycle * 100;
 
     /***************************************************************************
 
@@ -111,13 +114,6 @@ public class EnrollmentManager
             signature_noise = deserializeFull!Pair(row.peek!(ubyte[])(0));
             break;
         }
-
-        // load preimages
-        results = this.db.execute("SELECT val FROM node_enroll_data " ~
-            "WHERE key = ?", "preimages");
-
-        if (!results.empty)
-            this.preimages = results.oneValue!(ubyte[]).deserializeFull!(Hash[]);
 
         // load enroll_key
         results = this.db.execute("SELECT val FROM node_enroll_data " ~
@@ -242,6 +238,7 @@ public class EnrollmentManager
         Params:
             frozen_utxo_hash = the hash of a frozen UTXO used to identify a validator
                         and to generate a siging key
+            height = the starting index for generating pre-images
             enroll = will contain the Enrollment if created
 
         Returns:
@@ -249,7 +246,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool createEnrollment (Hash frozen_utxo_hash, out Enrollment enroll) @trusted nothrow
+    public bool createEnrollment (Hash frozen_utxo_hash, ulong height,
+        out Enrollment enroll) @trusted nothrow
     {
         static ubyte[] buffer;
         buffer.length = 0;
@@ -262,17 +260,9 @@ public class EnrollmentManager
         // N, cycle length
         this.data.cycle_length = ValidatorSet.ValidatorCycle;
 
-        // generate random seed value
-        this.random_seed_src = Scalar.random();
-
         // X, final seed data and preimages of hashes
-        this.preimages.length = 0;
-        assumeSafeAppend(this.preimages);
-        this.preimages ~= hashFull(this.random_seed_src);
-        foreach (i; 0 .. this.data.cycle_length-1)
-            this.preimages ~= hashFull(this.preimages[i]);
-        reverse(this.preimages);
-        this.data.random_seed = this.preimages[0];
+        this.data.random_seed = this.generatePreimages(height);
+
 
         // R, signature noise
         this.signature_noise = Pair.random();
@@ -306,42 +296,6 @@ public class EnrollmentManager
                 {
                     this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
                         "signature_noise", buffer);
-                }
-            }();
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Database operation error", enroll, ex);
-            return false;
-        }
-
-        // serialize preimages
-        buffer.length = 0;
-        assumeSafeAppend(buffer);
-        try
-        {
-            serializePart(this.preimages, dg);
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Serialization error of preimages", enroll, ex);
-            return false;
-        }
-
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM node_enroll_data " ~
-                    "WHERE key = ?)", "preimages");
-                if (results.oneValue!(bool))
-                {
-                    this.db.execute("UPDATE node_enroll_data SET val = ? WHERE key = ?",
-                        buffer, "preimages");
-                }
-                else
-                {
-                    this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
-                        "preimages", buffer);
                 }
             }();
         }
@@ -525,9 +479,12 @@ public class EnrollmentManager
             (height - start_height) > ValidatorSet.ValidatorCycle - 1)
             return false;
 
+        if (height !in this.cycle_preimages)
+            this.generatePreimages(height);
+
         preimage.enroll_key = this.data.utxo_key;
         preimage.height = height;
-        preimage.hash = this.preimages[height - start_height];
+        preimage.hash = this.cycle_preimages[height];
         return true;
     }
 
@@ -684,6 +641,81 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Generate and store pre-images for this cycle, as well as sparsely
+        selected preimages for other cycles.
+
+        This generates all pre-images needed for a cycle in the range of less
+        than two times of a validator cycle and store them in `cycle_preimages`.
+        Additionally, It generates and stores pre-images being used for defined
+        number of cycles in `preimage_rounds` when there is no pre-image needed.
+        This function is very expensive, but should be seldom called, and might
+        take more than 30ms for generating a hundred thousand number of them.
+
+        Params:
+            height = block height used to determine which range of
+                pre-images will be generated.
+
+        Returns:
+            the pre-image value in index of `height`
+
+    ***************************************************************************/
+
+    private Hash generatePreimages (ulong height) @safe nothrow
+    {
+        // This determines which range of preimages must be generated.
+        // In order to get hash values more than one cycle, the `start_height`
+        // is to be the height of the last preimage of next cycle. The value of
+        // `height / ValidatorSet.ValidatorCycle` is the index of previous
+        // cycle, so we need to plus 2 to the value in order to get the index
+        // of the next cycle.
+        ulong start_height =
+            ((height / ValidatorSet.ValidatorCycle) + 2) *
+                ValidatorSet.ValidatorCycle;
+
+        // Clear if recreating pre-images is needed
+        if (this.preimage_rounds.byKey.maxElement(0) < start_height)
+        {
+            () @trusted {
+                this.preimage_rounds.clear();
+            }();
+        }
+
+        // if there is no pre-image, the defined number of pre-images must
+        // be generated with the interval of ValidatorCycle.
+        if (this.preimage_rounds.length == 0)
+        {
+            // The value of `bulk_index` is zero-based. so we need to plus 1 to
+            // the value to get the max height(`MaxHeight`) of this bulk.
+            ulong bulk_index = start_height / AllCountPreimages;
+            const ulong MaxHeight = (bulk_index + 1) * AllCountPreimages;
+            Hash salt = hashFull(bulk_index);
+            auto hash = hashMulti(this.key_pair.v, salt);
+            ulong idx = MaxHeight;
+            this.preimage_rounds[idx] = hash;
+            for (--idx; idx >= height; --idx)
+            {
+                hash = hashFull(hash);
+                if (idx % ValidatorSet.ValidatorCycle == 0)
+                    this.preimage_rounds[idx] = hash;
+            }
+        }
+
+        // This generates all the sequential preimages from the start index
+        () @trusted {
+            this.cycle_preimages.clear();
+        }();
+        this.cycle_preimages[start_height] = this.preimage_rounds[start_height];
+        for (; start_height > height; --start_height)
+        {
+            this.cycle_preimages[start_height - 1] =
+                hashFull(this.cycle_preimages[start_height]);
+        }
+
+        return this.cycle_preimages[height];
+    }
+
+    /***************************************************************************
+
         Logs message
 
         Params:
@@ -709,28 +741,6 @@ public class EnrollmentManager
         }
         catch (Exception ex)
         {}
-    }
-
-    /***************************************************************************
-
-        Load pre-images from the storage
-
-        Returns:
-            an array of hashes of pre-images
-
-    ***************************************************************************/
-
-    version (unittest) public Hash[] loadPreimages () @safe
-    {
-        Hash[] preimages;
-        () @trusted {
-            auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                "WHERE key = ?", "preimages");
-            if (!results.empty)
-                preimages = results.oneValue!(ubyte[]).deserializeFull!(Hash[]);
-        }();
-
-        return preimages;
     }
 }
 
@@ -787,7 +797,7 @@ unittest
     fail_enroll.enroll_sig = sign(fail_enroll_key_pair.v, fail_enroll_key_pair.V,
         signature_noise.V, signature_noise.v, fail_enroll);
 
-    assert(man.createEnrollment(utxo_hash, enroll));
+    assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(!man.hasEnrollment(utxo_hash));
     assert(!man.add(0, &storage.findUTXO, fail_enroll));
     assert(man.add(0, &storage.findUTXO, enroll));
@@ -797,13 +807,13 @@ unittest
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
-    assert(man.createEnrollment(utxo_hash2, enroll2));
+    assert(man.createEnrollment(utxo_hash2, 1, enroll2));
     assert(man.add(0, &storage.findUTXO, enroll2));
     assert(man.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
-    assert(man.createEnrollment(utxo_hash3, enroll3));
+    assert(man.createEnrollment(utxo_hash3, 1, enroll3));
     assert(man.add(0, &storage.findUTXO, enroll3));
     assert(man.count() == 3);
 
@@ -851,18 +861,11 @@ unittest
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
-    // check if the pre-images have right value
-    assert(equal!((a, b) => a.hashFull() == b) (man.preimages[1 .. $],
-        man.preimages[0 .. $-1]));
-
-    // test serialization/deserializetion for pre-images
-    assert(man.preimages[] == man.loadPreimages());
-
     // get a pre-image at a certain height
     // A validation can start at the height of the enrolled height plus 1.
     // So, a pre-image can only be got from the start height.
     PreimageInfo preimage;
-    assert(man.createEnrollment(utxo_hash, enroll));
+    assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(man.updateEnrolledHeight(utxo_hash, 10));
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
@@ -936,17 +939,79 @@ unittest
 
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
-    assert(man.createEnrollment(utxo_hash, enroll));
+    assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(man.add(0, &storage.findUTXO, enroll));
     assert(man.hasEnrollment(utxo_hash));
 
     PreimageInfo result_image;
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image == PreimageInfo.init);
-    auto preimage = PreimageInfo(utxo_hash, man.preimages[100], 1100);
+    auto preimage = PreimageInfo(utxo_hash, man.cycle_preimages[100], 1100);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == utxo_hash);
-    assert(result_image.hash == man.preimages[100]);
+    assert(result_image.hash == man.cycle_preimages[100]);
     assert(result_image.height == 1100);
+}
+
+// test for generating pre-images
+unittest
+{
+    import agora.consensus.Genesis;
+
+    auto key_pair = getGenesisKeyPair();
+    auto man = new EnrollmentManager(":memory:", key_pair);
+    scope (exit) man.shutdown();
+
+    man.generatePreimages(1);
+    auto salt_hash = hashFull(0UL);
+    auto hash = hashMulti(secretKeyToCurveScalar(key_pair.secret), salt_hash);
+    foreach (uint i; 1 .. man.AllCountPreimages)
+    {
+        hash = hashFull(hash);
+    }
+    assert(hash == man.cycle_preimages[1]);
+
+    auto height = 12345;
+    man.generatePreimages(height);
+    for (auto idx = height + ValidatorSet.ValidatorCycle; idx > height; --idx)
+    {
+        assert(man.cycle_preimages[idx-1] ==
+            hashFull(man.cycle_preimages[idx]));
+    }
+
+    height = man.AllCountPreimages - ValidatorSet.ValidatorCycle + 1;
+    man.generatePreimages(height);
+    for (auto idx = height + ValidatorSet.ValidatorCycle; idx > height; --idx)
+    {
+        assert(man.cycle_preimages[idx-1] ==
+            hashFull(man.cycle_preimages[idx]));
+    }
+
+    salt_hash = hashFull(1UL);
+    Hash second_bulk_first =
+        hashMulti(secretKeyToCurveScalar(key_pair.secret), salt_hash);
+    foreach (ulong i; 1 .. man.AllCountPreimages)
+    {
+        second_bulk_first = hashFull(second_bulk_first);
+    }
+
+    height = man.AllCountPreimages;
+    man.generatePreimages(height);
+    for (auto idx = height + ValidatorSet.ValidatorCycle; idx > height; --idx)
+    {
+        if (idx % man.AllCountPreimages != 1)
+            assert(man.cycle_preimages[idx-1] ==
+                hashFull(man.cycle_preimages[idx]));
+        else
+            assert(second_bulk_first == man.cycle_preimages[idx]);
+    }
+
+    height = man.AllCountPreimages + 1;
+    man.generatePreimages(height);
+    for (auto idx = height + ValidatorSet.ValidatorCycle; idx > height; --idx)
+    {
+        assert(man.cycle_preimages[idx-1] ==
+            hashFull(man.cycle_preimages[idx]));
+    }
 }
