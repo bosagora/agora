@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Types currently missing from `core.stdcpp` and some additions
+    Types currently missing from `core.stdcpp` and some additional utilities
 
     Hopefully in the future we can reduce / remove this module.
     In the meantime, this is the most pragmatic way to do C++ bindings,
@@ -324,3 +324,6 @@ unittest
     vec3.push_back(x);
     assert(vec3 != vec);
 }
+
+/// Invoke an std::function pointer (note: must be void* due to mangling issues)
+extern(C++) void callCPPDelegate (void* cb);

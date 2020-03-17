@@ -52,14 +52,14 @@ enum SignerKeyType : int32_t {
 /// Note: should only be used within this package
 package(scpd)
 struct PublicKey {
-    extern(D) this(const(char)[] str) @safe pure nothrow @nogc
-    {
-        this.ed25519_ = Hash(str);
-    }
-
     extern(D) this(Hash key) @safe pure nothrow @nogc
     {
         this.ed25519_ = key;
+    }
+
+    extern(D) this(typeof(this.tupleof) args) @safe pure nothrow @nogc
+    {
+        this.tupleof = args;
     }
 
     int32_t type_;
