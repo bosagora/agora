@@ -597,7 +597,7 @@ public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf )
 
     foreach (node; quorum_conf.nodes)
     {
-        auto key = Hash(node[]);
+        auto key = Hash(node);
         auto pub_key = NodeID(key);
         quorum.validators.push_back(pub_key);
     }

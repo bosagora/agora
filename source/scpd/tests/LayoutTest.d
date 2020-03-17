@@ -64,7 +64,7 @@ unittest
 
     foreach (name; ["bob", "alice", "carol"])
     {
-        Hash hash = sha256Of(name);
+        Hash hash = typeof(Hash.base)(sha256Of(name));
         assert(isHashTypeCompatible(hash, name.toStringz));
     }
 }

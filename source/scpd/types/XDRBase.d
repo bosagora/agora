@@ -17,7 +17,6 @@
 module scpd.types.XDRBase;
 
 import scpd.Cpp;
-import scpd.Util;
 
 import vibe.data.json;
 
@@ -96,7 +95,11 @@ struct opaque_array(uint32_t N = XDR_MAX_LEN)
 {
     BitBlob!(N * 8) base;
     alias base this;
-    mixin ForwardCtors!base;
+
+    public this (BitBlob!(N * 8) val)
+    {
+        this.base = val;
+    }
 }
 
 

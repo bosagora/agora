@@ -37,7 +37,6 @@ import scpd.types.Stellar_types;
 import scpd.types.Stellar_types : StellarHash = Hash;
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
-import scpd.Util;
 
 import core.stdc.stdint;
 import core.time;
@@ -106,7 +105,7 @@ extern(D):
         this.network = network;
         this.quorum_conf = config;
         this.key_pair = key_pair;
-        auto node_id = NodeID(StellarHash(key_pair.address[]));
+        auto node_id = NodeID(StellarHash(key_pair.address));
         const IsValidator = true;
         auto quorum_set = verifyBuildSCPConfig(config);
         this.scp = createSCP(this, node_id, IsValidator, quorum_set);
@@ -244,7 +243,7 @@ extern(D):
         import scpd.types.Stellar_types : StellarHash = Hash, NodeID;
         import std.range;
 
-        auto key = StellarHash(this.key_pair.address[]);
+        auto key = StellarHash(this.key_pair.address);
         auto pub_key = NodeID(key);
 
         foreach (block_idx, block; ledger.getBlocksFrom(0).enumerate)
