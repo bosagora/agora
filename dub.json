@@ -37,6 +37,8 @@
         "source/scpp/build/numeric.o",
         "source/scpp/build/uint128_t.o"
     ],
+
+    "dflags": [ "-extern-std=c++14" ],
     "lflags": [ "-lsodium", "-lstdc++", "-lsqlite3" ],
     "buildRequirements": [ "allowWarnings" ],
 
