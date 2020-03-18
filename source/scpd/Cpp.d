@@ -35,7 +35,7 @@ import vibe.data.json;
 
 extern(C++, (StdNamespace)) {
     /// Simple binding to `std::shared_ptr`
-    struct shared_ptr (T)
+    extern(C++, class) struct shared_ptr (T)
     {
         static if (is(T == class) || is(T == interface))
             private alias TPtr = T;
@@ -49,7 +49,7 @@ extern(C++, (StdNamespace)) {
     }
 
     /// Simple binding to `std::unique_ptr`
-    struct unique_ptr (T)
+    extern(C++, class) struct unique_ptr (T)
     {
         static if (is(T == class) || is(T == interface))
             private alias TPtr = T;
@@ -82,7 +82,7 @@ extern(C++, `std`) {
     }
 
     /// Fake bindings for std::set
-    public struct set (Key)
+    public extern(C++, class) struct set (Key)
     {
         void*[3] ptr;
 
@@ -107,20 +107,20 @@ extern(C++, `std`) {
     }
 
     /// Fake bindings for std::map
-    public struct map (Key, Value)
+    public extern(C++, class) struct map (Key, Value)
     {
         void*[3] ptr;
     }
 
     // only used at compile-time on the C++ side, here for mangling
-    struct ratio (int _Num, int _Den = 1)
+    extern(C++, class) struct ratio (int _Num, int _Den = 1)
     {
     }
 
     /// Simple bindings to std::chrono
     extern(C++, `chrono`)
     {
-        public struct duration (_Rep, _Period = ratio!1)
+        public extern(C++, class) struct duration (_Rep, _Period = ratio!1)
         {
             _Rep __r;
             alias __r this;
@@ -161,7 +161,7 @@ unittest
 /// Can't import `core.stdcpp.allocator` because it transitively imports
 /// `core.stdcpp.exception`
 /// In this case we just need to get the name right for `vector`
-extern(C++, (StdNamespace)) struct allocator (T) {}
+extern(C++, (StdNamespace)) extern(C++, class) struct allocator (T) {}
 
 /*******************************************************************************
 
@@ -181,7 +181,7 @@ extern(C++, (StdNamespace)) struct allocator (T) {}
 
 *******************************************************************************/
 
-extern(C++, (StdNamespace)) struct vector (T, Alloc = allocator!T)
+extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocator!T)
 {
     T* _start;
     T* _end;
