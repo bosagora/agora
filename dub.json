@@ -35,7 +35,8 @@
         "source/scpp/build/jsoncpp.o",
         "source/scpp/build/marshal.o",
         "source/scpp/build/numeric.o",
-        "source/scpp/build/uint128_t.o"
+        "source/scpp/build/uint128_t.o",
+        "source/scpp/build/DVTableChecks.o"
     ],
 
     "dflags": [ "-extern-std=c++14" ],
