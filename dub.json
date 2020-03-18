@@ -12,31 +12,10 @@
     "targetPath": "build",
     "excludedSourceFiles": [ "source/scpp/*.d" ],
     "preGenerateCommands": [ "source/scpp/build.d" ],
-    "sourceFiles": [
-        "source/scpp/build/BallotProtocol.o",
-        "source/scpp/build/ByteSliceHasher.o",
-        "source/scpp/build/DSCPUtils.o",
-        "source/scpp/build/DUtils.o",
-        "source/scpp/build/HashOfHash.o",
-        "source/scpp/build/Hex.o",
-        "source/scpp/build/KeyUtils.o",
-        "source/scpp/build/LocalNode.o",
-        "source/scpp/build/Logging.o",
-        "source/scpp/build/Math.o",
-        "source/scpp/build/NominationProtocol.o",
-        "source/scpp/build/QuorumSetUtils.o",
-        "source/scpp/build/SCP.o",
-        "source/scpp/build/SCPDriver.o",
-        "source/scpp/build/SHA.o",
-        "source/scpp/build/SecretKey.o",
-        "source/scpp/build/Slot.o",
-        "source/scpp/build/StrKey.o",
-        "source/scpp/build/crc16.o",
-        "source/scpp/build/jsoncpp.o",
-        "source/scpp/build/marshal.o",
-        "source/scpp/build/numeric.o",
-        "source/scpp/build/uint128_t.o"
-    ],
+
+    "sourceFiles-posix": [ "source/scpp/build/*.o" ],
+    "sourceFiles-windows": [ "source/scpp/build/*.obj" ],
+
     "lflags": [ "-lsodium", "-lstdc++", "-lsqlite3" ],
     "buildRequirements": [ "allowWarnings" ],
 
@@ -65,11 +44,7 @@
         {
             "name": "unittest",
             "targetName": "agora-unittests",
-            "excludedSourceFiles": ["source/agora/cli/*/main.d"],
-            "sourceFiles": [
-                "source/scpp/build/DSizeChecks.o",
-                "source/scpp/build/DLayoutChecks.o"
-            ]
+            "excludedSourceFiles": ["source/agora/cli/*/main.d"]
         },
         {
             "name": "multi",
