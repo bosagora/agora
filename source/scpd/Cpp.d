@@ -28,21 +28,12 @@
 module scpd.Cpp;
 
 //import core.stdcpp.exception;
+import core.stdcpp.xutility;
 import std.meta;
 
 import vibe.data.json;
 
-/// Work around dual ABI issues
-/// https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
-private template StdNS ()
-{
-    version (darwin)
-        alias StdNS = AliasSeq!(`std`, `__1`);
-    else
-        alias StdNS = AliasSeq!(`std`);
-}
-
-extern(C++, (StdNS!())) {
+extern(C++, (StdNamespace)) {
     /// Simple binding to `std::shared_ptr`
     struct shared_ptr (T)
     {
@@ -170,7 +161,7 @@ unittest
 /// Can't import `core.stdcpp.allocator` because it transitively imports
 /// `core.stdcpp.exception`
 /// In this case we just need to get the name right for `vector`
-extern(C++, (StdNS!())) struct allocator (T) {}
+extern(C++, (StdNamespace)) struct allocator (T) {}
 
 /*******************************************************************************
 
@@ -190,7 +181,7 @@ extern(C++, (StdNS!())) struct allocator (T) {}
 
 *******************************************************************************/
 
-extern(C++, (StdNS!())) struct vector (T, Alloc = allocator!T)
+extern(C++, (StdNamespace)) struct vector (T, Alloc = allocator!T)
 {
     T* _start;
     T* _end;
