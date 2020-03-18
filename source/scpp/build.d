@@ -1,4 +1,10 @@
-#!/usr/bin/env rdmd
+#!/usr/bin/env dub
+/+
+ dub.json:
+ {
+     "name": "cpp_build"
+ }
+ +/
 /*******************************************************************************
 
     Build the SCP library
