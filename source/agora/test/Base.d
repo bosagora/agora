@@ -53,7 +53,7 @@ import scpd.types.Stellar_SCP;
 
 import ocean.util.log.Logger;
 
-import geod24.LocalRest;
+static import geod24.LocalRest;
 import geod24.Registry;
 
 import core.stdc.time;
@@ -171,6 +171,49 @@ private UnitTestResult customModuleUnitTester ()
     result.runMain = false;
     return result;
 }
+
+/// A custom serializer for LocalRest
+public struct Serializer
+{
+    import agora.common.Serializer;
+    import std.stdio;
+
+    static immutable(ubyte)[] serialize (T) (auto ref T value) @trusted nothrow
+    {
+        // `serializeFull` should be `@safe`, but `assumeUnique` is not
+        try
+            return ((arr) @trusted => assumeUnique(arr))(serializeFull(value));
+        catch (Throwable t)
+        {
+            try
+            {
+                writeln("ERROR: Serializable: ", T.stringof);
+                writeln(t);
+            }
+            catch (Exception ignored) {}
+            assert(0);
+        }
+    }
+
+    static QT deserialize (QT) (scope immutable(ubyte)[] data) @trusted nothrow
+    {
+        try
+            return deserializeFull!QT(data);
+        catch (Throwable t)
+        {
+            try
+            {
+                writeln("ERROR: Deserialize:", QT.stringof);
+                writeln(t);
+            }
+            catch (Exception ignored) {}
+            assert(0);
+        }
+    }
+}
+
+/// A different default serializer from `LocalRest` for `RemoteAPI`
+public alias RemoteAPI (APIType) = geod24.LocalRest.RemoteAPI!(APIType, Serializer);
 
 /*******************************************************************************
 
