@@ -60,7 +60,6 @@ unittest
     import agora.common.Metadata;
     import agora.common.crypto.Key;
     import core.time;
-    import geod24.LocalRest;
     import geod24.Registry;
     import std.algorithm;
     import std.array;
