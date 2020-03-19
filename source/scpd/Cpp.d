@@ -192,40 +192,39 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
         /// TODO: Separate from `vector` definition
         private static struct ConstIterator
         {
-            const(T)* ptr;
+            size_t index;
             const(vector!T)* orig;
 
-            public ref const(T) front () const pure nothrow @nogc
+            public ref const(T) front () const pure nothrow @nogc @trusted
             {
-                if (this.empty)
-                    assert(0);
-                return *this.ptr;
+                return (*this.orig)[this.index];
             }
-            public void popFront () pure nothrow @nogc
+            public void popFront () pure nothrow @nogc @trusted
             {
                 if (!this.empty)
-                    this.ptr++;
+                    this.index++;
             }
             public @property bool empty () const pure nothrow @safe @nogc
             {
-                return !(this.ptr < this.orig._end);
+                return !(this.index < this.orig.length);
             }
         }
 
-        public ref inout(T) opIndex(size_t idx) inout pure nothrow @nogc
+        public ref inout(T) opIndex(size_t idx) inout pure nothrow @nogc @trusted
         {
-            assert(idx < this.length);
+            if (idx >= this.length)
+                assert(0);
             return this._start[idx];
         }
 
-        public size_t length () const pure nothrow @nogc
+        public size_t length () const pure nothrow @nogc @safe
         {
             return this._end - this._start;
         }
 
         public ConstIterator constIterator () const pure nothrow @nogc @safe
         {
-            return ConstIterator(this._start, &this);
+            return ConstIterator(0, &this);
         }
 
         public inout(T[]) opSlice () inout pure nothrow @nogc @safe
@@ -235,7 +234,8 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
 
         public inout(T[]) opSlice (size_t start, size_t end) inout pure nothrow @nogc @trusted
         {
-            assert(end <= this.length());
+            if (end > this.length())
+                assert(0);
             return this._start[start .. end];
         }
 
