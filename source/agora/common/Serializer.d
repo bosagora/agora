@@ -267,7 +267,7 @@ public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
 
 *******************************************************************************/
 
-public alias DeserializeDg = ubyte[] delegate(size_t size) @safe;
+public alias DeserializeDg = const(ubyte)[] delegate(size_t size) @safe;
 
 /// Traits to check if a given type has a custom serialization routine
 private enum hasSerializeMethod (T) = is(T == struct)
@@ -493,7 +493,7 @@ public size_t deserializeLength (
 
 *******************************************************************************/
 
-public T deserializeFull (T) (scope ubyte[] data) @safe
+public T deserializeFull (T) (scope const(ubyte)[] data) @safe
 {
     scope DeserializeDg dg = (size) @safe
     {
@@ -501,7 +501,7 @@ public T deserializeFull (T) (scope ubyte[] data) @safe
             throw new Exception(
                 format("Requested %d bytes but only %d bytes available", size, data.length));
 
-        ubyte[] res = data[0 .. size];
+        auto res = data[0 .. size];
         data = data[size .. $];
         return res;
     };
