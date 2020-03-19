@@ -32,7 +32,7 @@
     ---
     struct Foo
     {
-        static ref T fromBinary (T) (scope DeserializeDg data,
+        static T fromBinary (T) (scope DeserializeDg data,
             scope const ref DeserializerOptions) @safe;
     }
     ---
