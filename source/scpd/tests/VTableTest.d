@@ -28,7 +28,8 @@ import std.traits;
 
 version (unittest)
 extern(C++) ulong getVirtualMethodCountSCPDriver ();
-
+extern(C++) ulong doCheckMethodPoint ();
+/*
 /// vtable checks
 unittest
 {
@@ -68,4 +69,10 @@ unittest
         writefln("  virtual %s %s %s = 0;", returnTypes[idx], name, params[idx]);
     }
     writefln("}");
+}
+*/
+
+unittest
+{
+    assert(doCheckMethodPoint() == 0);
 }

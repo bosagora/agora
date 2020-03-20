@@ -169,3 +169,53 @@ unsigned long getVirtualMethodCountSCPDriver ()
     int total_default_vmcount = inheritance_depth * default_vmcount;
     return getVirtualMethodCount(scpDriver) - total_default_vmcount;
 }
+
+
+class A
+{
+public:
+    int n1 = 1;
+    void func1() { n1++; }
+    virtual void vfunc1(){};
+    virtual void vfunc2(){};
+};
+
+class B : public A
+{
+public:
+    int n2 = 2;
+
+    void func2() { n2++; }
+    virtual void vfunc3(){};
+    virtual void vfunc4(){};
+};
+
+int doCheckMethodPoint ()
+{
+
+    B *table = new B();
+    void **pvftable = (void **)(*(long *)table);
+
+    auto bfunc1 = &B::vfunc1;
+    if ((long)reinterpret_cast<void *&>(bfunc1) != 1)
+        return 1;
+
+    auto bfunc2 = &B::vfunc2;
+    if ((long)reinterpret_cast<void *&>(bfunc2) != 9)
+        return 9;
+
+    auto bfunc3 = &B::vfunc3;
+    if ((long)reinterpret_cast<void *&>(bfunc3) != 17)
+        return 17;
+
+    auto bfunc4 = &B::vfunc4;
+    if ((long)reinterpret_cast<void *&>(bfunc4) != 25)
+        return 25;
+
+    printf("B.vfunc1    :   %d\n", &B::vfunc1);
+    printf("B.vfunc2    :   %d\n", &B::vfunc2);
+    printf("B.vfunc3    :   %d\n", &B::vfunc3);
+    printf("B.vfunc4    :   %d\n", &B::vfunc4);
+
+    return 0;
+}
