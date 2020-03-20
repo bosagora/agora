@@ -23,7 +23,7 @@
     }
     ---
     The return type can be of another type, and other attributes
-    (such as `pute`, `nothrow`, etc...) can be used and are encouraged.
+    (such as `pure`, `nothrow`, etc...) can be used and are encouraged.
 
     Deserializer_custom_hook:
     Similar to the serializer's custom hook, an aggregate can implement
