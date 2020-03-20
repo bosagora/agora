@@ -148,7 +148,7 @@ public struct BitField (T = uint)
     }
 
     /// Gets a single bit's value
-    public bool opIndex (size_t index)
+    public bool opIndex (size_t index) const
     {
         if (index >= this.length())
             assert(0);
