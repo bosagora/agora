@@ -166,7 +166,8 @@ public class BanManager
     public void banFor (Address address, long ban_seconds) @safe nothrow
     {
         const ban_until = this.getCurTime() + ban_seconds;
-        this.banUntil(address, ban_until);
+        // TODO: cast to time_t for the time being
+        this.banUntil(address, cast(time_t)ban_until);
     }
 
     /***************************************************************************

@@ -33,6 +33,7 @@ import std.getopt;
 import std.range;
 import std.traits;
 
+import core.stdc.time;
 
 /// Command-line arguments
 public struct CommandLine
@@ -335,7 +336,7 @@ private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLi
 {
     BanManager.Config conf;
     conf.max_failed_requests = get!(size_t, "banman", "max_failed_requests")(cmdln, node);
-    conf.ban_duration = get!(size_t, "banman", "ban_duration")(cmdln, node);
+    conf.ban_duration = cast(time_t)get!(size_t, "banman", "ban_duration")(cmdln, node);
     return conf;
 }
 
