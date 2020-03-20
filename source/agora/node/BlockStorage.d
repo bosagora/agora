@@ -727,9 +727,11 @@ public class BlockStorage : IBlockStorage
             File idx_file = File(this.index_path, "a+b");
             idx_file.seek(0, SEEK_END);
 
-            serializePart(height, (scope v) => idx_file.rawWrite(v), CompactMode.No);
-            idx_file.rawWrite(hash);
-            serializePart(pos, (scope v) => idx_file.rawWrite(v), CompactMode.No);
+            serializePart(height, (scope v) @trusted => idx_file.rawWrite(v),
+                CompactMode.No);
+            () @trusted { idx_file.rawWrite(hash); }();
+            serializePart(pos, (scope v) @trusted => idx_file.rawWrite(v),
+                CompactMode.No);
 
             idx_file.close();
 
@@ -769,7 +771,7 @@ public class BlockStorage : IBlockStorage
         size_t record_size = (size_t.sizeof * 2 + Hash.sizeof);
         size_t record_count = idx_file.size / record_size;
 
-        scope DeserializeDg dg = (size) @safe
+        scope DeserializeDg dg = (size) @trusted
         {
             ubyte[] res;
             res.length = size;
@@ -784,7 +786,7 @@ public class BlockStorage : IBlockStorage
         {
 
             height = deserializeFull!size_t(dg, opts);
-            idx_file.rawRead(hash);
+            () @trusted { idx_file.rawRead(hash); }();
             pos    = deserializeFull!size_t(dg, opts);
             // add to index of heigth
             this.height_idx.insert(HeightPosition(height, pos));
