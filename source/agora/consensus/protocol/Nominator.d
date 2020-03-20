@@ -419,8 +419,8 @@ extern(D):
             SCPEnvelope env = cast()envelope;
 
             // deep-dup as SCP stores pointers to memory on the stack
-            env.statement.pledges = SCPStatement._pledges_t.fromString(
-                env.statement.pledges.toString());
+            env.statement.pledges = deserializeFull!(SCPStatement._pledges_t)(
+                serializeFull(env.statement.pledges));
             this.network.gossipEnvelope(env);
         }
         catch (Exception ex)
