@@ -12,9 +12,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         submodules: true
+        persist-credentials: false
     - name: Prepare compiler
       uses: mihails-strasuns/setup-dlang@v0.5.0
       with:
@@ -41,9 +42,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         submodules: true
+        persist-credentials: false
     - name: Prepare compiler
       uses: mihails-strasuns/setup-dlang@v0.5.0
       with:
