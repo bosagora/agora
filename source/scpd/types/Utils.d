@@ -70,7 +70,7 @@ extern(C++, `stellar`)
 {
     public uint256 sha256(const ref ByteSlice bin);
 
-    public struct ByteSlice
+    public extern(C++, class) struct ByteSlice
     {
         const void* mData;
         const size_t mSize;
