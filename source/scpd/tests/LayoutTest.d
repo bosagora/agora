@@ -37,7 +37,7 @@ static foreach (Type; GlueTypes)
 }
 
 /// Special-case as we implement our own Hash type that is binary-compatible with SCP's Hash
-extern(C++) bool isHashTypeCompatible (ref Hash, const(char*));
+extern(C++) bool isHashTypeCompatible (ref Hash, const(char)*);
 
 /// size & layout checks for C++ structs / objects
 unittest

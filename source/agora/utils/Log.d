@@ -261,7 +261,8 @@ public class AgoraLayout : Appender.Layout
 
 ***************************************************************************/
 
-private extern (C++) void writeDLog (const char* logger, int level, const char* msg)
+private extern(C++) void writeDLog (const(char)* logger, int level,
+    const(char)* msg)
 {
     if (level >= Level.min && level <= Level.max)
     {
