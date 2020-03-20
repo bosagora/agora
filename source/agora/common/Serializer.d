@@ -93,6 +93,7 @@ import agora.common.Types;
 
 import std.algorithm;
 import std.format;
+import std.meta;
 import std.range;
 import std.traits;
 
@@ -358,6 +359,13 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     else static if (is(T : BitBlob!N, size_t N))
         dg(record[]);
 
+    // Static array needs to be handled before arrays (because they convert)
+    else static if (is(T : E[N], E, size_t N))
+    {
+        foreach (ref elem; record)
+            serializePart(elem, dg);
+    }
+
     // Strings can be encoded as binary data
     else static if (isNarrowString!T)
     {
@@ -523,6 +531,18 @@ public T deserializeFull (T) (scope DeserializeDg dg,
     else static if (is(T : BitBlob!N, size_t N))
         return T(dg(T.Width));
 
+    // Static array needs to be handled before arrays
+    // Note: This might be optimizable for small types (char, ubyte)
+    else static if (is(T : E[N], E, size_t N))
+    {
+        E deserializeEntry () ()
+        {
+            return deserializeFull!E(dg, opts);
+        }
+        // Note: This does not allocate because `staticMap` yields a tuple
+        return [ Repeat!(N, deserializeEntry) ];
+    }
+
     // Validate strings as they are supposed to be UTF-8 encoded
     else static if (isNarrowString!T)
     {
@@ -686,6 +706,43 @@ unittest
     testSymmetry(OptionalHash(42, &GenesisBlock, "Baguettes are good"));
     testSymmetry(OptionalHash(24, null, "Good, Baguettes are"));
 }
+
+/// Test for static arrays
+unittest
+{
+    static struct Container
+    {
+        uint[4] data;
+    }
+
+    static struct Container2
+    {
+        Container[4] data;
+    }
+
+    testSymmetry!Container();
+    testSymmetry!Container2();
+
+    Container2 c = {
+        data: [ {[ 1, 2, 3, 4 ]}, {[ 5, 6, 7, 8 ]},
+                {[ 9, 10, 11, 12 ]}, {[ 13, 14, 15, 16 ]} ]
+    };
+
+    testSymmetry(c.data[0]);
+    testSymmetry(c.data[1]);
+    testSymmetry(c.data[2]);
+    testSymmetry(c.data[3]);
+    testSymmetry(c);
+
+    // Check that no allocation is performed
+    import ocean.core.Test : testNoAlloc;
+    auto serialized = serializeFull(c);
+    testNoAlloc({
+            const res = deserializeFull!Container2(serialized);
+            assert(res == c);
+        }());
+}
+
 
 /*******************************************************************************
 
