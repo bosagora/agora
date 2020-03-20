@@ -91,7 +91,7 @@ public class BanManager
             return;  // nothing to load
 
         auto ban_file = File(this.banfile_path, "r");
-        scope DeserializeDg dg = (size) @safe
+        scope DeserializeDg dg = (size) @trusted
         {
             ubyte[] res;
             res.length = size;
@@ -111,7 +111,7 @@ public class BanManager
     public void dump ()
     {
         auto ban_file = File(this.banfile_path, "w");
-        this.serialize((scope bytes) => ban_file.rawWrite(bytes));
+        this.serialize((scope bytes) @trusted => ban_file.rawWrite(bytes));
     }
 
     /***************************************************************************
