@@ -13,13 +13,11 @@ jobs:
       with:
         submodules: true
         persist-credentials: false
-    - name: Install D and Dub
-      run: |
-        DMD_VERSION=2.090.1
-        wget http://downloads.dlang.org/releases/2.x/${DMD_VERSION}/dmd_${DMD_VERSION}-0_amd64.deb
-        sudo dpkg -i dmd_${DMD_VERSION}-0_amd64.deb
-        sudo apt install -f
-        rm -fv dmd_${DMD_VERSION}-0_amd64.deb
+    - name: Prepare compiler
+      uses: mihails-strasuns/setup-dlang@v0.5.0
+      with:
+          compiler: ${{ dmd-2.090.1 }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install dependencies
       run: |
         # This step is needed because ddox build triggers preBuildCommand
