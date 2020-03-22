@@ -68,6 +68,12 @@
     "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],
     "buildRequirements": [ "allowWarnings" ],
 
+	"toolchainRequirements": {
+		"dmd": "no",
+		"gdc": "no",
+		"ldc": "~>1.19"
+	},
+
     "configurations": [
         {
             "name": "server",

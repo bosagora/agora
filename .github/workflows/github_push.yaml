@@ -28,14 +28,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
-        dc: [ dmd-master, ldc-master, dmd-latest ]
+        dc: [ ldc-master, ldc-latest ]
         exclude:
           # Not supported yet
           - os: windows-2019
           # We only build documentation on Linux
-          # Just use the latest release of DMD here, don't pin the version
-          - { os: macOS-10.15,  dc: dmd-latest }
-          - { os: windows-2019, dc: dmd-latest }
+          # Just use the latest release of LDC here, don't pin the version
+          - { os: macOS-10.15,  dc: ldc-master }
+          - { os: windows-2019, dc: ldc-master }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -84,7 +84,7 @@ jobs:
 
     # Documentation: Note that this will push documentation to your fork, too!
     - name: Build and deploy documentation
-      if: matrix.dc == 'dmd-latest'
+      if: matrix.dc == 'ldc-latest'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
