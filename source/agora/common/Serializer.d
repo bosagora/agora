@@ -72,11 +72,11 @@
     To deserialize length, use the `deserializeLength` function.
 
     Testing_data_types:
-    `agora.common.Types` exposes a convenient utility to test that a type can be
+    `testSymmetry` is a convenient utility to test that a type can be
     properly serialized and later deserialized, without memory corruption or
     compilation error, by testing the type itself, its qualified variants,
     and its ability to be (de)serialized as array or nested in an aggregate.
-    Refer to the function `agora.common.Types.testSymmetry` for more details.
+    Refer to the function documentation for more details.
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea
@@ -801,7 +801,6 @@ unittest
         }());
 }
 
-
 /*******************************************************************************
 
     Encode an unsigned integer to its variable-length binary format
@@ -969,4 +968,62 @@ unittest
     }
     assert(deserializeFull!Foo(data) == Foo(ulong.init, 252uL, 253uL, 255uL,
         ushort.max, 0x10000u, uint.max, 0x100000000u, ulong.max));
+}
+
+// Unittest-only utility functions
+version(unittest):
+
+/*******************************************************************************
+
+    Test the symmetry of a type
+
+    The provided type will be serialized, then deserialized, and tested for
+    equality. If a mismatch happens, a verbose error message will be issued.
+
+    If no argument is provided, the `init` value will be tested.
+
+    This function also tests that a `struct` containing `T`, an array of `T`,
+    and a struct containing an array of `T` can be properly serialized.
+
+*******************************************************************************/
+
+public void testSymmetry (T) (auto ref T value = T.init)
+{
+    testSymmetryImpl(value, T.stringof);
+
+    T[] arr = [ value, T.init, value, T.init ];
+    testSymmetryImpl(arr, "array of " ~ T.stringof);
+
+    static struct Container { T val; }
+    testSymmetryImpl(Container(value), "struct containing a " ~ T.stringof);
+
+    static struct ContainerArray { T[] val; }
+    testSymmetryImpl(ContainerArray(arr), "struct containing an array of " ~ T.stringof);
+}
+
+/// Ditto
+private void testSymmetryImpl (T) (const auto ref T value, string typename)
+{
+    import std.stdio;
+
+    ubyte[] serialized;
+    {
+        scope(failure) stderr.writeln("Serialization of ", typename, " failed!");
+        serialized = value.serializeFull();
+    }
+    assert(serialized.length, T.stringof ~ " did not serialize to anything?");
+    {
+        bool testing = false;
+        scope(failure)
+            if (!testing)
+            {
+                stderr.writeln("Deserialization of ", typename, " failed. Binary data:");
+                stderr.writeln(serialized);
+            }
+        const deserialized = serialized.deserializeFull!(T)();
+        testing = true;
+        assert(deserialized == value,
+               format("Serialization mismatch for %s! Expected:\n%s\n\ngot:\n%s\n\nBinary data:\n%s",
+                      typename, value, deserialized, serialized));
+    }
 }

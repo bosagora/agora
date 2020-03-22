@@ -85,6 +85,8 @@ unittest
 
 unittest
 {
+    import agora.common.Serializer;
+
     testSymmetry!Enrollment();
 
     Hash key = Hash("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f" ~

@@ -273,7 +273,7 @@ pure @safe nothrow @nogc unittest
 
 unittest
 {
-    import agora.common.Types;
+    import agora.common.Serializer;
 
     testSymmetry!Amount();
     // FIXME: Deserializer does not yet support deserializing immutable values
