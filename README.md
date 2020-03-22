@@ -33,7 +33,7 @@ and make the port locally accessible (See http://127.0.0.1:4000/) .
 
 ## Dependencies
 
-You need a recent C++ compiler (g++ with N4387 fixed), a recent D compiler, and `dub`.
+You need a recent C++ compiler (g++ with N4387 fixed), a recent (>=1.19.0) version of the LDC compiler, and `dub`.
 On Linux, we recommend gcc-9. On OSX, the latest `llvm` package available on Homebrew.
 
 Additionally, the following are dependencies:
@@ -54,8 +54,10 @@ and add it to your `.bashrc`, `.zshrc`, etc...
 ## Build instructions
 
 ```console
-# Install the latest DMD compiler
-curl https://dlang.org/install.sh | bash -s
+# Install the LDC compiler (you might want to use a newer version)
+curl https://dlang.org/install.sh | bash -s ldc-1.20.0
+# Add LDC to the $PATH
+source ~/dlang/ldc-1.20.0/activate
 # Clone this repository
 git clone https://github.com/bpfkorea/agora.git
 # Use the git root as working directory

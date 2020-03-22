@@ -3,9 +3,7 @@ language: d
 dist: xenial
 
 d:
-  - dmd-2.090.1,dub
-  - ldc-1.20.0,dub
-  - dmd-nightly   # Nightlies at the end so that `fast_finish` is useful
+  - ldc-1.20.1,dub
   - ldc-latest-ci # The freshest LDC
 
 os:
@@ -14,7 +12,6 @@ os:
 
 matrix:
   allow_failures:
-    - d: dmd-nightly
     - d: ldc-latest-ci
   fast_finish: true
 
