@@ -1027,3 +1027,34 @@ private void testSymmetryImpl (T) (const auto ref T value, string typename)
                       typename, value, deserialized, serialized));
     }
 }
+
+/*******************************************************************************
+
+    Tests that a `fromBinary` function compiles correctly
+
+    Since the deserializer uses `fromBinary` only if it matches the definition
+    it expects, to avoid accidentally matching `fromBinary` methods not intended
+    for it, a mistake in `fromBinary` will just use the default for the type,
+    most likely the constructor call with `tupleof` as member.
+
+    This function is a convenient way to test that a type's `fromBinary`
+    compiles, and hence is useful during development.
+    If the `fromBinary` doesn't compile, error messages will be displayed.
+
+    Params:
+      T = The unqualified (non-`const`, non-`immutable`) type to test.
+
+*******************************************************************************/
+
+public void checkFromBinary (T) ()
+{
+    DeserializeDg dg;
+    DeserializerOptions opts;
+    bool b;
+    if (b)
+    {
+        T i1            = T.fromBinary!(T)(dg, opts);
+        const(T) i2     = T.fromBinary!(const T)(dg, opts);
+        immutable(T) i3 = T.fromBinary!(immutable T)(dg, opts);
+    }
+}
