@@ -6,7 +6,7 @@ jobs:
     name: MacOS
     strategy:
       matrix:
-        os: [macOS-latest]
+        os: [macOS-15.04]
         dc: [dmd-master, ldc-master]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -27,7 +27,6 @@ jobs:
     - name: Install dependencies
       run: |
         brew install pkg-config
-        brew install sqlite3
     - name: Build & test agora
       run: |
         ./ci/ci_osx_setup.sh
@@ -40,7 +39,7 @@ jobs:
     name: Linux
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-18.04]
         dc: [dmd-master, ldc-master]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
