@@ -407,22 +407,19 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
                                CompactMode compact = CompactMode.Yes)
     @safe
 {
-    import geod24.bitblob;
-
     // Custom serialization handling trumps everything else
     static if (hasSerializeMethod!T)
         record.serialize(dg);
 
-    // BitBlob are fixed size and thus, value types
-    // If we use an `ubyte[]` overload, the length gets serialized
-    else static if (is(T : BitBlob!N, size_t N))
-        dg(record[]);
-
     // Static array needs to be handled before arrays (because they convert)
     else static if (is(T : E[N], E, size_t N))
     {
-        foreach (ref elem; record)
-            serializePart(elem, dg, compact);
+        // Small type optimization
+        static if (!hasSerializeMethod!E && (E.sizeof == 1 || isSomeChar!E))
+            dg(cast(const(ubyte[]))record);
+        else
+            foreach (ref elem; record)
+                serializePart(elem, dg, compact);
     }
 
     // Strings can be encoded as binary data
@@ -491,6 +488,16 @@ unittest
     serializePart(Record(42), (scope const(ubyte)[] arg) { stores[0] ~= arg; }, CompactMode.No);
     serializePart(ulong(42),  (scope const(ubyte)[] arg) { stores[1] ~= arg; }, CompactMode.No);
     assert(stores[0] == stores[1]);
+}
+
+unittest
+{
+    import agora.common.Types;
+
+    static assert(Signature.sizeof == 64);
+    auto serialized = serializeFull(Signature.init);
+    assert(serialized.length == 64);
+    assert(deserializeFull!Signature(serialized) == Signature.init);
 }
 
 /// Options that configure the behavior of the deserializer
@@ -588,27 +595,38 @@ public T deserializeFull (T) (scope const(ubyte)[] data) @safe
 public T deserializeFull (T) (scope DeserializeDg dg,
     const ref DeserializerOptions opts = DeserializerOptions.Default) @safe
 {
-    import geod24.bitblob;
-
     // Custom deserialization trumps everything
     static if (hasFromBinaryFunction!T)
         return T.fromBinary!T(dg, opts);
-
-    // BitBlob are fixed size and thus, value types
-    // If we use an `ubyte[]` overload, the deserializer looks for the length
-    else static if (is(T : BitBlob!N, size_t N))
-        return T(dg(T.Width));
 
     // Static array needs to be handled before arrays
     // Note: This might be optimizable for small types (char, ubyte)
     else static if (is(T : E[N], E, size_t N))
     {
-        E deserializeEntry () ()
+        // Small type optimization
+        static if (!hasFromBinaryFunction!E && isSomeChar!E)
         {
-            return deserializeFull!E(dg, opts);
+            E[] process () @trusted
+            {
+                import std.utf;
+                auto record = cast(E[]) (dg(E.sizeof * length));
+                record.validate();
+                return record;
+            }
+            return process()[0 .. N];
         }
+        // `bytes` and `bool` and qualified
+        else static if (!hasFromBinaryFunction!E && E.sizeof == 1)
+            return (() @trusted { return (cast(E[]) dg(N)); })()[0 .. N];
         // Note: This does not allocate because `staticMap` yields a tuple
-        return [ Repeat!(N, deserializeEntry) ];
+        else
+        {
+            E deserializeEntry () ()
+            {
+                return deserializeFull!E(dg, opts);
+            }
+            return [ Repeat!(N, deserializeEntry) ];
+        }
     }
 
     // Validate strings as they are supposed to be UTF-8 encoded
