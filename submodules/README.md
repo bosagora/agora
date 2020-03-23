@@ -17,7 +17,6 @@ This data can also be gathered by running `git submodules`.
 | localrest        | 6da1455      | 2020-02-14  | Yes (Owned)  |
 | mir-linux-kernel | 1.0.1        | 2018-09-17  |     No       |
 | openssl          | 1.1.6+1.0.1g | 2017-11-06  |     No       |
-| protobuf-d       | a89aa09      | 2019-10-08  |     No       |
 | stdx-allocator   | 2.77.5       | 2000-00-00  |     No       |
 | taggedalgebraic  | 0.11.9       | 2020-02-20  |     No       |
 | tinyendian       | 0.2.0        | 2018-06-10  |     No       |

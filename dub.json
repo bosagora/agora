@@ -92,7 +92,6 @@
         "libsodiumd":       { "path": "submodules/libsodiumd/", "version": "*" },
         "localrest":        { "path": "submodules/localrest/", "version": "*" },
         "ocean":            { "path": "submodules/ocean/", "version": "*" },
-        "protobuf":         { "path": "submodules/protobuf-d/", "version": "*" },
         "vibe-d":           { "path": "submodules/vibe.d/", "version": "*" }
     }
 }
