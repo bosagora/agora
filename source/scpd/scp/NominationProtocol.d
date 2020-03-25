@@ -113,6 +113,9 @@ nothrow:
     // stops the nomination protocol
     void stopNomination();
 
+    // Local QuorumSet interface (can be dynamically updated)
+    void updateLocalQuorumSet(const ref SCPQuorumSet qSet);
+
     void setStateFromEnvelope(const ref SCPEnvelope e);
 
     vector!SCPEnvelope getCurrentState() const;
