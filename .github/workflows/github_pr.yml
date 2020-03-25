@@ -1,60 +1,72 @@
-name: PR
+# Github worflow to test Agora on pull requests
+#
+# This is run on pull requests.
+# It is a separate workflow because Github doesn't allow to filter
+# out based on the type of action.
+# Keep it in sync with `github_push.yml`
+name: CI pipeline
+
 on: [pull_request]
 
 jobs:
-  test_mac:
-    name: MacOS
+  main:
+    name: Run
+    # The configuration matrix: We define all possible combinations here,
+    # then add excludes for things we don't want to test,
+    # and include to specify job-specific data.
     strategy:
+      # Uncomment this if your test are failing for different reasons on different platforms
+      # Most PR fail because of a code issue, not actually portability issues
+      # fail-fast: false
       matrix:
-        os: [macos-10.15]
-        dc: [dmd-2.090.1, ldc-1.19.0, ldc-1.20.0]
+        os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
+        dc: [ dmd-2.091.0, ldc-1.20.1, ldc-1.19.0 ]
+        exclude:
+          # Not supported yet
+          - os: windows-2019
+
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
+
+    # Checkout this repository and its submodules
     - uses: actions/checkout@v2
       with:
         submodules: true
         persist-credentials: false
+
+    # Install the D compiler
     - name: Prepare compiler
       uses: mihails-strasuns/setup-dlang@v0.5.0
       with:
           compiler: ${{ matrix.dc }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Install dependencies
+
+    # Install os-specific packages
+    # Those will show up in the list of steps, but be grayed out,
+    # hence the usage of the `[OSX]` tag
+    - name: '[OSX] Install dependencies & setup environment'
+      if: runner.os == 'macOS'
       run: |
         brew install pkg-config
-    - name: Build & test agora
-      run: |
         ./ci/ci_osx_setup.sh
-        export PATH="${PATH-}:$HOME/bin/"
-        export LIBRARY_PATH="${LD_LIBRARY_PATH-}:/usr/local/lib/"
-        export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/"
-        ./ci/run.sh
+        echo ::set-env name=LIBRARY_PATH::${LD_LIBRARY_PATH-}:/usr/local/lib/
+        echo ::set-env name=PKG_CONFIG_PATH::/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/
 
-  linux_build:
-    name: Linux
-    strategy:
-      matrix:
-        os: [ubuntu-18.04]
-        dc: [dmd-2.090.1, ldc-1.19.0, ldc-1.20.0]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-        persist-credentials: false
-    - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.5.0
-      with:
-        compiler: ${{ matrix.dc }}
-        gh_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build & test Agora
+    - name: '[Linux] Install dependencies & setup environment'
+      if: runner.os == 'Linux'
       run: |
-        ./ci/ci_linux_setup.sh
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt-get update
         sudo apt-get install libsqlite3-dev
         sudo apt-get install libsodium-dev
         sudo apt-get install g++-9
-        ./ci/run.sh
+
+    # Add whatever debugging information can be useful in the long run here
+    - name: Print system informations
+      run: |
+        ${DC} --version
+        dub --version
+
+    # Build and run the tests
+    - name: Build & test Agora
+      run: ./ci/run.sh
