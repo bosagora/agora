@@ -1,68 +1,79 @@
-name: push
-on: [push]
+# Github worflow to test Agora on a variety of platforms
+#
+# The CI triggers on 'push' to upstream.
+#
+# Note:
+# - Try to use the native Github action syntax (${{ expression }}) when possible,
+#   as they are substituted with their value in the logs, unlike env variable.
+#   For example use `${{ github.workspace }}` over `${GITHUB_WORKSPACE}`
+name: CD pipeline
+
+on:
+  push:
+    branches:
+      - v*.x.x
+      - v*.*.x
+      # Use this branch name in your fork to test changes
+      - github-actions
 
 jobs:
-  test_mac:
-    name: MacOS
+  main:
+    name: Run
+    # The configuration matrix: We define all possible combinations here,
+    # then add excludes for things we don't want to test,
+    # and include to specify job-specific data.
     strategy:
+      # Disable `fail-fast` because we want the whole test suite to run even if one
+      # of the nigthly is broken
+      fail-fast: false
       matrix:
-        os: [macOS-15.04]
-        dc: [dmd-master, ldc-master]
+        os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
+        dc: [ dmd-master, ldc-master ]
+        exclude:
+          # Not supported yet
+          - os: windows-2019
+
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
+
+    # Checkout this repository and its submodules
     - uses: actions/checkout@v2
       with:
         submodules: true
-        persist-credentials: false
+
+    # Install the D compiler
     - name: Prepare compiler
       uses: mihails-strasuns/setup-dlang@v0.5.0
       with:
           compiler: ${{ matrix.dc }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Print compiler and dub's version
-      run: |
-        ${DC} --version
-        dub --version
-    - name: Install dependencies
+
+    # Install os-specific packages
+    # Those will show up in the list of steps, but be grayed out,
+    # hence the usage of the `[OSX]` tag
+    - name: '[OSX] Install dependencies & setup environment'
+      if: runner.os == 'macOS'
       run: |
         brew install pkg-config
-    - name: Build & test agora
-      run: |
         ./ci/ci_osx_setup.sh
-        export PATH="${PATH-}:$HOME/bin/"
-        export LIBRARY_PATH="${LD_LIBRARY_PATH-}:/usr/local/lib/"
-        export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/"
-        ./ci/run.sh
+        echo ::set-env name=LIBRARY_PATH::${LD_LIBRARY_PATH-}:/usr/local/lib/
+        echo ::set-env name=PKG_CONFIG_PATH::/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/
 
-  linux_build:
-    name: Linux
-    strategy:
-      matrix:
-        os: [ubuntu-18.04]
-        dc: [dmd-master, ldc-master]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-        persist-credentials: false
-    - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.5.0
-      with:
-        compiler: ${{ matrix.dc }}
-        gh_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Print compiler and dub's version
+    - name: '[Linux] Install dependencies & setup environment'
+      if: runner.os == 'Linux'
       run: |
-        ${DC} --version
-        dub --version
-    - name: Build & test Agora
-      run: |
-        ./ci/ci_linux_setup.sh
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt-get update
         sudo apt-get install libsqlite3-dev
         sudo apt-get install libsodium-dev
         sudo apt-get install g++-9
-        ./ci/run.sh
+
+    # Add whatever debugging information can be useful in the long run here
+    - name: Print system informations
+      run: |
+        ${DC} --version
+        dub --version
+
+    # Build and run the tests
+    - name: Build & test Agora
+      run: ./ci/run.sh
