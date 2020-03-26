@@ -16,3 +16,8 @@ make -j4
 sudo make install
 sudo ldconfig # Refresh cache
 popd
+
+# enable core dumps
+ulimit -c unlimited -S
+sudo mkdir /cores/ && sudo chmod 777 /cores/
+sudo sysctl -w kernel.core_pattern=/cores/core-%E.%p
