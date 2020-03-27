@@ -93,6 +93,7 @@ private UnitTestResult customModuleUnitTester ()
     }
 
     ModTest[] mod_tests;
+    ModTest[] single_threaded;
 
     foreach (ModuleInfo* mod; ModuleInfo)
     {
@@ -113,7 +114,10 @@ private UnitTestResult customModuleUnitTester ()
                 continue;
             }
 
-            mod_tests ~= ModTest(mod.name, fp);
+            if (mod.name.startsWith("agora.common.Serializer"))
+                single_threaded ~= ModTest(mod.name, fp);
+            else
+                mod_tests ~= ModTest(mod.name, fp);
         }
     }
 
@@ -135,6 +139,24 @@ private UnitTestResult customModuleUnitTester ()
             writeln(ex);
         }
     }
+
+    // Run single-threaded tests
+    foreach (mod; single_threaded)
+    {
+        atomicOp!"+="(executed, 1);
+        try
+        {
+            //writefln("Unittesting %s..", mod.name);
+            mod.test();
+            atomicOp!"+="(passed, 1);
+        }
+        catch (Throwable ex)
+        {
+            writefln("Module tests failed: %s", mod.name);
+            writeln(ex);
+        }
+    }
+
 
     UnitTestResult result = { executed : executed, passed : passed };
     if (filtered > 0)
