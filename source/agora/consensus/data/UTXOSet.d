@@ -389,15 +389,7 @@ private class UTXODB
     public void opIndexAssign (const ref UTXOSetValue value, Hash key) @safe
     {
         static ubyte[] buffer;
-        buffer.length = 0;
-        () @trusted { assumeSafeAppend(buffer); }();
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) @safe
-        {
-            buffer ~= data;
-        };
-
-        serializePart(value, dg);
+        serializeToBuffer(value, buffer);
 
         scope (failure) assert(0);
         () @trusted {

@@ -111,17 +111,9 @@ public class ValidatorSet
             return false;
         }
 
-        buffer.length = 0;
-        () @trusted { assumeSafeAppend(buffer); } ();
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-        {
-            buffer ~= data;
-        };
-
         try
         {
-            serializePart(enroll, dg);
+            serializeToBuffer(enroll, buffer);
         }
         catch (Exception ex)
         {
@@ -527,17 +519,9 @@ public class ValidatorSet
         }
 
         // insert the pre-image into the table
-        buffer.length = 0;
-        () @trusted { assumeSafeAppend(buffer); } ();
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-        {
-            buffer ~= data;
-        };
-
         try
         {
-            serializePart(preimage, dg);
+            serializeToBuffer(preimage, buffer);
         }
         catch (Exception ex)
         {

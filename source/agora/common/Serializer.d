@@ -91,6 +91,8 @@ module agora.common.Serializer;
 
 import agora.common.Types;
 
+version (unittest) import ocean.core.Test : testNoAlloc;
+
 import std.algorithm;
 import std.format;
 import std.meta;
@@ -280,6 +282,68 @@ private enum hasFromBinaryFunction (T) = is(T == struct)
 
 /*******************************************************************************
 
+    Convenience overload to `serializePart` which use a buffer
+
+    This function takes a buffer as parameter, and will reset it before
+    forwarding to `serializePart`. Is the buffer is large enough, and no
+    custom `serialize` hook allocates, this function will not allocate.
+
+    Params:
+        T       = Top level type of data
+        record  = Data to serialize
+        buffer  = The buffer to reset then write to.
+
+    Returns:
+        A reference to `buffer` after serialization
+
+*******************************************************************************/
+
+public ubyte[] serializeToBuffer (T) (scope const auto ref T record,
+                                      scope return ref ubyte[] buffer)
+    @safe
+{
+    buffer.length = 0;
+    () @trusted { assumeSafeAppend(buffer); }();
+    scope SerializeDg dg = (scope const(ubyte[]) data) @safe
+    {
+        buffer ~= data;
+    };
+    serializePart(record, dg);
+    return buffer;
+}
+
+///
+unittest
+{
+    static struct Bar
+    {
+        string val;
+        int other;
+        uint us;
+    }
+
+    Bar[3] arr = [
+        Bar("Hello", 42, 82),
+        Bar("Cruel", 420, 840),
+        Bar("World", 2424, 100_000),
+    ];
+
+    ubyte[] buffer = new ubyte[512];
+    testNoAlloc({
+            auto ret1 = serializeToBuffer(arr, buffer);
+            assert(ret1.length ==
+                   1 /* Top level array length */ +
+                   "HelloCruelWorld".length +
+                   3 /* length of string encoded as a single byte */ +
+                   5 /* 42 encoded as 4 bytes, 82 encoded as a single byte */ +
+                   6 /* 420 as 4 bytes, 840 as 2 bytes */ +
+                   9 /* 2424 as 4 bytes, 100k as 5 bytes */);
+            assert(ret1.ptr is buffer.ptr);
+        }());
+}
+
+/*******************************************************************************
+
     Serialize a type and returns it as binary data.
 
     This function allocates and should be seldom used.
@@ -299,13 +363,8 @@ private enum hasFromBinaryFunction (T) = is(T == struct)
 public ubyte[] serializeFull (T) (scope const auto ref T record)
     @safe
 {
-    ubyte[] res;
-    scope SerializeDg dg = (scope const(ubyte[]) data) @safe
-    {
-        res ~= data;
-    };
-    serializePart(record, dg);
-    return res;
+    ubyte[] buffer;
+    return serializeToBuffer(record, buffer);
 }
 
 ///
@@ -735,7 +794,6 @@ unittest
     testSymmetry(c);
 
     // Check that no allocation is performed
-    import ocean.core.Test : testNoAlloc;
     auto serialized = serializeFull(c);
     testNoAlloc({
             const res = deserializeFull!Container2(serialized);
