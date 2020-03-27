@@ -170,7 +170,6 @@ public class TransactionPool
     public bool add (Transaction tx) @safe
     {
         static ubyte[] buffer;
-        buffer.length = 0;
 
         // check double-spend
         if (!isValidTransaction(tx))
@@ -180,14 +179,7 @@ public class TransactionPool
         foreach (input; tx.inputs)
             this.input_set.put(input.hashFull());
 
-        () @trusted { assumeSafeAppend(buffer); }();
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-        {
-            buffer ~= data;
-        };
-
-        serializePart(tx, dg);
+        serializeToBuffer(tx, buffer);
 
         () @trusted {
             db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",

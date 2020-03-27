@@ -306,11 +306,9 @@ public class EnrollmentManager
         }
 
         // save enroll_key
-        buffer.length = 0;
-        assumeSafeAppend(buffer);
         try
         {
-            serializePart(this.enroll_key, dg);
+            serializeToBuffer(this.enroll_key, buffer);
         }
         catch (Exception ex)
         {
