@@ -285,7 +285,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public void receiveEnvelope (SCPEnvelope envelope) @trusted
+    public void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
     {
         const cur_height = this.ledger.getBlockHeight();
         if (envelope.statement.slotIndex <= cur_height)
