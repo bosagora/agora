@@ -105,18 +105,8 @@ public class EnrollmentManager
         this.key_pair.v = secretKeyToCurveScalar(key_pair.secret);
         this.key_pair.V = this.key_pair.v.toPoint();
 
-        // load signature noise
-        auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-            "WHERE key = ?", "signature_noise");
-
-        foreach (row; results)
-        {
-            signature_noise = deserializeFull!Pair(row.peek!(ubyte[])(0));
-            break;
-        }
-
         // load enroll_key
-        results = this.db.execute("SELECT val FROM node_enroll_data " ~
+        auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
             "WHERE key = ?", "enroll_key");
 
         if (!results.empty)
@@ -264,45 +254,12 @@ public class EnrollmentManager
         this.data.random_seed = this.generatePreimages(height);
 
         // R, signature noise
-        this.signature_noise = Pair.random();
+        this.signature_noise = this.createSignatureNoise(height);
 
         scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
         {
             buffer ~= data;
         };
-
-        try
-        {
-            serializePart(this.signature_noise, dg);
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Serialization error", enroll, ex);
-            return false;
-        }
-
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM node_enroll_data " ~
-                    "WHERE key = ?)", "signature_noise");
-                if (results.oneValue!(bool))
-                {
-                    this.db.execute("UPDATE node_enroll_data SET val = ? WHERE key = ?",
-                        buffer, "signature_noise");
-                }
-                else
-                {
-                    this.db.execute("INSERT INTO node_enroll_data (key, val) VALUES (?, ?)",
-                        "signature_noise", buffer);
-                }
-            }();
-        }
-        catch (Exception ex)
-        {
-            this.logMessage("Database operation error", enroll, ex);
-            return false;
-        }
 
         // save enroll_key
         try
@@ -713,6 +670,32 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Create signature noise for enrollment data.
+
+        It creates a signature noise for enrollment data by hashing the private
+        key, the constant value which states the "purpose", and non-constant
+        value like a block height. This makes the enrollment data for a
+        validator recoverable in any abnormal situation.
+
+        Params:
+            height = the height used for a salt value
+
+        Returns:
+            the signature noise created using the private key
+
+    ***************************************************************************/
+
+    private Pair createSignatureNoise (ulong height) nothrow @safe @nogc
+    {
+        Pair key_pair;
+        key_pair.v = Scalar(hashMulti(this.key_pair.v,
+            "consensus.signature.noise", height));
+        key_pair.V = key_pair.v.toPoint();
+        return key_pair;
+    }
+
+    /***************************************************************************
+
         Logs message
 
         Params:
@@ -783,7 +766,7 @@ unittest
     Enrollment enroll2;
     Enrollment fail_enroll;
 
-    Pair signature_noise = Pair.random;
+    Pair signature_noise = man.createSignatureNoise(1);
     Pair fail_enroll_key_pair;
     fail_enroll_key_pair.v = secretKeyToCurveScalar(gen_key_pair.secret);
     fail_enroll_key_pair.V = fail_enroll_key_pair.v.toPoint();
