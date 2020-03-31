@@ -143,3 +143,68 @@ unittest
     assert(m.__vptr[3] == &BonTestC2.__dtor);
     assert(m.__vptr[2] == m.__vptr[3]);
 }
+
+extern (C++) class TestA
+{
+public:
+    ~this()
+    {
+    }
+    abstract void vfunc1();
+    abstract void vfunc2();
+}
+
+/// Finds offset of virtual destructor on C++ side
+unittest
+{
+    long[string] expected;
+    long[string] offset_cpp;
+    bool[long] values;
+    long val_cpp;
+    bool dtor_virtual;
+    long dtor_pos;
+
+    values.clear();
+    offset_cpp.clear();
+    val_cpp = 0;
+    dtor_virtual = false;
+
+    static foreach (member; __traits(allMembers, TestA))
+    {
+        mixin(
+        q{
+            static if (__traits(isVirtualMethod, TestA.%1$s) && (`%1$s` != `__xdtor`))
+            {
+                static if (`%1$s` == `__dtor`)
+                {
+                    dtor_virtual = true;
+                }
+                else
+                {
+                    val_cpp = getVMOffsetTestA(`%1$s`);
+                    offset_cpp[`%1$s`] = val_cpp;
+                    values[val_cpp] = true;
+                }
+            }
+        }.format(member));
+    }
+
+    //  If the destructor is a virtual method,
+    //  Finds two consecutive empty indexes.
+    if (dtor_virtual)
+    {
+        dtor_pos = -1;
+        foreach (idx; 0..values.length+2-1)
+        {
+            if (((idx in values) is null) && (((idx+1) in values) is null))
+            {
+                dtor_pos = idx;
+                break;
+            }
+        }
+        assert (dtor_pos >= 0);
+        offset_cpp[`__dtor`] = dtor_pos;
+    }
+    expected = ["__dtor" : 0, "vfunc1" : 2, "vfunc2" : 3];
+    assert(offset_cpp == expected, format(`%s : %s`, offset_cpp, expected));
+}
