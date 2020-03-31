@@ -80,6 +80,7 @@ private UnitTestResult customModuleUnitTester ()
     import std.string;
     import std.uni;
     import core.atomic;
+    import core.sync.mutex;
 
     //
     auto filter = environment.get("dtest").toLower();
@@ -123,6 +124,7 @@ private UnitTestResult customModuleUnitTester ()
 
     shared size_t executed;
     shared size_t passed;
+    shared Mutex print_lock = new shared Mutex();
 
     void runTest (ModTest mod)
     {
@@ -135,9 +137,12 @@ private UnitTestResult customModuleUnitTester ()
         }
         catch (Throwable ex)
         {
-            writefln("Module tests failed: %s", mod.name);
-            writeln(ex);
-            CircularAppender().printConsole();  // print logs of the work thread
+            synchronized (print_lock)
+            {
+                writefln("Module tests failed: %s", mod.name);
+                writeln(ex);
+                CircularAppender().printConsole();  // print logs of the work thread
+            }
         }
     }
 
