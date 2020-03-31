@@ -72,6 +72,7 @@
             "sourceFiles": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o",
+                "source/scpp/build/DVMChecks.o",
                 "source/scpp/build/DVTableChecks.o"
             ]
         },
