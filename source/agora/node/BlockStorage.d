@@ -1048,6 +1048,7 @@ unittest
     import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
     import std.algorithm.comparison;
+    import agora.utils.Test;
 
     const size_t BlockCount = 50;
     MemBlockStorage storage = new MemBlockStorage();
