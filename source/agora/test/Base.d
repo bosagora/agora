@@ -123,10 +123,10 @@ private UnitTestResult customModuleUnitTester ()
 
     shared size_t executed;
     shared size_t passed;
-    foreach (mod; parallel(mod_tests))
+
+    void runTest (ModTest mod)
     {
         atomicOp!"+="(executed, 1);
-
         try
         {
             //writefln("Unittesting %s..", mod.name);
@@ -139,24 +139,13 @@ private UnitTestResult customModuleUnitTester ()
             writeln(ex);
         }
     }
+
+    foreach (mod; parallel(mod_tests))
+        runTest(mod);
 
     // Run single-threaded tests
     foreach (mod; single_threaded)
-    {
-        atomicOp!"+="(executed, 1);
-        try
-        {
-            //writefln("Unittesting %s..", mod.name);
-            mod.test();
-            atomicOp!"+="(passed, 1);
-        }
-        catch (Throwable ex)
-        {
-            writefln("Module tests failed: %s", mod.name);
-            writeln(ex);
-        }
-    }
-
+        runTest(mod);
 
     UnitTestResult result = { executed : executed, passed : passed };
     if (filtered > 0)
