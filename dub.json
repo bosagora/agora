@@ -61,7 +61,8 @@
                 "source/scpp/*",
                 "source/scpd/*",
                 "source/agora/consensus/protocol/*",
-                "source/agora/cli/multi/*"
+                "source/agora/cli/multi/*",
+                "source/agora/cli/gen/*"
             ]
         },
         {
@@ -80,6 +81,17 @@
             "mainSourceFile": "source/agora/cli/multi/main.d",
             "excludedSourceFiles": [
                 "source/agora/cli/client/*",
+                "source/agora/cli/gen/*",
+                "source/agora/node/main.d"
+            ]
+        },
+        {
+            "name": "gen",
+            "targetName": "agora-gen",
+            "mainSourceFile": "source/agora/cli/gen/main.d",
+            "excludedSourceFiles": [
+                "source/agora/cli/client/*",
+                "source/agora/cli/multi/*",
                 "source/agora/node/main.d"
             ]
         }
