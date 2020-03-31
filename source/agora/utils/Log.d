@@ -98,6 +98,7 @@ public template AddLogger (string moduleName = __MODULE__)
     {
         import core.memory;
         log = Logger(Ocean.Log.lookup(moduleName));
+        log.logger.buffer(new char[](16384));
         GC.addRoot(cast(void*)log.logger);
     }
 
