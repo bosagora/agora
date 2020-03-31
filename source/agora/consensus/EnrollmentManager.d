@@ -263,7 +263,6 @@ public class EnrollmentManager
         // X, final seed data and preimages of hashes
         this.data.random_seed = this.generatePreimages(height);
 
-
         // R, signature noise
         this.signature_noise = Pair.random();
 
