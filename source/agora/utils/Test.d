@@ -148,11 +148,15 @@ unittest
         block_count = the number of blocks that will be created if the
                       returned transactions are added to the ledger
         spend_amount = the total amount to spend (evenly distributed)
+        gen_tx = the genesis transaction to refer to for the first set of
+                 transactions. If none set, the one returned by
+                 GenesisTransaction() is used.
 
 *******************************************************************************/
 
 public Transaction[] makeChainedTransactions (KeyPair key_pair,
-    Transaction[] prev_txs, size_t block_count, ulong spend_amount = 40_000_000)
+    Transaction[] prev_txs, size_t block_count,
+    ulong spend_amount = 40_000_000, in Transaction gen_tx = Transaction.init)
 {
     import agora.common.Amount;
     import agora.common.Hash;
@@ -189,9 +193,15 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     {
         Input input;
         if (prev_txs.length == 0)  // refering to genesis tx's outputs
-            input = Input(hashFull(GenesisTransaction), idx.to!uint);
+        {
+            const tx_hash = hashFull(gen_tx == Transaction.init
+                ? GenesisTransaction : gen_tx);
+            input = Input(tx_hash, idx.to!uint);
+        }
         else  // refering to tx's in the previous block
+        {
             input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
+        }
 
         Transaction tx =
         {
@@ -255,5 +265,67 @@ unittest
         assert(txes[idx].inputs[0].index == 0);
         assert(txes[idx].inputs[0].previous == hashFull(prev_txs[idx]));
         assert(txes[idx].outputs[0].value == Amount(SpendPerTx));
+    }
+}
+
+/// custom genesis tx
+unittest
+{
+    import std.algorithm;
+    import std.exception : assumeUnique;
+    import std.range;
+    import core.thread;
+    import agora.common.Amount;
+    import agora.common.BitField;
+    import agora.common.Hash;
+    import agora.consensus.data.Block;
+    import agora.consensus.Genesis;
+
+    auto key_pair = KeyPair.random();
+
+    Transaction GenTx =
+    {
+        TxType.Payment,
+        inputs: [ Input.init ],
+        outputs: [
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
+        ],
+    };
+
+    Transaction[] txs = [GenTx];
+    Hash[] merkle_tree;
+    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
+
+    immutable(BlockHeader) makeHeader ()
+    {
+        return immutable(BlockHeader)(
+            Hash.init,   // prev
+            0,           // height
+            merkle_root,
+            BitField!uint.init,
+            Signature.init,
+            null,        // enrollments
+        );
+    }
+
+    auto genesis_block = immutable(Block)(
+        makeHeader(),
+        txs.assumeUnique,
+        merkle_tree.assumeUnique
+    );
+
+    auto txes = makeChainedTransactions(key_pair, null, 1, 40_000_000, GenTx);
+    foreach (idx; 0 .. Block.TxsInBlock)
+    {
+        assert(txes[idx].inputs.length == 1);
+        assert(txes[idx].inputs[0].index == idx);
+        assert(txes[idx].inputs[0].previous == hashFull(genesis_block.txs[0]));
     }
 }
