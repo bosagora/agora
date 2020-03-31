@@ -21,6 +21,7 @@ import std.traits;
 
 version (unittest)
 {
+    extern (C++) long getVMOffsetSCPDriver(const char* name);
     extern (C++) long getVMOffsetTestA(const char* name);
     extern (C++) long getVMOffsetTestB(const char* name);
 }
@@ -207,4 +208,79 @@ unittest
     }
     expected = ["__dtor" : 0, "vfunc1" : 2, "vfunc2" : 3];
     assert(offset_cpp == expected, format(`%s : %s`, offset_cpp, expected));
+}
+
+/// Check that the virtual method of C++ and D for any class.
+unittest
+{
+    // Class name
+    const string[] entries = ["TestA", "SCPDriver"];
+
+    //  Offset of D side
+    long[string] offset_d;
+    //  Offset of  C++ side
+    long[string] offset_cpp;
+
+    bool[long] values;
+    long val_d;
+    long val_cpp;
+    bool dtor_virtual;
+    long dtor_pos;
+
+    static foreach (e; entries)
+    {
+        values.clear();
+        offset_cpp.clear();
+        offset_d.clear();
+        val_cpp = 0;
+        val_d = 0;
+        dtor_virtual = false;
+
+        mixin(
+        q{
+            static foreach (member; __traits(allMembers, %1$s))
+            {
+                mixin(
+                q{
+                    static if (__traits(isVirtualMethod, %1$s.%2$s) && (`%2$s` != `__xdtor`))
+                    {
+                        static if (`%2$s` == `__dtor`)
+                        {
+                            offset_d[`%2$s`] = val_d;
+                            val_d += 2;
+                            dtor_virtual = true;
+                        }
+                        else
+                        {
+                            offset_d[`%2$s`] = val_d;
+                            val_d ++;
+                            val_cpp = getVMOffset%1$s(`%2$s`);
+                            offset_cpp[`%2$s`] = val_cpp;
+                            values[val_cpp] = true;
+                        }
+                    }
+                }.format(`%1$s`, member));
+            }
+
+            //  If the destructor is a virtual method,
+            //  Finds two consecutive empty indexes.
+            if (dtor_virtual)
+            {
+                dtor_pos = -1;
+                foreach (idx; 0..values.length+2-1)
+                {
+                    if (((idx in values) is null) && (((idx+1) in values) is null))
+                    {
+                        dtor_pos = idx;
+                        break;
+                    }
+                }
+                assert (dtor_pos >= 0);
+                offset_cpp[`__dtor`] = dtor_pos;
+            }
+
+            assert(offset_d == offset_cpp, format(`%%s : %%s`, offset_d, offset_cpp));
+
+        }.format(e, `%2$s`));
+    }
 }
