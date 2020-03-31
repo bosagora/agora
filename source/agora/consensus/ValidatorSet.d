@@ -99,14 +99,14 @@ public class ValidatorSet
         if (auto reason = isInvalidEnrollmentReason(enroll, block_height + 1,
             finder))
         {
-            log.info("Invalid enrollment data: {}, Data was: ", reason, enroll);
+            log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
             return false;
         }
 
         // check if already exists
         if (this.hasEnrollment(enroll.utxo_key))
         {
-            log.info("Rejected already existing enrollment, Data was: ",
+            log.info("Rejected already existing enrollment, Data was: {}",
                 enroll);
             return false;
         }
@@ -490,7 +490,7 @@ public class ValidatorSet
             if (!this.getEnrollment(preimage.enroll_key, stored_enroll))
             {
                 log.info("Rejected adding a pre-image for non-existing " ~
-                    "enrollment, Preimage:{}", preimage);
+                    "enrollment, Preimage: {}", preimage);
                 return false;
             }
         }
@@ -506,7 +506,7 @@ public class ValidatorSet
         {
             if (this.hasPreimage(preimage.enroll_key, preimage.height))
             {
-                log.info("Rejected already existing pre-image, preimage:{}",
+                log.info("Rejected already existing pre-image, Preimage: {}",
                     preimage);
                 return false;
             }
