@@ -137,6 +137,7 @@ private UnitTestResult customModuleUnitTester ()
         {
             writefln("Module tests failed: %s", mod.name);
             writeln(ex);
+            CircularAppender().printConsole();  // print logs of the work thread
         }
     }
 
