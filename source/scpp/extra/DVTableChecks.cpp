@@ -52,3 +52,41 @@ long getVMOffsetTestB (const char* name)
         return -1;
     }
 }
+
+///  Returns the offset of virtual methods inside the class TestC1.
+long getVMOffsetTestC1 (const char* name)
+{
+    if (strcmp(name, "vfunc1") == 0)
+    {
+        auto pf = &TestC1::vfunc1;
+        return ((long)reinterpret_cast<void *&>(pf)) / sizeof(long);
+    }
+    else if (strcmp(name, "vfunc2") == 0)
+    {
+        auto pf = &TestC1::vfunc2;
+        return ((long)reinterpret_cast<void *&>(pf)) / sizeof(long);
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+///  Returns the offset of virtual methods inside the class TestC2.
+long getVMOffsetTestC2 (const char* name)
+{
+    if (strcmp(name, "vfunc1") == 0)
+    {
+        auto pf = &TestC2::vfunc1;
+        return ((long)reinterpret_cast<void *&>(pf)) / sizeof(long);
+    }
+    else if (strcmp(name, "vfunc2") == 0)
+    {
+        auto pf = &TestC2::vfunc2;
+        return ((long)reinterpret_cast<void *&>(pf)) / sizeof(long);
+    }
+    else
+    {
+        return -1;
+    }
+}

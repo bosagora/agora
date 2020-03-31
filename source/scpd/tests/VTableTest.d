@@ -88,3 +88,58 @@ unittest
     assert(n.__vptr[getVMOffsetTestB("vfunc1")] == &BonTestB.vfunc2);
     assert(n.__vptr[getVMOffsetTestB("vfunc2")] == &BonTestB.vfunc1);
 }
+
+// The destructor has two addresses.
+// The offset within `vtable` of the destructor is determined
+// by the declaration of the C++ side.
+unittest
+{
+    extern (C++) class TestC1
+    {
+    public:
+        ~this()
+        {
+        }
+        abstract void vfunc1();
+        abstract void vfunc2();
+    }
+
+    extern (C++) class BonTestC1 : TestC1
+    {
+    public:
+        override void vfunc1() {}
+        override void vfunc2() {}
+    }
+
+    // abstract class, this is in the correct order.
+    extern (C++) class TestC2
+    {
+    public:
+        abstract void vfunc1();
+        abstract void vfunc2();
+        ~this()
+        {
+        }
+    }
+
+    extern (C++) class BonTestC2 : TestC2
+    {
+    public:
+        override void vfunc1() {}
+        override void vfunc2() {}
+    }
+
+    auto n = new BonTestC1();
+    assert(n.__vptr[1] == &TestC1.__dtor);
+    assert(n.__vptr[1] == &BonTestC1.__dtor);
+    assert(n.__vptr[2] == &BonTestC1.vfunc1);
+    assert(n.__vptr[3] == &BonTestC1.vfunc2);
+    assert(n.__vptr[0] == n.__vptr[1]);
+
+    auto m = new BonTestC2();
+    assert(m.__vptr[0] == &BonTestC2.vfunc1);
+    assert(m.__vptr[1] == &BonTestC2.vfunc2);
+    assert(m.__vptr[3] == &TestC2.__dtor);
+    assert(m.__vptr[3] == &BonTestC2.__dtor);
+    assert(m.__vptr[2] == m.__vptr[3]);
+}
