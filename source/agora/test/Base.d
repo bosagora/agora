@@ -40,6 +40,7 @@ import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.Genesis;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.node.Node;
@@ -665,6 +666,9 @@ public struct TestConf
 
     /// The threshold. If not set, it will default to the number of nodes
     size_t threshold;
+
+    /// the genesis block to use, or GenesisBlock in Genesis.d if not set.
+    immutable Block gen_block;
 }
 
 /*******************************************************************************
@@ -687,8 +691,10 @@ public struct TestConf
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)(
     in TestConf test_conf)
 {
+    import agora.common.Serializer;
     import std.algorithm;
     import std.array;
+    import std.digest;
     import std.range;
     import ocean.util.log.Logger;
 
@@ -698,6 +704,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     std.concurrency.scheduler = null;
 
     assert(test_conf.nodes >= 2, "Creating a network require at least 2 nodes");
+
+    // custom genesis block
+    immutable string gen_block_hex = test_conf.gen_block != immutable(Block).init
+        ? test_conf.gen_block.serializeFull.toHexString : null;
 
     NodeConfig makeNodeConfig (bool is_validator)
     {
@@ -711,7 +721,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             min_listeners : test_conf.min_listeners == 0
                 ? test_conf.nodes - 1 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
-                ? test_conf.nodes - 1 : test_conf.max_listeners
+                ? test_conf.nodes - 1 : test_conf.max_listeners,
+            genesis_block : gen_block_hex
         };
 
         return conf;
