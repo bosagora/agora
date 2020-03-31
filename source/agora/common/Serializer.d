@@ -762,7 +762,7 @@ unittest
     }
 
     testSymmetry!OptionalHash();
-    testSymmetry(OptionalHash(42, &GenesisBlock, "Baguettes are good"));
+    testSymmetry(OptionalHash(42, &GenesisBlock(), "Baguettes are good"));
     testSymmetry(OptionalHash(24, null, "Good, Baguettes are"));
 }
 

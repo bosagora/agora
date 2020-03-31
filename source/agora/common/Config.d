@@ -96,6 +96,10 @@ public struct NodeConfig
     static assert(!hasUnsharedAliasing!(typeof(this)),
         "Type must be shareable accross threads");
 
+    /// If set, a hexdump serialized representation of the genesis block to use
+    /// in place of the built-in genesis block as defined by CoinNet
+    public string genesis_block;
+
     /// Is this a validator node
     public bool is_validator;
 

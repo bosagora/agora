@@ -31,6 +31,7 @@ module agora.utils.Test;
 
 import agora.common.crypto.Key;
 import agora.consensus.data.Transaction;
+import agora.consensus.Genesis;
 
 import std.file;
 import std.path;
@@ -156,7 +157,7 @@ unittest
 
 public Transaction[] makeChainedTransactions (KeyPair key_pair,
     Transaction[] prev_txs, size_t block_count,
-    ulong spend_amount = 40_000_000, in Transaction gen_tx = Transaction.init)
+    ulong spend_amount = 40_000_000, in Transaction gen_tx = GenesisTransaction)
 {
     import agora.common.Amount;
     import agora.common.Hash;
@@ -194,9 +195,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
         Input input;
         if (prev_txs.length == 0)  // refering to genesis tx's outputs
         {
-            const tx_hash = hashFull(gen_tx == Transaction.init
-                ? GenesisTransaction : gen_tx);
-            input = Input(tx_hash, idx.to!uint);
+            input = Input(hashFull(gen_tx), idx.to!uint);
         }
         else  // refering to tx's in the previous block
         {

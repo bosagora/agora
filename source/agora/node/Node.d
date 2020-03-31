@@ -21,6 +21,7 @@ import agora.common.Config;
 import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
+import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
@@ -30,6 +31,7 @@ import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.Genesis;
 import agora.consensus.protocol.Nominator;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
@@ -104,9 +106,25 @@ public class Node : API
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
+    /// If a custom genesis block is set it will be stored here
+    private immutable Block genesis_block;
+
     /// Ctor
     public this (const Config config)
     {
+        // custom genesis block provided
+        if (config.node.genesis_block.length > 0)
+        {
+            import std.array;
+            import std.conv;
+
+            // hex => bin
+            auto block_bytes = config.node.genesis_block.chunks(2).map!(
+                twoDigits => twoDigits.parse!ubyte(16)).array();
+            this.genesis_block = block_bytes.deserializeFull!(immutable(Block));
+            setGenesisBlock(this.genesis_block);
+        }
+
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
