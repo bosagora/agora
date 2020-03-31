@@ -27,6 +27,11 @@ import agora.consensus.Genesis;
 
 import std.conv;
 
+version (unittest)
+{
+    import agora.utils.Test;
+}
+
 /*******************************************************************************
 
     Get result of transaction data and signature verification

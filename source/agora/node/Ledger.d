@@ -38,6 +38,11 @@ import std.range;
 
 mixin AddLogger!();
 
+version (unittest)
+{
+    import agora.utils.Test;
+}
+
 /// Ditto
 public class Ledger
 {

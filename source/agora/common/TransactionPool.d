@@ -33,6 +33,11 @@ import std.exception : collectException, enforce;
 import std.file : exists;
 import std.range;
 
+version (unittest)
+{
+    import agora.utils.Test;
+}
+
 /*******************************************************************************
 
     Initialize the logger and the transaction pool
