@@ -84,6 +84,7 @@
                 "source/agora/common/Config.d",
                 "source/agora/network/*",
                 "source/agora/node/*",
+                "source/agora/utils/PrettyPrinter.d",
                 "source/scpp/*",
                 "source/scpd/*",
                 "source/agora/consensus/protocol/*",
