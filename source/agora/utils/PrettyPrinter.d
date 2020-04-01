@@ -45,7 +45,7 @@ unittest
 
 /// Returns:
 /// A formatting struct for a type, or the value if no such struct exists
-public auto prettify (T) (const ref T input) nothrow
+public auto prettify (T) (const auto ref T input) nothrow
 {
     static if (is(T : const Amount))
         return AmountFmt(input);
