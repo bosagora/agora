@@ -86,7 +86,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNetworkInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == 1,
+        assert(addresses.sort.uniq.count == 3,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }

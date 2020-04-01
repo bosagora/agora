@@ -413,11 +413,13 @@ public class TestNetworkManager : NetworkManager
 
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman, Registry* reg)
+        in string[] peers, Set!PublicKey required_peer_keys,
+        in QuorumConfig quorum_conf, in string[] dns_seeds,
+        Metadata metadata, TaskManager taskman, Registry* reg)
     {
         this.registry = reg;
-        super(config, ban_conf, peers, dns_seeds, metadata, taskman);
+        super(config, ban_conf, peers, required_peer_keys, quorum_conf,
+            dns_seeds, metadata, taskman);
     }
 
     /// We don't use IPs in tests
@@ -541,12 +543,14 @@ public class TestNode : Node, TestAPI
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
         in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        in string[] peers, Set!PublicKey required_peer_keys,
+        in QuorumConfig quorum_conf, in string[] dns_seeds, Metadata metadata,
         TaskManager taskman)
     {
         assert(taskman !is null);
         return new TestNetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata, taskman, this.registry);
+            required_peer_keys, quorum_conf, dns_seeds, metadata, taskman,
+            this.registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -767,10 +771,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
-    // for disovery testing: full quorum, but only 1 node in the 'network' section
+    // for discovery testing: full quorum, but only 1 node in the 'network' section
     Config makeMinimalNetQuorum (size_t idx, NodeConfig self, NodeConfig[] node_confs)
     {
         auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
+
+        node_confs.each!(conf => assert(conf.is_validator));
 
         auto quorum_keys =
             node_confs

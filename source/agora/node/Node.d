@@ -21,6 +21,7 @@ import agora.common.Config;
 import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
+import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
 import agora.common.TransactionPool;
@@ -110,8 +111,29 @@ public class Node : API
 
         this.config = config;
         this.taskman = this.getTaskManager();
+
+        // build the list of required quorum peers to connect to if we're a Validator
+        Set!PublicKey required_peer_keys;
+        if (this.config.node.is_validator)
+        {
+            void getNodes (in QuorumConfig conf, ref Set!PublicKey nodes)
+            {
+                foreach (node; conf.nodes)
+                {
+                    if (node != config.node.key_pair.address)  // filter ourselves
+                        nodes.put(node);
+                }
+
+                foreach (sub_conf; conf.quorums)
+                    getNodes(sub_conf, nodes);
+            }
+
+            getNodes(config.quorum, required_peer_keys);
+        }
+
         this.network = this.getNetworkManager(config.node, config.banman,
-            config.network, config.dns_seeds, this.metadata, this.taskman);
+            config.network, required_peer_keys, config.quorum, config.dns_seeds,
+            this.metadata, this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         scope (failure) this.pool.shutdown();
@@ -281,6 +303,8 @@ public class Node : API
             node_config = the node config
             banman_conf = the ban manager config
             peers = the peers to connect to
+            required_peer_keys = required peers with the given keys to connect to
+            quorum_conf = the quorum config
             dns_seeds = the DNS seeds to retrieve peers from
             metadata = metadata containing known peers and other meta info
             taskman = task manager
@@ -292,10 +316,11 @@ public class Node : API
 
     protected NetworkManager getNetworkManager (in NodeConfig node_config,
         in BanManager.Config banman_conf, in string[] peers,
+        Set!PublicKey required_peer_keys, in QuorumConfig quorum_conf,
         in string[] dns_seeds, Metadata metadata, TaskManager taskman)
     {
-        return new NetworkManager(node_config, banman_conf, peers, dns_seeds,
-            metadata, taskman);
+        return new NetworkManager(node_config, banman_conf, peers,
+            required_peer_keys, quorum_conf, dns_seeds, metadata, taskman);
     }
 
     /***************************************************************************
