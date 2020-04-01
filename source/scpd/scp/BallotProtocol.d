@@ -55,7 +55,7 @@ extern(C++, class) public struct BallotProtocol
         SCP_PHASE_NUM
     }
     // human readable names matching SCPPhase
-    static extern __gshared const(char*)[] phaseNames;
+    extern __gshared const(char*)[SCPPhase.max] phaseNames;
 
     unique_ptr!SCPBallot mCurrentBallot;      // b
     unique_ptr!SCPBallot mPrepared;           // p
