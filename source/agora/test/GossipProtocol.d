@@ -100,6 +100,6 @@ unittest
     send_txs.each!(tx => node_1.putTransaction(tx));
     nodes.each!(node =>
        send_txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(3.seconds)
+           node.hasTransactionHash(hashFull(tx)).retryFor(5.seconds)
     ));
 }
