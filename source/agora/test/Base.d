@@ -82,6 +82,10 @@ private UnitTestResult customModuleUnitTester ()
     import core.atomic;
     import core.sync.mutex;
 
+    // by default emit only errors during unittests.
+    // can be re-set by calling code.
+    Log.root.level(Log.root.Level.Error, true);
+
     //
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
@@ -678,10 +682,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     import std.array;
     import std.range;
     import ocean.util.log.Logger;
-
-    // by default emit only errors during unittests.
-    // can be re-set by calling code.
-    Log.root.level(Log.root.Level.Error, true);
 
     // We know we're in the main thread
     // Vibe.d messes with the scheduler - reset it
