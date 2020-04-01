@@ -100,6 +100,17 @@ struct opaque_array(uint32_t N = XDR_MAX_LEN)
     {
         this.base = val;
     }
+
+    /***************************************************************************
+
+        Support Vibe.d deserialization
+
+    ***************************************************************************/
+
+    extern(D) static auto fromString (scope const(char)[] str)
+    {
+        return opaque_array(typeof(base).fromString(str));
+    }
 }
 
 
