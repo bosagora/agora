@@ -415,8 +415,20 @@ extern(D):
 
     public override SCPQuorumSetPtr getQSet (ref const(StellarHash) qSetHash)
     {
+        scope (failure) assert(0);  // todo: make nothrow
+
         if (auto scp_quroum = qSetHash in this.quorum_set)
             return *scp_quroum;
+
+        // try to ask the network manager if it has the latest quorum data,
+        // and update our cache if it does
+        auto new_quorum = this.network.getQuorumSet(qSetHash);
+        if (new_quorum !is null)
+        {
+            auto qset = makeSharedSCPQuorumSet(*new_quorum);
+            this.quorum_set[qSetHash] = qset;
+            return qset;
+        }
 
         return SCPQuorumSetPtr.init;
     }
