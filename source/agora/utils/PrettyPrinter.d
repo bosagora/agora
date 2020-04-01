@@ -67,6 +67,8 @@ public auto prettify (T) (const auto ref T input) nothrow
         return EnrollmentFmt(input);
     else static if (is(T : const ConsensusData))
         return ConsensusDataFmt(input);
+    else static if (is(T : const QuorumConfig))
+        return QuorumConfigFmt(input);
     else
         return input;
 }
@@ -520,4 +522,46 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e2
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));
+}
+
+/// Formatting struct for `QuorumConfig`
+private struct QuorumConfigFmt
+{
+    private const(QuorumConfig) data;
+
+    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+        @safe nothrow
+    {
+        try
+        {
+            formattedWrite(sink, "{ thresh: %s, nodes: %s, subqs: %s }",
+                this.data.threshold,
+                this.data.nodes.map!(node => PubKeyFmt(node)),
+                this.data.quorums.map!(subq => QuorumConfigFmt(subq)));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
+    }
+}
+
+///
+unittest
+{
+    auto quorum = immutable(QuorumConfig)(2,
+        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
+         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+        [immutable(QuorumConfig)(3,
+            [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
+             PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+            [immutable(QuorumConfig)(4,
+                [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
+                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5"),
+                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])])]);
+
+    static immutable Res1 = `{ thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [{ thresh: 3, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [{ thresh: 4, nodes: [GBFD...CEWN, GBYK...QCY5, GBYK...QCY5], subqs: [] }] }] }`;
+
+    assert(Res1 == format("%s", prettify(quorum)),
+                   format("%s", prettify(quorum)));
 }
