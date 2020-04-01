@@ -110,11 +110,6 @@ private struct HashFmt
 {
     private const(Hash) value;
 
-    public this (ref const Hash r) @safe nothrow
-    {
-        this.value = r;
-    }
-
     public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
         try
