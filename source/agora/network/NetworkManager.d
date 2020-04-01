@@ -88,15 +88,21 @@ public class NetworkManager
     /// DNS seeds
     private const(string)[] dns_seeds;
 
+    /// Some nodes may want to connect to specific peers before
+    /// discovery() is considered complete
+    private Set!PublicKey required_peer_keys;
+
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        in string[] peers, Set!PublicKey required_peer_keys,
+        in QuorumConfig quorum_conf, in string[] dns_seeds, Metadata metadata,
         TaskManager taskman)
     {
         this.taskman = taskman;
         this.node_config = node_config;
         this.metadata = metadata;
         this.seed_peers = peers;
+        this.required_peer_keys = required_peer_keys;
         this.dns_seeds = dns_seeds;
         this.banman = this.getBanManager(banman_conf, node_config.data_dir);
     }
@@ -371,6 +377,8 @@ public class NetworkManager
             {
                 node.getPublicKey();
                 this.connecting_addresses.remove(node.address);
+                this.required_peer_keys.remove(node.key);
+
                 if (this.peerLimitReached())
                     return;
 
@@ -482,13 +490,15 @@ public class NetworkManager
     ///
     private bool minPeersConnected ()  pure nothrow @safe @nogc
     {
-        return this.peers.length >= this.node_config.min_listeners;
+        return this.required_peer_keys.length == 0 &&
+            this.peers.length >= this.node_config.min_listeners;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
-        return this.peers.byValue.filter!(node =>
-            !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
+        return this.required_peer_keys.length == 0 &&
+            this.peers.byValue.filter!(node =>
+                !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
