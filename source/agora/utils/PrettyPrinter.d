@@ -23,6 +23,7 @@ import agora.common.Amount;
 import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
+import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 
@@ -64,6 +65,8 @@ public auto prettify (T) (const auto ref T input) nothrow
         return BlockFmt(input);
     else static if (is(T : const Enrollment))
         return EnrollmentFmt(input);
+    else static if (is(T : const ConsensusData))
+        return ConsensusDataFmt(input);
     else
         return input;
 }
@@ -447,4 +450,74 @@ unittest
 
     assert(Res1 == format("%s", prettify(enrollment)),
                    format("%s", prettify(enrollment)));
+}
+
+/// Formatting struct for `ConsensusData`
+private struct ConsensusDataFmt
+{
+    private const(ConsensusData) data;
+
+    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+        @safe nothrow
+    {
+        try
+        {
+            formattedWrite(sink, "{ tx_set: %s, enrolls: %s }",
+                this.data.tx_set.byKey().map!(tx => TransactionFmt(tx)),
+                this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
+    }
+}
+
+///
+unittest
+{
+    import agora.common.Hash;
+    import agora.common.Serializer;
+    import agora.common.Set;
+    import agora.consensus.data.Enrollment;
+    import agora.consensus.Genesis;
+
+    Hash quorumSetHash;
+
+    Hash key = Hash("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f" ~
+                    "1b60a8ce26f000000000019d6689c085ae165831e934ff763ae46a2" ~
+                    "a6c172b3f1b60a8ce26f");
+    Hash seed = Hash("0X4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E2CC77AB212" ~
+                     "7B7AFDEDA33B4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E" ~
+                     "2CC77AB2127B7AFDEDA33B");
+    Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+                              "c2467c18e38b36367be78000000000000000000016f60" ~
+                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
+    Enrollment record =
+    {
+        utxo_key: key,
+        random_seed: seed,
+        cycle_length: 1008,
+        enroll_sig: sig,
+    };
+
+    Enrollment[] enrollments;
+    enrollments ~= record;
+    enrollments ~= record;
+
+    auto tx_set = Set!Transaction.from([cast(Transaction)GenesisTransaction]);
+
+    ConsensusData cd =
+    {
+        tx_set: tx_set,
+        enrolls: enrollments,
+    };
+
+    static immutable Res1 = `{ tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
+GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
+
+    assert(Res1 == format("%s", prettify(cd)),
+                   format("%s", prettify(cd)));
 }
