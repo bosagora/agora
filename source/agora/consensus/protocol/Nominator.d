@@ -198,9 +198,7 @@ extern(D):
         auto scp_quorum = toSCPQuorumSet(config);
         normalizeQSet(scp_quorum);
 
-        // todo: assertion fails do the misconfigured(?) threshold of 1 which
-        // is lower than vBlockingSize in QuorumSetSanityChecker::checkSanity
-        const ExtraChecks = false;
+        const ExtraChecks = true;
         const(char)* reason;
         if (!isQuorumSetSane(scp_quorum, ExtraChecks, &reason))
         {
