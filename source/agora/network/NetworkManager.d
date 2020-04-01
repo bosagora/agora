@@ -65,6 +65,9 @@ public class NetworkManager
     /// The connected nodes
     protected NetworkClient[PublicKey] peers;
 
+    /// The quorum set
+    protected SCPQuorumSet[Hash] quorum_sets;
+
     /// The addresses currently establishing connections to.
     /// Used to prevent connecting to the same address twice.
     protected Set!Address connecting_addresses;
@@ -128,6 +131,18 @@ public class NetworkManager
         // not connecting? connect later
         if (address !in this.connecting_addresses)
             this.todo_addresses.put(address);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            the quorum set associated with the given hash, or null if not found
+
+    ***************************************************************************/
+
+    public SCPQuorumSet* getQuorumSet (Hash hash) nothrow
+    {
+        return hash in this.quorum_sets;
     }
 
     /***************************************************************************
@@ -376,6 +391,9 @@ public class NetworkManager
             try
             {
                 node.getPublicKey();
+                node.getQuorumHashSet();
+                if (node.quorum_hash != Hash.init)
+                    this.quorum_sets[node.quorum_hash] = node.quorum_set;
                 this.connecting_addresses.remove(node.address);
                 this.required_peer_keys.remove(node.key);
 

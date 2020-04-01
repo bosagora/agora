@@ -23,6 +23,8 @@ import agora.common.Types;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Transaction;
+import agora.utils.Log;
+
 import scpd.types.Stellar_SCP;
 
 import agora.utils.Log;
@@ -61,6 +63,12 @@ class NetworkClient
 
     /// The key of the node as retrieved by getPublicKey()
     public PublicKey key;
+
+    /// The quorum hash of this node
+    public Hash quorum_hash;
+
+    /// The quorum set of this node
+    public SCPQuorumSet quorum_set;
 
     /// Reusable exception
     private Exception exception;
@@ -105,6 +113,29 @@ class NetworkClient
     public void getPublicKey ()
     {
         this.key = this.attemptRequest(this.api.getPublicKey(), this.exception);
+    }
+
+    /***************************************************************************
+
+        Get the quorum hash and quorum set of the node (if it's a Validator)
+
+        Throws:
+            `Exception` if the requests failed.
+
+    ***************************************************************************/
+
+    public void getQuorumHashSet ()
+    {
+        this.quorum_hash = this.attemptRequest(this.api.getQuorumHash(),
+            this.exception);
+
+        // todo: FullNode API should have an isValidator API so we
+        // can change this into an assert
+        if (this.quorum_hash != Hash.init)
+        {
+            this.quorum_set = this.attemptRequest(
+                this.api.getQuorumSet(this.quorum_hash), this.exception);
+        }
     }
 
     /***************************************************************************
