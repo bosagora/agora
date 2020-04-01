@@ -70,6 +70,9 @@ public extern (C++) class Nominator : SCPDriver
     /// The quorum set
     private SCPQuorumSetPtr[Hash] quorum_set;
 
+    /// The hash of the quorum set for this node
+    private Hash quorum_hash;
+
     private alias TimerType = Slot.timerIDs;
     static assert(TimerType.max == 1);
 
@@ -114,10 +117,22 @@ extern(D):
         this.ledger = ledger;
 
         auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
-        auto quorum_hash = hashFull(*localQSet);
+        this.quorum_hash = hashFull(*localQSet);
         this.quorum_set[quorum_hash] = localQSet;
 
         this.restoreSCPState(ledger);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            The quorum hash of this node.
+
+    ***************************************************************************/
+
+    public Hash getQuorumHash () @safe
+    {
+        return this.quorum_hash;
     }
 
     /***************************************************************************

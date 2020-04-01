@@ -84,6 +84,35 @@ public interface API : agora.api.FullNode.API
 
     /***************************************************************************
 
+        Returns:
+            The quorum hash of this node.
+            If the client does not have a mapping of this hash to the quorum set,
+            it should call getQuorumSet with the retrieved hash.
+
+        API:
+            GET /quorum_hash
+
+    ***************************************************************************/
+
+    public Hash getQuorumHash ();
+
+    /***************************************************************************
+
+        Params:
+            hash = the hash to look up
+
+        Returns:
+            The quorum set for the given quorum hash.
+
+        API:
+            GET /quorum_set
+
+    ***************************************************************************/
+
+    public SCPQuorumSet getQuorumSet (Hash hash);
+
+    /***************************************************************************
+
         Receives an SCP envelope and processes it.
         The node does not respond with any status code,
         clients which call this API can & should call it asynchronously.

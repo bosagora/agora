@@ -272,6 +272,55 @@ public class Node : API
 
     /***************************************************************************
 
+        Returns:
+            The quorum hash of this node.
+            If the client does not have a mapping of this hash to the quorum set,
+            it should call getQuorumSet with the retrieved hash.
+
+        API:
+            GET /quorum_hash
+
+    ***************************************************************************/
+
+    public override Hash getQuorumHash ()
+    {
+        if (this.config.node.is_validator)
+            return this.nominator.getQuorumHash();
+        else
+            return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Params:
+            hash = the hash to look up
+
+        Returns:
+            The quorum set for the given quorum hash.
+
+        API:
+            GET /quorum_set
+
+    ***************************************************************************/
+
+    public override SCPQuorumSet getQuorumSet (Hash hash) @trusted
+    {
+        import scpd.types.Stellar_types;
+        if (this.config.node.is_validator)
+        {
+            auto stellar_hash = uint512(hash);
+            auto set = this.nominator.getQSet(stellar_hash);
+            assert(set.ptr !is null);
+            return *set.ptr;
+        }
+        else
+        {
+            return SCPQuorumSet.init;
+        }
+    }
+
+    /***************************************************************************
+
         Receive an SCP envelope.
 
         API:
