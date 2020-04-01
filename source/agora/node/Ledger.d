@@ -26,6 +26,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.ValidatorSet;
 import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.BlockStorage;
@@ -97,6 +98,21 @@ public class Ledger
             {
                 this.storage.readBlock(block, height);
                 this.updateUTXOSet(block);
+            }
+        }
+
+        // restore validator set from lastest blocks
+        if (this.last_block.header.height > 0)
+        {
+            foreach (i; 0 .. ValidatorSet.ValidatorCycle)
+            {
+                if (i >= this.last_block.header.height)
+                    break;
+
+                Block block;
+                this.storage.readBlock(block, this.last_block.header.height - i);
+                this.enroll_man.restoreValidators(this.last_block.header.height,
+                    block, this.utxo_set.getUTXOFinder());
             }
         }
     }

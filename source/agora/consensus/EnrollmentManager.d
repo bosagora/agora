@@ -18,6 +18,7 @@ import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.UTXOSet;
@@ -530,6 +531,23 @@ public class EnrollmentManager
         ulong next_height = this.getNextRevealHeight();
         if (this.next_reveal_height < ulong.max)
             this.setNextRevealHeight(next_height + PreimageRevealPeriod);
+    }
+
+    /***************************************************************************
+
+        Restore validators' information from block
+
+        Params:
+            last_height = the latest block height
+            block = the block to update the validator set with
+            finder = the delegate to find UTXOs with
+
+    ***************************************************************************/
+
+    public void restoreValidators (ulong last_height, const ref Block block,
+        scope UTXOFinder finder) @safe nothrow
+    {
+        this.validator_set.restoreValidators(last_height, block, finder);
     }
 
     /***************************************************************************
