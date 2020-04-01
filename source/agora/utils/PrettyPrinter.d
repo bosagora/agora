@@ -156,11 +156,6 @@ private struct PubKeyFmt
 {
     private const(PublicKey) value;
 
-    public this (ref const PublicKey r) @safe nothrow
-    {
-        this.value = r;
-    }
-
     public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
     {
         try
