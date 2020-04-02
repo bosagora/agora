@@ -80,8 +80,10 @@ public struct Scalar
     }
 
     /// Reduce the hash to a scalar
-    public this (Hash param) nothrow @nogc
+    public this (Hash param) @trusted nothrow @nogc
     {
+        static assert(typeof(data).sizeof == 32);
+        static assert(Hash.sizeof == 64);
         crypto_core_ed25519_scalar_reduce(this.data[].ptr, param[].ptr);
     }
 
