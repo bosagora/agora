@@ -20,6 +20,7 @@ import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreimageInfo;
 import agora.consensus.data.UTXOSet;
@@ -211,7 +212,7 @@ public class ValidatorSet
     ***************************************************************************/
 
     public bool updateEnrolledHeight (const ref Hash enroll_hash,
-        const size_t block_height) @safe
+        const size_t block_height) @safe nothrow
     {
         try
         {
@@ -560,6 +561,41 @@ public class ValidatorSet
 
         return true;
     }
+
+    /***************************************************************************
+
+        Restore validators' information from block
+
+        Params:
+            last_height = the latest block height
+            block = the block to update the validator set with
+            finder = the delegate to find UTXOs with
+
+    ***************************************************************************/
+
+    public void restoreValidators (ulong last_height, const ref Block block,
+        scope UTXOFinder finder) @safe nothrow
+    {
+        assert(last_height >= block.header.height);
+        if (last_height - block.header.height < ValidatorCycle)
+        {
+            foreach (const ref enroll; block.header.enrollments)
+            {
+                if (!this.hasEnrollment(enroll.utxo_key))
+                {
+                    if (!this.add(block.header.height, finder, enroll))
+                    {
+                        assert(0);
+                    }
+                }
+                if (!this.updateEnrolledHeight(enroll.utxo_key,
+                        block.header.height))
+                {
+                        assert(0);
+                }
+            }
+        }
+    }
 }
 
 version (unittest)
@@ -710,4 +746,66 @@ unittest
     assert(result_image.enroll_key == preimage.enroll_key);
     assert(result_image.hash == preimage.hash);
     assert(result_image.height == preimage.height);
+}
+
+/// test for restroing information about validators from blocks
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.Genesis;
+    import std.conv;
+    import std.format;
+
+    scope storage = new TestUTXOSet;
+    auto key_pair = getGenesisKeyPair();
+    foreach (idx; 0 .. 8)
+    {
+        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [input],
+            [Output(Amount.MinFreezeAmount, key_pair.address)]
+        };
+
+        auto signature = key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        storage.put(tx);
+    }
+    Hash[] utxos = storage.keys;
+
+    auto set = new ValidatorSet(":memory:");
+    scope(exit) set.shutdown();
+
+    // create enrollments
+    Enrollment[] enrolls;
+    Scalar[] seeds;
+    seeds ~= Scalar.random();
+    seeds ~= Scalar.random();
+    enrolls ~= createEnrollment(utxos[0], key_pair, seeds[0]);
+    enrolls ~= createEnrollment(utxos[1], key_pair, seeds[1]);
+
+    // make test blocks used for restoring validator set
+    Block[] blocks;
+    ulong last_height = ValidatorSet.ValidatorCycle;
+    foreach (ulong i; 0 .. last_height + 1)
+    {
+        Block block;
+        block.header.height = i;
+        blocks ~= block;
+    }
+
+    // add enrollment data to the block at the height of 100
+    blocks[100].header.enrollments ~= enrolls[0];
+    blocks[100].header.enrollments ~= enrolls[1];
+
+    // restore validators' information from blocks
+    foreach (const ref Block block; blocks)
+        set.restoreValidators(last_height, block, &storage.findUTXO);
+
+    assert(set.getEnrolledHeight(enrolls[0].utxo_key) ==
+                blocks[100].header.height);
+    assert(set.getEnrolledHeight(enrolls[1].utxo_key) ==
+                blocks[100].header.height);
 }
