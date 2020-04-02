@@ -518,6 +518,20 @@ public class ValidatorSet
             return false;
         }
 
+        // check the validity of new pre-image based on the stored pre-image
+        PreimageInfo stored_image;
+        if (this.getPreimage(preimage.enroll_key, stored_image) &&
+            stored_image != PreimageInfo.init)
+        {
+            if (auto reason =
+                isInvalidPreimageReason(preimage, stored_image, ValidatorCycle))
+            {
+                log.info("Invalid preimage data: {}, Data was: ", reason,
+                    preimage);
+                return false;
+            }
+        }
+
         // insert the pre-image into the table
         try
         {
