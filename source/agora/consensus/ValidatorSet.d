@@ -521,9 +521,13 @@ public class ValidatorSet
 
         // check the validity of new pre-image based on the stored pre-image
         PreimageInfo stored_image;
-        if (this.getPreimage(preimage.enroll_key, stored_image) &&
-            stored_image != PreimageInfo.init)
+        if (this.getPreimage(preimage.enroll_key, stored_image))
         {
+            if (stored_image == PreimageInfo.init)
+            {
+                stored_image = PreimageInfo(stored_enroll.utxo_key, stored_enroll.random_seed,
+                    stored_enroll.random_seed_height);
+            }
             if (auto reason =
                 isInvalidPreimageReason(preimage, stored_image, ValidatorCycle))
             {
@@ -600,7 +604,8 @@ public class ValidatorSet
 
 version (unittest)
 private Enrollment createEnrollment(const ref Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar random_seed_src)
+    const ref KeyPair key_pair, ref Scalar random_seed_src, ulong seed_height,
+    ref Hash[ulong] preimages)
 {
     import std.algorithm;
 
@@ -609,17 +614,20 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
     pair.V = pair.v.toPoint();
 
     Hash random_seed;
-    Hash[] preimages;
     auto enroll = Enrollment();
     auto signature_noise = Pair.random();
 
     enroll.utxo_key = utxo_key;
     enroll.cycle_length = ValidatorSet.ValidatorCycle;
-    preimages ~= hashFull(random_seed_src);
+    ulong height = seed_height + enroll.cycle_length - 1;
+    preimages[height] = hashFull(random_seed_src);
     foreach (i; 0 ..  enroll.cycle_length-1)
-        preimages ~= hashFull(preimages[i]);
-    reverse(preimages);
-    enroll.random_seed = preimages[0];
+    {
+        preimages[height-1] = hashFull(preimages[height]);
+        --height;
+    }
+    enroll.random_seed = preimages[seed_height];
+    enroll.random_seed_height = seed_height;
     enroll.enroll_sig = sign(pair.v, pair.V, signature_noise.V,
         signature_noise.v, enroll);
     return enroll;
@@ -661,23 +669,29 @@ unittest
 
     // add enrollments
     Scalar[Hash] seed_sources;
+    Hash[ulong] preimages_1;
     auto utxo_hash = utxo_hashes[0];
     seed_sources[utxo_hash] = Scalar.random();
-    auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
+        8, preimages_1);
     assert(set.add(0, &storage.findUTXO, enroll));
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxo_hash));
     assert(!set.add(0, &storage.findUTXO, enroll));
 
     auto utxo_hash2 = utxo_hashes[1];
+    Hash[ulong] preimages_2;
     seed_sources[utxo_hash2] = Scalar.random();
-    auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2]);
+    auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2],
+        8, preimages_2);
     assert(set.add(0, &storage.findUTXO, enroll2));
     assert(set.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
+    Hash[ulong] preimages_3;
     seed_sources[utxo_hash3] = Scalar.random();
-    auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3]);
+    auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3],
+        8, preimages_3);
     assert(set.add(0, &storage.findUTXO, enroll3));
     assert(set.count() == 3);
 
@@ -739,7 +753,7 @@ unittest
     assert(!set.hasPreimage(utxo_hash, 10));
     assert(set.getPreimage(utxo_hash, result_image));
     assert(result_image == PreimageInfo.init);
-    auto preimage = PreimageInfo(utxo_hash, enroll.random_seed, 10);
+    auto preimage = PreimageInfo(utxo_hash, preimages_1[10], 10);
     assert(set.addPreimage(preimage));
     assert(set.hasPreimage(utxo_hash, 10));
     assert(set.getPreimage(utxo_hash, result_image));
@@ -781,10 +795,11 @@ unittest
     // create enrollments
     Enrollment[] enrolls;
     Scalar[] seeds;
+    Hash[ulong][2] preimages_array;
     seeds ~= Scalar.random();
     seeds ~= Scalar.random();
-    enrolls ~= createEnrollment(utxos[0], key_pair, seeds[0]);
-    enrolls ~= createEnrollment(utxos[1], key_pair, seeds[1]);
+    enrolls ~= createEnrollment(utxos[0], key_pair, seeds[0], 99, preimages_array[0]);
+    enrolls ~= createEnrollment(utxos[1], key_pair, seeds[1], 99, preimages_array[1]);
 
     // make test blocks used for restoring validator set
     Block[] blocks;

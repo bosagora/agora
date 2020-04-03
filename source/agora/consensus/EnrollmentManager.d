@@ -938,19 +938,19 @@ unittest
 
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
-    assert(man.createEnrollment(utxo_hash, 1, enroll));
+    assert(man.createEnrollment(utxo_hash, 100, enroll));
     assert(man.add(0, &storage.findUTXO, enroll));
     assert(man.hasEnrollment(utxo_hash));
 
     PreimageInfo result_image;
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image == PreimageInfo.init);
-    auto preimage = PreimageInfo(utxo_hash, man.cycle_preimages[100], 1100);
+    auto preimage = PreimageInfo(utxo_hash, man.cycle_preimages[110], 110);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == utxo_hash);
-    assert(result_image.hash == man.cycle_preimages[100]);
-    assert(result_image.height == 1100);
+    assert(result_image.hash == man.cycle_preimages[110]);
+    assert(result_image.height == 110);
 }
 
 // test for generating pre-images
