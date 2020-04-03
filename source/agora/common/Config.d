@@ -18,6 +18,7 @@ module agora.common.Config;
 import agora.common.BanManager;
 import agora.common.crypto.Key;
 import agora.common.Set;
+import agora.common.Types;
 import agora.utils.Log;
 
 import scpd.types.Stellar_SCP;
@@ -141,19 +142,6 @@ public struct AdminConfig
 
     /// Bind port
     public ushort port = 0xB0B;
-}
-
-/// Configuration for a peer we trust
-public struct QuorumConfig
-{
-    /// Threshold of this quorum set
-    public size_t threshold = 1;
-
-    /// List of nodes in this quorum
-    public PublicKey[] nodes;
-
-    /// List of any sub-quorums
-    public QuorumConfig[] quorums;
 }
 
 /// Configuration for logging

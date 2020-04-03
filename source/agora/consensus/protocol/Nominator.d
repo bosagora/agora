@@ -19,6 +19,7 @@ import agora.common.Hash : Hash, HashDg, hashPart, hashFull;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;

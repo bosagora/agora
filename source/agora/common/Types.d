@@ -13,6 +13,8 @@
 
 module agora.common.Types;
 
+import agora.common.crypto.Key;
+
 import geod24.bitblob;
 
 
@@ -42,4 +44,17 @@ unittest
 
     static assert(Signature.sizeof == crypto_sign_ed25519_BYTES);
     static assert(Hash.sizeof == crypto_generichash_BYTES_MAX);
+}
+
+/// The definition of a Quorum
+public struct QuorumConfig
+{
+    /// Threshold of this quorum set
+    public size_t threshold = 1;
+
+    /// List of nodes in this quorum
+    public PublicKey[] nodes;
+
+    /// List of any sub-quorums
+    public QuorumConfig[] quorums;
 }
