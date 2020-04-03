@@ -663,6 +663,35 @@ private struct SCPStatementHash
     }
 }
 
+/// Adds hashing support to SCPEnvelope
+private struct SCPEnvelopeHash
+{
+    /// instance pointer
+    private const SCPEnvelope* env;
+
+    /// Ctor
+    public this (const SCPEnvelope* env) @safe @nogc pure nothrow
+    {
+        assert(env !is null);
+        this.env = env;
+    }
+
+    /***************************************************************************
+
+        Compute the hash for SCPEnvelope
+
+        Params:
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @trusted @nogc
+    {
+        hashPart(SCPStatementHash(&this.env.statement), dg);
+        hashPart(this.env.signature[], dg);
+    }
+}
+
 /// ditto
 @safe unittest
 {
@@ -722,4 +751,38 @@ private struct SCPStatementHash
     assert(getStHash().hashFull() == Hash.fromString(
         "0x3c5a1a66ecf0c1e8992f448718fb1f4a6cbfb9527adba408644caefda8c1b1353" ~
         "98dbc0c33174280e8b0a5fb835dc707f06394c1205f8be545e5f70c771b421d"));
+
+    SCPEnvelope env;
+    auto getEnvHash () @trusted { return SCPEnvelopeHash(&env); }
+
+    // empty envelope
+    import std.conv;
+    assert(getEnvHash().hashFull() == Hash.fromString(
+        "0x328bcea198398bb6a52036b641f0fcc50ae7d3b97490bfe1e020441d158104458" ~
+        "29a63bb892da3ce2e539e1aa5a9f688695aefd54f967c197415ff834f0f0b22"),
+    getEnvHash().hashFull().to!string);
+
+    // with a statement
+    env.statement = st;
+    assert(getEnvHash().hashFull() == Hash.fromString(
+        "0x3c5a1a66ecf0c1e8992f448718fb1f4a6cbfb9527adba408644caefda8c1b1353" ~
+        "98dbc0c33174280e8b0a5fb835dc707f06394c1205f8be545e5f70c771b421d"),
+    getEnvHash().hashFull().to!string);
+
+    alias Sig = agora.common.Types.Signature;
+    Sig sig;  // be warned: toVec() will point to stack-allocated memory
+    () @trusted
+    {
+        auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
+        auto pair = KeyPair.fromSeed(Seed.fromString(seed));
+        auto msg = getStHash().hashFull();
+        sig = pair.secret.sign(msg[]);
+        env.signature = sig[].toVec();
+    }();
+
+    // with a signature
+    assert(getEnvHash().hashFull() == Hash.fromString(
+        "0xa2f59501721aafdc8cc7298cae9270345093ade244590ea89116770a4329cb437" ~
+        "c9836eb8ca624c803ae6b85bcfaed802318d07c89a2e9efb145b9c8e5617095"),
+    getEnvHash().hashFull().to!string);
 }
