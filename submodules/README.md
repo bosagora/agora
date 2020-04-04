@@ -13,7 +13,7 @@ This data can also be gathered by running `git submodules`.
 | diet-ng          | v1.6.1       | 2020-01-14  |     No       |
 | dyaml            | v0.8.0       | 2019-05-27  |     No       |
 | eventcore        | v0.8.50      | 2020-03-18  |     Yes      |
-| libsodiumd       | 0.1.0+1.0.18 | 2019-08-12  | Yes (Owned)  |
+| libsodiumd       | 0.1.1+1.0.18 | 2020-04-04  | Yes (Owned)  |
 | localrest        | 6da1455      | 2020-02-14  | Yes (Owned)  |
 | mir-linux-kernel | 1.0.1        | 2018-09-17  |     No       |
 | openssl          | 1.1.6+1.0.1g | 2017-11-06  |     No       |
