@@ -98,7 +98,8 @@
             "excludedSourceFiles": ["source/agora/cli/*/main.d"],
             "sourceFiles-posix": [
                 "source/scpp/build/DSizeChecks.o",
-                "source/scpp/build/DLayoutChecks.o"
+                "source/scpp/build/DLayoutChecks.o",
+                "source/scpp/build/DVMTestTypes.o"
             ],
             "sourceFiles-windows": [
                 "source/scpp/build/DSizeChecks.obj",
