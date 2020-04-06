@@ -1,20 +1,14 @@
 # Github worflow to test Agora on a variety of platforms
 #
-# The CI triggers on 'push' to upstream.
+# Also uploads thee documentation to Github pages.
 #
 # Note:
 # - Try to use the native Github action syntax (${{ expression }}) when possible,
 #   as they are substituted with their value in the logs, unlike env variable.
 #   For example use `${{ github.workspace }}` over `${GITHUB_WORKSPACE}`
-name: CD pipeline
+name: CI
 
-on:
-  push:
-    branches:
-      - v*.x.x
-      - v*.*.x
-      # Use this branch name in your fork to test changes
-      - github-actions
+on: [push, pull_request]
 
 jobs:
   main:
@@ -28,10 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
-        dc: [ ldc-master, ldc-latest ]
-        exclude:
-          # Not supported yet
-          - os: windows-2019
+        dc: [ ldc-master, ldc-1.20.1, ldc-1.19.0 ]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -69,15 +60,45 @@ jobs:
         sudo apt-get install libsodium-dev
         sudo apt-get install g++-9
 
+    - name: '[Windows] Install dependencies & setup environment'
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        $url = "https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18-msvc.zip"
+        $sha256hash = "C1D48D85C9361E350931FFE5067559CD7405A697C655D26955FB568D1084A5F4"
+        Write-Host ('Downloading {0} ...' -f $url)
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        # See https://github.com/PowerShell/PowerShell/issues/2138
+        $ProgressPreference = 'SilentlyContinue'
+        New-Item -ItemType directory -Path ${{ github.workspace }}\lib\
+        Invoke-WebRequest -Uri $url -OutFile '${{ github.workspace }}\lib\libsodium.zip'
+        if ((Get-FileHash '${{ github.workspace }}\lib\libsodium.zip' -Algorithm "SHA256").Hash -ne $sha256hash) {
+          exit 1
+        }
+        Expand-Archive '${{ github.workspace }}\lib\libsodium.zip' -DestinationPath ${{ github.workspace }}\lib\
+        echo "::set-env name=LIB::${{ github.workspace }}\lib\libsodium\x64\Release\v142\static\;${{ github.workspace }}\submodules\d2sqlite3\lib\win64\;$LIB"
+        echo "::set-env name=INCLUDE::${{ github.workspace }}\lib\libsodium\include\;$INCLUDE"
+
     # Add whatever debugging information can be useful in the long run here
     - name: Print system informations
+      shell: bash
       run: |
         ${DC} --version
         dub --version
 
     # Build and run the tests
-    - name: Build & test Agora
+    - name: '[POSIX] Build & test Agora'
+      if: runner.os != 'Windows'
+      #continue-on-error: matrix.dc == 'ldc-master'
       run: ./ci/run.sh
+
+    - name: '[Windows] Build & test Agora'
+      if: runner.os == 'Windows'
+      #continue-on-error: matrix.dc == 'ldc-master'
+      shell: cmd
+      run: |
+        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        call ci\run.bat
 
   # Documentation build: Only runs on Linux
   # Still need to install dependencies and the compiler because DDOX
