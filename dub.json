@@ -99,7 +99,8 @@
             "sourceFiles-posix": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o",
-                "source/scpp/build/DVMTestTypes.o"
+                "source/scpp/build/DVMTestTypes.o",
+                "source/scpp/build/DVMChecks.o"
             ],
             "sourceFiles-windows": [
                 "source/scpp/build/DSizeChecks.obj",

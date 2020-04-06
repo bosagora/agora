@@ -16,6 +16,11 @@ module scpd.tests.VTableTest;
 
 version (Windows) {} else:
 
+import scpd.tests.VTableTypes;
+
+version (unittest)
+extern(C++) int checkVMOffset (const char* classname, const char* offsets);
+
 /// In case the virtual methods are in the correct order.
 unittest
 {
@@ -72,4 +77,45 @@ unittest
 
     assert(n.__vptr[2] is &BonTestB.vfunc2);
     assert(n.__vptr[3] is &BonTestB.vfunc1);
+}
+
+/// It checks the offset of virtual on C++ and D for any class.
+unittest
+{
+    import std.format;
+    import std.string;
+
+    long[string] offset_d;
+    long val_d;
+    string offsets;
+
+    static foreach (e; VTableCheckClasses)
+    {
+        offset_d.clear();
+        val_d = 0;
+        offsets = "";
+
+        mixin(
+        q{
+            static foreach (member; __traits(allMembers, %1$s))
+            {
+                mixin(
+                q{
+                    static if (__traits(isVirtualMethod, %1$s.%2$s) && (`%2$s` != `__xdtor`))
+                    {
+                        static if (`%2$s` == `__dtor`)
+                            val_d += 2;
+                        else
+                            offset_d[`%2$s`] = val_d++;
+                    }
+                }.format(`%1$s`, member));
+            }
+
+            foreach (k,v; offset_d)
+                offsets ~= format(`%%s=%%d:`, k,v);
+
+            assert(checkVMOffset(`%1$s`, toStringz(offsets)) == 0, "The virtual method offset of %1$s does not match.");
+
+        }.format(e, `%2$s`));
+    }
 }
