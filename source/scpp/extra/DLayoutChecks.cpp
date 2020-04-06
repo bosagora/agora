@@ -42,7 +42,7 @@ struct FieldInfo
 bool isHashTypeCompatible (Hash &d_object, const char *string)
 {
     ByteSlice slice(string);
-    uint256 cpp_obj = sha256(slice);
+    uint512 cpp_obj = sha512(slice);
     return memcmp(&d_object, &cpp_obj, sizeof(cpp_obj)) == 0;
 }
 

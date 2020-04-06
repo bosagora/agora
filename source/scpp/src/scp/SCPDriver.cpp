@@ -18,7 +18,7 @@ namespace stellar
 std::string
 SCPDriver::getValueString(Value const& v) const
 {
-    uint256 valueHash = sha256(xdr::xdr_to_opaque(v));
+    uint512 valueHash = sha512(xdr::xdr_to_opaque(v));
 
     return hexAbbrev(valueHash);
 }
@@ -42,13 +42,13 @@ static const uint32 hash_K = 3;
 
 static uint64
 hashHelper(uint64 slotIndex, Value const& prev,
-           std::function<void(SHA256*)> extra)
+           std::function<void(SHA512*)> extra)
 {
-    auto h = SHA256::create();
+    auto h = SHA512::create();
     h->add(xdr::xdr_to_opaque(slotIndex));
     h->add(xdr::xdr_to_opaque(prev));
     extra(h.get());
-    uint256 t = h->finish();
+    uint512 t = h->finish();
     uint64 res = 0;
     for (size_t i = 0; i < sizeof(res); i++)
     {
@@ -61,7 +61,7 @@ uint64
 SCPDriver::computeHashNode(uint64 slotIndex, Value const& prev, bool isPriority,
                            int32_t roundNumber, NodeID const& nodeID)
 {
-    return hashHelper(slotIndex, prev, [&](SHA256* h) {
+    return hashHelper(slotIndex, prev, [&](SHA512* h) {
         h->add(xdr::xdr_to_opaque(isPriority ? hash_P : hash_N));
         h->add(xdr::xdr_to_opaque(roundNumber));
         h->add(xdr::xdr_to_opaque(nodeID));
@@ -72,7 +72,7 @@ uint64
 SCPDriver::computeValueHash(uint64 slotIndex, Value const& prev,
                             int32_t roundNumber, Value const& value)
 {
-    return hashHelper(slotIndex, prev, [&](SHA256* h) {
+    return hashHelper(slotIndex, prev, [&](SHA512* h) {
         h->add(xdr::xdr_to_opaque(hash_K));
         h->add(xdr::xdr_to_opaque(roundNumber));
         h->add(xdr::xdr_to_opaque(value));

@@ -28,9 +28,10 @@ extern(C++, `stellar`):
 // Since BitBlob has the same memory layout,
 // we can just swap it, and get a much more D-friendly interface.
 
-alias Hash = opaque_array!32;
-/// alias uint256 = opaque_array!32;
-alias uint256 = Hash;
+// todo: replace with BitBlob and use pragma(mangle) to force it to link
+alias Hash = opaque_array!64;
+alias uint256 = opaque_array!32;
+alias uint512 = opaque_array!64;
 
 enum CryptoKeyType : int32_t {
   KEY_TYPE_ED25519 = 0,
@@ -52,7 +53,7 @@ enum SignerKeyType : int32_t {
 /// Note: should only be used within this package
 package(scpd)
 struct PublicKey {
-    extern(D) this(Hash key) @safe pure nothrow @nogc
+    extern(D) this(uint256 key) @safe pure nothrow @nogc
     {
         this.ed25519_ = key;
     }
@@ -63,7 +64,7 @@ struct PublicKey {
     }
 
     int32_t type_;
-    Hash ed25519_;
+    uint256 ed25519_;
     alias ed25519_ this;
 }
 
