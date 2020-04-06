@@ -48,7 +48,7 @@ struct SCPNomination {
     xvector!(Value) accepted;
 }
 
-static assert(SCPNomination.sizeof == 80);
+static assert(SCPNomination.sizeof == 112);
 
 struct SCPStatement {
 
@@ -70,7 +70,7 @@ struct SCPStatement {
             uint32_t nH;
         }
 
-        static assert(_prepare_t.sizeof == 88);
+        static assert(_prepare_t.sizeof == 120);
 
         static struct _confirm_t {
             SCPBallot ballot;
@@ -80,7 +80,7 @@ struct SCPStatement {
             Hash quorumSetHash;
         }
 
-        static assert(_confirm_t.sizeof == 80);
+        static assert(_confirm_t.sizeof == 112);
 
         static struct _externalize_t {
             SCPBallot commit;
@@ -88,7 +88,7 @@ struct SCPStatement {
             Hash commitQuorumSetHash;
         }
 
-        static assert(_externalize_t.sizeof == 72);
+        static assert(_externalize_t.sizeof == 104);
 
         //using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
         //private:
@@ -152,14 +152,14 @@ struct SCPStatement {
     _pledges_t pledges;
 }
 
-static assert(SCPStatement.sizeof == 144);
+static assert(SCPStatement.sizeof == 176);
 
 struct SCPEnvelope {
   SCPStatement statement;
   Signature signature;
 }
 
-static assert(SCPEnvelope.sizeof == 168);
+static assert(SCPEnvelope.sizeof == 200);
 
 struct SCPQuorumSet {
     uint32_t threshold;
@@ -176,4 +176,4 @@ public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
 static assert(SCPBallot.sizeof == 32);
 static assert(Value.sizeof == 24);
 static assert(SCPQuorumSet.sizeof == 56);
-static assert(SCPEnvelope.sizeof == 168);
+static assert(SCPEnvelope.sizeof == 200);

@@ -94,6 +94,6 @@ extern(C++, `stellar`)
     // Note: This needs to be after `ByteSlice` because the frontend doesn't take
     // `extern(C++, class)` into account otherwise
     // https://issues.dlang.org/show_bug.cgi?id=20700
-    public uint256 sha256(const ref ByteSlice bin);
+    public uint512 sha512(const ref ByteSlice bin);
 
 }

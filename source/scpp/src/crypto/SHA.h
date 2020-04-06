@@ -11,18 +11,18 @@
 namespace stellar
 {
 
-// Plain SHA256
-uint256 sha256(ByteSlice const& bin);
+// Plain SHA512
+uint512 sha512(ByteSlice const& bin);
 
-// SHA256 in incremental mode, for large inputs.
-class SHA256
+// SHA512 in incremental mode, for large inputs.
+class SHA512
 {
   public:
-    static std::unique_ptr<SHA256> create();
-    virtual ~SHA256(){};
+    static std::unique_ptr<SHA512> create();
+    virtual ~SHA512(){};
     virtual void reset() = 0;
     virtual void add(ByteSlice const& bin) = 0;
-    virtual uint256 finish() = 0;
+    virtual uint512 finish() = 0;
 };
 
 // HMAC-SHA256 (keyed)

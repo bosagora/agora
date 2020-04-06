@@ -579,15 +579,14 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
 public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf )
 {
     import std.conv;
-    import scpd.types.Stellar_types : Hash, NodeID;
+    import scpd.types.Stellar_types : uint256, NodeID;
 
     SCPQuorumSet quorum;
     quorum.threshold = quorum_conf.threshold.to!uint;
 
     foreach (node; quorum_conf.nodes)
     {
-        auto key = Hash(node);
-        auto pub_key = NodeID(key);
+        auto pub_key = NodeID(uint256(node));
         quorum.validators.push_back(pub_key);
     }
 

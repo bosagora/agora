@@ -108,12 +108,12 @@ private struct QuorumFmt
             {
                 auto qconf = toQuorumConfig(*qset.ptr);
                 formattedWrite(sink, "{ hash: %s, quorum: %s }",
-                    StellarHashFmt(this.hash), prettify(qconf));
+                    prettify(this.hash), prettify(qconf));
             }
             else
             {
                 formattedWrite(sink, "{ hash: %s, quorum: <unknown> }",
-                    StellarHashFmt(this.hash));
+                    prettify(this.hash));
             }
         }
         catch (Exception ex)
@@ -314,47 +314,6 @@ private struct SCPStatementFmt
     }
 }
 
-/// Formatting struct for the 32-byte hash in scpd.types.Stellar_types
-private struct StellarHashFmt
-{
-    private const(StellarHash) value;
-
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
-    {
-        try
-        {
-            // Only format `0xABCD..EFGH`
-            enum StartUntil = 6;
-            enum EndFrom    = StellarHash.StringBufferSize - 4;
-            size_t count;
-            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
-                    if (count < StartUntil)
-                    {
-                        sink(data);
-                        if (count + data.length >= StartUntil)
-                            sink("...");
-                    }
-                    if (count >= EndFrom)
-                        sink(data);
-                    count += data.length;
-                };
-            this.value.toString(wrapper);
-        }
-        catch (Exception ex)
-        {
-            assert(0, ex.msg);
-        }
-    }
-}
-
-@safe unittest
-{
-    import geod24.bitblob;
-    static immutable StellarHash SomeHash =
-        StellarHash(BitBlob!(32 * 8)("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
-    assert(format("%s", StellarHashFmt(SomeHash)) == "0x0000...e26f");
-}
-
 /// Formatting struct for `SCPEnvelope`
 private struct SCPEnvelopeFmt
 {
@@ -420,7 +379,7 @@ unittest
     import agora.common.Set;
     import agora.consensus.data.Enrollment;
     import agora.consensus.Genesis;
-    import scpd.types.Stellar_types : NodeID, StellarHash = Hash;
+    import scpd.types.Stellar_types : NodeID, uint256, StellarHash = Hash;
     import scpd.types.Utils;
 
     Hash quorumSetHash;
@@ -467,7 +426,7 @@ unittest
     auto scp_quorum = toSCPQuorumSet(qc);
     auto qset = makeSharedSCPQuorumSet(scp_quorum);
     const bytes = ByteSlice.make(XDRToOpaque(scp_quorum));
-    auto quorum_hash = sha256(bytes);
+    auto quorum_hash = sha512(bytes);
 
     SCPQuorumSetPtr[StellarHash] qmap;
 
@@ -480,7 +439,7 @@ unittest
     }
 
     SCPEnvelope env;
-    env.statement.nodeID = NodeID(StellarHash(pair.address));
+    env.statement.nodeID = NodeID(uint256(pair.address));
 
     /** SCP PREPARE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_PREPARE;
@@ -494,7 +453,7 @@ unittest
     env.signature = typeof(env.signature).init;
 
     // missing signature
-    static immutable MissingSig = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xfee1...bf0d, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable MissingSig = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2abb...756b, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...0000 }`;
@@ -505,19 +464,19 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e2
     env.signature = pair.secret.sign(hashFull(0)[])[].toVec();
 
     // null quorum (hash not found)
-    static immutable PrepareRes1 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xfee1...bf0d, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable PrepareRes1 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2abb...756b, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
     // with quorum mapping
-    static immutable PrepareRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable PrepareRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
     // 'prep' pointer is set
-    static immutable PrepareRes3 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable PrepareRes3 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
@@ -526,7 +485,7 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
     // 'preparedPrime' pointer is set
-    static immutable PrepareRes4 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable PrepareRes4 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
@@ -576,13 +535,13 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
     // confirm with a known hash
-    static immutable ConfirmRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ConfirmRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
     // un-deserializable value
-    static immutable ConfirmRes3 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
+    static immutable ConfirmRes3 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
     // unknown hash
     assert(ConfirmRes1 == format("%s", scpPrettify(&env, &getQSet)),
@@ -605,13 +564,13 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0af7...b5ab }`;
 
     // known hash
-    static immutable ExtRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, commit: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ExtRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, commit: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0af7...b5ab }`;
 
     // un-deserializable value
-    static immutable ExtRes3 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0xfee1...bf0d, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0af7...b5ab }`;
+    static immutable ExtRes3 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x2abb...756b, quorum: { thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0af7...b5ab }`;
 
     /** SCP EXTERNALIZE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
@@ -649,7 +608,7 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }] } }, sig: 0x0af7...b5ab }`;
 
     // known hash
-    static immutable NomRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Nominate { qset: { hash: 0xfee1...bf0d, quorum: <unknown> }, votes: [{ tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable NomRes2 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Nominate { qset: { hash: 0x2abb...756b, quorum: <unknown> }, votes: [{ tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000

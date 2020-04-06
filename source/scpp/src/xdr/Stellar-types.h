@@ -9,8 +9,11 @@
 
 namespace stellar {
 
-using Hash = xdr::opaque_array<32>;
+// note: Hash was changed to 64-bytes in #737.
+// uint256 was also changed to reflect that.
+using Hash = xdr::opaque_array<64>;
 using uint256 = xdr::opaque_array<32>;
+using uint512 = xdr::opaque_array<64>;
 using uint32 = std::uint32_t;
 using int32 = std::int32_t;
 using uint64 = std::uint64_t;

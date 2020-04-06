@@ -10,76 +10,76 @@
 namespace stellar
 {
 
-// Plain SHA256
-uint256
-sha256(ByteSlice const& bin)
+// Plain SHA512
+uint512
+sha512(ByteSlice const& bin)
 {
-    uint256 out;
-    if (crypto_hash_sha256(out.data(), bin.data(), bin.size()) != 0)
+    uint512 out;
+    if (crypto_hash_sha512(out.data(), bin.data(), bin.size()) != 0)
     {
-        throw std::runtime_error("error from crypto_hash_sha256");
+        throw std::runtime_error("error from crypto_hash_sha512");
     }
     return out;
 }
 
-class SHA256Impl : public SHA256, NonCopyable
+class SHA512Impl : public SHA512, NonCopyable
 {
-    crypto_hash_sha256_state mState;
+    crypto_hash_sha512_state mState;
     bool mFinished;
 
   public:
-    SHA256Impl();
+    SHA512Impl();
     void reset() override;
     void add(ByteSlice const& bin) override;
-    uint256 finish() override;
+    uint512 finish() override;
 };
 
-std::unique_ptr<SHA256>
-SHA256::create()
+std::unique_ptr<SHA512>
+SHA512::create()
 {
-    return std::make_unique<SHA256Impl>();
+    return std::make_unique<SHA512Impl>();
 }
 
-SHA256Impl::SHA256Impl() : mFinished(false)
+SHA512Impl::SHA512Impl() : mFinished(false)
 {
     reset();
 }
 
 void
-SHA256Impl::reset()
+SHA512Impl::reset()
 {
-    if (crypto_hash_sha256_init(&mState) != 0)
+    if (crypto_hash_sha512_init(&mState) != 0)
     {
-        throw std::runtime_error("error from crypto_hash_sha256_init");
+        throw std::runtime_error("error from crypto_hash_sha512_init");
     }
     mFinished = false;
 }
 
 void
-SHA256Impl::add(ByteSlice const& bin)
+SHA512Impl::add(ByteSlice const& bin)
 {
     if (mFinished)
     {
-        throw std::runtime_error("adding bytes to finished SHA256");
+        throw std::runtime_error("adding bytes to finished SHA512");
     }
-    if (crypto_hash_sha256_update(&mState, bin.data(), bin.size()) != 0)
+    if (crypto_hash_sha512_update(&mState, bin.data(), bin.size()) != 0)
     {
-        throw std::runtime_error("error from crypto_hash_sha256_update");
+        throw std::runtime_error("error from crypto_hash_sha512_update");
     }
 }
 
-uint256
-SHA256Impl::finish()
+uint512
+SHA512Impl::finish()
 {
-    uint256 out;
-    assert(out.size() == crypto_hash_sha256_BYTES);
+    uint512 out;
+    assert(out.size() == crypto_hash_sha512_BYTES);
     if (mFinished)
     {
-        throw std::runtime_error("finishing already-finished SHA256");
+        throw std::runtime_error("finishing already-finished SHA512");
     }
-    if (crypto_hash_sha256_final(&mState, out.data()) != 0)
+    if (crypto_hash_sha512_final(&mState, out.data()) != 0)
     {
-        throw std::runtime_error("error from crypto_hash_sha256_final");
+        throw std::runtime_error("error from crypto_hash_sha512_final");
     }
     return out;
 }

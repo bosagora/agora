@@ -106,7 +106,7 @@ extern(D):
         this.network = network;
         this.quorum_conf = config;
         this.key_pair = key_pair;
-        auto node_id = NodeID(StellarHash(key_pair.address));
+        auto node_id = NodeID(uint256(key_pair.address));
         const IsValidator = true;
         auto quorum_set = verifyBuildSCPConfig(config);
         this.scp = createSCP(this, node_id, IsValidator, quorum_set);
@@ -116,7 +116,7 @@ extern(D):
         auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
 
         const bytes = ByteSlice.make(XDRToOpaque(*localQSet));
-        auto quorum_hash = sha256(bytes);
+        auto quorum_hash = sha512(bytes);
         this.quorum_set[quorum_hash] = localQSet;
 
         this.restoreSCPState(ledger);
@@ -244,8 +244,7 @@ extern(D):
         import scpd.types.Stellar_types : StellarHash = Hash, NodeID;
         import std.range;
 
-        auto key = StellarHash(this.key_pair.address);
-        auto pub_key = NodeID(key);
+        auto pub_key = NodeID(uint256(this.key_pair.address));
 
         foreach (block_idx, block; ledger.getBlocksFrom(0).enumerate)
         {
@@ -528,7 +527,7 @@ private struct SCPStatementHash
 {
     // sanity check in case a new field gets added.
     // todo: use .tupleof tricks for a more reliable field layout change check
-    static assert(SCPNomination.sizeof == 80);
+    static assert(SCPNomination.sizeof == 112);
 
     /// instance pointer
     private const SCPStatement* st;
@@ -712,46 +711,54 @@ private struct SCPEnvelopeHash
     auto getStHash () @trusted { return SCPStatementHash(&st); }
 
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x266223f3385aecddc64e02e21cb655d1693002d5da8e49e2c9a73afe0cf3ceac4" ~
-        "90b28fdfb42b0d67e7796593907947fb227b1045cf9b14785ba7d34c4305dbf"));
+        "0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f" ~
+        "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986"),
+        getStHash().hashFull().to!string);
 
     prep.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xdc8135b6c7757a1f68db0d792be67764ae3337e02b9cb2cd460fe3fa051a435b1" ~
-        "7a82ebd71d9ae00b36a9fcb90fd2b1e1d01bffbe335e1eda7de14ebf1c70a8d"));
+        "0x22ba327a2b6cba19adf9b47b7bb2ea8f9dffbcd2749ec5719ca8cb6ea8c0599b6" ~
+        "c8512f516c6829ca081de8dc368f2fd241cafc27ba80810491267eacc78049d"),
+        getStHash().hashFull().to!string);
 
     prep_prime.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x0f4629c0571c806488b6ff737053963e42dc72427ac4de8293b69c674102efbd5" ~
-        "709928a32c60008359bd518da08c8a79a0ed38b722f61f741fc7df0f96bd99a"));
+        "0xaf62285b9bc882318eb69aa7905ac11f5dcdf8abd940d3f72f4e4e470ac6a36f7" ~
+        "fa2bc782576dfcb96f83ea38d290e5ce8191d10b5d5b7fa11265e0615fa155b"),
+        getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.prepare_.prepared = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x6f056828fa1f7d59fca4279d37a3a933da1360718270872f9c37be67ab10aabdb" ~
-        "e0e4d889509f27f4957dc13b0082ac61d1acce19e599a89440679d36fe42ff9"));
+        "0x1512e21205de2f043bf9b206e6675daef9fa9126efa4d1221fe5cab8f3a67e382" ~
+        "0b5ebd89b29c5d92178ff7bf5e85e73ad5568889c5dbe0256c503c69e7c2639"),
+        getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.prepare_.preparedPrime = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x328bcea198398bb6a52036b641f0fcc50ae7d3b97490bfe1e020441d158104458" ~
-        "29a63bb892da3ce2e539e1aa5a9f688695aefd54f967c197415ff834f0f0b22"));
+        "0xd3dc2318365e55ea3a62b403fcbe22d447402741a5151a703326dbf852350dcd0" ~
+        "e020a762ae12a871473aed80d82f51c1cd3942c0b2360c2d609279a2867fe68"),
+        getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xc359847b8ddce220c896386c6b05fd12acb36fb850bd4b3959cf97516b9360eda" ~
-        "98f9728911e678c342e23e38e300b1872faeddfa4ccd619404f3d9b7fc17439"));
+        "0x3eda5ff9f07c12a1e039048ebfbc6716019cb481bafe43ffb3009efd3c6fa3106" ~
+        "ef36b3e124e0760e5f1395fbf689e452e23451355c8625618da03219994d100"),
+        getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x118121cc790639f11190bb5ea1f8023c7889f8484b69b2d13b7056f831b2b5741" ~
-        "afe7511a59d24f193fcce5c19080a5ca74ebc8487f1f340d70092066cd11f90"));
+        "0x37bdd725b95a333ece6ac157b4ec4cec448908fe84ef2fcd759dac3bab77ce6ae" ~
+        "c985025c80e8443f570553cfa6d21a7137d48068cf649d562ce9aec7b960aee"),
+        getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x3c5a1a66ecf0c1e8992f448718fb1f4a6cbfb9527adba408644caefda8c1b1353" ~
-        "98dbc0c33174280e8b0a5fb835dc707f06394c1205f8be545e5f70c771b421d"));
+        "0xbba4bdee0e083e6e5f56ddc2815afcd509f597f45d6ae5c83af747de2d568a26d" ~
+        "bc1f0792c8c6f990816bf9f2fc913ccc700c0a022644f8bd25835a6b439944c"),
+        getStHash().hashFull().to!string);
 
     SCPEnvelope env;
     auto getEnvHash () @trusted { return SCPEnvelopeHash(&env); }
@@ -759,15 +766,15 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x328bcea198398bb6a52036b641f0fcc50ae7d3b97490bfe1e020441d158104458" ~
-        "29a63bb892da3ce2e539e1aa5a9f688695aefd54f967c197415ff834f0f0b22"),
+        "0xd3dc2318365e55ea3a62b403fcbe22d447402741a5151a703326dbf852350dcd0" ~
+        "e020a762ae12a871473aed80d82f51c1cd3942c0b2360c2d609279a2867fe68"),
     getEnvHash().hashFull().to!string);
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x3c5a1a66ecf0c1e8992f448718fb1f4a6cbfb9527adba408644caefda8c1b1353" ~
-        "98dbc0c33174280e8b0a5fb835dc707f06394c1205f8be545e5f70c771b421d"),
+        "0xbba4bdee0e083e6e5f56ddc2815afcd509f597f45d6ae5c83af747de2d568a26d" ~
+        "bc1f0792c8c6f990816bf9f2fc913ccc700c0a022644f8bd25835a6b439944c"),
     getEnvHash().hashFull().to!string);
 
     alias Sig = agora.common.Types.Signature;
@@ -783,7 +790,7 @@ private struct SCPEnvelopeHash
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xa2f59501721aafdc8cc7298cae9270345093ade244590ea89116770a4329cb437" ~
-        "c9836eb8ca624c803ae6b85bcfaed802318d07c89a2e9efb145b9c8e5617095"),
+        "0xdc5f04d1d3b156139964ad5aedd745197ddcde7237359b02cc5c9ce633a554da0" ~
+        "a113fc9798453df313ae9b5bf03966e2db6d4dd5678d7760eae067283f9f515"),
     getEnvHash().hashFull().to!string);
 }
