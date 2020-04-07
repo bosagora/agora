@@ -133,8 +133,6 @@ int main(string[] args)
         std.file.mkdir(BuildPath);
     std.file.chdir(BuildPath);
 
-    auto xdrfiles = std.file.dirEntries(
-        SourcePath, "*.x", std.file.SpanMode.depth);
     auto headers = std.file.dirEntries(
         SourcePath, "*.h*", std.file.SpanMode.depth);
     // Need to array this because we might reuse it
@@ -160,7 +158,7 @@ int main(string[] args)
     {
         auto buildTs = objs.map!((v) => FileInfo(v, std.file.timeLastModified(v)))
             .minElement!((a) => a.lastModified);
-        auto lastModif = chain([__FILE_FULL_PATH__], xdrfiles, headers, sources.save)
+        auto lastModif = chain([__FILE_FULL_PATH__], headers, sources.save)
             .map!((v) => FileInfo(v, std.file.timeLastModified(v)))
             .maxElement!((a) => a.lastModified);
 
