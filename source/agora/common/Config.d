@@ -576,7 +576,7 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
 
 *******************************************************************************/
 
-public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf )
+public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf ) @safe
 {
     import std.conv;
     import scpd.types.Stellar_types : Hash, NodeID;
@@ -612,7 +612,7 @@ public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf )
 
 *******************************************************************************/
 
-public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
+public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum) @safe
 {
     import std.conv;
     import scpd.types.Stellar_types : Hash, NodeID;
