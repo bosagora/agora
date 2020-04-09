@@ -4,7 +4,7 @@
 
 #include "scp/SCP.h"
 #include "crypto/Hex.h"
-#include "crypto/SHA.h"
+#include "crypto/Hash.h"
 #include "scp/LocalNode.h"
 #include "scp/Slot.h"
 #include "util/GlobalChecks.h"

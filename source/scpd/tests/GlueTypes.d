@@ -39,9 +39,6 @@ alias TypesWithLayout = AliasSeq!
     /// scpd.types.Stellar_types
     PublicKey,
     Hash,
-
-    /// scpd.types.Utils
-    ByteSlice,
 );
 
 /// For these types we cannot do layout checks as we require

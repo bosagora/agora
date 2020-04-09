@@ -36,9 +36,6 @@ static foreach (Type; GlueTypes)
     extern(C++) FieldInfo cppFieldInfo (ref Type, const(char)*);
 }
 
-/// Special-case as we implement our own Hash type that is binary-compatible with SCP's Hash
-extern(C++) bool isHashTypeCompatible (ref Hash, const(char)*);
-
 /// size & layout checks for C++ structs / objects
 unittest
 {
@@ -60,11 +57,5 @@ unittest
                     Type.tupleof[idx].stringof, Type.stringof,
                     Type.tupleof[idx].offsetof, field_info.offset));
         }
-    }
-
-    foreach (name; ["bob", "alice", "carol"])
-    {
-        Hash hash = typeof(Hash.base)(sha512Of(name));
-        assert(isHashTypeCompatible(hash, name.toStringz));
     }
 }

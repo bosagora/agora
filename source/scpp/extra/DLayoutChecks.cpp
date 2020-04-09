@@ -20,7 +20,6 @@
 #include "xdr/Stellar-types.h"
 #include "scp/Slot.h"
 #include "crypto/ByteSlice.h"
-#include "crypto/SHA.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -37,14 +36,6 @@ struct FieldInfo
     FieldInfo(unsigned long long size,
               unsigned long long offset) : _size(size), _offset(offset) { };
 };
-
-/// Special-case as we implement our own Hash type that is binary-compatible with SCP's Hash
-bool isHashTypeCompatible (Hash &d_object, const char *string)
-{
-    ByteSlice slice(string);
-    uint512 cpp_obj = sha512(slice);
-    return memcmp(&d_object, &cpp_obj, sizeof(cpp_obj)) == 0;
-}
 
 #define HANDLE(FIELD) \
     if (strcmp(field_name, #FIELD) == 0) \

@@ -27,7 +27,6 @@
         "source/scpp/build/QuorumSetUtils.o",
         "source/scpp/build/SCP.o",
         "source/scpp/build/SCPDriver.o",
-        "source/scpp/build/SHA.o",
         "source/scpp/build/SecretKey.o",
         "source/scpp/build/Slot.o",
         "source/scpp/build/StrKey.o",
@@ -52,7 +51,6 @@
         "source/scpp/build/QuorumSetUtils.obj",
         "source/scpp/build/SCP.obj",
         "source/scpp/build/SCPDriver.obj",
-        "source/scpp/build/SHA.obj",
         "source/scpp/build/SecretKey.obj",
         "source/scpp/build/Slot.obj",
         "source/scpp/build/StrKey.obj",
@@ -88,6 +86,7 @@
             "excludedSourceFiles": [
                 "source/agora/api/Validator.d",
                 "source/agora/common/Config.d",
+                "source/agora/common/SCPHash.d",
                 "source/agora/network/*",
                 "source/agora/node/*",
                 "source/agora/utils/PrettyPrinter.d",
