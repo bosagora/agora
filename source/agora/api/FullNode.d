@@ -78,7 +78,7 @@ public interface API
             address = the address of the node to register
 
         API:
-            GET /register_listener
+            PUT /register_listener
 
     ***************************************************************************/
 
