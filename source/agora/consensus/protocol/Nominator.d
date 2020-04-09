@@ -68,7 +68,7 @@ public extern (C++) class Nominator : SCPDriver
     private Set!ulong timers;
 
     /// The quorum set
-    private SCPQuorumSetPtr[StellarHash] quorum_set;
+    private SCPQuorumSetPtr[Hash] quorum_set;
 
     private alias TimerType = Slot.timerIDs;
     static assert(TimerType.max == 1);
@@ -114,9 +114,7 @@ extern(D):
         this.ledger = ledger;
 
         auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
-
-        const bytes = ByteSlice.make(XDRToOpaque(*localQSet));
-        auto quorum_hash = sha512(bytes);
+        auto quorum_hash = hashFull(*localQSet);
         this.quorum_set[quorum_hash] = localQSet;
 
         this.restoreSCPState(ledger);
