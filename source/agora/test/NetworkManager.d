@@ -68,7 +68,7 @@ unittest
     import std.range;
 
     /// node which returns bad blocks
-    static class BadNode : TestNode
+    static class BadNode : TestFullNode
     {
         ///
         public this (Config config, Registry* reg)
@@ -110,15 +110,24 @@ unittest
         public override void createNewNode (PublicKey address, Config conf)
         {
             RemoteAPI!TestAPI api;
-            if (this.nodes.length == 2)
+
+            // the test has 3 nodes:
+            // 1 validator => used for creating blocks
+            // 1 byzantine FullNode => lies about the blockchain
+            // 1 good FullNode => it accepts only the valid blockchain
+            if (conf.node.is_validator)
             {
-                api = RemoteAPI!TestAPI.spawn!(BadNode)(conf, &this.reg,
-                    conf.node.timeout.msecs);
+                api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
+                    conf, &this.reg, conf.node.timeout.msecs);
             }
             else
             {
-                api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg,
-                    conf.node.timeout.msecs);
+                if (this.nodes.length == 2)
+                    api = RemoteAPI!TestAPI.spawn!BadNode(conf,
+                        &this.reg, conf.node.timeout.msecs);
+                else
+                    api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
+                        &this.reg, conf.node.timeout.msecs);
             }
 
             this.reg.register(address.toString(), api.tid());

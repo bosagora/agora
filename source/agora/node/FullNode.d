@@ -1,9 +1,9 @@
 /*******************************************************************************
 
-    Implementation of the Node's API.
+    Implementation of the FullNode's API.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019 - 2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -11,9 +11,9 @@
 
 *******************************************************************************/
 
-module agora.node.Node;
+module agora.node.FullNode;
 
-import agora.api.Validator;
+import agora.api.FullNode;
 import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -32,7 +32,6 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
-import agora.consensus.protocol.Nominator;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
@@ -40,7 +39,6 @@ import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
-import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
 import vibe.core.core;
@@ -64,14 +62,14 @@ private enum uint MaxBatchBlocksSent = 1000;
 
 /*******************************************************************************
 
-    Implementation of the Node API
+    Implementation of the FullNode API
 
-    This class implement the business code of the node.
+    This class implements the business code of the FullNode.
     Communication with the other nodes is handled by the `Network` class.
 
 *******************************************************************************/
 
-public class Node : API
+public class FullNode : API
 {
     /// Metadata instance
     protected Metadata metadata;
@@ -100,17 +98,25 @@ public class Node : API
     /// Blockstorage
     protected IBlockStorage storage;
 
-    /// Nominator instance
-    protected Nominator nominator;
-
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
     /// If a custom genesis block is set it will be stored here
     private immutable Block genesis_block;
 
-    /// Ctor
-    public this (const Config config)
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            config = Config instance
+            required_peer_keys = if not empty, the set of public keys for which
+                to find the associated nodes in the network and to connect to
+
+    ***************************************************************************/
+
+    public this (const Config config,
+        Set!PublicKey required_peer_keys = Set!PublicKey.init)
     {
         // custom genesis block provided
         if (config.node.genesis_block.length > 0)
@@ -129,26 +135,6 @@ public class Node : API
 
         this.config = config;
         this.taskman = this.getTaskManager();
-
-        // build the list of required quorum peers to connect to if we're a Validator
-        Set!PublicKey required_peer_keys;
-        if (this.config.node.is_validator)
-        {
-            void getNodes (in QuorumConfig conf, ref Set!PublicKey nodes)
-            {
-                foreach (node; conf.nodes)
-                {
-                    if (node != config.node.key_pair.address)  // filter ourselves
-                        nodes.put(node);
-                }
-
-                foreach (sub_conf; conf.quorums)
-                    getNodes(sub_conf, nodes);
-            }
-
-            getNodes(config.quorum, required_peer_keys);
-        }
-
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, required_peer_keys, config.quorum, config.dns_seeds,
             this.metadata, this.taskman);
@@ -162,13 +148,6 @@ public class Node : API
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, this.enroll_man, config.node);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
-
-        if (this.config.node.is_validator)
-        {
-            this.nominator = this.getNominator(this.network,
-                this.config.node.key_pair, this.ledger, this.taskman,
-                this.config.quorum);
-        }
     }
 
     /// The first task method, loading from disk, node discovery, etc
@@ -178,14 +157,7 @@ public class Node : API
         {
             log.info("Doing network discovery..");
             this.network.discover();
-
-            bool isNominating ()
-            {
-                return this.config.node.is_validator &&
-                    this.nominator.isNominating();
-            }
-
-            this.network.startPeriodicCatchup(this.ledger, &isNominating);
+            this.network.startPeriodicCatchup(this.ledger);
         });
     }
 
@@ -215,12 +187,6 @@ public class Node : API
     public override void registerListener (Address address) @trusted
     {
         this.network.registerListener(address);
-    }
-
-    /// GET /public_key
-    public override PublicKey getPublicKey () pure nothrow @safe @nogc
-    {
-        return this.config.node.key_pair.address;
     }
 
     /// GET: /node_info
@@ -253,10 +219,6 @@ public class Node : API
         {
             // gossip first
             this.network.gossipTransaction(tx);
-
-            // then nominate
-            if (this.config.node.is_validator)
-                this.nominator.tryNominate();
         }
 
         if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
@@ -268,27 +230,6 @@ public class Node : API
                 this.enroll_man.increaseNextRevealHeight();
             }
         }
-    }
-
-    /***************************************************************************
-
-        Receive an SCP envelope.
-
-        API:
-            PUT /receive_envelope
-
-        Params:
-            envelope = the SCP envelope
-
-    ***************************************************************************/
-
-    public override void receiveEnvelope (SCPEnvelope envelope) @safe
-    {
-        // we should not receive SCP messages unless we're a validator node
-        if (!this.config.node.is_validator)
-            return;
-
-        this.nominator.receiveEnvelope(envelope);
     }
 
     /// GET: /has_transaction_hash
@@ -469,31 +410,6 @@ public class Node : API
             node_config.key_pair);
     }
 
-    /***************************************************************************
-
-        Returns an instance of a Nominator.
-
-        Test-suites can inject a badly-behaved nominator in order to
-        simulate byzantine nodes.
-
-        Params:
-            network = the network manager for gossiping SCPEnvelopes
-            key_pair = the key pair of the node
-            ledger = Ledger instance
-            taskman = the task manager
-            quorum_config = the SCP quorum set configuration
-
-        Returns:
-            An instance of a `Nominator`
-
-    ***************************************************************************/
-
-    protected Nominator getNominator (NetworkManager network, KeyPair key_pair,
-        Ledger ledger, TaskManager taskman, in QuorumConfig quorum_config)
-    {
-        return new Nominator(network, key_pair, ledger, taskman, quorum_config);
-    }
-
     /// GET: /merkle_path
     public override Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
@@ -535,37 +451,4 @@ public class Node : API
         this.enroll_man.getValidatorPreimage(enroll_key, preimage);
         return preimage;
     }
-}
-
-
-/*******************************************************************************
-
-    Boots up a node that listen for network requests and blockchain data
-
-    This is called from the main or CLI.
-    The initialization process of the node is then completed.
-
-    Params:
-      config = A parsed and validated config file
-
-*******************************************************************************/
-
-public Node runNode (Config config)
-{
-    Log.root.level(config.logging.log_level, true);
-    log.trace("Config is: {}", config);
-
-    auto settings = new HTTPServerSettings(config.node.address);
-    settings.port = config.node.port;
-    auto router = new URLRouter();
-
-    mkdirRecurse(config.node.data_dir);
-
-    auto node = new Node(config);
-    router.registerRestInterface(node);
-    node.start();  // asynchronous
-
-    log.info("About to listen to HTTP: {}", settings.port);
-    listenHTTP(settings, router);
-    return node;
 }

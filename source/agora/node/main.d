@@ -19,7 +19,9 @@
 module agora.node.main;
 
 import agora.common.Config;
-import agora.node.Node;
+import agora.node.FullNode;
+import agora.node.Validator;
+import agora.node.Runner;
 import agora.utils.Log;
 
 import vibe.core.core;
@@ -61,7 +63,7 @@ private int main (string[] args)
             ex.message);
     }
 
-    Node node;
+    FullNode node;
     try
     {
         auto config = parseConfigFile(cmdln);
@@ -70,7 +72,11 @@ private int main (string[] args)
             writefln("Config file '%s' succesfully parsed.", cmdln.config_path);
             return 0;
         }
-        runTask(() => node = runNode(config));
+
+        if (config.node.is_validator)
+            runTask(() => node = runNode!Validator(config));
+        else
+            runTask(() => node = runNode!FullNode(config));
     }
     catch (Exception ex)
     {

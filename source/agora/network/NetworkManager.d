@@ -40,6 +40,7 @@ import agora.utils.Log;
 
 import scpd.types.Stellar_SCP;
 
+import vibe.http.common;
 import vibe.web.rest;
 
 import std.algorithm;
@@ -62,8 +63,11 @@ public class NetworkManager
     /// Task manager
     private TaskManager taskman;
 
-    /// The connected nodes
-    protected NetworkClient[PublicKey] peers;
+    /// Map of Validator key => Address (for lookup in 'peers')
+    protected Address[PublicKey] validator_to_addr;
+
+    /// All connected nodes (Validators & FullNodes)
+    protected NetworkClient[Address] peers;
 
     /// The addresses currently establishing connections to.
     /// Used to prevent connecting to the same address twice.
@@ -212,13 +216,15 @@ public class NetworkManager
 
         Params:
             ledger = the Ledger to apply received blocks to
-            isNominating = if we're currently nominating then do not
-                           alter the state of the ledger
+            isNominating = if not null, returns true if we're a Validator
+                that is currently in the process of nominating blocks.
+                In this case we do not want to alter the state of the Ledger
+                until the nomination process finishes (isNominating() => false)
 
     ***************************************************************************/
 
     public void startPeriodicCatchup (Ledger ledger,
-        bool delegate() @safe isNominating)
+        bool delegate() @safe isNominating = null)
     {
         this.taskman.runTask(
         ()
@@ -230,8 +236,9 @@ public class NetworkManager
                     ledger.getBlockHeight() + 1,
                     blocks => blocks.all!(block =>
                         // do not alter the state of the ledger if
-                        // we're currently nominating
-                        !isNominating() && ledger.acceptBlock(block)));
+                        // we're currently nominating (Validator)
+                        (isNominating is null || !isNominating())
+                         && ledger.acceptBlock(block)));
 
                 this.taskman.wait(2.seconds);
             }
@@ -375,20 +382,39 @@ public class NetworkManager
         {
             try
             {
-                node.getPublicKey();
+                try
+                {
+                    node.getPublicKey();
+                }
+                catch (HTTPStatusException ex)  // vibe.d (non-unittests)
+                {
+                    // only handle 404 (API not implemented), otherwise re-throw
+                    if (ex.status != 404)
+                        throw ex;
+                }
+
+                const is_validator = node.key != PublicKey.init;
                 this.connecting_addresses.remove(node.address);
-                this.required_peer_keys.remove(node.key);
+
+                if (is_validator)
+                    this.required_peer_keys.remove(node.key);
 
                 if (this.peerLimitReached())
                     return;
 
-                log.info("Established new connection with peer: {}", node.key);
+                if (is_validator)
+                    log.info("Established new connection with validator: {} (key: {})", node.address, node.key);
+                else
+                    log.info("Established new connection with full node: {}", node.address);
 
                 // only if it's a trusted node, we also want to receive gossiping
                 if (!is_incoming)
                     node.registerListener(this.getAddress());
 
-                this.peers[node.key] = node;
+                this.peers[node.address] = node;
+                if (is_validator)  // Add to Validator node map
+                    this.validator_to_addr[node.key] = node.address;
+
                 this.metadata.peers.put(node.address);
                 break;
             }
@@ -574,14 +600,16 @@ public class NetworkManager
 
     public void gossipEnvelope (SCPEnvelope envelope)
     {
-        foreach (ref node; this.peers)
+        foreach (key, address; this.validator_to_addr)
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} ({}) as it's banned", address, key);
                 continue;
             }
 
+            auto node = address in this.peers;
+            assert(node !is null);
             node.sendEnvelope(envelope);
         }
     }
