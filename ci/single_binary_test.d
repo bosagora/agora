@@ -19,14 +19,17 @@ immutable IntegrationPath = RootPath.buildPath("tests").buildPath("system");
 /// A simple test to ensure that the container works correctly,
 /// e.g. all dependencies are installed and the binary isn't corrupt.
 immutable BuildBinary = [ "dub", "build", "-c", "multi", ];
-immutable StartNodes = [ "build/agora-multi", IntegrationPath, "node/0/config.yaml", "node/1/config.yaml", "node/2/config.yaml"];
+immutable StartNodes = [ "build/agora-multi", IntegrationPath, "node/0/config.yaml",
+    "node/1/config.yaml", "node/2/config.yaml", "node/3/config.yaml"];
 immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
                                     "http://127.0.0.1:2826",
                                     "http://127.0.0.1:3826",
-                                    "http://127.0.0.1:4826"];
+                                    "http://127.0.0.1:4826",
+                                    "http://127.0.0.1:5826"];
 immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
                       IntegrationPath.buildPath("node/1/.cache/"),
-                      IntegrationPath.buildPath("node/2/.cache/")];
+                      IntegrationPath.buildPath("node/2/.cache/"),
+                      IntegrationPath.buildPath("node/3/.cache/")];
 
 private int main (string[] args)
 {

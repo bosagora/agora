@@ -22,8 +22,6 @@ module agora.test.Base;
 
 version (unittest):
 
-import agora.node.Ledger;
-import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.Config;
@@ -42,10 +40,15 @@ import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.network.NetworkManager;
+import agora.node.FullNode;
 import agora.node.Ledger;
-import agora.node.Node;
+import agora.node.Validator;
 import agora.utils.Log;
 public import agora.utils.Test;  // frequently needed in tests
+import agora.api.FullNode : NodeInfo, NetworkState;
+import agora.api.Validator : ValidatorAPI = API;
+
+import scpd.types.Stellar_SCP;
 
 import ocean.util.log.Logger;
 
@@ -288,8 +291,19 @@ public class TestAPIManager
 
     public void createNewNode (PublicKey address, Config conf)
     {
-        auto api = RemoteAPI!TestAPI.spawn!(TestNode)(conf, &this.reg,
-            conf.node.timeout.msecs);
+        RemoteAPI!TestAPI api;
+
+        if (conf.node.is_validator)
+        {
+            api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
+                conf.node.timeout.msecs);
+        }
+        else
+        {
+            api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
+                conf.node.timeout.msecs);
+        }
+
         this.reg.register(address.toString(), api.tid());
         this.nodes ~= NodePair(address, api);
     }
@@ -430,11 +444,12 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override API getClient (Address address, Duration timeout)
+    protected final override ValidatorAPI getClient (Address address,
+        Duration timeout)
     {
         auto tid = this.registry.locate(address);
         if (tid != typeof(tid).init)
-            return new RemoteAPI!API(tid, timeout);
+            return new RemoteAPI!ValidatorAPI(tid, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
     }
@@ -457,7 +472,7 @@ public class TestNetworkManager : NetworkManager
 }
 
 /// Used to call start/shutdown outside of main, and for dependency injection
-public interface TestAPI : API
+public interface TestAPI : ValidatorAPI
 {
     ///
     public abstract void start ();
@@ -478,17 +493,13 @@ public interface TestAPI : API
     public abstract void broadcastPreimage (uint height);
 }
 
-/// Ditto
-public class TestNode : Node, TestAPI
+/// Contains routines which are implemented by both TestFullNode and
+/// TestValidator. Used because TestValidator inherits from Validator but
+/// cannot inherit from TestFullNode, as it already inherits from Validator class
+/// (multiple-inheritance is not supported in D)
+private mixin template TestNodeMixin ()
 {
     private Registry* registry;
-
-    ///
-    public this (Config config, Registry* reg)
-    {
-        this.registry = reg;
-        super(config);
-    }
 
     ///
     public override void start ()
@@ -556,6 +567,62 @@ public class TestNode : Node, TestAPI
         string data_dir, in NodeConfig node_config)
     {
         return new EnrollmentManager(":memory:", node_config.key_pair);
+    }
+}
+
+/// A FullNode which also implements test routines in TestAPI
+public class TestFullNode : FullNode, TestAPI
+{
+    ///
+    mixin TestNodeMixin!();
+
+    ///
+    public this (Config config, Registry* reg)
+    {
+        assert(!config.node.is_validator);
+        this.registry = reg;
+        super(config);
+    }
+
+    /// FullNode does not implement this
+    public override void broadcastPreimage (uint height)
+    {
+        assert(0);
+    }
+
+    /// FullNode does not implement this
+    public override Enrollment createEnrollmentData ()
+    {
+        assert(0);
+    }
+
+    /// FullNode does not implement this
+    public override PublicKey getPublicKey () @safe
+    {
+        // NetworkManager assumes that if key == PublicKey.init,
+        // we are *not* a Validator node, treated as a FullNode instead.
+        return PublicKey.init;
+    }
+
+    /// FullNode does not implement this
+    public override void receiveEnvelope (SCPEnvelope envelope) @safe
+    {
+        assert(0);
+    }
+}
+
+/// A Validator which also implements test routines in TestAPI
+public class TestValidatorNode : Validator, TestAPI
+{
+    ///
+    mixin TestNodeMixin!();
+
+    ///
+    public this (Config config, Registry* reg)
+    {
+        assert(config.node.is_validator);
+        this.registry = reg;
+        super(config);
     }
 
     /// Create an enrollment data used as information for an validator
