@@ -82,6 +82,38 @@ private pure nothrow @nogc @safe extern(C++) size_t cpp_unordered_map_length (K,
 /// Create a new unordered map with the given Key/T types, and return a pointer to it
 private pure nothrow @nogc @safe extern(C++) void* cpp_unordered_map_create (K, V)();
 
+/// Rudimentary bindings for std::unordered_map
+extern(C++, (StdNamespace))
+public struct unordered_map (Key, T, Hash = hash!Key, KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
+{
+    private void* ptr;
+
+    extern(D) void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
+    {
+        cpp_unordered_map_assign!(Key, T)(this.ptr, key, value);
+    }
+
+    extern(D) size_t length () pure nothrow @safe @nogc
+    {
+        return cpp_unordered_map_length!(Key, T)(this.ptr);
+    }
+
+    /// create a new unordered map allocated on the C++ side.
+    /// Note that we currently only use this in unittests
+    extern(D) static unordered_map create () pure @trusted @nogc nothrow
+    {
+        return unordered_map(cpp_unordered_map_create!(Key, T)());
+    }
+}
+
+unittest
+{
+    auto map = unordered_map!(int, int).create();
+    assert(map.length() == 0);
+    map[1] = 1;
+    assert(map.length() == 1);
+}
+
 extern(C++, `std`) {
     /// Binding: Needs to be instantiated on C++ side
     shared_ptr!T make_shared(T, Args...)(Args args);
@@ -125,37 +157,6 @@ extern(C++, `std`) {
     public extern(C++, class) struct map (Key, Value)
     {
         void*[3] ptr;
-    }
-
-    /// Rudimentary bindings for std::unordered_map
-    public struct unordered_map (Key, T, Hash = hash!Key, KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
-    {
-        private void* ptr;
-
-        extern(D) void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
-        {
-            cpp_unordered_map_assign!(Key, T)(this.ptr, key, value);
-        }
-
-        extern(D) size_t length () pure nothrow @safe @nogc
-        {
-            return cpp_unordered_map_length!(Key, T)(this.ptr);
-        }
-
-        /// create a new unordered map allocated on the C++ side.
-        /// Note that we currently only use this in unittests
-        extern(D) static unordered_map create () pure @trusted @nogc nothrow
-        {
-            return unordered_map(cpp_unordered_map_create!(Key, T)());
-        }
-    }
-
-    unittest
-    {
-        auto map = unordered_map!(int, int).create();
-        assert(map.length() == 0);
-        map[1] = 1;
-        assert(map.length() == 1);
     }
 
     // only used at compile-time on the C++ side, here for mangling
