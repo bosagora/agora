@@ -330,19 +330,19 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Set current block height
+        Clear up expired validators whose cycle for a validator ends
 
-        The enrollment manager can weed out expired validators from the set
-        based on the block height. Validators are deleted if their enrolled
-        height is less than or equal to the value of the passed block height
-        minus the validator cycle.
+        The validator set clears up expired validators from the set based on
+        the block height. Validators are deleted if their enrolled height is
+        less than or equal to the value of the passed block height minus the
+        validator cycle.
 
         Params:
             block_height = current block height
 
     ***************************************************************************/
 
-    public void setCurrentBlockHeight (ulong block_height) @safe nothrow
+    public void clearExpiredValidators (ulong block_height) @safe nothrow
     {
         // the smallest enrolled height would be 1, so the passed block height
         // should be greater than the validator cycle for deleting validators.
@@ -746,6 +746,14 @@ unittest
     assert(result_image.enroll_key == preimage.enroll_key);
     assert(result_image.hash == preimage.hash);
     assert(result_image.height == preimage.height);
+
+    // test for clear up expired validators
+    assert(set.updateEnrolledHeight(utxo_hash2, 1017));
+    assert(set.getValidators(validators));
+    assert(validators.length == 2);
+    set.clearExpiredValidators(1017);
+    assert(set.getValidators(validators));
+    assert(validators[0].utxo_key == utxo_hash2);
 }
 
 /// test for restroing information about validators from blocks

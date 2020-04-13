@@ -357,21 +357,19 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Set current block height
+        Clear up expired validators whose cycle for a validator ends
 
-        The enrollment manager can weed out expired validators from the set
-        based on the block height. Validators are deleted if their enrolled
-        height is less than or equal to the value of the passed block height
-        minus the validator cycle.
+        The enrollment manager clears up expired validators from the set based
+        on the block height.
 
         Params:
             block_height = current block height
 
     ***************************************************************************/
 
-    public void setCurrentBlockHeight (ulong block_height) @safe nothrow
+    public void clearExpiredValidators (ulong block_height) @safe nothrow
     {
-        this.validator_set.setCurrentBlockHeight(block_height);
+        this.validator_set.clearExpiredValidators(block_height);
     }
 
     /***************************************************************************
@@ -882,24 +880,17 @@ unittest
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
     // validator C with the 'utxo_hash3' and no enrolled height.
     assert(man.updateEnrolledHeight(utxo_hash2, 11));
-
-    // current block height is 1017
-    // So, valid validator are validator A and validator B
-    man.setCurrentBlockHeight(1017);
+    man.clearExpiredValidators(11);
     assert(man.getValidators(validators));
     assert(validators.length == 2);
-
-    // change the block height to 1018, which means validator A is expired.
-    man.setCurrentBlockHeight(1018);
-    assert(man.getValidators(validators));
-    assert(validators[0].utxo_key == utxo_hash2);
 
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
     // there is only one validator in the middle of 1020th block being made.
-    assert(man.updateEnrolledHeight(utxo_hash3, 12));
-    man.setCurrentBlockHeight(1019);
+    assert(man.updateEnrolledHeight(utxo_hash3, 1019));
+    man.clearExpiredValidators(1019);
     assert(man.getValidators(validators));
+    assert(validators.length == 1);
     assert(validators[0].utxo_key == utxo_hash3);
 }
 
