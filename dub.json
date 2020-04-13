@@ -10,7 +10,7 @@
 
     "targetType": "executable",
     "targetPath": "build",
-    "excludedSourceFiles": [ "source/scpp/*.d" ],
+    "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/quorum/QuorumIntersectionTests.d" ],
     "preGenerateCommands": [ "$DUB source/scpp/build.d" ],
     "sourceFiles-posix": [
         "source/scpp/build/BallotProtocol.o",
