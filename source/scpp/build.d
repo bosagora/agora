@@ -53,6 +53,7 @@ version (Posix)
         "-g",
         "-W",
         "-Wall",
+        "-Wno-comment",  // ignore warnings for multi-line "//" style comments
         "-Wno-unused-parameter",
         "-fPIC",
         "-D_GLIBCXX_USE_CXX11_ABI=0",

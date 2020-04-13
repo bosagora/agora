@@ -15,6 +15,8 @@ Some files have been modified after porting:
 
 - Some `private` declarations were changed to `public`. This allows us to test size & layout checks for our D glue layer, for example: https://github.com/bpfkorea/agora/blob/76e4ca7d77b123ef867d3ce99c1c1b26afab761d/source/scpp/src/crypto/ByteSlice.h#L21 used in https://github.com/bpfkorea/agora/blob/76e4ca7d77b123ef867d3ce99c1c1b26afab761d/source/scpp/extra/DSizeChecks.cpp and https://github.com/bpfkorea/agora/blob/76e4ca7d77b123ef867d3ce99c1c1b26afab761d/source/scpp/extra/DLayoutChecks.cpp.
 
+- The `src/quorum` folder contains the Quorum intersection code which is used in stellar-core. It was adapted to not depend on any stellar-specific type definitions. The `update.d` script does not track these files yet, so they have to be kept manually in sync when updating the bindings.
+
 # Update process
 
 - Checkout stellar-core
