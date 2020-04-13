@@ -14,6 +14,7 @@
     "preGenerateCommands": [ "$DUB source/scpp/build.d" ],
     "sourceFiles-posix": [
         "source/scpp/build/BallotProtocol.o",
+        "source/scpp/build/cbitset.o",
         "source/scpp/build/ByteSliceHasher.o",
         "source/scpp/build/DSCPUtils.o",
         "source/scpp/build/DUtils.o",
@@ -34,6 +35,8 @@
         "source/scpp/build/jsoncpp.o",
         "source/scpp/build/marshal.o",
         "source/scpp/build/numeric.o",
+        "source/scpp/build/QuorumIntersectionCheckerImpl.o",
+        "source/scpp/build/QuorumTracker.o",
         "source/scpp/build/uint128_t.o"
     ],
     "sourceFiles-windows": [
