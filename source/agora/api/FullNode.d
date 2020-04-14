@@ -33,8 +33,8 @@ public enum NetworkState : ubyte
     Complete
 }
 
-/// Contains the network info (state & addresses)
-public struct NetworkInfo
+/// Contains the node info (state & addresses & isValidator)
+public struct NodeInfo
 {
     /// Whether the node knows about the IPs of all its quorum set nodes
     public NetworkState state;
@@ -88,14 +88,14 @@ public interface API
     /***************************************************************************
 
         Returns:
-            The peer network of this node
+            The peer information on this node
 
         API:
-            GET /network_info
+            GET /node_info
 
     ***************************************************************************/
 
-    public NetworkInfo getNetworkInfo ();
+    public NodeInfo getNodeInfo ();
 
     /***************************************************************************
 

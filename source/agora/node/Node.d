@@ -223,8 +223,8 @@ public class Node : API
         return this.config.node.key_pair.address;
     }
 
-    /// GET: /network_info
-    public override NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
+    /// GET: /node_info
+    public override NodeInfo getNodeInfo () pure nothrow @safe @nogc
     {
         return this.network.getNetworkInfo();
     }

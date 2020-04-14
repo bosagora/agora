@@ -37,7 +37,7 @@ import core.time;
 private void waitForDiscovery (API[] clients, Duration timeout)
 {
     clients.enumerate.each!((idx, api) =>
-        retryFor(api.getNetworkInfo().ifThrown(NetworkInfo.init)
+        retryFor(api.getNodeInfo().ifThrown(NodeInfo.init)
             .state == NetworkState.Complete,
             timeout,
             format("Node %s has not completed discovery after %s.",
@@ -65,7 +65,7 @@ int main (string[] args)
 
         foreach (idx, ref client; clients)
         {
-            writefln("[%s] getNetworkInfo: %s", idx, client.getNetworkInfo());
+            writefln("[%s] getNodeInfo: %s", idx, client.getNodeInfo());
             const height = client.getBlockHeight();
             writefln("[%s] getBlockHeight: %s", idx, height);
             writeln("----------------------------------------");
