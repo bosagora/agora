@@ -32,13 +32,13 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNetworkInfo().addresses.keys;
+        auto addresses = node.client.getNodeInfo().addresses.keys;
         assert(addresses.sort.uniq.count == conf.nodes - 1,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
 
-/// test network discovery through the getNetworkInfo() API
+/// test network discovery through the getNodeInfo() API
 unittest
 {
     import std.algorithm;
@@ -59,7 +59,7 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNetworkInfo().addresses.keys;
+        auto addresses = node.client.getNodeInfo().addresses.keys;
         assert(addresses.sort.uniq.count == 3,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
@@ -85,7 +85,7 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNetworkInfo().addresses.keys;
+        auto addresses = node.client.getNodeInfo().addresses.keys;
         assert(addresses.sort.uniq.count == 3,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }

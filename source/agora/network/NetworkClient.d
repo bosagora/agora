@@ -128,19 +128,19 @@ class NetworkClient
     /***************************************************************************
 
         Get the network info of the node, stored in the
-        `net_info` parameter if the request succeeded.
+        `node_info` parameter if the request succeeded.
 
         Returns:
-            `NetworkInfo` if successful
+            `NodeInfo` if successful
 
         Throws:
             `Exception` if the request failed.
 
     ***************************************************************************/
 
-    public NetworkInfo getNetworkInfo ()
+    public NodeInfo getNodeInfo ()
     {
-        return this.attemptRequest(this.api.getNetworkInfo(), this.exception);
+        return this.attemptRequest(this.api.getNodeInfo(), this.exception);
     }
 
     /***************************************************************************

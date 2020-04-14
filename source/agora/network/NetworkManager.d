@@ -417,9 +417,9 @@ public class NetworkManager
         {
             try
             {
-                auto net_info = node.getNetworkInfo();
-                this.addAddresses(net_info.addresses);
-                if (net_info.state == NetworkState.Complete)
+                auto node_info = node.getNodeInfo();
+                this.addAddresses(node_info.addresses);
+                if (node_info.state == NetworkState.Complete)
                     return;  // done
 
                 // if it's incomplete give the client some time to connect
@@ -502,9 +502,9 @@ public class NetworkManager
     }
 
     /// Returns: the list of node IPs this node is connected to
-    public NetworkInfo getNetworkInfo () pure nothrow @safe @nogc
+    public NodeInfo getNetworkInfo () pure nothrow @safe @nogc
     {
-        return NetworkInfo(
+        return NodeInfo(
             this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
             this.known_addresses);

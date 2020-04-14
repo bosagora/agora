@@ -378,7 +378,7 @@ public class TestAPIManager
         {
             const timeout = 5.seconds;
             this.nodes.each!(node =>
-                retryFor(node.client.getNetworkInfo().ifThrown(NetworkInfo.init)
+                retryFor(node.client.getNodeInfo().ifThrown(NodeInfo.init)
                     .state == NetworkState.Complete,
                     timeout,
                     format("Node %s has not completed discovery after %s.",
