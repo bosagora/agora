@@ -236,6 +236,8 @@ public class Ledger
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
             assert(0);
+
+        this.enroll_man.clearExpiredValidators(this.last_block.header.height);
     }
 
     /***************************************************************************
