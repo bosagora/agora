@@ -181,6 +181,12 @@ public struct Amount
         return this.value % UnitPerCoin.value;
     }
 
+    /// Returns: the raw value of the amount
+    public ulong getRaw () const
+    {
+        return this.value;
+    }
+
     /// Convenience version of `add` which asserts in case of overflow
     /// Prefer using this only in `unittest`s
     public ref Amount mustAdd (Amount other)
