@@ -289,3 +289,185 @@ nothrow @nogc @safe unittest
     auto hash_2 = hashMulti(420, "bpfk", S('a', 1, 'b', 2, 'c', 3));
     assert(hash_1 == hash_2);
 }
+
+/*******************************************************************************
+
+    Helper struct to manage a range of pre-images
+
+    When dealing with pre-images, the only unrecoverable data is the seed.
+    Everything else is, by definition, derived from the seed.
+    As a result, we can compress the data as much as we want,
+    to reduce memory usage. However, this comes at the cost of more computation.
+
+    For example, if we have cycles of 10 pre-images, we can first compute the
+    seed (H0), then reveal our initial commitment (H9). This will cost us
+    9 hash operations. Then on the next reveal, in order to get H8, we need to
+    perform 8 hash operations, then 7 for H7, etc...
+
+    If we want to improve this, we can store intermediate results:
+    when generating H9, we do perform 9 hash operations, but store H5.
+    Hence, when generating H8 and H7, we only need to perform
+    3 and 2 hash operations, respectively, and will never need to perform more
+    than 4 operations (save the initial commitment).
+
+    This structure is a mean to generalize this approach, with arbitrary count
+    and arbitrary sample size (interval, or distance, between saved pre-images).
+
+*******************************************************************************/
+
+public struct PreImageCache
+{
+    @safe nothrow:
+
+    /// Store the actual preimages
+    private Hash[] data;
+
+    /// Interval between two preimages in `data`
+    private const ulong interval;
+
+    /// Construct an instance using already existing data
+    public this (inout(Hash)[] data_, ulong sample_size) inout @nogc pure
+    {
+        this.data = data_;
+        this.interval = sample_size;
+    }
+
+    /***************************************************************************
+
+        Construct an instance and allocate memory
+
+        This takes a `count` of pre-image and a sample size, or distance.
+        For example, if one wish to represent a range of 1000 pre-images with
+        this cache, and perform no more than 5 hash operations each time,
+        the `sample_size` should be `5` and the `count` should be `200`
+        (1000 / 5).
+
+        Params:
+          count = Number of samples to store (number of entries in the array)
+          sample_size = Distance between two pre-images
+
+    ***************************************************************************/
+
+    public this (ulong count, ulong sample_size) pure
+    {
+        assert(count > 1, "A count of less than 2 does not make sense");
+        assert(sample_size > 1, "A distance of less than 2 does not make sense");
+
+        this.interval = sample_size;
+        this.data = new Hash[](count);
+    }
+
+    /***************************************************************************
+
+        Populate this cache from the `seed`
+
+        Params:
+          seed = Initial value to derive preimage from. This will always be the
+                 first value of the array.
+          length = The number of entries to populate.
+                   This can be used when large sample size are used,
+                   and one wish to stop initialization past a certain threshold.
+
+        Returns:
+          The result of hashing seed `sample_size * (count + 1) - 1` times
+          if `length == 0`, or `sample_size * (length + 1) - 1` otherwise,
+          provided `length <= count`.
+
+    ***************************************************************************/
+
+    public Hash reset (Hash seed, size_t length)
+    {
+        // Set the length, so that extra entries are not accessible through
+        // `opIndex`
+        assert(length > 0, "The length of the array should be at least 1");
+        this.data.length = length;
+        () @trusted { assumeSafeAppend(this.data); }();
+        return this.reset(seed);
+    }
+
+    /// Ditto
+    public Hash reset (Hash seed) @nogc
+    {
+        size_t count = 0;
+        immutable end = this.data.length * this.interval - 1;
+        foreach (idx, ref entry; this.data)
+        {
+            entry = seed;
+            do
+                seed = hashFull(seed);
+            while ((++count % end) % this.interval);
+        }
+        return seed;
+    }
+
+    /***************************************************************************
+
+        Get the hash at index `idx` in the cycle
+
+        Will perform at most `cycle_length % interval` computations.
+
+    ***************************************************************************/
+
+    public Hash opIndex (size_t index) const @nogc
+    {
+        immutable startIndex = (index / this.interval);
+        // This will trigger out of bound if needed
+        // We could possibly silently allow to index arbitrarily outside the
+        // array by just taking the computational hit, since indexing past the
+        // end means we are generating new pre-images, but it sounds like abuse
+        Hash value = this.data[startIndex];
+        foreach (_; (startIndex * this.interval) .. index)
+            value = hashFull(value);
+        return value;
+    }
+}
+
+///
+unittest
+{
+    Hash[32] data;
+    data[0] = hashFull("Hello World");
+    foreach (idx, ref entry; data[1 .. $])
+        entry = hashFull(data[idx]);
+
+    // First case and last two are degenerate
+    immutable intervals = [2, 4, 8, 16];
+    foreach (interval; intervals)
+    {
+        auto cache = PreImageCache(data.length / interval, interval);
+        auto last = cache.reset(data[0]);
+        assert(last == data[$-1]);
+        foreach (idx, const ref value; data)
+            assert(value == cache[idx]);
+
+        switch (interval)
+        {
+        case 32:
+        case 16:
+        case 8:
+        case 4:
+        case 2:
+        case 1:
+            assert(cache.data.length == (32 / interval));
+            size_t data_idx;
+            foreach (idx, const ref entry; cache.data)
+            {
+                assert(entry == data[data_idx]);
+                data_idx += interval;
+            }
+            break;
+
+        case 64:
+            assert(cache.data.length == 1);
+            assert(cache.data[0] == data[0]);
+            break;
+        case 0:
+            assert(cache.data.length == 32);
+            assert(cache.data[] == data[]);
+            break;
+
+        default:
+            assert(0);
+        }
+    }
+}
