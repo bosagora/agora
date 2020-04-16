@@ -241,8 +241,6 @@ public class EnrollmentManager
         out Enrollment enroll) @trusted nothrow
     {
         static ubyte[] buffer;
-        buffer.length = 0;
-        () @trusted { assumeSafeAppend(buffer); }();
 
         // K, frozen UTXO hash
         this.data.utxo_key = frozen_utxo_hash;
@@ -256,11 +254,6 @@ public class EnrollmentManager
 
         // R, signature noise
         this.signature_noise = this.createSignatureNoise(height);
-
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-        {
-            buffer ~= data;
-        };
 
         // save enroll_key
         try
