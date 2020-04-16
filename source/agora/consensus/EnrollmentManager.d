@@ -503,10 +503,7 @@ public class EnrollmentManager
 
     public bool needRevealPreimage (ulong height) @safe nothrow
     {
-        if (height >= this.next_reveal_height)
-            return true;
-        else
-            return false;
+        return height >= this.next_reveal_height;
     }
 
     /***************************************************************************
