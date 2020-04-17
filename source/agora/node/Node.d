@@ -27,7 +27,7 @@ import agora.common.Task;
 import agora.common.Types;
 import agora.common.TransactionPool;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -261,7 +261,7 @@ public class Node : API
 
         if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
         {
-            PreimageInfo preimage;
+            PreImageInfo preimage;
             if (this.enroll_man.getNextPreimage(preimage))
             {
                 this.receivePreimage(preimage);
@@ -542,7 +542,7 @@ public class Node : API
     }
 
     /// PUT: /receive_preimage
-    public void receivePreimage (PreimageInfo preimage) @safe
+    public void receivePreimage (PreImageInfo preimage) @safe
     {
         log.trace("Received Preimage: {}", prettify(preimage));
 
@@ -551,9 +551,9 @@ public class Node : API
     }
 
     /// GET: /get_preimage
-    public PreimageInfo getPreimage (Hash enroll_key)
+    public PreImageInfo getPreimage (Hash enroll_key)
     {
-        PreimageInfo preimage;
+        PreImageInfo preimage;
         this.enroll_man.getValidatorPreimage(enroll_key, preimage);
         return preimage;
     }

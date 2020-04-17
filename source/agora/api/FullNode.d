@@ -17,7 +17,7 @@ module agora.api.FullNode;
 
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.common.Types;
 import agora.common.Set;
 import agora.common.Serializer;
@@ -215,9 +215,9 @@ public interface API
 
         Returns:
             preimage information of the validator if exists, otherwise
-                PreimageInfo.init
+                PreImageInfo.init
 
     ***************************************************************************/
 
-    public PreimageInfo getPreimage (Hash enroll_key);
+    public PreImageInfo getPreimage (Hash enroll_key);
 }

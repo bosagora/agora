@@ -20,7 +20,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
@@ -984,8 +984,8 @@ public bool isValidEnrollment (const ref Enrollment enrollment,
 
 *******************************************************************************/
 
-public string isInvalidPreimageReason (const ref PreimageInfo new_image,
-    const ref PreimageInfo prev_image, uint validator_cycle) nothrow @safe
+public string isInvalidPreimageReason (const ref PreImageInfo new_image,
+    const ref PreImageInfo prev_image, uint validator_cycle) nothrow @safe
 {
     if (new_image.enroll_key != prev_image.enroll_key)
         return "The pre-image's enrollment key differs from its descendant";
@@ -1007,8 +1007,8 @@ public string isInvalidPreimageReason (const ref PreimageInfo new_image,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValidPreimage (const ref PreimageInfo prev_image,
-    const ref PreimageInfo new_image, uint validator_cycle) nothrow @safe
+public bool isValidPreimage (const ref PreImageInfo prev_image,
+    const ref PreImageInfo new_image, uint validator_cycle) nothrow @safe
 {
     return isInvalidPreimageReason(prev_image, new_image, validator_cycle)
         is null;
@@ -1466,21 +1466,21 @@ unittest
         preimages ~= hashFull(preimages[i]);
     reverse(preimages);
 
-    PreimageInfo prev_image = PreimageInfo(hashFull("abc"), preimages[0], 1);
+    PreImageInfo prev_image = PreImageInfo(hashFull("abc"), preimages[0], 1);
 
     // valid pre-image
-    PreimageInfo new_image = PreimageInfo(hashFull("abc"), preimages[100], 101);
+    PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
     assert(isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
 
     // invalid pre-image with wrong enrollment key
-    new_image = PreimageInfo(hashFull("xyz"), preimages[100], 101);
+    new_image = PreImageInfo(hashFull("xyz"), preimages[100], 101);
     assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
 
     // invalid pre-image with wrong height number
-    new_image = PreimageInfo(hashFull("abc"), preimages[1], 3);
+    new_image = PreImageInfo(hashFull("abc"), preimages[1], 3);
     assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
 
     // invalid pre-image with wrong hash value
-    new_image = PreimageInfo(hashFull("abc"), preimages[100], 100);
+    new_image = PreImageInfo(hashFull("abc"), preimages[100], 100);
     assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
 }

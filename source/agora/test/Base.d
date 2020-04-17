@@ -36,7 +36,7 @@ import agora.common.TransactionPool;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
@@ -585,7 +585,7 @@ public class TestNode : Node, TestAPI
     /// Broadcast a pre-image information to the network
     public override void broadcastPreimage (uint height)
     {
-        PreimageInfo preimage;
+        PreImageInfo preimage;
         this.enroll_man.getPreimage(height, preimage);
         this.receivePreimage(preimage);
     }

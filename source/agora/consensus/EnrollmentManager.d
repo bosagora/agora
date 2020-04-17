@@ -20,7 +20,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Validation;
 import agora.consensus.ValidatorSet;
@@ -396,14 +396,14 @@ public class EnrollmentManager
         Get a pre-image for revelation
 
         Params:
-            preimage = will contain the PreimageInfo if exists
+            preimage = will contain the PreImageInfo if exists
 
         Returns:
             true if the pre-image exists
 
     ***************************************************************************/
 
-    public bool getNextPreimage (out PreimageInfo preimage) @safe
+    public bool getNextPreimage (out PreImageInfo preimage) @safe
     {
         auto height = this.next_reveal_height + PreimageRevealPeriod * 2;
         if (height > ValidatorSet.ValidatorCycle - 1)
@@ -417,14 +417,14 @@ public class EnrollmentManager
 
         Params:
             height = the number of the height at which the pre-image exists
-            preimage = will contain the PreimageInfo if exists
+            preimage = will contain the PreImageInfo if exists
 
         Returns:
             true if the pre-image exists
 
     ***************************************************************************/
 
-    public bool getPreimage (ulong height, out PreimageInfo preimage) @safe
+    public bool getPreimage (ulong height, out PreImageInfo preimage) @safe
     {
         const start_height =
             this.validator_set.getEnrolledHeight(this.enroll_key) + 1;
@@ -468,7 +468,7 @@ public class EnrollmentManager
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
                 contained.
-            result_image = will contain the PreimageInfo if exists
+            result_image = will contain the PreImageInfo if exists
 
         Returns:
             true if getting pre-image is successfully processed
@@ -476,7 +476,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public bool getValidatorPreimage (const ref Hash enroll_key,
-        out PreimageInfo result_image) @trusted nothrow
+        out PreImageInfo result_image) @trusted nothrow
     {
         return this.validator_set.getPreimage(enroll_key, result_image);
     }
@@ -493,7 +493,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool addPreimage (const ref PreimageInfo preimage) @safe nothrow
+    public bool addPreimage (const ref PreImageInfo preimage) @safe nothrow
     {
         return this.validator_set.addPreimage(preimage);
     }
@@ -859,7 +859,7 @@ unittest
     // get a pre-image at a certain height
     // A validation can start at the height of the enrolled height plus 1.
     // So, a pre-image can only be got from the start height.
-    PreimageInfo preimage;
+    PreImageInfo preimage;
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(man.updateEnrolledHeight(utxo_hash, 10));
     assert(!man.getPreimage(10, preimage));
@@ -931,10 +931,10 @@ unittest
     assert(man.add(0, &storage.findUTXO, enroll));
     assert(man.hasEnrollment(utxo_hash));
 
-    PreimageInfo result_image;
+    PreImageInfo result_image;
     assert(man.getValidatorPreimage(utxo_hash, result_image));
-    assert(result_image == PreimageInfo.init);
-    auto preimage = PreimageInfo(utxo_hash, man.cycle_preimages[100], 1100);
+    assert(result_image == PreImageInfo.init);
+    auto preimage = PreImageInfo(utxo_hash, man.cycle_preimages[100], 1100);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == utxo_hash);
