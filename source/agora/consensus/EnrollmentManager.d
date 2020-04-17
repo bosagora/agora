@@ -659,18 +659,38 @@ public class EnrollmentManager
             }
         }
 
-        // This generates all the sequential preimages from the start index
-        () @trusted {
-            this.cycle_preimages.clear();
-        }();
-        this.cycle_preimages[start_height] = this.preimage_rounds[start_height];
-        for (; start_height > height; --start_height)
-        {
-            this.cycle_preimages[start_height - 1] =
-                hashFull(this.cycle_preimages[start_height]);
-        }
+        return this.populateCycleCache(this.preimage_rounds[start_height], start_height);
+    }
 
-        return this.cycle_preimages[height];
+    /***************************************************************************
+
+        This generates all the sequential pre-images from `height` and
+        stores them in the `cycle_preimages` cache.
+
+        Params:
+            seed = The initial value for this round to derive pre-images from.
+            height = height at which the seed is.
+
+        Returns:
+            The last value for the cycle
+
+    ***************************************************************************/
+
+    public Hash populateCycleCache (Hash seed, ulong height) @safe nothrow
+    {
+        // Clear previous cycle data
+        () @trusted { this.cycle_preimages.clear(); }();
+
+        // Load first entry from the rounds
+        this.cycle_preimages[height] = seed;
+        // Fill the cache
+        foreach (idx; 1 .. ValidatorSet.ValidatorCycle * 2)
+        {
+            seed = hashFull(seed);
+            this.cycle_preimages[height - idx] = seed;
+        }
+        // Return the last entry in the cache
+        return seed;
     }
 
     /***************************************************************************
