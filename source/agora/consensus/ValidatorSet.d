@@ -397,14 +397,14 @@ public class ValidatorSet
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
                 contained.
-            height = The block height of the preimage to check existence
+            distance = The minimum expected distance to the commitment
 
         Returns:
             true if the pre-image exists
 
     ***************************************************************************/
 
-    public bool hasPreimage (const ref Hash enroll_key, ulong height) @safe
+    public bool hasPreimage (const ref Hash enroll_key, ulong distance) @safe
         nothrow
     {
         bool result = false;
@@ -417,7 +417,7 @@ public class ValidatorSet
                 {
                     PreImageInfo loaded_image = results.
                         oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
-                    if (height <= loaded_image.height)
+                    if (distance <= loaded_image.distance)
                         result = true;
                 }
             }();
@@ -505,7 +505,7 @@ public class ValidatorSet
         // check if already exists
         try
         {
-            if (this.hasPreimage(preimage.enroll_key, preimage.height))
+            if (this.hasPreimage(preimage.enroll_key, preimage.distance))
             {
                 log.info("Rejected already existing pre-image, Preimage: {}",
                     preimage);
@@ -745,7 +745,7 @@ unittest
     assert(set.getPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == preimage.enroll_key);
     assert(result_image.hash == preimage.hash);
-    assert(result_image.height == preimage.height);
+    assert(result_image.distance == preimage.distance);
 
     // test for clear up expired validators
     assert(set.updateEnrolledHeight(utxo_hash2, 1017));
