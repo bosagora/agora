@@ -1,8 +1,9 @@
 /*******************************************************************************
 
-    Contains the simplest possible block creating test. Useful as a starting
-    point for creating more complext test-cases, or just to test new behavior
-    with the simplest creation of blocks.
+    Contains the simplest possible block creating test
+
+    This is useful as a starting point for creating more complext test-cases,
+    or just to test new behavior with the simplest creation of blocks.
 
     Run via:
     $ dtest=agora.test.Simple dub test
