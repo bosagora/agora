@@ -44,7 +44,7 @@ module agora.api.Validator;
 
 import agora.common.crypto.Key;
 import agora.common.Hash;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
@@ -100,9 +100,9 @@ public interface API : agora.api.FullNode.API
         Reveals a pre-image
 
         Params:
-            preimage = a PreimageInfo object which contains a hash and a height
+            preimage = a PreImageInfo object which contains a hash and a height
 
     ***************************************************************************/
 
-    public void receivePreimage (PreimageInfo preimage);
+    public void receivePreimage (PreImageInfo preimage);
 }

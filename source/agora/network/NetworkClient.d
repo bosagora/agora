@@ -17,7 +17,7 @@ import agora.api.Validator;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Set;
@@ -325,7 +325,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void sendPreimage (ref PreimageInfo preimage) @trusted
+    public void sendPreimage (ref PreImageInfo preimage) @trusted
     {
         this.taskman.runTask(
         {

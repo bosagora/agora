@@ -22,7 +22,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Validation;
 import agora.utils.Log;
@@ -415,8 +415,8 @@ public class ValidatorSet
                         "validator_set WHERE key = ?", enroll_key.toString());
                 if (!results.empty && results.oneValue!(byte[]).length != 0)
                 {
-                    PreimageInfo loaded_image = results.
-                        oneValue!(ubyte[]).deserializeFull!(PreimageInfo);
+                    PreImageInfo loaded_image = results.
+                        oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
                     if (height <= loaded_image.height)
                         result = true;
                 }
@@ -438,7 +438,7 @@ public class ValidatorSet
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
                 contained.
-            result_image = will contain the PreimageInfo if exists
+            result_image = will contain the PreImageInfo if exists
 
         Returns:
             true if getting pre-image is successfully processed
@@ -446,7 +446,7 @@ public class ValidatorSet
     ***************************************************************************/
 
     public bool getPreimage (const ref Hash enroll_key,
-        out PreimageInfo result_image) @trusted nothrow
+        out PreImageInfo result_image) @trusted nothrow
     {
         try
         {
@@ -455,7 +455,7 @@ public class ValidatorSet
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 result_image =
-                    results.oneValue!(ubyte[]).deserializeFull!(PreimageInfo);
+                    results.oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
             }
         }
         catch (Exception ex)
@@ -480,7 +480,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool addPreimage (const ref PreimageInfo preimage) @safe nothrow
+    public bool addPreimage (const ref PreImageInfo preimage) @safe nothrow
     {
         static ubyte[] buffer;
 
@@ -520,9 +520,9 @@ public class ValidatorSet
         }
 
         // check the validity of new pre-image based on the stored pre-image
-        PreimageInfo stored_image;
+        PreImageInfo stored_image;
         if (this.getPreimage(preimage.enroll_key, stored_image) &&
-            stored_image != PreimageInfo.init)
+            stored_image != PreImageInfo.init)
         {
             if (auto reason =
                 isInvalidPreimageReason(preimage, stored_image, ValidatorCycle))
@@ -735,11 +735,11 @@ unittest
     assert(validators[0].utxo_key == utxo_hash);
 
     // test for adding and getting preimage
-    PreimageInfo result_image;
+    PreImageInfo result_image;
     assert(!set.hasPreimage(utxo_hash, 10));
     assert(set.getPreimage(utxo_hash, result_image));
-    assert(result_image == PreimageInfo.init);
-    auto preimage = PreimageInfo(utxo_hash, enroll.random_seed, 10);
+    assert(result_image == PreImageInfo.init);
+    auto preimage = PreImageInfo(utxo_hash, enroll.random_seed, 10);
     assert(set.addPreimage(preimage));
     assert(set.hasPreimage(utxo_hash, 10));
     assert(set.getPreimage(utxo_hash, result_image));

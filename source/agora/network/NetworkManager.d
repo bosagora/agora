@@ -26,7 +26,7 @@ import agora.api.Validator;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.Types;
@@ -618,7 +618,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void sendPreimage (PreimageInfo preimage) @safe
+    public void sendPreimage (PreImageInfo preimage) @safe
     {
         foreach (ref node; this.peers)
         {

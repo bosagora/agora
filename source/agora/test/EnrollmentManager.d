@@ -20,7 +20,7 @@ import agora.common.Amount;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreimageInfo;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
@@ -78,7 +78,7 @@ unittest
 
     // check if nodes don't have a pre-image yet
     nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) == PreimageInfo.init,
+        retryFor(node.getPreimage(enroll.utxo_key) == PreImageInfo.init,
             5.seconds));
 
     // tests for revealing a pre-image
@@ -86,7 +86,7 @@ unittest
 
     // check if nodes have a pre-image previously sent
     nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) != PreimageInfo.init,
+        retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
             5.seconds));
 }
 
@@ -148,7 +148,7 @@ unittest
 
     // check if nodes don't have a validator's pre-image yet
     nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) == PreimageInfo.init,
+        retryFor(node.getPreimage(enroll.utxo_key) == PreImageInfo.init,
             5.seconds));
 
     // make a block with height of 2
@@ -174,6 +174,6 @@ unittest
     // check if nodes have a pre-image newly sent
     // during creating transactions for the new block
     nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) != PreimageInfo.init,
+        retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
             5.seconds));
 }
