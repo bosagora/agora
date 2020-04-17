@@ -420,6 +420,15 @@ public struct PreImageCache
             value = hashFull(value);
         return value;
     }
+
+    /// Returns: The number of preimages this cache can represent
+    public size_t length () const pure nothrow @nogc @safe
+    {
+        return this.interval * this.data.length;
+    }
+
+    /// Ditto
+    alias opDollar = length;
 }
 
 ///
@@ -439,6 +448,9 @@ unittest
         assert(last == data[$-1]);
         foreach (idx, const ref value; data)
             assert(value == cache[idx]);
+
+        assert(cache[$-1] == last);
+        assert(cache[cache.length - 1] == last);
 
         switch (interval)
         {
