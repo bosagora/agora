@@ -406,8 +406,6 @@ public class EnrollmentManager
     public bool getNextPreimage (out PreimageInfo preimage) @safe
     {
         auto height = this.next_reveal_height + PreimageRevealPeriod * 2;
-        if (height > ValidatorSet.ValidatorCycle - 1)
-            height = ValidatorSet.ValidatorCycle - 1;
         return getPreimage(height, preimage);
     }
 
@@ -871,6 +869,11 @@ unittest
     assert(man.needRevealPreimage(10));
     man.increaseNextRevealHeight();
     assert(man.needRevealPreimage(16));
+
+    // If the height of the requested preimage exceeds the height of the end of
+    // the validator cycle, the `getNextPreimage` must return `false`.
+    man.next_reveal_height = 10 + ValidatorSet.ValidatorCycle;
+    assert(!man.getNextPreimage(preimage));
 
     // test for getting validators
     Enrollment[] validators;
