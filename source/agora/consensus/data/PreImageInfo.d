@@ -24,14 +24,14 @@ import agora.common.Types;
 
 public struct PreImageInfo
 {
-    /// The key for the enrollment
+    /// The key for the enrollment, used to look the commitment up
     public Hash enroll_key;
 
-    /// A pre-image at a certain height
+    /// The value of the pre-image at the distance from the commitment
     public Hash hash;
 
-    /// The height number
-    public ulong height;
+    /// The distance between this pre-image and the initial commitment
+    public ulong distance;
 }
 
 unittest
@@ -49,7 +49,7 @@ unittest
     PreImageInfo img = {
         enroll_key: key,
         hash: hash,
-        height: 42,
+        distance: 42,
     };
     testSymmetry(img);
 }

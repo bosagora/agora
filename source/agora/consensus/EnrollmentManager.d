@@ -419,15 +419,17 @@ public class EnrollmentManager
     {
         const start_height =
             this.validator_set.getEnrolledHeight(this.enroll_key) + 1;
-        if (height < start_height ||
-            (height - start_height) > ValidatorSet.ValidatorCycle - 1)
+        if (height < start_height)
+            return false;
+        immutable index = (height - start_height);
+        if (index > ValidatorSet.ValidatorCycle - 1)
             return false;
 
         if (height !in this.cycle_preimages)
             this.generatePreimages(height);
 
         preimage.enroll_key = this.data.utxo_key;
-        preimage.height = height;
+        preimage.distance = index;
         preimage.hash = this.cycle_preimages[height];
         return true;
     }
@@ -952,5 +954,5 @@ unittest
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == utxo_hash);
     assert(result_image.hash == man.cycle_preimages[100]);
-    assert(result_image.height == 1100);
+    assert(result_image.distance == 1100);
 }

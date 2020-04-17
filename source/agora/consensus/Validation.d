@@ -990,14 +990,14 @@ public string isInvalidPreimageReason (const ref PreImageInfo new_image,
     if (new_image.enroll_key != prev_image.enroll_key)
         return "The pre-image's enrollment key differs from its descendant";
 
-    if (new_image.height < prev_image.height)
+    if (new_image.distance < prev_image.distance)
         return "The height of new pre-image is smaller than that of previous one";
 
-    if (new_image.height - prev_image.height >= validator_cycle)
+    if (new_image.distance > validator_cycle)
         return "The hashing count of two pre-images is above the validator cycle";
 
     Hash temp_hash = new_image.hash;
-    for (uint i = 0; i < new_image.height - prev_image.height; i++)
+    foreach (_; prev_image.distance .. new_image.distance)
         temp_hash = hashFull(temp_hash);
     if (temp_hash != prev_image.hash)
         return "The pre-image has a invalid hash value";
