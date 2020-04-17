@@ -658,8 +658,7 @@ public class EnrollmentManager
             // the value to get the max height(`MaxHeight`) of this bulk.
             ulong bulk_index = start_height / AllCountPreimages;
             const ulong MaxHeight = (bulk_index + 1) * AllCountPreimages;
-            Hash salt = hashFull(bulk_index);
-            auto hash = hashMulti(this.key_pair.v, salt);
+            auto hash = hashMulti(this.key_pair.v, "consensus.preimages", bulk_index);
             ulong idx = MaxHeight;
             this.preimage_rounds[idx] = hash;
             for (--idx; idx >= height; --idx)
@@ -949,12 +948,13 @@ unittest
     import agora.consensus.Genesis;
 
     auto key_pair = getGenesisKeyPair();
+    immutable curveScalar = secretKeyToCurveScalar(key_pair.secret);
+    immutable salt = "consensus.preimages";
     auto man = new EnrollmentManager(":memory:", key_pair);
     scope (exit) man.shutdown();
 
     man.generatePreimages(1);
-    auto salt_hash = hashFull(0UL);
-    auto hash = hashMulti(secretKeyToCurveScalar(key_pair.secret), salt_hash);
+    auto hash = hashMulti(curveScalar, salt, 0UL);
     foreach (uint i; 1 .. man.AllCountPreimages)
     {
         hash = hashFull(hash);
@@ -977,9 +977,7 @@ unittest
             hashFull(man.cycle_preimages[idx]));
     }
 
-    salt_hash = hashFull(1UL);
-    Hash second_bulk_first =
-        hashMulti(secretKeyToCurveScalar(key_pair.secret), salt_hash);
+    Hash second_bulk_first = hashMulti(curveScalar, salt, 1UL);
     foreach (ulong i; 1 .. man.AllCountPreimages)
     {
         second_bulk_first = hashFull(second_bulk_first);
