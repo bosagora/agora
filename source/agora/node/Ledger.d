@@ -326,8 +326,7 @@ public class Ledger
 
         foreach (enroll; data.enrolls)
         {
-            if (auto fail_reason = enroll.isInvalidEnrollmentReason(
-                expect_height, utxo_finder))
+            if (auto fail_reason = enroll.isInvalidEnrollmentReason(utxo_finder))
             {
                 return fail_reason;
             }
@@ -1045,9 +1044,9 @@ unittest
     enrollments ~= enroll_3;
 
     auto findUTXO = utxo_set.getUTXOFinder();
-    assert(enroll_man.add(3, findUTXO, enroll_1));
-    assert(enroll_man.add(3, findUTXO, enroll_2));
-    assert(enroll_man.add(3, findUTXO, enroll_3));
+    assert(enroll_man.add(findUTXO, enroll_1));
+    assert(enroll_man.add(findUTXO, enroll_2));
+    assert(enroll_man.add(findUTXO, enroll_3));
     assert(enroll_man.hasEnrollment(utxo_hash_1));
     assert(enroll_man.hasEnrollment(utxo_hash_2));
     assert(enroll_man.hasEnrollment(utxo_hash_3));
