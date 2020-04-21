@@ -527,9 +527,7 @@ public class Node : API
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
 
-        if (this.enroll_man.add(this.ledger.getBlockHeight(),
-            this.utxo_set.getUTXOFinder(),
-            enroll))
+        if (this.enroll_man.add(this.utxo_set.getUTXOFinder(), enroll))
         {
             this.network.sendEnrollment(enroll);
         }

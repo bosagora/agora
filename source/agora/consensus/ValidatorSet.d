@@ -97,8 +97,7 @@ public class ValidatorSet
         static ubyte[] buffer;
 
         // check validity of the enrollment data
-        if (auto reason = isInvalidEnrollmentReason(enroll, block_height + 1,
-            finder))
+        if (auto reason = isInvalidEnrollmentReason(enroll, finder))
         {
             log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
             return false;
