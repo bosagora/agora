@@ -26,13 +26,13 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
+import std.algorithm;
+import std.conv;
+import core.time;
+
 /// test enrollment process
 unittest
 {
-    import std.algorithm;
-    import std.conv;
-    import core.time;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
@@ -93,10 +93,6 @@ unittest
 /// test for revealing a pre-image periodically
 unittest
 {
-    import std.algorithm;
-    import std.conv;
-    import core.time;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
