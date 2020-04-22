@@ -576,8 +576,9 @@ public class TestNode : Node, TestAPI
             }
         }
 
-        // create an Enrollment object to be used for the enrollment process
-        auto enroll = this.createEnrollment(utxo_hashes[0]);
+        Enrollment enroll;
+        this.enroll_man.createEnrollment(utxo_hashes[0],
+            this.ledger.getBlockHeight(), enroll);
 
         return enroll;
     }

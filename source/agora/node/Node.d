@@ -494,28 +494,6 @@ public class Node : API
         return new Nominator(network, key_pair, ledger, taskman, quorum_config);
     }
 
-    /***************************************************************************
-
-        Create an enrollment data for enrollment process
-
-        Params:
-            frozen_utxo_hash = the hash of a frozen UTXO used to identify
-                        a validator or an enrollment data
-
-        Returns:
-            the Enrollment object created
-
-    ***************************************************************************/
-
-    protected Enrollment createEnrollment (Hash frozen_utxo_hash) @safe
-    {
-        Enrollment enroll;
-        this.enroll_man.createEnrollment(frozen_utxo_hash,
-            this.ledger.getBlockHeight(), enroll);
-
-        return enroll;
-    }
-
     /// GET: /merkle_path
     public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
