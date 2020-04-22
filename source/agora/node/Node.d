@@ -282,7 +282,7 @@ public class Node : API
 
     ***************************************************************************/
 
-    public void receiveEnvelope (SCPEnvelope envelope)
+    public override void receiveEnvelope (SCPEnvelope envelope)
     {
         // we should not receive SCP messages unless we're a validator node
         if (!this.config.node.is_validator)
@@ -298,14 +298,14 @@ public class Node : API
     }
 
     /// GET: /block_height
-    public ulong getBlockHeight ()
+    public override ulong getBlockHeight ()
     {
         return this.ledger.getBlockHeight();
     }
 
     /// GET: /blocks_from
-    public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks)
-        @safe
+    public override const(Block)[] getBlocksFrom (ulong block_height,
+        uint max_blocks)  @safe
     {
         return this.ledger.getBlocksFrom(block_height)
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
@@ -495,13 +495,13 @@ public class Node : API
     }
 
     /// GET: /merkle_path
-    public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
+    public override Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
         return this.ledger.getMerklePath(block_height, hash);
     }
 
     /// PUT: /enroll_validator
-    public void enrollValidator (Enrollment enroll) @safe
+    public override void enrollValidator (Enrollment enroll) @safe
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
 
@@ -514,13 +514,13 @@ public class Node : API
     }
 
     /// GET: /has_enrollment
-    public bool hasEnrollment (Hash enroll_hash) @safe
+    public override bool hasEnrollment (Hash enroll_hash) @safe
     {
         return this.enroll_man.hasEnrollment(enroll_hash);
     }
 
     /// PUT: /receive_preimage
-    public void receivePreimage (PreImageInfo preimage) @safe
+    public override void receivePreimage (PreImageInfo preimage) @safe
     {
         log.trace("Received Preimage: {}", prettify(preimage));
 
@@ -529,7 +529,7 @@ public class Node : API
     }
 
     /// GET: /get_preimage
-    public PreImageInfo getPreimage (Hash enroll_key)
+    public override PreImageInfo getPreimage (Hash enroll_key)
     {
         PreImageInfo preimage;
         this.enroll_man.getValidatorPreimage(enroll_key, preimage);
