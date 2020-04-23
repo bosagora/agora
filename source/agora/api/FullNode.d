@@ -223,4 +223,18 @@ public interface API
     ***************************************************************************/
 
     public PreImageInfo getPreimage (Hash enroll_key);
+
+    /***************************************************************************
+
+        Reveals a pre-image
+
+        API:
+            PUT /receive_preimage
+
+        Params:
+            preimage = a PreImageInfo object which contains a hash and a height
+
+    ***************************************************************************/
+
+    public void receivePreimage (PreImageInfo preimage);
 }
