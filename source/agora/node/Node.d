@@ -282,7 +282,7 @@ public class Node : API
 
     ***************************************************************************/
 
-    public override void receiveEnvelope (SCPEnvelope envelope)
+    public override void receiveEnvelope (SCPEnvelope envelope) @safe
     {
         // we should not receive SCP messages unless we're a validator node
         if (!this.config.node.is_validator)
