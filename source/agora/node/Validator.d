@@ -56,19 +56,7 @@ public class Validator : FullNode, API
 
         // build the list of required quorum peers to connect to
         Set!PublicKey required_peer_keys;
-        void getNodes (in QuorumConfig conf, ref Set!PublicKey nodes)
-        {
-            foreach (node; conf.nodes)
-            {
-                if (node != config.node.key_pair.address)  // filter ourselves
-                    nodes.put(node);
-            }
-
-            foreach (sub_conf; conf.quorums)
-                getNodes(sub_conf, nodes);
-        }
-
-        getNodes(config.quorum, required_peer_keys);
+        buildRequiredKeys(config, config.quorum, required_peer_keys);
 
         super(config, required_peer_keys);
 
@@ -156,5 +144,31 @@ public class Validator : FullNode, API
     {
         // check if there's enough txs in the pool, and start nominating
         this.nominator.tryNominate();
+    }
+
+    /***************************************************************************
+
+        Build the list of required quorum peers to connect to
+
+        Supports recalling `sub_quorums` config structures.
+
+        Params:
+            conf = The node configuration
+            quorum_conf = The SCP quorum set configuration
+            nodes = Will contain the set of public keys to connect to
+
+    ***************************************************************************/
+
+    private static void buildRequiredKeys (in Config conf,
+        in QuorumConfig quorum_conf, ref Set!PublicKey nodes) @safe
+    {
+        foreach (node; quorum_conf.nodes)
+        {
+            if (node != conf.node.key_pair.address)  // filter ourselves
+                nodes.put(node);
+        }
+
+        foreach (sub_conf; quorum_conf.quorums)
+            buildRequiredKeys(conf, sub_conf, nodes);
     }
 }
