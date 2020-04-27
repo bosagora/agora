@@ -124,6 +124,9 @@ public interface API
         Returns:
             the highest block height in this node's ledger
 
+        API:
+            GET /block_height
+
     ***************************************************************************/
 
     public ulong getBlockHeight ();

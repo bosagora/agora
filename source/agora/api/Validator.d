@@ -91,6 +91,9 @@ public interface API : agora.api.FullNode.API
         Params:
             envelope = Envelope to process (See Stellar_SCP)
 
+        API:
+            PUT /receive_envelope
+
     ***************************************************************************/
 
     public void receiveEnvelope (SCPEnvelope envelope);
@@ -101,6 +104,9 @@ public interface API : agora.api.FullNode.API
 
         Params:
             preimage = a PreImageInfo object which contains a hash and a height
+
+        API:
+            PUT /receive_preimage
 
     ***************************************************************************/
 
