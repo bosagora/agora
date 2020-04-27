@@ -212,8 +212,7 @@ public class Ledger
         Add a validated block to the Ledger,
         and add all of its outputs to the UTXO set.
         If there are any enrollments in the block,
-        update the enrollments' starting block heights
-        in the enrollment manager.
+        add enrollments to the validator set.
 
         Params:
             block = the block to add
@@ -229,8 +228,8 @@ public class Ledger
             assert(0);
 
         foreach (enrollment; block.header.enrollments)
-            if (!this.enroll_man.updateEnrolledHeight(enrollment.utxo_key,
-                block.header.height))
+            if (!this.enroll_man.addValidator(enrollment,
+                this.utxo_set.getUTXOFinder(), block.header.height))
                 assert(0);
 
         // read back and cache the last block

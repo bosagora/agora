@@ -138,9 +138,9 @@ unittest
         retryFor(node.hasEnrollment(enroll.utxo_key) == true, 5.seconds));
 
     // set enrolled height to all nodes
-    // the updateEnrolledHeight function is actually called in the middle of
+    // the addValidator function is actually called in the middle of
     // making block but now the code is not merged so calling it is needed.
-    nodes.each!(node => node.updateEnrolledHeight(enroll.utxo_key, 1));
+    nodes.each!(node => node.addValidator(enroll, 1));
 
     // check if nodes don't have a validator's pre-image yet
     nodes.each!(node =>

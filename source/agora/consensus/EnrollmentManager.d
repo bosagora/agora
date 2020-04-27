@@ -197,10 +197,11 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Update the enrolled height of the validatorSet DB.
+        Add a validator to the validator set or update the enrolled height.
 
         Params:
             enroll_hash = enrollment blockheight to update enroll hash
+            finder = the delegate to find UTXOs with
             block_height = enrolled blockheight
 
         Returns:
@@ -208,14 +209,18 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool updateEnrolledHeight (const ref Hash enroll_hash,
-        const size_t block_height) @safe
+    public bool addValidator (const ref Enrollment enroll,
+        scope UTXOFinder finder, size_t block_height) @safe
     {
-        if (!this.validator_set.updateEnrolledHeight(enroll_hash, block_height))
-            return false;
+        if (!this.validator_set.add(block_height, finder, enroll))
+        {
+            if (!this.validator_set.updateEnrolledHeight(enroll.utxo_key,
+                block_height))
+                return false;
+        }
 
         // set next height for revealing a pre-image
-        if (enroll_hash == this.enroll_key)
+        if (enroll.utxo_key == this.enroll_key)
             this.setNextRevealHeight(block_height);
 
         return true;
@@ -840,9 +845,9 @@ unittest
 
     // test for enrollment block height update
     assert(!man.getEnrolledHeight(utxo_hash));
-    assert(man.updateEnrolledHeight(utxo_hash, 9));
-    assert(man.getEnrolledHeight(utxo_hash) == 9);
-    assert(!man.updateEnrolledHeight(utxo_hash, 9));
+    assert(man.addValidator(enroll, &storage.findUTXO, 9));
+    assert(man.getEnrolledHeight(enroll.utxo_key) == 9);
+    assert(!man.addValidator(enroll, &storage.findUTXO, 9));
     assert(man.getEnrolledHeight(utxo_hash2) == 0);
     man.getUnregistered(enrolls);
     assert(enrolls.length == 1);
@@ -870,7 +875,7 @@ unittest
     // So, a pre-image can only be got from the start height.
     PreImageInfo preimage;
     assert(man.createEnrollment(utxo_hash, 1, enroll));
-    assert(man.updateEnrolledHeight(utxo_hash, 10));
+    assert(man.addValidator(enroll, &storage.findUTXO, 10));
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
     assert(man.getPreimage(10 + ValidatorSet.ValidatorCycle, preimage));
@@ -892,7 +897,7 @@ unittest
     // validator A with the `utxo_hash` and the enrolled height of 10.
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
     // validator C with the 'utxo_hash3' and no enrolled height.
-    assert(man.updateEnrolledHeight(utxo_hash2, 11));
+    assert(man.addValidator(enroll2, &storage.findUTXO, 11));
     man.clearExpiredValidators(11);
     assert(man.getValidators(validators));
     assert(validators.length == 2);
@@ -900,7 +905,7 @@ unittest
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
     // there is only one validator in the middle of 1020th block being made.
-    assert(man.updateEnrolledHeight(utxo_hash3, 1019));
+    assert(man.addValidator(enroll3, &storage.findUTXO, 1019));
     man.clearExpiredValidators(1019);
     assert(man.getValidators(validators));
     assert(validators.length == 1);

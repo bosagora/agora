@@ -478,7 +478,7 @@ public interface TestAPI : API
     public abstract void broadcastPreimage (uint height);
 
     ///
-    public abstract void updateEnrolledHeight (Hash enroll_key, ulong height);
+    public abstract void addValidator (Enrollment enroll, ulong height);
 }
 
 /// Ditto
@@ -591,10 +591,11 @@ public class TestNode : Node, TestAPI
         this.receivePreimage(preimage);
     }
 
-    /// Set a enrolled height for the enrollment
-    public override void updateEnrolledHeight (Hash enroll_key, ulong height)
+    /// Add a validator to the validator set
+    public override void addValidator (Enrollment enroll, ulong height)
     {
-        this.enroll_man.updateEnrolledHeight(enroll_key, height);
+        this.enroll_man.addValidator(enroll, this.utxo_set.getUTXOFinder(),
+            height);
     }
 }
 
