@@ -275,7 +275,7 @@ public class Node : API
         Receive an SCP envelope.
 
         API:
-            GET /envelope
+            PUT /receive_envelope
 
         Params:
             envelope = the SCP envelope
