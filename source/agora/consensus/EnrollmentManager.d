@@ -22,6 +22,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSet;
+import agora.consensus.EnrollmentPool;
 import agora.consensus.Validation;
 import agora.consensus.ValidatorSet;
 import agora.utils.Log;
@@ -78,6 +79,9 @@ public class EnrollmentManager
     /// enrolled height, and preimages.
     private ValidatorSet validator_set;
 
+    /// Enrollment pool managing enrollments waiting to be a validator
+    private EnrollmentPool enroll_pool;
+
     /// The count for generating pre-images
     private immutable uint AllCountPreimages = ValidatorSet.ValidatorCycle * 100;
 
@@ -95,6 +99,7 @@ public class EnrollmentManager
     public this (string db_path, KeyPair key_pair)
     {
         this.validator_set = new ValidatorSet(db_path);
+        this.enroll_pool = new EnrollmentPool(db_path);
 
         this.db = Database(db_path);
 
@@ -130,25 +135,26 @@ public class EnrollmentManager
     {
         this.db.close();
         this.validator_set.shutdown();
+        this.enroll_pool.shutdown();
     }
 
     /***************************************************************************
 
-        Add a enrollment data to the validators set
+        Add a enrollment data to the enrollment pool
 
         Params:
-            finder = the delegate to find UTXOs with
             enroll = the enrollment data to add
+            finder = the delegate to find UTXOs with
 
         Returns:
-            true if the enrollment data has been added to the validator set
+            true if the enrollment data has been added to the enrollment pool
 
     ***************************************************************************/
 
-    public bool add (scope UTXOFinder finder, const ref Enrollment enroll)
+    public bool add (const ref Enrollment enroll, scope UTXOFinder finder)
         @safe nothrow
     {
-        return this.validator_set.add(0, finder, enroll);
+        return this.enroll_pool.add(enroll, finder);
     }
 
     /***************************************************************************
@@ -162,7 +168,7 @@ public class EnrollmentManager
 
     public void remove (const ref Hash enroll_hash) @trusted
     {
-        this.validator_set.remove(enroll_hash);
+        this.enroll_pool.remove(enroll_hash);
     }
 
     /***************************************************************************
@@ -188,8 +194,8 @@ public class EnrollmentManager
 
         Params:
             enroll = Enrollment structure to add to the validator set
-            finder = the delegate to find UTXOs with
             block_height = enrolled blockheight
+            finder = the delegate to find UTXOs with
 
         Returns:
             true if the update operation was successful, false otherwise
@@ -197,14 +203,12 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public bool addValidator (const ref Enrollment enroll,
-        scope UTXOFinder finder, size_t block_height) @safe
+        size_t block_height, scope UTXOFinder finder) @safe
     {
+        this.enroll_pool.remove(enroll.utxo_key);
+
         if (!this.validator_set.add(block_height, finder, enroll))
-        {
-            if (!this.validator_set.updateEnrolledHeight(enroll.utxo_key,
-                block_height))
-                return false;
-        }
+            return false;
 
         // set next height for revealing a pre-image
         if (enroll.utxo_key == this.enroll_key)
@@ -286,19 +290,19 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Check if a enrollment data exists in the validator set.
+        Check if a enrollment data exists in the enrollment pool.
 
         Params:
             enroll_hash = key for an enrollment data which is hash of frozen UTXO
 
         Returns:
-            true if the validator set has the enrollment data
+            true if the enrollment pool has the enrollment data
 
     ***************************************************************************/
 
     private bool hasEnrollment (const ref Hash enroll_hash) @trusted
     {
-        return this.validator_set.hasEnrollment(enroll_hash);
+        return this.enroll_pool.hasEnrollment(enroll_hash);
     }
 
     /***************************************************************************
@@ -318,7 +322,7 @@ public class EnrollmentManager
     public bool getEnrollment (const ref Hash enroll_hash,
         out Enrollment enroll) @trusted
     {
-        return this.validator_set.getEnrollment(enroll_hash, enroll);
+        return this.enroll_pool.getEnrollment(enroll_hash, enroll);
     }
 
     /***************************************************************************
@@ -372,7 +376,7 @@ public class EnrollmentManager
     public Enrollment[] getUnregistered (ref Enrollment[] enrolls)
         @trusted
     {
-        return this.validator_set.getUnregistered(enrolls);
+        return this.enroll_pool.getEnrollments(enrolls);
     }
 
     /***************************************************************************
@@ -795,23 +799,23 @@ unittest
 
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(!man.hasEnrollment(utxo_hash));
-    assert(!man.add(&storage.findUTXO, fail_enroll));
-    assert(man.add(&storage.findUTXO, enroll));
-    assert(man.validator_set.count() == 1);
+    assert(!man.add(fail_enroll, &storage.findUTXO));
+    assert(man.add(enroll, &storage.findUTXO));
+    assert(man.enroll_pool.count() == 1);
     assert(man.hasEnrollment(utxo_hash));
-    assert(!man.add(&storage.findUTXO, enroll));
+    assert(!man.add(enroll, &storage.findUTXO));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     assert(man.createEnrollment(utxo_hash2, 1, enroll2));
-    assert(man.add(&storage.findUTXO, enroll2));
-    assert(man.validator_set.count() == 2);
+    assert(man.add(enroll2, &storage.findUTXO));
+    assert(man.enroll_pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
     assert(man.createEnrollment(utxo_hash3, 1, enroll3));
-    assert(man.add(&storage.findUTXO, enroll3));
-    assert(man.validator_set.count() == 3);
+    assert(man.add(enroll3, &storage.findUTXO));
+    assert(man.enroll_pool.count() == 3);
 
     Enrollment[] enrolls;
     man.getUnregistered(enrolls);
@@ -825,20 +829,22 @@ unittest
 
     // remove an Enrollment object
     man.remove(utxo_hash2);
-    assert(man.validator_set.count() == 2);
+    assert(man.enroll_pool.count() == 2);
 
     // test for getEnrollment with removed enrollment
     assert(!man.getEnrollment(utxo_hash2, stored_enroll));
 
     // test for enrollment block height update
     assert(!man.getEnrolledHeight(utxo_hash));
-    assert(man.addValidator(enroll, &storage.findUTXO, 9));
+    assert(man.addValidator(enroll, 9, &storage.findUTXO));
     assert(man.getEnrolledHeight(enroll.utxo_key) == 9);
-    assert(!man.addValidator(enroll, &storage.findUTXO, 9));
-    assert(man.getEnrolledHeight(utxo_hash2) == 0);
+    assert(!man.addValidator(enroll, 9, &storage.findUTXO));
+    assert(man.getEnrolledHeight(enroll2.utxo_key) == 0);
     man.getUnregistered(enrolls);
     assert(enrolls.length == 1);
-    assert(man.validator_set.count() == 2);  // has not changed
+    // One Enrollment was moved to validator set
+    assert(man.validator_set.count() == 1);
+    assert(man.enroll_pool.count() == 1);
 
     man.remove(utxo_hash);
     man.remove(utxo_hash2);
@@ -852,17 +858,20 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(man.add(&storage.findUTXO, ordered_enroll));
+        assert(man.add(ordered_enroll, &storage.findUTXO));
     man.getUnregistered(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
+
+    // clear up all validators
+    man.clearExpiredValidators(1018);
 
     // get a pre-image at a certain height
     // A validation can start at the height of the enrolled height plus 1.
     // So, a pre-image can only be got from the start height.
     PreImageInfo preimage;
     assert(man.createEnrollment(utxo_hash, 1, enroll));
-    assert(man.addValidator(enroll, &storage.findUTXO, 10));
+    assert(man.addValidator(enroll, 10, &storage.findUTXO));
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
     assert(man.getPreimage(10 + ValidatorSet.ValidatorCycle, preimage));
@@ -884,7 +893,7 @@ unittest
     // validator A with the `utxo_hash` and the enrolled height of 10.
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
     // validator C with the 'utxo_hash3' and no enrolled height.
-    assert(man.addValidator(enroll2, &storage.findUTXO, 11));
+    assert(man.addValidator(enroll2, 11, &storage.findUTXO));
     man.clearExpiredValidators(11);
     assert(man.getValidators(validators));
     assert(validators.length == 2);
@@ -892,11 +901,11 @@ unittest
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
     // there is only one validator in the middle of 1020th block being made.
-    assert(man.addValidator(enroll3, &storage.findUTXO, 1019));
+    assert(man.addValidator(enroll3, 1019, &storage.findUTXO));
     man.clearExpiredValidators(1019);
     assert(man.getValidators(validators));
     assert(validators.length == 1);
-    assert(validators[0].utxo_key == utxo_hash3);
+    assert(validators[0].utxo_key == enroll3.utxo_key);
 }
 
 /// tests for addPreimage and getValidatorPreimage
@@ -934,13 +943,14 @@ unittest
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
     assert(man.createEnrollment(utxo_hash, 1, enroll));
-    assert(man.add(&storage.findUTXO, enroll));
+    assert(man.add(enroll, &storage.findUTXO));
     assert(man.hasEnrollment(utxo_hash));
 
     PreImageInfo result_image;
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image == PreImageInfo.init);
     auto preimage = PreImageInfo(utxo_hash, man.cycle_preimages[100], 1100);
+    assert(man.addValidator(enroll, 2, &storage.findUTXO));
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == utxo_hash);
