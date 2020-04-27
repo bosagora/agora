@@ -26,7 +26,6 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.ValidatorSet;
 import agora.consensus.Genesis;
 import agora.consensus.Validation;
 import agora.node.BlockStorage;
@@ -109,7 +108,7 @@ public class Ledger
         // restore validator set from lastest blocks
         if (this.last_block.header.height > 0)
         {
-            foreach (i; 0 .. ValidatorSet.ValidatorCycle)
+            foreach (i; 0 .. Enrollment.ValidatorCycle)
             {
                 if (i >= this.last_block.header.height)
                     break;
@@ -229,7 +228,7 @@ public class Ledger
 
         foreach (enrollment; block.header.enrollments)
             if (!this.enroll_man.addValidator(enrollment,
-                this.utxo_set.getUTXOFinder(), block.header.height))
+                block.header.height, this.utxo_set.getUTXOFinder()))
                 assert(0);
 
         // read back and cache the last block
@@ -1043,9 +1042,9 @@ unittest
     enrollments ~= enroll_3;
 
     auto findUTXO = utxo_set.getUTXOFinder();
-    assert(enroll_man.add(findUTXO, enroll_1));
-    assert(enroll_man.add(findUTXO, enroll_2));
-    assert(enroll_man.add(findUTXO, enroll_3));
+    assert(enroll_man.add(enroll_1, findUTXO));
+    assert(enroll_man.add(enroll_2, findUTXO));
+    assert(enroll_man.add(enroll_3, findUTXO));
     Enrollment stored_enroll;
     enroll_man.getEnrollment(utxo_hash_1, stored_enroll);
     assert(stored_enroll == enroll_1);

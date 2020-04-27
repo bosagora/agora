@@ -41,7 +41,8 @@ public class ValidatorSet
     private Database db;
 
     /// The cycle length for a validator
-    public static immutable uint ValidatorCycle = 1008; // freezing period / 2
+    public static immutable uint ValidatorCycle = Enrollment.ValidatorCycle;
+
 
     /***************************************************************************
 
@@ -94,9 +95,7 @@ public class ValidatorSet
     public bool add (ulong block_height, scope UTXOFinder finder,
         const ref Enrollment enroll) @safe nothrow
     {
-        static ubyte[] buffer;
-
-        // check validity of the enrollment data
+        // check validaty of the enrollment data
         if (auto reason = isInvalidEnrollmentReason(enroll, finder))
         {
             log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
@@ -106,32 +105,26 @@ public class ValidatorSet
         // check if already exists
         if (this.hasEnrollment(enroll.utxo_key))
         {
-            log.info("Rejected already existing enrollment, Data was: {}",
+            log.info("Rejected already existing validator, Data was: {}",
                 enroll);
             return false;
         }
 
         try
         {
+            static ubyte[] buffer;
             serializeToBuffer(enroll, buffer);
-        }
-        catch (Exception ex)
-        {
-            log.error("Serialization error: {}, Data was: {}", ex.msg, enroll);
-            return false;
-        }
 
-        try
-        {
             () @trusted {
-                this.db.execute("INSERT INTO validator_set (key, val) VALUES (?, ?)",
-                    enroll.utxo_key.toString(), buffer);
+                this.db.execute("INSERT INTO validator_set " ~
+                    "(key, val, enrolled_height) VALUES (?, ?, ?)",
+                    enroll.utxo_key.toString(), buffer, block_height);
             }();
-
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {}, Data was: {}", ex.msg, enroll);
+            log.error("Operation error on adding a validator: {}, " ~
+                "Data was: {}", ex.msg, enroll);
             return false;
         }
 
@@ -199,43 +192,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Update the enrolled height of the validatorSet DB.
-
-        Params:
-            enroll_hash = enrollment blockheight to update enroll hash
-            block_height = enrolled blockheight
-
-        Returns:
-            true if the update operation was successful, false otherwise
-
-    ***************************************************************************/
-
-    public bool updateEnrolledHeight (const ref Hash enroll_hash,
-        const size_t block_height) @safe nothrow
-    {
-        try
-        {
-            if (this.getEnrolledHeight(enroll_hash) > 0)
-                return false;
-
-            () @trusted {
-                this.db.execute(
-                    "UPDATE validator_set SET enrolled_height = ? WHERE key = ?",
-                    block_height, enroll_hash.toString());
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error on updateEnrolledHeight: {}, " ~
-                "Key for enrollment: {}", ex.msg, enroll_hash);
-            return false;
-        }
-
-        return true;
-    }
-
-    /***************************************************************************
-
         Check if a enrollment data exists in the validator set.
 
         Params:
@@ -293,7 +249,7 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get all the current validators
+        Get all the current validators in ascending order with the utxo_key
 
         Params:
             validators = will be filled with all the validators during
@@ -310,7 +266,7 @@ public class ValidatorSet
         {
             () @trusted {
                 auto results = this.db.execute("SELECT val FROM validator_set" ~
-                    " WHERE enrolled_height is not null");
+                    " ORDER BY key ASC");
                 foreach (row; results)
                 {
                     validators ~=
@@ -360,33 +316,6 @@ public class ValidatorSet
                 log.error("Database operation error: {}", ex.msg);
             }
         }
-    }
-
-    /***************************************************************************
-
-        Get the unregistered enrollments in the block
-        And this is arranged in ascending order with the utxo_key
-
-        Params:
-            enrolls = will contain the unregistered enrollments data if found
-
-        Returns:
-            The unregistered enrollments data
-
-    ***************************************************************************/
-
-    public Enrollment[] getUnregistered (ref Enrollment[] enrolls)
-        @trusted
-    {
-        enrolls.length = 0;
-        assumeSafeAppend(enrolls);
-        auto results = this.db.execute("SELECT val FROM validator_set" ~
-            " WHERE enrolled_height is null ORDER BY key ASC");
-
-        foreach (row; results)
-            enrolls ~= deserializeFull!Enrollment(row.peek!(ubyte[])(0));
-
-        return enrolls;
     }
 
     /***************************************************************************
@@ -580,17 +509,9 @@ public class ValidatorSet
         {
             foreach (const ref enroll; block.header.enrollments)
             {
-                if (!this.hasEnrollment(enroll.utxo_key))
+                if (!this.add(block.header.height, finder, enroll))
                 {
-                    if (!this.add(block.header.height, finder, enroll))
-                    {
-                        assert(0);
-                    }
-                }
-                if (!this.updateEnrolledHeight(enroll.utxo_key,
-                        block.header.height))
-                {
-                        assert(0);
+                    assert(0);
                 }
             }
         }
@@ -663,26 +584,26 @@ unittest
     auto utxo_hash = utxo_hashes[0];
     seed_sources[utxo_hash] = Scalar.random();
     auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
-    assert(set.add(0, &storage.findUTXO, enroll));
+    assert(set.add(1, &storage.findUTXO, enroll));
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxo_hash));
-    assert(!set.add(0, &storage.findUTXO, enroll));
+    assert(!set.add(1, &storage.findUTXO, enroll));
 
     auto utxo_hash2 = utxo_hashes[1];
     seed_sources[utxo_hash2] = Scalar.random();
     auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2]);
-    assert(set.add(0, &storage.findUTXO, enroll2));
+    assert(set.add(1, &storage.findUTXO, enroll2));
     assert(set.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     seed_sources[utxo_hash3] = Scalar.random();
     auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3]);
-    assert(set.add(0, &storage.findUTXO, enroll3));
+    assert(set.add(9, &storage.findUTXO, enroll3));
     assert(set.count() == 3);
 
     // check if enrolled heights are not set
     Enrollment[] enrolls;
-    set.getUnregistered(enrolls);
+    set.getValidators(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -695,23 +616,12 @@ unittest
     set.remove(utxo_hash2);
     assert(set.count() == 2);
     assert(!set.getEnrollment(utxo_hash2, stored_enroll));
-
-    // test for enrollment block height update
-    assert(!set.getEnrolledHeight(utxo_hash));
-    assert(set.updateEnrolledHeight(utxo_hash, 9));
-    assert(set.getEnrolledHeight(utxo_hash) == 9);
-    assert(!set.updateEnrolledHeight(utxo_hash, 9));
-    assert(set.getEnrolledHeight(utxo_hash2) == 0);
-    set.getUnregistered(enrolls);
-    assert(enrolls.length == 1);
-    assert(set.count() == 2);  // has not changed
-
     assert(set.hasEnrollment(utxo_hash));
     set.remove(utxo_hash);
     assert(!set.hasEnrollment(utxo_hash));
     set.remove(utxo_hash2);
     set.remove(utxo_hash3);
-    assert(set.getUnregistered(enrolls).length == 0);
+    assert(set.count() == 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -721,17 +631,10 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(set.add(0, &storage.findUTXO, ordered_enroll));
-    set.getUnregistered(enrolls);
+        assert(set.add(1, &storage.findUTXO, ordered_enroll));
+    set.getValidators(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
-
-    // test for getting validators
-    Enrollment[] validators;
-    assert(set.updateEnrolledHeight(utxo_hash, 9));
-    assert(set.getValidators(validators));
-    assert(validators.length == 1);
-    assert(validators[0].utxo_key == utxo_hash);
 
     // test for adding and getting preimage
     PreImageInfo result_image;
@@ -747,12 +650,15 @@ unittest
     assert(result_image.distance == preimage.distance);
 
     // test for clear up expired validators
-    assert(set.updateEnrolledHeight(utxo_hash2, 1017));
-    assert(set.getValidators(validators));
-    assert(validators.length == 2);
-    set.clearExpiredValidators(1017);
-    assert(set.getValidators(validators));
-    assert(validators[0].utxo_key == utxo_hash2);
+    auto utxo_hash4 = utxo_hashes[3];
+    seed_sources[utxo_hash4] = Scalar.random();
+    enroll = createEnrollment(utxo_hash4, key_pair, seed_sources[utxo_hash4]);
+    assert(set.add(9, &storage.findUTXO, enroll));
+    set.clearExpiredValidators(1016);
+    enrolls.length = 0;
+    assert(set.getValidators(enrolls));
+    assert(enrolls.length == 1);
+    assert(enrolls[0].utxo_key == utxo_hash4);
 }
 
 /// test for restroing information about validators from blocks

@@ -422,7 +422,7 @@ public class FullNode : API
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
 
-        if (this.enroll_man.add(this.utxo_set.getUTXOFinder(), enroll))
+        if (this.enroll_man.add(enroll, this.utxo_set.getUTXOFinder()))
         {
             this.network.sendEnrollment(enroll);
         }
