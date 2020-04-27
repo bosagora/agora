@@ -336,7 +336,7 @@ extern(D):
 
         try
         {
-            auto data = deserializeFull!ConsensusData(cast(ubyte[])value[]);
+            auto data = deserializeFull!ConsensusData(value[]);
 
             if (auto fail_reason = this.ledger.validateConsensusData(data))
             {
@@ -374,8 +374,7 @@ extern(D):
         if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
 
-        auto bytes = cast(ubyte[])value[];
-        auto data = deserializeFull!ConsensusData(bytes);
+        auto data = deserializeFull!ConsensusData(value[]);
 
         // enrollment data may be empty, but not transaction set
         if (data.tx_set.length == 0)
@@ -453,7 +452,7 @@ extern(D):
 
         foreach (ref const(Value) candidate; candidates)
         {
-            auto data = deserializeFull!ConsensusData(cast(ubyte[])candidate[]);
+            auto data = deserializeFull!ConsensusData(candidate[]);
 
             if (auto msg = this.ledger.validateConsensusData(data))
             {
