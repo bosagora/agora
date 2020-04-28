@@ -187,7 +187,7 @@ public class EnrollmentManager
         Add a validator to the validator set or update the enrolled height.
 
         Params:
-            enroll_hash = enrollment blockheight to update enroll hash
+            enroll = Enrollment structure to add to the validator set
             finder = the delegate to find UTXOs with
             block_height = enrolled blockheight
 
