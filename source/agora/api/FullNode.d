@@ -210,7 +210,7 @@ public interface API
         Get validator's pre-image inforamtion
 
         API:
-            GET /get_preimage
+            GET /preimage
 
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
