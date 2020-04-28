@@ -331,10 +331,8 @@ public class TransactionPool
 
     public bool hasTransactionHash (const ref Hash tx) @trusted
     {
-        auto results = this.db.execute("SELECT key FROM tx_pool " ~
-            "WHERE key = ?", tx[]);
-
-        return !results.empty;
+        return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
+            "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);
     }
 }
 
