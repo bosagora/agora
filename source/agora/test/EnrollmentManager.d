@@ -74,7 +74,7 @@ unittest
 
     // check if nodes contains enrollment data previously sent.
     nodes.each!(node =>
-        retryFor(node.hasEnrollment(enroll.utxo_key) == true, 5.seconds));
+        retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
 
     // check if nodes don't have a pre-image yet
     nodes.each!(node =>

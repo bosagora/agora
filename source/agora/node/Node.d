@@ -511,10 +511,12 @@ public class Node : API
         }
     }
 
-    /// GET: /has_enrollment
-    public override bool hasEnrollment (Hash enroll_hash) @safe
+    /// GET: /enrollment
+    public override Enrollment getEnrollment (Hash enroll_hash) @safe
     {
-        return this.enroll_man.hasEnrollment(enroll_hash);
+        Enrollment enroll;
+        this.enroll_man.getEnrollment(enroll_hash, enroll);
+        return enroll;
     }
 
     /// PUT: /receive_preimage
