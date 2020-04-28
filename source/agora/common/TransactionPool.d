@@ -111,15 +111,11 @@ public class TransactionPool
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
             "(key BLOB PRIMARY KEY, val BLOB NOT NULL)");
 
-        // insert Input objects to the set of Input hashes from the transactions stored in DB.
-        auto results = this.db.execute("SELECT key, val FROM tx_pool");
-
-        foreach (row; results)
+        // populate the input set from the tx'es in the DB
+        foreach (_, tx; this)
         {
-            auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(1));
-
-            foreach (input; tx.inputs)
-                input_set.put(input.hashFull());
+            foreach (const ref input; tx.inputs)
+                this.input_set.put(input.hashFull());
         }
     }
 
