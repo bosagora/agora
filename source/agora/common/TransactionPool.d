@@ -124,44 +124,6 @@ public class TransactionPool
 
     /***************************************************************************
 
-        Callback used
-
-        Params:
-            arg = unused (null)
-            code = the error code
-            msg = the error message
-
-    ***************************************************************************/
-
-    private static extern(C) void loggerCallback (void *arg, int code,
-        const(char)* msg) nothrow
-    {
-        try
-        {
-            log.error("SQLite error: ({}) {}", code, msg.to!string);
-        }
-        catch (Exception ex)
-        {
-            // should not propagate exceptions to C code
-        }
-    }
-
-    /***************************************************************************
-
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.db.close();
-    }
-
-    /***************************************************************************
-
         Add a transaction to the pool
 
         Params:
@@ -192,6 +154,25 @@ public class TransactionPool
         }();
 
         return true;
+    }
+
+    /***************************************************************************
+
+        Remove the transaction with the given key from the pool
+
+        Params:
+            tx = the transaction to remove
+
+    ***************************************************************************/
+
+    public void remove (const ref Transaction tx) @trusted
+    {
+        // delete inputs of transaction from the set of Input hashes
+        foreach (ref input; tx.inputs)
+            this.input_set.remove(input.hashFull());
+
+        auto hash = tx.hashFull();
+        this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash[]);
     }
 
     /***************************************************************************
@@ -241,21 +222,63 @@ public class TransactionPool
 
     /***************************************************************************
 
-        Remove the transaction with the given key from the pool
+        Check if a transaction hash exists in the transaction pool.
 
         Params:
-            tx = the transaction to remove
+            tx = the transaction hash
+
+        Returns:
+            true if the transaction pool has the transaction hash.
 
     ***************************************************************************/
 
-    public void remove (const ref Transaction tx) @trusted
+    public bool hasTransactionHash (const ref Hash tx) @trusted
     {
-        // delete inputs of transaction from the set of Input hashes
-        foreach (ref input; tx.inputs)
-            this.input_set.remove(input.hashFull());
+        return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
+            "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);
+    }
 
-        auto hash = tx.hashFull();
-        this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash[]);
+    /***************************************************************************
+
+        Shut down the database
+
+        Note: this method must be called explicitly, and not inside of
+        a destructor.
+
+    ***************************************************************************/
+
+    public void shutdown ()
+    {
+        this.db.close();
+    }
+
+    /***************************************************************************
+
+        Check if the input transaction has any double spending input.
+
+        Params:
+            tx = the transaction to validate
+
+        Returns:
+            true if the transaction has no double spending input.
+
+    ***************************************************************************/
+
+    private bool isValidTransaction (const ref Transaction tx) @trusted
+    {
+        auto txHash = tx.hashFull();
+
+        if (this.hasTransactionHash(txHash))
+            return false;  // double-spend
+
+        foreach (input; tx.inputs)
+        {
+            auto hash = input.hashFull();
+            if (hash in this.input_set)
+                return false;
+        }
+
+        return true;
     }
 
     /***************************************************************************
@@ -290,49 +313,26 @@ public class TransactionPool
 
     /***************************************************************************
 
-        Check if the input transaction has any double spending input.
+        Callback used
 
         Params:
-            tx = the transaction to validate
-
-        Returns:
-            true if the transaction has no double spending input.
+            arg = unused (null)
+            code = the error code
+            msg = the error message
 
     ***************************************************************************/
 
-    private bool isValidTransaction (const ref Transaction tx) @trusted
+    private static extern(C) void loggerCallback (void *arg, int code,
+        const(char)* msg) nothrow
     {
-        auto txHash = tx.hashFull();
-
-        if (this.hasTransactionHash(txHash))
-            return false;  // double-spend
-
-        foreach (input; tx.inputs)
+        try
         {
-            auto hash = input.hashFull();
-            if (hash in this.input_set)
-                return false;
+            log.error("SQLite error: ({}) {}", code, msg.to!string);
         }
-
-        return true;
-    }
-
-    /***************************************************************************
-
-        Check if a transaction hash exists in the transaction pool.
-
-        Params:
-            tx = the transaction hash
-
-        Returns:
-            true if the transaction pool has the transaction hash.
-
-    ***************************************************************************/
-
-    public bool hasTransactionHash (const ref Hash tx) @trusted
-    {
-        return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-            "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);
+        catch (Exception ex)
+        {
+            // should not propagate exceptions to C code
+        }
     }
 }
 
