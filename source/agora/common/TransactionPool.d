@@ -300,7 +300,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public bool isValidTransaction (const ref Transaction tx) @trusted
+    private bool isValidTransaction (const ref Transaction tx) @trusted
     {
         auto txHash = tx.hashFull();
 
