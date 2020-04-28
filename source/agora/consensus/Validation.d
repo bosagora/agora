@@ -1463,17 +1463,17 @@ unittest
 
     // valid pre-image
     PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
-    assert(isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+    assert(isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
 
     // invalid pre-image with wrong enrollment key
     new_image = PreImageInfo(hashFull("xyz"), preimages[100], 101);
-    assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+    assert(!isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
 
     // invalid pre-image with wrong height number
     new_image = PreImageInfo(hashFull("abc"), preimages[1], 3);
-    assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+    assert(!isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
 
     // invalid pre-image with wrong hash value
     new_image = PreImageInfo(hashFull("abc"), preimages[100], 100);
-    assert(!isValidPreimage(new_image, prev_image, ValidatorSet.ValidatorCycle));
+    assert(!isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
 }

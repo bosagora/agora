@@ -40,10 +40,6 @@ public class ValidatorSet
     /// SQLite db instance
     private Database db;
 
-    /// The cycle length for a validator
-    public static immutable uint ValidatorCycle = Enrollment.ValidatorCycle;
-
-
     /***************************************************************************
 
         Constructor
@@ -301,13 +297,14 @@ public class ValidatorSet
     {
         // the smallest enrolled height would be 1, so the passed block height
         // should be greater than the validator cycle for deleting validators.
-        if (block_height > ValidatorCycle)
+        if (block_height > Enrollment.ValidatorCycle)
         {
             try
             {
                 () @trusted {
                     this.db.execute("DELETE FROM validator_set WHERE " ~
-                        "enrolled_height <= ?", block_height - ValidatorCycle);
+                        "enrolled_height <= ?",
+                        block_height - Enrollment.ValidatorCycle);
 
                 }();
             }
@@ -453,7 +450,8 @@ public class ValidatorSet
             stored_image != PreImageInfo.init)
         {
             if (auto reason =
-                isInvalidPreimageReason(preimage, stored_image, ValidatorCycle))
+                isInvalidPreimageReason(preimage, stored_image,
+                    Enrollment.ValidatorCycle))
             {
                 log.info("Invalid preimage data: {}, Data was: ", reason,
                     preimage);
@@ -505,7 +503,7 @@ public class ValidatorSet
         scope UTXOFinder finder) @safe nothrow
     {
         assert(last_height >= block.header.height);
-        if (last_height - block.header.height < ValidatorCycle)
+        if (last_height - block.header.height < Enrollment.ValidatorCycle)
         {
             foreach (const ref enroll; block.header.enrollments)
             {
@@ -534,7 +532,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
     auto signature_noise = Pair.random();
 
     enroll.utxo_key = utxo_key;
-    enroll.cycle_length = ValidatorSet.ValidatorCycle;
+    enroll.cycle_length = Enrollment.ValidatorCycle;
     preimages ~= hashFull(random_seed_src);
     foreach (i; 0 ..  enroll.cycle_length-1)
         preimages ~= hashFull(preimages[i]);
@@ -701,7 +699,7 @@ unittest
 
     // make test blocks used for restoring validator set
     Block[] blocks;
-    ulong last_height = ValidatorSet.ValidatorCycle;
+    ulong last_height = Enrollment.ValidatorCycle;
     foreach (ulong i; 0 .. last_height + 1)
     {
         Block block;
