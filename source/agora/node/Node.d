@@ -526,7 +526,7 @@ public class Node : API
             this.network.sendPreimage(preimage);
     }
 
-    /// GET: /get_preimage
+    /// GET: /preimage
     public override PreImageInfo getPreimage (Hash enroll_key)
     {
         PreImageInfo preimage;
