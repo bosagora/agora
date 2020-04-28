@@ -304,11 +304,8 @@ public class TransactionPool
     {
         auto txHash = tx.hashFull();
 
-        auto results = this.db.execute("SELECT key, val FROM tx_pool " ~
-            "WHERE key = ?", txHash[]);
-
-        if (!results.empty)
-            return false;
+        if (this.hasTransactionHash(txHash))
+            return false;  // double-spend
 
         foreach (input; tx.inputs)
         {
