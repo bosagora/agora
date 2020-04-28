@@ -303,11 +303,6 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            // if the node already has this enrollment, don't send it
-            if (this.attemptRequest!(LogLevel.Trace)(
-                this.api.hasEnrollment(enroll.utxo_key), null))
-                    return;
-
             this.attemptRequest(this.api.enrollValidator(enroll), null);
         });
     }

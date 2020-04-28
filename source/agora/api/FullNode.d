@@ -189,21 +189,21 @@ public interface API
 
     /***************************************************************************
 
-        Check if an enrollment data exists in the validator set
+        Get an enrollment data if the data exists in the validator set
 
         API:
-            GET /has_enrollment
+            GET /enrollment
 
         Params:
             enroll_hash = key for an enrollment data which is hash of frozen UTXO
 
         Returns:
-            true if the validator set has the enrollment data
+            the enrollment data if exists, otherwise Enrollment.init
 
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
-    public bool hasEnrollment (Hash enroll_hash);
+    public Enrollment getEnrollment (Hash enroll_hash);
 
     /***************************************************************************
 
