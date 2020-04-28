@@ -133,20 +133,6 @@ unittest
     // send a request to enroll as a Validator
     node_1.enrollValidator(enroll);
 
-    // check if nodes contains enrollment data previously sent.
-    nodes.each!(node =>
-        retryFor(node.hasEnrollment(enroll.utxo_key) == true, 5.seconds));
-
-    // set enrolled height to all nodes
-    // the addValidator function is actually called in the middle of
-    // making block but now the code is not merged so calling it is needed.
-    nodes.each!(node => node.addValidator(enroll, 1));
-
-    // check if nodes don't have a validator's pre-image yet
-    nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) == PreImageInfo.init,
-            5.seconds));
-
     // make a block with height of 2
     Transaction[] txs2;
     foreach (idx; 0 .. Block.TxsInBlock)
@@ -157,7 +143,7 @@ unittest
         {
             TxType.Payment,
             [input],
-            [Output(Amount(100), pubkey_1)]
+            [Output(Amount(100), gen_key_pair.address)]
         };
 
         auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
@@ -166,6 +152,19 @@ unittest
     }
     txs2.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 2).retryFor(8.seconds);
+
+    // Currently a new transaction needs to be sent to trigger
+    // the reveal of a pre-image
+    // See https://github.com/bpfkorea/agora/issues/582
+    Transaction tx =
+    {
+        TxType.Payment,
+        [Input(hashFull(txs2[0]), 0)],
+        [Output(Amount(100), pubkey_1)]
+    };
+    auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+    tx.inputs[0].signature = signature;
+    node_1.putTransaction(tx);
 
     // check if nodes have a pre-image newly sent
     // during creating transactions for the new block
