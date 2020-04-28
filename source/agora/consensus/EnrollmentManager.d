@@ -153,19 +153,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Returns:
-            the number of enrollments being managed by this EnrollmentManager.
-            Note: this includes both registered and un-registered enrollments.
-
-    ***************************************************************************/
-
-    public size_t count () @safe
-    {
-        return this.validator_set.count();
-    }
-
-    /***************************************************************************
-
         Remove the enrollment data with the given key from the validator set
 
         Params:
@@ -810,7 +797,7 @@ unittest
     assert(!man.hasEnrollment(utxo_hash));
     assert(!man.add(&storage.findUTXO, fail_enroll));
     assert(man.add(&storage.findUTXO, enroll));
-    assert(man.count() == 1);
+    assert(man.validator_set.count() == 1);
     assert(man.hasEnrollment(utxo_hash));
     assert(!man.add(&storage.findUTXO, enroll));
 
@@ -818,13 +805,13 @@ unittest
     auto utxo_hash2 = utxo_hashes[1];
     assert(man.createEnrollment(utxo_hash2, 1, enroll2));
     assert(man.add(&storage.findUTXO, enroll2));
-    assert(man.count() == 2);
+    assert(man.validator_set.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
     assert(man.createEnrollment(utxo_hash3, 1, enroll3));
     assert(man.add(&storage.findUTXO, enroll3));
-    assert(man.count() == 3);
+    assert(man.validator_set.count() == 3);
 
     Enrollment[] enrolls;
     man.getUnregistered(enrolls);
@@ -838,7 +825,7 @@ unittest
 
     // remove an Enrollment object
     man.remove(utxo_hash2);
-    assert(man.count() == 2);
+    assert(man.validator_set.count() == 2);
 
     // test for getEnrollment with removed enrollment
     assert(!man.getEnrollment(utxo_hash2, stored_enroll));
@@ -851,7 +838,7 @@ unittest
     assert(man.getEnrolledHeight(utxo_hash2) == 0);
     man.getUnregistered(enrolls);
     assert(enrolls.length == 1);
-    assert(man.count() == 2);  // has not changed
+    assert(man.validator_set.count() == 2);  // has not changed
 
     man.remove(utxo_hash);
     man.remove(utxo_hash2);
