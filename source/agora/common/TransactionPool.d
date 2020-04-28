@@ -294,7 +294,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    version (unittest) public Transaction[] take (size_t count) @safe
+    version (unittest) private Transaction[] take (size_t count) @safe
     {
         const len_prev = this.length();
         assert(len_prev >= count);
