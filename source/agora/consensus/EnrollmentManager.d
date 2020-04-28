@@ -83,7 +83,7 @@ public class EnrollmentManager
     private EnrollmentPool enroll_pool;
 
     /// The count for generating pre-images
-    private immutable uint AllCountPreimages = ValidatorSet.ValidatorCycle * 100;
+    private immutable uint AllCountPreimages = Enrollment.ValidatorCycle * 100;
 
     /***************************************************************************
 
@@ -242,7 +242,7 @@ public class EnrollmentManager
         this.enroll_key = frozen_utxo_hash;
 
         // N, cycle length
-        this.data.cycle_length = ValidatorSet.ValidatorCycle;
+        this.data.cycle_length = Enrollment.ValidatorCycle;
 
         // X, final seed data and preimages of hashes
         this.data.random_seed = this.generatePreimages(height);
@@ -417,7 +417,7 @@ public class EnrollmentManager
         if (height < start_height)
             return false;
         immutable index = (height - start_height);
-        if (index > ValidatorSet.ValidatorCycle - 1)
+        if (index > Enrollment.ValidatorCycle - 1)
             return false;
 
         if (height !in this.cycle_preimages)
@@ -620,12 +620,12 @@ public class EnrollmentManager
         // This determines which range of preimages must be generated.
         // In order to get hash values more than one cycle, the `start_height`
         // is to be the height of the last preimage of next cycle. The value of
-        // `height / ValidatorSet.ValidatorCycle` is the index of previous
+        // `height / Enrollment.ValidatorCycle` is the index of previous
         // cycle, so we need to plus 2 to the value in order to get the index
         // of the next cycle.
         ulong start_height =
-            ((height / ValidatorSet.ValidatorCycle) + 2) *
-                ValidatorSet.ValidatorCycle;
+            ((height / Enrollment.ValidatorCycle) + 2) *
+                Enrollment.ValidatorCycle;
 
         // Clear if recreating pre-images is needed
         if (this.preimage_rounds.byKey.maxElement(0) < start_height)
@@ -649,7 +649,7 @@ public class EnrollmentManager
             for (--idx; idx >= height; --idx)
             {
                 hash = hashFull(hash);
-                if (idx % ValidatorSet.ValidatorCycle == 0)
+                if (idx % Enrollment.ValidatorCycle == 0)
                     this.preimage_rounds[idx] = hash;
             }
         }
@@ -679,7 +679,7 @@ public class EnrollmentManager
         // Load first entry from the rounds
         this.cycle_preimages[height] = seed;
         // Fill the cache
-        foreach (idx; 1 .. ValidatorSet.ValidatorCycle * 2)
+        foreach (idx; 1 .. Enrollment.ValidatorCycle * 2)
         {
             seed = hashFull(seed);
             this.cycle_preimages[height - idx] = seed;
@@ -874,8 +874,8 @@ unittest
     assert(man.addValidator(enroll, 10, &storage.findUTXO));
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
-    assert(man.getPreimage(10 + ValidatorSet.ValidatorCycle, preimage));
-    assert(!man.getPreimage(11 + ValidatorSet.ValidatorCycle, preimage));
+    assert(man.getPreimage(10 + Enrollment.ValidatorCycle, preimage));
+    assert(!man.getPreimage(11 + Enrollment.ValidatorCycle, preimage));
 
     /// test for the functions about periodic revelation of a pre-image
     assert(man.needRevealPreimage(10));
@@ -884,7 +884,7 @@ unittest
 
     // If the height of the requested preimage exceeds the height of the end of
     // the validator cycle, the `getNextPreimage` must return `false`.
-    man.next_reveal_height = 10 + ValidatorSet.ValidatorCycle;
+    man.next_reveal_height = 10 + Enrollment.ValidatorCycle;
     assert(!man.getNextPreimage(preimage));
 
     // test for getting validators
