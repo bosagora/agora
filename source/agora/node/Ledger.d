@@ -1049,8 +1049,6 @@ unittest
     assert(enroll_man.hasEnrollment(utxo_hash_1));
     assert(enroll_man.hasEnrollment(utxo_hash_2));
     assert(enroll_man.hasEnrollment(utxo_hash_3));
-    assert(enroll_man.count() == 3);
-
     genNormalBlockTransactions(1);
     assert(ledger.getBlockHeight() == 4);
 
