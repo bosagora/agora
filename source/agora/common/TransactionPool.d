@@ -32,6 +32,7 @@ import std.conv : to;
 import std.exception : collectException, enforce;
 import std.file : exists;
 import std.range;
+import std.string;
 
 version (unittest)
 {
@@ -327,7 +328,7 @@ public class TransactionPool
     {
         try
         {
-            log.error("SQLite error: ({}) {}", code, msg.to!string);
+            log.error("SQLite error: ({}) {}", code, msg.fromStringz);
         }
         catch (Exception ex)
         {
