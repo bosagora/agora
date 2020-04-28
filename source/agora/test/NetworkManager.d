@@ -114,6 +114,7 @@ unittest
             // the test has 3 nodes:
             // 1 validator => used for creating blocks
             // 1 byzantine FullNode => lies about the blockchain
+            //   (returns syntactically invalid data)
             // 1 good FullNode => it accepts only the valid blockchain
             if (conf.node.is_validator)
             {
