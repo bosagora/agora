@@ -105,46 +105,6 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        Receive a transaction.
-
-        API:
-            PUT /transaction
-
-        Params:
-            tx = the received transaction
-
-    ***************************************************************************/
-
-    public override void putTransaction (Transaction tx) @safe
-    {
-        log.trace("Received Transaction: {}", prettify(tx));
-
-        auto tx_hash = hashFull(tx);
-        if (this.ledger.hasTransactionHash(tx_hash))
-            return;
-
-        if (this.ledger.acceptTransaction(tx))
-        {
-            // gossip first
-            this.network.gossipTransaction(tx);
-
-            // then nominate
-            this.nominator.tryNominate();
-        }
-
-        if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
-        {
-            PreImageInfo preimage;
-            if (this.enroll_man.getNextPreimage(preimage))
-            {
-                this.receivePreimage(preimage);
-                this.enroll_man.increaseNextRevealHeight();
-            }
-        }
-    }
-
-    /***************************************************************************
-
         Receive an SCP envelope.
 
         API:
@@ -183,5 +143,18 @@ public class Validator : FullNode, API
         Ledger ledger, TaskManager taskman, in QuorumConfig quorum_config)
     {
         return new Nominator(network, key_pair, ledger, taskman, quorum_config);
+    }
+
+    /***************************************************************************
+        Called when a transaction was accepted into the transaction pool.
+        Currently, nomination is triggered by an inclusion of a new transaction
+        in the transaction pool.
+        In the future, this will be replaced with a nominating timer.
+    ***************************************************************************/
+
+    protected final override void onAcceptedTransaction () @safe
+    {
+        // check if there's enough txs in the pool, and start nominating
+        this.nominator.tryNominate();
     }
 }

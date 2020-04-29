@@ -219,6 +219,7 @@ public class FullNode : API
         {
             // gossip first
             this.network.gossipTransaction(tx);
+            this.onAcceptedTransaction();
         }
 
         if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
@@ -450,5 +451,16 @@ public class FullNode : API
         PreImageInfo preimage;
         this.enroll_man.getValidatorPreimage(enroll_key, preimage);
         return preimage;
+    }
+
+    /***************************************************************************
+
+        Called when a transaction was accepted into the transaction pool.
+        This is a no-op for FullNode. A Validator node overrides this behavior.
+
+    ***************************************************************************/
+
+    protected void onAcceptedTransaction () @safe
+    {
     }
 }
