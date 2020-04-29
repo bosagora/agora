@@ -104,45 +104,54 @@ struct SCPStatement {
         /// Support (de)serialization from Vibe.d
         extern(D) string toString () const @trusted
         {
+            Json json = Json.emptyObject;
             final switch (this.type_)
             {
             case SCPStatementType.SCP_ST_PREPARE:
-                return "0" ~ serializeToJsonString(this.prepare_);
+                json["prepare"] = serializeToJson(this.prepare_);
+                break;
             case SCPStatementType.SCP_ST_CONFIRM:
-                return "1" ~ serializeToJsonString(this.confirm_);
+                json["confirm"] = serializeToJson(this.confirm_);
+                break;
             case SCPStatementType.SCP_ST_EXTERNALIZE:
-                return "2" ~ serializeToJsonString(this.externalize_);
+                json["externalize"] = serializeToJson(this.externalize_);
+                break;
             case SCPStatementType.SCP_ST_NOMINATE:
-                return "3" ~ serializeToJsonString(this.nominate_);
+                json["nominate"] = serializeToJson(this.nominate_);
+                break;
             }
+            return json.toString();
         }
 
         /// Ditto
         extern(D) static _pledges_t fromString (const(char)[] input) @trusted
         {
-            assert(input.length > 0);
             _pledges_t ret;
-            switch (input[0])
+            // Need the case because `parseJsonString` expects a string,
+            // but doesn't escape things past the `Json` object it returns
+            auto json = parseJsonString(cast(string) input).get!(Json[string]);
+            if (auto obj = "prepare" in json)
             {
-            case '0':
                 ret.type_ = SCPStatementType.SCP_ST_PREPARE;
-                ret.prepare_ = deserializeJson!_prepare_t(input[1 .. $]);
-                break;
-            case '1':
-                ret.type_ = SCPStatementType.SCP_ST_CONFIRM;
-                ret.confirm_ = deserializeJson!_confirm_t(input[1 .. $]);
-                break;
-            case '2':
-                ret.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
-                ret.externalize_ = deserializeJson!_externalize_t(input[1 .. $]);
-                break;
-            case '3':
-                ret.type_ = SCPStatementType.SCP_ST_NOMINATE;
-                ret.nominate_ = deserializeJson!SCPNomination(input[1 .. $]);
-                break;
-            default:
-                assert(0);
+                ret.prepare_ = (*obj).deserializeJson!_prepare_t();
             }
+            else if (auto obj = "confirm" in json)
+            {
+                ret.type_ = SCPStatementType.SCP_ST_CONFIRM;
+                ret.confirm_ = (*obj).deserializeJson!_confirm_t();
+            }
+            else if (auto obj = "externalize" in json)
+            {
+                ret.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
+                ret.externalize_ = (*obj).deserializeJson!_externalize_t();
+            }
+            else if (auto obj = "nominate" in json)
+            {
+                ret.type_ = SCPStatementType.SCP_ST_NOMINATE;
+                ret.nominate_ = (*obj).deserializeJson!SCPNomination();
+            }
+            else
+                throw new Exception("Unrecognized envelope type");
             return ret;
         }
     }
