@@ -524,13 +524,23 @@ public class EnrollmentManager
             last_height = the latest block height
             block = the block to update the validator set with
             finder = the delegate to find UTXOs with
+            node_utxos = the UTXOs belonging to a node
 
     ***************************************************************************/
 
     public void restoreValidators (ulong last_height, const ref Block block,
-        scope UTXOFinder finder) @safe nothrow
+        scope UTXOFinder finder, ref UTXOSetValue[Hash] node_utxos) @safe nothrow
     {
         this.validator_set.restoreValidators(last_height, block, finder);
+        foreach (const ref enroll; block.header.enrollments)
+        {
+            if ((enroll.utxo_key in node_utxos) != null)
+            {
+                this.data = enroll;
+                this.enroll_key = enroll.utxo_key;
+                break;
+            }
+        }
     }
 
     /***************************************************************************
@@ -956,4 +966,69 @@ unittest
     assert(result_image.enroll_key == utxo_hash);
     assert(result_image.hash == man.cycle_preimages[100]);
     assert(result_image.distance == 1100);
+}
+
+/// test for restroing enrollment data for a node from blocks
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.Genesis;
+    import std.conv;
+
+    scope utxo_set = new TestUTXOSet;
+    UTXOSetValue[Hash] utxos;
+    auto gen_key_pair = getGenesisKeyPair();
+    auto key_pair = KeyPair.random();
+
+    // create transactions having frozen UTXOs
+    foreach (idx; 0 .. 7)
+    {
+        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+        auto output = Output(Amount.MinFreezeAmount, gen_key_pair.address);
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [input],
+            [output]
+        };
+
+        auto tx_hash = hashFull(tx);
+        auto signature = gen_key_pair.secret.sign(tx_hash[]);
+        tx.inputs[0].signature = signature;
+        utxo_set.put(tx);
+
+        auto utxo_hash = UTXOSet.getHash(tx_hash, 0);
+        utxos[utxo_hash] = UTXOSetValue(1, TxType.Freeze, output);
+    }
+
+    // create enrollments for nodes
+    Hash[] utxo_keys = utxo_set.keys;
+    Enrollment enroll;
+    auto man = new EnrollmentManager(":memory:", gen_key_pair);
+    assert(man.createEnrollment(utxo_keys[0], 1, enroll));
+    scope(exit) man.shutdown();
+
+    // make test blocks used for restoring validator set
+    Block[] blocks;
+    ulong last_height = 10;
+    foreach (ulong i; 0 .. last_height + 1)
+    {
+        Block block;
+        block.header.height = i;
+        blocks ~= block;
+    }
+
+    // add enrollment data to the block at the height of 5
+    blocks[5].header.enrollments ~= enroll;
+
+    // clear up the EnrollmentManager for test
+    man.enroll_key = Hash.init;
+    man.data = Enrollment.init;
+
+    // restore validators' information from blocks
+    foreach (const ref Block block; blocks)
+        man.restoreValidators(last_height, block, &utxo_set.findUTXO, utxos);
+    assert(man.enroll_key == enroll.utxo_key);
+    assert(man.data == enroll);
 }

@@ -108,6 +108,8 @@ public class Ledger
         // restore validator set from lastest blocks
         if (this.last_block.header.height > 0)
         {
+            UTXOSetValue[Hash] utxos =
+                this.utxo_set.getUTXOs(this.node_config.key_pair.address);
             foreach (i; 0 .. Enrollment.ValidatorCycle)
             {
                 if (i >= this.last_block.header.height)
@@ -116,7 +118,7 @@ public class Ledger
                 Block block;
                 this.storage.readBlock(block, this.last_block.header.height - i);
                 this.enroll_man.restoreValidators(this.last_block.header.height,
-                    block, this.utxo_set.getUTXOFinder());
+                    block, this.utxo_set.getUTXOFinder(), utxos);
             }
         }
     }
