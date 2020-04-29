@@ -1046,9 +1046,13 @@ unittest
     assert(enroll_man.add(findUTXO, enroll_1));
     assert(enroll_man.add(findUTXO, enroll_2));
     assert(enroll_man.add(findUTXO, enroll_3));
-    assert(enroll_man.hasEnrollment(utxo_hash_1));
-    assert(enroll_man.hasEnrollment(utxo_hash_2));
-    assert(enroll_man.hasEnrollment(utxo_hash_3));
+    Enrollment stored_enroll;
+    enroll_man.getEnrollment(utxo_hash_1, stored_enroll);
+    assert(stored_enroll == enroll_1);
+    enroll_man.getEnrollment(utxo_hash_2, stored_enroll);
+    assert(stored_enroll == enroll_2);
+    enroll_man.getEnrollment(utxo_hash_3, stored_enroll);
+    assert(stored_enroll == enroll_3);
     genNormalBlockTransactions(1);
     assert(ledger.getBlockHeight() == 4);
 

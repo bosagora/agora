@@ -296,7 +296,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool hasEnrollment (const ref Hash enroll_hash) @trusted
+    private bool hasEnrollment (const ref Hash enroll_hash) @trusted
     {
         return this.validator_set.hasEnrollment(enroll_hash);
     }
