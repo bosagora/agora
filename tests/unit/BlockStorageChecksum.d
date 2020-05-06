@@ -38,7 +38,15 @@ private void main ()
     scope (exit) storage.release();
 
     Block block;
-    // storage.readBlock(block, 0);  // will halt due to checksum failure
+    try
+    {
+        storage.readBlock(block, 0);
+        assert(0); // Failed to detect checksum error
+    }
+    catch (Exception ex)
+    {
+        // Normal due to checksum error
+    }
 }
 
 /// Write the block data to disk
