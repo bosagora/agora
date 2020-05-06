@@ -99,7 +99,7 @@ public class NetworkManager
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
         in string[] peers, Set!PublicKey required_peer_keys,
-        in QuorumConfig quorum_conf, in string[] dns_seeds, Metadata metadata,
+        in string[] dns_seeds, Metadata metadata,
         TaskManager taskman)
     {
         this.taskman = taskman;

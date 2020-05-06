@@ -136,8 +136,8 @@ public class FullNode : API
         this.config = config;
         this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
-            config.network, required_peer_keys, config.quorum, config.dns_seeds,
-            this.metadata, this.taskman);
+            config.network, required_peer_keys, config.dns_seeds, this.metadata,
+            this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         scope (failure) this.pool.shutdown();
@@ -264,7 +264,6 @@ public class FullNode : API
             banman_conf = the ban manager config
             peers = the peers to connect to
             required_peer_keys = required peers with the given keys to connect to
-            quorum_conf = the quorum config
             dns_seeds = the DNS seeds to retrieve peers from
             metadata = metadata containing known peers and other meta info
             taskman = task manager
@@ -276,11 +275,11 @@ public class FullNode : API
 
     protected NetworkManager getNetworkManager (in NodeConfig node_config,
         in BanManager.Config banman_conf, in string[] peers,
-        Set!PublicKey required_peer_keys, in QuorumConfig quorum_conf,
+        Set!PublicKey required_peer_keys,
         in string[] dns_seeds, Metadata metadata, TaskManager taskman)
     {
         return new NetworkManager(node_config, banman_conf, peers,
-            required_peer_keys, quorum_conf, dns_seeds, metadata, taskman);
+            required_peer_keys, dns_seeds, metadata, taskman);
     }
 
     /***************************************************************************
