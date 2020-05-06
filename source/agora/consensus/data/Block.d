@@ -197,6 +197,11 @@ public struct Block
 
     public static Hash buildMerkleTree (const(Transaction)[] txs,
         ref Hash[] merkle_tree) nothrow @safe
+    in
+    {
+        assert(txs !is null, "When calling buildMerkleTree, `txs` must not be null.");
+    }
+    do
     {
         () @trusted { merkle_tree.assumeSafeAppend(); }();
 
@@ -210,6 +215,11 @@ public struct Block
     /// Ditto
     private static Hash buildMerkleTreeImpl (const(Transaction)[] txs,
         ref Hash[] merkle_tree) nothrow @safe @nogc
+    in
+    {
+        assert(txs !is null, "When calling buildMerkleTreeImpl, `txs` must not be null.");
+    }
+    do
     {
         import core.bitop;
         const log2 = bsf(txs.length);
