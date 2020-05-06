@@ -20,6 +20,7 @@ import agora.node.BlockStorage;
 import agora.utils.Test;
 
 import std.file;
+import std.exception;
 import std.path;
 import std.stdio;
 
@@ -38,15 +39,9 @@ private void main ()
     scope (exit) storage.release();
 
     Block block;
-    try
-    {
-        storage.readBlock(block, 0);
-        assert(0); // Failed to detect checksum error
-    }
-    catch (Exception ex)
-    {
-        // Normal due to checksum error
-    }
+
+    // Checksum detection test
+    assertThrown!Exception(storage.readBlock(block, 0));
 }
 
 /// Write the block data to disk
