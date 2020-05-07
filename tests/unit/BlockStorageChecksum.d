@@ -72,14 +72,14 @@ private void corruptBlocks (string dir_path)
         assert(path.isFile);
 
         auto block_file = File(path, "r+b");
-        block_file.seek(5, SEEK_SET);
+        block_file.seek(ChecksumSize + 1, SEEK_SET);
 
         ubyte[1] bytes;
         block_file.rawRead(bytes);
 
         // write a modified byte
         bytes[0]++;
-        block_file.seek(5, SEEK_SET);
+        block_file.seek(ChecksumSize + 1, SEEK_SET);
         block_file.rawWrite(bytes);
     }
 }

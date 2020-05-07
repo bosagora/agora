@@ -167,7 +167,7 @@ private immutable size_t MapSize = 640 * 1024;
 private immutable size_t DataSize = MapSize - ChecksumSize;
 
 /// The CRC32 checksum size
-private immutable size_t ChecksumSize = 4;
+public immutable size_t ChecksumSize = 4;
 
 private struct HeightPosition
 {
