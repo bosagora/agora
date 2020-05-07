@@ -79,6 +79,7 @@ private void corruptBlocks (string dir_path)
 
         // write a modified byte
         bytes[0]++;
+        block_file.seek(5, SEEK_SET);
         block_file.rawWrite(bytes);
     }
 }
