@@ -31,6 +31,8 @@ import std.algorithm.searching;
 import std.algorithm.sorting;
 import std.range;
 
+import core.bitop;
+
 /*******************************************************************************
 
     The block header which contains a link to the previous block header,
@@ -184,6 +186,41 @@ public struct Block
 
     /***************************************************************************
 
+        Returns:
+            a number that is power 2 aligned. If the number is already a power
+            of two it returns that number. Otherwise returns the next bigger
+            number which is itself a power of 2.
+
+    ***************************************************************************/
+
+    private static size_t getPow2Aligned (size_t value) @safe @nogc nothrow pure
+    in
+    {
+        assert(value > 0);
+    }
+    do
+    {
+        return bsr(value) == bsf(value) ? value : (1 << (bsr(value) + 1));
+    }
+
+    ///
+    unittest
+    {
+        assert(getPow2Aligned(1) == 1);
+        assert(getPow2Aligned(2) == 2);
+        assert(getPow2Aligned(3) == 4);
+        assert(getPow2Aligned(4) == 4);
+        assert(getPow2Aligned(5) == 8);
+        assert(getPow2Aligned(7) == 8);
+        assert(getPow2Aligned(8) == 8);
+        assert(getPow2Aligned(9) == 16);
+        assert(getPow2Aligned(15) == 16);
+        assert(getPow2Aligned(16) == 16);
+        assert(getPow2Aligned(17) == 32);
+    }
+
+    /***************************************************************************
+
         Build a merkle tree and return its root
 
         Params:
@@ -205,33 +242,37 @@ public struct Block
     {
         () @trusted { merkle_tree.assumeSafeAppend(); }();
 
-        const MerkleLength = (txs.length * 2) - 1;
+        immutable pow2_size = getPow2Aligned(txs.length);
+        const MerkleLength = (pow2_size * 2) - 1;
+
         // 'new' instead of .length: workaround for issue #127 with ldc2 on osx
         merkle_tree = new Hash[](MerkleLength);
 
-        return Block.buildMerkleTreeImpl(txs, merkle_tree);
+        return Block.buildMerkleTreeImpl(pow2_size, txs, merkle_tree);
     }
 
     /// Ditto
-    private static Hash buildMerkleTreeImpl (const(Transaction)[] txs,
-        ref Hash[] merkle_tree) nothrow @safe @nogc
+    private static Hash buildMerkleTreeImpl (in size_t pow2_size,
+        const(Transaction)[] txs, ref Hash[] merkle_tree)
+        nothrow @safe @nogc
     in
     {
         assert(txs !is null, "When calling buildMerkleTreeImpl, `txs` must not be null.");
     }
     do
     {
-        import core.bitop;
-        const log2 = bsf(txs.length);
-        assert((1 << log2) == txs.length,
-               "Transactions for a block should be a strict power of 2");
-        assert(merkle_tree.length == (txs.length * 2) - 1);
+        assert(merkle_tree.length == (pow2_size * 2) - 1);
 
+        const log2 = bsf(pow2_size);
         foreach (size_t idx, ref hash; merkle_tree[0 .. txs.length])
             hash = hashFull(txs[idx]);
 
         // transactions are ordered lexicographically by hash in the Merkle tree
         merkle_tree[0 .. txs.length].sort!("a < b");
+
+        // repeat last hash if txs length was not a strict power of 2
+        foreach (idx; txs.length .. pow2_size)
+            merkle_tree[idx] = merkle_tree[txs.length - 1];
 
         immutable len = merkle_tree.length;
         for (size_t order = 0; order < log2; order++)
@@ -263,9 +304,10 @@ public struct Block
     {
         assert(this.merkle_tree.length != 0, "Block hasn't been fully initialized");
 
+        immutable pow2_size = getPow2Aligned(this.txs.length);
         Hash[] merkle_path;
         size_t j = 0;
-        for (size_t length = this.txs.length; length > 1; length = (length + 1) / 2)
+        for (size_t length = pow2_size; length > 1; length = (length + 1) / 2)
         {
             size_t i = min(index ^ 1, length - 1);
             merkle_path ~= this.merkle_tree[j + i];
@@ -319,7 +361,8 @@ public struct Block
 
     public size_t findHashIndex (Hash hash) const @safe
     {
-        assert(this.merkle_tree.length == (this.txs.length * 2) - 1,
+        immutable pow2_size = getPow2Aligned(this.txs.length);
+        assert(this.merkle_tree.length == (pow2_size * 2) - 1,
             "Block hasn't been fully initialized");
 
         auto index = this.merkle_tree[0 .. this.txs.length]
@@ -535,4 +578,91 @@ unittest
     assert(merkle_path[1] == hgh);
     assert(merkle_path[2] == habcd);
     assert(block.header.merkle_root == Block.checkMerklePath(he, merkle_path, 4));
+}
+
+// test when the number of txs is not a strict power of 2
+unittest
+{
+    auto kp = KeyPair.random();
+    Transaction[] txs;
+    Hash[] hashes;
+
+    foreach (amount; 0 .. 9)
+    {
+        txs ~= Transaction(TxType.Payment,
+            [Input(Hash.init, 0)],
+            [Output(Amount(amount + 1), kp.address)]);
+        hashes ~= hashFull(txs[$ - 1]);
+    }
+
+    Block block;
+    block.txs = txs;
+    block.header.merkle_root = block.buildMerkleTree();
+
+    // transactions are ordered lexicographically by hash in the Merkle tree
+    hashes.sort!("a < b");
+    foreach (idx, hash; hashes)
+        assert(block.findHashIndex(hash) == idx);
+
+    const Hash ha = hashes[0];
+    const Hash hb = hashes[1];
+    const Hash hc = hashes[2];
+    const Hash hd = hashes[3];
+    const Hash he = hashes[4];
+    const Hash hf = hashes[5];
+    const Hash hg = hashes[6];
+    const Hash hh = hashes[7];
+    const Hash hi = hashes[8];
+    const Hash hj = hashes[8];
+    const Hash hk = hashes[8];
+    const Hash hl = hashes[8];
+    const Hash hm = hashes[8];
+    const Hash hn = hashes[8];
+    const Hash ho = hashes[8];
+    const Hash hp = hashes[8];
+
+    const Hash hab = hashMulti(ha, hb);
+    const Hash hcd = hashMulti(hc, hd);
+    const Hash hef = hashMulti(he, hf);
+    const Hash hgh = hashMulti(hg, hh);
+    const Hash hij = hashMulti(hi, hj);
+    const Hash hkl = hashMulti(hk, hl);
+    const Hash hmn = hashMulti(hm, hn);
+    const Hash hop = hashMulti(ho, hp);
+
+    const Hash habcd = hashMulti(hab, hcd);
+    const Hash hefgh = hashMulti(hef, hgh);
+    const Hash hijkl = hashMulti(hij, hkl);
+    const Hash hmnop = hashMulti(hmn, hop);
+
+    const Hash habcdefgh = hashMulti(habcd, hefgh);
+    const Hash hijklmnop = hashMulti(hijkl, hmnop);
+
+    const Hash habcdefghijklmnop = hashMulti(habcdefgh, hijklmnop);
+
+    assert(block.header.merkle_root == habcdefghijklmnop);
+
+    auto merkle_path = block.getMerklePath(2);
+    assert(merkle_path.length == 4);
+    assert(merkle_path[0] == hd);
+    assert(merkle_path[1] == hab);
+    assert(merkle_path[2] == hefgh);
+    assert(merkle_path[3] == hijklmnop);
+    assert(block.header.merkle_root == Block.checkMerklePath(hc, merkle_path, 2));
+
+    merkle_path = block.getMerklePath(4);
+    assert(merkle_path.length == 4);
+    assert(merkle_path[0] == hf);
+    assert(merkle_path[1] == hgh);
+    assert(merkle_path[2] == habcd);
+    assert(merkle_path[3] == hijklmnop);
+    assert(block.header.merkle_root == Block.checkMerklePath(he, merkle_path, 4));
+
+    merkle_path = block.getMerklePath(8);
+    assert(merkle_path.length == 4);
+    assert(merkle_path[0] == hj);
+    assert(merkle_path[1] == hkl);
+    assert(merkle_path[2] == hmnop);
+    assert(merkle_path[3] == habcdefgh);
+    assert(block.header.merkle_root == Block.checkMerklePath(hi, merkle_path, 8));
 }
