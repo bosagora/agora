@@ -98,15 +98,13 @@ public class NetworkManager
 
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, Set!PublicKey required_peer_keys,
-        in string[] dns_seeds, Metadata metadata,
+        in string[] peers, in string[] dns_seeds, Metadata metadata,
         TaskManager taskman)
     {
         this.taskman = taskman;
         this.node_config = node_config;
         this.metadata = metadata;
         this.seed_peers = peers;
-        this.required_peer_keys = required_peer_keys;
         this.dns_seeds = dns_seeds;
         this.banman = this.getBanManager(banman_conf, node_config.data_dir);
     }
@@ -157,10 +155,15 @@ public class NetworkManager
         and keep discovering more full nodes nodes in the network
         until maxPeersConnected() returns true.
 
+        Params:
+            required_peer_keys = a set of any required keys the node should
+                connect to (e.g. quorum nodes) before discovery will be complete
+
     ***************************************************************************/
 
-    public void discover ()
+    public void discover (Set!PublicKey required_peer_keys = Set!PublicKey.init)
     {
+        this.required_peer_keys = required_peer_keys;
         this.banman.load();
 
         // add our own address to the list of banned addresses to avoid

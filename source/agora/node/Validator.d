@@ -53,12 +53,7 @@ public class Validator : FullNode, API
     public this (const Config config)
     {
         assert(config.node.is_validator);
-
-        // build the list of required quorum peers to connect to
-        Set!PublicKey required_peer_keys;
-        buildRequiredKeys(config, config.quorum, required_peer_keys);
-
-        super(config, required_peer_keys);
+        super(config);
 
         // instantiating Nominator can fail if the quorum configuration
         // fails the checkSanity() test, and we must release resources.
@@ -79,8 +74,13 @@ public class Validator : FullNode, API
     {
         this.taskman.runTask(
         {
+            // build the list of required quorum peers to connect to
+            Set!PublicKey required_peer_keys;
+            buildRequiredKeys(this.config, this.config.quorum,
+                required_peer_keys);
+
             log.info("Doing network discovery..");
-            this.network.discover();
+            this.network.discover(required_peer_keys);
             this.network.startPeriodicCatchup(this.ledger, &this.nominator.isNominating);
         });
     }

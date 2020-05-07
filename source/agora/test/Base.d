@@ -428,13 +428,11 @@ public class TestNetworkManager : NetworkManager
 
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
-        in string[] peers, Set!PublicKey required_peer_keys,
-        in string[] dns_seeds, Metadata metadata, TaskManager taskman,
-        Registry* reg)
+        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        TaskManager taskman, Registry* reg)
     {
         this.registry = reg;
-        super(config, ban_conf, peers, required_peer_keys, dns_seeds, metadata,
-            taskman);
+        super(config, ban_conf, peers, dns_seeds, metadata, taskman);
     }
 
     /// We don't use IPs in tests
@@ -552,12 +550,12 @@ private mixin template TestNodeMixin ()
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
         in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, Set!PublicKey required_peer_keys,
-        in string[] dns_seeds, Metadata metadata, TaskManager taskman)
+        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        TaskManager taskman)
     {
         assert(taskman !is null);
         return new TestNetworkManager(node_config, banman_conf, peers,
-            required_peer_keys, dns_seeds, metadata, taskman, this.registry);
+            dns_seeds, metadata, taskman, this.registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
