@@ -49,14 +49,16 @@ public ref immutable(Block) GenesisBlock () nothrow @safe @nogc
 *******************************************************************************/
 
 pragma(inline, true)
-public void setGenesisBlock (ref immutable Block block)
+public void setGenesisBlock (immutable Block* block)
     nothrow @trusted @nogc
 {
+    assert(block !is null);
+
     // note: see #747
     //if (auto reason = isInvalidReason(block, 0, Hash.init, null))
     //    throw new Exception(reason);
 
-    gen_block = &block;
+    gen_block = block;
 }
 
 /*******************************************************************************

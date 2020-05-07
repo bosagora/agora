@@ -125,7 +125,7 @@ public class FullNode : API
             auto block_bytes = config.node.genesis_block.chunks(2).map!(
                 twoDigits => twoDigits.parse!ubyte(16)).array();
             this.genesis_block = block_bytes.deserializeFull!(immutable(Block));
-            setGenesisBlock(this.genesis_block);
+            setGenesisBlock(&this.genesis_block);
         }
 
         this.metadata = this.getMetadata(config.node.data_dir);
