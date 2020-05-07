@@ -205,8 +205,8 @@ public struct Block
     {
         () @trusted { merkle_tree.assumeSafeAppend(); }();
 
-        // workaround for issue #127 with ldc2 on osx
         const MerkleLength = (txs.length * 2) - 1;
+        // 'new' instead of .length: workaround for issue #127 with ldc2 on osx
         merkle_tree = new Hash[](MerkleLength);
 
         return Block.buildMerkleTreeImpl(txs, merkle_tree);
