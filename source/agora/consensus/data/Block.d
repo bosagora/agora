@@ -497,6 +497,8 @@ unittest
 
     // transactions are ordered lexicographically by hash in the Merkle tree
     hashes.sort!("a < b");
+    foreach (idx, hash; hashes)
+        assert(block.findHashIndex(hash) == idx);
 
     const Hash ha = hashes[0];
     const Hash hb = hashes[1];
