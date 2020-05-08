@@ -349,11 +349,12 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void printLogs ()
+    public void printLogs (string file = __FILE__, size_t line = __LINE__)
     {
         synchronized  // make sure logging output is not interleaved
         {
             import std.stdio;
+            writefln("%s(%s): Node logs:\n", file, line);
             foreach (node; this.nodes)
             {
                 writefln("Log for node %s:", node.key);
