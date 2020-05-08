@@ -453,8 +453,8 @@ public class NetworkManager
 
                 // if it's incomplete give the client some time to connect
                 // with other peers and try again later
-                log.info("[{}] ({}): Peer info is incomplete. Retrying in {}..",
-                    node.address, node.key, this.node_config.retry_delay);
+                log.info("Peer info for {} is incomplete. Retrying in {}..",
+                    node.address, this.node_config.retry_delay);
                 this.taskman.wait(this.node_config.retry_delay.msecs);
             }
             catch (Exception ex)
