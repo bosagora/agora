@@ -44,6 +44,7 @@ import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.node.Validator;
 import agora.utils.Log;
+import agora.utils.PrettyPrinter;
 public import agora.utils.Test;  // frequently needed in tests
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Validator : ValidatorAPI = API;
@@ -241,7 +242,7 @@ public class FakeClockBanManager : BanManager
 public struct NodePair
 {
     ///
-    public PublicKey key;
+    public Address address;
 
     ///
     public RemoteAPI!TestAPI client;
@@ -284,12 +285,11 @@ public class TestAPIManager
         Create a new node
 
         Params:
-            address = the address of the node, using PublicKey in unittests
             conf = the configuration passed on to the Node constructor
 
     ***************************************************************************/
 
-    public void createNewNode (PublicKey address, Config conf)
+    public void createNewNode (Config conf)
     {
         RemoteAPI!TestAPI api;
 
@@ -304,8 +304,8 @@ public class TestAPIManager
                 conf.node.timeout.msecs);
         }
 
-        this.reg.register(address.toString(), api.tid());
-        this.nodes ~= NodePair(address, api);
+        this.reg.register(conf.node.address, api.tid());
+        this.nodes ~= NodePair(conf.node.address, api);
     }
 
     /***************************************************************************
@@ -331,7 +331,7 @@ public class TestAPIManager
     public void shutdown ()
     {
         foreach (node; this.nodes)
-            enforce(this.reg.unregister(node.key.toString()));
+            enforce(this.reg.unregister(node.address));
 
         foreach (ref node; this.nodes)
         {
@@ -357,7 +357,7 @@ public class TestAPIManager
             writefln("%s(%s): Node logs:\n", file, line);
             foreach (node; this.nodes)
             {
-                writefln("Log for node %s:", node.key);
+                writefln("Log for node %s:", node.address);
                 writeln("======================================================================");
                 node.client.printLog();
                 writeln("======================================================================\n");
@@ -371,11 +371,11 @@ public class TestAPIManager
         foreach (api_a; this.nodes)
         foreach (api_b; this.nodes)
         {
-            if (api_a.key == api_b.key)
+            if (api_a.address == api_b.address)
                 continue;
 
-            api_a.client.metaAddPeer(api_b.key.toString());
-            api_b.client.metaAddPeer(api_a.key.toString());
+            api_a.client.metaAddPeer(api_b.address);
+            api_b.client.metaAddPeer(api_a.address);
         }
     }
 
@@ -397,7 +397,7 @@ public class TestAPIManager
                     .state == NetworkState.Complete,
                     timeout,
                     format("Node %s has not completed discovery after %s.",
-                        node.key, timeout)));
+                        node.address, timeout)));
         }
         catch (Error ex)  // better UX
         {
@@ -438,10 +438,10 @@ public class TestNetworkManager : NetworkManager
             taskman);
     }
 
-    /// We don't use IPs in tests
+    /// No "http://" in unittests, we just use the string as-is
     protected final override string getAddress ()
     {
-        return this.node_config.key_pair.address.toString();
+        return this.node_config.address;
     }
 
     ///
@@ -767,12 +767,25 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     immutable string gen_block_hex = test_conf.gen_block != immutable(Block).init
         ? test_conf.gen_block.serializeFull.toHexString : null;
 
+    size_t full_node_idx;
+    size_t validator_idx;
+
     NodeConfig makeNodeConfig (bool is_validator)
     {
+        KeyPair key_pair = KeyPair.random();
+        Address address;
+
+        if (is_validator)
+            address = format("Validator #%s (%s)",
+                validator_idx++, key_pair.address.prettify);
+        else
+            address = format("FullNode #%s", full_node_idx++);
+
         NodeConfig conf =
         {
+            address : address,
             is_validator : is_validator,
-            key_pair : KeyPair.random(),
+            key_pair : key_pair,
             retry_delay : test_conf.retry_delay, // msecs
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
@@ -797,7 +810,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         auto other_nodes =
             node_confs
                 .filter!(conf => conf != self)
-                .map!(conf => conf.key_pair.address.toString());
+                .map!(conf => conf.address);
 
         auto quorum_keys =
             node_confs
@@ -834,7 +847,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : self,
-            network : test_conf.configure_network ? [prev_node.key_pair.address.toString()] : null
+            network : test_conf.configure_network ? [prev_node.address] : null
         };
 
         return conf;
@@ -856,7 +869,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : self,
-            network : test_conf.configure_network ? [prev_node.key_pair.address.toString()] : null,
+            network : test_conf.configure_network ? [prev_node.address] : null,
             quorum :
             {
                 nodes : quorum_keys,
@@ -874,7 +887,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         auto other_nodes =
             node_confs
                 .filter!(conf => conf != self)
-                .map!(conf => conf.key_pair.address.toString());
+                .map!(conf => conf.address);
 
         immutable quorum_keys = [self.key_pair.address, node_confs[prev_idx].key_pair.address];
 
@@ -913,15 +926,15 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         break;
 
     case NetworkTopology.OneNonValidator:
-        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
-        node_configs[$ - 1].is_validator = false;
+        node_configs ~= iota(test_conf.nodes - 1).map!(_ => makeNodeConfig(true)).array;
+        node_configs ~= makeNodeConfig(false);
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneValidator:
-        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(false)).array;
-        node_configs[0].is_validator = true;
+        node_configs ~= makeNodeConfig(true);
+        node_configs ~= iota(test_conf.nodes - 1).map!(_ => makeNodeConfig(false)).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
@@ -952,11 +965,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     }
 
     auto net = new APIManager();
-    foreach (idx, ref conf; configs)
-    {
-        const address = node_configs[idx].key_pair.address;
-        net.createNewNode(address, conf);
-    }
+    foreach (ref conf; configs)
+        net.createNewNode(conf);
 
     return net;
 }

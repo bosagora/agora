@@ -16,6 +16,7 @@ module agora.test.NetworkManager;
 version (unittest):
 
 import agora.api.Validator;
+import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
@@ -107,7 +108,7 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         /// see base class
-        public override void createNewNode (PublicKey address, Config conf)
+        public override void createNewNode (Config conf)
         {
             RemoteAPI!TestAPI api;
 
@@ -131,8 +132,8 @@ unittest
                         &this.reg, conf.node.timeout.msecs);
             }
 
-            this.reg.register(address.toString(), api.tid());
-            this.nodes ~= NodePair(address, api);
+            this.reg.register(conf.node.address, api.tid());
+            this.nodes ~= NodePair(conf.node.address, api);
         }
     }
 
