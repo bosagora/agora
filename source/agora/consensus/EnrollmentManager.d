@@ -62,6 +62,9 @@ public class EnrollmentManager
     /// Pre-images for current validator cycle
     private Hash[ulong] cycle_preimages;
 
+    /// The current cycle index
+    private uint cycle_index;
+
     /// Random key for enrollment
     private Pair signature_noise;
 
@@ -285,6 +288,10 @@ public class EnrollmentManager
             this.signature_noise.v, this.data);
 
         enroll = this.data;
+
+        // increase current cycle index
+        this.cycle_index += 1;
+
         return true;
     }
 
