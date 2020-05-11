@@ -373,9 +373,27 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             foreach (idx; 0 .. len)
             {
                 auto entry = deserializeFull!(QT.ElementType)(data, opts);
-                push_back(cast() ret, entry);
+                ret.push_back(entry);
             }
             return () @trusted { return cast(QT) ret; }();
+        }
+
+        public void push_back (ref T value) @trusted pure nothrow @nogc
+        {
+            import Utils = scpd.types.Utils;
+
+            // Workaround for Dlang issue #20805
+            static if (is(T == ubyte))
+            {
+                version (Windows)
+                    Utils.push_back_vec(&this, &value);
+                else
+                    Utils.push_back(this, value);
+            }
+            else
+            {
+                Utils.push_back(this, value);
+            }
         }
     }
 }
