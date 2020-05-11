@@ -345,6 +345,23 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the number of active validators.
+
+        Client code can use this between clearExpiredValidators() calls to
+        determine if the number of validators has changed, and act accordingly.
+
+        Returns:
+            the number of active validators
+
+    ***************************************************************************/
+
+    public size_t validatorCount () @safe
+    {
+        return this.validator_set.count();
+    }
+
+    /***************************************************************************
+
         Clear up expired validators whose cycle for a validator ends
 
         The enrollment manager clears up expired validators from the set based
@@ -895,6 +912,7 @@ unittest
     // validator C with the 'utxo_hash3' and no enrolled height.
     assert(man.addValidator(enroll2, 11, &storage.findUTXO));
     man.clearExpiredValidators(11);
+    assert(man.validatorCount() == 2);
     assert(man.getValidators(validators));
     assert(validators.length == 2);
 
@@ -903,6 +921,7 @@ unittest
     // there is only one validator in the middle of 1020th block being made.
     assert(man.addValidator(enroll3, 1019, &storage.findUTXO));
     man.clearExpiredValidators(1019);
+    assert(man.validatorCount() == 1);
     assert(man.getValidators(validators));
     assert(validators.length == 1);
     assert(validators[0].utxo_key == enroll3.utxo_key);
