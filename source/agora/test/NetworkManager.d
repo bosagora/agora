@@ -62,9 +62,9 @@ unittest
     static class BadNode : TestFullNode
     {
         ///
-        public this (Config config, Registry* reg)
+        public this (Config config, Registry* reg, immutable(Block)[] blocks)
         {
-            super(config, reg);
+            super(config, reg, blocks);
         }
 
         /// return phony blocks
@@ -97,6 +97,12 @@ unittest
 
     static class BadAPIManager : TestAPIManager
     {
+        ///
+        public this (immutable(Block)[] blocks)
+        {
+            super(blocks);
+        }
+
         /// see base class
         public override void createNewNode (Config conf)
         {
@@ -110,16 +116,16 @@ unittest
             if (conf.node.is_validator)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, conf.node.timeout.msecs);
+                    conf, &this.reg, this.blocks, conf.node.timeout.msecs);
             }
             else
             {
                 if (this.nodes.length == 2)
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, conf.node.timeout.msecs);
                 else
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, conf.node.timeout.msecs);
             }
 
             this.reg.register(conf.node.address, api.tid());

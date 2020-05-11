@@ -40,6 +40,7 @@ import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.network.NetworkManager;
+import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.node.Validator;
@@ -314,6 +315,9 @@ public class TestAPIManager
     /// Also kept here to avoid any eager garbage collection.
     public NodePair[] nodes;
 
+    /// Contains the initial blockchain state of all nodes
+    public immutable(Block)[] blocks;
+
     /// convenience: returns a random-access range which lets us access clients
     auto clients ()
     {
@@ -324,8 +328,9 @@ public class TestAPIManager
     protected Registry reg;
 
     ///
-    public this ()
+    public this (immutable(Block)[] blocks)
     {
+        this.blocks = blocks;
         this.reg.initialize();
     }
 
@@ -335,6 +340,7 @@ public class TestAPIManager
 
         Params:
             conf = the configuration passed on to the Node constructor
+            blocks = the blockchain to preload (including genesis)
 
     ***************************************************************************/
 
@@ -345,12 +351,12 @@ public class TestAPIManager
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                conf.node.timeout.msecs);
+                this.blocks, conf.node.timeout.msecs);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                conf.node.timeout.msecs);
+                this.blocks, conf.node.timeout.msecs);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -543,6 +549,17 @@ private mixin template TestNodeMixin ()
 {
     private Registry* registry;
 
+    /// Blocks to preload into the memory storage
+    private immutable(Block)[] blocks;
+
+    ///
+    public this (Config config, Registry* reg, immutable(Block)[] blocks)
+    {
+        this.registry = reg;
+        this.blocks = blocks;
+        super(config);
+    }
+
     ///
     public override void start ()
     {
@@ -562,6 +579,11 @@ private mixin template TestNodeMixin ()
         writeln("======================================================================");
         CircularAppender().printConsole();
         writeln("======================================================================\n");
+    }
+
+    protected override IBlockStorage getBlockStorage (string data_dir) @system
+    {
+        return new MemBlockStorage(this.blocks);
     }
 
     /// Used by the node
@@ -619,15 +641,6 @@ public class TestFullNode : FullNode, TestAPI
     ///
     mixin TestNodeMixin!();
 
-    ///
-    public this (Config config, Registry* reg)
-    {
-        assert(!config.node.is_validator);
-        scope (failure) this.printLog();
-        this.registry = reg;
-        super(config);
-    }
-
     /// FullNode does not implement this
     public override void broadcastPreimage (uint height)
     {
@@ -660,15 +673,6 @@ public class TestValidatorNode : Validator, TestAPI
 {
     ///
     mixin TestNodeMixin!();
-
-    ///
-    public this (Config config, Registry* reg)
-    {
-        assert(config.node.is_validator);
-        scope (failure) this.printLog();
-        this.registry = reg;
-        super(config);
-    }
 
     /// Create an enrollment data used as information for an validator
     public override Enrollment createEnrollmentData ()
@@ -959,7 +963,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         break;
     }
 
-    auto net = new APIManager();
+    immutable GenBlock = test_conf.gen_block != immutable(Block).init
+        ? test_conf.gen_block : GenesisBlock;
+
+    auto net = new APIManager([GenBlock]);
     foreach (ref conf; configs)
         net.createNewNode(conf);
 
