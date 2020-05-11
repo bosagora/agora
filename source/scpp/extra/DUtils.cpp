@@ -37,7 +37,18 @@ PUSHBACKINST3(xvector<unsigned char>, std::vector)
 PUSHBACKINST3(unsigned char, std::vector)
 
 PUSHBACKINST1(unsigned char)
+// Workaround for Dlang issue #20805
+#if MSVC
+void push_back_vec (void *this_, void const *value_)
+{
+    auto value = (xvector<unsigned char>*)value_;
+    auto this_obj = (xvector<xvector<unsigned char> >*)this_;
+    (*this_obj).push_back(*value);
+}
 PUSHBACKINST1(xvector<unsigned char>)
+#else // !MSVC
+PUSHBACKINST1(xvector<unsigned char>)
+#endif // !MSVC
 
 PUSHBACKINST1(PublicKey)
 PUSHBACKINST1(SCPQuorumSet)
