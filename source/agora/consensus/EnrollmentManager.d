@@ -1,9 +1,42 @@
 /*******************************************************************************
 
-    Contains supporting code for enrollment process.
+    Manages this node's Enrollment, the `ValidatorSet`, and `EnrollmentPool`
+
+    This class currently has 3 responsibilities:
+    - It's a bridge to the `ValidatorSet`, where the list of currently active
+      validators is stored;
+    - It stores `Enrollment`s that are not yet part of the validator set;
+    - Most importantly, if this node is a validator, it manages this node's
+      enrollement data, including pre-images.
+
+    The consensus protocol requires each validator to commit to a hash and
+    to reveal a pre-image for the next `ValidatorCycle` blocks (currently 1008).
+    That newly-revealed hash is used as a basis for various operations,
+    such as deriving the new signature noise (in order to make signature
+    aggregation possible) and both as a source of randomness for the node
+    itself (e.g. for the quorum balancing) and as part of the network
+    randomness function, when aggregated with other node's pre-images.
+    As a result, revealing the pre-image in time is absolutely critical and
+    not doing so will lead to penalties.
+
+    In order to ensure that we will never loose the ability to reveal
+    pre-images, this implementation uses a reproducible scheme:
+    on the first run, we generate a "cycle seed" which is derived from a hash
+    of the private key, a constant string, and a nounce, starting from 0.
+    Using this cycle seed, we generate a large amount of pre-images
+    (currently enough for 100 enrollments). Then out of this range of
+    [0 .. 100_800] pre-images, we reveal the last 1008 (`ValidatorCycle`),
+    or in D terms `[$ - 1008 .. $]`.
+    When the first enrollment runs out, we reveal the next last 1008,
+    or in D terms `[$ - 2016 .. $ - 1008]`.
+    When the cycle is expired, we re-generate a new cycle seed after
+    increasing the nounce.
+    By using this scheme, a node that would start from scratch with
+    an already-enrolled key will be able to recover its nounce and
+    cycle index by scanning the blockchain, and resume validating.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -248,7 +281,7 @@ public class EnrollmentManager
         this.data.cycle_length = Enrollment.ValidatorCycle;
 
         // X, final seed data and preimages of hashes
-        this.data.random_seed = this.generatePreimages(height);
+        this.data.random_seed = this.generatePreimages(this.cycle_index);
 
         // R, signature noise
         this.signature_noise = this.createSignatureNoise(height);
@@ -444,12 +477,9 @@ public class EnrollmentManager
         if (index > Enrollment.ValidatorCycle - 1)
             return false;
 
-        if (height !in this.cycle_preimages)
-            this.generatePreimages(height);
-
         preimage.enroll_key = this.data.utxo_key;
         preimage.distance = index;
-        preimage.hash = this.cycle_preimages[height];
+        preimage.hash = this.cycle_preimages[index];
         return true;
     }
 
@@ -623,36 +653,26 @@ public class EnrollmentManager
         Generate and store pre-images for this cycle, as well as sparsely
         selected preimages for other cycles.
 
-        This generates all pre-images needed for a cycle in the range of less
-        than two times of a validator cycle and store them in `cycle_preimages`.
-        Additionally, It generates and stores pre-images being used for defined
-        number of cycles in `preimage_rounds` when there is no pre-image needed.
+        This generates all pre-images needed for a cycle and stores them in
+        `cycle_preimages`. And It generates and stores pre-images being used
+        for defined number of cycles in `preimage_rounds` when pre-images needed
+        are missing. Once all the pre-images of `preimage_rounds' are used, then
+        new large amount of pre-images are created with the `nonce` incresed.
         This function is very expensive, but should be seldom called, and might
         take more than 30ms for generating a hundred thousand number of them.
 
         Params:
-            height = block height used to determine which range of
-                pre-images will be generated.
+            cycle_index = the cycle index for an enrollment
 
         Returns:
-            the pre-image value in index of `height`
+            the random seed of this cycle
 
     ***************************************************************************/
 
-    private Hash generatePreimages (ulong height) @safe nothrow
+    private Hash generatePreimages (uint cycle_index) @safe nothrow
     {
-        // This determines which range of preimages must be generated.
-        // In order to get hash values more than one cycle, the `start_height`
-        // is to be the height of the last preimage of next cycle. The value of
-        // `height / Enrollment.ValidatorCycle` is the index of previous
-        // cycle, so we need to plus 2 to the value in order to get the index
-        // of the next cycle.
-        ulong start_height =
-            ((height / Enrollment.ValidatorCycle) + 2) *
-                Enrollment.ValidatorCycle;
-
         // Clear if recreating pre-images is needed
-        if (this.preimage_rounds.byKey.maxElement(0) < start_height)
+        if (this.preimage_rounds.byKey.maxElement(0) < cycle_index)
         {
             () @trusted {
                 this.preimage_rounds.clear();
@@ -663,52 +683,45 @@ public class EnrollmentManager
         // be generated with the interval of ValidatorCycle.
         if (this.preimage_rounds.length == 0)
         {
-            // The value of `bulk_index` is zero-based. so we need to plus 1 to
-            // the value to get the max height(`MaxHeight`) of this bulk.
-            ulong bulk_index = start_height /
-                (NumberOfCycles * Enrollment.ValidatorCycle);
-            const ulong MaxHeight = (bulk_index + 1) *
-                (NumberOfCycles * Enrollment.ValidatorCycle);
-            auto hash = hashMulti(this.key_pair.v, "consensus.preimages", bulk_index);
-            ulong idx = MaxHeight;
-            this.preimage_rounds[idx] = hash;
-            for (--idx; idx >= height; --idx)
+            // The value of `nonce` is zero-based. so we need to plus 1 to
+            // the value to get the 'max_cycle_index` of this bulk.
+            uint nounce = cycle_index / NumberOfCycles;
+            uint max_cycle_index = (nounce + 1) * NumberOfCycles - 1;
+            auto hash = hashMulti(this.key_pair.v, "consensus.preimages", nounce);
+            foreach (idx; 0 .. NumberOfCycles)
             {
-                hash = hashFull(hash);
-                if (idx % Enrollment.ValidatorCycle == 0)
-                    this.preimage_rounds[idx] = hash;
+                preimage_rounds[max_cycle_index - idx] = hash;
+                foreach (_; 0 .. Enrollment.ValidatorCycle)
+                    hash = hashFull(hash);
             }
         }
 
-        return this.populateCycleCache(this.preimage_rounds[start_height], start_height);
+        return this.populateCycleCache(this.preimage_rounds[cycle_index]);
     }
 
     /***************************************************************************
 
-        This generates all the sequential pre-images from `height` and
+        This generates all the sequential pre-images from the `seed` and
         stores them in the `cycle_preimages` cache.
 
         Params:
             seed = The initial value for this round to derive pre-images from.
-            height = height at which the seed is.
 
         Returns:
             The last value for the cycle
 
     ***************************************************************************/
 
-    public Hash populateCycleCache (Hash seed, ulong height) @safe nothrow
+    public Hash populateCycleCache (Hash seed) @safe nothrow
     {
         // Clear previous cycle data
         () @trusted { this.cycle_preimages.clear(); }();
 
-        // Load first entry from the rounds
-        this.cycle_preimages[height] = seed;
         // Fill the cache
-        foreach (idx; 1 .. Enrollment.ValidatorCycle * 2)
+        foreach (idx; 1 .. Enrollment.ValidatorCycle + 1)
         {
+            this.cycle_preimages[Enrollment.ValidatorCycle - idx] = seed;
             seed = hashFull(seed);
-            this.cycle_preimages[height - idx] = seed;
         }
         // Return the last entry in the cache
         return seed;
