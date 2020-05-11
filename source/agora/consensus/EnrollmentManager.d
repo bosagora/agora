@@ -85,8 +85,8 @@ public class EnrollmentManager
     /// Enrollment pool managing enrollments waiting to be a validator
     private EnrollmentPool enroll_pool;
 
-    /// The count for generating pre-images
-    private immutable uint AllCountPreimages = Enrollment.ValidatorCycle * 100;
+    /// The number of cycles for a bulk of pre-images
+    private immutable uint NumberOfCycles = 100;
 
     /***************************************************************************
 
@@ -661,8 +661,10 @@ public class EnrollmentManager
         {
             // The value of `bulk_index` is zero-based. so we need to plus 1 to
             // the value to get the max height(`MaxHeight`) of this bulk.
-            ulong bulk_index = start_height / AllCountPreimages;
-            const ulong MaxHeight = (bulk_index + 1) * AllCountPreimages;
+            ulong bulk_index = start_height /
+                (NumberOfCycles * Enrollment.ValidatorCycle);
+            const ulong MaxHeight = (bulk_index + 1) *
+                (NumberOfCycles * Enrollment.ValidatorCycle);
             auto hash = hashMulti(this.key_pair.v, "consensus.preimages", bulk_index);
             ulong idx = MaxHeight;
             this.preimage_rounds[idx] = hash;
