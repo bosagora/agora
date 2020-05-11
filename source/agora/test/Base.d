@@ -724,18 +724,6 @@ public enum NetworkTopology
 
     /// One node is not part of the network for any other nodes
     OneOutsider,
-
-    /// 4 nodes, 3 required, correspond to Figure 2 in the SCP paper
-    Balanced,
-
-    /// 10 nodes, Figure 3 in the SCP paper
-    Tiered,
-
-    /// 6 nodes, Figure 4 in the SCP paper
-    Cyclic,
-
-    /// Single point of failure, Figure 7 in the SCP paper
-    SinglePoF,
 }
 
 /// Node / Network / Quorum configuration for use with makeTestNetwork
@@ -923,28 +911,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
-    Config makeCyclicConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs)
-    {
-        auto prev_idx = idx == 0 ? node_confs.length - 1 : idx - 1;
-
-        auto other_nodes =
-            node_confs
-                .filter!(conf => conf != self)
-                .map!(conf => conf.address);
-
-        immutable quorum_keys = [self.key_pair.address, node_confs[prev_idx].key_pair.address];
-
-        Config conf =
-        {
-            banman : ban_conf,
-            node : self,
-            network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null,
-            quorum : { nodes : quorum_keys /*, threshold : 2*/ }  // fails with 2
-        };
-
-        return conf;
-    }
-
     NodeConfig[] node_configs;
     Config[] configs;
 
@@ -991,20 +957,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         node_configs ~= makeNodeConfig(false);
         configs ~= makeConfig(node_configs[$ - 1], node_configs);
         break;
-
-    case NetworkTopology.Cyclic:
-        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
-        node_configs.each!((ref conf) => conf.min_listeners = 1);
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeCyclicConfig(idx, node_configs[idx], node_configs))
-                .array;
-
-        break;
-
-    case NetworkTopology.Balanced:
-    case NetworkTopology.Tiered:
-    case NetworkTopology.SinglePoF:
-        assert(0, "Not implemented");
     }
 
     auto net = new APIManager();
