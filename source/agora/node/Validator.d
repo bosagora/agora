@@ -76,8 +76,8 @@ public class Validator : FullNode, API
         {
             // build the list of required quorum peers to connect to
             Set!PublicKey required_peer_keys;
-            buildRequiredKeys(this.config, this.config.quorum,
-                required_peer_keys);
+            buildRequiredKeys(this.config.node.key_pair.address,
+                this.config.quorum, required_peer_keys);
 
             log.info("Doing network discovery..");
             this.network.discover(required_peer_keys);
@@ -153,22 +153,22 @@ public class Validator : FullNode, API
         Supports recalling `sub_quorums` config structures.
 
         Params:
-            conf = The node configuration
+            filter = the key to filter out (the self node)
             quorum_conf = The SCP quorum set configuration
             nodes = Will contain the set of public keys to connect to
 
     ***************************************************************************/
 
-    private static void buildRequiredKeys (in Config conf,
+    private static void buildRequiredKeys (in PublicKey filter,
         in QuorumConfig quorum_conf, ref Set!PublicKey nodes) @safe
     {
         foreach (node; quorum_conf.nodes)
         {
-            if (node != conf.node.key_pair.address)  // filter ourselves
+            if (node != filter)
                 nodes.put(node);
         }
 
         foreach (sub_conf; quorum_conf.quorums)
-            buildRequiredKeys(conf, sub_conf, nodes);
+            buildRequiredKeys(filter, sub_conf, nodes);
     }
 }
