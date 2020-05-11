@@ -62,6 +62,9 @@ public class EnrollmentManager
     /// Pre-images for current validator cycle
     private Hash[ulong] cycle_preimages;
 
+    /// The last cycle index
+    private int last_cycle_index = -1;
+
     /// Random key for enrollment
     private Pair signature_noise;
 
@@ -241,6 +244,9 @@ public class EnrollmentManager
         this.data.utxo_key = frozen_utxo_hash;
         this.enroll_key = frozen_utxo_hash;
 
+        // the cycle index for this enrollment
+        this.data.cycle_index = this.last_cycle_index + 1;
+
         // N, cycle length
         this.data.cycle_length = Enrollment.ValidatorCycle;
 
@@ -285,6 +291,10 @@ public class EnrollmentManager
             this.signature_noise.v, this.data);
 
         enroll = this.data;
+
+        // increase last cycle index
+        this.last_cycle_index += 1;
+
         return true;
     }
 
