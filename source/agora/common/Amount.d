@@ -183,7 +183,7 @@ public struct Amount
 
     /// Convenience version of `add` which asserts in case of overflow
     /// Prefer using this only in `unittest`s
-    public ref Amount mustAdd (Amount other)
+    public ref Amount mustAdd (Amount other) return
     {
         this.add(other) || assert(0);
         return this;
@@ -191,7 +191,7 @@ public struct Amount
 
     /// Convenience version of `sub` which asserts in case of underflow
     /// Prefer using this only in `unittest`s
-    public ref Amount mustSub (Amount other)
+    public ref Amount mustSub (Amount other) return
     {
         this.sub(other) || assert(0);
         return this;

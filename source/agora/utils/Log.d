@@ -79,7 +79,7 @@ public template AddLogger (string moduleName = __MODULE__)
         // Supports `log = Log.lookup("yo")`,
         // where `log` is of `typeof(this)` type
         public ref Logger opAssign (Ocean.Logger newLogger)
-            @safe pure nothrow @nogc
+            @safe pure nothrow @nogc return
         {
             this.logger = newLogger;
             return this;
