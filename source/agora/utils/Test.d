@@ -215,8 +215,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
 
         // new transactions will refer to the just created transactions
         // which will be part of the previous block after the block is created
-        if (Block.TxsInBlock == 1 ||  // special case
-            (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
+        if ((idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
         {
             // refer to tx'es which will be in the previous block
             prev_txs = transactions[$ - Block.TxsInBlock .. $];
