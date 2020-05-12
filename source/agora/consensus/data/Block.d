@@ -409,8 +409,9 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
 
     block.header.merkle_root = block.buildMerkleTree();
     block.header.enrollments = enrollments;
+    block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
-        ("a.utxo_key < b.utxo_key"));
+        ("a.utxo_key < b.utxo_key"));  // there cannot be duplicates either
     return block;
 }
 
@@ -432,6 +433,25 @@ version (unittest)
     auto rng_block = makeNewBlock(GenesisBlock, [Transaction.init].take(1));
     assert(new_block.header.prev_block == hashFull(GenesisBlock.header));
     assert(new_block == rng_block);
+
+    Enrollment enr_1 =
+    {
+        utxo_key : Hash.fromString(
+            "0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f" ~
+            "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986")
+    };
+
+    Enrollment enr_2 =
+    {
+        utxo_key : Hash.fromString(
+            "0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f" ~
+            "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395987")
+    };
+
+    auto block = makeNewBlock(GenesisBlock, [Transaction.init], [enr_1, enr_2]);
+    assert(block.header.enrollments == [enr_1, enr_2]);  // ascending
+    block = makeNewBlock(GenesisBlock, [Transaction.init], [enr_2, enr_1]);
+    assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
 }
 
 /// Test of Merkle Path and Merkle Proof
