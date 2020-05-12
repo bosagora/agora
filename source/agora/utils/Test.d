@@ -156,7 +156,7 @@ unittest
 *******************************************************************************/
 
 public Transaction[] makeChainedTransactions (KeyPair key_pair,
-    Transaction[] prev_txs, size_t block_count,
+    const(Transaction)[] prev_txs, size_t block_count,
     ulong spend_amount = 40_000_000, in Transaction gen_tx = GenesisTransaction)
 {
     import agora.common.Amount;
@@ -265,6 +265,19 @@ unittest
         assert(txes[idx].inputs[0].previous == hashFull(prev_txs[idx]));
         assert(txes[idx].outputs[0].value == Amount(SpendPerTx));
     }
+}
+
+/// example of chaining
+unittest
+{
+    import agora.consensus.data.Block;
+    import agora.consensus.Genesis;
+    import agora.common.Amount;
+    import agora.common.Hash;
+
+    auto gen_key = getGenesisKeyPair();
+    const(Transaction)[] txes = makeChainedTransactions(gen_key, null, 1);
+    txes = makeChainedTransactions(gen_key, txes, 1);
 }
 
 /// custom genesis tx
