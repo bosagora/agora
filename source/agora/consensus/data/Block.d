@@ -388,7 +388,6 @@ unittest
 /*******************************************************************************
 
     Create a new block, referencing the provided previous block.
-    In the current preliminary design a block contains a single transaction.
 
     Params:
         prev_block = the previous block
