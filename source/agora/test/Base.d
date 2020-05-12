@@ -61,6 +61,7 @@ import std.array;
 import std.algorithm;
 import std.exception;
 import std.format;
+import std.stdio;
 
 import core.runtime;
 import core.time;
@@ -81,7 +82,6 @@ private UnitTestResult customModuleUnitTester ()
     import std.algorithm;
     import std.parallelism;
     import std.process;
-    import std.stdio;
     import std.string;
     import std.uni;
     import core.atomic;
@@ -396,15 +396,9 @@ public class TestAPIManager
     {
         synchronized  // make sure logging output is not interleaved
         {
-            import std.stdio;
             writefln("%s(%s): Node logs:\n", file, line);
             foreach (node; this.nodes)
-            {
-                writefln("Log for node %s:", node.address);
-                writeln("======================================================================");
                 node.client.printLog();
-                writeln("======================================================================\n");
-            }
         }
     }
 
@@ -558,7 +552,10 @@ private mixin template TestNodeMixin ()
     /// Prints out the log contents for this node
     public void printLog ()
     {
+        writefln("Log for node: %s", this.config.node.address);
+        writeln("======================================================================");
         CircularAppender().printConsole();
+        writeln("======================================================================\n");
     }
 
     /// Used by the node
@@ -620,6 +617,7 @@ public class TestFullNode : FullNode, TestAPI
     public this (Config config, Registry* reg)
     {
         assert(!config.node.is_validator);
+        scope (failure) this.printLog();
         this.registry = reg;
         super(config);
     }
@@ -661,6 +659,7 @@ public class TestValidatorNode : Validator, TestAPI
     public this (Config config, Registry* reg)
     {
         assert(config.node.is_validator);
+        scope (failure) this.printLog();
         this.registry = reg;
         super(config);
     }
