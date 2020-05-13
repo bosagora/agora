@@ -317,7 +317,8 @@ public class NetworkManager
             if (block_height > pair.height)
                 continue;  // this node does not have newer blocks than us
 
-            log.info("Retrieving latest blocks from {}..", pair.client.address);
+            log.info("Retrieving blocks [{}..{}] from {}..",
+                block_height, pair.height, pair.client.address);
             const MaxBlocks = 1024;
 
             do
@@ -326,9 +327,8 @@ public class NetworkManager
                 if (blocks.length == 0)
                     continue LNextNode;
 
-                log.info("Received blocks [{}..{}] out of {}..",
-                    blocks[0].header.height, blocks[$ - 1].header.height,
-                    pair.height + 1);  // +1 for genesis block
+                log.info("Received blocks [{}..{}]",
+                    blocks[0].header.height, blocks[$ - 1].header.height);
 
                 // one or more blocks were rejected, stop retrieval from node
                 if (!onReceivedBlocks(blocks))
