@@ -53,11 +53,48 @@ public class BanManager
         private time_t banned_until = 0;
     }
 
+    /// Container type to emulate an AA, with serialization routines
+    private static struct BannedList
+    {
+        /// Internal implementation relies on AA
+        private Status[Address] data;
+
+        /// Serialization hook
+        public void serialize (scope SerializeDg dg) const @safe
+        {
+            // This is serialized as an array of { key, val }
+            // Note that since keys are string, the array size
+            // is actually unknown before ending deserialization,
+            // but since it's only local data, we don't risk DoS.
+            serializePart(this.data.length, dg);
+            foreach (const ref key, const ref val; this.data)
+            {
+                serializePart(key, dg);
+                serializePart(val, dg);
+            }
+        }
+
+        /// Deserialization hook
+        public static QT fromBinary (QT) (
+            scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+        {
+            BannedList ret;
+            size_t length = deserializeLength(dg, opts.maxLength);
+            foreach (idx; 0 .. length)
+            {
+                Address key = deserializeFull!Address(dg);
+                Status value = deserializeFull!Status(dg);
+                ret.data[key] = value;
+            }
+            return (() @trusted => cast(QT)ret)();
+        }
+    }
+
     /// configuration
     private const Config config;
 
     /// per-address status
-    private Status[Address] ips;
+    private BannedList ips;
 
     /// Path to the ban file on disk
     private const string banfile_path;
@@ -98,8 +135,7 @@ public class BanManager
             ban_file.rawRead(res);
             return res;
         };
-
-        this.deserialize(dg);
+        this.ips = deserializeFull!BannedList(dg);
     }
 
     /***************************************************************************
@@ -111,7 +147,7 @@ public class BanManager
     public void dump ()
     {
         auto ban_file = File(this.banfile_path, "w");
-        this.serialize((scope bytes) @trusted => ban_file.rawWrite(bytes));
+        serializePart(this.ips, (scope bytes) @trusted => ban_file.rawWrite(bytes));
     }
 
     /***************************************************************************
@@ -200,7 +236,7 @@ public class BanManager
 
     public bool isBanned (Address address) @safe nothrow @nogc
     {
-        if (auto stats = address in this.ips)
+        if (auto stats = address in this.ips.data)
             return stats.banned_until > this.getCurTime();
 
         return false;
@@ -221,7 +257,7 @@ public class BanManager
 
     public time_t getUnbanTime (Address address) @safe nothrow pure @nogc
     {
-        if (auto stats = address in this.ips)
+        if (auto stats = address in this.ips.data)
             return stats.banned_until;
 
         return 0;
@@ -260,49 +296,7 @@ public class BanManager
     private Status* get (Address address) @trusted nothrow pure
     {
         scope(failure) assert(0);  // it will never throw
-        return &this.ips.require(address, Status.init);
-    }
-
-    /***************************************************************************
-
-        Serialization support
-
-        Params:
-            dg = Serialize delegate
-
-    ***************************************************************************/
-
-    private void serialize (scope SerializeDg dg) const @safe
-    {
-        serializePart(this.ips.length, dg);
-
-        foreach (const ref key; this.ips.byKey)
-            serializePart(key, dg);
-
-        foreach (const ref val; this.ips.byValue)
-            serializePart(val, dg);
-    }
-
-    /***************************************************************************
-
-        Deserialization support
-
-        Params:
-            dg = Deserialize delegate
-
-    ***************************************************************************/
-
-    private void deserialize (scope DeserializeDg dg) @safe
-    {
-        size_t length = deserializeLength(dg);
-
-        // deserialize and generate inputs
-        foreach (idx; 0 .. length)
-        {
-            Address key = deserializeFull!Address(dg);
-            Status value = deserializeFull!Status(dg);
-            this.ips[key] = value;
-        }
+        return &this.ips.data.require(address, Status.init);
     }
 }
 
@@ -357,4 +351,7 @@ unittest
     banman.time = 0;
     banman.ban("node-2");  // use default ban time
     assert(banman.getUnbanTime("node-2") == 86400);
+
+    // Serialization tests
+    testSymmetry(banman.ips);
 }
