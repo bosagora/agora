@@ -23,16 +23,11 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
+import core.thread;
 
 /// test node banning after putTransaction fails a number of times
 unittest
 {
-    import core.thread;
-    import std.algorithm;
-    import std.conv;
-    import std.format;
-    import std.range;
-
     TestConf conf =
     {
         topology : NetworkTopology.OneNonValidator,

@@ -26,10 +26,6 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
-import std.algorithm;
-import std.conv;
-import core.time;
-
 /// test for  enrollment process & revealing a pre-image periodically
 unittest
 {

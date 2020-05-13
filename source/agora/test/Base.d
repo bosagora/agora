@@ -45,7 +45,6 @@ import agora.node.Ledger;
 import agora.node.Validator;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
-public import agora.utils.Test;  // frequently needed in tests
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Validator : ValidatorAPI = API;
 
@@ -56,19 +55,31 @@ import ocean.util.log.Logger;
 static import geod24.LocalRest;
 import geod24.Registry;
 
-import core.stdc.time;
 import std.array;
-import std.algorithm;
 import std.exception;
-import std.format;
-import std.stdio;
 
 import core.runtime;
-import core.time;
+import core.stdc.time;
+
+/* The following imports are frequently needed in tests */
+
+ // Contains utilities for testing, e.g. `retryFor`
+public import agora.utils.Test;
+// `core.time` provides duration-related utilities, used e.g. for `retryFor`
+public import core.time;
+// Useful to express complex pipeline simply
+public import std.algorithm;
+// Provides `to`, a template to convert anything to anything else
+public import std.conv;
+// `format` is often used to provide useful error messages
+public import std.format;
+// Range utilities are often used in combination with `std.algorithm`
+public import std.range;
+// To print messages to the screen while debugging a test
+public import std.stdio;
 
 shared static this()
 {
-    import core.runtime;
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
 }
 
@@ -79,7 +90,6 @@ shared static this()
 /// Workaround: Don't run ocean submodule unittests
 private UnitTestResult customModuleUnitTester ()
 {
-    import std.algorithm;
     import std.parallelism;
     import std.process;
     import std.string;
@@ -176,7 +186,6 @@ private UnitTestResult customModuleUnitTester ()
 public struct Serializer
 {
     import agora.common.Serializer;
-    import std.stdio;
 
     static immutable(ubyte)[] serialize (T) (auto ref T value) @trusted nothrow
     {
@@ -300,9 +309,6 @@ public struct NodePair
 
 public class TestAPIManager
 {
-    import core.time;
-    import core.stdc.time;
-
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
@@ -790,11 +796,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     in TestConf test_conf)
 {
     import agora.common.Serializer;
-    import std.algorithm;
-    import std.array;
     import std.digest;
     import std.range;
-    import ocean.util.log.Logger;
 
     // We know we're in the main thread
     // Vibe.d messes with the scheduler - reset it

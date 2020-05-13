@@ -19,22 +19,21 @@ version (unittest):
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Hash;
+import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.Genesis;
+import agora.consensus.Validation;
 import agora.test.Base;
+
+import core.thread;
+
 
 ///
 unittest
 {
-    import std.algorithm;
-    import std.conv;
-    import std.format;
-    import std.range;
-    import core.time;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
@@ -90,10 +89,6 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    import std.algorithm;
-    import std.range;
-    import core.time;
-
     TestConf conf = { topology : NetworkTopology.OneValidator };
     auto network = makeTestNetwork(conf);
     network.start();
@@ -116,9 +111,6 @@ unittest
 /// Merkle Proof
 unittest
 {
-    import core.time;
-    import std.algorithm;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
@@ -189,13 +181,6 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    import agora.common.Serializer;
-    import agora.consensus.Validation;
-
-    import std.algorithm;
-    import core.time;
-    import core.thread;
-
     TestConf conf = { nodes : 2 };
     auto network = makeTestNetwork(conf);
     network.start();

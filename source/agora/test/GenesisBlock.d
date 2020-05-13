@@ -23,6 +23,7 @@ import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.Genesis;
 import agora.test.Base;
 
 import std.exception : assumeUnique;
@@ -74,14 +75,11 @@ private auto makeCustomGenesisBlock (in KeyPair key_pair)
 /// ditto
 unittest
 {
-    import std.algorithm;
-    import std.range;
     import core.thread;
 
     auto kp = KeyPair.random();
     auto genesis = makeCustomGenesisBlock(kp);
 
-    import agora.consensus.Genesis;
     TestConf conf = { gen_block : genesis[0] };
     auto network = makeTestNetwork(conf);
     network.start();

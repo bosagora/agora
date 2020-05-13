@@ -28,10 +28,6 @@ import agora.test.Base;
 /// test cyclic quorum config
 unittest
 {
-    import std.algorithm;
-    import std.range;
-    import core.time;
-
     TestConf conf = { nodes : 6, topology : NetworkTopology.Cyclic, };
     auto network = makeTestNetwork(conf);
     network.start();
