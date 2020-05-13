@@ -295,23 +295,24 @@ public class ValidatorSet
 
     public void clearExpiredValidators (ulong block_height) @safe nothrow
     {
-        // the smallest enrolled height would be 1, so the passed block height
-        // should be greater than the validator cycle for deleting validators.
-        if (block_height > Enrollment.ValidatorCycle)
-        {
-            try
-            {
-                () @trusted {
-                    this.db.execute("DELETE FROM validator_set WHERE " ~
-                        "enrolled_height <= ?",
-                        block_height - Enrollment.ValidatorCycle);
+        // the smallest enrolled height would be 0 (genesis block),
+        // so the passed block height should be at minimum the
+        // size of the validator cycle
+        if (block_height < Enrollment.ValidatorCycle)
+            return;
 
-                }();
-            }
-            catch (Exception ex)
-            {
-                log.error("Database operation error: {}", ex.msg);
-            }
+        try
+        {
+            () @trusted {
+                this.db.execute("DELETE FROM validator_set WHERE " ~
+                    "enrolled_height <= ?",
+                    block_height - Enrollment.ValidatorCycle);
+
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error: {}", ex.msg);
         }
     }
 
@@ -657,6 +658,49 @@ unittest
     assert(set.getValidators(enrolls));
     assert(enrolls.length == 1);
     assert(enrolls[0].utxo_key == utxo_hash4);
+
+    // add enrollment at the genesis block:
+    // validates blocks [1 .. 1008] inclusively
+    set.clearExpiredValidators(long.max);  // clear all
+    assert(set.count == 0);
+    utxo_hash = utxo_hashes[0];
+    seed_sources[utxo_hash] = Scalar.random();
+    enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    assert(set.add(0, &storage.findUTXO, enroll));
+
+    // not cleared yet at height 1007
+    set.clearExpiredValidators(1007);
+    enrolls.length = 0;
+    assert(set.count == 1);
+    assert(set.getValidators(enrolls));
+    assert(enrolls.length == 1);
+    assert(enrolls[0].utxo_key == utxo_hash);
+
+    // cleared after block height 1008 was externalized
+    set.clearExpiredValidators(1008);
+    assert(set.count == 0);
+    assert(set.getValidators(enrolls));
+    assert(enrolls.length == 0);
+
+    // now try with validator for [1 .. 1009]
+    utxo_hash = utxo_hashes[0];
+    seed_sources[utxo_hash] = Scalar.random();
+    enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    assert(set.add(1, &storage.findUTXO, enroll));
+
+    // not cleared yet at height 1008
+    set.clearExpiredValidators(1008);
+    enrolls.length = 0;
+    assert(set.count == 1);
+    assert(set.getValidators(enrolls));
+    assert(enrolls.length == 1);
+    assert(enrolls[0].utxo_key == utxo_hash);
+
+    // cleared after block height 1009 was externalized
+    set.clearExpiredValidators(1009);
+    assert(set.count == 0);
+    assert(set.getValidators(enrolls));
+    assert(enrolls.length == 0);
 }
 
 /// test for restroing information about validators from blocks
