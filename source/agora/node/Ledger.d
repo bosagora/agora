@@ -1061,6 +1061,11 @@ unittest
     auto block_4 = ledger.getBlocksFrom(4);
     enrollments.sort!("a.utxo_key < b.utxo_key");
     assert(block_4[0].header.enrollments == enrollments);
+
+    genNormalBlockTransactions(1008);
+    Enrollment[] validators;
+    assert(enroll_man.getValidators(validators));
+    assert(validators.length == 3);  // bug: should be zero
 }
 
 version (unittest)
