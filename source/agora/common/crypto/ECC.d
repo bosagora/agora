@@ -268,6 +268,12 @@ public struct Point
         return result;
     }
 
+    /// Convenience overload to allow this to be converted to a `PublicKey`
+    public const(ubyte)[] opSlice () const @safe pure nothrow @nogc
+    {
+        return this.data[];
+    }
+
     /// Support for comparison
     public int opCmp (ref const typeof(this) s) const
     {
