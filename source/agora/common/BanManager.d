@@ -127,7 +127,7 @@ public class BanManager
         if (!this.banfile_path.exists())
             return;  // nothing to load
 
-        auto ban_file = File(this.banfile_path, "r");
+        auto ban_file = File(this.banfile_path, "rb");
         scope DeserializeDg dg = (size) @trusted
         {
             ubyte[] res;
@@ -146,7 +146,7 @@ public class BanManager
 
     public void dump ()
     {
-        auto ban_file = File(this.banfile_path, "w");
+        auto ban_file = File(this.banfile_path, "wb");
         serializePart(this.ips, (scope bytes) @trusted => ban_file.rawWrite(bytes));
     }
 
