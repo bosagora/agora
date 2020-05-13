@@ -430,3 +430,13 @@ unittest
     Point point_Address = Point(kp.address);
     assert(verify(point_Address, enroll_sig, "BOSAGORA"));
 }
+
+/// Test for converting from `Point` to `PublicKey`
+unittest
+{
+    import agora.common.crypto.Schnorr;
+
+    Pair pair = Pair.random();
+    auto pubkey = PublicKey(pair.V[]);
+    assert(pubkey.data == pair.V.data);
+}
