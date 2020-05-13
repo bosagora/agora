@@ -226,7 +226,7 @@ public class Ledger
         if (!this.storage.saveBlock(block))
             assert(0);
 
-        this.enroll_man.clearExpiredValidators(this.last_block.header.height);
+        this.enroll_man.clearExpiredValidators(block.header.height);
 
         foreach (enrollment; block.header.enrollments)
             if (!this.enroll_man.addValidator(enrollment,
@@ -1065,7 +1065,8 @@ unittest
     genNormalBlockTransactions(1008);
     Enrollment[] validators;
     assert(enroll_man.getValidators(validators));
-    assert(validators.length == 3);  // bug: should be zero
+    assert(validators.length == 0);
+    assert(ledger.getBlockHeight() == 1012);
 }
 
 version (unittest)
