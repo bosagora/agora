@@ -15,16 +15,7 @@ module agora.test.Metadata;
 
 version (unittest):
 
-import agora.common.BanManager;
-import agora.common.Config;
-import agora.common.crypto.Key;
-import agora.common.Types;
-import agora.common.Metadata;
-import agora.common.Set;
 import agora.test.Base;
-
-import std.array;
-import std.algorithm;
 
 ///
 unittest

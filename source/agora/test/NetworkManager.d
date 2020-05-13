@@ -16,18 +16,22 @@ module agora.test.NetworkManager;
 version (unittest):
 
 import agora.api.Validator;
+import agora.common.BanManager;
+import agora.common.Config;
+import agora.common.crypto.Key;
+import agora.common.Metadata;
 import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
+import geod24.Registry;
+import std.array;
+
 /// test behavior when getBlockHeight() call fails
 unittest
 {
-    import std.algorithm;
-    import std.range;
-    import core.thread;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
@@ -54,19 +58,6 @@ unittest
 /// test behavior when a node sends bad block data
 unittest
 {
-    import agora.common.BanManager;
-    import agora.consensus.data.Block;
-    import agora.common.Config;
-    import agora.common.Metadata;
-    import agora.common.crypto.Key;
-    import core.time;
-    import geod24.Registry;
-    import std.algorithm;
-    import std.array;
-    import std.conv;
-    import std.format;
-    import std.range;
-
     /// node which returns bad blocks
     static class BadNode : TestFullNode
     {

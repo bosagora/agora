@@ -26,12 +26,6 @@ import agora.test.Base;
 ///
 unittest
 {
-    import std.algorithm;
-    import std.conv;
-    import std.format;
-    import std.range;
-    import core.time;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
@@ -73,12 +67,6 @@ unittest
 /// test gossiping behavior for an outsider node
 unittest
 {
-    import std.algorithm;
-    import std.conv;
-    import std.format;
-    import std.range;
-    import core.time;
-
     // node #5 is the outsider, so actually 5 total nodes
     TestConf conf = { nodes : 4, max_listeners : 5,
         topology : NetworkTopology.OneOutsider };

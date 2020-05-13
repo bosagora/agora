@@ -23,13 +23,11 @@ import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
+import core.thread;
+
 /// test retrying requests after failure
 unittest
 {
-    import std.algorithm;
-    import std.range;
-    import core.thread;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
@@ -61,10 +59,6 @@ unittest
 /// test request timeouts
 unittest
 {
-    import std.algorithm;
-    import std.range;
-    import core.thread;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();

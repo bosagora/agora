@@ -28,10 +28,6 @@ import agora.test.Base;
 /// Simple test
 unittest
 {
-    import std.algorithm;
-    import std.range;
-    import core.thread;
-
     auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();

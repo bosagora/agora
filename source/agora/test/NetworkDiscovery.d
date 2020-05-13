@@ -20,9 +20,6 @@ import agora.test.Base;
 ///
 unittest
 {
-    import std.algorithm;
-    import std.format;
-
     TestConf conf = { nodes : 4 };
     auto network = makeTestNetwork(conf);
     network.start();
@@ -41,9 +38,6 @@ unittest
 /// test network discovery through the getNodeInfo() API
 unittest
 {
-    import std.algorithm;
-    import std.format;
-
     TestConf conf =
     {
         topology : NetworkTopology.FindNetwork,
@@ -68,9 +62,6 @@ unittest
 /// test finding all quorum nodes before network discovery is complete
 unittest
 {
-    import std.algorithm;
-    import std.format;
-
     TestConf conf =
     {
         topology : NetworkTopology.FindQuorums,
