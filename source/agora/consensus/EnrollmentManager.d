@@ -155,7 +155,7 @@ public class EnrollmentManager
 
         ***********************************************************************/
 
-        private Hash[ulong] seeds;
+        private PreImageCache seeds;
 
         /***********************************************************************
 
@@ -167,6 +167,50 @@ public class EnrollmentManager
         ***********************************************************************/
 
         private PreImageCache preimages;
+
+        /***********************************************************************
+
+            Consume the current cycle
+
+            This will first populate the caches (seeds and preimages)
+            as necessary, then increase the `index` by one, or reset it to 0
+            and increase `nonce` if necessary.
+            Note that the increment is done after the caches are populated,
+            so `consume` needs to be called once this node has confirmed it
+            is part of consensus.
+
+            Params:
+              secret = The secret key of the node, used as part of the hash
+                       to generate the cycle seeds
+
+            Returns:
+              The hash of the current enrollment round
+
+        ***********************************************************************/
+
+        private Hash consume (scope const ref Scalar secret) @safe nothrow
+        {
+            // Populate the nonce cache if necessary
+            if (this.index == 0)
+            {
+                const cycle_seed = hashMulti(
+                    secret, "consensus.preimages", this.nonce);
+                this.seeds.reset(cycle_seed);
+            }
+            // Populare the current enrollment round cache
+            const ret = this.preimages.reset(this.seeds[this.index]);
+
+            // Increment index if there are rounds left in this cycle
+            if (this.index < NumberOfCycles)
+                this.index += 1;
+            else
+            {
+                this.index = 0;
+                this.nonce += 1;
+            }
+
+            return ret;
+        }
     }
 
     /// Ditto
@@ -188,7 +232,7 @@ public class EnrollmentManager
         this.cycle = PreImageCycle(
             /* nounce: */ 0,
             /* index:  */ 0,
-            /* seeds:  */ null,
+            /* seeds:  */ PreImageCache(NumberOfCycles, Enrollment.ValidatorCycle),
             // Since those pre-images might be accessed often,
             // use an interval of 1 (no interval)
             /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
@@ -341,7 +385,11 @@ public class EnrollmentManager
         this.data.cycle_length = Enrollment.ValidatorCycle;
 
         // X, final seed data and preimages of hashes
-        this.data.random_seed = this.generatePreimages(this.cycle.index);
+        //
+        // TODO: Move this consume call to `addValidator` and instead
+        // make this calculate the future pre-image without changing
+        // the state
+        this.data.random_seed = this.cycle.consume(this.key_pair.v);
 
         // R, signature noise
         this.signature_noise = this.createSignatureNoise(height);
@@ -381,9 +429,6 @@ public class EnrollmentManager
             this.signature_noise.v, this.data);
 
         enroll = this.data;
-
-        // increase current cycle index
-        this.cycle.index += 1;
 
         return true;
     }
@@ -706,57 +751,6 @@ public class EnrollmentManager
         {
             log.error("Database operation error {}", ex);
         }
-    }
-
-    /***************************************************************************
-
-        Generate and store pre-images for this cycle, as well as sparsely
-        selected preimages for other cycles.
-
-        This generates all pre-images needed for a cycle and stores them in
-        `cycle.preimages`. And It generates and stores pre-images being used
-        for defined number of cycles in `cycle.seeds` when pre-images needed
-        are missing. Once all the pre-images of `cycle.seeds' are used, then
-        new large amount of pre-images are created with the `nonce` increased.
-        This function is very expensive, but should be seldom called, and might
-        take more than 30ms for generating a hundred thousand number of them.
-
-        Params:
-            cycle_index = the cycle index for an enrollment
-
-        Returns:
-            the random seed of this cycle
-
-    ***************************************************************************/
-
-    private Hash generatePreimages (uint cycle_index) @safe nothrow
-    {
-        // Clear if recreating pre-images is needed
-        if (this.cycle.seeds.byKey.maxElement(0) < cycle_index)
-        {
-            () @trusted {
-                this.cycle.seeds.clear();
-            }();
-        }
-
-        // if there is no pre-image, the defined number of pre-images must
-        // be generated with the interval of ValidatorCycle.
-        if (this.cycle.seeds.length == 0)
-        {
-            // The value of `nonce` is zero-based. so we need to plus 1 to
-            // the value to get the 'max_cycle_index` of this bulk.
-            uint nonce = cycle_index / NumberOfCycles;
-            uint max_cycle_index = (nonce + 1) * NumberOfCycles - 1;
-            auto hash = hashMulti(this.key_pair.v, "consensus.preimages", nonce);
-            foreach (idx; 0 .. NumberOfCycles)
-            {
-                this.cycle.seeds[max_cycle_index - idx] = hash;
-                foreach (_; 0 .. Enrollment.ValidatorCycle)
-                    hash = hashFull(hash);
-            }
-        }
-
-        return this.cycle.preimages.reset(this.cycle.seeds[cycle_index]);
     }
 
     /***************************************************************************
