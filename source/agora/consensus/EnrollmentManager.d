@@ -19,7 +19,7 @@
     As a result, revealing the pre-image in time is absolutely critical and
     not doing so will lead to penalties.
 
-    In order to ensure that we will never loose the ability to reveal
+    In order to ensure that we will never lose the ability to reveal
     pre-images, this implementation uses a reproducible scheme:
     on the first run, we generate a "cycle seed" which is derived from a hash
     of the private key, a constant string, and a nonce, starting from 0.
