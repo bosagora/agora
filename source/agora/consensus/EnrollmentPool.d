@@ -25,7 +25,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSet;
-import agora.consensus.Validation;
+import agora.consensus.validation;
 import agora.utils.Log;
 
 import d2sqlite3.database;

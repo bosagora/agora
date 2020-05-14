@@ -27,7 +27,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
-import agora.consensus.Validation;
+import agora.consensus.validation;
 import agora.node.BlockStorage;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
