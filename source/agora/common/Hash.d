@@ -325,6 +325,10 @@ public struct PreImageCache
     /// Interval between two preimages in `data`
     private const ulong interval;
 
+    /// Default-initialized `PreImageCache` is not valid, make sure it can't
+    /// be accidentally constructed (e.g. by embbeding it in another aggregate)
+    @disable public this();
+
     /// Construct an instance using already existing data
     public this (inout(Hash)[] data_, ulong sample_size) inout @nogc pure
     {
