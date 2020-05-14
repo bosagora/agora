@@ -110,7 +110,7 @@ public class EnrollmentManager
     private EnrollmentPool enroll_pool;
 
     /// The number of cycles for a bulk of pre-images
-    private immutable uint NumberOfCycles = 100;
+    private static immutable uint NumberOfCycles = 100;
 
     /// This struct hold all the cycle data together for better readability
     private static struct PreImageCycle
