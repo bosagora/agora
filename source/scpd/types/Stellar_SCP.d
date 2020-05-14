@@ -259,13 +259,14 @@ struct SCPStatement {
 }
 
 static assert(SCPStatement.sizeof == 176);
+static assert(Signature.sizeof == 64);
 
 struct SCPEnvelope {
   SCPStatement statement;
   Signature signature;
 }
 
-static assert(SCPEnvelope.sizeof == 200);
+static assert(SCPEnvelope.sizeof == 240);
 
 struct SCPQuorumSet {
     import agora.common.Hash;
@@ -342,4 +343,4 @@ public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
 static assert(SCPBallot.sizeof == 32);
 static assert(Value.sizeof == 24);
 static assert(SCPQuorumSet.sizeof == 56);
-static assert(SCPEnvelope.sizeof == 200);
+static assert(SCPEnvelope.sizeof == 240);

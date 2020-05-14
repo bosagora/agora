@@ -14,6 +14,7 @@
 *******************************************************************************/
 
 #include <vector>
+#include <type_traits>
 #include "xdrpp/marshal.h"
 #include "xdrpp/types.h"
 #include "xdr/Stellar-SCP.h"
@@ -46,7 +47,8 @@ CPPSIZEOF(CryptoKeyType)
 CPPSIZEOF(PublicKeyType)
 CPPSIZEOF(SignerKeyType)
 CPPSIZEOF(PublicKey)
-CPPSIZEOF(Signature)
+// Signature is removed because it is the same as Hash.
+static_assert(std::is_same<Signature, Hash>::value, "Signature and Hash must be the same type");
 CPPSIZEOF(SignatureHint)
 CPPSIZEOF(ByteSlice)
 

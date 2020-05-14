@@ -761,26 +761,26 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xd3dc2318365e55ea3a62b403fcbe22d447402741a5151a703326dbf852350dcd0" ~
-        "e020a762ae12a871473aed80d82f51c1cd3942c0b2360c2d609279a2867fe68"),
+        "0xfd2ea2b85d2a315a9817e6661bc3c4378637de37649d2fdb9ca82d6e4172e9e46" ~
+        "af5a57113cfb7cb09d25eb7b4518eca9930c57231a29ffa396661822603c509"),
     getEnvHash().hashFull().to!string);
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xbba4bdee0e083e6e5f56ddc2815afcd509f597f45d6ae5c83af747de2d568a26d" ~
-        "bc1f0792c8c6f990816bf9f2fc913ccc700c0a022644f8bd25835a6b439944c"),
+        "0x45d6b9adba8da9f2763f33960d7cd77b6c7e844fc11b0c7d793dfa47c99bc4377" ~
+        "4039907a44d671dbffe55ce9ae21f8eca7d218e6c87573c381ae20d96bf4a56"),
     getEnvHash().hashFull().to!string);
 
     alias Sig = agora.common.Types.Signature;
-    Sig sig;  // be warned: toVec() will point to stack-allocated memory
+    Sig sig;
     () @trusted
     {
         auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
         auto pair = KeyPair.fromSeed(Seed.fromString(seed));
         auto msg = getStHash().hashFull();
         sig = pair.secret.sign(msg[]);
-        env.signature = sig[].toVec();
+        env.signature = sig;
     }();
 
     // with a signature

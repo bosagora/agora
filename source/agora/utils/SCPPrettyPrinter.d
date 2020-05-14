@@ -459,7 +459,7 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e2
     assert(MissingSig == format("%s", scpPrettify(&env)),
                          format("%s", scpPrettify(&env)));
 
-    env.signature = pair.secret.sign(hashFull(0)[])[].toVec();
+    env.signature = pair.secret.sign(hashFull(0)[]);
 
     // null quorum (hash not found)
     static immutable PrepareRes1 = `{ statement: { node: GBUV...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xc048...6205, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
