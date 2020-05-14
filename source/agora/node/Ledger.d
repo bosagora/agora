@@ -105,19 +105,23 @@ public class Ledger
             }
         }
 
-        // restore validator set from lastest blocks
-        if (this.last_block.header.height > 0)
-        {
-            foreach (i; 0 .. Enrollment.ValidatorCycle)
-            {
-                if (i >= this.last_block.header.height)
-                    break;
+        // +1 because the genesis block counts as one
+        const ulong block_count = this.last_block.header.height + 1;
 
-                Block block;
-                this.storage.readBlock(block, this.last_block.header.height - i);
-                this.enroll_man.restoreValidators(this.last_block.header.height,
-                    block, this.utxo_set.getUTXOFinder());
-            }
+        // we are only interested in the last 1008 blocks,
+        // because that is the maximum length of an enrollment.
+        const ulong min_height =
+            block_count >= Enrollment.ValidatorCycle
+            ? block_count - Enrollment.ValidatorCycle : 0;
+
+        // restore validator set from the blockchain.
+        // using block_count, as the range is inclusive
+        foreach (block_idx; min_height .. block_count)
+        {
+            Block block;
+            this.storage.readBlock(block, block_idx);
+            this.enroll_man.restoreValidators(this.last_block.header.height,
+                block, this.utxo_set.getUTXOFinder());
         }
     }
 
@@ -1357,13 +1361,14 @@ unittest
 unittest
 {
     import agora.common.BitField;
+    import agora.common.Serializer;
     import std.exception;
 
-    class PreLoadedMemBlockStorage : MemBlockStorage
+    static class PreLoadedMemBlockStorage : MemBlockStorage
     {
-        immutable(Block)[] blocks;
+        const(Block)[] blocks;
 
-        public this (immutable(Block)[] blocks)
+        public this (const(Block)[] blocks)
         {
             this.blocks = blocks;
         }
@@ -1377,63 +1382,117 @@ unittest
         }
     }
 
-    // 1 payment tx, the rest are freeze txs
-    auto gen_addr = getGenesisKeyPair().address;
-    Transaction FirstTx =
+    // generate genesis with a freeze & payment tx, and 'count' number of
+    // extra blocks
+    const(Block)[] genBlocksToIndex ( KeyPair key_pair,
+        EnrollmentManager enroll_man, size_t count)
     {
-        TxType.Payment,
-        inputs: [ Input.init ],
-        outputs: [Output(Amount(62_500_000L * 10_000_000L), gen_addr)],
-    };
+        // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
+        Transaction[] gen_txs;
+        // need mutable
+        gen_txs ~= GenesisTransaction().serializeFull.deserializeFull!Transaction;
 
-    Transaction[] txs;
-    txs ~= FirstTx;
-    Enrollment[] enrolls;
+        Transaction freeze_tx =
+        {
+            type : TxType.Freeze,
+            inputs : [ Input.init ],
+            outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
+        };
 
-    auto key_pair = KeyPair.random();
-    Transaction tx =
+        gen_txs ~= freeze_tx;
+        Hash txhash = hashFull(freeze_tx);
+        Hash utxo = UTXOSet.getHash(txhash, 0);
+
+        Enrollment[] enrolls;
+        Enrollment enroll;
+        const StartHeight = 0;  // not important
+        assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
+        enrolls ~= enroll;
+
+        gen_txs.sort;
+        Hash[] merkle_tree;
+        auto merkle_root = Block.buildMerkleTree(gen_txs, merkle_tree);
+
+        auto genesis = immutable(Block)(
+            immutable(BlockHeader)(
+                Hash.init,   // prev
+                0,           // height
+                merkle_root,
+                BitField!uint.init,
+                Signature.init,
+                enrolls.assumeUnique,
+            ),
+            gen_txs.assumeUnique,
+            merkle_tree.assumeUnique
+        );
+
+        const(Block)[] blocks = [genesis];
+
+        const(Transaction)[] prev_txs;
+        foreach (_; 0 .. count)
+        {
+            auto txs = makeChainedTransactions(getGenesisKeyPair(),
+                prev_txs, 1);
+
+            const NoEnrollments = null;
+            blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
+            prev_txs = txs;
+        }
+
+        return blocks.assumeUnique;
+    }
+
+    // only genesis loaded: validator is active
     {
-        type : TxType.Freeze,
-        inputs : [ Input.init ],
-        outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
-    };
+        auto key_pair = KeyPair.random();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+        scope (exit) enroll_man.shutdown();
+        const blocks = genBlocksToIndex(key_pair, enroll_man, 0);
+        scope storage = new PreLoadedMemBlockStorage(blocks);
+        scope pool = new TransactionPool(":memory:");
+        scope (exit) pool.shutdown();
+        scope utxo_set = new UTXOSet(":memory:");
+        scope (exit) utxo_set.shutdown();
+        scope config = new Config();
+        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+        Enrollment[] validators;
+        assert(enroll_man.getValidators(validators));
+        assert(validators.length == 1);
+    }
 
-    txs ~= tx;
-    Hash txhash = hashFull(tx);
-    Hash utxo = UTXOSet.getHash(txhash, 0);
-    scope enroll_man = new EnrollmentManager(":memory:", key_pair);
-    scope (exit) enroll_man.shutdown();
+    // block 1007 loaded: validator is still active
+    {
+        auto key_pair = KeyPair.random();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+        scope (exit) enroll_man.shutdown();
+        const blocks = genBlocksToIndex(key_pair, enroll_man, 1007);
+        scope storage = new PreLoadedMemBlockStorage(blocks);
+        scope pool = new TransactionPool(":memory:");
+        scope (exit) pool.shutdown();
+        scope utxo_set = new UTXOSet(":memory:");
+        scope (exit) utxo_set.shutdown();
+        scope config = new Config();
+        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+        Enrollment[] validators;
+        assert(enroll_man.getValidators(validators));
+        assert(validators.length == 1);
+    }
 
-    Enrollment enroll;
-    const StartHeight = 0;  // irrelevant
-    assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
-    enrolls ~= enroll;
-
-    txs.sort;
-    Hash[] merkle_tree;
-    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
-
-    auto genesis = immutable(Block)(
-        immutable(BlockHeader)(
-            Hash.init,   // prev
-            0,           // height
-            merkle_root,
-            BitField!uint.init,
-            Signature.init,
-            enrolls.assumeUnique,
-        ),
-        txs.assumeUnique,
-        merkle_tree.assumeUnique
-    );
-
-    scope storage = new PreLoadedMemBlockStorage([genesis]);
-    scope pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
-    scope utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
-    scope config = new Config();
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
-    Enrollment[] validators;
-    assert(enroll_man.getValidators(validators));
-    assert(validators.length == 0);
+    // block 1008 loaded: validator is inactive
+    {
+        auto key_pair = KeyPair.random();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+        scope (exit) enroll_man.shutdown();
+        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        scope storage = new PreLoadedMemBlockStorage(blocks);
+        scope pool = new TransactionPool(":memory:");
+        scope (exit) pool.shutdown();
+        scope utxo_set = new UTXOSet(":memory:");
+        scope (exit) utxo_set.shutdown();
+        scope config = new Config();
+        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+        Enrollment[] validators;
+        assert(enroll_man.getValidators(validators));
+        assert(validators.length == 0);
+    }
 }
