@@ -332,6 +332,8 @@ public struct PreImageCache
     /// Construct an instance using already existing data
     public this (inout(Hash)[] data_, ulong sample_size) inout @nogc pure
     {
+        assert(sample_size > 0, "The distance must be at least 1");
+
         this.data = data_;
         this.interval = sample_size;
     }
@@ -348,17 +350,16 @@ public struct PreImageCache
 
         Params:
           count = Number of samples to store (number of entries in the array)
-          sample_size = Distance between two pre-images
+          sample_size = Distance between two pre-images. If the value 1 is
+                        provided, the pre-images will be consecutives and
+                        this struct will behave essentially like an array.
 
     ***************************************************************************/
 
     public this (ulong count, ulong sample_size) pure
     {
         assert(count > 1, "A count of less than 2 does not make sense");
-        assert(sample_size > 1, "A distance of less than 2 does not make sense");
-
-        this.interval = sample_size;
-        this.data = new Hash[](count);
+        this(new Hash[](count), sample_size);
     }
 
     /***************************************************************************
