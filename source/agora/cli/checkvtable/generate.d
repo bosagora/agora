@@ -36,7 +36,7 @@ private int main (string[] args)
     writecode(outputs);
     File file = File(filename, "w");
 
-    foreach(ref line; outputs)
+    foreach (ref line; outputs)
         file.writeln(line);
 
     file.close();

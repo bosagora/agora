@@ -279,7 +279,7 @@ unittest
     auto key_pair = KeyPair.fromSeed(Seed.fromString(key));
     tx.inputs[0].signature = key_pair.secret.sign(send_txhash[]);
 
-    foreach(ref line; outputs)
+    foreach (ref line; outputs)
         writeln(line);
 
     assert(node.hasTransactionHash(send_txhash));
