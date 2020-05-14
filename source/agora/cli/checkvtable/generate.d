@@ -19,7 +19,11 @@ import std.file;
 import std.format;
 import std.stdio;
 
-version (Windows) { pragma(msg, "This does not support Windows."); } else:
+version (Windows)
+{
+    pragma(msg, __MODULE__, " : This does not support Windows.");
+}
+else:
 
 version (unittest) { } else
 
