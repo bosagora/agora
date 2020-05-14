@@ -115,6 +115,14 @@ public class EnrollmentManager
     /// This struct hold all the cycle data together for better readability
     private static struct PreImageCycle
     {
+        /// Make sure we get initialized by disabling the default ctor
+        @disable public this();
+        /// Ditto
+        public this (typeof(PreImageCycle.tupleof) args)
+        {
+            this.tupleof = args;
+        }
+
         /***********************************************************************
 
             The number of the current cycle
@@ -158,7 +166,7 @@ public class EnrollmentManager
 
         ***********************************************************************/
 
-        private Hash[ulong] preimages;
+        private PreImageCache preimages;
     }
 
     /// Ditto
@@ -177,6 +185,15 @@ public class EnrollmentManager
 
     public this (string db_path, KeyPair key_pair)
     {
+        this.cycle = PreImageCycle(
+            /* nounce: */ 0,
+            /* index:  */ 0,
+            /* seeds:  */ null,
+            // Since those pre-images might be accessed often,
+            // use an interval of 1 (no interval)
+            /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
+        );
+
         this.validator_set = new ValidatorSet(db_path);
         this.enroll_pool = new EnrollmentPool(db_path);
 
@@ -739,35 +756,7 @@ public class EnrollmentManager
             }
         }
 
-        return this.populateCycleCache(this.cycle.seeds[cycle_index]);
-    }
-
-    /***************************************************************************
-
-        This generates all the sequential pre-images from the `seed` and
-        stores them in the `cycle.preimages` cache.
-
-        Params:
-            seed = The initial value for this round to derive pre-images from.
-
-        Returns:
-            The last value for the cycle
-
-    ***************************************************************************/
-
-    public Hash populateCycleCache (Hash seed) @safe nothrow
-    {
-        // Clear previous cycle data
-        () @trusted { this.cycle.preimages.clear(); }();
-
-        // Fill the cache
-        foreach (idx; 1 .. Enrollment.ValidatorCycle + 1)
-        {
-            this.cycle.preimages[Enrollment.ValidatorCycle - idx] = seed;
-            seed = hashFull(seed);
-        }
-        // Return the last entry in the cache
-        return seed;
+        return this.cycle.preimages.reset(this.cycle.seeds[cycle_index]);
     }
 
     /***************************************************************************
