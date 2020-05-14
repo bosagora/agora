@@ -132,24 +132,15 @@ unittest
     // transactions are ordered lexicographically by hash in the Merkle tree
     hashes.sort!("a < b");
 
-    const Hash ha = hashes[0];
-    const Hash hb = hashes[1];
-    const Hash hc = hashes[2];
-    const Hash hd = hashes[3];
-    const Hash he = hashes[4];
-    const Hash hf = hashes[5];
-    const Hash hg = hashes[6];
-    const Hash hh = hashes[7];
-
-    const Hash hab = hashMulti(ha, hb);
-    const Hash hcd = hashMulti(hc, hd);
-    const Hash hef = hashMulti(he, hf);
-    const Hash hgh = hashMulti(hg, hh);
+    const Hash hab = hashMulti(hashes[0], hashes[1]);
+    const Hash hcd = hashMulti(hashes[2], hashes[3]);
+    const Hash hef = hashMulti(hashes[4], hashes[5]);
+    const Hash hgh = hashMulti(hashes[6], hashes[7]);
 
     const Hash habcd = hashMulti(hab, hcd);
     const Hash hefgh = hashMulti(hef, hgh);
 
-    const Hash habcdefgh = hashMulti(habcd, hefgh);
+    const Hash expected_root = hashMulti(habcd, hefgh);
 
     // wait for transaction propagation
     nodes.each!(node => retryFor(node.getBlockHeight() == 1, 4.seconds));
@@ -157,21 +148,21 @@ unittest
     Hash[] merkle_path;
     foreach (node; nodes)
     {
-        merkle_path = node.getMerklePath(1, hc);
+        merkle_path = node.getMerklePath(1, hashes[2]);
         assert(merkle_path.length == 3);
-        assert(merkle_path[0] == hd, "Error in the merkle path.");
-        assert(merkle_path[1] == hab, "Error in the merkle path.");
-        assert(merkle_path[2] == hefgh, "Error in the merkle path.");
-        assert(habcdefgh == Block.checkMerklePath(hc, merkle_path, 2), "Error in the merkle proof.");
-        assert(habcdefgh != Block.checkMerklePath(hd, merkle_path, 2), "Error in the merkle proof.");
+        assert(merkle_path[0] == hashes[3]);
+        assert(merkle_path[1] == hab);
+        assert(merkle_path[2] == hefgh);
+        assert(expected_root == Block.checkMerklePath(hashes[2], merkle_path, 2));
+        assert(expected_root != Block.checkMerklePath(hashes[3], merkle_path, 2));
 
-        merkle_path = node.getMerklePath(1, he);
+        merkle_path = node.getMerklePath(1, hashes[4]);
         assert(merkle_path.length == 3);
-        assert(merkle_path[0] == hf, "Error in the merkle path.");
-        assert(merkle_path[1] == hgh, "Error in the merkle path.");
-        assert(merkle_path[2] == habcd, "Error in the merkle path.");
-        assert(habcdefgh == Block.checkMerklePath(he, merkle_path, 4), "Error in the merkle proof.");
-        assert(habcdefgh != Block.checkMerklePath(hf, merkle_path, 4), "Error in the merkle proof.");
+        assert(merkle_path[0] == hashes[5]);
+        assert(merkle_path[1] == hgh);
+        assert(merkle_path[2] == habcd);
+        assert(expected_root == Block.checkMerklePath(hashes[4], merkle_path, 4));
+        assert(expected_root != Block.checkMerklePath(hashes[5], merkle_path, 4));
 
         merkle_path = node.getMerklePath(1, Hash.init);
         assert(merkle_path.length == 0);
