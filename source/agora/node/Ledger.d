@@ -1352,3 +1352,88 @@ unittest
     genBlockTransactionsFreeze(1, TxType.Payment);
     assert(ledger.getBlockHeight() == 11 + 2016);
 }
+
+/// test enrollments in the genesis block
+unittest
+{
+    import agora.common.BitField;
+    import std.exception;
+
+    class PreLoadedMemBlockStorage : MemBlockStorage
+    {
+        immutable(Block)[] blocks;
+
+        public this (immutable(Block)[] blocks)
+        {
+            this.blocks = blocks;
+        }
+
+        public override bool load ()
+        {
+            foreach (const ref block; this.blocks)
+                this.saveBlock(block);
+
+            return true;
+        }
+    }
+
+    // 1 payment tx, the rest are freeze txs
+    auto gen_addr = getGenesisKeyPair().address;
+    Transaction FirstTx =
+    {
+        TxType.Payment,
+        inputs: [ Input.init ],
+        outputs: [Output(Amount(62_500_000L * 10_000_000L), gen_addr)],
+    };
+
+    Transaction[] txs;
+    txs ~= FirstTx;
+    Enrollment[] enrolls;
+
+    auto key_pair = KeyPair.random();
+    Transaction tx =
+    {
+        type : TxType.Freeze,
+        inputs : [ Input.init ],
+        outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
+    };
+
+    txs ~= tx;
+    Hash txhash = hashFull(tx);
+    Hash utxo = UTXOSet.getHash(txhash, 0);
+    scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+    scope (exit) enroll_man.shutdown();
+
+    Enrollment enroll;
+    const StartHeight = 0;  // irrelevant
+    assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
+    enrolls ~= enroll;
+
+    txs.sort;
+    Hash[] merkle_tree;
+    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
+
+    auto genesis = immutable(Block)(
+        immutable(BlockHeader)(
+            Hash.init,   // prev
+            0,           // height
+            merkle_root,
+            BitField!uint.init,
+            Signature.init,
+            enrolls.assumeUnique,
+        ),
+        txs.assumeUnique,
+        merkle_tree.assumeUnique
+    );
+
+    scope storage = new PreLoadedMemBlockStorage([genesis]);
+    scope pool = new TransactionPool(":memory:");
+    scope(exit) pool.shutdown();
+    scope utxo_set = new UTXOSet(":memory:");
+    scope (exit) utxo_set.shutdown();
+    scope config = new Config();
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    Enrollment[] validators;
+    assert(enroll_man.getValidators(validators));
+    assert(validators.length == 0);
+}
