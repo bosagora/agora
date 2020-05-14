@@ -36,18 +36,12 @@ private void main ()
 
     auto path = makeCleanTempDir();
     BlockStorage storage = new BlockStorage(path);
-    KeyPair[] key_pairs = [
-        KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random,
-        KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random
-    ];
     const(Block)[] blocks;
     Hash[] block_hashes;
 
     blocks ~= GenesisBlock;
     assert(storage.load());
 
-    // We can use a random keypair because blocks are not validated
-    auto gen_key_pair = KeyPair.random();
     const Transaction last_tx = blocks[$ - 1].txs[$-1];
     Hash gen_tx_hash = hashFull(last_tx);
     block_hashes ~= hashFull(blocks[$ - 1].header);
@@ -62,10 +56,12 @@ private void main ()
                 Input(gen_tx_hash, 0)
             ],
             [
-                Output(Amount(1_000), key_pairs[idx % 8].address)
+                Output(Amount(1_000), WK.Keys[idx % 8].address)
             ]
         );
-        tx.inputs[0].signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        // We can use a random keypair because blocks are not validated
+        // Use a key that is not used elsewhere.
+        tx.inputs[0].signature = WK.Keys.X.secret.sign(hashFull(tx)[]);
         blocks ~= makeNewBlock(blocks[$ - 1], [tx], null);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
