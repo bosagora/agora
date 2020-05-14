@@ -888,7 +888,7 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
 
     foreach (const ref enrollment; block.header.enrollments)
     {
-        if (auto fail_reason = enrollment.isInvalidEnrollmentReason(findUTXO))
+        if (auto fail_reason = enrollment.isInvalidReason(findUTXO))
             return fail_reason;
     }
 
@@ -914,7 +914,7 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
 
 *******************************************************************************/
 
-public string isInvalidEnrollmentReason (const ref Enrollment enrollment,
+public string isInvalidReason (const ref Enrollment enrollment,
     UTXOFinder findUTXO) nothrow @safe
 {
     UTXOSetValue utxo_set_value;
@@ -949,10 +949,10 @@ public string isInvalidEnrollmentReason (const ref Enrollment enrollment,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValidEnrollment (const ref Enrollment enrollment,
+public bool isValid (const ref Enrollment enrollment,
     UTXOFinder findUTXO) nothrow @safe
 {
-    return isInvalidEnrollmentReason(enrollment, findUTXO) is null;
+    return isInvalidReason(enrollment, findUTXO) is null;
 }
 
 /*******************************************************************************
@@ -977,7 +977,7 @@ public bool isValidEnrollment (const ref Enrollment enrollment,
 
 *******************************************************************************/
 
-public string isInvalidPreimageReason (const ref PreImageInfo new_image,
+public string isInvalidReason (const ref PreImageInfo new_image,
     const ref PreImageInfo prev_image, uint validator_cycle) nothrow @safe
 {
     if (new_image.enroll_key != prev_image.enroll_key)
@@ -1000,11 +1000,10 @@ public string isInvalidPreimageReason (const ref PreImageInfo new_image,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValidPreimage (const ref PreImageInfo prev_image,
+public bool isValid (const ref PreImageInfo prev_image,
     const ref PreImageInfo new_image, uint validator_cycle) nothrow @safe
 {
-    return isInvalidPreimageReason(prev_image, new_image, validator_cycle)
-        is null;
+    return isInvalidReason(prev_image, new_image, validator_cycle) is null;
 }
 
 /// Ditto but returns `bool`, only usable in unittests
@@ -1289,10 +1288,10 @@ unittest
     enroll4.enroll_sig = sign(node_key_pair_4.v, node_key_pair_4.V, signature_noise.V,
         signature_noise.v, enroll4);
 
-    assert(!isValidEnrollment(enroll1, utxoFinder));
-    assert(!isValidEnrollment(enroll2, utxoFinder));
-    assert(!isValidEnrollment(enroll3, utxoFinder));
-    assert(!isValidEnrollment(enroll4, utxoFinder));
+    assert(!enroll1.isValid(utxoFinder));
+    assert(!enroll2.isValid(utxoFinder));
+    assert(!enroll3.isValid(utxoFinder));
+    assert(!enroll4.isValid(utxoFinder));
 
     utxo_set.updateUTXOCache(tx1, 0);
     utxo_set.updateUTXOCache(tx2, 0);
@@ -1309,20 +1308,19 @@ unittest
     assert(utxos4[utxo_hash4].output.address == key_pairs[3].address);
 
     // Nomal
-    assert(isValidEnrollment(enroll1, utxoFinder));
+    assert(enroll1.isValid(utxoFinder));
 
     // Unspent frozen UTXO not found for the validator.
-    assert(!isValidEnrollment(enroll1, utxoFinder));
+    assert(!enroll1.isValid( utxoFinder));
 
     // UTXO is not frozen.
-    assert(canFind(isInvalidEnrollmentReason(enroll2, utxoFinder),
-        "UTXO is not frozen."));
+    assert(canFind(enroll2.isInvalidReason(utxoFinder), "UTXO is not frozen."));
 
     // The frozen amount must be equal to or greater than 40,000 BOA.
-    assert(!isValidEnrollment(enroll3, utxoFinder));
+    assert(!enroll3.isValid(utxoFinder));
 
     // Enrollment signature verification has an error.
-    assert(!isValidEnrollment(enroll4, utxoFinder));
+    assert(!enroll3.isValid(utxoFinder));
 }
 
 ///
@@ -1463,17 +1461,17 @@ unittest
 
     // valid pre-image
     PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
-    assert(isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
+    assert(new_image.isValid(prev_image, Enrollment.ValidatorCycle));
 
     // invalid pre-image with wrong enrollment key
     new_image = PreImageInfo(hashFull("xyz"), preimages[100], 101);
-    assert(!isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
+    assert(!new_image.isValid(prev_image, Enrollment.ValidatorCycle));
 
     // invalid pre-image with wrong height number
     new_image = PreImageInfo(hashFull("abc"), preimages[1], 3);
-    assert(!isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
+    assert(!new_image.isValid(prev_image, Enrollment.ValidatorCycle));
 
     // invalid pre-image with wrong hash value
     new_image = PreImageInfo(hashFull("abc"), preimages[100], 100);
-    assert(!isValidPreimage(new_image, prev_image, Enrollment.ValidatorCycle));
+    assert(!new_image.isValid(prev_image, Enrollment.ValidatorCycle));
 }

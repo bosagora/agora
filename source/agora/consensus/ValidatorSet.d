@@ -92,7 +92,7 @@ public class ValidatorSet
         const ref Enrollment enroll) @safe nothrow
     {
         // check validaty of the enrollment data
-        if (auto reason = isInvalidEnrollmentReason(enroll, finder))
+        if (auto reason = isInvalidReason(enroll, finder))
         {
             log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
             return false;
@@ -450,9 +450,8 @@ public class ValidatorSet
         if (this.getPreimage(preimage.enroll_key, stored_image) &&
             stored_image != PreImageInfo.init)
         {
-            if (auto reason =
-                isInvalidPreimageReason(preimage, stored_image,
-                    Enrollment.ValidatorCycle))
+            if (auto reason = isInvalidReason(
+                    preimage, stored_image, Enrollment.ValidatorCycle))
             {
                 log.info("Invalid preimage data: {}, Data was: ", reason,
                     preimage);
