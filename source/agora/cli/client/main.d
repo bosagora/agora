@@ -33,7 +33,7 @@ private int main (string[] args)
     string[] outputs;
     auto res = runProcess(args, outputs);
 
-    foreach(ref line; outputs)
+    foreach (ref line; outputs)
         writeln(line);
 
     return res;

@@ -127,7 +127,7 @@ public void hashPart (T) (scope const auto ref T record, scope HashDg state)
     /*pure*/ nothrow @nogc
     if (is(T == struct))
 {
-    static if(is(typeof(T.init.computeHash(HashDg.init))))
+    static if (is(typeof(T.init.computeHash(HashDg.init))))
         record.computeHash(state);
     else static if (__traits(compiles, () { const ubyte[] r = T.init[]; }))
         state(record[]);
