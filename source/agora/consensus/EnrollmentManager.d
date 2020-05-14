@@ -89,15 +89,6 @@ public class EnrollmentManager
     /// Key used for enrollment which is actually an UTXO hash
     private Hash enroll_key;
 
-    /// Pre-images for each point with the interval of validator cycle
-    private Hash[ulong] preimage_rounds;
-
-    /// Pre-images for current validator cycle
-    private Hash[ulong] cycle_preimages;
-
-    /// The current cycle index
-    private uint cycle_index;
-
     /// Random key for enrollment
     private Pair signature_noise;
 
@@ -120,6 +111,58 @@ public class EnrollmentManager
 
     /// The number of cycles for a bulk of pre-images
     private immutable uint NumberOfCycles = 100;
+
+    /// This struct hold all the cycle data together for better readability
+    private static struct PreImageCycle
+    {
+        /***********************************************************************
+
+            The number of the current cycle
+
+            This is the data used as a nonce in generating the cycle seed.
+            Named `nonce` to avoid any ambiguity. It is incremented once every
+            `EnrollPerCycle` period, currently 700 days.
+
+        ***********************************************************************/
+
+        private uint nonce;
+
+        /***********************************************************************
+
+            The index of the enrollment within the current cycle
+
+            This number is incremented every time a new Enrollment is accepted
+            by the consensus protocol, and reset when `nonce` is incremented.
+
+        ***********************************************************************/
+
+        private uint index;
+
+        /***********************************************************************
+
+            Seed for all enrollments for the current cycle
+
+            This variable is changed every time `nonce` is changed,
+            and contains all the roots used to generate the `preimages` value.
+
+        ***********************************************************************/
+
+        private Hash[ulong] seeds;
+
+        /***********************************************************************
+
+            Currently active list of pre-images
+
+            This variable is changed every time `index` is changed, to reflect
+            the current Enrollment's pre-images.
+
+        ***********************************************************************/
+
+        private Hash[ulong] preimages;
+    }
+
+    /// Ditto
+    private PreImageCycle cycle;
 
     /***************************************************************************
 
@@ -281,7 +324,7 @@ public class EnrollmentManager
         this.data.cycle_length = Enrollment.ValidatorCycle;
 
         // X, final seed data and preimages of hashes
-        this.data.random_seed = this.generatePreimages(this.cycle_index);
+        this.data.random_seed = this.generatePreimages(this.cycle.index);
 
         // R, signature noise
         this.signature_noise = this.createSignatureNoise(height);
@@ -323,7 +366,7 @@ public class EnrollmentManager
         enroll = this.data;
 
         // increase current cycle index
-        this.cycle_index += 1;
+        this.cycle.index += 1;
 
         return true;
     }
@@ -479,7 +522,7 @@ public class EnrollmentManager
 
         preimage.enroll_key = this.data.utxo_key;
         preimage.distance = index;
-        preimage.hash = this.cycle_preimages[index];
+        preimage.hash = this.cycle.preimages[index];
         return true;
     }
 
@@ -654,10 +697,10 @@ public class EnrollmentManager
         selected preimages for other cycles.
 
         This generates all pre-images needed for a cycle and stores them in
-        `cycle_preimages`. And It generates and stores pre-images being used
-        for defined number of cycles in `preimage_rounds` when pre-images needed
-        are missing. Once all the pre-images of `preimage_rounds' are used, then
-        new large amount of pre-images are created with the `nonce` incresed.
+        `cycle.preimages`. And It generates and stores pre-images being used
+        for defined number of cycles in `cycle.seeds` when pre-images needed
+        are missing. Once all the pre-images of `cycle.seeds' are used, then
+        new large amount of pre-images are created with the `nonce` increased.
         This function is very expensive, but should be seldom called, and might
         take more than 30ms for generating a hundred thousand number of them.
 
@@ -672,16 +715,16 @@ public class EnrollmentManager
     private Hash generatePreimages (uint cycle_index) @safe nothrow
     {
         // Clear if recreating pre-images is needed
-        if (this.preimage_rounds.byKey.maxElement(0) < cycle_index)
+        if (this.cycle.seeds.byKey.maxElement(0) < cycle_index)
         {
             () @trusted {
-                this.preimage_rounds.clear();
+                this.cycle.seeds.clear();
             }();
         }
 
         // if there is no pre-image, the defined number of pre-images must
         // be generated with the interval of ValidatorCycle.
-        if (this.preimage_rounds.length == 0)
+        if (this.cycle.seeds.length == 0)
         {
             // The value of `nonce` is zero-based. so we need to plus 1 to
             // the value to get the 'max_cycle_index` of this bulk.
@@ -690,19 +733,19 @@ public class EnrollmentManager
             auto hash = hashMulti(this.key_pair.v, "consensus.preimages", nonce);
             foreach (idx; 0 .. NumberOfCycles)
             {
-                preimage_rounds[max_cycle_index - idx] = hash;
+                this.cycle.seeds[max_cycle_index - idx] = hash;
                 foreach (_; 0 .. Enrollment.ValidatorCycle)
                     hash = hashFull(hash);
             }
         }
 
-        return this.populateCycleCache(this.preimage_rounds[cycle_index]);
+        return this.populateCycleCache(this.cycle.seeds[cycle_index]);
     }
 
     /***************************************************************************
 
         This generates all the sequential pre-images from the `seed` and
-        stores them in the `cycle_preimages` cache.
+        stores them in the `cycle.preimages` cache.
 
         Params:
             seed = The initial value for this round to derive pre-images from.
@@ -715,12 +758,12 @@ public class EnrollmentManager
     public Hash populateCycleCache (Hash seed) @safe nothrow
     {
         // Clear previous cycle data
-        () @trusted { this.cycle_preimages.clear(); }();
+        () @trusted { this.cycle.preimages.clear(); }();
 
         // Fill the cache
         foreach (idx; 1 .. Enrollment.ValidatorCycle + 1)
         {
-            this.cycle_preimages[Enrollment.ValidatorCycle - idx] = seed;
+            this.cycle.preimages[Enrollment.ValidatorCycle - idx] = seed;
             seed = hashFull(seed);
         }
         // Return the last entry in the cache
@@ -990,11 +1033,11 @@ unittest
     PreImageInfo result_image;
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image == PreImageInfo.init);
-    auto preimage = PreImageInfo(utxo_hash, man.cycle_preimages[100], 1100);
+    auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 1100);
     assert(man.addValidator(enroll, 2, &storage.findUTXO));
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image.enroll_key == utxo_hash);
-    assert(result_image.hash == man.cycle_preimages[100]);
+    assert(result_image.hash == man.cycle.preimages[100]);
     assert(result_image.distance == 1100);
 }
