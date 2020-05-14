@@ -354,14 +354,10 @@ private struct SCPEnvelopeFmt
     {
         try
         {
-            Signature sig;
-            if (this.envelope.signature[].length == Signature.Width)
-                sig = Signature(this.envelope.signature[]);
-
             formattedWrite(sink,
                 "{ statement: %s, sig: %s }",
                 SCPStatementFmt(this.envelope.statement, this.getQSet),
-                prettify(sig));
+                prettify(this.envelope.signature));
         }
         catch (Exception ex)
         {

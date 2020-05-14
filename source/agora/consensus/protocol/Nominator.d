@@ -772,15 +772,12 @@ private struct SCPEnvelopeHash
         "4039907a44d671dbffe55ce9ae21f8eca7d218e6c87573c381ae20d96bf4a56"),
     getEnvHash().hashFull().to!string);
 
-    alias Sig = agora.common.Types.Signature;
-    Sig sig;
     () @trusted
     {
         auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
         auto pair = KeyPair.fromSeed(Seed.fromString(seed));
         auto msg = getStHash().hashFull();
-        sig = pair.secret.sign(msg[]);
-        env.signature = sig;
+        env.signature = pair.secret.sign(msg[]);
     }();
 
     // with a signature
