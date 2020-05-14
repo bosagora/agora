@@ -22,7 +22,7 @@
     In order to ensure that we will never loose the ability to reveal
     pre-images, this implementation uses a reproducible scheme:
     on the first run, we generate a "cycle seed" which is derived from a hash
-    of the private key, a constant string, and a nounce, starting from 0.
+    of the private key, a constant string, and a nonce, starting from 0.
     Using this cycle seed, we generate a large amount of pre-images
     (currently enough for 100 enrollments). Then out of this range of
     [0 .. 100_800] pre-images, we reveal the last 1008 (`ValidatorCycle`),
@@ -30,9 +30,9 @@
     When the first enrollment runs out, we reveal the next last 1008,
     or in D terms `[$ - 2016 .. $ - 1008]`.
     When the cycle is expired, we re-generate a new cycle seed after
-    increasing the nounce.
+    increasing the nonce.
     By using this scheme, a node that would start from scratch with
-    an already-enrolled key will be able to recover its nounce and
+    an already-enrolled key will be able to recover its nonce and
     cycle index by scanning the blockchain, and resume validating.
 
     Copyright:
@@ -685,9 +685,9 @@ public class EnrollmentManager
         {
             // The value of `nonce` is zero-based. so we need to plus 1 to
             // the value to get the 'max_cycle_index` of this bulk.
-            uint nounce = cycle_index / NumberOfCycles;
-            uint max_cycle_index = (nounce + 1) * NumberOfCycles - 1;
-            auto hash = hashMulti(this.key_pair.v, "consensus.preimages", nounce);
+            uint nonce = cycle_index / NumberOfCycles;
+            uint max_cycle_index = (nonce + 1) * NumberOfCycles - 1;
+            auto hash = hashMulti(this.key_pair.v, "consensus.preimages", nonce);
             foreach (idx; 0 .. NumberOfCycles)
             {
                 preimage_rounds[max_cycle_index - idx] = hash;
