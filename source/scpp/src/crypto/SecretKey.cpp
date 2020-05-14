@@ -26,6 +26,8 @@ SecretKey::SecretKey() : mKeyType(PUBLIC_KEY_TYPE_ED25519)
                   "Unexpected secret key length");
     static_assert(crypto_sign_BYTES == sizeof(uint512),
                   "Unexpected signature length");
+    static_assert(crypto_sign_BYTES == sizeof(Signature),
+                  "Unexpected signature length");
 }
 
 SecretKey::~SecretKey()
@@ -91,7 +93,7 @@ SecretKey::sign(ByteSlice const& bin) const
 {
     assert(mKeyType == PUBLIC_KEY_TYPE_ED25519);
 
-    Signature out(crypto_sign_BYTES, 0);
+    Signature out;
     if (crypto_sign_detached(out.data(), NULL, bin.data(), bin.size(),
                              mSecretKey.data()) != 0)
     {

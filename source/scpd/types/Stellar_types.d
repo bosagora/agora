@@ -68,6 +68,6 @@ struct PublicKey {
     alias ed25519_ this;
 }
 
-alias Signature = opaque_vec!64;
+alias Signature = opaque_array!64;
 alias SignatureHint = opaque_array!4;
 alias NodeID = PublicKey;

@@ -51,8 +51,8 @@ case SIGNER_KEY_TYPE_HASH_X:
     uint256 hashX;
 };
 
-// variable size as the size depends on the signature scheme used
-typedef opaque Signature<64>;
+// fixed size as we use a 64-byte Signature in Agora
+typedef opaque Signature[64];
 
 typedef opaque SignatureHint[4];
 

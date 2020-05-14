@@ -437,7 +437,7 @@ template<> struct xdr_traits<::stellar::SignerKey> : xdr_traits_base {
 };
 } namespace stellar {
 
-using Signature = xdr::opaque_vec<64>;
+using Signature = xdr::opaque_array<64>;
 using SignatureHint = xdr::opaque_array<4>;
 using NodeID = PublicKey;
 
