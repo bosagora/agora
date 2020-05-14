@@ -91,7 +91,7 @@ public class EnrollmentPool
         @safe nothrow
     {
         // check validity of the enrollment data
-        if (auto reason = isInvalidEnrollmentReason(enroll, finder))
+        if (auto reason = isInvalidReason(enroll, finder))
         {
             log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
             return false;
