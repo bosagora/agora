@@ -37,10 +37,10 @@ unittest
 {
     auto qm = QuorumTracker.QuorumMap.create();
 
-    PublicKey pkA = KeyPair.random.address;
-    PublicKey pkB = KeyPair.random.address;
-    PublicKey pkC = KeyPair.random.address;
-    PublicKey pkD = KeyPair.random.address;
+    PublicKey pkA = WP.Keys.A.address;
+    PublicKey pkB = WP.Keys.B.address;
+    PublicKey pkC = WP.Keys.C.address;
+    PublicKey pkD = WP.Keys.D.address;
 
     qm[pkA.toStellarKey] = makeSharedQuorumSet(2, [pkB, pkC, pkD], null);
     qm[pkB.toStellarKey] = makeSharedQuorumSet(2, [pkA, pkC, pkD], null);
@@ -56,12 +56,12 @@ unittest
 {
     auto qm = QuorumTracker.QuorumMap.create();
 
-    PublicKey pkA = KeyPair.random.address;
-    PublicKey pkB = KeyPair.random.address;
-    PublicKey pkC = KeyPair.random.address;
-    PublicKey pkD = KeyPair.random.address;
-    PublicKey pkE = KeyPair.random.address;
-    PublicKey pkF = KeyPair.random.address;
+    PublicKey pkA = WP.Keys.A.address;
+    PublicKey pkB = WP.Keys.B.address;
+    PublicKey pkC = WP.Keys.C.address;
+    PublicKey pkD = WP.Keys.D.address;
+    PublicKey pkE = WP.Keys.E.address;
+    PublicKey pkF = WP.Keys.F.address;
 
     QuorumConfig qsABC = QuorumConfig(2, [pkA, pkB, pkC], null);
     QuorumConfig qsABD = QuorumConfig(2, [pkA, pkB, pkD], null);
@@ -95,12 +95,12 @@ unittest
 {
     auto qm = QuorumTracker.QuorumMap.create();
 
-    PublicKey pkA = KeyPair.random.address;
-    PublicKey pkB = KeyPair.random.address;
-    PublicKey pkC = KeyPair.random.address;
-    PublicKey pkD = KeyPair.random.address;
-    PublicKey pkE = KeyPair.random.address;
-    PublicKey pkF = KeyPair.random.address;
+    PublicKey pkA = WP.Keys.A.address;
+    PublicKey pkB = WP.Keys.B.address;
+    PublicKey pkC = WP.Keys.C.address;
+    PublicKey pkD = WP.Keys.D.address;
+    PublicKey pkE = WP.Keys.E.address;
+    PublicKey pkF = WP.Keys.F.address;
 
     qm[pkA.toStellarKey] = makeSharedQuorumSet(2, [pkB, pkC, pkD, pkE, pkF], null);
     qm[pkB.toStellarKey] = makeSharedQuorumSet(2, [pkA, pkC, pkD, pkE, pkF], null);
@@ -118,12 +118,12 @@ unittest
 {
     auto qm = QuorumTracker.QuorumMap.create();
 
-    PublicKey pkA = KeyPair.random.address;
-    PublicKey pkB = KeyPair.random.address;
-    PublicKey pkC = KeyPair.random.address;
-    PublicKey pkD = KeyPair.random.address;
-    PublicKey pkE = KeyPair.random.address;
-    PublicKey pkF = KeyPair.random.address;
+    PublicKey pkA = WP.Keys.A.address;
+    PublicKey pkB = WP.Keys.B.address;
+    PublicKey pkC = WP.Keys.C.address;
+    PublicKey pkD = WP.Keys.D.address;
+    PublicKey pkE = WP.Keys.E.address;
+    PublicKey pkF = WP.Keys.F.address;
 
     QuorumConfig qsABC = QuorumConfig(2, [pkA, pkB, pkC], null);
     QuorumConfig qsABD = QuorumConfig(2, [pkA, pkB, pkD], null);
@@ -160,19 +160,19 @@ unittest
 {
     auto qm = QuorumTracker.QuorumMap.create();
 
-    PublicKey pkSDF1 = KeyPair.random.address;
-    PublicKey pkSDF2 = KeyPair.random.address;
-    PublicKey pkSDF3 = KeyPair.random.address;
+    PublicKey pkSDF1 = WP.Keys.A.address;
+    PublicKey pkSDF2 = WP.Keys.B.address;
+    PublicKey pkSDF3 = WP.Keys.C.address;
 
-    PublicKey pkLOBSTR1 = KeyPair.random.address;
-    PublicKey pkLOBSTR2 = KeyPair.random.address;
+    PublicKey pkLOBSTR1 = WP.Keys.D.address;
+    PublicKey pkLOBSTR2 = WP.Keys.E.address;
 
-    PublicKey pkSatoshi1 = KeyPair.random.address;
-    PublicKey pkSatoshi2 = KeyPair.random.address;
-    PublicKey pkSatoshi3 = KeyPair.random.address;
+    PublicKey pkSatoshi1 = WP.Keys.F.address;
+    PublicKey pkSatoshi2 = WP.Keys.G.address;
+    PublicKey pkSatoshi3 = WP.Keys.H.address;
 
-    PublicKey pkCOINQVEST1 = KeyPair.random.address;
-    PublicKey pkCOINQVEST2 = KeyPair.random.address;
+    PublicKey pkCOINQVEST1 = WP.Keys.I.address;
+    PublicKey pkCOINQVEST2 = WP.Keys.J.address;
 
     // Some innersets used in quorums below.
 
@@ -226,6 +226,7 @@ uint roundUpPct (size_t n, size_t pct)
 NodeID[][] generateOrgs (size_t n_orgs, size_t[] sizes = [3, 5])
 {
     NodeID[][] ret;
+    size_t keyIndex;
 
     for (size_t i = 0; i < n_orgs; ++i)
     {
@@ -233,7 +234,7 @@ NodeID[][] generateOrgs (size_t n_orgs, size_t[] sizes = [3, 5])
         size_t n_nodes = sizes[i % sizes.length];
         for (size_t j = 0; j < n_nodes; ++j)
         {
-            ret[$ - 1] ~= KeyPair.random.address.toStellarKey();
+            ret[$ - 1] ~= WP.Keys[keyIndex++].address.toStellarKey();
         }
     }
     return ret;
