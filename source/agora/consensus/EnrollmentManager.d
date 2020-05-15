@@ -1018,15 +1018,14 @@ unittest
     assert(man.hasEnrollment(utxo_hash));
 
     PreImageInfo result_image;
+    assert(Enrollment.ValidatorCycle - 101 == 907); // Sanity check
     assert(man.getValidatorPreimage(utxo_hash, result_image));
     assert(result_image == PreImageInfo.init);
-    auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 1100);
+    auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
     assert(man.addValidator(enroll, 2, &storage.findUTXO));
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash, result_image));
-    assert(result_image.enroll_key == utxo_hash);
-    assert(result_image.hash == man.cycle.preimages[100]);
-    assert(result_image.distance == 1100);
+    assert(result_image == preimage);
 }
 
 /// Test `PreImageCycle` consistency between seeds and preimages
