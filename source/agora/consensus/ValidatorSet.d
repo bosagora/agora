@@ -110,11 +110,14 @@ public class ValidatorSet
         {
             static ubyte[] buffer;
             serializeToBuffer(enroll, buffer);
+            const img = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
+            static ubyte[] pbuffer;
+            serializeToBuffer(img, pbuffer);
 
             () @trusted {
                 this.db.execute("INSERT INTO validator_set " ~
-                    "(key, val, enrolled_height) VALUES (?, ?, ?)",
-                    enroll.utxo_key.toString(), buffer, block_height);
+                    "(key, val, enrolled_height, preimage) VALUES (?, ?, ?, ?)",
+                    enroll.utxo_key.toString(), buffer, block_height, pbuffer);
             }();
         }
         catch (Exception ex)
@@ -620,6 +623,9 @@ unittest
     ordered_enrollments ~= enroll;
     ordered_enrollments ~= enroll2;
     ordered_enrollments ~= enroll3;
+    /// PreImageCache for the first enrollment
+    PreImageCache cache = PreImageCache(Enrollment.ValidatorCycle, 1);
+    cache.reset(hashFull(seed_sources[utxos[0]]));
 
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
@@ -633,14 +639,12 @@ unittest
     PreImageInfo result_image;
     assert(!set.hasPreimage(utxos[0], 10));
     assert(set.getPreimage(utxos[0], result_image));
-    assert(result_image == PreImageInfo.init);
-    auto preimage = PreImageInfo(utxos[0], enroll.random_seed, 10);
+    assert(result_image == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+    auto preimage = PreImageInfo(utxos[0], cache[$ - 11], 10);
     assert(set.addPreimage(preimage));
     assert(set.hasPreimage(utxos[0], 10));
     assert(set.getPreimage(utxos[0], result_image));
-    assert(result_image.enroll_key == preimage.enroll_key);
-    assert(result_image.hash == preimage.hash);
-    assert(result_image.distance == preimage.distance);
+    assert(result_image == preimage);
 
     // test for clear up expired validators
     seed_sources[utxos[3]] = Scalar.random();
