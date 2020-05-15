@@ -588,7 +588,7 @@ public class EnrollmentManager
 
         preimage.enroll_key = this.data.utxo_key;
         preimage.distance = index;
-        preimage.hash = this.cycle.preimages[index];
+        preimage.hash = this.cycle.preimages[$ - index - 1];
         return true;
     }
 
@@ -943,7 +943,9 @@ unittest
     assert(man.addValidator(enroll, 10, &storage.findUTXO));
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
+    assert(preimage.hash == man.cycle.preimages[$ - 1]);
     assert(man.getPreimage(10 + Enrollment.ValidatorCycle, preimage));
+    assert(preimage.hash == man.cycle.preimages[0]);
     assert(!man.getPreimage(11 + Enrollment.ValidatorCycle, preimage));
 
     /// test for the functions about periodic revelation of a pre-image
