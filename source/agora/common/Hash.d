@@ -373,36 +373,28 @@ public struct PreImageCache
                    This can be used when large sample size are used,
                    and one wish to stop initialization past a certain threshold.
 
-        Returns:
-          The result of hashing seed `sample_size * (count + 1) - 1` times
-          if `length == 0`, or `sample_size * (length + 1) - 1` otherwise,
-          provided `length <= count`.
-
     ***************************************************************************/
 
-    public Hash reset (Hash seed, size_t length)
+    public void reset (Hash seed, size_t length)
     {
         // Set the length, so that extra entries are not accessible through
         // `opIndex`
         assert(length > 0, "The length of the array should be at least 1");
         this.data.length = length;
         () @trusted { assumeSafeAppend(this.data); }();
-        return this.reset(seed);
+        this.reset(seed);
     }
 
     /// Ditto
-    public Hash reset (Hash seed) @nogc
+    public void reset (Hash seed) @nogc
     {
-        size_t count = 0;
-        immutable end = this.data.length * this.interval - 1;
-        foreach (idx, ref entry; this.data)
+        this.data[0] = seed;
+        foreach (ref entry; this.data[1 .. $])
         {
-            entry = seed;
-            do
+            foreach (idx; 0 .. this.interval)
                 seed = hashFull(seed);
-            while ((++count % end) % this.interval);
+            entry = seed;
         }
-        return seed;
     }
 
     /***************************************************************************
@@ -452,13 +444,13 @@ unittest
     foreach (interval; intervals)
     {
         auto cache = PreImageCache(data.length / interval, interval);
-        auto last = cache.reset(data[0]);
-        assert(last == data[$-1]);
+        cache.reset(data[0]);
         foreach (idx, const ref value; data)
             assert(value == cache[idx]);
 
-        assert(cache[$-1] == last);
-        assert(cache[cache.length - 1] == last);
+        // Test `length` and `$` properties
+        assert(cache[$-1] == data[$-1]);
+        assert(cache[cache.length - 1] == data[$-1]);
 
         switch (interval)
         {
