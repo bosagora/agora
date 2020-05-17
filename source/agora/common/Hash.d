@@ -426,6 +426,9 @@ public struct PreImageCache
         return value;
     }
 
+    /// Alias to the underlying data, useful when dealing with multiple levels
+    public const(Hash)[] byStride () const pure @nogc { return this.data; }
+
     /// Returns: The number of preimages this cache can represent
     public size_t length () const pure nothrow @nogc @safe
     {
