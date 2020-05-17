@@ -551,16 +551,15 @@ unittest
     import agora.consensus.Genesis;
     import std.algorithm;
     import std.format;
-    import std.conv;
 
     scope storage = new TestUTXOSet;
 
     auto gen_key_pair = getGenesisKeyPair();
     KeyPair key_pair = KeyPair.random();
 
-    foreach (idx; 0 .. 8)
+    foreach (uint idx; 0 .. 8)
     {
-        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+        auto input = Input(hashFull(GenesisTransaction), idx);
 
         Transaction tx =
         {
@@ -708,14 +707,13 @@ unittest
     import agora.common.Amount;
     import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
-    import std.conv;
     import std.format;
 
     scope storage = new TestUTXOSet;
     auto key_pair = getGenesisKeyPair();
-    foreach (idx; 0 .. 8)
+    foreach (uint idx; 0 .. 8)
     {
-        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+        auto input = Input(hashFull(GenesisTransaction), idx);
         Transaction tx =
         {
             TxType.Freeze,
