@@ -478,10 +478,6 @@ unittest
             assert(cache.data.length == 1);
             assert(cache.data[0] == data[0]);
             break;
-        case 0:
-            assert(cache.data.length == 32);
-            assert(cache.data[] == data[]);
-            break;
 
         default:
             assert(0);
