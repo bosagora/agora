@@ -526,18 +526,14 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
     pair.v = secretKeyToCurveScalar(key_pair.secret);
     pair.V = pair.v.toPoint();
 
-    Hash random_seed;
-    Hash[] preimages;
     auto enroll = Enrollment();
     auto signature_noise = Pair.random();
+    auto cache = PreImageCache(Enrollment.ValidatorCycle, 1);
+    cache.reset(hashFull(random_seed_src));
 
     enroll.utxo_key = utxo_key;
     enroll.cycle_length = Enrollment.ValidatorCycle;
-    preimages ~= hashFull(random_seed_src);
-    foreach (i; 0 ..  enroll.cycle_length-1)
-        preimages ~= hashFull(preimages[i]);
-    reverse(preimages);
-    enroll.random_seed = preimages[0];
+    enroll.random_seed = cache[$ - 1];
     enroll.enroll_sig = sign(pair.v, pair.V, signature_noise.V,
         signature_noise.v, enroll);
     return enroll;
