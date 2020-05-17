@@ -317,7 +317,72 @@ nothrow @nogc @safe unittest
 
 public struct PreImageCache
 {
-    @safe nothrow:
+    @safe:
+
+    /// Describe print modes for `toString`
+    public enum PrintMode
+    {
+        /// Default value, just print the two extreme values
+        Bounds,
+        /// Print all stored intermediate value and the last bound
+        Stride,
+        /// Print all values, performing intermediate hashing
+        All,
+    }
+
+    /***************************************************************************
+
+        Print the content of a cache
+
+        By default, this functoin prints the bounds of the cache (the value at
+        index 0, and the last value, as returned by `reset`).
+        Changing the mode makes it print either the internal content, or the
+        full range that is covered, in a newline-separated list.
+        Those two later mode are intended for debugging. Additionally, no
+        parameterless `toString` is provided for this reason.
+
+        Params:
+          sink = The sink to write the piecemeal string data to
+          mode = The `PrintMode` to use for printing the content.
+                 By default, only the bounds (0 and $) are printed.
+
+    ***************************************************************************/
+
+    public void toString (scope void delegate(scope const(char)[]) @safe sink,
+                          PrintMode mode = PrintMode.Bounds) const
+    {
+        switch (mode)
+        {
+        case PrintMode.Bounds:
+            this[0].toString(sink);
+            sink(" - ");
+            this[$ - 1].toString(sink);
+            break;
+
+        case PrintMode.Stride:
+            foreach (index, const ref value; this.data)
+            {
+                if (index > 0) sink("\n");
+                value.toString(sink);
+            }
+            break;
+
+        case PrintMode.All:
+            foreach (index; 0 .. this.length)
+            {
+                if (index > 0) sink("\n");
+                this[index].toString(sink);
+                if ((index % this.interval) == 0)
+                    sink(" [STORED]");
+            }
+            break;
+
+        default:
+            assert(0);
+        }
+    }
+
+    nothrow:
 
     /// Store the actual preimages
     private Hash[] data;
