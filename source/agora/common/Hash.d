@@ -505,7 +505,7 @@ unittest
         entry = hashFull(data[idx]);
 
     // First case and last two are degenerate
-    immutable intervals = [2, 4, 8, 16];
+    immutable intervals = [1, 2, 4, 8, 16];
     foreach (interval; intervals)
     {
         auto cache = PreImageCache(data.length / interval, interval);
