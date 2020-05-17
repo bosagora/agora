@@ -551,8 +551,9 @@ unittest
     scope storage = new TestUTXOSet;
 
     auto gen_key_pair = getGenesisKeyPair();
-    KeyPair key_pair = KeyPair.random();
-
+    KeyPair[5] kp = [ KeyPair.random(), KeyPair.random(), KeyPair.random(),
+                      KeyPair.random(), KeyPair.random() ];
+    Hash[5] utxos;
     foreach (uint idx; 0 .. 8)
     {
         auto input = Input(hashFull(GenesisTransaction), idx);
@@ -561,36 +562,35 @@ unittest
         {
             TxType.Freeze,
             [input],
-            [Output(Amount.MinFreezeAmount, key_pair.address)]
+            [Output(Amount.MinFreezeAmount, kp[idx % $].address)]
         };
 
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        const thisHash = hashFull(tx);
+        auto signature = gen_key_pair.secret.sign(thisHash[]);
         tx.inputs[0].signature = signature;
         storage.put(tx);
+        // Store the hash of the UTXO as we need it to create enrollments
+        utxos[idx % $] = UTXOSet.getHash(thisHash, 0);
     }
     ValidatorSet set = new ValidatorSet(":memory:");
     scope (exit) set.shutdown();
-    Hash[] utxo_hashes = storage.keys;
 
     // add enrollments
     Scalar[Hash] seed_sources;
-    auto utxo_hash = utxo_hashes[0];
-    seed_sources[utxo_hash] = Scalar.random();
-    auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    seed_sources[utxos[0]] = Scalar.random();
+    auto enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
     assert(set.add(1, &storage.findUTXO, enroll));
     assert(set.count() == 1);
-    assert(set.hasEnrollment(utxo_hash));
+    assert(set.hasEnrollment(utxos[0]));
     assert(!set.add(1, &storage.findUTXO, enroll));
 
-    auto utxo_hash2 = utxo_hashes[1];
-    seed_sources[utxo_hash2] = Scalar.random();
-    auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2]);
+    seed_sources[utxos[1]] = Scalar.random();
+    auto enroll2 = createEnrollment(utxos[1], kp[1], seed_sources[utxos[1]]);
     assert(set.add(1, &storage.findUTXO, enroll2));
     assert(set.count() == 2);
 
-    auto utxo_hash3 = utxo_hashes[2];
-    seed_sources[utxo_hash3] = Scalar.random();
-    auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3]);
+    seed_sources[utxos[2]] = Scalar.random();
+    auto enroll3 = createEnrollment(utxos[2], kp[2], seed_sources[utxos[2]]);
     assert(set.add(9, &storage.findUTXO, enroll3));
     assert(set.count() == 3);
 
@@ -602,18 +602,18 @@ unittest
 
     // get a specific enrollment object
     Enrollment stored_enroll;
-    assert(set.getEnrollment(utxo_hash2, stored_enroll));
+    assert(set.getEnrollment(utxos[1], stored_enroll));
     assert(stored_enroll == enroll2);
 
     // remove an enrollment
-    set.remove(utxo_hash2);
+    set.remove(utxos[1]);
     assert(set.count() == 2);
-    assert(!set.getEnrollment(utxo_hash2, stored_enroll));
-    assert(set.hasEnrollment(utxo_hash));
-    set.remove(utxo_hash);
-    assert(!set.hasEnrollment(utxo_hash));
-    set.remove(utxo_hash2);
-    set.remove(utxo_hash3);
+    assert(!set.getEnrollment(utxos[1], stored_enroll));
+    assert(set.hasEnrollment(utxos[0]));
+    set.remove(utxos[0]);
+    assert(!set.hasEnrollment(utxos[0]));
+    set.remove(utxos[1]);
+    set.remove(utxos[2]);
     assert(set.count() == 0);
 
     Enrollment[] ordered_enrollments;
@@ -631,35 +631,33 @@ unittest
 
     // test for adding and getting preimage
     PreImageInfo result_image;
-    assert(!set.hasPreimage(utxo_hash, 10));
-    assert(set.getPreimage(utxo_hash, result_image));
+    assert(!set.hasPreimage(utxos[0], 10));
+    assert(set.getPreimage(utxos[0], result_image));
     assert(result_image == PreImageInfo.init);
-    auto preimage = PreImageInfo(utxo_hash, enroll.random_seed, 10);
+    auto preimage = PreImageInfo(utxos[0], enroll.random_seed, 10);
     assert(set.addPreimage(preimage));
-    assert(set.hasPreimage(utxo_hash, 10));
-    assert(set.getPreimage(utxo_hash, result_image));
+    assert(set.hasPreimage(utxos[0], 10));
+    assert(set.getPreimage(utxos[0], result_image));
     assert(result_image.enroll_key == preimage.enroll_key);
     assert(result_image.hash == preimage.hash);
     assert(result_image.distance == preimage.distance);
 
     // test for clear up expired validators
-    auto utxo_hash4 = utxo_hashes[3];
-    seed_sources[utxo_hash4] = Scalar.random();
-    enroll = createEnrollment(utxo_hash4, key_pair, seed_sources[utxo_hash4]);
+    seed_sources[utxos[3]] = Scalar.random();
+    enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]]);
     assert(set.add(9, &storage.findUTXO, enroll));
     set.clearExpiredValidators(1016);
     enrolls.length = 0;
     assert(set.getValidators(enrolls));
     assert(enrolls.length == 1);
-    assert(enrolls[0].utxo_key == utxo_hash4);
+    assert(enrolls[0].utxo_key == utxos[3]);
 
     // add enrollment at the genesis block:
     // validates blocks [1 .. 1008] inclusively
     set.clearExpiredValidators(long.max);  // clear all
     assert(set.count == 0);
-    utxo_hash = utxo_hashes[0];
-    seed_sources[utxo_hash] = Scalar.random();
-    enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    seed_sources[utxos[0]] = Scalar.random();
+    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
     assert(set.add(0, &storage.findUTXO, enroll));
 
     // not cleared yet at height 1007
@@ -668,7 +666,7 @@ unittest
     assert(set.count == 1);
     assert(set.getValidators(enrolls));
     assert(enrolls.length == 1);
-    assert(enrolls[0].utxo_key == utxo_hash);
+    assert(enrolls[0].utxo_key == utxos[0]);
 
     // cleared after block height 1008 was externalized
     set.clearExpiredValidators(1008);
@@ -677,9 +675,8 @@ unittest
     assert(enrolls.length == 0);
 
     // now try with validator for [1 .. 1009]
-    utxo_hash = utxo_hashes[0];
-    seed_sources[utxo_hash] = Scalar.random();
-    enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    seed_sources[utxos[0]] = Scalar.random();
+    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
     assert(set.add(1, &storage.findUTXO, enroll));
 
     // not cleared yet at height 1008
@@ -688,7 +685,7 @@ unittest
     assert(set.count == 1);
     assert(set.getValidators(enrolls));
     assert(enrolls.length == 1);
-    assert(enrolls[0].utxo_key == utxo_hash);
+    assert(enrolls[0].utxo_key == utxos[0]);
 
     // cleared after block height 1009 was externalized
     set.clearExpiredValidators(1009);
