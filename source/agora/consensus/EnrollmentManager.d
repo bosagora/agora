@@ -203,7 +203,7 @@ public class EnrollmentManager
             // not the number of round, hence why we use `byStrides`
             // The alternative would be:
             // [$ - (this.index + 1) * this.preimages.length]
-            const ret = this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
 
             // Increment index if there are rounds left in this cycle
             this.index += 1;
@@ -213,7 +213,7 @@ public class EnrollmentManager
                 this.nonce += 1;
             }
 
-            return ret;
+            return this.preimages[$ - 1];
         }
     }
 
