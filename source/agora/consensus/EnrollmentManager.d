@@ -197,13 +197,17 @@ public class EnrollmentManager
                     secret, "consensus.preimages", this.nonce);
                 this.seeds.reset(cycle_seed);
             }
-            // Populare the current enrollment round cache
-            const ret = this.preimages.reset(this.seeds[this.index]);
+
+            // Populate the current enrollment round cache
+            // The index into `seeds` is the absolute index of the cycle,
+            // not the number of round, hence why we use `byStrides`
+            // The alternative would be:
+            // [$ - (this.index + 1) * this.preimages.length]
+            const ret = this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
 
             // Increment index if there are rounds left in this cycle
-            if (this.index < NumberOfCycles)
-                this.index += 1;
-            else
+            this.index += 1;
+            if (this.index >= NumberOfCycles)
             {
                 this.index = 0;
                 this.nonce += 1;
@@ -1023,4 +1027,68 @@ unittest
     assert(result_image.enroll_key == utxo_hash);
     assert(result_image.hash == man.cycle.preimages[100]);
     assert(result_image.distance == 1100);
+}
+
+/// Test `PreImageCycle` consistency between seeds and preimages
+unittest
+{
+    // Note: This was copied from `EnrollmentManager` constructor and should
+    // be kept in sync with it
+    auto cycle = EnrollmentManager.PreImageCycle(
+        /* nounce: */ 0,
+        /* index:  */ 0,
+        /* seeds:  */ PreImageCache(EnrollmentManager.NumberOfCycles, Enrollment.ValidatorCycle),
+        /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
+    );
+
+    auto secret = Scalar.random();
+    Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
+    foreach (uint cycleGroupCount; 0 .. 10)
+    {
+        foreach (outerIndex; 1 .. EnrollmentManager.NumberOfCycles + 1)
+        {
+            // Sanity check #1
+            assert(cycleGroupCount == cycle.nonce);
+            assert(outerIndex - 1  == cycle.index);
+            // Only provide `secret` on the first iteration
+            const commitment = cycle.consume(outerIndex == 1 ? secret : fake_secret);
+            const lastInCycle = outerIndex == EnrollmentManager.NumberOfCycles;
+            // Sanity check #2
+            assert(cycleGroupCount + lastInCycle == cycle.nonce);
+            if (lastInCycle)
+                assert(0                         == cycle.index);
+            else
+                assert(outerIndex == cycle.index);
+            // The commitment (last+1 in the cache, first to be revealed)
+            // is the final pre-image revealed by the previous enrollment
+            // (preimages[0])
+            immutable SeedIndex = cycle.seeds.length
+                - outerIndex * Enrollment.ValidatorCycle;
+            assert(cycle.seeds.byStride[$ - outerIndex] == cycle.preimages[0]);
+        }
+    }
+
+    // This check is quite expensive: 45s when it was written,
+    // which doubled the total runtime of a `dub test` cycle.
+    // It is versioned out now, but can be enabled for paranoid testing
+    version (none)
+    {
+        // Reset the cycle and test that *all* values in `seeds` are represented
+        // in `preimages`
+        cycle.nonce = 0;
+        cycle.index = 0;
+        foreach (size_t cycleCount; 0 .. 5)
+        {
+            size_t seedIndex = cycle.seeds.length - 1;
+            while (true)
+            {
+                const Index = seedIndex % Enrollment.ValidatorCycle;
+                if (Index == (Enrollment.ValidatorCycle - 1))
+                    cycle.consume(seedIndex == cycle.seeds.length ? secret :fake_secret);
+                assert(cycle.seeds[seedIndex] == cycle.preimages[Index]);
+                if (seedIndex == 0) break;
+                seedIndex--;
+            }
+        }
+    }
 }
