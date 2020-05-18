@@ -26,85 +26,67 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
-/// test for  enrollment process & revealing a pre-image periodically
+/// test for enrollment process & revealing a pre-image periodically
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    // generate 1007 blocks, 1 short of the enrollments expiring.
+    TestConf conf = { extra_blocks : 1007 };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    auto node_2 = nodes[1];
 
-    // make transactions which have UTXOs for the node.
-    auto gen_key_pair = getGenesisKeyPair();
-    auto pubkey_1 = node_1.getPublicKey();
-
-    Transaction[] txs;
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
-
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, pubkey_1),
-                Output(Amount(100), gen_key_pair.address)]
-        };
-
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        txs ~= tx;
-    }
-    txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 1).retryFor(8.seconds);
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 1007, 2.seconds,
+            format("Node %s has block height %s. Expected: %s",
+                idx, node.getBlockHeight(), 1007)));
 
     // create enrollment data
-    Enrollment enroll = node_1.createEnrollmentData();
-
     // send a request to enroll as a Validator
-    node_1.enrollValidator(enroll);
+    Enrollment enroll_0 = nodes[0].createEnrollmentData();
+    Enrollment enroll_1 = nodes[1].createEnrollmentData();
+    Enrollment enroll_2 = nodes[2].createEnrollmentData();
+    Enrollment enroll_3 = nodes[3].createEnrollmentData();
+    nodes[0].enrollValidator(enroll_1);
+    nodes[1].enrollValidator(enroll_2);
+    nodes[2].enrollValidator(enroll_3);
+    nodes[3].enrollValidator(enroll_0);
 
-    // make a block with height of 2
-    Transaction[] txs2;
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        auto input = Input(hashFull(txs[idx]), 1);
+    // re-enroll every validator
+    nodes.each!(node =>
+        retryFor(node.getEnrollment(enroll_0.utxo_key) == enroll_0 &&
+                 node.getEnrollment(enroll_1.utxo_key) == enroll_1 &&
+                 node.getEnrollment(enroll_2.utxo_key) == enroll_2 &&
+                 node.getEnrollment(enroll_3.utxo_key) == enroll_3,
+            5.seconds));
 
-        Transaction tx =
-        {
-            TxType.Payment,
-            [input],
-            [Output(Amount(100), gen_key_pair.address)]
-        };
+    auto txs = makeChainedTransactions(getGenesisKeyPair(),
+        network.blocks[$ - 1].txs, 1);
+    txs.each!(tx => nodes[0].putTransaction(tx));
 
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        txs2 ~= tx;
-    }
-    txs2.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(8.seconds);
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 1008, 2.seconds,
+            format("Node %s has block height %s. Expected: %s",
+                idx, node.getBlockHeight(), 1008)));
 
-    // Currently a new transaction needs to be sent to trigger
-    // the reveal of a pre-image
-    // See https://github.com/bpfkorea/agora/issues/582
-    Transaction tx =
-    {
-        TxType.Payment,
-        [Input(hashFull(txs2[0]), 0)],
-        [Output(Amount(100), pubkey_1)]
-    };
-    auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-    tx.inputs[0].signature = signature;
-    node_1.putTransaction(tx);
+    // verify that consensus can still be reached
+    txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
+    txs.each!(tx => nodes[0].putTransaction(tx));
+
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 1009, 2.seconds,
+            format("Node %s has block height %s. Expected: %s",
+                idx, node.getBlockHeight(), 1009)));
 
     // check if nodes have a pre-image newly sent
     // during creating transactions for the new block
     nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
+        retryFor(node.getPreimage(enroll_0.utxo_key) != PreImageInfo.init &&
+                 node.getPreimage(enroll_1.utxo_key) != PreImageInfo.init &&
+                 node.getPreimage(enroll_2.utxo_key) != PreImageInfo.init &&
+                 node.getPreimage(enroll_3.utxo_key) != PreImageInfo.init,
             5.seconds));
 }

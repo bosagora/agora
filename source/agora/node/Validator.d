@@ -55,6 +55,9 @@ public class Validator : FullNode, API
     /// Nominator instance
     protected Nominator nominator;
 
+    /// The last used quorum configuration, periodically updated
+    private QuorumConfig last_qc;
+
     /// Ctor
     public this (const Config config)
     {
@@ -71,9 +74,68 @@ public class Validator : FullNode, API
         }
 
         // build the list of required quorum peers to connect to
-        auto qc = this.buildQuorumConfig();
+        this.last_qc = this.buildQuorumConfig();
         this.nominator = this.getNominator(this.network,
-            this.config.node.key_pair, this.ledger, this.taskman, qc);
+            this.config.node.key_pair, this.ledger, this.taskman, this.last_qc);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a Ledger
+
+        Overridden in Validator to trigger quorum config changes after a new
+        block is applied to the ledger.
+
+        Params:
+            pool = the transaction pool
+            utxo_set = the set of unspent outputs
+            storage = the block storage
+            enroll_man = the enrollmentManager
+            node_config = the node config
+
+        Returns:
+            an instance of a Ledger
+
+    ***************************************************************************/
+
+    protected final override Ledger getLedger (TransactionPool pool,
+        UTXOSet utxo_set, IBlockStorage storage, EnrollmentManager enroll_man,
+        NodeConfig node_config)
+    {
+        return new Ledger(pool, utxo_set, storage, enroll_man, node_config,
+            &this.onValidatorsChanged);
+    }
+
+    /***************************************************************************
+
+        Called when the active validator set has changed after a block
+        was externalized.
+
+        Regenerates the quorum set, and establishes a connection to the
+        new quorum set network.
+
+    ***************************************************************************/
+
+    private void onValidatorsChanged () nothrow @trusted
+    {
+        scope (failure) assert(0);
+        import std.stdio;
+
+        // build the list of required quorum peers to connect to
+        auto qc = this.buildQuorumConfig();
+
+        // we have a new quorum configuration
+        this.last_qc = qc;
+        Set!PublicKey required_peers;
+        buildRequiredKeys(this.config.node.key_pair.address, this.last_qc,
+            required_peers);
+
+        // todo: need to implement:
+        // connect to any new validators that we don't have a connection to
+        // handle other node shutdowns gracefully
+
+        // then update the quorum configuration
+        this.nominator.updateQuorumConfig(this.last_qc);
     }
 
     /***************************************************************************

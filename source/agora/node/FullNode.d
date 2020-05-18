@@ -141,9 +141,35 @@ public class FullNode : API
         scope (failure) this.utxo_set.shutdown();
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
         scope (failure) this.enroll_man.shutdown();
-        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, this.enroll_man, config.node);
+        this.ledger = this.getLedger(this.pool, this.utxo_set, this.storage, this.enroll_man, config.node);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a Ledger
+
+        Overridden in Validator to trigger quorum config changes after a new
+        block is applied to the ledger.
+
+        Params:
+            pool = the transaction pool
+            utxo_set = the set of unspent outputs
+            storage = the block storage
+            enroll_man = the enrollmentManager
+            node_config = the node config
+
+        Returns:
+            an instance of a Ledger
+
+    ***************************************************************************/
+
+    protected Ledger getLedger (TransactionPool pool,
+        UTXOSet utxo_set, IBlockStorage storage, EnrollmentManager enroll_man,
+        NodeConfig node_config)
+    {
+        return new Ledger(pool, utxo_set, storage, enroll_man, node_config);
     }
 
     /// The first task method, loading from disk, node discovery, etc

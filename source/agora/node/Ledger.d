@@ -63,6 +63,10 @@ public class Ledger
     /// Node config
     private NodeConfig node_config;
 
+    /// If not-null, call this delegate if the validator set changed after
+    /// a block was externalized
+    private void delegate () nothrow @safe onValidatorsChanged;
+
     /***************************************************************************
 
         Constructor
@@ -73,6 +77,8 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             node_config = the node config
+            onValidatorsChanged = optional delegate to call after the validator
+                                  set changes when a block was externalized
 
     ***************************************************************************/
 
@@ -80,13 +86,15 @@ public class Ledger
         UTXOSet utxo_set,
         IBlockStorage storage,
         EnrollmentManager enroll_man,
-        NodeConfig node_config)
+        NodeConfig node_config,
+        void delegate () nothrow @safe onValidatorsChanged = null)
     {
         this.pool = pool;
         this.utxo_set = utxo_set;
         this.storage = storage;
         this.enroll_man = enroll_man;
         this.node_config = node_config;
+        this.onValidatorsChanged = onValidatorsChanged;
         if (!this.storage.load())
             assert(0);
 
@@ -230,7 +238,12 @@ public class Ledger
         if (!this.storage.saveBlock(block))
             assert(0);
 
+        auto old_count = this.enroll_man.validatorCount();
         this.enroll_man.clearExpiredValidators(block.header.height);
+
+        // there was a change in the active validator set
+        bool validators_changed = block.header.enrollments.length > 0
+            || this.enroll_man.validatorCount() != old_count;
 
         foreach (enrollment; block.header.enrollments)
             if (!this.enroll_man.addValidator(enrollment,
@@ -240,6 +253,9 @@ public class Ledger
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
             assert(0);
+
+        if (this.onValidatorsChanged !is null && validators_changed)
+            this.onValidatorsChanged();
     }
 
     /***************************************************************************
