@@ -908,6 +908,11 @@ public class BlockStorage : IBlockStorage
 
 public class MemBlockStorage : IBlockStorage
 {
+    // we already know the blocks in the ctor,
+    // but we should only load them on the call to load()
+    // see also: #599
+    private const(Block)[] _to_load;
+
     /// Storage for all the blocks
     private ubyte[][] blocks;
 
@@ -918,8 +923,9 @@ public class MemBlockStorage : IBlockStorage
     private IndexHash hash_idx;
 
     /// Ctor
-    public this ()
+    public this (const(Block)[] blocks = null)
     {
+        this._to_load = blocks;
         this.height_idx = new IndexHeight();
         this.hash_idx = new IndexHash();
     }
@@ -927,8 +933,14 @@ public class MemBlockStorage : IBlockStorage
     /// No-op: MemBlockStorage does no I/O
     public override bool load ()
     {
-        if (this.blocks.length == 0)
+        if (this._to_load.length == 0)
             this.saveBlock(GenesisBlock);
+        else
+        {
+            foreach (const ref block; this._to_load)
+                this.saveBlock(block);
+        }
+
         return true;
     }
 
@@ -1105,4 +1117,17 @@ unittest
         storage.readBlock(random_block, block_hashes[idx]);
         assert(hashFull(random_block.header) == block_hashes[idx]);
     }
+
+    // test loading in constructor
+    auto txs_1 = makeChainedTransactions(gen_key_pair, null, 1);
+    auto block_2 = makeNewBlock(GenesisBlock(), txs_1);
+    const ctor_blocks = [GenesisBlock(), cast(const(Block))block_2];
+    scope store = new MemBlockStorage(ctor_blocks);
+    Block block;
+    assert(!store.tryReadBlock(block, 0));  // nothing loaded yet
+    store.load();
+    assert(store.tryReadBlock(block, 0));
+    assert(block == ctor_blocks[0]);
+    assert(store.tryReadBlock(block, 1));
+    assert(block == ctor_blocks[1]);
 }

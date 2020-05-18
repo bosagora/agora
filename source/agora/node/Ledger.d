@@ -1364,24 +1364,6 @@ unittest
     import agora.common.Serializer;
     import std.exception;
 
-    static class PreLoadedMemBlockStorage : MemBlockStorage
-    {
-        const(Block)[] blocks;
-
-        public this (const(Block)[] blocks)
-        {
-            this.blocks = blocks;
-        }
-
-        public override bool load ()
-        {
-            foreach (const ref block; this.blocks)
-                this.saveBlock(block);
-
-            return true;
-        }
-    }
-
     // generate genesis with a freeze & payment tx, and 'count' number of
     // extra blocks
     const(Block)[] genBlocksToIndex ( KeyPair key_pair,
@@ -1448,7 +1430,7 @@ unittest
         scope enroll_man = new EnrollmentManager(":memory:", key_pair);
         scope (exit) enroll_man.shutdown();
         const blocks = genBlocksToIndex(key_pair, enroll_man, 0);
-        scope storage = new PreLoadedMemBlockStorage(blocks);
+        scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope (exit) pool.shutdown();
         scope utxo_set = new UTXOSet(":memory:");
@@ -1466,7 +1448,7 @@ unittest
         scope enroll_man = new EnrollmentManager(":memory:", key_pair);
         scope (exit) enroll_man.shutdown();
         const blocks = genBlocksToIndex(key_pair, enroll_man, 1007);
-        scope storage = new PreLoadedMemBlockStorage(blocks);
+        scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope (exit) pool.shutdown();
         scope utxo_set = new UTXOSet(":memory:");
@@ -1484,7 +1466,7 @@ unittest
         scope enroll_man = new EnrollmentManager(":memory:", key_pair);
         scope (exit) enroll_man.shutdown();
         const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
-        scope storage = new PreLoadedMemBlockStorage(blocks);
+        scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope (exit) pool.shutdown();
         scope utxo_set = new UTXOSet(":memory:");
