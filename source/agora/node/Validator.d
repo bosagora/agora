@@ -19,11 +19,17 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.common.Task;
+import agora.common.TransactionPool;
 import agora.common.Types;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSet;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
+import agora.consensus.Quorum;
 import agora.network.NetworkManager;
+import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.utils.Log;
@@ -64,9 +70,33 @@ public class Validator : FullNode, API
             this.enroll_man.shutdown();
         }
 
+        // build the list of required quorum peers to connect to
+        auto qc = this.buildQuorumConfig();
         this.nominator = this.getNominator(this.network,
-            this.config.node.key_pair, this.ledger, this.taskman,
-            this.config.quorum);
+            this.config.node.key_pair, this.ledger, this.taskman, qc);
+    }
+
+    /***************************************************************************
+
+        Generate the quorum configuration for this node based on the
+        blockchain state (enrollments).
+
+        Returns:
+            the generated quorum configuration
+
+    ***************************************************************************/
+
+    private QuorumConfig buildQuorumConfig ()
+    {
+        Enrollment[] enrollments;
+        if (!this.enroll_man.getValidators(enrollments))
+            assert(0, "Could not retrieve enrollments!");  // should not happen
+
+        if (enrollments.length == 0)
+            assert(0, "No enrollments found!");  // should not happen
+
+        return .buildQuorumConfig(this.config.node.key_pair.address,
+            enrollments, this.utxo_set.getUTXOFinder());
     }
 
     /// The first task method, loading from disk, node discovery, etc
@@ -76,8 +106,9 @@ public class Validator : FullNode, API
         {
             // build the list of required quorum peers to connect to
             Set!PublicKey required_peer_keys;
-            buildRequiredKeys(this.config.node.key_pair.address,
-                this.config.quorum, required_peer_keys);
+            auto qc = this.buildQuorumConfig();
+            buildRequiredKeys(this.config.node.key_pair.address, qc,
+                required_peer_keys);
 
             log.info("Doing network discovery..");
             this.network.discover(required_peer_keys);
