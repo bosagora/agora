@@ -351,6 +351,16 @@ public class EnrollmentManager
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
+        // special-case: if the validator will expire in the next block
+        // then allow it to re-enroll in the current block. This way the
+        // validator can start validating a new cycle right away
+        // todo: it should be possible to schedule it more in advance
+        // and not exactly at cycle_end - 1!
+        const old_height = getEnrolledHeight(enroll.utxo_key);
+        if (old_height != size_t.max &&
+            block_height + 1 >= old_height + Enrollment.ValidatorCycle)
+            this.validator_set.remove(enroll.utxo_key);
+
         if (!this.validator_set.add(block_height, finder, enroll))
             return false;
 
