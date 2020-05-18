@@ -258,6 +258,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
     auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
     auto address = get!(string, "node", "address")(cmdln, node);
+    auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
 
     long retry_delay = cast(long)(opt!(float, "node", "retry_delay")(cmdln, node, 3.0) * 1000);
 
@@ -273,6 +274,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             is_validator : is_validator,
             min_listeners : min_listeners,
             max_listeners : max_listeners,
+            genesis_block : genesis_block,
             address : address,
             port : port,
             key_pair : key_pair,
