@@ -168,7 +168,6 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     import agora.consensus.Genesis;
     import std.conv;
 
-    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
     const TxCount = block_count * Block.TxsInBlock;
 
     // in unittests we use the following blockchain layout:
