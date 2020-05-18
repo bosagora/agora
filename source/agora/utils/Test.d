@@ -36,6 +36,7 @@ import agora.consensus.Genesis;
 import std.file;
 import std.path;
 
+import core.exception;
 import core.time;
 
 /*******************************************************************************
@@ -79,6 +80,7 @@ public string makeCleanTempDir (string postfix = __MODULE__)
     it throws an AssertError.
 
     Params:
+        Exc = a custom exception type, in case we want to catch it
         check = the condition to check on
         timeout = time to wait for the check to succeed
         msg = optional AssertException message when the condition fails
@@ -91,8 +93,9 @@ public string makeCleanTempDir (string postfix = __MODULE__)
 
 *******************************************************************************/
 
-public void retryFor (lazy bool check, Duration timeout,
-    lazy string msg = "", string file = __FILE__, size_t line = __LINE__)
+public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
+    Duration timeout, lazy string msg = "",
+    string file = __FILE__, size_t line = __LINE__)
 {
     import core.exception;
     import core.thread;
@@ -111,13 +114,13 @@ public void retryFor (lazy bool check, Duration timeout,
         Thread.sleep(SleepTime.msecs);
     }
 
-    auto assert_msg = format("Check condition failed after timeout of %s " ~
+    auto message = format("Check condition failed after timeout of %s " ~
         "and %s attempts", timeout, TotalAttempts);
 
     if (msg.length)
-        assert_msg ~= ": " ~ msg;
+        message ~= ": " ~ msg;
 
-    throw new AssertError(assert_msg, file, line);
+    throw new Exc(message, file, line);
 }
 
 ///
