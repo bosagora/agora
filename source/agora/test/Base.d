@@ -390,8 +390,8 @@ public class TestAPIManager
 
         foreach (ref node; this.nodes)
         {
-            node.client.shutdown();
-            node.client.ctrl.shutdown();
+            node.client.ctrl.shutdown(
+                (TestAPI node) { (cast(FullNode)node).shutdown(); });
             node.client = null;
         }
 
@@ -525,9 +525,6 @@ public interface TestAPI : ValidatorAPI
     ///
     public abstract void start ();
 
-    ///
-    public abstract void shutdown ();
-
     /// Print out the contents of the log
     public void printLog ();
 
@@ -564,12 +561,6 @@ private mixin template TestNodeMixin ()
     public override void start ()
     {
         super.start();
-    }
-
-    ///
-    public override void shutdown ()
-    {
-        super.shutdown();
     }
 
     /// Prints out the log contents for this node
