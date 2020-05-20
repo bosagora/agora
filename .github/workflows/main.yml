@@ -23,6 +23,13 @@ jobs:
       matrix:
         os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
         dc: [ ldc-master, ldc-1.21.0, ldc-1.20.1 ]
+        # Define job-specific parameters
+        include:
+          # By default, don't generate artifacts for push
+          - { artifacts: false }
+          # Only generate when `ldc-1.21.0` is used
+          # IMPORTANT: Update this when the compiler support is changed!
+          - { dc: ldc-1.21.0, artifacts: true }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -101,12 +108,25 @@ jobs:
         call ci\run.bat
 
     # Finally, upload the artifacts
-    # Only upload the artifacts if the 'push' (to upstream) succeeded, or the PR failed
-    - name: Upload build artifacts
-      if: success() || github.event_name != 'push'
+    #
+    # For PR, we unconditionally upload the artifacts, regardless or whether the tests
+    # failed or not. Note that we need to split it by name or they get merged in one zip
+    # and overwrite each other.
+    - name: '[PR] Upload build artifacts'
+      if: always() && github.event_name != 'pull_request'
       uses: actions/upload-artifact@v2
       with:
-        name: agora
+        name: agora-${{ matrix.os }}-${{ matrix.dc }}
+        path: build/
+
+    # For push event, we need to select which compiler to use
+    # This is defined in the build matrix so the condition here
+    # doesn't have to be edited.
+    - name: '[Push] Upload build artifacts'
+      if: github.event_name == 'push' && ${{ matrix.artifacts }} == true
+      uses: actions/upload-artifact@v2
+      with:
+        name: agora-${{ matrix.os }}
         path: build/
 
   # Documentation build: Only runs on Linux
