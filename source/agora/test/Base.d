@@ -743,7 +743,7 @@ public struct TestConf
     size_t max_retries = 20;
 
     /// request timeout for each node (in msecs)
-    long timeout = 2000;
+    long timeout = 5000;
 
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
