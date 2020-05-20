@@ -100,6 +100,15 @@ jobs:
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
 
+    # Finally, upload the artifacts
+    # Only upload the artifacts if the 'push' (to upstream) succeeded, or the PR failed
+    - name: Upload build artifacts
+      if: success() || github.event_name != 'push'
+      uses: actions/upload-artifact@v2
+      with:
+        name: agora
+        path: build/
+
   # Documentation build: Only runs on Linux
   # Still need to install dependencies and the compiler because DDOX
   # does a full build
