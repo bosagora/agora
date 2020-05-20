@@ -264,6 +264,28 @@ public class LocalRestTaskManager : TaskManager
     {
         geod24.LocalRest.sleep(dur);
     }
+
+    /***************************************************************************
+
+        Run an asynchronous task after a given time in LocalRest's
+
+        The task will first run after the given `timeout`, and
+        can either repeat or run only once (the default).
+        Works similarly to Vibe.d's `setTimer`.
+
+        Params:
+            timeout = Determines the minimum amount of time that elapses before
+                the timer fires.
+            dg = This delegate will be called when the timer fires.
+            periodic = Specifies if the timer fires repeatedly or only once.
+
+    ***************************************************************************/
+
+    public override void setTimer (Duration timeout, void delegate() dg,
+        Periodic periodic = Periodic.No)
+    {
+        geod24.LocalRest.setTimer(timeout, dg, periodic);
+    }
 }
 
 /// A ban manager with a fake clock for reliable unittesting

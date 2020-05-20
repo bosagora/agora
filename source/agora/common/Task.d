@@ -19,6 +19,13 @@ module agora.common.Task;
 
 import core.time;
 
+/// Whether the timer periodic type
+public enum Periodic : bool
+{
+    No,
+    Yes
+}
+
 /// Exposes primitives to run tasks through Vibe.d
 public class TaskManager
 {
@@ -50,5 +57,30 @@ public class TaskManager
     {
         static import vibe.core.core;
         vibe.core.core.sleep(dur);
+    }
+
+    /***************************************************************************
+
+        Run an asynchronous task after a given time.
+
+        The task will first run after the given `timeout`, and
+        can either repeat or run only once (the default).
+        See_Also: https://vibed.org/api/vibe.core.core/setTimer
+
+        Params:
+            timeout = Determines the minimum amount of time that elapses before
+                the timer fires.
+            dg = This delegate will be called when the timer fires.
+            periodic = Specifies if the timer fires repeatedly or only once.
+
+    ***************************************************************************/
+
+    public void setTimer (Duration timeout, void delegate() dg,
+        Periodic periodic = Periodic.No)
+    {
+        assert(dg !is null, "Cannot call this delegate if null");
+
+        static import vibe.core.core;
+        vibe.core.core.setTimer(timeout, dg, periodic);
     }
 }
