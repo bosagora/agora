@@ -1,6 +1,6 @@
 # Github worflow to test Agora on a variety of platforms
 #
-# Also uploads thee documentation to Github pages.
+# Also uploads the documentation to Github pages.
 #
 # Note:
 # - Try to use the native Github action syntax (${{ expression }}) when possible,
