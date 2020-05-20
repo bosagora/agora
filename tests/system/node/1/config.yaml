@@ -9,7 +9,7 @@ node:
   port:    3826
   retry_delay: 1.5
   max_retries: 5
-  timeout: 1000
+  timeout: 5000
   # This is a randomly generated keypair
   # If this node is not a validator, this will be ignored
   #
