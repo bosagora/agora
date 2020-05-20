@@ -59,7 +59,8 @@ unittest
 /// test request timeouts
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf;
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -77,10 +78,10 @@ unittest
 
     auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 1);
 
-    // node 1 will keep trying to send transactions up to
-    // max_retries * (retry_delay + timeout) seconds (see Base.d),
-    // 20 * (100 + 100) = 4 seconds of retry time
     txes.each!(tx => node_1.putTransaction(tx));
 
-    nodes.all!(node => node.getBlockHeight() == 1).retryFor(4.seconds);
+    // node 1 will keep trying to send transactions up to
+    // max_retries * (retry_delay + timeout) seconds (see Base.d),
+    const delay = conf.max_retries * (conf.retry_delay + conf.timeout);
+    nodes.all!(node => node.getBlockHeight() == 1).retryFor(delay.msecs);
 }
