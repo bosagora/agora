@@ -140,8 +140,7 @@ jobs:
           sudo apt-get install libsodium-dev
           sudo apt-get install g++-9
 
-      # Documentation build
-      - name: Build and deploy documentation
+      - name: Build documentation
         run: |
           dub build -b ddox
           # Filter out libraries
@@ -150,6 +149,15 @@ jobs:
           jq '[ .[] | select(.file|startswith("source/")) ]' docs.json > docs.filtered.json
           # Generate the HTML to docs
           dub run ddox -- generate-html docs.filtered.json ./docs/
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: documentation
+          path: docs/
+
+      - name: Deploy documentation
+        run: |
           # Remove gh-branch if it already exists, check it out
           git branch -D gh-pages || true
           git checkout --orphan gh-pages
