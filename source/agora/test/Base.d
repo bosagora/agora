@@ -135,6 +135,8 @@ private UnitTestResult customModuleUnitTester ()
                 continue;
             }
 
+            // this test checks GC usage stats before / after tests,
+            // but other threads can change the outcome of the GC usage stats
             if (mod.name.startsWith("agora.common.Serializer"))
                 single_threaded ~= ModTest(mod.name, fp);
             else
@@ -166,11 +168,11 @@ private UnitTestResult customModuleUnitTester ()
         }
     }
 
-    foreach (mod; parallel(mod_tests))
-        runTest(mod);
-
     // Run single-threaded tests
     foreach (mod; single_threaded)
+        runTest(mod);
+
+    foreach (mod; parallel(mod_tests))
         runTest(mod);
 
     UnitTestResult result = { executed : executed, passed : passed };
