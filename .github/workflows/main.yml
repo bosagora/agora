@@ -39,7 +39,7 @@ jobs:
       uses: mihails-strasuns/setup-dlang@v0.5.0
       with:
           compiler: ${{ matrix.dc }}
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ github.token }}
 
     # Install os-specific packages
     # Those will show up in the list of steps, but be grayed out,
@@ -131,7 +131,7 @@ jobs:
         uses: mihails-strasuns/setup-dlang@v0.5.0
         with:
           compiler: ldc-latest
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ github.token }}
 
       - name: 'Install dependencies & setup environment'
         run: |
@@ -142,8 +142,6 @@ jobs:
 
       # Documentation build
       - name: Build and deploy documentation
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           dub build -b ddox
           # Filter out libraries
