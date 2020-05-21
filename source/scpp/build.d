@@ -182,7 +182,7 @@ int main(string[] args)
 
     auto cmd = chain(CppCmd, Includes.map!((v) => CompilerIncludeFlag ~ v), sources);
     auto strCmd = cmd.join(" ");
-    // writeln(strCmd);
+    writeln(strCmd);
     auto pid = executeShell(strCmd);
 
     if (pid.status != 0)
