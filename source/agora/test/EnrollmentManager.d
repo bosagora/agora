@@ -40,7 +40,7 @@ unittest
     auto nodes = network.clients;
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1007, 2.seconds,
+        retryFor(node.getBlockHeight() == 1007, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1007)));
 
@@ -68,7 +68,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1008, 2.seconds,
+        retryFor(node.getBlockHeight() == 1008, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1008)));
 
@@ -77,7 +77,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1009, 2.seconds,
+        retryFor(node.getBlockHeight() == 1009, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1009)));
 
