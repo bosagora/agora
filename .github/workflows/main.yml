@@ -21,10 +21,10 @@ jobs:
       # of the nigthly is broken
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
+        os: [ macOS-10.15 ]
         dc: [ ldc-master, ldc-1.21.0, ldc-1.20.1 ]
 
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     timeout-minutes: 30
     steps:
 
