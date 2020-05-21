@@ -46,7 +46,7 @@ unittest
     auto nodes = network.clients;
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1007, 2.seconds,
+        retryFor(node.getBlockHeight() == 1007, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1007)));
 
@@ -69,7 +69,7 @@ unittest
 
     // at block height 1008 the validator set changes from 4 => 2
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1008, 2.seconds,
+        retryFor(node.getBlockHeight() == 1008, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1008)));
 
@@ -81,7 +81,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes[0 .. 2].enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1009, 3.seconds,
+        retryFor(node.getBlockHeight() == 1009, 6.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1009)));
 
@@ -106,7 +106,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1010, 2.seconds,
+        retryFor(node.getBlockHeight() == 1010, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1010)));
 
@@ -115,7 +115,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1011, 2.seconds,
+        retryFor(node.getBlockHeight() == 1011, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 1011)));
 
@@ -130,7 +130,7 @@ unittest
     {
         // progress was not made, still stuck at 1011 blocks
         nodes.enumerate.each!((idx, node) =>
-            retryFor!Exception(node.getBlockHeight() == 1012, 2.seconds,
+            retryFor!Exception(node.getBlockHeight() == 1012, 5.seconds,
                 format("Node %s has block height %s. Expected: %s",
                     idx, node.getBlockHeight(), 1012)));
         assert(0);  // should not be reached
