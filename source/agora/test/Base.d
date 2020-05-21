@@ -443,7 +443,7 @@ public class TestAPIManager
     {
         try
         {
-            const timeout = 5.seconds;
+            const timeout = 10.seconds;
             this.nodes.each!(node =>
                 retryFor(node.client.getNodeInfo().ifThrown(NodeInfo.init)
                     .state == NetworkState.Complete,
@@ -740,19 +740,19 @@ public struct TestConf
     bool configure_network = true;
 
     /// the delay between request retries (in msecs)
-    long retry_delay = 100;
+    long retry_delay = 500;
 
     /// minimum clients to connect to (defaults to nodes.length - 1)
     size_t min_listeners;
 
     /// max retries before a request is considered failed
-    size_t max_retries = 20;
+    size_t max_retries = 50;
 
     /// request timeout for each node (in msecs)
     long timeout = 5000;
 
     /// max failed requests before a node is banned
-    size_t max_failed_requests = 100;
+    size_t max_failed_requests = 200;
 
     /// max listener nodes. If set to 0, set to this.nodes - 1
     size_t max_listeners;
