@@ -43,10 +43,9 @@ jobs:
 
     # Install the D compiler
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v0.5.0
+      uses: mihails-strasuns/setup-dlang@v1
       with:
           compiler: ${{ matrix.dc }}
-          gh_token: ${{ github.token }}
 
     # Install os-specific packages
     # Those will show up in the list of steps, but be grayed out,
@@ -147,10 +146,9 @@ jobs:
 
       # Install the D compiler
       - name: Prepare compiler
-        uses: mihails-strasuns/setup-dlang@v0.5.0
+        uses: mihails-strasuns/setup-dlang@v1
         with:
           compiler: ldc-latest
-          gh_token: ${{ github.token }}
 
       - name: 'Install dependencies & setup environment'
         run: |
