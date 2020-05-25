@@ -217,16 +217,6 @@ public class FullNode : API
             this.network.gossipTransaction(tx);
             this.onAcceptedTransaction();
         }
-
-        if (this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
-        {
-            PreImageInfo preimage;
-            if (this.enroll_man.getNextPreimage(preimage))
-            {
-                this.receivePreimage(preimage);
-                this.enroll_man.increaseNextRevealHeight();
-            }
-        }
     }
 
     /// GET: /has_transaction_hash
