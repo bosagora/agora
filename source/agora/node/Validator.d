@@ -33,6 +33,8 @@ import scpd.types.Stellar_SCP;
 
 import ocean.util.log.Logger;
 
+import core.time;
+
 mixin AddLogger!();
 
 /*******************************************************************************
@@ -81,6 +83,8 @@ public class Validator : FullNode, API
 
             log.info("Doing network discovery..");
             this.network.discover(required_peer_keys);
+            // call checkRevealPreimage periodically every 10 seconds
+            this.taskman.setTimer(10.seconds, &this.checkRevealPreimage, Periodic.Yes);
             this.network.startPeriodicCatchup(this.ledger, &this.nominator.isNominating);
         });
     }
@@ -170,5 +174,25 @@ public class Validator : FullNode, API
 
         foreach (sub_conf; quorum_conf.quorums)
             buildRequiredKeys(filter, sub_conf, nodes);
+    }
+
+    /***************************************************************************
+
+        Periodically check for pre-images revelation
+        Increase the next reveal height by revelation period if necessary.
+
+    ***************************************************************************/
+
+    private void checkRevealPreimage () @safe
+    {
+        if (!this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
+            return;
+
+        PreImageInfo preimage;
+        if (this.enroll_man.getNextPreimage(preimage))
+        {
+            this.receivePreimage(preimage);
+            this.enroll_man.increaseNextRevealHeight();
+        }
     }
 }

@@ -89,22 +89,9 @@ unittest
     txs2.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 2).retryFor(8.seconds);
 
-    // Currently a new transaction needs to be sent to trigger
-    // the reveal of a pre-image
-    // See https://github.com/bpfkorea/agora/issues/582
-    Transaction tx =
-    {
-        TxType.Payment,
-        [Input(hashFull(txs2[0]), 0)],
-        [Output(Amount(100), pubkey_1)]
-    };
-    auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-    tx.inputs[0].signature = signature;
-    node_1.putTransaction(tx);
-
-    // check if nodes have a pre-image newly sent
-    // during creating transactions for the new block
+    // Check if nodes have a pre-image newly sent
+    // While the timer is running on the taskmanager
     nodes.each!(node =>
         retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
-            5.seconds));
+            10.seconds));
 }
