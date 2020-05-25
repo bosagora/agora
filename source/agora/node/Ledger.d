@@ -336,7 +336,8 @@ public class Ledger
         const next_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        this.enroll_man.pool.getEnrollments(data.enrolls);
+        this.enroll_man.getEnrollments(data.enrolls,
+            Height(this.getBlockHeight()));
         foreach (hash, tx; this.pool)
         {
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
@@ -1046,7 +1047,8 @@ unittest
 
     // Check if there are any unregistered enrollments
     Enrollment[] unreg_enrollments;
-    assert(ledger.enroll_man.pool.getEnrollments(unreg_enrollments) is null);
+    assert(ledger.enroll_man.getEnrollments(unreg_enrollments,
+        ledger.getBlockHeight()) is null);
     auto block_4 = ledger.getBlocksFrom(Height(4));
     enrollments.sort!("a.utxo_key < b.utxo_key");
     assert(block_4[0].header.enrollments == enrollments);
