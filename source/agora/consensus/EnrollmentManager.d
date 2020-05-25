@@ -184,9 +184,44 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Height getEnrolledHeight (const ref Hash enroll_hash) @trusted
+    public Height getEnrolledHeight (const ref Hash enroll_hash)
+        @trusted nothrow
     {
         return this.validator_set.getEnrolledHeight(enroll_hash);
+    }
+
+    /***************************************************************************
+
+        Get the unregistered enrollments that can be validator in the next
+        block based on the current block height.
+
+        Params:
+            enrolls = will contain the unregistered enrollments data if found
+            height = current block height
+
+        Returns:
+            The unregistered enrollments data
+
+    ***************************************************************************/
+
+    public Enrollment[] getEnrollments (ref Enrollment[] enrolls, Height height)
+        @trusted nothrow
+    {
+        enrolls.length = 0;
+        assumeSafeAppend(enrolls);
+
+        static Enrollment[] pool_enrolls;
+        this.enroll_pool.getEnrollments(pool_enrolls);
+        foreach (enroll; pool_enrolls)
+        {
+            const enroll_height = this.getEnrolledHeight(enroll.utxo_key);
+            if (enroll_height == ulong.max ||
+                height >= enroll_height + this.params.ValidatorCycle - 1)
+            {
+                enrolls ~= enroll;
+            }
+        }
+        return enrolls;
     }
 
     /***************************************************************************
@@ -750,7 +785,7 @@ unittest
     assert(man.pool.count() == 3);
 
     Enrollment[] enrolls;
-    man.pool.getEnrollments(enrolls);
+    man.getEnrollments(enrolls, Height(1));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -772,7 +807,7 @@ unittest
     assert(man.getEnrolledHeight(enroll.utxo_key) == 9);
     assert(man.addValidator(enroll, Height(9), &storage.findUTXO) !is null);
     assert(man.getEnrolledHeight(enroll2.utxo_key) == ulong.max);
-    man.pool.getEnrollments(enrolls);
+    man.getEnrollments(enrolls, Height(9));
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set
     assert(man.validator_set.count() == 1);
@@ -781,7 +816,7 @@ unittest
     man.pool.remove(utxo_hash);
     man.pool.remove(utxo_hash2);
     man.pool.remove(utxo_hash3);
-    assert(man.pool.getEnrollments(enrolls).length == 0);
+    assert(man.getEnrollments(enrolls, Height(9)).length == 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -791,7 +826,7 @@ unittest
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
         assert(man.pool.add(ordered_enroll, &storage.findUTXO));
-    man.pool.getEnrollments(enrolls);
+    man.getEnrollments(enrolls, Height(man.params.ValidatorCycle + 8));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
