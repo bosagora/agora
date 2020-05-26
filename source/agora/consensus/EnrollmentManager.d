@@ -295,8 +295,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool add (const ref Enrollment enroll, scope UTXOFinder finder)
-        @safe nothrow
+    public bool addEnrollment (const ref Enrollment enroll,
+        scope UTXOFinder finder) @safe nothrow
     {
         return this.enroll_pool.add(enroll, finder);
     }
@@ -310,7 +310,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void remove (const ref Hash enroll_hash) @trusted
+    public void removeEnrollment (const ref Hash enroll_hash) @trusted
     {
         this.enroll_pool.remove(enroll_hash);
     }
@@ -868,22 +868,22 @@ unittest
 
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(!man.hasEnrollment(utxo_hash));
-    assert(!man.add(fail_enroll, &storage.findUTXO));
-    assert(man.add(enroll, &storage.findUTXO));
+    assert(!man.addEnrollment(fail_enroll, &storage.findUTXO));
+    assert(man.addEnrollment(enroll, &storage.findUTXO));
     assert(man.enroll_pool.count() == 1);
     assert(man.hasEnrollment(utxo_hash));
-    assert(!man.add(enroll, &storage.findUTXO));
+    assert(!man.addEnrollment(enroll, &storage.findUTXO));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     assert(man.createEnrollment(utxo_hash2, 1, enroll2));
-    assert(man.add(enroll2, &storage.findUTXO));
+    assert(man.addEnrollment(enroll2, &storage.findUTXO));
     assert(man.enroll_pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
     assert(man.createEnrollment(utxo_hash3, 1, enroll3));
-    assert(man.add(enroll3, &storage.findUTXO));
+    assert(man.addEnrollment(enroll3, &storage.findUTXO));
     assert(man.enroll_pool.count() == 3);
 
     Enrollment[] enrolls;
@@ -897,7 +897,7 @@ unittest
     assert(stored_enroll == enroll2);
 
     // remove an Enrollment object
-    man.remove(utxo_hash2);
+    man.removeEnrollment(utxo_hash2);
     assert(man.enroll_pool.count() == 2);
 
     // test for getEnrollment with removed enrollment
@@ -915,9 +915,9 @@ unittest
     assert(man.validator_set.count() == 1);
     assert(man.enroll_pool.count() == 1);
 
-    man.remove(utxo_hash);
-    man.remove(utxo_hash2);
-    man.remove(utxo_hash3);
+    man.removeEnrollment(utxo_hash);
+    man.removeEnrollment(utxo_hash2);
+    man.removeEnrollment(utxo_hash3);
     assert(man.getUnregistered(enrolls).length == 0);
 
     Enrollment[] ordered_enrollments;
@@ -927,7 +927,7 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(man.add(ordered_enroll, &storage.findUTXO));
+        assert(man.addEnrollment(ordered_enroll, &storage.findUTXO));
     man.getUnregistered(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
@@ -1016,7 +1016,7 @@ unittest
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
     assert(man.createEnrollment(utxo_hash, 1, enroll));
-    assert(man.add(enroll, &storage.findUTXO));
+    assert(man.addEnrollment(enroll, &storage.findUTXO));
     assert(man.hasEnrollment(utxo_hash));
 
     PreImageInfo result_image;
