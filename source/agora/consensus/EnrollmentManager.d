@@ -698,6 +698,20 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the public key of node that is used for a enrollment
+
+        Returns:
+            Public key of a node
+
+    ***************************************************************************/
+
+    public PublicKey getEnrollmentPublicKey () @safe nothrow
+    {
+        return PublicKey(this.key_pair.V[]);
+    }
+
+    /***************************************************************************
+
         Get the next block height to reveal a pre-image
 
         Returns:
@@ -871,6 +885,9 @@ unittest
     auto man = new EnrollmentManager(":memory:", key_pair);
     scope (exit) man.shutdown();
     Hash[] utxo_hashes = storage.keys;
+
+    // check the return value of `getEnrollmentPublicKey`
+    assert(key_pair.address == man.getEnrollmentPublicKey());
 
     // create and add the first Enrollment object
     auto utxo_hash = utxo_hashes[0];
