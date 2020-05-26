@@ -1046,9 +1046,9 @@ unittest
     enrollments ~= enroll_3;
 
     auto findUTXO = utxo_set.getUTXOFinder();
-    assert(enroll_man.add(enroll_1, findUTXO));
-    assert(enroll_man.add(enroll_2, findUTXO));
-    assert(enroll_man.add(enroll_3, findUTXO));
+    assert(enroll_man.addEnrollment(enroll_1, findUTXO));
+    assert(enroll_man.addEnrollment(enroll_2, findUTXO));
+    assert(enroll_man.addEnrollment(enroll_3, findUTXO));
     Enrollment stored_enroll;
     enroll_man.getEnrollment(utxo_hash_1, stored_enroll);
     assert(stored_enroll == enroll_1);
