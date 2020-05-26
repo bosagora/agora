@@ -811,6 +811,29 @@ public class EnrollmentManager
         catch (Exception ex)
         {}
     }
+
+    /***************************************************************************
+
+        Gets the number of active validators at the block height.
+
+        `block_height` is the height of the newly created block.
+        If the active validators are less than the specified value,
+        new blocks cannot be created.
+
+        Params:
+            block_height = the height of proposed block
+
+        Returns:
+            Returns the number of active validators when the block height is
+            `block_height`.
+            Returns 0 in case of error.
+
+    ***************************************************************************/
+
+    public ulong getValidatorCount (ulong block_height) @safe nothrow
+    {
+        return this.validator_set.getValidatorCount(block_height);
+    }
 }
 
 /// tests for member functions of EnrollmentManager
@@ -1092,4 +1115,100 @@ unittest
             }
         }
     }
+}
+
+/// tests for `EnrollmentManager.getValidatorCount
+unittest
+{
+    import agora.common.Amount;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.Genesis;
+    import std.format;
+    import std.conv;
+
+    scope storage = new TestUTXOSet;
+
+    auto gen_key_pair = getGenesisKeyPair();
+    KeyPair key_pair = KeyPair.random();
+
+    foreach (idx; 0 .. 8)
+    {
+        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [input],
+            [Output(Amount.MinFreezeAmount, key_pair.address)]
+        };
+
+        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        storage.put(tx);
+    }
+
+    // create an EnrollmentManager object
+    auto man = new EnrollmentManager(":memory:", key_pair);
+    scope (exit) man.shutdown();
+    Hash[] utxo_hashes = storage.keys;
+
+    Enrollment enrollment;
+    ulong block_height = 2;
+
+    // create and add the first Enrollment object
+    auto utxo_hash1 = utxo_hashes[0];
+    assert(man.createEnrollment(utxo_hash1, block_height, enrollment));
+    assert(!man.hasEnrollment(utxo_hash1));
+    assert(man.addEnrollment(enrollment, &storage.findUTXO));
+    assert(man.hasEnrollment(utxo_hash1));
+    assert(man.getValidatorCount(block_height) + 1 == 1);
+
+    man.clearExpiredValidators(block_height);
+    man.addValidator(enrollment, block_height, &storage.findUTXO);
+
+    block_height = 3;
+
+    // create and add the second Enrollment object
+    auto utxo_hash2 = utxo_hashes[1];
+    assert(man.createEnrollment(utxo_hash2, block_height, enrollment));
+    assert(!man.hasEnrollment(utxo_hash2));
+    assert(man.addEnrollment(enrollment, &storage.findUTXO));
+    assert(man.hasEnrollment(utxo_hash2));
+    assert(man.getValidatorCount(block_height) + 1 == 2);
+
+    man.clearExpiredValidators(block_height);
+    man.addValidator(enrollment, block_height, &storage.findUTXO);
+
+    block_height = 4;
+
+    // create and add the third Enrollment object
+    auto utxo_hash3 = utxo_hashes[2];
+    assert(man.createEnrollment(utxo_hash3, block_height, enrollment));
+    assert(!man.hasEnrollment(utxo_hash3));
+    assert(man.addEnrollment(enrollment, &storage.findUTXO));
+    assert(man.hasEnrollment(utxo_hash3));
+    assert(man.getValidatorCount(block_height) + 1 == 3);
+
+    man.clearExpiredValidators(block_height);
+    man.addValidator(enrollment, block_height, &storage.findUTXO);
+
+    block_height = 5;    // valid block height : 0 <= H < 1008
+    man.clearExpiredValidators(block_height);
+    assert(man.getValidatorCount(block_height) == 3);
+
+    block_height = 1009; // valid block height : 2 <= H < 1010
+    man.clearExpiredValidators(block_height);
+    assert(man.getValidatorCount(block_height) == 3);
+
+    block_height = 1010; // valid block height : 3 <= H < 1011
+    man.clearExpiredValidators(block_height);
+    assert(man.getValidatorCount(block_height) == 2);
+
+    block_height = 1011; // valid block height : 4 <= H < 1012
+    man.clearExpiredValidators(block_height);
+    assert(man.getValidatorCount(block_height) == 1);
+
+    block_height = 1012; // valid block height : 5 <= H < 1013
+    man.clearExpiredValidators(block_height);
+    assert(man.getValidatorCount(block_height) == 0);
 }
