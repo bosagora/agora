@@ -321,6 +321,42 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Gets the number of active validators at the block height.
+
+        `block_height` is the height of the newly created block.
+        If the active validators are less than the specified value,
+        new blocks cannot be created.
+
+        Params:
+            block_height = the height of proposed block
+
+        Returns:
+            Returns the number of active validators when the block height is
+            `block_height`.
+            Returns 0 in case of error.
+
+    ***************************************************************************/
+
+    public ulong getValidatorCount (ulong block_height) @safe nothrow
+    {
+        ulong validator_count = 0;
+        try
+        {
+            ulong height = (block_height >= Enrollment.ValidatorCycle) ?
+                block_height - Enrollment.ValidatorCycle + 1 : 0;
+            () @trusted {
+                validator_count = this.db.execute("SELECT count(*) FROM validator_set WHERE enrolled_height >= ?", height).oneValue!ulong;
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("Database operation error {}", ex);
+        }
+        return validator_count;
+    }
+
+    /***************************************************************************
+
         Check if a pre-image exists
 
         Params:
