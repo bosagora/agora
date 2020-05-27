@@ -398,7 +398,15 @@ public class TestAPIManager
 
     public void start ()
     {
-        this.nodes.each!(a => a.client.start());
+        foreach (node; this.nodes)
+        {
+            // have to wait indefinitely as the constructor is
+            // currently a slow routine, stalling the call to start().
+            node.client.ctrl.withTimeout(0.msecs,
+                (scope TestAPI api) {
+                    api.start();
+                });
+        }
     }
 
     /***************************************************************************
