@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains validation rountines for pre-image
+    Contains validation routines for pre-image
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea

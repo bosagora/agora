@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains validation rountines for blocks
+    Contains validation routines for blocks
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea
