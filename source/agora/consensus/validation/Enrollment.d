@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains validation rountines for enrollments
+    Contains validation routines for enrollments
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea
