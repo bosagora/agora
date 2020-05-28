@@ -24,6 +24,7 @@ version (unittest):
 
 import agora.common.Amount;
 import agora.common.BanManager;
+import agora.common.BitField;
 import agora.common.Config;
 import agora.common.Types;
 import agora.common.Hash;
@@ -821,10 +822,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     assert(test_conf.nodes >= 2, "Creating a network require at least 2 nodes");
 
-    // custom genesis block
-    immutable string gen_block_hex = test_conf.gen_block != immutable(Block).init
-        ? test_conf.gen_block.serializeFull.toHexString : null;
-
     size_t full_node_idx;
     size_t validator_idx;
 
@@ -851,7 +848,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 ? test_conf.nodes - 1 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
                 ? test_conf.nodes - 1 : test_conf.max_listeners,
-            genesis_block : gen_block_hex
         };
 
         return conf;
@@ -986,10 +982,20 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         break;
     }
 
-    immutable GenBlock = test_conf.gen_block != immutable(Block).init
-        ? test_conf.gen_block : GenesisBlock;
+    auto gen_block = makeGenesisBlock(
+        node_configs
+            .filter!(conf => conf.is_validator)
+            .map!(conf => conf.key_pair)
+            .array);
 
-    auto net = new APIManager([GenBlock]);
+    immutable string gen_block_hex = gen_block
+        .serializeFull()
+        .toHexString();
+
+    foreach (ref conf; configs)
+        conf.node.genesis_block = gen_block_hex;
+
+    auto net = new APIManager([gen_block]);
     foreach (ref conf; configs)
         net.createNewNode(conf);
 
@@ -1035,4 +1041,75 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
     }
 
     return true;
+}
+
+
+/*******************************************************************************
+
+    Generate a genesis block.
+
+    For each key pair, a freeze transaction and an Enrollment
+    will be created and added to the generated Genesis block.
+    The first transaction is the `UnitTestGenesisTransaction`
+
+    Params:
+        key_pairs = key pairs for signing enrollments with
+
+    Returns:
+        The genesis block
+
+*******************************************************************************/
+
+private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
+{
+    import agora.common.Serializer;
+
+    // 1 payment tx, the rest are freeze txs
+    Transaction[] txs;
+    txs ~= UnitTestGenesisTransaction.serializeFull.deserializeFull!Transaction;
+    Enrollment[] enrolls;
+
+    foreach (key_pair; key_pairs)
+    {
+        Transaction tx =
+        {
+            type : TxType.Freeze,
+            inputs : [ Input.init ],
+            outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
+        };
+
+        txs ~= tx;
+        Hash txhash = hashFull(tx);
+        Hash utxo = UTXOSet.getHash(txhash, 0);
+        scope enr = new EnrollmentManager(":memory:", key_pair);
+        scope (exit) enr.shutdown();
+
+        Enrollment enroll;
+        const StartHeight = 1;
+        assert(enr.createEnrollment(utxo, StartHeight, enroll));
+        enrolls ~= enroll;
+    }
+
+    enrolls.sort!("a.utxo_key > b.utxo_key");
+
+    txs.sort;
+    Hash[] merkle_tree;
+    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
+
+    immutable(BlockHeader) makeHeader ()
+    {
+        return immutable(BlockHeader)(
+            Hash.init,   // prev
+            0,           // height
+            merkle_root,
+            BitField!uint.init,
+            Signature.init,
+            enrolls.assumeUnique,
+        );
+    }
+    return immutable(Block)(
+        makeHeader(),
+        txs.assumeUnique,
+        merkle_tree.assumeUnique
+    );
 }
