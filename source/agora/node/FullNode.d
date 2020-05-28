@@ -146,14 +146,36 @@ public class FullNode : API
             400, Json("The query was incorrect"), string.init, int.init);
     }
 
-    /// The first task method, loading from disk, node discovery, etc
+    /***************************************************************************
+
+        Begins asynchronous tasks for node discovery and periodic catchup.
+
+    ***************************************************************************/
+
     public void start ()
     {
+        this.startPeriodicDiscovery();
+        this.network.startPeriodicCatchup(this.ledger);
+    }
+
+    /***************************************************************************
+
+        Starts the periodic network discovery task.
+
+    ***************************************************************************/
+
+    private void startPeriodicDiscovery ()
+    {
+        import core.time;
+
         this.taskman.runTask(
+        ()
         {
-            log.info("Doing network discovery..");
-            this.network.discover();
-            this.network.startPeriodicCatchup(this.ledger);
+            while (1)
+            {
+                this.network.discover();
+                this.taskman.wait(5.seconds);
+            }
         });
     }
 

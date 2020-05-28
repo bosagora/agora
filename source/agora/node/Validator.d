@@ -71,21 +71,42 @@ public class Validator : FullNode, API
             this.config.quorum);
     }
 
-    /// The first task method, loading from disk, node discovery, etc
+    /***************************************************************************
+
+        Begins asynchronous tasks for node discovery and periodic catchup.
+
+    ***************************************************************************/
+
     public override void start ()
     {
+        this.startPeriodicDiscovery();
+        this.taskman.setTimer(10.seconds, &this.checkRevealPreimage, Periodic.Yes);
+        this.network.startPeriodicCatchup(this.ledger, &this.nominator.isNominating);
+    }
+
+    /***************************************************************************
+
+        Starts the periodic network discovery task.
+
+    ***************************************************************************/
+
+    private void startPeriodicDiscovery ()
+    {
         this.taskman.runTask(
+        ()
         {
             // build the list of required quorum peers to connect to
             Set!PublicKey required_peer_keys;
             buildRequiredKeys(this.config.node.key_pair.address,
                 this.config.quorum, required_peer_keys);
 
-            log.info("Doing network discovery..");
-            this.network.discover(required_peer_keys);
-            // call checkRevealPreimage periodically every 10 seconds
-            this.taskman.setTimer(10.seconds, &this.checkRevealPreimage, Periodic.Yes);
-            this.network.startPeriodicCatchup(this.ledger, &this.nominator.isNominating);
+            while (1)
+            {
+                scope (success)
+                    this.taskman.wait(5.seconds);
+
+                this.network.discover(required_peer_keys);
+            }
         });
     }
 
