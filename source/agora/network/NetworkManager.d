@@ -64,30 +64,30 @@ public class NetworkManager
     private TaskManager taskman;
 
     /// Map of Validator key => Address (for lookup in 'peers')
-    protected Address[PublicKey] validator_to_addr;
+    private Address[PublicKey] validator_to_addr;
 
     /// All connected nodes (Validators & FullNodes)
-    protected NetworkClient[Address] peers;
+    private NetworkClient[Address] peers;
 
     /// The addresses currently establishing connections to.
     /// Used to prevent connecting to the same address twice.
-    protected Set!Address connecting_addresses;
+    private Set!Address connecting_addresses;
 
     /// All known addresses so far
-    protected Set!Address known_addresses;
+    private Set!Address known_addresses;
 
     /// Addresses are added and removed here,
     /// but never added again if they're already in known_addresses
-    protected Set!Address todo_addresses;
+    private Set!Address todo_addresses;
 
     /// Address ban manager
-    protected BanManager banman;
+    private BanManager banman;
 
     ///
     private Metadata metadata;
 
     /// Initial seed peers
-    const(string)[] seed_peers;
+    private const(string)[] seed_peers;
 
     /// DNS seeds
     private const(string)[] dns_seeds;
