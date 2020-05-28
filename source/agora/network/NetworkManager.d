@@ -57,11 +57,252 @@ mixin AddLogger!();
 /// Ditto
 public class NetworkManager
 {
+    /// Node information
+    private static struct NodeConnInfo
+    {
+        /// Address of the node
+        Address address;
+
+        /// Is this node a Validator
+        bool is_validator;
+
+        /// Public key of the node, only set if the node is a Validator
+        PublicKey key;
+
+        /// Client
+        NetworkClient client;
+    }
+
+    /***************************************************************************
+
+        Establishes a connection with a Node address in a new task.
+
+    ***************************************************************************/
+
+    private class ConnectionTask
+    {
+        /// Address to connect to
+        private const Address address;
+
+        /// Called when we've connected and determined if this is
+        /// a FullNode / Validator
+        private void delegate (scope ref NodeConnInfo) onHandshakeComplete;
+
+        /// Called when a request to a node fails.
+        /// The delegate should return true if we should continue trying
+        /// to send requests to this node, or false (e.g. if the node is banned)
+        private bool delegate (in Address) onFailedRequest;
+
+
+        /***********************************************************************
+
+            Ctor
+
+            Params:
+                address = the adddress of the node
+                onHandshakeComplete = called when we've successfully connected
+                                      and determined the type of the Node
+                onFailedRequest = called when a request fails, returns true
+                                  if we should keep trying to send requests
+
+        ***********************************************************************/
+
+        public this (in Address address,
+            void delegate (scope ref NodeConnInfo node) onHandshakeComplete,
+            bool delegate (in Address address) onFailedRequest)
+        {
+            this.address = address;
+            this.onHandshakeComplete = onHandshakeComplete;
+            this.onFailedRequest = onFailedRequest;
+            this.outer.taskman.runTask(&this.connect);
+        }
+
+        /***********************************************************************
+
+            Repeatedly attempt connecting to an address, and try to determine
+            if this is a FullNode or a Validator.
+
+            After each connection failure / request failure the ban manager is
+            queried, and if this address was banned then 'onFailedRequest()'
+            will be called and the task will be killed.
+
+            If we've successfully connected and determined the Node type,
+            'onHandshakeComplete' is called and the task is killed.
+
+        ***********************************************************************/
+
+        private void connect ()
+        {
+            auto client = new NetworkClient(this.outer.taskman,
+                this.outer.banman, this.address,
+                this.outer.getClient(this.address,
+                    this.outer.node_config.timeout.msecs),
+                this.outer.node_config.retry_delay.msecs,
+                this.outer.node_config.max_retries);
+
+            PublicKey key;
+            while (1)
+            {
+                try
+                {
+                    // LocalRest will return PublicKey.init,
+                    // vibe.d will throw HTTPStatusException with status == 404
+                    key = client.getPublicKey();
+                    break;
+                }
+                catch (HTTPStatusException ex)
+                {
+                    // 404 => API not implemented, it's a FullNode
+                    if (ex.status == 404)
+                        break;
+
+                    if (!this.onFailedRequest(this.address))
+                        return;
+
+                    // else try again
+                    this.outer.taskman.wait(
+                        this.outer.node_config.retry_delay.msecs);
+                }
+            }
+
+            const is_validator = key != PublicKey.init;
+            if (is_validator)
+                log.info("Found new Validator: {} (key: {})", address, key);
+            else
+                log.info("Found new FullNode: {}", address);
+
+            NodeConnInfo node = {
+                address : this.address,
+                is_validator : is_validator,
+                key : key,
+                client : client
+            };
+
+            this.onHandshakeComplete(node);
+        }
+    }
+
+    /***************************************************************************
+
+        Queries a Node's getNodeInfo() API endpoint to discover new sets
+        of addresses we may want to connect to.
+
+        The provided delegate will be called each time a Node's known
+        addresses were retrieved via the getNodeInfo() API endpoint.
+
+        Note that this is a never-ending task. A node's NodeInfo may signal
+        that it's complete, however the list of its peers may grow as new
+        incoming connections are established as well as when any quorum
+        reshuffling happens.
+
+    ***************************************************************************/
+
+    private class AddressDiscoveryTask
+    {
+        import std.container : DList;
+
+        /// A queue of clients. Each client is contacted, and pushed back to the
+        /// queue (unless they were banned)
+        private DList!NetworkClient clients;
+
+        /// Called when we have retrieved a set of addresses from a client
+        private void delegate (Set!Address addresses) onNewAddresses;
+
+
+        /***********************************************************************
+
+            Ctor
+
+            Params:
+                onNewAddresses = called when a set of addresses were retrieved
+                                 from a node
+
+        ***********************************************************************/
+
+        public this (void delegate (Set!Address addresses) onNewAddresses)
+        {
+            this.onNewAddresses = onNewAddresses;
+        }
+
+        /***********************************************************************
+
+            Start the asynchronous address discovery task.
+
+        ***********************************************************************/
+
+        public void run ()
+        {
+            // workaround to only run this task once
+            // (cannot run it in the ctor as the scheduler may not be running yet)
+            // todo: move it to the ctor once we have `schedule` implemented.
+            static bool is_running;
+            if (!is_running)
+            {
+                is_running = true;
+                this.outer.taskman.runTask(&this.getNewAddresses);
+            }
+        }
+
+        /***********************************************************************
+
+            Add a new client to the list of clients to query addresses from.
+
+        ***********************************************************************/
+
+        public void add (NetworkClient client)
+        {
+            this.clients.insertBack(client);
+        }
+
+        /***********************************************************************
+
+            Neverending function that retrieves the network state out of
+            all the clients it knows about. The clients are kept in a queue,
+            and each client is queried in sequence.
+
+            If the client's address is banned, it will be removed from the
+            clients list.
+
+        ***********************************************************************/
+
+        private void getNewAddresses ()
+        {
+            while (1)
+            {
+                scope (success)
+                    this.outer.taskman.wait(1.seconds);
+
+                if (this.clients.empty())
+                    continue;
+
+                NetworkClient client = this.clients.front;
+                this.clients.removeFront();
+
+                try
+                {
+                    auto node_info = client.getNodeInfo();
+                    this.onNewAddresses(node_info.addresses);
+                }
+                finally  // request failures are already logged
+                {
+                    if (!this.outer.banman.isBanned(client.address))
+                        this.clients.insertBack(client);
+                }
+            }
+        }
+    }
+
     /// Config instance
     protected const NodeConfig node_config = NodeConfig.init;
 
     /// Task manager
     private TaskManager taskman;
+
+    /// Never-ending address discovery task
+    protected AddressDiscoveryTask discovery_task;
+
+    /// Connection tasks for the nodes we're trying to connect to
+    protected ConnectionTask[Address] connection_tasks;
 
     /// Map of Validator key => Address (for lookup in 'peers')
     protected Address[PublicKey] validator_to_addr;
@@ -69,19 +310,15 @@ public class NetworkManager
     /// All connected nodes (Validators & FullNodes)
     protected NetworkClient[Address] peers;
 
-    /// The addresses currently establishing connections to.
-    /// Used to prevent connecting to the same address twice.
-    protected Set!Address connecting_addresses;
-
-    /// All known addresses so far
+    /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
 
-    /// Addresses are added and removed here,
-    /// but never added again if they're already in known_addresses
+    /// The list of addresses we have not yet tried to connect to
     protected Set!Address todo_addresses;
 
-    /// Some nodes may want to connect to specific peers before
-    /// discovery() is considered complete
+    /// For a Validator, NodeInfo.state will be Complete only
+    /// if it has connected to all of its quorum peers.
+    /// See 'minPeersConnected'
     private Set!PublicKey required_peer_keys;
 
     /// Address ban manager
@@ -90,23 +327,105 @@ public class NetworkManager
     ///
     private Metadata metadata;
 
-    /// Initial seed peers
-    const(string)[] seed_peers;
-
-    /// DNS seeds
-    private const(string)[] dns_seeds;
+    /// Maximum connection tasks to run in parallel
+    private enum MaxConnectionTasks = 10;
 
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata,
+        in string[] seed_peers, in string[] dns_seeds, Metadata metadata,
         TaskManager taskman)
     {
         this.taskman = taskman;
         this.node_config = node_config;
         this.metadata = metadata;
-        this.seed_peers = peers;
-        this.dns_seeds = dns_seeds;
         this.banman = this.getBanManager(banman_conf, node_config.data_dir);
+        this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
+
+        this.banman.load();
+
+        assert(this.metadata !is null, "Metadata is null");
+        this.metadata.load();
+
+        // if we have peers in the metadata, use them
+        if (this.metadata.peers.length > 0)
+        {
+            this.addAddresses(this.metadata.peers);
+        }
+        else
+        {
+            // add the IP seeds
+            this.addAddresses(Set!Address.from(seed_peers));
+
+            // add the DNS seeds
+            if (dns_seeds.length > 0)
+                this.addAddresses(resolveDNSSeeds(dns_seeds));
+        }
+    }
+
+    /// Called after a node's handshake is complete
+    private void onHandshakeComplete (scope ref NodeConnInfo node)
+    {
+        this.peers[node.address] = node.client;
+
+        if (node.is_validator)
+        {
+            this.validator_to_addr[node.key] = node.address;
+            this.required_peer_keys.remove(node.key);
+        }
+
+        this.discovery_task.add(node.client);
+        this.metadata.peers.put(node.address);
+        this.known_addresses.put(node.address);
+        this.connection_tasks.remove(node.address);
+
+        // todo: this should keep re-trying.
+        node.client.registerListener(this.getAddress());
+    }
+
+    /// Discover the network, connect to all required peers
+    /// Some nodes may want to connect to specific peers before
+    /// discovery() is considered complete
+    public void discover (Set!PublicKey required_peer_keys = Set!PublicKey.init)
+    {
+        log.info("Doing network discovery..");
+
+        this.required_peer_keys = required_peer_keys;
+
+        // actually just runs it once, but we need the scheduler to run first
+        // and it doesn't run in the constructor yet (LocalRest)
+        this.discovery_task.run();
+
+        /// Returns: true if we should keep trying to connect to an address,
+        /// else false if the address was banned
+        bool onFailedRequest (in Address address)
+        {
+            if (this.banman.isBanned(address))
+            {
+                this.connection_tasks.remove(address);
+                return false;
+            }
+
+            return true;
+        }
+
+        while (!this.peerLimitReached())
+        {
+            scope (success)
+                this.taskman.wait(this.node_config.retry_delay.msecs);
+
+            if (this.connection_tasks.length >= MaxConnectionTasks)
+                continue;
+
+            const num_addresses = MaxConnectionTasks -
+                this.connection_tasks.length;
+
+            foreach (address; this.todo_addresses.pickRandom(num_addresses))
+            {
+                this.todo_addresses.remove(address);
+                this.connection_tasks[address] = new ConnectionTask(
+                    address, &onHandshakeComplete, &onFailedRequest);
+            }
+        }
     }
 
     /***************************************************************************
@@ -124,107 +443,52 @@ public class NetworkManager
 
     public void registerListener (Address address)
     {
-        // make a note of it
-        this.known_addresses.put(address);
+        if (this.shouldEstablishConnection(address))
+            this.addAddress(address);
+    }
 
-        // not connecting? connect later
-        if (address !in this.connecting_addresses)
+    /***************************************************************************
+
+        Check if we should connect with the given address.
+        If the address is banned, already connected, or already queued
+        for a connection then return false.
+
+        Params:
+            address = the address to check
+
+        Returns:
+            true if we should establish connection to this address
+
+    ***************************************************************************/
+
+    private bool shouldEstablishConnection (Address address)
+    {
+        return !this.isOurOwnAddress(address) &&
+            !this.banman.isBanned(address) &&
+            address !in this.peers &&
+            address !in this.connection_tasks &&
+            address !in this.todo_addresses;
+    }
+
+    /// Received new set of addresses, put them in the todo address list
+    private void addAddresses (Set!Address addresses)
+    {
+        foreach (address; addresses)
+            this.addAddress(address);
+    }
+
+    /// Ditto
+    private void addAddress (Address address)
+    {
+        if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
-    }
 
-    /***************************************************************************
-
-        Params:
-            address = the address to check against ours
-
-        Returns:
-            true if the given address matches our own
-
-    ***************************************************************************/
-
-    private bool isOurOwnAddress (Address address)
-    {
-        return address == this.getAddress();
-    }
-
-    /***************************************************************************
-
-        Returns:
-            the address of this node (can be overriden in unittests)
-
-    ***************************************************************************/
-
-    protected string getAddress ()
-    {
-        // allocates, called infrequently though
-        return format("http://%s:%s", this.node_config.address,
-            this.node_config.port);
-    }
-
-    /***************************************************************************
-
-        Discover the network.
-
-        Go through the list of peers in the node configuration,
-        connect to all of the validators (if we're a validator node),
-        and keep discovering more full nodes nodes in the network
-        until maxPeersConnected() returns true.
-
-        Params:
-            required_peer_keys = a set of any required keys the node should
-                connect to (e.g. quorum nodes) before discovery will be complete
-
-    ***************************************************************************/
-
-    public void discover (Set!PublicKey required_peer_keys = Set!PublicKey.init)
-    {
-        this.required_peer_keys = required_peer_keys;
-        this.banman.load();
-
-        // add our own address to the list of banned addresses to avoid
-        // the node communicating with itself
-        this.banman.banUntil(this.getAddress(), time_t.max);
-
-        assert(this.metadata !is null, "Metadata is null");
-        this.metadata.load();
-
-        // if we have peers in the metadata, use them
-        if (this.metadata.peers.length > 0)
-        {
-            this.addAddresses(this.metadata.peers);
-        }
-        else
-        {
-            // add the IP seeds
-            this.addAddresses(Set!Address.from(this.seed_peers));
-
-            // add the DNS seeds
-            if (this.dns_seeds.length > 0)
-                this.addAddresses(resolveDNSSeeds(this.dns_seeds));
-        }
-
-        log.info("Discovering from {}", this.todo_addresses.byKey());
-
-        while (!this.minPeersConnected())
-        {
-            this.connectNextAddresses();
-            this.taskman.wait(this.node_config.retry_delay.msecs);
-        }
-
-        log.info("Discovery reached. {} peers connected.", this.peers.length);
-
-        // the rest can be done asynchronously as we can already
-        // start validating and voting on the blockchain
-        this.taskman.runTask(()
-        {
-            while (1)
-            {
-                if (!this.peerLimitReached())
-                    this.connectNextAddresses();
-
-                this.taskman.wait(this.node_config.retry_delay.msecs);
-            }
-        });
+        // we do not include our own address in list of known,
+        // however we do included banned addresses.
+        // reasoning: while *we* cannot establish a connection with
+        // a node it's possible other nodes in the network might be able to.
+        if (!this.isOurOwnAddress(address))
+            this.known_addresses.put(address);
     }
 
     /***************************************************************************
@@ -250,6 +514,12 @@ public class NetworkManager
             // periodic task
             while (1)
             {
+                scope (success)
+                    this.taskman.wait(2.seconds);
+
+                if (this.peers.length == 0)  // no clients yet (discovery)
+                    continue;
+
                 this.getBlocksFrom(
                     ledger.getBlockHeight() + 1,
                     blocks => blocks.all!(block =>
@@ -257,8 +527,6 @@ public class NetworkManager
                         // we're currently nominating (Validator)
                         (isNominating is null || !isNominating())
                          && ledger.acceptBlock(block)));
-
-                this.taskman.wait(2.seconds);
             }
         });
     }
@@ -365,171 +633,6 @@ public class NetworkManager
     {
         this.banman.dump();
         this.metadata.dump();
-    }
-
-    /***************************************************************************
-
-        Attempt connecting with the given address.
-
-        If this is an incoming connection, we will not attemp to do network
-        discovery through this connection since it's likely untrusted.
-
-        Params:
-            address = the address to connect to
-            is_incoming = whether this is an incoming connection
-
-    ***************************************************************************/
-
-    private void tryConnecting (Address address, bool is_incoming)
-    {
-        // banned address, try later
-        if (this.banman.isBanned(address))
-        {
-            this.connecting_addresses.remove(address);
-            this.todo_addresses.put(address);
-            return;
-        }
-
-        log.info("Establishing connection with {}...", address);
-        auto node = new NetworkClient(this.taskman, this.banman, address,
-            this.getClient(address, this.node_config.timeout.msecs),
-            this.node_config.retry_delay.msecs,
-            this.node_config.max_retries);
-
-        while (1)
-        {
-            try
-            {
-                PublicKey key;
-                try
-                {
-                    key = node.getPublicKey();
-                }
-                catch (HTTPStatusException ex)  // vibe.d (non-unittests)
-                {
-                    // only handle 404 (API not implemented), otherwise re-throw
-                    if (ex.status != 404)
-                        throw ex;
-                }
-
-                const is_validator = key != PublicKey.init;
-                this.connecting_addresses.remove(node.address);
-
-                if (is_validator)
-                    this.required_peer_keys.remove(key);
-
-                if (this.peerLimitReached())
-                    return;
-
-                if (is_validator)
-                    log.info("Established new connection with validator: {} (key: {})", node.address, key);
-                else
-                    log.info("Established new connection with full node: {}", node.address);
-
-                // only if it's a trusted node, we also want to receive gossiping
-                if (!is_incoming)
-                    node.registerListener(this.getAddress());
-
-                this.peers[node.address] = node;
-                if (is_validator)  // Add to Validator node map
-                    this.validator_to_addr[key] = node.address;
-
-                this.metadata.peers.put(node.address);
-                break;
-            }
-            catch (Exception ex)
-            {
-                // try again, unless banned
-                if (this.banman.isBanned(node.address))
-                {
-                    this.connecting_addresses.remove(node.address);
-                    this.todo_addresses.put(node.address);  // try later
-                    log.info("Couldn't get public key of node {}: {}. Node banned until {}",
-                        node.address, ex.message, this.banman.getUnbanTime(node.address));
-                    return;
-                }
-            }
-        }
-
-        if (is_incoming)
-            return;  // don't do network discovery on incoming connections
-
-        // keep asynchronously polling for complete network info,
-        // until complete peer info is returned, or we've
-        // established all necessary connections,
-        // or the node was banned
-        while (!this.minPeersConnected())
-        {
-            try
-            {
-                auto node_info = node.getNodeInfo();
-                this.addAddresses(node_info.addresses);
-                if (node_info.state == NetworkState.Complete)
-                    return;  // done
-
-                // if it's incomplete give the client some time to connect
-                // with other peers and try again later
-                log.info("Peer info for {} is incomplete. Retrying in {}..",
-                    node.address, this.node_config.retry_delay);
-                this.taskman.wait(this.node_config.retry_delay.msecs);
-            }
-            catch (Exception ex)
-            {
-                // try again, unless banned
-                if (this.banman.isBanned(node.address))
-                {
-                    this.connecting_addresses.remove(node.address);
-                    this.todo_addresses.put(node.address);  // try later
-                    log.info("Retrieval of peers from node {} failed: {}. " ~
-                        "Node banned until {}", node.address, ex.message,
-                        this.banman.getUnbanTime(node.address));
-                    return;
-                }
-            }
-        }
-    }
-
-    /// Received new set of addresses, put them in the todo & known IP list
-    private void addAddresses (Set!Address addresses)
-    {
-        foreach (address; addresses)
-        {
-            // go away
-            if (this.banman.isBanned(address) || this.isOurOwnAddress(address))
-                continue;
-
-            // make a note of it
-            this.known_addresses.put(address);
-
-            // not connecting? connect later
-            if (address !in this.connecting_addresses)
-                this.todo_addresses.put(address);
-        }
-    }
-
-    /// start tasks for each new and valid address
-    private void connectNextAddresses ()
-    {
-        // nothing to check this round
-        if (this.todo_addresses.length == 0)
-            return;
-
-        auto random_addresses = this.todo_addresses.pickRandom();
-
-        log.info("Connecting to next set of addresses: {}",
-            random_addresses);
-
-        foreach (address; random_addresses)
-        {
-            this.todo_addresses.remove(address);
-
-            if (!this.banman.isBanned(address) &&
-                address !in this.connecting_addresses)
-            {
-                this.connecting_addresses.put(address);
-                this.taskman.runTask(() { this.tryConnecting(address, false); });
-            }
-        }
     }
 
     ///
@@ -677,6 +780,35 @@ public class NetworkManager
 
             node.sendPreimage(preimage);
         }
+    }
+
+    /***************************************************************************
+
+        Params:
+            address = the address to check against ours
+
+        Returns:
+            true if the given address matches our own
+
+    ***************************************************************************/
+
+    private bool isOurOwnAddress (Address address)
+    {
+        return address == this.getAddress();
+    }
+
+    /***************************************************************************
+
+        Returns:
+            the address of this node (can be overriden in unittests)
+
+    ***************************************************************************/
+
+    protected string getAddress ()
+    {
+        // allocates, called infrequently though
+        return format("http://%s:%s", this.node_config.address,
+            this.node_config.port);
     }
 }
 
