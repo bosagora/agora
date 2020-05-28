@@ -18,6 +18,7 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.consensus.validation.Block;
 
 /// Contains a pointer to the genesis block.
 version (unittest)
@@ -50,13 +51,12 @@ public ref immutable(Block) GenesisBlock () nothrow @safe @nogc
 
 pragma(inline, true)
 public void setGenesisBlock (immutable Block* block)
-    nothrow @trusted @nogc
+    @safe
 {
     assert(block !is null);
 
-    // note: see #747
-    //if (auto reason = isInvalidReason(block, 0, Hash.init, null))
-    //    throw new Exception(reason);
+    if (auto reason = isGenesisBlockInvalidReason(*gen_block))
+        throw new Exception(reason);
 
     gen_block = block;
 }

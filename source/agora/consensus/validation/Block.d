@@ -14,12 +14,17 @@
 module agora.consensus.validation.Block;
 
 import agora.common.Amount;
+import agora.common.Hash;
+import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.consensus.Genesis;
+
+import std.algorithm;
 
 version (unittest)
 {
@@ -54,6 +59,10 @@ version (unittest)
     it as a spent output. See the `findNonSpent` function in the
     unittest for an example.
 
+    As a special case, the genesis block is rejected by this function.
+    Validation of a genesis block should be done through the
+    `isGenesisBlockInvalidReason` function.
+
     Params:
         block = the block to check
         prev_height = the height of the direct ancestor of this block
@@ -70,11 +79,6 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
     in Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
 {
     import std.algorithm;
-
-    // special case for the genesis block
-    if (block.header.height == 0)
-        return block == GenesisBlock ?
-            null : "Block: Height 0 but not Genesis block";
 
     if (block.header.height > prev_height + 1)
         return "Block: Height is above expected height";
@@ -112,6 +116,270 @@ public string isInvalidReason (const ref Block block, in ulong prev_height,
     return null;
 }
 
+/*******************************************************************************
+
+    Check the validity of a genesis block
+
+    Follow the same rules as for `Block` except for the following:
+        - Block height must be 0
+        - The previous block hash of the block must be empty
+        - The number of transactions in the block must be in the range `(0;
+          Block.TxsInBlock]`.
+        - Transactions must have no input
+        - Transactions must have at least one output
+        - All the enrollments pass validation, which implies:
+            - The enrollments refer to freeze tx's in this block
+            - The signature for the Enrollment is valid
+
+    Params:
+        block = The genesis block to check
+
+    Returns:
+        `null` if the genesis block is valid, otherwise a string explaining
+        the reason it is invalid.
+
+*******************************************************************************/
+
+public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
+{
+    if (block.header.height != 0)
+        return "GenesisBlock: The height of the block is not 0";
+
+    if (block.header.prev_block != Hash.init)
+        return "GenesisBlock: Header.prev_block is not empty";
+
+    if (block.txs.length == 0)
+        return "GenesisBlock: Transaction(s) are empty";
+
+    if (block.txs.length > Block.TxsInBlock)
+        return "GenesisBlock: The number of transactions is out of bounds";
+
+    if (!block.txs.isSorted())
+        return "GenesisBlock: Transactions are not sorted";
+
+    UTXOSetValue[Hash] utxo_set;
+    foreach (const ref tx; block.txs)
+    {
+        if (!(tx.type == TxType.Payment || tx.type == TxType.Freeze))
+            return "GenesisBlock: Invalid enum value for type field";
+
+        if (tx.inputs.length != 0)
+             return "GenesisBlock: Transactions must not have input";
+
+        if (tx.outputs.length == 0)
+            return "GenesisBlock: No output(s) in the transaction";
+
+        Hash tx_hash = tx.hashFull();
+        foreach (idx, const ref output; tx.outputs)
+        {
+            // disallow negative amounts
+            if (!output.value.isValid())
+                return "GenesisBlock: Output(s) overflow or underflow"
+                    ~ "in the transaction";
+
+            // disallow 0 amount
+            if (output.value == Amount(0))
+                return "GenesisBlock: Value of output is 0"
+                    ~ "in the transaction";
+
+            const UTXOSetValue utxo_value = {
+                unlock_height: 0,
+                type: tx.type,
+                output: output
+            };
+            utxo_set[UTXOSetValue.getHash(tx_hash, idx)] = utxo_value;
+        }
+    }
+
+    Hash[] merkle_tree;
+    if (block.header.merkle_root !=
+        Block.buildMerkleTree(block.txs, merkle_tree))
+        return "GenesisBlock: Merkle root does not match header's";
+
+    // If there are no enrollments, return them here early.
+    if (block.header.enrollments.length == 0)
+        return null;
+
+    if (!isStrictlyMonotonic!"a.utxo_key < b.utxo_key"
+        (block.header.enrollments))
+        return "GenesisBlock: The enrollments should be arranged in "
+            ~ "ascending order by the utxo_key";
+
+    Set!Hash used_utxos;
+    bool findUTXO (Hash utxo_hash, size_t index, out UTXOSetValue value)
+        nothrow @safe
+    {
+        if (utxo_hash in used_utxos)
+            return false;  // double-spend
+
+        if (auto ptr = utxo_hash in utxo_set)
+        {
+            value = *ptr;
+            used_utxos.put(utxo_hash);
+            return true;
+        }
+        return false;
+    }
+
+    foreach (const ref enrollment; block.header.enrollments)
+    {
+        if (auto fail_reason = VEn.isInvalidReason(enrollment, &findUTXO))
+            return fail_reason;
+    }
+
+    return null;
+}
+
+/// Genesis block validation fail test
+unittest
+{
+    import agora.common.Serializer;
+
+    Block block = GenesisBlock.serializeFull.deserializeFull!Block;
+    assert(block.isGenesisBlockValid());
+
+    // don't accept block height 0 from the network
+    assert(!block.isValid(0, Hash.init, null));
+
+    // height check
+    block.header.height = 1;
+    assert(!block.isGenesisBlockValid());
+
+    block.header.height = 0;
+    assert(block.isGenesisBlockValid());
+
+    // .prev_block check
+    block.header.prev_block = block.header.hashFull();
+    assert(!block.isGenesisBlockValid());
+
+    block.header.prev_block = Hash.init;
+    assert(block.isGenesisBlockValid());
+
+    Transaction[] txs =
+        GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
+
+    void buildMerkleTree (ref Block block)
+    {
+        Hash[] merkle_tree;
+        block.header.merkle_root =
+            Block.buildMerkleTree(block.txs, merkle_tree);
+    }
+
+    Transaction makeNewTx ()
+    {
+        Transaction new_tx =
+        {
+            TxType.Payment,
+            inputs: [],
+            outputs: [Output(Amount(100), KeyPair.random().address)]
+        };
+        return new_tx;
+    }
+
+    // Check consistency of `txs` field
+    {
+        // Txs length check
+        Transaction[] null_txs;
+        block.txs = null_txs;
+        assert(!block.isGenesisBlockValid());
+
+        foreach (_; 0 .. Block.TxsInBlock)
+            block.txs ~= makeNewTx();
+        block.txs.sort;
+        assert(block.txs.length == Block.TxsInBlock);
+        buildMerkleTree(block);
+        assert(block.isGenesisBlockValid());
+
+        // Txs sorting check
+        block.txs.reverse;
+        buildMerkleTree(block);
+        assert(!block.isGenesisBlockValid());
+
+        block.txs.reverse;
+        buildMerkleTree(block);
+        assert(block.isGenesisBlockValid());
+
+        // Txs length out of bounds check
+        block.txs ~= makeNewTx();
+        block.txs.sort;
+        buildMerkleTree(block);
+        assert(block.txs.length == Block.TxsInBlock + 1);
+        assert(!block.isGenesisBlockValid());
+
+        block = GenesisBlock.serializeFull.deserializeFull!Block;
+
+        // Txs type check
+        block.txs[0].type = cast(TxType)2;
+        buildMerkleTree(block);
+        assert(!block.isGenesisBlockValid());
+
+        block.txs[0].type = TxType.Payment;
+        buildMerkleTree(block);
+        assert(block.isGenesisBlockValid());
+
+        block.txs[0].type = TxType.Freeze;
+        buildMerkleTree(block);
+        assert(block.isGenesisBlockValid());
+
+        // Input empty check
+        block.txs[0].inputs ~= Input.init;
+        buildMerkleTree(block);
+        assert(!block.isGenesisBlockValid());
+
+        block.txs = txs;
+        buildMerkleTree(block);
+        assert(block.isGenesisBlockValid());
+
+        // Output not empty check
+        block.txs[0].outputs = null;
+        buildMerkleTree(block);
+        assert(!block.isGenesisBlockValid());
+
+        // disallow 0 amount
+        Output zeroOutput =
+            Output(Amount.invalid(0), WK.Keys[0].address);
+        block.txs[0].outputs ~= zeroOutput;
+        buildMerkleTree(block);
+        assert(!block.isGenesisBlockValid());
+    }
+
+    block = GenesisBlock.serializeFull.deserializeFull!Block;
+
+    // enrollments validation test
+    Enrollment[] enrolls;
+    enrolls ~= Enrollment.init;
+    block.header.enrollments = enrolls;
+    assert(!block.isGenesisBlockValid());
+
+    block.header.enrollments.length = 0;
+    assert(block.isGenesisBlockValid());
+
+    block = GenesisBlock.serializeFull.deserializeFull!Block;
+
+    // modify the last hex byte of the merkle root
+    block.header.merkle_root[][$ - 1]++;
+    assert(!block.isGenesisBlockValid());
+
+    // now restore it back to what it was
+    block.header.merkle_root[][$ - 1]--;
+    assert(block.isGenesisBlockValid());
+    const last_root = block.header.merkle_root;
+
+    // the previous merkle root should not match the new txs
+    block.txs ~= makeNewTx();
+    block.header.merkle_root = last_root;
+    assert(!block.isGenesisBlockValid());
+}
+
+/// Ditto but returns `bool`, only usable in unittests
+/// Only the genesis block Validation
+version (unittest)
+public bool isGenesisBlockValid (const ref Block genesis_block)
+    nothrow @safe
+{
+    return isGenesisBlockInvalidReason(genesis_block) is null;
+}
+
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
 public bool isValid (const ref Block block, ulong prev_height,
@@ -130,7 +398,7 @@ unittest
     scope findUTXO = &utxos.findUTXO;
 
     auto gen_key = getGenesisKeyPair();
-    assert(GenesisBlock.isValid(GenesisBlock.header.height, Hash.init, null));
+    assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
 
     utxos.put(GenesisTransaction);
@@ -294,7 +562,7 @@ unittest
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
     auto gen_key = getGenesisKeyPair();
-    assert(GenesisBlock.isValid(GenesisBlock.header.height, Hash.init, null));
+    assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
     foreach (ref tx; GenesisBlock.txs)
         utxo_set.put(tx);
