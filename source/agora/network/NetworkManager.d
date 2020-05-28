@@ -58,7 +58,7 @@ mixin AddLogger!();
 public class NetworkManager
 {
     /// Config instance
-    protected const NodeConfig node_config = NodeConfig.init;
+    private const NodeConfig node_config = NodeConfig.init;
 
     /// Task manager
     private TaskManager taskman;

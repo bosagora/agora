@@ -508,19 +508,23 @@ public class TestNetworkManager : NetworkManager
     ///
     public Registry* registry;
 
+    /// In LocalRest the address is a custom string (see makeNodeConfig())
+    protected Address address;
+
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
         in string[] peers, in string[] dns_seeds, Metadata metadata,
         TaskManager taskman, Registry* reg)
     {
         this.registry = reg;
+        this.address = config.address;
         super(config, ban_conf, peers, dns_seeds, metadata, taskman);
     }
 
     /// No "http://" in unittests, we just use the string as-is
     protected final override string getAddress ()
     {
-        return this.node_config.address;
+        return this.address;
     }
 
     ///
