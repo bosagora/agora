@@ -444,6 +444,24 @@ public class TestAPIManager
 
     /***************************************************************************
 
+        Restart a specific node
+
+        This routine restarts the given `client`, making sure it gracefully
+        shuts down then restart properly.
+
+        Params:
+          client = Reference to the client to restart
+
+    ***************************************************************************/
+
+    public void restart (scope RemoteAPI!TestAPI client)
+    {
+        client.ctrl.restart((TestAPI node) { (cast(FullNode)node).shutdown(); });
+        client.ctrl.withTimeout(0.msecs, (scope TestAPI api) { api.start(); });
+    }
+
+    /***************************************************************************
+
         Print out the logs for each node
 
     ***************************************************************************/
