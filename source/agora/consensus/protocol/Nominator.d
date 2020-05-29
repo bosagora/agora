@@ -374,7 +374,17 @@ extern(D):
         if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
 
-        auto data = deserializeFull!ConsensusData(value[]);
+
+        ConsensusData data;
+
+        try {
+            data = deserializeFull!ConsensusData(value[]);
+        }
+        catch (Exception ex)
+        {
+            log.error("valueExternalized(): Received deserializeFull ConsensusData. " ~
+                "Error: {}", ex.message);
+        }
 
         // enrollment data may be empty, but not transaction set
         if (data.tx_set.length == 0)
