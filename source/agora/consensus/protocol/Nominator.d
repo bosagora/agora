@@ -369,30 +369,29 @@ extern(D):
     public override void valueExternalized (uint64_t slot_idx,
         ref const(Value) value)
     {
-        scope (failure) assert(0);
-
         if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
 
-
         ConsensusData data;
 
-        try {
+        try
+        {
             data = deserializeFull!ConsensusData(value[]);
+
+            // enrollment data may be empty, but not transaction set
+            if (data.tx_set.length == 0)
+                assert(0, "Transaction set empty");
+
+            log.info("Externalized consensus data set at {}: {}", slot_idx, data);
+
+            if (!this.ledger.onExternalized(data))
+                assert(0);
         }
         catch (Exception ex)
         {
-            log.error("valueExternalized(): Received deserializeFull ConsensusData. " ~
-                "Error: {}", ex.message);
+            log.error("valueExternalized(): Externalized deserializeFull ConsensusData. " ~
+                "Error: {}", ex);
         }
-
-        // enrollment data may be empty, but not transaction set
-        if (data.tx_set.length == 0)
-            assert(0, "Transaction set empty");
-
-        log.info("Externalized consensus data set at {}: {}", slot_idx, data);
-        if (!this.ledger.onExternalized(data))
-            assert(0);
     }
 
     /***************************************************************************
