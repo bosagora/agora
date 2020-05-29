@@ -385,9 +385,10 @@ public class NetworkManager
         {
             try
             {
+                PublicKey key;
                 try
                 {
-                    node.getPublicKey();
+                    key = node.getPublicKey();
                 }
                 catch (HTTPStatusException ex)  // vibe.d (non-unittests)
                 {
@@ -396,17 +397,17 @@ public class NetworkManager
                         throw ex;
                 }
 
-                const is_validator = node.key != PublicKey.init;
+                const is_validator = key != PublicKey.init;
                 this.connecting_addresses.remove(node.address);
 
                 if (is_validator)
-                    this.required_peer_keys.remove(node.key);
+                    this.required_peer_keys.remove(key);
 
                 if (this.peerLimitReached())
                     return;
 
                 if (is_validator)
-                    log.info("Established new connection with validator: {} (key: {})", node.address, node.key);
+                    log.info("Established new connection with validator: {} (key: {})", node.address, key);
                 else
                     log.info("Established new connection with full node: {}", node.address);
 
@@ -416,7 +417,7 @@ public class NetworkManager
 
                 this.peers[node.address] = node;
                 if (is_validator)  // Add to Validator node map
-                    this.validator_to_addr[node.key] = node.address;
+                    this.validator_to_addr[key] = node.address;
 
                 this.metadata.peers.put(node.address);
                 break;
