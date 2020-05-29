@@ -1090,7 +1090,7 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
         enrolls ~= enroll;
     }
 
-    enrolls.sort!("a.utxo_key > b.utxo_key");
+    enrolls.sort!("a.utxo_key < b.utxo_key");
 
     txs.sort;
     Hash[] merkle_tree;
