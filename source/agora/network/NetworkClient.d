@@ -59,9 +59,6 @@ class NetworkClient
     /// API client to the node
     private API api;
 
-    /// The key of the node as retrieved by getPublicKey()
-    public PublicKey key;
-
     /// Reusable exception
     private Exception exception;
 
@@ -95,16 +92,17 @@ class NetworkClient
 
     /***************************************************************************
 
-        Get the node's public key.
+        Returns:
+            the node's public key.
 
         Throws:
             `Exception` if the request failed.
 
     ***************************************************************************/
 
-    public void getPublicKey ()
+    public PublicKey getPublicKey ()
     {
-        this.key = this.attemptRequest(this.api.getPublicKey(), this.exception);
+        return this.attemptRequest(this.api.getPublicKey(), this.exception);
     }
 
     /***************************************************************************
