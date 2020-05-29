@@ -245,9 +245,8 @@ public class Ledger
             this.enroll_man.clearExpiredValidators(block.header.height);
 
             foreach (enrollment; block.header.enrollments)
-                if (!this.enroll_man.addValidator(enrollment,
-                    block.header.height, this.utxo_set.getUTXOFinder()))
-                    assert(0);
+                this.enroll_man.addValidator(enrollment,
+                    block.header.height, this.utxo_set.getUTXOFinder());
 
             // read back and cache the last block
             if (!this.storage.readLastBlock(this.last_block))
