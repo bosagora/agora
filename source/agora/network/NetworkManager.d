@@ -134,6 +134,21 @@ public class NetworkManager
 
     /***************************************************************************
 
+        Params:
+            address = the address to check against ours
+
+        Returns:
+            true if the given address matches our own
+
+    ***************************************************************************/
+
+    private bool isOurOwnAddress (Address address)
+    {
+        return address == this.getAddress();
+    }
+
+    /***************************************************************************
+
         Returns:
             the address of this node (can be overriden in unittests)
 
@@ -480,7 +495,7 @@ public class NetworkManager
         foreach (address; addresses)
         {
             // go away
-            if (this.banman.isBanned(address))
+            if (this.banman.isBanned(address) || this.isOurOwnAddress(address))
                 continue;
 
             // make a note of it
