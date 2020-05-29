@@ -142,7 +142,7 @@ public class Ledger
     public bool onExternalized (ConsensusData data)
         nothrow @trusted
     {
-        scope (failure) assert(0);
+        //scope (failure) assert(0);
         auto block = makeNewBlock(this.last_block, data.tx_set.byKey(),
             data.enrolls);
         return this.acceptBlock(block);
