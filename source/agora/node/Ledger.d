@@ -171,7 +171,6 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-
         try
         {
             if (auto fail_reason = this.validateBlock(block))
@@ -237,22 +236,27 @@ public class Ledger
 
     private void addValidatedBlock (const ref Block block) nothrow @safe
     {
-        scope (failure) assert(0);
-
-        this.updateUTXOSet(block);
-        if (!this.storage.saveBlock(block))
-            assert(0);
-
-        this.enroll_man.clearExpiredValidators(block.header.height);
-
-        foreach (enrollment; block.header.enrollments)
-            if (!this.enroll_man.addValidator(enrollment,
-                block.header.height, this.utxo_set.getUTXOFinder()))
+        try
+        {
+            this.updateUTXOSet(block);
+            if (!this.storage.saveBlock(block))
                 assert(0);
 
-        // read back and cache the last block
-        if (!this.storage.readLastBlock(this.last_block))
-            assert(0);
+            this.enroll_man.clearExpiredValidators(block.header.height);
+
+            foreach (enrollment; block.header.enrollments)
+                if (!this.enroll_man.addValidator(enrollment,
+                    block.header.height, this.utxo_set.getUTXOFinder()))
+                    assert(0);
+
+            // read back and cache the last block
+            if (!this.storage.readLastBlock(this.last_block))
+                assert(0);
+        }
+        catch (Exception ex)
+        {
+            log.error("addValidatedBlock(): {}", ex);
+        }
     }
 
     /***************************************************************************
