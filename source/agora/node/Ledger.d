@@ -151,7 +151,7 @@ public class Ledger
         }
         catch (Exception ex)
         {
-
+            log.error("onExternalized(): {}", ex);
         }
     }
 
@@ -171,15 +171,21 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        //scope (failure) assert(0);
 
-        if (auto fail_reason = this.validateBlock(block))
+        try
         {
-            log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
-            return false;
-        }
+            if (auto fail_reason = this.validateBlock(block))
+            {
+                log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
+                return false;
+            }
 
-        this.addValidatedBlock(block);
+            this.addValidatedBlock(block);
+        }
+        catch (Exception ex)
+        {
+            log.error("acceptBlock(): {}", ex);
+        }
         return true;
     }
 
