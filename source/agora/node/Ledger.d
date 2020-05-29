@@ -143,9 +143,16 @@ public class Ledger
         nothrow @trusted
     {
         //scope (failure) assert(0);
-        auto block = makeNewBlock(this.last_block, data.tx_set.byKey(),
-            data.enrolls);
-        return this.acceptBlock(block);
+        try
+        {
+            auto block = makeNewBlock(this.last_block, data.tx_set.byKey(),
+                data.enrolls);
+            return this.acceptBlock(block);
+        }
+        catch (Exception ex)
+        {
+
+        }
     }
 
     /***************************************************************************
@@ -164,7 +171,7 @@ public class Ledger
 
     public bool acceptBlock (const ref Block block) nothrow @safe
     {
-        scope (failure) assert(0);
+        //scope (failure) assert(0);
 
         if (auto fail_reason = this.validateBlock(block))
         {
