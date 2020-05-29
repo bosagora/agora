@@ -80,6 +80,10 @@ public class NetworkManager
     /// but never added again if they're already in known_addresses
     protected Set!Address todo_addresses;
 
+    /// Some nodes may want to connect to specific peers before
+    /// discovery() is considered complete
+    private Set!PublicKey required_peer_keys;
+
     /// Address ban manager
     protected BanManager banman;
 
@@ -91,10 +95,6 @@ public class NetworkManager
 
     /// DNS seeds
     private const(string)[] dns_seeds;
-
-    /// Some nodes may want to connect to specific peers before
-    /// discovery() is considered complete
-    private Set!PublicKey required_peer_keys;
 
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
