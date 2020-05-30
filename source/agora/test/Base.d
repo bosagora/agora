@@ -228,6 +228,9 @@ public struct Serializer
 /// A different default serializer from `LocalRest` for `RemoteAPI`
 public alias RemoteAPI (APIType) = geod24.LocalRest.RemoteAPI!(APIType, Serializer);
 
+/// The number of validators in the genesis block
+public static immutable uint ValidateCountInGenesis = 2;
+
 /*******************************************************************************
 
     Task manager backed by LocalRest's event loop.
@@ -937,22 +940,32 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     NodeConfig[] node_configs;
     Config[] configs;
 
+    void addAdditionalValidator()
+    {
+        auto validator_count = node_configs.filter!(conf => conf.is_validator).array.length;
+        foreach (idx; validator_count .. ValidateCountInGenesis)
+            node_configs ~= makeNodeConfig(true);
+    }
+
     final switch (test_conf.topology)
     {
     case NetworkTopology.Simple:
         node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        addAdditionalValidator();
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.FindNetwork:
         node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(false)).array;
+        addAdditionalValidator();
         configs = iota(test_conf.nodes)
             .map!(idx => makeMinimalNetwork(idx, node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.FindQuorums:
         node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        addAdditionalValidator();
         configs = iota(test_conf.nodes)
             .map!(idx => makeMinimalNetQuorum(idx, node_configs[idx], node_configs)).array;
         break;
@@ -960,12 +973,14 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     case NetworkTopology.OneNonValidator:
         node_configs ~= iota(test_conf.nodes - 1).map!(_ => makeNodeConfig(true)).array;
         node_configs ~= makeNodeConfig(false);
+        addAdditionalValidator();
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneValidator:
         node_configs ~= makeNodeConfig(true);
+        addAdditionalValidator();
         node_configs ~= iota(test_conf.nodes - 1).map!(_ => makeNodeConfig(false)).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
@@ -978,6 +993,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
         // add one non-validator outside the network
         node_configs ~= makeNodeConfig(false);
+        addAdditionalValidator();
         configs ~= makeConfig(node_configs[$ - 1], node_configs);
         break;
     }
@@ -1069,8 +1085,13 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
     txs ~= UnitTestGenesisTransaction.serializeFull.deserializeFull!Transaction;
     Enrollment[] enrolls;
 
-    foreach (key_pair; key_pairs)
+    assert (key_pairs.length >= ValidateCountInGenesis);
+
+    foreach (idx, key_pair; key_pairs)
     {
+        if (idx >= ValidateCountInGenesis)
+            break;
+
         Transaction tx =
         {
             type : TxType.Freeze,

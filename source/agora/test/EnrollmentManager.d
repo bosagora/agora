@@ -26,25 +26,44 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
-/// test for  enrollment process & revealing a pre-image periodically
-unittest
-{
-    auto network = makeTestNetwork(TestConf.init);
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery();
+import std.typecons: Tuple;
 
+version(unittest)
+Tuple!(Transaction[], Enrollment[]) enrollValidators (T : TestAPIManager = TestAPIManager)(T network, bool[] not_enrolled_validators)
+{
+    assert(network.nodes.length == not_enrolled_validators.length);
     auto nodes = network.clients;
     auto node_1 = nodes[0];
-    auto node_2 = nodes[1];
-
-    // make transactions which have UTXOs for the node.
     auto gen_key_pair = getGenesisKeyPair();
-    auto pubkey_1 = node_1.getPublicKey();
 
     Transaction[] txs;
-    foreach (idx; 0 .. Block.TxsInBlock)
+    int tx_idx = 0;
+    foreach (idx; 0 .. not_enrolled_validators.length)
+    {
+        if (!not_enrolled_validators[idx])
+            continue;
+
+        auto pubkey = nodes[idx].getPublicKey();
+        auto input = Input(hashFull(GenesisTransaction), tx_idx.to!uint);
+
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [input],
+            [
+                Output(Amount.MinFreezeAmount, pubkey),
+                Output(Amount.MinFreezeAmount, gen_key_pair.address)
+            ]
+        };
+
+        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        txs ~= tx;
+
+        tx_idx++;
+    }
+
+    foreach (idx; tx_idx .. Block.TxsInBlock)
     {
         auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
 
@@ -52,22 +71,35 @@ unittest
         {
             TxType.Freeze,
             [input],
-            [Output(Amount.MinFreezeAmount, pubkey_1),
-                Output(Amount(100), gen_key_pair.address)]
+            [
+                Output(Amount.MinFreezeAmount, gen_key_pair.address),
+                Output(Amount.MinFreezeAmount, gen_key_pair.address)
+            ]
         };
 
         auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
         txs ~= tx;
     }
+
     txs.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 1).retryFor(8.seconds);
 
-    // create enrollment data
-    Enrollment enroll = node_1.createEnrollmentData();
+    Enrollment[] enrolls;
 
-    // send a request to enroll as a Validator
-    node_1.enrollValidator(enroll);
+    foreach (idx; 0 .. not_enrolled_validators.length)
+    {
+        if (!not_enrolled_validators[idx])
+            continue;
+
+        // create enrollment data
+        Enrollment enroll = nodes[idx].createEnrollmentData();
+
+        // send a request to enroll as a Validator
+        node_1.enrollValidator(enroll);
+
+        enrolls ~= enroll;
+    }
 
     // make a block with height of 2
     Transaction[] txs2;
@@ -79,7 +111,9 @@ unittest
         {
             TxType.Payment,
             [input],
-            [Output(Amount(100), gen_key_pair.address)]
+            [
+                Output(Amount.MinFreezeAmount, gen_key_pair.address)
+            ]
         };
 
         auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
@@ -89,9 +123,38 @@ unittest
     txs2.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 2).retryFor(8.seconds);
 
+    return Tuple!(Transaction[], Enrollment[])(txs2, enrolls);
+}
+
+/// test for  enrollment process & revealing a pre-image periodically
+unittest
+{
+    TestConf conf =
+    {
+        topology : NetworkTopology.Simple,
+        nodes : ValidateCountInGenesis + 1
+    };
+
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    bool[] not_enrolled_validators;
+    foreach (idx; 0..ValidateCountInGenesis)
+        not_enrolled_validators ~= false;
+    not_enrolled_validators ~= true;
+
+    auto res = enrollValidators(network, not_enrolled_validators);
+
     // Check if nodes have a pre-image newly sent
     // While the timer is running on the taskmanager
-    nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
-            10.seconds));
+    foreach (enroll; res[1])
+        nodes.each!(node =>
+            retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
+                10.seconds));
 }
