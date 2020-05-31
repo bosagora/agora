@@ -439,23 +439,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Check if a enrollment data exists in the enrollment pool.
-
-        Params:
-            enroll_hash = key for an enrollment data which is hash of frozen UTXO
-
-        Returns:
-            true if the enrollment pool has the enrollment data
-
-    ***************************************************************************/
-
-    private bool hasEnrollment (const ref Hash enroll_hash) @trusted
-    {
-        return this.enroll_pool.hasEnrollment(enroll_hash);
-    }
-
-    /***************************************************************************
-
         Get the enrollment data with the key, and store it to 'enroll' if found
 
         Params:
@@ -907,11 +890,9 @@ unittest
         signature_noise.V, signature_noise.v, fail_enroll);
 
     assert(man.createEnrollment(utxo_hash, 1, enroll));
-    assert(!man.hasEnrollment(utxo_hash));
     assert(!man.addEnrollment(fail_enroll, &storage.findUTXO));
     assert(man.addEnrollment(enroll, &storage.findUTXO));
     assert(man.enroll_pool.count() == 1);
-    assert(man.hasEnrollment(utxo_hash));
     assert(!man.addEnrollment(enroll, &storage.findUTXO));
 
     // create and add the second Enrollment object
@@ -1057,7 +1038,6 @@ unittest
     Enrollment enroll;
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(man.addEnrollment(enroll, &storage.findUTXO));
-    assert(man.hasEnrollment(utxo_hash));
 
     PreImageInfo result_image;
     assert(Enrollment.ValidatorCycle - 101 == 907); // Sanity check
@@ -1175,9 +1155,7 @@ unittest
     // create and add the first Enrollment object
     auto utxo_hash1 = utxo_hashes[0];
     assert(man.createEnrollment(utxo_hash1, block_height, enrollment));
-    assert(!man.hasEnrollment(utxo_hash1));
     assert(man.addEnrollment(enrollment, &storage.findUTXO));
-    assert(man.hasEnrollment(utxo_hash1));
     assert(man.getValidatorCount(block_height) + 1 == 1);
 
     man.clearExpiredValidators(block_height);
@@ -1188,9 +1166,7 @@ unittest
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     assert(man.createEnrollment(utxo_hash2, block_height, enrollment));
-    assert(!man.hasEnrollment(utxo_hash2));
     assert(man.addEnrollment(enrollment, &storage.findUTXO));
-    assert(man.hasEnrollment(utxo_hash2));
     assert(man.getValidatorCount(block_height) + 1 == 2);
 
     man.clearExpiredValidators(block_height);
@@ -1201,9 +1177,7 @@ unittest
     // create and add the third Enrollment object
     auto utxo_hash3 = utxo_hashes[2];
     assert(man.createEnrollment(utxo_hash3, block_height, enrollment));
-    assert(!man.hasEnrollment(utxo_hash3));
     assert(man.addEnrollment(enrollment, &storage.findUTXO));
-    assert(man.hasEnrollment(utxo_hash3));
     assert(man.getValidatorCount(block_height) + 1 == 3);
 
     man.clearExpiredValidators(block_height);
