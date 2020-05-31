@@ -276,7 +276,7 @@ public class Ledger
         const ulong next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        this.enroll_man.getUnregistered(data.enrolls);
+        this.enroll_man.pool.getEnrollments(data.enrolls);
 
         foreach (hash, tx; this.pool)
         {
@@ -1038,22 +1038,22 @@ unittest
     enrollments ~= enroll_3;
 
     auto findUTXO = utxo_set.getUTXOFinder();
-    assert(enroll_man.addEnrollment(enroll_1, findUTXO));
-    assert(enroll_man.addEnrollment(enroll_2, findUTXO));
-    assert(enroll_man.addEnrollment(enroll_3, findUTXO));
+    assert(enroll_man.pool.add(enroll_1, findUTXO));
+    assert(enroll_man.pool.add(enroll_2, findUTXO));
+    assert(enroll_man.pool.add(enroll_3, findUTXO));
     Enrollment stored_enroll;
-    enroll_man.getEnrollment(utxo_hash_1, stored_enroll);
+    enroll_man.pool.getEnrollment(utxo_hash_1, stored_enroll);
     assert(stored_enroll == enroll_1);
-    enroll_man.getEnrollment(utxo_hash_2, stored_enroll);
+    enroll_man.pool.getEnrollment(utxo_hash_2, stored_enroll);
     assert(stored_enroll == enroll_2);
-    enroll_man.getEnrollment(utxo_hash_3, stored_enroll);
+    enroll_man.pool.getEnrollment(utxo_hash_3, stored_enroll);
     assert(stored_enroll == enroll_3);
     genNormalBlockTransactions(1);
     assert(ledger.getBlockHeight() == 4);
 
     // Check if there are any unregistered enrollments
     Enrollment[] unreg_enrollments;
-    assert(enroll_man.getUnregistered(unreg_enrollments) is null);
+    assert(enroll_man.pool.getEnrollments(unreg_enrollments) is null);
     auto block_4 = ledger.getBlocksFrom(4);
     enrollments.sort!("a.utxo_key < b.utxo_key");
     assert(block_4[0].header.enrollments == enrollments);

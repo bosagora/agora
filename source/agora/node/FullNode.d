@@ -405,7 +405,7 @@ public class FullNode : API
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
 
-        if (this.enroll_man.addEnrollment(enroll, this.utxo_set.getUTXOFinder()))
+        if (this.enroll_man.pool.add(enroll, this.utxo_set.getUTXOFinder()))
         {
             this.network.sendEnrollment(enroll);
         }
@@ -415,7 +415,7 @@ public class FullNode : API
     public override Enrollment getEnrollment (Hash enroll_hash) @safe
     {
         Enrollment enroll;
-        this.enroll_man.getEnrollment(enroll_hash, enroll);
+        this.enroll_man.pool.getEnrollment(enroll_hash, enroll);
         return enroll;
     }
 
