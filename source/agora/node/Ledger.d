@@ -140,9 +140,8 @@ public class Ledger
     ***************************************************************************/
 
     public bool onExternalized (ConsensusData data)
-        nothrow @trusted
+        @trusted
     {
-        scope (failure) assert(0);
         auto block = makeNewBlock(this.last_block, data.tx_set.byKey(),
             data.enrolls);
         return this.acceptBlock(block);
@@ -162,10 +161,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptBlock (const ref Block block) nothrow @safe
+    public bool acceptBlock (const ref Block block) @safe
     {
-        scope (failure) assert(0);
-
         if (auto fail_reason = this.validateBlock(block))
         {
             log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
@@ -222,10 +219,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void addValidatedBlock (const ref Block block) nothrow @safe
+    private void addValidatedBlock (const ref Block block) @safe
     {
-        scope (failure) assert(0);
-
         this.updateUTXOSet(block);
         if (!this.storage.saveBlock(block))
             assert(0);
@@ -251,10 +246,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void updateUTXOSet (const ref Block block) nothrow @safe
+    private void updateUTXOSet (const ref Block block) @safe
     {
-        scope (failure) assert(0);
-
         const ulong height = block.header.height;
         // add the new UTXOs
         block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height));
@@ -314,9 +307,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateConsensusData (ConsensusData data) nothrow @trusted
+    public string validateConsensusData (ConsensusData data) @trusted
     {
-        scope (failure) assert(0);
         const ulong expect_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
