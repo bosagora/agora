@@ -36,7 +36,7 @@ import ocean.util.log.Logger;
 import std.algorithm : min;
 import std.format;
 import std.stdio;
-import std.range : Cycle, cycle, take;
+import std.range : Cycle, cycle, isOutputRange, take, takeExactly;
 
 /// Insert a logger in the current scope, named log
 public template AddLogger (string moduleName = __MODULE__)
@@ -156,14 +156,18 @@ public class CircularAppender : Appender
     }
 
     /// Print the contents of the appender to the console
-    public void printConsole ()
+    public void print (R) (R output)
+        if (isOutputRange!(R, char))
     {
         // edge-case: if the buffer isn't filled yet,
         // write from buffer index 0, not the cycle's current index
         if (this.used_length <= this.buffer.length)
-            writeln(this.buffer[0 .. this.used_length]);
+            output.put(this.buffer[0 .. this.used_length]);
         else
-            writeln(this.cyclic.take(this.used_length));
+            // Create a new range to work around `const` issue:
+            // https://issues.dlang.org/show_bug.cgi?id=20888
+            output.put(this.cyclic[0 .. $].takeExactly(this.buffer.length));
+        output.put("\n");
     }
 
     /// Returns: the name of this class
