@@ -296,11 +296,11 @@ public class EnrollmentManager
             enroll_hash = key for an enrollment block height
 
         Returns:
-            the enrolled block height, or 0 if no matching key exists
+            the enrolled block height, or `ulong.max` if no matching key exists
 
     ***************************************************************************/
 
-    public size_t getEnrolledHeight (const ref Hash enroll_hash) @trusted
+    public ulong getEnrolledHeight (const ref Hash enroll_hash) @trusted
     {
         return this.validator_set.getEnrolledHeight(enroll_hash);
     }
@@ -495,8 +495,11 @@ public class EnrollmentManager
 
     public bool getPreimage (ulong height, out PreImageInfo preimage) @safe
     {
-        const start_height =
-            this.validator_set.getEnrolledHeight(this.enroll_key) + 1;
+        const enrolled_height =
+            this.validator_set.getEnrolledHeight(this.enroll_key);
+        // FIXME: This function should only be called if we're enrolled
+        assert(enrolled_height != ulong.max);
+        const start_height = enrolled_height + 1;
         if (height < start_height)
             return false;
         immutable index = (height - start_height);
@@ -859,11 +862,11 @@ unittest
     assert(!man.pool.getEnrollment(utxo_hash2, stored_enroll));
 
     // test for enrollment block height update
-    assert(!man.getEnrolledHeight(utxo_hash));
+    assert(man.getEnrolledHeight(utxo_hash) == ulong.max);
     assert(man.addValidator(enroll, 9, &storage.findUTXO));
     assert(man.getEnrolledHeight(enroll.utxo_key) == 9);
     assert(!man.addValidator(enroll, 9, &storage.findUTXO));
-    assert(man.getEnrolledHeight(enroll2.utxo_key) == 0);
+    assert(man.getEnrolledHeight(enroll2.utxo_key) == ulong.max);
     man.pool.getEnrollments(enrolls);
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set

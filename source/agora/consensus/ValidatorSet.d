@@ -167,25 +167,25 @@ public class ValidatorSet
             enroll_hash = key for an enrollment block height
 
         Returns:
-            the enrolled block height, or 0 if no matching key exists
+            the enrolled block height, or `ulong.max` if no matching key exists
 
     ***************************************************************************/
 
-    public size_t getEnrolledHeight (const ref Hash enroll_hash) @trusted
+    public ulong getEnrolledHeight (const ref Hash enroll_hash) @trusted
     {
         try
         {
             auto results = this.db.execute("SELECT enrolled_height FROM validator_set" ~
                 " WHERE key = ?", enroll_hash.toString());
             if (results.empty)
-                return size_t.init;
+                return ulong.max;
 
             return results.oneValue!(size_t);
         }
         catch (Exception ex)
         {
             log.error("Database operation error: {}", ex.msg);
-            return size_t.init;
+            return ulong.max;
         }
     }
 
