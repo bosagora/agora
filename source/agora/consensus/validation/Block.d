@@ -150,8 +150,7 @@ unittest
     auto gen_hash = GenesisBlock.header.hashFull();
 
     tx_map[GenesisTransaction.hashFull()] = [GenesisTransaction];
-    auto txs = makeChainedTransactions(gen_key, null, 1).sort.array;
-    auto block = makeNewBlock(GenesisBlock, txs);
+    auto block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
 
     // height check
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
@@ -169,22 +168,26 @@ unittest
     block.header.prev_block = gen_hash;
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    /// .txs length check
-    block.txs = txs[0 .. $ - 1];
-    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+    /// Check consistency of `txs` field
+    {
+        auto saved_txs = block.txs;
 
-    block.txs = (txs ~ txs).sort.array;
-    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+        block.txs = saved_txs[0 .. $ - 1];
+        assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    block.txs = txs;
-    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+        block.txs = (saved_txs ~ saved_txs).sort.array;
+        assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    /// Txs sorting check
-    block.txs = txs.reverse;
-    assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+        block.txs = saved_txs;
+        assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    block.txs = txs.reverse;
-    assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+        /// Txs sorting check
+        block.txs.reverse;
+        assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+
+        block.txs.reverse;
+        assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
+    }
 
     /// no matching utxo => fail
     tx_map.clear();
@@ -194,12 +197,11 @@ unittest
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     tx_map.clear();  // genesis is spent
-    auto prev_txs = txs;
+    auto prev_txs = block.txs;
     prev_txs.each!(tx => tx_map[tx.hashFull()] = [tx]);  // these will be spent
 
     auto prev_block = block;
-    txs = makeChainedTransactions(gen_key, prev_txs, 1);
-    block = makeNewBlock(prev_block, txs);
+    block = block.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
     assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
         findUTXO));
 
@@ -247,8 +249,7 @@ unittest
     };
 
     // consumed all utxo => fail
-    txs = makeChainedTransactions(gen_key, null, 1).sort.array;
-    block = makeNewBlock(GenesisBlock, txs);
+    block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));
 
@@ -257,17 +258,17 @@ unittest
     // reset state
     used_set.clear();
 
-    // consumed same utxo twice => fail
-    txs[$ - 1] = txs[$ - 2];
-    block = makeNewBlock(GenesisBlock, txs);
+    // Double spend => fail
+    auto double_spend = block.txs.dup;
+    double_spend[$ - 1] = double_spend[$ - 2];
+    block = makeNewBlock(GenesisBlock, double_spend);
     assert(!block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));
 
     // we stopped validation due to a double-spend
-    assert(used_set.length == txs.length - 1);
+    assert(used_set.length == double_spend.length - 1);
 
-    txs = makeChainedTransactions(gen_key, prev_txs, 1);
-    block = makeNewBlock(GenesisBlock, txs);
+    block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
@@ -284,8 +285,8 @@ unittest
     const last_root = block.header.merkle_root;
 
     // txs with a different amount
-    txs = makeChainedTransactions(gen_key, prev_txs, 1, 20_000_000);
-    block = makeNewBlock(GenesisBlock, txs);
+    block = GenesisBlock.makeNewBlock(
+        makeChainedTransactions(gen_key, prev_txs, 1, 20_000_000));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
