@@ -91,21 +91,6 @@ public class ValidatorSet
     public bool add (ulong block_height, scope UTXOFinder finder,
         const ref Enrollment enroll) @safe nothrow
     {
-        // check validaty of the enrollment data
-        if (auto reason = isInvalidReason(enroll, finder))
-        {
-            log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
-            return false;
-        }
-
-        // check if already exists
-        if (this.hasEnrollment(enroll.utxo_key))
-        {
-            log.info("Rejected already existing validator, Data was: {}",
-                enroll);
-            return false;
-        }
-
         try
         {
             static ubyte[] buffer;
@@ -124,6 +109,42 @@ public class ValidatorSet
         {
             log.error("Operation error on adding a validator: {}, " ~
                 "Data was: {}", ex.msg, enroll);
+            return false;
+        }
+
+        return true;
+    }
+
+    /***************************************************************************
+
+        Check if enrollment data can be added normally.enrollment data to the
+        validators set
+
+        Params:
+            block_height = the current block height in the ledger
+            finder = the delegate to find UTXOs with
+            enroll = the enrollment data to add
+
+        Returns:
+            This returns true if the enrollment is normal, false otherwise
+
+    ***************************************************************************/
+
+    public bool canAdd (ulong block_height, scope UTXOFinder finder,
+        const ref Enrollment enroll) @safe nothrow
+    {
+        // check validaty of the enrollment data
+        if (auto reason = isInvalidReason(enroll, finder))
+        {
+            log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
+            return false;
+        }
+
+        // check if already exists
+        if (this.hasEnrollment(enroll.utxo_key))
+        {
+            log.info("Rejected already existing validator, Data was: {}",
+                enroll);
             return false;
         }
 
@@ -546,10 +567,9 @@ public class ValidatorSet
         {
             foreach (const ref enroll; block.header.enrollments)
             {
-                if (!this.add(block.header.height, finder, enroll))
-                {
-                    assert(0);
-                }
+                if (this.canAdd(block.header.height, finder, enroll))
+                    if (!this.add(block.header.height, finder, enroll))
+                        assert(0);
             }
         }
     }
@@ -618,18 +638,21 @@ unittest
     Scalar[Hash] seed_sources;
     seed_sources[utxos[0]] = Scalar.random();
     auto enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
+    assert(set.canAdd(1, &storage.findUTXO, enroll));
     assert(set.add(1, &storage.findUTXO, enroll));
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxos[0]));
-    assert(!set.add(1, &storage.findUTXO, enroll));
+    assert(!set.canAdd(1, &storage.findUTXO, enroll));
 
     seed_sources[utxos[1]] = Scalar.random();
     auto enroll2 = createEnrollment(utxos[1], kp[1], seed_sources[utxos[1]]);
+    assert(set.canAdd(1, &storage.findUTXO, enroll2));
     assert(set.add(1, &storage.findUTXO, enroll2));
     assert(set.count() == 2);
 
     seed_sources[utxos[2]] = Scalar.random();
     auto enroll3 = createEnrollment(utxos[2], kp[2], seed_sources[utxos[2]]);
+    assert(set.canAdd(9, &storage.findUTXO, enroll3));
     assert(set.add(9, &storage.findUTXO, enroll3));
     assert(set.count() == 3);
 
@@ -666,7 +689,10 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
+    {
+        assert(set.canAdd(1, &storage.findUTXO, ordered_enroll));
         assert(set.add(1, &storage.findUTXO, ordered_enroll));
+    }
     set.getValidators(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
@@ -685,6 +711,7 @@ unittest
     // test for clear up expired validators
     seed_sources[utxos[3]] = Scalar.random();
     enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]]);
+    assert(set.canAdd(9, &storage.findUTXO, enroll));
     assert(set.add(9, &storage.findUTXO, enroll));
     set.clearExpiredValidators(1016);
     enrolls.length = 0;
@@ -698,6 +725,7 @@ unittest
     assert(set.count == 0);
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
+    assert(set.canAdd(0, &storage.findUTXO, enroll));
     assert(set.add(0, &storage.findUTXO, enroll));
 
     // not cleared yet at height 1007
@@ -717,6 +745,7 @@ unittest
     // now try with validator for [1 .. 1009]
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
+    assert(set.canAdd(1, &storage.findUTXO, enroll));
     assert(set.add(1, &storage.findUTXO, enroll));
 
     // not cleared yet at height 1008
