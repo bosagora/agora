@@ -232,7 +232,7 @@ public class Ledger
                 block.header.height, this.utxo_set.getUTXOFinder()))
             {
                 log.fatal("Error while adding a new validator: {}", r);
-                log.fatal("Enrollement #{}: {}", idx, enrollment);
+                log.fatal("Enrollment #{}: {}", idx, enrollment);
                 log.fatal("Validated block: {}", block);
                 assert(0);
             }
