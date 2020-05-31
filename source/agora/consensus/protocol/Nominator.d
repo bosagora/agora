@@ -40,6 +40,7 @@ import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
 import core.stdc.stdint;
+import core.stdc.stdlib : abort;
 import core.time;
 
 mixin AddLogger!();
@@ -332,8 +333,6 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
-        scope (failure) assert(0);
-
         try
         {
             auto data = deserializeFull!ConsensusData(value[]);
@@ -348,7 +347,7 @@ extern(D):
         catch (Exception ex)
         {
             log.error("validateValue(): Received un-deserializable tx set. " ~
-                "Error: {}", ex.message);
+                "Error: {}", ex.msg);
             return ValidationLevel.kInvalidValue;
         }
 
@@ -367,22 +366,35 @@ extern(D):
     ***************************************************************************/
 
     public override void valueExternalized (uint64_t slot_idx,
-        ref const(Value) value)
+        ref const(Value) value) nothrow
     {
-        scope (failure) assert(0);
-
         if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
 
-        auto data = deserializeFull!ConsensusData(value[]);
+        ConsensusData data = void;
+        try
+            data = deserializeFull!ConsensusData(value[]);
+        catch (Exception exc)
+        {
+            log.fatal("Deserialization of C++ Value failed: {}", exc);
+            abort();
+        }
 
         // enrollment data may be empty, but not transaction set
         if (data.tx_set.length == 0)
             assert(0, "Transaction set empty");
 
         log.info("Externalized consensus data set at {}: {}", slot_idx, data);
-        if (!this.ledger.onExternalized(data))
-            assert(0);
+        try
+        {
+            if (!this.ledger.onExternalized(data))
+                assert(0);
+        }
+        catch (Exception exc)
+        {
+            log.fatal("Externalization of SCP data failed: {}", exc);
+            abort();
+        }
     }
 
     /***************************************************************************
