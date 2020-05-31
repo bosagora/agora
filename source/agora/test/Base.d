@@ -97,7 +97,6 @@ private UnitTestResult customModuleUnitTester ()
     import std.string;
     import std.uni;
     import core.atomic;
-    import core.sync.mutex;
 
     // by default emit only errors during unittests.
     // can be re-set by calling code.
@@ -147,7 +146,6 @@ private UnitTestResult customModuleUnitTester ()
 
     shared size_t executed;
     shared size_t passed;
-    shared Mutex print_lock = new shared Mutex();
 
     void runTest (ModTest mod)
     {
@@ -160,12 +158,11 @@ private UnitTestResult customModuleUnitTester ()
         }
         catch (Throwable ex)
         {
-            synchronized (print_lock)
-            {
-                writefln("Module tests failed: %s", mod.name);
-                writeln(ex);
-                CircularAppender().printConsole();  // print logs of the work thread
-            }
+            auto output = stdout.lockingTextWriter();
+            output.formattedWrite("Module tests failed: %s\n", mod.name);
+            output.formattedWrite("%s\n", ex);
+            // print logs of the work thread
+            CircularAppender().print(output);
         }
     }
 
@@ -414,17 +411,31 @@ public class TestAPIManager
 
         Shut down each of the nodes
 
+        Params:
+          printLogs = Whether or not to print nodes logs
+
     ***************************************************************************/
 
-    public void shutdown ()
+    public void shutdown (bool printLogs = false)
     {
         foreach (node; this.nodes)
             enforce(this.reg.unregister(node.address));
 
+        /// Private functions used for `shutdown`
+        static void shutdownWithLogs (TestAPI node)
+        {
+            node.printLog();
+            (cast(FullNode)node).shutdown();
+        }
+        static void shutdownSilent (TestAPI node)
+        {
+            (cast(FullNode)node).shutdown();
+        }
+
         foreach (ref node; this.nodes)
         {
             node.client.ctrl.shutdown(
-                (TestAPI node) { (cast(FullNode)node).shutdown(); });
+                printLogs ? &shutdownWithLogs : &shutdownSilent);
             node.client = null;
         }
 
@@ -605,10 +616,11 @@ private mixin template TestNodeMixin ()
     /// Prints out the log contents for this node
     public void printLog ()
     {
-        writefln("Log for node: %s", this.config.node.address);
-        writeln("======================================================================");
-        CircularAppender().printConsole();
-        writeln("======================================================================\n");
+        auto output = stdout.lockingTextWriter();
+        output.formattedWrite("Log for node: %s\n", this.config.node.address);
+        output.put("======================================================================\n");
+        CircularAppender().print(output);
+        output.put("======================================================================\n\n");
     }
 
     protected override IBlockStorage getBlockStorage (string data_dir) @system
