@@ -227,10 +227,15 @@ public class Ledger
 
         this.enroll_man.clearExpiredValidators(block.header.height);
 
-        foreach (enrollment; block.header.enrollments)
-            if (!this.enroll_man.addValidator(enrollment,
+        foreach (idx, ref enrollment; block.header.enrollments)
+            if (auto r = this.enroll_man.addValidator(enrollment,
                 block.header.height, this.utxo_set.getUTXOFinder()))
+            {
+                log.fatal("Error while adding a new validator: {}", r);
+                log.fatal("Enrollement #{}: {}", idx, enrollment);
+                log.fatal("Validated block: {}", block);
                 assert(0);
+            }
 
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
