@@ -27,8 +27,8 @@ class Logging
     static void init();
     static void setFmt(std::string const& peerID, bool timestamps = true);
     static void setLoggingToFile(std::string const& filename);
-    static bool logDebug(std::string const& partition) { return true; }
-    static bool logTrace(std::string const& partition) { return true; }
+    static bool logDebug(std::string const& partition) { return false; }
+    static bool logTrace(std::string const& partition) { return false; }
     static void rotate();
 };
 
