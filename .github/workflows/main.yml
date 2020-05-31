@@ -116,7 +116,7 @@ jobs:
     # but it provide to be too flakey and would often lead to spurious
     # failures. See https://github.com/bpfkorea/agora/issues/882
     - name: 'Upload build artifacts'
-      if: github.event_name == 'push' && ${{ matrix.artifacts }} == true
+      if: github.event_name == 'push' && matrix.artifacts
       uses: actions/upload-artifact@v2
       with:
         name: agora-${{ matrix.os }}
