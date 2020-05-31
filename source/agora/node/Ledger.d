@@ -281,7 +281,21 @@ public class Ledger
         const ulong next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        this.enroll_man.pool.getEnrollments(data.enrolls);
+        // FIXME: This is a pretty simple way to select enrollments
+        // What about nodes that can't be re-enrolled yet ?
+        // But it fixes some of the failures we saw in the CI.
+        // TODO: Put a check higher-up that a block generated from the
+        // nomination data can be added.
+        Enrollment[] candidates;
+        this.enroll_man.pool.getEnrollments(candidates);
+        foreach (ref c; candidates)
+        {
+            if (this.enroll_man.getEnrolledHeight(c.utxo_key) == ulong.max)
+                data.enrolls ~= c;
+            else
+                this.enroll_man.pool.remove(c.utxo_key);
+        }
+
 
         foreach (hash, tx; this.pool)
         {
