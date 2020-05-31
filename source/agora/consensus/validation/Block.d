@@ -126,30 +126,14 @@ unittest
     import std.algorithm;
     import std.range;
 
-    // note: using array as a workaround to be able to store const Transactions
-    const(Transaction)[][Hash] tx_map;
-    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
-    {
-        if (auto tx = hash in tx_map)
-
-        {
-            if (index < (*tx).front.outputs.length)
-            {
-                value.unlock_height = 0;
-                value.type = TxType.Payment;
-                value.output = (*tx).front.outputs[index];
-                return true;
-            }
-        }
-
-        return false;
-    };
+    scope utxos = new TestUTXOSet();
+    scope findUTXO = &utxos.findUTXO;
 
     auto gen_key = getGenesisKeyPair();
     assert(GenesisBlock.isValid(GenesisBlock.header.height, Hash.init, null));
     auto gen_hash = GenesisBlock.header.hashFull();
 
-    tx_map[GenesisTransaction.hashFull()] = [GenesisTransaction];
+    utxos.put(GenesisTransaction);
     auto block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
 
     // height check
@@ -190,15 +174,15 @@ unittest
     }
 
     /// no matching utxo => fail
-    tx_map.clear();
+    utxos.clear();
     assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    tx_map[GenesisTransaction.hashFull()] = [GenesisTransaction];
+    utxos.put(GenesisTransaction);
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    tx_map.clear();  // genesis is spent
+    utxos.clear();  // genesis is spent
     auto prev_txs = block.txs;
-    prev_txs.each!(tx => tx_map[tx.hashFull()] = [tx]);  // these will be spent
+    prev_txs.each!(tx => utxos.put(tx));  // these will be spent
 
     auto prev_block = block;
     block = block.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
@@ -209,11 +193,11 @@ unittest
     foreach (tx; prev_txs)
     {
         // one utxo missing from the set => fail
-        tx_map.remove(tx.hashFull);
+        utxos.storage.remove(UTXOSet.getHash(tx.hashFull(), 0));
         assert(!block.isValid(prev_block.header.height, prev_block.header.hashFull(),
             findUTXO));
 
-        tx_map[tx.hashFull] = [tx];
+        utxos.put(tx);
         assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
             findUTXO));
     }
