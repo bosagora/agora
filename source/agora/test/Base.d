@@ -566,9 +566,6 @@ public interface TestAPI : ValidatorAPI
 
     ///
     public abstract Enrollment createEnrollmentData();
-
-    ///
-    public abstract void broadcastPreimage (uint height);
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -666,12 +663,6 @@ public class TestFullNode : FullNode, TestAPI
     mixin TestNodeMixin!();
 
     /// FullNode does not implement this
-    public override void broadcastPreimage (uint height)
-    {
-        assert(0);
-    }
-
-    /// FullNode does not implement this
     public override Enrollment createEnrollmentData ()
     {
         assert(0);
@@ -718,14 +709,6 @@ public class TestValidatorNode : Validator, TestAPI
             this.ledger.getBlockHeight(), enroll);
 
         return enroll;
-    }
-
-    /// Broadcast a pre-image information to the network
-    public override void broadcastPreimage (uint height)
-    {
-        PreImageInfo preimage;
-        this.enroll_man.getPreimage(height, preimage);
-        this.receivePreimage(preimage);
     }
 }
 
