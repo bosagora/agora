@@ -56,6 +56,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSet;
 import agora.consensus.EnrollmentPool;
+import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.consensus.ValidatorSet;
 import agora.utils.Log;
@@ -109,114 +110,6 @@ public class EnrollmentManager
     /// Enrollment pool managing enrollments waiting to be a validator
     private EnrollmentPool enroll_pool;
 
-    /// The number of cycles for a bulk of pre-images
-    private static immutable uint NumberOfCycles = 100;
-
-    /// This struct hold all the cycle data together for better readability
-    private static struct PreImageCycle
-    {
-        /// Make sure we get initialized by disabling the default ctor
-        @disable public this();
-        /// Ditto
-        public this (typeof(PreImageCycle.tupleof) args)
-        {
-            this.tupleof = args;
-        }
-
-        /***********************************************************************
-
-            The number of the current cycle
-
-            This is the data used as a nonce in generating the cycle seed.
-            Named `nonce` to avoid any ambiguity. It is incremented once every
-            `EnrollPerCycle` period, currently 700 days.
-
-        ***********************************************************************/
-
-        private uint nonce;
-
-        /***********************************************************************
-
-            The index of the enrollment within the current cycle
-
-            This number is incremented every time a new Enrollment is accepted
-            by the consensus protocol, and reset when `nonce` is incremented.
-
-        ***********************************************************************/
-
-        private uint index;
-
-        /***********************************************************************
-
-            Seed for all enrollments for the current cycle
-
-            This variable is changed every time `nonce` is changed,
-            and contains all the roots used to generate the `preimages` value.
-
-        ***********************************************************************/
-
-        private PreImageCache seeds;
-
-        /***********************************************************************
-
-            Currently active list of pre-images
-
-            This variable is changed every time `index` is changed, to reflect
-            the current Enrollment's pre-images.
-
-        ***********************************************************************/
-
-        private PreImageCache preimages;
-
-        /***********************************************************************
-
-            Consume the current cycle
-
-            This will first populate the caches (seeds and preimages)
-            as necessary, then increase the `index` by one, or reset it to 0
-            and increase `nonce` if necessary.
-            Note that the increment is done after the caches are populated,
-            so `consume` needs to be called once this node has confirmed it
-            is part of consensus.
-
-            Params:
-              secret = The secret key of the node, used as part of the hash
-                       to generate the cycle seeds
-
-            Returns:
-              The hash of the current enrollment round
-
-        ***********************************************************************/
-
-        private Hash consume (scope const ref Scalar secret) @safe nothrow
-        {
-            // Populate the nonce cache if necessary
-            if (this.index == 0)
-            {
-                const cycle_seed = hashMulti(
-                    secret, "consensus.preimages", this.nonce);
-                this.seeds.reset(cycle_seed);
-            }
-
-            // Populate the current enrollment round cache
-            // The index into `seeds` is the absolute index of the cycle,
-            // not the number of round, hence why we use `byStrides`
-            // The alternative would be:
-            // [$ - (this.index + 1) * this.preimages.length]
-            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
-
-            // Increment index if there are rounds left in this cycle
-            this.index += 1;
-            if (this.index >= NumberOfCycles)
-            {
-                this.index = 0;
-                this.nonce += 1;
-            }
-
-            return this.preimages[$ - 1];
-        }
-    }
-
     /// Ditto
     private PreImageCycle cycle;
 
@@ -236,7 +129,7 @@ public class EnrollmentManager
         this.cycle = PreImageCycle(
             /* nounce: */ 0,
             /* index:  */ 0,
-            /* seeds:  */ PreImageCache(NumberOfCycles, Enrollment.ValidatorCycle),
+            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles, Enrollment.ValidatorCycle),
             // Since those pre-images might be accessed often,
             // use an interval of 1 (no interval)
             /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
@@ -992,10 +885,10 @@ unittest
 {
     // Note: This was copied from `EnrollmentManager` constructor and should
     // be kept in sync with it
-    auto cycle = EnrollmentManager.PreImageCycle(
+    auto cycle = PreImageCycle(
         /* nounce: */ 0,
         /* index:  */ 0,
-        /* seeds:  */ PreImageCache(EnrollmentManager.NumberOfCycles, Enrollment.ValidatorCycle),
+        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles, Enrollment.ValidatorCycle),
         /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
     );
 
@@ -1003,14 +896,14 @@ unittest
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
     foreach (uint cycleGroupCount; 0 .. 10)
     {
-        foreach (outerIndex; 1 .. EnrollmentManager.NumberOfCycles + 1)
+        foreach (outerIndex; 1 .. PreImageCycle.NumberOfCycles + 1)
         {
             // Sanity check #1
             assert(cycleGroupCount == cycle.nonce);
             assert(outerIndex - 1  == cycle.index);
             // Only provide `secret` on the first iteration
             const commitment = cycle.consume(outerIndex == 1 ? secret : fake_secret);
-            const lastInCycle = outerIndex == EnrollmentManager.NumberOfCycles;
+            const lastInCycle = outerIndex == PreImageCycle.NumberOfCycles;
             // Sanity check #2
             assert(cycleGroupCount + lastInCycle == cycle.nonce);
             if (lastInCycle)
