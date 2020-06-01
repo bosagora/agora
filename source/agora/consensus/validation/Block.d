@@ -23,7 +23,6 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
-import agora.consensus.Genesis;
 
 import std.algorithm;
 
@@ -32,9 +31,7 @@ version (unittest)
     import agora.common.crypto.ECC;
     import agora.common.crypto.Key;
     import agora.common.crypto.Schnorr;
-    import agora.common.Hash;
-    import agora.consensus.data.Enrollment;
-    import agora.consensus.data.Transaction;
+    import agora.consensus.data.genesis.Test;
     import agora.utils.Test;
 }
 

@@ -24,7 +24,6 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
 import agora.test.Base;
 
 import geod24.Registry;

@@ -24,7 +24,6 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.Genesis;
 import agora.consensus.validation.PreImage;
 import agora.test.Base;
 
@@ -308,6 +307,7 @@ unittest
     import agora.common.crypto.Key;
     import agora.consensus.protocol.Nominator;
     import agora.consensus.data.ConsensusData;
+    import agora.consensus.data.genesis;
     import agora.node.Ledger;
     import agora.node.Validator;
     import agora.network.NetworkManager;

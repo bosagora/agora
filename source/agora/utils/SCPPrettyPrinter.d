@@ -374,7 +374,7 @@ unittest
     import agora.common.Serializer;
     import agora.common.Set;
     import agora.consensus.data.Enrollment;
-    import agora.consensus.Genesis;
+    import agora.consensus.data.genesis.Test;
     import scpd.types.Stellar_types : NodeID, uint256, StellarHash = Hash;
     import scpd.types.Utils;
 

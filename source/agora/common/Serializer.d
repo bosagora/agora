@@ -107,7 +107,7 @@ unittest
     import agora.common.Serializer;
     import agora.consensus.data.Block;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
+    import agora.consensus.data.genesis.Test;
 
     // Serialize immutable data, then deserialize it as `const`
     ubyte[] block_bytes = serializeFull(GenesisBlock);
@@ -751,7 +751,7 @@ unittest
 unittest
 {
     import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
+    import agora.consensus.data.genesis.Test;
 
     static struct OptionalHash
     {
@@ -771,7 +771,7 @@ unittest
     }
 
     testSymmetry!OptionalHash();
-    testSymmetry(OptionalHash(42, &GenesisBlock(), "Baguettes are good"));
+    testSymmetry(OptionalHash(42, &GenesisBlock, "Baguettes are good"));
     testSymmetry(OptionalHash(24, null, "Good, Baguettes are"));
 }
 

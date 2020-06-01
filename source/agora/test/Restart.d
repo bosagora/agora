@@ -17,7 +17,6 @@ version (unittest):
 
 import agora.api.Validator;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
 import agora.test.Base;
 
 /// A test that stops and restarts a node

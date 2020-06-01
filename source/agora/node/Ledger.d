@@ -34,11 +34,12 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.ConsensusParams;
+// TODO: Remove me once #955 is fixed
+import agora.consensus.data.genesis;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.Genesis;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
 import agora.utils.Log;
@@ -52,6 +53,7 @@ mixin AddLogger!();
 
 version (unittest)
 {
+    //import agora.consensus.data.genesis.Test;
     import agora.utils.Test;
 }
 

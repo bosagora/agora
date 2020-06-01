@@ -21,7 +21,6 @@ import agora.common.Types;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
 import agora.test.Base;
 import core.thread;
 

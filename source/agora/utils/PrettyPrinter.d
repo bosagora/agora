@@ -25,8 +25,8 @@ import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
+version (unittest) import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
-version (unittest) import agora.consensus.Genesis;
 
 import std.algorithm;
 import std.format;

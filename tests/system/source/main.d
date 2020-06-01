@@ -15,8 +15,8 @@ module main;
 
 import agora.api.FullNode;
 import agora.consensus.data.Block;
+import agora.consensus.data.genesis;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
 import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.common.Set;

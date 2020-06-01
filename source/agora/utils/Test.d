@@ -36,7 +36,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
+import agora.consensus.data.genesis;
 
 import std.algorithm;
 import std.array;

@@ -468,7 +468,7 @@ version (unittest)
 ///
 @safe nothrow unittest
 {
-    import agora.consensus.Genesis;
+    import agora.consensus.data.genesis.Test;
 
     auto new_block = makeNewBlock(GenesisBlock, [Transaction.init]);
     auto rng_block = makeNewBlock(GenesisBlock, [Transaction.init].take(1));
