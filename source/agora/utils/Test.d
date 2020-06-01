@@ -303,7 +303,6 @@ unittest
     Transaction GenTx =
     {
         TxType.Payment,
-        inputs: [ Input.init ],
         outputs: [
             Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
             Output(Amount(62_500_000L * 10_000_000L), key_pair.address),

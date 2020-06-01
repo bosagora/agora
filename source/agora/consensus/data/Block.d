@@ -386,7 +386,6 @@ unittest
     Transaction tx =
     {
         TxType.Payment,
-        inputs: [ Input.init ],
         outputs: [
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),

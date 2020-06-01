@@ -274,10 +274,13 @@ private struct TransactionFmt
             enum InputPerLine = 3;
             enum OutputPerLine = 3;
 
-            formattedWrite(sink, "Type : %s, Inputs (%d): %(%(%s, %),\n%)\n",
-                this.value.type,
-                this.value.inputs.length,
-                this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
+            if (this.value.inputs.length)
+                formattedWrite(sink, "Type : %s, Inputs (%d): %(%(%s, %),\n%)\n",
+                    this.value.type,
+                    this.value.inputs.length,
+                    this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
+            else
+                formattedWrite(sink, "Type : %s, Inputs: None\n", this.value.type);
 
             formattedWrite(sink, "Outputs (%d): %(%(%s, %),\n%)",
                 this.value.outputs.length,
@@ -293,11 +296,12 @@ private struct TransactionFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ResultStr = `Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
-    assert(ResultStr == format("%s", TransactionFmt(GenesisTransaction)));
+    const actual = format("%s", TransactionFmt(GenesisTransaction));
+    assert(ResultStr == actual, actual);
 }
 
 /// Format a block header
@@ -328,8 +332,9 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xdb6e...d2c3`;
-    assert(GenesisHStr == format("%s", BlockHeaderFmt(GenesisBlock.header)));
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x5d7f...0d73`;
+    const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
+    assert(GenesisHStr == actual, actual);
 }
 
 /// Format a whole block
@@ -361,12 +366,13 @@ private struct BlockFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xdb6e...d2c3, Transactions: 1
-Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x5d7f...0d73, Transactions: 1
+Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
-    assert(ResultStr == format("%s", BlockFmt(GenesisBlock)));
+    const actual = format("%s", BlockFmt(GenesisBlock));
+    assert(ResultStr == actual, actual);
 }
 
 @safe unittest
@@ -374,12 +380,12 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
     import agora.common.Hash;
     import agora.consensus.Genesis;
 
-    static immutable ResultStr = `Height: 1, Prev: 0xd462...60db, Root: 0xf9f5...fde2, Transactions: 2
-Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable ResultStr = `Height: 1, Prev: 0xca2a...4d49, Root: 0xf2ac...6c30, Transactions: 2
+Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)
-Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
@@ -515,7 +521,7 @@ unittest
         enrolls: enrollments,
     };
 
-    static immutable Res1 = `{ tx_set: [Type : Payment, Inputs (1): 0x0000...0000[0]:0x0000...0000
+    static immutable Res1 = `{ tx_set: [Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
 GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
