@@ -31,7 +31,7 @@ unittest
 {
     import agora.common.Serializer;
     import agora.common.Types;
-    import agora.consensus.Genesis;
+    import agora.consensus.data.genesis.Test;
 
     testSymmetry!ConsensusData();
 

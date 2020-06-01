@@ -41,7 +41,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.Genesis;
+import agora.consensus.data.genesis.Test;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
@@ -1170,7 +1170,7 @@ public void ensureConsistency (APIS)(
 
     For each key pair, a freeze transaction and an Enrollment
     will be created and added to the generated Genesis block.
-    The first transaction is the `UnitTestGenesisTransaction`
+    The first transaction is the unittest's `GenesisTransaction`
 
     Params:
         key_pairs = key pairs for signing enrollments with

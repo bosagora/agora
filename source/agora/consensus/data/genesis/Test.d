@@ -1,9 +1,18 @@
 /*******************************************************************************
 
-    Contains primitives related to the genesis block
+    Defines a genesis block suitable for testing purpose
+
+    This genesis block is used in multiple places:
+    - Most unittests;
+    - Most network unittests (TODO);
+    - The system unit tests;
+    - The system integration tests;
+
+    The keys in this module are well-known, and hence not suitable for anything
+    that isn't a test.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -11,7 +20,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.Genesis;
+module agora.consensus.data.genesis.Test;
 
 import agora.common.Amount;
 import agora.common.Hash;
@@ -20,68 +29,27 @@ import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.validation.Block;
 import agora.utils.Test;
 
-/// Contains a pointer to the genesis block.
-version (unittest)
-    private immutable(Block)* gen_block = &UnitTestGenesisBlock;
-else
-    private immutable(Block)* gen_block = &CoinNetGenesisBlock;
-
 /*******************************************************************************
 
-    Returns:
-        a reference to the genesis block.
-
-*******************************************************************************/
-
-pragma(inline, true)
-public ref immutable(Block) GenesisBlock () nothrow @safe @nogc
-{
-    return *gen_block;
-}
-
-/*******************************************************************************
-
-    Set a custom Genesis block. Any subsequent call to `GenesisBlock`
-    will refer to the Block as configured here.
-
-    Params:
-        block = the new Genesis block to use
-
-*******************************************************************************/
-
-pragma(inline, true)
-public void setGenesisBlock (immutable Block* block)
-    @safe
-{
-    assert(block !is null);
-
-    if (auto reason = isGenesisBlockInvalidReason(*block))
-        throw new Exception(reason);
-
-    gen_block = block;
-}
-
-/*******************************************************************************
-
-    The genesis block as used by most unittests
+    The genesis block as used by most tests
 
     Note that this is more of a 'test' block than a 'unittest' block,
     and it's currently used in a few integration test, hence why it is not
     `version (unittest)`.
+    It can also be used for system integration testing.
 
     It contains a total of 500M initial coins, of which 12M have been frozen
     among 6 nodes, and the rest is evenly split between 8 outputs (61M each).
 
 *******************************************************************************/
 
-private immutable Block UnitTestGenesisBlock = {
+public immutable Block GenesisBlock = {
     header: {
         prev_block:  Hash.init,
         height:      Height(0),
-        merkle_root: UnitTestGenesisMerkleTree[$ - 1],
+        merkle_root: GenesisMerkleTree[$ - 1],
         enrollments: [
             Enrollment(
                 Hash(`0x46883e83778481d640a95fcffd6e1a1b6defeaac5a8001cd3f99e17576b809c` ~
@@ -144,7 +112,7 @@ private immutable Block UnitTestGenesisBlock = {
             ),
         ],
     },
-    merkle_tree: UnitTestGenesisMerkleTree,
+    merkle_tree: GenesisMerkleTree,
     txs: [
         {
             TxType.Freeze,
@@ -160,14 +128,14 @@ private immutable Block UnitTestGenesisBlock = {
         {
             TxType.Payment,
             outputs: [
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
             ],
         },
     ],
@@ -188,7 +156,7 @@ unittest
         import std.range;
         import agora.consensus.EnrollmentManager;
 
-        const txs = UnitTestGenesisBlock.txs;
+        const txs = GenesisBlock.txs;
 
         if (!txs.isStrictlyMonotonic())
         {
@@ -214,13 +182,13 @@ unittest
     }
 
     Amount amount;
-    assert(UnitTestGenesisBlock.txs.all!(tx => tx.getSumOutput(amount)));
+    assert(GenesisBlock.txs.all!(tx => tx.getSumOutput(amount)));
     assert(amount == Amount.MaxUnitSupply, amount.toString());
-    assert(UnitTestGenesisBlock.merkle_tree.length == UnitTestGenesisMerkleTree.length);
-    assert(UnitTestGenesisBlock.header.merkle_root == UnitTestGenesisBlock.merkle_tree[$-1]);
+    assert(GenesisBlock.merkle_tree.length == GenesisMerkleTree.length);
+    assert(GenesisBlock.header.merkle_root == GenesisBlock.merkle_tree[$-1]);
 }
 
-private immutable Hash[] UnitTestGenesisMerkleTree = [
+private immutable Hash[] GenesisMerkleTree = [
     Hash(`0x6314ce9bc41a7f5b98309c3a3d824647d7613b714c4e3ddbc1c5e9ae46db297` ~
          `15c83127ce259a3851363bff36af2e1e9a51dfa15c36a77c9f8eba6826ff975bc`),
     Hash(`0x7a5bfeb96f9caefa377cb9a7ffe3ea3dd59ea84d4a1c66304ab8c307a4f4770` ~
@@ -230,10 +198,10 @@ private immutable Hash[] UnitTestGenesisMerkleTree = [
 ];
 
 /// GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
-private immutable PublicKey UnitTestGenesisOutputAddress = UnitTestGenesisAddressUbyte;
+private immutable PublicKey GenesisOutputAddress = GenesisAddressUbyte;
 
 ///
-private immutable ubyte[] UnitTestGenesisAddressUbyte =
+private immutable ubyte[] GenesisAddressUbyte =
     [
         0x9D, 0x02, 0x38, 0xE0, 0xA1, 0x71, 0x40, 0x0B,
         0xC6, 0xD6, 0x8A, 0x9D, 0x9B, 0x31, 0x6A, 0xCD,
@@ -243,85 +211,13 @@ private immutable ubyte[] UnitTestGenesisAddressUbyte =
 
 unittest
 {
-    assert(UnitTestGenesisOutputAddress.toString()
+    assert(GenesisOutputAddress.toString()
            == `GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ`);
 }
 
 unittest
 {
     import agora.common.Serializer;
-    testSymmetry(UnitTestGenesisBlock.txs[0]);
-    testSymmetry(UnitTestGenesisBlock);
-}
-
-/// The genesis block as defined by CoinNet
-private immutable Block CoinNetGenesisBlock =
-{
-    header:
-    {
-        prev_block:  Hash.init,
-        height:      Height(0),
-        merkle_root: CoinNetGenesisMerkleRoot,
-    },
-    txs: [ CoinNetGenesisTransaction ],
-    merkle_tree: [ CoinNetGenesisMerkleRoot ],
-};
-
-///
-unittest
-{
-    assert(CoinNetGenesisBlock.header.prev_block == Hash.init);
-    assert(CoinNetGenesisBlock.header.height == 0);
-    assert(CoinNetGenesisBlock.header.merkle_root == CoinNetGenesisBlock.merkle_tree[0]);
-    assert(CoinNetGenesisBlock.merkle_tree.length == 1);
-    assert(CoinNetGenesisBlock.header.merkle_root == hashFull(CoinNetGenesisTransaction));
-}
-
-///
-private immutable Hash CoinNetGenesisMerkleRoot =
-    Hash(`0x5d7f6a7a30f7ff591c8649f61eb8a35d034824ed5cd252c2c6f10cdbd223671` ~
-         `3dc369ef2a44b62ba113814a9d819a276ff61582874c9aee9c98efa2aa1f10d73`);
-
-
-/// The single transaction that are part of the genesis block
-private immutable Transaction CoinNetGenesisTransaction =
-{
-    TxType.Payment,
-    inputs: [],
-    outputs: [
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
-    ],
-};
-
-// TODO: Replace with the foundation's pubkey
-/// GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
-private immutable PublicKey CoinNetGenesisOutputAddress = CoinNetGenesisAddressUbyte;
-
-///
-private immutable ubyte[] CoinNetGenesisAddressUbyte =
-    [
-        0x9D, 0x02, 0x38, 0xE0, 0xA1, 0x71, 0x40, 0x0B,
-        0xC6, 0xD6, 0x8A, 0x9D, 0x9B, 0x31, 0x6A, 0xCD,
-        0x51, 0x09, 0x64, 0x91, 0x13, 0xA0, 0x5C, 0x28,
-        0x4F, 0x42, 0x96, 0xD2, 0xB3, 0x01, 0x22, 0xF5,
-    ];
-
-unittest
-{
-    assert(CoinNetGenesisOutputAddress.toString()
-           == `GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ`);
-}
-
-unittest
-{
-    import agora.common.Serializer;
-    testSymmetry(CoinNetGenesisTransaction);
-    testSymmetry(CoinNetGenesisBlock);
+    testSymmetry(GenesisBlock.txs[0]);
+    testSymmetry(GenesisBlock);
 }
