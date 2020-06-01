@@ -1093,7 +1093,6 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
         Transaction tx =
         {
             type : TxType.Freeze,
-            inputs : [ Input.init ],
             outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
         };
 

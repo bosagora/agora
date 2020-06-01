@@ -1390,7 +1390,6 @@ unittest
         Transaction freeze_tx =
         {
             type : TxType.Freeze,
-            inputs : [ Input.init ],
             outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
         };
 

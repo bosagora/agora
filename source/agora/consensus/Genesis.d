@@ -98,14 +98,14 @@ unittest
 }
 
 private immutable Hash UnitTestGenesisMerkleRoot =
-    Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413959ca`
-         ~ `4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
+    Hash(`0x5d7f6a7a30f7ff591c8649f61eb8a35d034824ed5cd252c2c6f10cdbd223671` ~
+         `3dc369ef2a44b62ba113814a9d819a276ff61582874c9aee9c98efa2aa1f10d73`);
 
 /// The single transaction that are part of the genesis block
 private immutable Transaction UnitTestGenesisTransaction =
 {
     TxType.Payment,
-    inputs: [ Input.init ],
+    inputs: [],
     outputs: [
         Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
         Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
@@ -199,14 +199,15 @@ unittest
 
 ///
 private immutable Hash CoinNetGenesisMerkleRoot =
-    Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413959ca`
-         ~ `4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
+    Hash(`0x5d7f6a7a30f7ff591c8649f61eb8a35d034824ed5cd252c2c6f10cdbd223671` ~
+         `3dc369ef2a44b62ba113814a9d819a276ff61582874c9aee9c98efa2aa1f10d73`);
+
 
 /// The single transaction that are part of the genesis block
 private immutable Transaction CoinNetGenesisTransaction =
 {
     TxType.Payment,
-    inputs: [ Input.init ],
+    inputs: [],
     outputs: [
         Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
         Output(Amount(62_500_000L * 10_000_000L), CoinNetGenesisOutputAddress),
