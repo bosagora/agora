@@ -102,10 +102,8 @@ public class Validator : FullNode, API
 
             while (1)
             {
-                scope (success)
-                    this.taskman.wait(5.seconds);
-
                 this.network.discover(required_peer_keys);
+                this.taskman.wait(5.seconds);
             }
         });
     }
