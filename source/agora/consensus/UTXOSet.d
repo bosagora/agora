@@ -486,17 +486,30 @@ version (unittest) public class TestUTXOSet
     ///
     public UTXOSetValue[Hash] storage;
 
+    /// Keeps track of spent outputs
+    private Set!Hash used_utxos;
+
     ///
     alias storage this;
 
-    ///
-    public bool findUTXO (Hash hash, size_t index, out UTXOSetValue value)
+    /// Similar to `UTXOSet.getUTXOFinder`
+    public UTXOFinder getUTXOFinder () @trusted nothrow
+    {
+        this.used_utxos.clear();
+        return &this.findUTXO_;
+    }
+
+    /// FIXME: Remove and make UTXO-sensible tests use either `peekUTXO`
+    /// or `getUTXOFinder`
+    public alias findUTXO = peekUTXO;
+
+    /// Get an UTXO, no double-spend protection
+    public bool peekUTXO (Hash hash, size_t index, out UTXOSetValue value)
         nothrow @safe
     {
-        // Note: Keep this in sync with the real `findUTXO`
+        // Note: Keep this in sync with `findUTXO`
         Hash utxo_hash = (index == size_t.max) ?
             hash : UTXOSet.getHash(hash, index);
-        // Note: Does not expose double-spend prevention property
         if (auto ptr = utxo_hash in this.storage)
         {
             value = *ptr;
@@ -524,6 +537,25 @@ version (unittest) public class TestUTXOSet
     public void clear ()
     {
         this.storage.clear();
+    }
+
+    /// Get an UTXO, does not return double spend
+    private bool findUTXO_ (Hash hash, size_t index, out UTXOSetValue value)
+        nothrow @safe
+    {
+        // Note: Keep this in sync with the real `findUTXO`
+        Hash utxo_hash = (index == size_t.max) ?
+            hash : UTXOSet.getHash(hash, index);
+        // double-spend
+        if (utxo_hash in this.used_utxos)
+            return false;
+        if (auto ptr = utxo_hash in this.storage)
+        {
+            value = *ptr;
+            this.used_utxos.put(utxo_hash);
+            return true;
+        }
+        return false;
     }
 }
 
