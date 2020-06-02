@@ -283,7 +283,11 @@ public class NetworkManager
                     auto node_info = client.getNodeInfo();
                     this.onNewAddresses(node_info.addresses);
                 }
-                finally  // request failures are already logged
+                catch (Exception ex)
+                {
+                    // request failures are already logged
+                }
+                finally
                 {
                     if (!this.outer.banman.isBanned(client.address))
                         this.clients.insertBack(client);
