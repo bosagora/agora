@@ -191,15 +191,6 @@ unittest
     utxo_set.updateUTXOCache(tx3, 0);
     utxo_set.updateUTXOCache(tx4, 0);
 
-    auto utxos1 = utxo_set.getUTXOs(key_pairs[0].address);
-    assert(utxos1[utxo_hash1].output.address == key_pairs[0].address);
-    auto utxos2 = utxo_set.getUTXOs(key_pairs[1].address);
-    assert(utxos2[utxo_hash2].output.address == key_pairs[1].address);
-    auto utxos3 = utxo_set.getUTXOs(key_pairs[2].address);
-    assert(utxos3[utxo_hash3].output.address == key_pairs[2].address);
-    auto utxos4 = utxo_set.getUTXOs(key_pairs[3].address);
-    assert(utxos4[utxo_hash4].output.address == key_pairs[3].address);
-
     // Nomal
     assert(enroll1.isValid(utxoFinder));
 
