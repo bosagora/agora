@@ -761,9 +761,9 @@ public enum NetworkTopology
     /// to connect to a min_listeners number of nodes
     FindNetwork,
 
-    /// Set a minimal networking config, but a full quorum configuration
+    /// Set a minimal networking config,
     /// The node should attempt to connect to all its quorum peers even
-    /// if it only knows their public keys
+    /// if it only knows their public keys via the enrollments
     FindQuorums,
 
     /// Same as Simple, with one additional non-validating node
@@ -774,6 +774,9 @@ public enum NetworkTopology
 
     /// One FullNode is not part of the network for any other nodes
     OneFullNodeOutsider,
+
+    /// Two Validators are not part of the network for any other nodes
+    TwoOutsiderValidators,
 }
 
 /// Node / Network / Quorum configuration for use with makeTestNetwork
@@ -781,6 +784,9 @@ public struct TestConf
 {
     /// Network topology to use
     NetworkTopology topology = NetworkTopology.Simple;
+
+    /// Extra blocks to generate in addition to the genesis block
+    size_t extra_blocks = 0;
 
     /// Number of nodes to instantiate
     size_t nodes = 4;
@@ -885,36 +891,20 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 .filter!(conf => conf != self)
                 .map!(conf => conf.address);
 
-        auto quorum_keys =
-            node_confs
-                .filter!(conf => conf.is_validator)
-                .map!(conf => conf.key_pair.address).array.assumeUnique;
-
         Config conf =
         {
             banman : ban_conf,
             node : self,
-            network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null,
-            quorum :
-            {
-                nodes : quorum_keys,
-                threshold : (test_conf.threshold == 0) ? quorum_keys.length : test_conf.threshold
-            }
+            network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null
         };
 
         return conf;
     }
 
-    // each node only has another node in its network, but will discover the
-    // entire network through the network discovery phase
+    // for discovery testing: only 1 node in the 'network' section, rest is discovered
     Config makeMinimalNetwork (size_t idx, NodeConfig self, NodeConfig[] node_confs)
     {
         auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
-
-        auto quorum_keys =
-            node_confs
-                .filter!(conf => conf.is_validator)
-                .map!(conf => conf.key_pair.address).array.assumeUnique;
 
         Config conf =
         {
@@ -933,21 +923,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
         node_confs.each!(conf => assert(conf.is_validator));
 
-        auto quorum_keys =
-            node_confs
-                .filter!(conf => conf.is_validator)
-                .map!(conf => conf.key_pair.address).array.assumeUnique;
-
         Config conf =
         {
             banman : ban_conf,
             node : self,
             network : test_conf.configure_network ? [prev_node.address] : null,
-            quorum :
-            {
-                nodes : quorum_keys,
-                threshold : (test_conf.threshold == 0) ? quorum_keys.length : test_conf.threshold
-            }
         };
 
         return conf;
@@ -999,6 +979,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         node_configs ~= makeNodeConfig(false);
         configs ~= makeConfig(node_configs[$ - 1], node_configs);
         break;
+
+    case NetworkTopology.TwoOutsiderValidators:
+        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        configs = iota(test_conf.nodes)
+            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
+        break;
     }
 
     auto gen_block = makeGenesisBlock(
@@ -1011,10 +997,22 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .serializeFull()
         .toHexString();
 
+    // add two additional validators whose enrollments are not in genesis block
+    if (test_conf.topology == NetworkTopology.TwoOutsiderValidators)
+    {
+        node_configs ~= makeNodeConfig(true);
+        configs ~= makeConfig(node_configs[$ - 1], node_configs);
+        node_configs ~= makeNodeConfig(true);
+        configs ~= makeConfig(node_configs[$ - 1], node_configs);
+    }
+
     foreach (ref conf; configs)
         conf.node.genesis_block = gen_block_hex;
 
-    auto net = new APIManager([gen_block]);
+    immutable(Block)[] blocks = generateBlocks(gen_block,
+        test_conf.extra_blocks);
+
+    auto net = new APIManager(blocks);
     foreach (ref conf; configs)
         net.createNewNode(conf);
 
@@ -1131,4 +1129,40 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
         txs.assumeUnique,
         merkle_tree.assumeUnique
     );
+}
+
+/*******************************************************************************
+
+    Generate a set of blocks with spend transactions
+
+    Params:
+        gen_block = the genesis block
+        count = the number of extra blocks to generate. If 0, the return
+                blockchain will only contain the genesis block.
+
+    Returns:
+        The blockchain, including the provided genesis block
+
+*******************************************************************************/
+
+private immutable(Block)[] generateBlocks (
+    ref immutable Block gen_block, size_t count)
+{
+    const(Block)[] blocks = [gen_block];
+    if (count == 0)
+        return blocks.assumeUnique;  // just the genesis block
+
+    const(Transaction)[] prev_txs;
+    foreach (_; 0 .. count)
+    {
+        // 10x more than MinFreezeAmount so we can split it to multiple freezes later
+        auto txs = makeChainedTransactions(getGenesisKeyPair(),
+            prev_txs, 1, 4_000_000_000_000 * Block.TxsInBlock);
+
+        const NoEnrollments = null;
+        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
+        prev_txs = txs;
+    }
+
+    return blocks.assumeUnique;
 }

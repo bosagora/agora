@@ -19,11 +19,17 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.common.Task;
+import agora.common.TransactionPool;
 import agora.common.Types;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
+import agora.consensus.UTXOSet;
+import agora.consensus.Quorum;
 import agora.network.NetworkManager;
+import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.utils.Log;
@@ -33,6 +39,7 @@ import scpd.types.Stellar_SCP;
 
 import ocean.util.log.Logger;
 
+import core.stdc.stdlib : abort;
 import core.time;
 
 mixin AddLogger!();
@@ -51,24 +58,75 @@ public class Validator : FullNode, API
     /// Nominator instance
     protected Nominator nominator;
 
+    /// The current quorum configuration (changes as active enrollments change)
+    protected QuorumConfig qc;
+
+    /// The current required set of peer keeys to connect to
+    protected Set!PublicKey required_peer_keys;
+
     /// Ctor
     public this (const Config config)
     {
         assert(config.node.is_validator);
-        super(config);
-
-        // instantiating Nominator can fail if the quorum configuration
-        // fails the checkSanity() test, and we must release resources.
-        scope (failure)
-        {
-            this.pool.shutdown();
-            this.utxo_set.shutdown();
-            this.enroll_man.shutdown();
-        }
+        super(config, &this.onValidatorsChanged);
 
         this.nominator = this.getNominator(this.network,
-            this.config.node.key_pair, this.ledger, this.taskman,
-            this.config.quorum);
+            this.config.node.key_pair, this.ledger, this.taskman);
+        this.onValidatorsChanged();
+    }
+
+    /***************************************************************************
+
+        Called when the active validator set has changed after a block
+        was externalized.
+
+        Regenerates the quorum set config and updates the Nominator
+        with the new quorum set.
+
+        The background network discovery task will automatically attempt to
+        find the Validator nodes in the quorum set configuration and connect
+        to them.
+
+    ***************************************************************************/
+
+    private void onValidatorsChanged () nothrow @trusted
+    {
+        try
+        {
+            this.qc = this.buildQuorumConfig();
+            this.nominator.setQuorumConfig(this.qc);
+            buildRequiredKeys(this.config.node.key_pair.address, this.qc,
+                this.required_peer_keys);
+        }
+        catch (Exception ex)
+        {
+            log.fatal("onValidatorsChanged() failed: {}", ex);
+            abort();
+        }
+    }
+
+    /***************************************************************************
+
+        Generate the quorum configuration for this node based on the
+        blockchain state (enrollments).
+
+        Returns:
+            the generated quorum configuration
+
+    ***************************************************************************/
+
+    private QuorumConfig buildQuorumConfig ()
+    {
+        Enrollment[] enrollments;
+        if (!this.enroll_man.getValidators(enrollments) ||
+            enrollments.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        return .buildQuorumConfig(this.config.node.key_pair.address,
+            enrollments, this.utxo_set.getUTXOFinder());
     }
 
     /***************************************************************************
@@ -95,12 +153,7 @@ public class Validator : FullNode, API
         this.taskman.runTask(
         ()
         {
-            // build the list of required quorum peers to connect to
-            Set!PublicKey required_peer_keys;
-            buildRequiredKeys(this.config.node.key_pair.address,
-                this.config.quorum, required_peer_keys);
-
-            void discover () { this.network.discover(required_peer_keys); }
+            void discover () { this.network.discover(this.required_peer_keys); }
             discover();  // avoid delay
             this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
         });
@@ -141,7 +194,6 @@ public class Validator : FullNode, API
             key_pair = the key pair of the node
             ledger = Ledger instance
             taskman = the task manager
-            quorum_config = the SCP quorum set configuration
 
         Returns:
             An instance of a `Nominator`
@@ -149,9 +201,9 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     protected Nominator getNominator (NetworkManager network, KeyPair key_pair,
-        Ledger ledger, TaskManager taskman, in QuorumConfig quorum_config)
+        Ledger ledger, TaskManager taskman)
     {
-        return new Nominator(network, key_pair, ledger, taskman, quorum_config);
+        return new Nominator(network, key_pair, ledger, taskman);
     }
 
     /***************************************************************************
