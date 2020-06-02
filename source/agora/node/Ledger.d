@@ -228,6 +228,9 @@ public class Ledger
         this.enroll_man.clearExpiredValidators(block.header.height);
 
         foreach (idx, ref enrollment; block.header.enrollments)
+        {
+            this.enroll_man.pool.remove(enrollment.utxo_key);
+
             if (auto r = this.enroll_man.addValidator(enrollment,
                 block.header.height, this.utxo_set.getUTXOFinder()))
             {
@@ -236,6 +239,7 @@ public class Ledger
                 log.fatal("Validated block: {}", block);
                 assert(0);
             }
+        }
 
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
@@ -281,22 +285,7 @@ public class Ledger
         const ulong next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        // FIXME: This is a pretty simple way to select enrollments
-        // What about nodes that can't be re-enrolled yet ?
-        // But it fixes some of the failures we saw in the CI.
-        // TODO: Put a check higher-up that a block generated from the
-        // nomination data can be added.
-        Enrollment[] candidates;
-        this.enroll_man.pool.getEnrollments(candidates);
-        foreach (ref c; candidates)
-        {
-            if (this.enroll_man.getEnrolledHeight(c.utxo_key) == ulong.max)
-                data.enrolls ~= c;
-            else
-                this.enroll_man.pool.remove(c.utxo_key);
-        }
-
-
+        this.enroll_man.pool.getEnrollments(data.enrolls);
         foreach (hash, tx; this.pool)
         {
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
