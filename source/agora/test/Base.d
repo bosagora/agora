@@ -778,9 +778,6 @@ public struct TestConf
 
     /// The threshold. If not set, it will default to the number of nodes
     size_t threshold;
-
-    /// the genesis block to use, or GenesisBlock in Genesis.d if not set.
-    immutable Block gen_block;
 }
 
 /*******************************************************************************
