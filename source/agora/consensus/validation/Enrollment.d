@@ -204,5 +204,5 @@ unittest
     assert(!enroll3.isValid(utxoFinder));
 
     // Enrollment signature verification has an error.
-    assert(!enroll3.isValid(utxoFinder));
+    assert(!enroll4.isValid(utxoFinder));
 }
