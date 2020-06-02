@@ -80,7 +80,7 @@ unittest
             // make 20 blocks which have an invalid previous hash
             foreach (idx; 0 .. 20)
             {
-                auto txs = () @trusted { return makeChainedTransactions(prev_key, last_tx, 1); }();
+                auto txs = makeChainedTransactions(prev_key, last_tx, 1);
                 last_tx = txs;
                 auto block = makeNewBlock(last_block, txs);
 

@@ -161,6 +161,7 @@ unittest
 public Transaction[] makeChainedTransactions (KeyPair key_pair,
     const(Transaction)[] prev_txs, size_t block_count,
     ulong spend_amount = 40_000_000, in Transaction gen_tx = GenesisTransaction)
+    @safe
 {
     import agora.common.Amount;
     import agora.common.Hash;
@@ -212,7 +213,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
             [Output(AmountPerTx, key_pair.address)]  // send to the same address
         };
 
-        auto signature = key_pair.secret.sign(hashFull(tx)[]);
+        auto signature = () @trusted { return key_pair.secret.sign(hashFull(tx)[]); }();
         tx.inputs[0].signature = signature;
         transactions ~= tx;
 
