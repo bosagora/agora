@@ -19,6 +19,9 @@ DLogger::DLogger(int level, std::string const& loggerName)
 
 DLogger::~DLogger()
 {
+    if (mLevel == TRACE && !Logging::logTrace("SCP"))
+        return;
+
     writeDLog(mLoggerName.c_str(), mLevel, mOutStream.str().c_str());
 }
 }
