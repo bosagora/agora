@@ -295,8 +295,7 @@ public class EnrollmentManager
         }
 
         // signature
-        data.enroll_sig = sign(this.key_pair.v, this.key_pair.V, this.signature_noise.V,
-            this.signature_noise.v, this.data);
+        data.enroll_sig = sign(this.key_pair, this.signature_noise, this.data);
 
         enroll = this.data;
 
@@ -716,8 +715,7 @@ unittest
     fail_enroll.utxo_key = utxo_hash;
     fail_enroll.random_seed = hashFull(Scalar.random());
     fail_enroll.cycle_length = 1008;
-    fail_enroll.enroll_sig = sign(fail_enroll_key_pair.v, fail_enroll_key_pair.V,
-        signature_noise.V, signature_noise.v, fail_enroll);
+    fail_enroll.enroll_sig = sign(fail_enroll_key_pair, signature_noise, fail_enroll);
 
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(!man.pool.add(fail_enroll, &storage.findUTXO));

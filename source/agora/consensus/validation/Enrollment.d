@@ -144,8 +144,7 @@ unittest
     enroll1.utxo_key = utxo_hash1;
     enroll1.random_seed = hashFull(Scalar.random());
     enroll1.cycle_length = 1008;
-    enroll1.enroll_sig = sign(node_key_pair_1.v, node_key_pair_1.V, signature_noise.V,
-        signature_noise.v, enroll1);
+    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
     Pair node_key_pair_2;
     node_key_pair_2.v = secretKeyToCurveScalar(key_pairs[1].secret);
@@ -155,8 +154,7 @@ unittest
     enroll2.utxo_key = utxo_hash2;
     enroll2.random_seed = hashFull(Scalar.random());
     enroll2.cycle_length = 1008;
-    enroll2.enroll_sig = sign(node_key_pair_2.v, node_key_pair_2.V, signature_noise.V,
-        signature_noise.v, enroll2);
+    enroll2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll2);
 
     Pair node_key_pair_3;
     node_key_pair_3.v = secretKeyToCurveScalar(key_pairs[2].secret);
@@ -166,8 +164,7 @@ unittest
     enroll3.utxo_key = utxo_hash3;
     enroll3.random_seed = hashFull(Scalar.random());
     enroll3.cycle_length = 1008;
-    enroll3.enroll_sig = sign(node_key_pair_3.v, node_key_pair_3.V, signature_noise.V,
-        signature_noise.v, enroll3);
+    enroll3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll3);
 
     Pair node_key_pair_4;
     // Invalid secret key
@@ -178,8 +175,7 @@ unittest
     enroll4.utxo_key = utxo_hash4;
     enroll4.random_seed = hashFull(Scalar.random());
     enroll4.cycle_length = 1008;
-    enroll4.enroll_sig = sign(node_key_pair_4.v, node_key_pair_4.V, signature_noise.V,
-        signature_noise.v, enroll4);
+    enroll4.enroll_sig = sign(node_key_pair_4, signature_noise, enroll4);
 
     assert(!enroll1.isValid(utxoFinder));
     assert(!enroll2.isValid(utxoFinder));
