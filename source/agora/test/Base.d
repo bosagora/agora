@@ -742,8 +742,8 @@ public enum NetworkTopology
     /// Only one of the nodes is a validator, the rest are full nodes
     OneValidator,
 
-    /// One node is not part of the network for any other nodes
-    OneOutsider,
+    /// One FullNode is not part of the network for any other nodes
+    OneFullNodeOutsider,
 }
 
 /// Node / Network / Quorum configuration for use with makeTestNetwork
@@ -963,7 +963,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
-    case NetworkTopology.OneOutsider:
+    case NetworkTopology.OneFullNodeOutsider:
         node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
