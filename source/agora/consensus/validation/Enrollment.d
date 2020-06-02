@@ -19,7 +19,7 @@ import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.UTXOSet;
+import agora.consensus.UTXOSet;
 
 import std.conv;
 

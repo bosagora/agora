@@ -29,7 +29,7 @@ import agora.common.TransactionPool;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSet;
+import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
 import agora.network.NetworkClient;

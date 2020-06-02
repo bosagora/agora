@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.data.UTXOSet;
+module agora.consensus.UTXOSet;
 
 import agora.common.crypto.Key;
 import agora.common.Hash;
@@ -419,7 +419,7 @@ unittest
 {
     import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.data.UTXOSet;
+    import agora.consensus.UTXOSet;
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 

@@ -16,7 +16,7 @@ module agora.consensus.validation.Transaction;
 import agora.common.Amount;
 import agora.common.Hash;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSet;
+import agora.consensus.UTXOSet;
 
 version (unittest)
 {
