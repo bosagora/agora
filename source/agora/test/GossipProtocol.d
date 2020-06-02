@@ -69,7 +69,7 @@ unittest
 {
     // node #5 is the outsider, so actually 5 total nodes
     TestConf conf = { nodes : 4, max_listeners : 5,
-        topology : NetworkTopology.OneOutsider };
+        topology : NetworkTopology.OneFullNodeOutsider };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
