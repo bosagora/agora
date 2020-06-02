@@ -80,9 +80,6 @@ public extern (C++) class Nominator : SCPDriver
     /// Timer IDs with >= of the active timer will be allowed to run
     private ulong[TimerType.max + 1] active_timer_ids;
 
-    /// Quorum config
-    private const QuorumConfig quorum_conf;
-
     /// Whether we're in the process of nominating
     private bool is_nominating;
 
@@ -97,28 +94,41 @@ extern(D):
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
             taskman = used to run timers
-            config = the quorum configuration
 
     ***************************************************************************/
 
     public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, ref const QuorumConfig config)
+        TaskManager taskman)
     {
         this.network = network;
-        this.quorum_conf = config;
         this.key_pair = key_pair;
         auto node_id = NodeID(uint256(key_pair.address));
         const IsValidator = true;
-        auto quorum_set = verifyBuildSCPConfig(config);
-        this.scp = createSCP(this, node_id, IsValidator, quorum_set);
+        const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
+        this.scp = createSCP(this, node_id, IsValidator, no_quorum);
         this.taskman = taskman;
         this.ledger = ledger;
+        this.restoreSCPState(ledger);
+    }
 
+    /***************************************************************************
+
+        Set or update the quorum configuration
+
+        Params:
+            quorum = the quorum config to set
+
+    ***************************************************************************/
+
+    public void setQuorumConfig (const ref QuorumConfig quorum)
+    {
+        assert(!this.is_nominating);
+        auto quorum_set = verifyBuildSCPConfig(quorum);
+        this.scp.updateLocalQuorumSet(quorum_set);
         auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
         auto quorum_hash = hashFull(*localQSet);
+        this.quorum_set.clear();
         this.quorum_set[quorum_hash] = localQSet;
-
-        this.restoreSCPState(ledger);
     }
 
     /***************************************************************************

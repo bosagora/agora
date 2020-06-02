@@ -110,10 +110,13 @@ public class FullNode : API
 
         Params:
             config = Config instance
+            onValidatorsChanged = delegate to call when the active set of
+                                  validators has changed (may be null)
 
     ***************************************************************************/
 
-    public this (const Config config)
+    public this (const Config config,
+        void delegate () nothrow @trusted onValidatorsChanged = null)
     {
         // custom genesis block provided
         if (config.node.genesis_block.length > 0)
@@ -141,7 +144,8 @@ public class FullNode : API
         scope (failure) this.utxo_set.shutdown();
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
         scope (failure) this.enroll_man.shutdown();
-        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage, this.enroll_man, config.node);
+        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage,
+            this.enroll_man, config.node, onValidatorsChanged);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
