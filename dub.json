@@ -90,6 +90,7 @@
                 "source/agora/api/Validator.d",
                 "source/agora/common/Config.d",
                 "source/agora/common/SCPHash.d",
+                "source/agora/consensus/Quorum.d",
                 "source/agora/network/*",
                 "source/agora/node/*",
                 "source/agora/utils/PrettyPrinter.d",
