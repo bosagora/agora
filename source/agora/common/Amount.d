@@ -169,6 +169,35 @@ public struct Amount
         return true;
     }
 
+    /***************************************************************************
+
+        Divide this `Amount` into `denominator` equal parts and
+        returns the remainder
+
+        This function allows to losslessly partition an `Amount`.
+        Usage example include distributing an `Amount` evenly among participant,
+        or computing an absolute majority of 2/3rd.
+
+        Params:
+            denominator = The value to divide by.
+                          Dividing by `0` is the same as dividing by `1`.
+
+        Returns:
+            The remainder of the division
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public Amount div (uint denominator)
+    {
+        // No-op
+        if (denominator < 2) return Amount(0);
+
+        const Amount remainder = this.value % denominator;
+        this.value = (this.value / denominator);
+        return remainder;
+    }
+
     /// Returns: The integral part of the amount (value / 1 BOA)
     public ulong integral () const
     {
@@ -240,6 +269,29 @@ nothrow pure @nogc @safe unittest
     assert(two == Amount(1));
     two.mustSub(Amount(1));
     assert(two == Amount(0));
+
+    // Tests for division with remainder
+    Amount val = Amount.MinFreezeAmount;
+    assert(val.div(3) == Amount(1));
+    assert(val.integral() == 13_333);
+    assert(val.decimal() == 3_333_333);
+
+    assert(val.div(100) == Amount(33));
+    assert(val.integral() == 133);
+    assert(val.decimal() == 3_333_333);
+
+    // Division without remainder
+    val = Amount.MinFreezeAmount;
+    assert(val.div(1000) == Amount(0));
+    assert(val.integral() == 40);
+    assert(val.decimal() == 0);
+
+    // Division edge cases
+    val = Amount.UnitPerCoin;
+    assert(val.div(0) == Amount(0));
+    assert(val == Amount.UnitPerCoin);
+    assert(val.div(0) == Amount(0));
+    assert(val == Amount.UnitPerCoin);
 }
 
 pure @safe unittest
