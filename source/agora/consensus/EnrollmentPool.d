@@ -300,8 +300,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
         preimages ~= hashFull(preimages[i]);
     reverse(preimages);
     enroll.random_seed = preimages[0];
-    enroll.enroll_sig = sign(pair.v, pair.V, signature_noise.V,
-        signature_noise.v, enroll);
+    enroll.enroll_sig = sign(pair, signature_noise, enroll);
     return enroll;
 }
 

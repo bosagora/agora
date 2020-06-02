@@ -175,6 +175,12 @@ public Signature sign (T) (const ref Scalar privateKey, T data)
     return sign!T(privateKey, privateKey.toPoint(), R.V, R.v, data);
 }
 
+/// Sign with a given `r` (warning: `r` should never be reused with `x`)
+public Signature sign (T) (const ref Pair kp, const ref Pair r, auto ref T data)
+{
+    return sign!T(kp.v, kp.V, r.V, r.v, data);
+}
+
 /// Complex API, allow multisig
 public Signature sign (T) (
     const ref Scalar x, const ref Point X,

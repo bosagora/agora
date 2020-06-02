@@ -1034,22 +1034,19 @@ unittest
     enroll_1.utxo_key = utxo_hash_1;
     enroll_1.random_seed = hashFull(Scalar.random());
     enroll_1.cycle_length = 1008;
-    enroll_1.enroll_sig = sign(node_key_pair_1.v, node_key_pair_1.V, signature_noise.V,
-        signature_noise.v, enroll_1);
+    enroll_1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll_1);
 
     Enrollment enroll_2;
     enroll_2.utxo_key = utxo_hash_2;
     enroll_2.random_seed = hashFull(Scalar.random());
     enroll_2.cycle_length = 1008;
-    enroll_2.enroll_sig = sign(node_key_pair_2.v, node_key_pair_2.V, signature_noise.V,
-        signature_noise.v, enroll_2);
+    enroll_2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll_2);
 
     Enrollment enroll_3;
     enroll_3.utxo_key = utxo_hash_3;
     enroll_3.random_seed = hashFull(Scalar.random());
     enroll_3.cycle_length = 1008;
-    enroll_3.enroll_sig = sign(node_key_pair_3.v, node_key_pair_3.V, signature_noise.V,
-        signature_noise.v, enroll_3);
+    enroll_3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll_3);
 
     Enrollment[] enrollments ;
     enrollments ~= enroll_1;
