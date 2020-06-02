@@ -67,8 +67,8 @@ unittest
 /// test gossiping behavior for an outsider node
 unittest
 {
-    // node #5 is the outsider, so actually 5 total nodes
-    TestConf conf = { nodes : 4, max_listeners : 5,
+    // node #5 is the outsider, so total foreign nodes may be 4
+    TestConf conf = { nodes : 4, max_listeners : 4,
         topology : NetworkTopology.OneFullNodeOutsider };
     auto network = makeTestNetwork(conf);
     network.start();
