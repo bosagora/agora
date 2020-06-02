@@ -53,10 +53,10 @@ public string isInvalidReason (const ref Enrollment enrollment,
 {
     UTXOSetValue utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, size_t.max, utxo_set_value))
-        return "Unspent frozen UTXO not found for the validator.";
+        return "Enrollment: UTXO not found";
 
     if (utxo_set_value.type != typeof(utxo_set_value.type).Freeze)
-        return "UTXO is not frozen.";
+        return "Enrollment: UTXO is not frozen";
 
     Point address;
     try
@@ -65,16 +65,17 @@ public string isInvalidReason (const ref Enrollment enrollment,
     }
     catch (Exception ex)
     {
-        return "Error converting address to point";
+        return "Enrollment: Cannot convert address to point";
     }
 
     if (!verify(address, enrollment.enroll_sig, enrollment))
-        return "Enrollment signature verification has an error.";
+        return "Enrollment: signature verification failed";
 
     if (utxo_set_value.output.value.integral() < Amount.MinFreezeAmount.integral())
     {
-        static immutable Message = "The frozen amount must be equal to or greater than " ~
-            Amount.MinFreezeAmount.integral().to!string ~ " BOA.";
+        static immutable Message =
+            "Enrollment: The frozen amount must be equal to or greater than " ~
+            Amount.MinFreezeAmount.integral().to!string ~ " BOA";
         return Message;
     }
 
@@ -198,7 +199,7 @@ unittest
     assert(!enroll1.isValid( utxoFinder));
 
     // UTXO is not frozen.
-    assert(canFind(enroll2.isInvalidReason(utxoFinder), "UTXO is not frozen."));
+    assert(canFind(enroll2.isInvalidReason(utxoFinder), "UTXO is not frozen"));
 
     // The frozen amount must be equal to or greater than 40,000 BOA.
     assert(!enroll3.isValid(utxoFinder));
