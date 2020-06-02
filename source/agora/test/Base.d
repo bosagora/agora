@@ -443,7 +443,16 @@ public class TestAPIManager
         {
             writefln("%s(%s): Node logs:\n", file, line);
             foreach (node; this.nodes)
-                node.client.printLog();
+            {
+                try
+                {
+                    node.client.printLog();
+                }
+                catch (Exception ex)
+                {
+                    writefln("Could not print logs for node: %s", ex.message);
+                }
+            }
         }
     }
 
