@@ -659,35 +659,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Logs message
-
-        Params:
-            msg = the log message to be logged
-            enroll = the Enrollment object, the information of which will be logged
-            ex = the Exception object, the message of which will be logged
-
-    ***************************************************************************/
-
-    private static void logMessage (string msg, const ref Enrollment enroll,
-        const Exception ex = null) @safe nothrow
-    {
-        try
-        {
-            if (ex !is null)
-            {
-                log.error("{}, enrollment:{}, exception:{}", msg, enroll, ex);
-            }
-            else
-            {
-                log.info("{}, enrollment:{}", msg, enroll);
-            }
-        }
-        catch (Exception ex)
-        {}
-    }
-
-    /***************************************************************************
-
         Gets the number of active validators at the block height.
 
         `block_height` is the height of the newly created block.
