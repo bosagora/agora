@@ -29,10 +29,13 @@
 
 module agora.utils.Test;
 
+import agora.common.Amount;
 import agora.common.crypto.Key;
+import agora.common.Hash;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 
+import std.algorithm;
 import std.file;
 import std.path;
 
@@ -286,7 +289,6 @@ unittest
 /// custom genesis tx
 unittest
 {
-    import std.algorithm;
     import std.exception : assumeUnique;
     import std.range;
     import core.thread;
@@ -588,4 +590,155 @@ unittest
         assert(verify(pz.V, ssz, "WK.Keys.Z".representation));
         assert(!verify(pz.V, ssz, "WK.Keys.z".representation));
     }
+}
+
+/*******************************************************************************
+
+    Generate a new transaction that evenly splits the input accross parties
+
+    The `input` transaction will be split evenly in `toward.length` outputs,
+    each of which will be controlled by a key in `toward`.
+    If the sum of outputs in the transaction is not a multiple of
+    `toward.length`, the leftover `Amount` will be added to
+    the output for `toward[0]`.
+    Like other testing utilities, if an error happens (e.g. `input` is invalid,
+    or `from` is missing some keys), an `assert` will be triggered.
+
+    Params:
+        type = Type of transaction to generate (frozen or simple payment)
+        input = Transaction to spend completely
+        from = Array of keys controlling all the outputs in `input`
+        toward = Receivers for the newly-created output
+
+    Returns:
+        A newly created, valid, and signed `Transaction` spending `input`.
+
+*******************************************************************************/
+
+public Transaction split (TxType type = TxType.Payment)
+    (const ref Transaction input, scope const KeyPair[] from,
+     scope const PublicKey[] toward...)
+    @safe
+{
+    Amount amount;
+    if (!input.getSumOutput(amount))
+        assert(0, "Invalid transaction passed to `split`");
+
+    auto remainder = amount.div(toward.length);
+    Transaction result = Transaction(type);
+    foreach (addr; toward)
+        result.outputs ~= Output(amount, addr);
+
+    // Add the remainder to the first output.
+    result.outputs[0].value.mustAdd(remainder);
+    const inputHash = input.hashFull();
+
+    // Add support for Transactions with multiple recipients
+    foreach (idx, const ref _; input.outputs)
+        result.inputs ~= Input(inputHash, cast(uint) idx);
+
+    scope sign = (KeyPair kp, Hash h) @trusted { return kp.secret.sign(h[]); };
+
+    const resultHash = result.hashFull();
+    foreach (idx, ref in_; result.inputs)
+    {
+        auto rng = from.find!(a => a.address == input.outputs[idx].address);
+        assert(rng.length);
+        const owner = rng[0];
+        in_.signature = sign(owner, resultHash);
+    }
+    return result;
+}
+
+/// Test for a split with the same amount of outputs as inputs
+/// Essentially doing an equality transformation
+unittest
+{
+    import std.range;
+
+    KeyPair[] keys = iota(8).map!(_ => KeyPair.random()).array;
+    KeyPair genesisKP = getGenesisKeyPair();
+    const first = GenesisBlock.txs[0];
+    const equalTx = first.split([genesisKP], keys.map!(k => k.address).array);
+    // This transaction has 8 txs, hence it's just equality
+    assert(equalTx.inputs.length == 8);
+    assert(equalTx.outputs.length == 8);
+    // Since the amount is evenly distributed in Genesis,
+    // they all have the same value
+    const ExpectedAmount = first.outputs[0].value;
+    assert(equalTx.outputs.all!(val => val.value == ExpectedAmount));
+}
+
+/// Test with twice as many outputs as inputs
+unittest
+{
+    import std.range;
+
+    KeyPair[] keys16 = iota(16).map!(_ => KeyPair.random()).array;
+    // Use Genesis
+    KeyPair genesisKP = getGenesisKeyPair();
+    const first = GenesisBlock.txs[0];
+    const resTx1 = first.split([genesisKP], keys16.map!(k => k.address).array);
+    // This transaction has 16 txs
+    assert(resTx1.inputs.length == 8);
+    assert(resTx1.outputs.length == 16);
+
+    // 500M / 16
+    const Amount ExpectedAmount1 = Amount(31_250_000L * 10_000_000L);
+    assert(resTx1.outputs.all!(val => val.value == ExpectedAmount1));
+
+    // Test with multi input keys
+    // Split into 32 outputs
+    KeyPair[] keys32 = iota(32).map!(_ => KeyPair.random()).array;
+    const resTx2 = resTx1.split(keys16, keys32.map!(k => k.address).array);
+    // This transaction has 32 txs
+    assert(resTx2.inputs.length == 16);
+    assert(resTx2.outputs.length == 32);
+
+    // 500M / 32
+    const Amount ExpectedAmount2 = Amount(15_625_000L * 10_000_000L);
+    assert(resTx2.outputs.all!(val => val.value == ExpectedAmount2));
+}
+
+/// Test with remainder
+unittest
+{
+    import std.range;
+
+    KeyPair[] keys = iota(3).map!(_ => KeyPair.random()).array;
+    // Use Genesis
+    KeyPair genesisKP = getGenesisKeyPair();
+    const first = GenesisBlock.txs[0];
+    const result = first.split([genesisKP], keys.map!(k => k.address).array);
+    // This transaction has 3 txs
+    assert(result.inputs.length == 8);
+    assert(result.outputs.length == 3);
+
+    // 500M / 3
+    const Amount ExpectedAmount      = Amount(166_666_666_6666_666L);
+    const Amount ExpectedFirstAmount = Amount(166_666_666_6666_668L);
+
+    // The first output includes the remainder.
+    assert(result.outputs[0].value == ExpectedFirstAmount);
+    assert(result.outputs[1].value == ExpectedAmount);
+    assert(result.outputs[2].value == ExpectedAmount);
+}
+
+/// Test with one output key
+unittest
+{
+    import std.range;
+
+    KeyPair key = KeyPair.random();
+    // Use Genesis
+    KeyPair genesisKP = getGenesisKeyPair();
+    const first = GenesisBlock.txs[0];
+    const result = first.split([genesisKP], [key.address]);
+    // This transaction has 1 txs
+    assert(result.inputs.length == 8);
+    assert(result.outputs.length == 1);
+
+    // 500M
+    const Amount ExpectedAmount = Amount(500_000_000L * 10_000_000L);
+    assert(result.outputs[0].value == ExpectedAmount);
 }
