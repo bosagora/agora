@@ -98,8 +98,7 @@ unittest
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
+    scope utxo_set = new TestUTXOSet();
     UTXOFinder utxoFinder = utxo_set.getUTXOFinder();
 
     // normal frozen transaction
@@ -130,10 +129,10 @@ unittest
         [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
     );
 
-    auto utxo_hash1 = utxo_set.getHash(hashFull(tx1), 0);
-    auto utxo_hash2 = utxo_set.getHash(hashFull(tx2), 0);
-    auto utxo_hash3 = utxo_set.getHash(hashFull(tx3), 0);
-    auto utxo_hash4 = utxo_set.getHash(hashFull(tx4), 0);
+    auto utxo_hash1 = UTXOSet.getHash(hashFull(tx1), 0);
+    auto utxo_hash2 = UTXOSet.getHash(hashFull(tx2), 0);
+    auto utxo_hash3 = UTXOSet.getHash(hashFull(tx3), 0);
+    auto utxo_hash4 = UTXOSet.getHash(hashFull(tx4), 0);
 
     Pair signature_noise = Pair.random;
 
@@ -183,10 +182,10 @@ unittest
     assert(!enroll3.isValid(utxoFinder));
     assert(!enroll4.isValid(utxoFinder));
 
-    utxo_set.updateUTXOCache(tx1, 0);
-    utxo_set.updateUTXOCache(tx2, 0);
-    utxo_set.updateUTXOCache(tx3, 0);
-    utxo_set.updateUTXOCache(tx4, 0);
+    utxo_set.put(tx1);
+    utxo_set.put(tx2);
+    utxo_set.put(tx3);
+    utxo_set.put(tx4);
 
     // Nomal
     assert(enroll1.isValid(utxoFinder));
