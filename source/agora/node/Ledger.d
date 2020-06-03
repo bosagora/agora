@@ -21,9 +21,12 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
+import agora.common.BitField;
 import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.Hash;
+import agora.common.ManagedDatabase;
+import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.TransactionPool;
 import agora.common.Types;
@@ -42,6 +45,7 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import std.algorithm;
+import std.exception;
 import std.range;
 
 mixin AddLogger!();
@@ -245,9 +249,13 @@ public class Ledger
         if (!this.storage.saveBlock(block))
             assert(0);
 
+        ManagedDatabase.beginBatch();
+        scope (failure) ManagedDatabase.rollback();
+
         auto old_count = this.enroll_man.validatorCount();
         this.updateUTXOSet(block);
         this.updateValidatorSet(block);
+        ManagedDatabase.commitBatch();
 
         // there was a change in the active validator set
         bool validators_changed = block.header.enrollments.length > 0
@@ -1320,71 +1328,72 @@ unittest
     assert(ledger.getBlockHeight() == 11 + 2016);
 }
 
+// generate genesis with a freeze & payment tx, and 'count' number of
+// extra blocks
+version (unittest)
+private const(Block)[] genBlocksToIndex ( KeyPair key_pair,
+    EnrollmentManager enroll_man, size_t count)
+{
+    // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
+    Transaction[] gen_txs;
+    // need mutable
+    gen_txs ~= GenesisTransaction().serializeFull.deserializeFull!Transaction;
+
+    Transaction freeze_tx =
+    {
+        type : TxType.Freeze,
+        outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
+    };
+
+    gen_txs ~= freeze_tx;
+    Hash txhash = hashFull(freeze_tx);
+    Hash utxo = UTXOSetValue.getHash(txhash, 0);
+
+    Enrollment[] enrolls;
+    Enrollment enroll;
+    const StartHeight = Height(0);  // not important
+    assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
+    enrolls ~= enroll;
+
+    gen_txs.sort;
+    Hash[] merkle_tree;
+    auto merkle_root = Block.buildMerkleTree(gen_txs, merkle_tree);
+
+    auto genesis = immutable(Block)(
+        immutable(BlockHeader)(
+            Hash.init,   // prev
+            Height(0),   // height
+            merkle_root,
+            BitField!uint.init,
+            Signature.init,
+            enrolls.assumeUnique,
+        ),
+        gen_txs.assumeUnique,
+        merkle_tree.assumeUnique
+    );
+
+    const(Block)[] blocks = [genesis];
+
+    const(Transaction)[] prev_txs;
+    foreach (_; 0 .. count)
+    {
+        auto txs = makeChainedTransactions(WK.Keys.Genesis,
+            prev_txs, 1);
+
+        const NoEnrollments = null;
+        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
+        prev_txs = txs;
+    }
+
+    return blocks.assumeUnique;
+}
+
 /// test enrollments in the genesis block
 unittest
 {
     import agora.common.BitField;
     import agora.common.Serializer;
     import std.exception;
-
-    // generate genesis with a freeze & payment tx, and 'count' number of
-    // extra blocks
-    const(Block)[] genBlocksToIndex ( KeyPair key_pair,
-        EnrollmentManager enroll_man, size_t count)
-    {
-        // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
-        Transaction[] gen_txs;
-        // need mutable
-        gen_txs ~= GenesisTransaction().serializeFull.deserializeFull!Transaction;
-
-        Transaction freeze_tx =
-        {
-            type : TxType.Freeze,
-            outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
-        };
-
-        gen_txs ~= freeze_tx;
-        Hash txhash = hashFull(freeze_tx);
-        Hash utxo = UTXOSetValue.getHash(txhash, 0);
-
-        Enrollment[] enrolls;
-        Enrollment enroll;
-        const StartHeight = Height(0);  // not important
-        assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
-        enrolls ~= enroll;
-
-        gen_txs.sort;
-        Hash[] merkle_tree;
-        auto merkle_root = Block.buildMerkleTree(gen_txs, merkle_tree);
-
-        auto genesis = immutable(Block)(
-            immutable(BlockHeader)(
-                Hash.init,   // prev
-                Height(0),   // height
-                merkle_root,
-                BitField!uint.init,
-                Signature.init,
-                enrolls.assumeUnique,
-            ),
-            gen_txs.assumeUnique,
-            merkle_tree.assumeUnique
-        );
-
-        const(Block)[] blocks = [genesis];
-
-        const(Transaction)[] prev_txs;
-        foreach (_; 0 .. count)
-        {
-            auto txs = makeChainedTransactions(WK.Keys.Genesis,
-                prev_txs, 1);
-
-            const NoEnrollments = null;
-            blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
-            prev_txs = txs;
-        }
-
-        return blocks.assumeUnique;
-    }
 
     // only genesis loaded: validator is active
     {
@@ -1438,5 +1447,142 @@ unittest
         Hash[] keys;
         assert(enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 0);
+    }
+}
+
+/// test atomicity of adding blocks and rolling back
+unittest
+{
+    import agora.common.crypto.Key;
+    import agora.common.Types;
+    import agora.common.Hash;
+    import std.conv;
+    import std.exception;
+    import std.range;
+
+    class ThrowingLedger : Ledger
+    {
+        bool throw_in_update_utxo;
+        bool throw_in_update_validators;
+
+        this (NodeConfig node_config, immutable(ConsensusParams) params,
+            UTXOSet utxo_set, IBlockStorage storage,
+            EnrollmentManager enroll_man, TransactionPool pool,
+            void delegate () nothrow @safe onValidatorsChanged = null)
+        {
+            super(node_config, params, utxo_set, storage, enroll_man, pool,
+                onValidatorsChanged);
+        }
+
+        override void updateUTXOSet (const ref Block block) @safe
+        {
+            super.updateUTXOSet(block);
+            if (this.throw_in_update_utxo)
+                throw new Exception("");
+        }
+
+        override void updateValidatorSet (const ref Block block) @safe
+        {
+            super.updateValidatorSet(block);
+            if (this.throw_in_update_validators)
+                throw new Exception("");
+        }
+    }
+
+    // normal test: UTXO set and Validator set updated
+    {
+        auto key_pair = KeyPair.random();
+        auto params = new immutable(ConsensusParams)();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
+        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        assert(blocks.length == 1009);  // +1 for genesis
+
+        scope storage = new MemBlockStorage(blocks.takeExactly(1008));
+        scope pool = new TransactionPool(":memory:");
+        scope utxo_set = new UTXOSet(":memory:");
+        scope config = new Config();
+        scope ledger = new ThrowingLedger(config.node, params, utxo_set,
+            storage, enroll_man, pool, null);
+        Hash[] keys;
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);
+        auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
+        assert(utxos.length == 8);
+        utxos.each!(utxo => assert(utxo.unlock_height == 1008));
+
+        auto next_block = blocks[$ - 1];
+        ledger.addValidatedBlock(next_block);
+        assert(ledger.last_block == next_block);
+        utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
+        assert(utxos.length == 8);
+        utxos.each!(utxo => assert(utxo.unlock_height == 1009));
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 0);
+    }
+
+    // throws in updateUTXOSet() => rollback() called, UTXO set reverted,
+    // Validator set was not modified
+    {
+        auto key_pair = KeyPair.random();
+        auto params = new immutable(ConsensusParams)();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
+        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        assert(blocks.length == 1009);  // +1 for genesis
+
+        scope storage = new MemBlockStorage(blocks.takeExactly(1008));
+        scope pool = new TransactionPool(":memory:");
+        scope utxo_set = new UTXOSet(":memory:");
+        scope config = new Config();
+        scope ledger = new ThrowingLedger(config.node, params, utxo_set,
+            storage, enroll_man, pool, null);
+        Hash[] keys;
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);
+        auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
+        assert(utxos.length == 8);
+        utxos.each!(utxo => assert(utxo.unlock_height == 1008));
+
+        ledger.throw_in_update_utxo = true;
+        auto next_block = blocks[$ - 1];
+        assertThrown!Exception(ledger.addValidatedBlock(next_block));
+        assert(ledger.last_block == blocks[$ - 2]);  // not updated
+        utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
+        assert(utxos.length == 8);
+        utxos.each!(utxo => assert(utxo.unlock_height == 1008));  // reverted
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);  // not updated
+    }
+
+    // throws in updateValidatorSet() => rollback() called, UTXO set and
+    // Validator set reverted
+    {
+        auto key_pair = KeyPair.random();
+        auto params = new immutable(ConsensusParams)();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
+        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        assert(blocks.length == 1009);  // +1 for genesis
+
+        scope storage = new MemBlockStorage(blocks.takeExactly(1008));
+        scope pool = new TransactionPool(":memory:");
+        scope utxo_set = new UTXOSet(":memory:");
+        scope config = new Config();
+        scope ledger = new ThrowingLedger(config.node, params, utxo_set,
+            storage, enroll_man, pool, null);
+        Hash[] keys;
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);
+        auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
+        assert(utxos.length == 8);
+        utxos.each!(utxo => assert(utxo.unlock_height == 1008));
+
+        ledger.throw_in_update_validators = true;
+        auto next_block = blocks[$ - 1];
+        assertThrown!Exception(ledger.addValidatedBlock(next_block));
+        assert(ledger.last_block == blocks[$ - 2]);  // not updated
+        utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
+        assert(utxos.length == 8);
+        utxos.each!(utxo => assert(utxo.unlock_height == 1008));  // reverted
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);  // reverted
     }
 }

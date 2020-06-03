@@ -21,6 +21,8 @@ import agora.utils.Log;
 import d2sqlite3.database;
 import d2sqlite3.sqlite3;
 
+import core.stdc.stdlib : abort;
+
 mixin AddLogger!();
 
 /// Ditto
@@ -77,5 +79,82 @@ public class ManagedDatabase
     public Database* getDatabase () pure nothrow @safe @nogc
     {
         return this.database;
+    }
+
+    /***************************************************************************
+
+        Begins a batch operation on all the open databases.
+
+        A beginBatch() call must be followed by either a commitBatch() or
+        a rollback() call (in case of exceptions).
+
+        The rollback() call will cancel any transactions started after the
+        beginBatch() call.
+
+        In case of crashes it is not necessary to call rollback() because
+        none of the transactions were commited, and since the application
+        crashed it will have to start and initialize new database handles
+        which will not have any of the previously pending transactions in
+        its transaction queue.
+
+    ***************************************************************************/
+
+    public static void beginBatch () @trusted nothrow
+    {
+        foreach (db; thread_dbs)
+        {
+            try
+            {
+                db.begin();
+            }
+            catch (Exception exc)
+            {
+                // in most cases this would only trigger if there was a
+                // code-flow error
+                try log.fatal("SQLite BEGIN statement failed: {}", exc.message);
+                catch (Exception e) { /* Nothing more we can do at this point */ }
+                abort();
+            }
+        }
+    }
+
+    /// Ditto
+    public static void commitBatch () @trusted nothrow
+    {
+        foreach (db; thread_dbs)
+        {
+            try
+            {
+                db.commit();
+            }
+            catch (Exception exc)
+            {
+                // in most cases this would only trigger if there was a
+                // code-flow error
+                try log.fatal("SQLite COMMIT statement failed: {}", exc.message);
+                catch (Exception e) { /* Nothing more we can do at this point */ }
+                abort();
+            }
+        }
+    }
+
+    /// Ditto
+    public static void rollback () @trusted nothrow
+    {
+        foreach (db; thread_dbs)
+        {
+            try
+            {
+                db.rollback();
+            }
+            catch (Exception exc)
+            {
+                // in most cases this would only trigger if there was a
+                // code-flow error
+                try log.fatal("SQLite ROLLBACK statement failed: {}", exc.message);
+                catch (Exception e) { /* Nothing more we can do at this point */ }
+                abort();
+            }
+        }
     }
 }
