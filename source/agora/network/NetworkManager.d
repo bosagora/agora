@@ -515,14 +515,10 @@ public class NetworkManager
         this.taskman.runTask(
         ()
         {
-            // periodic task
-            while (1)
+            void catchup ()
             {
-                scope (success)
-                    this.taskman.wait(2.seconds);
-
                 if (this.peers.length == 0)  // no clients yet (discovery)
-                    continue;
+                    return;
 
                 this.getBlocksFrom(
                     ledger.getBlockHeight() + 1,
@@ -532,6 +528,8 @@ public class NetworkManager
                         (isNominating is null || !isNominating())
                          && ledger.acceptBlock(block)));
             }
+            catchup(); // avoid delay
+            this.taskman.setTimer(2.seconds, &catchup, Periodic.Yes);
         });
     }
 
