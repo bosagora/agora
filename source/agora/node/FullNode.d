@@ -171,11 +171,9 @@ public class FullNode : API
         this.taskman.runTask(
         ()
         {
-            while (1)
-            {
-                this.network.discover();
-                this.taskman.wait(5.seconds);
-            }
+            void discover () { this.network.discover(); }
+            discover(); // avoid delay
+            this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
         });
     }
 

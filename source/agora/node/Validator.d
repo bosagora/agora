@@ -100,11 +100,9 @@ public class Validator : FullNode, API
             buildRequiredKeys(this.config.node.key_pair.address,
                 this.config.quorum, required_peer_keys);
 
-            while (1)
-            {
-                this.network.discover(required_peer_keys);
-                this.taskman.wait(5.seconds);
-            }
+            void discover () { this.network.discover(required_peer_keys); }
+            discover();  // avoid delay
+            this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
         });
     }
 
