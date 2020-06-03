@@ -102,7 +102,7 @@ private immutable Hash UnitTestGenesisMerkleRoot =
          ~ `4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
 
 /// The single transaction that are part of the genesis block
-public immutable Transaction UnitTestGenesisTransaction =
+private immutable Transaction UnitTestGenesisTransaction =
 {
     TxType.Payment,
     inputs: [ Input.init ],
