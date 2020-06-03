@@ -188,7 +188,7 @@ public struct Amount
     ***************************************************************************/
 
     pragma(inline, true)
-    public Amount div (uint denominator)
+    public Amount div (ulong denominator)
     {
         // No-op
         if (denominator < 2) return Amount(0);
