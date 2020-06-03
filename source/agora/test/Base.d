@@ -1083,7 +1083,9 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
 
     // 1 payment tx, the rest are freeze txs
     Transaction[] txs;
-    txs ~= UnitTestGenesisTransaction.serializeFull.deserializeFull!Transaction;
+    // This function is only called from unittests so we assume that
+    // GenesisBlock is `UnitTestGenesisBlock`
+    txs ~= GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
     Enrollment[] enrolls;
 
     foreach (key_pair; key_pairs)
