@@ -43,7 +43,7 @@ jobs:
 
     # Install the D compiler
     - name: Prepare compiler
-      uses: mihails-strasuns/setup-dlang@v1
+      uses: dlang-community/setup-dlang@v1
       with:
           compiler: ${{ matrix.dc }}
 
@@ -140,7 +140,7 @@ jobs:
 
       # Install the D compiler
       - name: Prepare compiler
-        uses: mihails-strasuns/setup-dlang@v1
+        uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-latest
 
