@@ -37,6 +37,16 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     // block periodic getBlocksFrom
     node_1.filter!(node_1.getBlocksFrom);
 
@@ -53,7 +63,7 @@ unittest
     Thread.sleep(100.msecs);
     nodes[1 .. $].each!(node => node.clearFilter());
 
-    nodes.all!(node => node.getBlockHeight() == 1).retryFor(2.seconds);
+    nodes.all!(node => node.getBlockHeight() == base_height+1).retryFor(2.seconds);
 }
 
 /// test request timeouts
@@ -69,6 +79,16 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, network.nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => network.nodes[idx].client)
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     // block periodic getBlocksFrom
     node_1.filter!(node_1.getBlocksFrom);
 
@@ -83,5 +103,5 @@ unittest
     // node 1 will keep trying to send transactions up to
     // max_retries * (retry_delay + timeout) seconds (see Base.d),
     const delay = conf.max_retries * (conf.retry_delay + conf.timeout);
-    nodes.all!(node => node.getBlockHeight() == 1).retryFor(delay.msecs);
+    nodes.all!(node => node.getBlockHeight() == base_height + 1).retryFor(delay.msecs);
 }

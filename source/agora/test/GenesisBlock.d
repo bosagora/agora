@@ -34,12 +34,22 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     nodes.all!(node => node.getBlocksFrom(0, 1)[0] == network.blocks[0])
         .retryFor(2.seconds);
 
     auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 1);
     txes.each!(tx => node_1.putTransaction(tx));
 
-    nodes.all!(node => node.getBlockHeight() == 1)
+    nodes.all!(node => node.getBlockHeight() == base_height + 1)
         .retryFor(2.seconds);
 }

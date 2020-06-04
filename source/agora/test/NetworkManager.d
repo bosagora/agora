@@ -41,6 +41,16 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     // first two nodes will fail, second two should work
     nodes[0].filter!(API.getBlockHeight);
     nodes[1].filter!(API.getBlockHeight);
@@ -51,7 +61,7 @@ unittest
     nodes[0].clearFilter();
     nodes[1].clearFilter();
 
-    nodes.all!(node => node.getBlockHeight() == 1)
+    nodes.all!(node => node.getBlockHeight() == base_height + 1)
         .retryFor(2.seconds, "Nodes should have same block height");
 }
 
@@ -145,6 +155,16 @@ unittest
     auto node_test = nodes[1];  // full node, does not create blocks
     auto node_bad = nodes[2];  // full node, returns bad blocks in getBlocksFrom()
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, 1)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks([node_validator], base_height).retryFor(3.seconds);
+
     // enable filtering first
     node_validator.filter!(API.getBlocksFrom);
     node_bad.filter!(API.getBlocksFrom);
@@ -161,17 +181,17 @@ unittest
         txs.each!(tx => node_validator.putTransaction(tx));
 
         [node_validator].enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == block_idx + 1,
+            retryFor(node.getBlockHeight() == block_idx + 1 + base_height,
                 4.seconds,
                 format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), block_idx + 1)));
+                    idx, node.getBlockHeight(), block_idx + 1 + base_height)));
 
         block_txes ~= txs.sort.array;
         last_txs = txs;
     }
 
     // the validator node has 10 blocks, but bad node pretends to have 20
-    assert(node_validator.getBlockHeight() == 10, node_validator.getBlockHeight().to!string);
+    assert(node_validator.getBlockHeight() == 10 + base_height, node_validator.getBlockHeight().to!string);
     assert(node_bad.getBlockHeight() == 20);
     assert(node_test.getBlockHeight() == 0);  // only genesis
 
@@ -180,6 +200,6 @@ unittest
 
     // node test will accept its blocks from node_validator,
     // as the blocks in node_bad do not pass validation
-    retryFor(node_test.getBlockHeight() == 10, 4.seconds);
+    retryFor(node_test.getBlockHeight() == 10 + base_height, 4.seconds);
     assert(containSameBlocks([node_test, node_validator], 10));
 }

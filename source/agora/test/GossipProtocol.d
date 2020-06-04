@@ -35,7 +35,15 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    nodes.each!(node => assert(node.getBlockHeight() == 0));
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
 
     Transaction[] last_txs;
     // create enough tx's for a single block
@@ -52,12 +60,12 @@ unittest
     // When a block is created, the transaction is deleted from the transaction pool.
     node_1.putTransaction(txs[$-1]);
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1,
+        retryFor(node.getBlockHeight() == base_height + 1,
         2.seconds,
         format("Node %s has block height %s. Expected: %s",
         idx,
         node.getBlockHeight(),
-        1)));
+        base_height + 1)));
 
     nodes.each!(node =>
         txs.each!(tx =>

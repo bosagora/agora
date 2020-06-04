@@ -43,6 +43,16 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
     Transaction[] last_txs;
     foreach (block_idx; 0 .. 10)  // create 10 blocks
@@ -54,10 +64,10 @@ unittest
         txs.each!(tx => node_1.putTransaction(tx));
 
         nodes.enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == block_idx + 1,
+            retryFor(node.getBlockHeight() == block_idx + 1 + base_height,
                 4.seconds,
                 format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), block_idx + 1)));
+                    idx, node.getBlockHeight(), block_idx + 1 + base_height)));
 
         block_txes ~= txs.sort.array;
         last_txs = txs;
@@ -69,7 +79,7 @@ unittest
     assert(blocks[0] == network.blocks[0]);
 
     // exclude genesis block
-    assert(blocks[1 .. $].enumerate.each!((idx, block) =>
+    assert(blocks[base_height+1 .. $].enumerate.each!((idx, block) =>
         assert(block.txs == block_txes[idx])
     ));
 
@@ -77,10 +87,10 @@ unittest
     assert(blocks.length == 1 && blocks[0] == network.blocks[0]);
 
     blocks = node_1.getBlocksFrom(10, 1);
-    assert(blocks.length == 1 && blocks[0].txs == block_txes[9]);  // -1 as genesis block not included
+    assert(blocks.length == 1 && blocks[0].txs == block_txes[9-base_height]);  // -1 as genesis block not included
 
     // over the limit => return up to the highest block
-    assert(node_1.getBlocksFrom(0, 100).length == 11);
+    assert(node_1.getBlocksFrom(0, 100).length == 11+base_height);
 
     // higher index than available => return nothing
     assert(node_1.getBlocksFrom(100, 10).length == 0);
@@ -100,12 +110,22 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, 1)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => network.nodes[idx].client)
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 2);
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(8.seconds);
+    containSameBlocks(nodes, base_height+1).retryFor(8.seconds);
 }
 
 /// Merkle Proof
@@ -119,6 +139,16 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[0];
+
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, network.nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => network.nodes[idx].client)
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
 
     auto gen_key_pair = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
@@ -143,12 +173,12 @@ unittest
     const Hash expected_root = hashMulti(habcd, hefgh);
 
     // wait for transaction propagation
-    nodes.each!(node => retryFor(node.getBlockHeight() == 1, 4.seconds));
+    nodes.each!(node => retryFor(node.getBlockHeight() == base_height+1, 4.seconds));
 
     Hash[] merkle_path;
     foreach (node; nodes)
     {
-        merkle_path = node.getMerklePath(1, hashes[2]);
+        merkle_path = node.getMerklePath(base_height+1, hashes[2]);
         assert(merkle_path.length == 3);
         assert(merkle_path[0] == hashes[3]);
         assert(merkle_path[1] == hab);
@@ -156,7 +186,7 @@ unittest
         assert(expected_root == Block.checkMerklePath(hashes[2], merkle_path, 2));
         assert(expected_root != Block.checkMerklePath(hashes[3], merkle_path, 2));
 
-        merkle_path = node.getMerklePath(1, hashes[4]);
+        merkle_path = node.getMerklePath(base_height+1, hashes[4]);
         assert(merkle_path.length == 3);
         assert(merkle_path[0] == hashes[5]);
         assert(merkle_path[1] == hgh);
@@ -164,7 +194,7 @@ unittest
         assert(expected_root == Block.checkMerklePath(hashes[4], merkle_path, 4));
         assert(expected_root != Block.checkMerklePath(hashes[5], merkle_path, 4));
 
-        merkle_path = node.getMerklePath(1, Hash.init);
+        merkle_path = node.getMerklePath(base_height+1, Hash.init);
         assert(merkle_path.length == 0);
     }
 }
@@ -172,7 +202,7 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    TestConf conf = { nodes : 2 };
+    TestConf conf = { nodes : 3 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -182,13 +212,23 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, network.nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => network.nodes[idx].client)
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(nodes, base_height).retryFor(3.seconds);
+
     auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 1).retryFor(3.seconds);
+    containSameBlocks(nodes, base_height+1).retryFor(3.seconds);
 
     txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(3.seconds);
+    containSameBlocks(nodes, base_height+2).retryFor(3.seconds);
 
     txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
 
@@ -217,8 +257,8 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation
-    containSameBlocks(nodes, 2).retryFor(3.seconds);  // no new block yet (1 rejected tx)
+    containSameBlocks(nodes, base_height+2).retryFor(3.seconds);  // no new block yet (1 rejected tx)
 
     node_1.putTransaction(backup_tx);
-    containSameBlocks(nodes, 3).retryFor(3.seconds);  // new block finally created
+    containSameBlocks(nodes, base_height+3).retryFor(3.seconds);  // new block finally created
 }

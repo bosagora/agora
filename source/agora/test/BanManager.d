@@ -43,6 +43,16 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, network.nodes.length-1)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => network.nodes[idx].client)
+        .array);
+    ulong base_height = enrolls.length ? 2 : 0;
+    containSameBlocks(network.clients, base_height).retryFor(8.seconds);
+
     // three nodes, two validators, and 1 non-validator
     auto node_1 = network.nodes[0].client;
     auto node_2 = network.nodes[1].client;
@@ -66,7 +76,7 @@ unittest
     genBlockTransactions(1).each!(tx => node_1.putTransaction(tx));
 
     // wait until the transactions were gossiped
-    containSameBlocks(nodes, 1).retryFor(3.seconds);
+    containSameBlocks(nodes, base_height + 1).retryFor(3.seconds);
 
     // node 3 will be banned if it cannot communicate
     node_1.filter!(node_1.getBlocksFrom);  // node 1 refuses to send blocks
@@ -83,12 +93,12 @@ unittest
         new_tx.each!(tx => node_1.putTransaction(tx));
 
         [node_1, node_2].enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == 1 + (block_idx + 1),
+            retryFor(node.getBlockHeight() == base_height + 1 + (block_idx + 1),
                 4.seconds,
                 format("Block %s Node %s has block height %s. Expected: %s",
-                    block_idx + 1, idx, node.getBlockHeight(), 1 + (block_idx + 1))));
+                    block_idx + 1, idx, node.getBlockHeight(), base_height + 1 + (block_idx + 1))));
 
-        retryFor(node_3.getBlockHeight() == 1, 1.seconds, node_3.getBlockHeight().to!string);
+        retryFor(node_3.getBlockHeight() == base_height + 1, 1.seconds, node_3.getBlockHeight().to!string);
     }
 
     // wait for node 3 to be banned and all putTransaction requests to time-out
@@ -98,7 +108,7 @@ unittest
     // it may only add to its ledger through the getBlocksFrom() API.
     node_3.clearFilter();
     left_txs.each!(tx => node_3.putTransaction(tx));
-    retryFor(node_3.getBlockHeight() == 1, 1.seconds);
+    retryFor(node_3.getBlockHeight() == base_height + 1, 1.seconds);
 
     // clear the filter
     node_1.clearFilter();
@@ -111,8 +121,8 @@ unittest
     new_tx.each!(tx => node_1.putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 6,
+        retryFor(node.getBlockHeight() == base_height + 6,
             4.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 6)));
+                idx, node.getBlockHeight(), base_height + 6)));
 }
