@@ -232,7 +232,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks)
+    public Block[] getBlocksFrom (ulong block_height, uint max_blocks)
     {
         return this.attemptRequest(
             this.api.getBlocksFrom(block_height, max_blocks), this.exception);

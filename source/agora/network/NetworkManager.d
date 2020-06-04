@@ -573,7 +573,7 @@ public class NetworkManager
     ***************************************************************************/
 
     private void getBlocksFrom (ulong block_height,
-        scope bool delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
+        scope bool delegate(Block[]) @safe onReceivedBlocks) nothrow
     {
         struct Pair { size_t height; NetworkClient client; }
 

@@ -68,7 +68,7 @@ unittest
         }
 
         /// return phony blocks
-        public override const(Block)[] getBlocksFrom (ulong block_height,
+        public override Block[] getBlocksFrom (ulong block_height,
             uint max_blocks)
         {
             Block[] blocks;

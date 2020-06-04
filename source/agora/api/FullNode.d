@@ -152,7 +152,7 @@ public interface API
 
     ***************************************************************************/
 
-    public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks);
+    public Block[] getBlocksFrom (ulong block_height, uint max_blocks);
 
 
     /***************************************************************************

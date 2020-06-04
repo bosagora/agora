@@ -161,7 +161,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptBlock (const ref Block block) @safe
+    public bool acceptBlock (ref Block block) @safe
     {
         if (auto fail_reason = this.validateBlock(block))
         {
@@ -219,7 +219,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void addValidatedBlock (const ref Block block) @safe
+    private void addValidatedBlock (ref Block block) @safe
     {
         this.updateUTXOSet(block);
         if (!this.storage.saveBlock(block))
@@ -237,9 +237,7 @@ public class Ledger
                 assert(0);
             }
 
-        // read back and cache the last block
-        if (!this.storage.readLastBlock(this.last_block))
-            assert(0);
+        this.last_block = block;
     }
 
     /***************************************************************************
@@ -394,7 +392,7 @@ public class Ledger
     {
         start_height = min(start_height, this.getBlockHeight() + 1);
 
-        const(Block) readBlock (size_t height)
+        Block readBlock (size_t height)
         {
             Block block;
             if (!this.storage.tryReadBlock(block, height))
@@ -484,7 +482,7 @@ unittest
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(0).take(10);
-    assert(blocks[$ - 1] == GenesisBlock);
+    assert(blocks[$ - 1] == cast()GenesisBlock);
 
     Transaction[] last_txs;
 
@@ -506,7 +504,7 @@ unittest
 
     genBlockTransactions(2);
     blocks = ledger.getBlocksFrom(0).take(10);
-    assert(blocks[0] == GenesisBlock);
+    assert(blocks[0] == cast()GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
 
@@ -515,13 +513,13 @@ unittest
     assert(ledger.getBlockHeight() == 100);
 
     blocks = ledger.getBlocksFrom(0).takeExactly(10);
-    assert(blocks[0] == GenesisBlock);
+    assert(blocks[0] == cast()GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 10);
 
     /// lower limit
     blocks = ledger.getBlocksFrom(0).takeExactly(5);
-    assert(blocks[0] == GenesisBlock);
+    assert(blocks[0] == cast()GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 5);
 

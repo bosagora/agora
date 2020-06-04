@@ -66,7 +66,7 @@ unittest
     // get all the blocks (including genesis block)
     auto blocks = node_1.getBlocksFrom(0, 101);
 
-    assert(blocks[0] == network.blocks[0]);
+    assert(blocks[0] == cast()network.blocks[0]);
 
     // exclude genesis block
     assert(blocks[1 .. $].enumerate.each!((idx, block) =>
@@ -74,7 +74,7 @@ unittest
     ));
 
     blocks = node_1.getBlocksFrom(0, 1);
-    assert(blocks.length == 1 && blocks[0] == network.blocks[0]);
+    assert(blocks.length == 1 && blocks[0] == cast()network.blocks[0]);
 
     blocks = node_1.getBlocksFrom(10, 1);
     assert(blocks.length == 1 && blocks[0].txs == block_txes[9]);  // -1 as genesis block not included
