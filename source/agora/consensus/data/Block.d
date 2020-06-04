@@ -300,7 +300,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (size_t index) const @safe
+    public Hash[] getMerklePath (size_t index) const @safe nothrow
     {
         assert(this.merkle_tree.length != 0, "Block hasn't been fully initialized");
 
@@ -359,7 +359,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public size_t findHashIndex (Hash hash) const @safe
+    public size_t findHashIndex (Hash hash) const @safe nothrow
     {
         immutable pow2_size = getPow2Aligned(this.txs.length);
         assert(this.merkle_tree.length == (pow2_size * 2) - 1,
