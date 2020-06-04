@@ -16,6 +16,8 @@ module agora.node.Runner;
 import agora.api.FullNode;
 import agora.api.Validator;
 import agora.common.Config;
+import agora.node.FullNode;
+import agora.node.Validator;
 import agora.utils.Log;
 
 import ocean.util.log.Logger;
@@ -30,19 +32,18 @@ mixin AddLogger!();
 
 /*******************************************************************************
 
-    Boots up a FullNode or Validator that listens for network requests and 
+    Boots up a FullNode or Validator that listens for network requests and
     blockchain data.
 
     This is called from the main or CLI.
     The initialization process of the node is then completed.
 
     Params:
-      Node = Type of node to spawn (`FullNode` or `Validator`)
       config = A parsed and validated config file
 
 *******************************************************************************/
 
-public Node runNode (Node) (Config config)
+public FullNode runNode (Config config)
 {
     Log.root.level(config.logging.log_level, true);
     log.trace("Config is: {}", config);
@@ -53,23 +54,20 @@ public Node runNode (Node) (Config config)
 
     mkdirRecurse(config.node.data_dir);
 
-    auto node = new Node(config);
-
-    // note: check most specialized interface first, otherwise
-    // a Validator : FullNode will be true and a FullNode will be instantiated.
-    static if (is(Node : agora.api.Validator.API))
+    FullNode node;
+    if (config.node.is_validator)
     {
-        assert(config.node.is_validator);
         log.trace("Started Validator...");
-        router.registerRestInterface!(agora.api.Validator.API)(node);
+        auto inst = new Validator(config);
+        router.registerRestInterface!(agora.api.Validator.API)(inst);
+        node = inst;
     }
-    else static if (is(Node : agora.api.FullNode.API))
+    else
     {
-        assert(!config.node.is_validator);
         log.trace("Started FullNode...");
+        node = new FullNode(config);
         router.registerRestInterface!(agora.api.FullNode.API)(node);
     }
-    else static assert(0);
 
     node.start();  // asynchronous
 

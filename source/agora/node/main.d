@@ -73,10 +73,7 @@ private int main (string[] args)
             return 0;
         }
 
-        if (config.node.is_validator)
-            runTask(() => node = runNode!Validator(config));
-        else
-            runTask(() => node = runNode!FullNode(config));
+        runTask(() => node = runNode(config));
     }
     catch (Exception ex)
     {

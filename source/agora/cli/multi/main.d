@@ -107,12 +107,7 @@ private int main (string[] args)
 
     FullNode[] nodes;
     foreach (const ref config; configs)
-    {
-        if (config.node.is_validator)
-            nodes ~= runNode!Validator(config);
-        else
-            nodes ~= runNode!FullNode(config);
-    }
+        nodes ~= runNode(config);
 
     scope (exit)
     {
