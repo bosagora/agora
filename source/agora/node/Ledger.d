@@ -419,13 +419,15 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (ulong block_height, Hash hash) @safe
+    public Hash[] getMerklePath (ulong block_height, Hash hash) @safe nothrow
     {
         if (this.getBlockHeight() < block_height)
             return null;
 
         Block block;
-        this.storage.readBlock(block, block_height);
+        if (!this.storage.tryReadBlock(block, block_height))
+            return null;
+
         size_t index = block.findHashIndex(hash);
         if (index >= block.txs.length)
             return null;
