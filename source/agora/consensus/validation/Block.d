@@ -43,7 +43,7 @@ version (unittest)
         - the merkle root in the header matches the re-built merkle tree root
           based on the included transactions in the block
         - Transactions are ordered by their hash value
-        - all the the transactions pass validation, which implies:
+        - all the transactions pass validation, which implies:
             - signatures are authentic
             - the inputs spend an output which must be found with the
               findUTXO() delegate
