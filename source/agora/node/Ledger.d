@@ -242,9 +242,10 @@ public class Ledger
 
     private void addValidatedBlock (const ref Block block) @safe
     {
-        this.updateUTXOSet(block);
         if (!this.storage.saveBlock(block))
             assert(0);
+
+        this.updateUTXOSet(block);
 
         auto old_count = this.enroll_man.validatorCount();
         this.enroll_man.clearExpiredValidators(block.header.height);
