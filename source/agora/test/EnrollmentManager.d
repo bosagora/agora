@@ -36,62 +36,20 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    auto node_2 = nodes[1];
 
-    // make transactions which have UTXOs for the node.
-    auto gen_key_pair = getGenesisKeyPair();
-    auto pubkey_1 = node_1.getPublicKey();
-
-    Transaction[] txs;
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
-
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, pubkey_1),
-                Output(Amount(100), gen_key_pair.address)]
-        };
-
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        txs ~= tx;
-    }
-    txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 1).retryFor(8.seconds);
-
-    // create enrollment data
-    Enrollment enroll = node_1.createEnrollmentData();
-
-    // send a request to enroll as a Validator
-    node_1.enrollValidator(enroll);
-
-    // make a block with height of 2
-    Transaction[] txs2;
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        auto input = Input(hashFull(txs[idx]), 1);
-
-        Transaction tx =
-        {
-            TxType.Payment,
-            [input],
-            [Output(Amount(100), gen_key_pair.address)]
-        };
-
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        txs2 ~= tx;
-    }
-    txs2.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(8.seconds);
+    // Enroll validators without enrollment data in genesis block.
+    // If more than one is enrolled then two blocks are added,
+    // otherwise, no blocks are added.
+    auto enrolls = enrollValidators(iota(0, nodes.length)
+        .filter!(idx => idx >= ValidateCountInGenesis)
+        .map!(idx => nodes[idx])
+        .array);
+    containSameBlocks(nodes, 2).retryFor(3.seconds);
 
     // Check if nodes have a pre-image newly sent
     // While the timer is running on the taskmanager
-    nodes.each!(node =>
-        retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
-            10.seconds));
+    foreach (enroll; enrolls)
+        nodes.each!(node =>
+            retryFor(node.getPreimage(enroll.utxo_key) != PreImageInfo.init,
+                10.seconds));
 }

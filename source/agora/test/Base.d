@@ -225,6 +225,9 @@ public struct Serializer
 /// A different default serializer from `LocalRest` for `RemoteAPI`
 public alias RemoteAPI (APIType) = geod24.LocalRest.RemoteAPI!(APIType, Serializer);
 
+/// The number of validators in the genesis block
+public static immutable uint ValidateCountInGenesis = 1;
+
 /*******************************************************************************
 
     Task manager backed by LocalRest's event loop.
@@ -1086,10 +1089,14 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
     // 1 payment tx, the rest are freeze txs
     Transaction[] txs;
     txs ~= UnitTestGenesisTransaction.serializeFull.deserializeFull!Transaction;
+    txs ~= UnitTestGenesisTransactionForEnrollment.serializeFull.deserializeFull!Transaction;
     Enrollment[] enrolls;
 
-    foreach (key_pair; key_pairs)
+    foreach (idx, key_pair; key_pairs)
     {
+        if (idx >= ValidateCountInGenesis)
+            break;
+
         Transaction tx =
         {
             type : TxType.Freeze,
@@ -1131,4 +1138,89 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
         txs.assumeUnique,
         merkle_tree.assumeUnique
     );
+}
+
+/*******************************************************************************
+
+    This creates frozen UTXOs of the validators, and enrolls the validators.
+
+    Create the first block by creating frozen UTXOs to enroll the validator,
+    and create a second block to enroll the validator.
+
+    Params:
+        validators = Validators requiring enrollment
+
+    Returns:
+        The array of enrollment data sent over the networks
+
+*******************************************************************************/
+
+public Enrollment[] enrollValidators (RemoteAPI!TestAPI[] validators)
+{
+    import std.typecons : tuple;
+
+    // Returns null if no validator is required to enroll.
+    if (validators.length == 0)
+        return null;
+
+    auto gen_key_pair = getGenesisKeyPair();
+
+    Transaction[] txs1;
+
+    // The maximum number of output in transaction outputs
+    immutable int NumberOfOutput = 4;
+
+    // Creates frozen UTXOs
+    // Add up to four frozen UTXOs to one transaction.
+    foreach (block_idx; 0 .. Block.TxsInBlock)
+    {
+        Transaction tx =
+        {
+            TxType.Freeze,
+            [Input(hashFull(UnitTestGenesisTransactionForEnrollment), block_idx.to!uint)],
+            [Output(Amount(100), gen_key_pair.address)]
+        };
+
+        iota(block_idx * NumberOfOutput, (block_idx + 1) * NumberOfOutput)
+            .filter!(idx => idx < validators.length)
+            .each!(idx => tx.outputs ~= Output(Amount.MinFreezeAmount, validators[idx].getPublicKey()));
+
+        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        txs1 ~= tx;
+    }
+    txs1.each!(tx => validators[0].putTransaction(tx));
+    containSameBlocks(validators, 1).retryFor(8.seconds);
+
+    // Enrollment data of validators
+    auto enrolls = validators
+        .map!(validator => {
+                // Create enrollment data
+                auto enroll = validator.createEnrollmentData();
+                // Send a request to enroll as a validator
+                validator.enrollValidator(enroll);
+                return enroll;
+            }())
+        .array();
+
+    Transaction[] txs2;
+
+    // Make a block with height of 2
+    foreach (idx; 0 .. Block.TxsInBlock)
+    {
+        Transaction tx =
+        {
+            TxType.Payment,
+            [Input(hashFull(txs1[idx]), 0)],
+            [Output(Amount(100), gen_key_pair.address)]
+        };
+
+        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].signature = signature;
+        txs2 ~= tx;
+    }
+    txs2.each!(tx => validators[0].putTransaction(tx));
+    containSameBlocks(validators, 2).retryFor(8.seconds);
+
+    return enrolls;
 }

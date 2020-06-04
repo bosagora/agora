@@ -118,6 +118,23 @@ public immutable Transaction UnitTestGenesisTransaction =
     ],
 };
 
+/// The transaction for enrollment that are part of the genesis block
+public immutable Transaction UnitTestGenesisTransactionForEnrollment =
+{
+    TxType.Payment,
+    inputs: [ Input.init ],
+    outputs: [
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+        Output(Amount(500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+    ],
+};
+
 /// GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
 private immutable PublicKey UnitTestGenesisOutputAddress = UnitTestGenesisAddressUbyte;
 
