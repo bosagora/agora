@@ -270,7 +270,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void updateUTXOSet (const ref Block block) @safe
+    protected void updateUTXOSet (const ref Block block) @safe
     {
         const height = block.header.height;
         // add the new UTXOs
