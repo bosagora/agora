@@ -364,7 +364,7 @@ public struct WK
         @disable public this ();
 
         /// Given a keypair, return a name
-        public static string opIndex (const KeyPair kp)
+        public static string opIndex (const KeyPair kp) @safe nothrow @nogc
         {
             if (auto name = kp in nameMap)
                 return *name;
@@ -372,7 +372,7 @@ public struct WK
         }
 
         /// Allow one to use indexes to address the keys
-        public static KeyPair opIndex (size_t idx)
+        public static KeyPair opIndex (size_t idx) @safe nothrow @nogc
         {
             switch (idx)
             {
