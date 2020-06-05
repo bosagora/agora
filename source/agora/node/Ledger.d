@@ -245,26 +245,13 @@ public class Ledger
         if (!this.storage.saveBlock(block))
             assert(0);
 
-        this.updateUTXOSet(block);
-
         auto old_count = this.enroll_man.validatorCount();
-        this.enroll_man.clearExpiredValidators(block.header.height);
+        this.updateUTXOSet(block);
+        this.updateValidatorSet(block);
 
         // there was a change in the active validator set
         bool validators_changed = block.header.enrollments.length > 0
             || this.enroll_man.validatorCount() != old_count;
-
-        foreach (idx, ref enrollment; block.header.enrollments)
-        {
-            if (auto r = this.enroll_man.addValidator(enrollment,
-                block.header.height, this.utxo_set.getUTXOFinder()))
-            {
-                log.fatal("Error while adding a new validator: {}", r);
-                log.fatal("Enrollment #{}: {}", idx, enrollment);
-                log.fatal("Validated block: {}", block);
-                assert(0);
-            }
-        }
 
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
@@ -291,6 +278,34 @@ public class Ledger
 
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx));
+    }
+
+    /***************************************************************************
+
+        Update the active validator set
+
+        Params:
+            block = the block to update the Validator set with
+
+    ***************************************************************************/
+
+    protected void updateValidatorSet (const ref Block block) @safe
+    {
+        this.enroll_man.clearExpiredValidators(block.header.height);
+
+        foreach (idx, ref enrollment; block.header.enrollments)
+        {
+            this.enroll_man.pool.remove(enrollment.utxo_key);
+
+            if (auto r = this.enroll_man.addValidator(enrollment,
+                block.header.height, this.utxo_set.getUTXOFinder()))
+            {
+                log.fatal("Error while adding a new validator: {}", r);
+                log.fatal("Enrollment #{}: {}", idx, enrollment);
+                log.fatal("Validated block: {}", block);
+                assert(0);
+            }
+        }
     }
 
     /***************************************************************************
