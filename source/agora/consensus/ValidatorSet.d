@@ -19,6 +19,7 @@ import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Hash;
+import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -29,7 +30,6 @@ import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.utils.Log;
 
-import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
@@ -40,7 +40,7 @@ mixin AddLogger!();
 public class ValidatorSet
 {
     /// SQLite db instance
-    private Database db;
+    private ManagedDatabase db;
 
     /***************************************************************************
 
@@ -54,27 +54,13 @@ public class ValidatorSet
 
     public this (string db_path)
     {
-        this.db = Database(db_path);
+        this.db = new ManagedDatabase(db_path);
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
             "(key TEXT PRIMARY KEY, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
             "distance INTEGER, preimage TEXT)");
-    }
-
-    /***************************************************************************
-
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.db.close();
     }
 
     /***************************************************************************
@@ -193,7 +179,7 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {}", ex.msg);
+            log.error("ManagedDatabase operation error: {}", ex.msg);
             return ulong.max;
         }
     }
@@ -251,7 +237,7 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {}", ex.msg);
+            log.error("ManagedDatabase operation error: {}", ex.msg);
             return false;
         }
     }
@@ -289,7 +275,7 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {}", ex.msg);
+            log.error("ManagedDatabase operation error: {}", ex.msg);
         }
     }
 
@@ -446,7 +432,7 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Database operation error on addPreimage: {}, Preimage: {}",
+            log.error("ManagedDatabase operation error on addPreimage: {}, Preimage: {}",
                 ex.msg, preimage);
             return false;
         }
@@ -540,7 +526,6 @@ unittest
         utxos[idx % $] = UTXOSetValue.getHash(thisHash, 0);
     }
     ValidatorSet set = new ValidatorSet(":memory:");
-    scope (exit) set.shutdown();
 
     // add enrollments
     Scalar[Hash] seed_sources;
@@ -682,7 +667,6 @@ unittest
     Hash[] utxos = storage.keys;
 
     auto set = new ValidatorSet(":memory:");
-    scope(exit) set.shutdown();
 
     // create enrollments
     Enrollment[] enrolls;

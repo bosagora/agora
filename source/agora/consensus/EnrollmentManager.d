@@ -50,6 +50,7 @@ import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Hash;
+import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -62,7 +63,6 @@ import agora.consensus.validation;
 import agora.consensus.ValidatorSet;
 import agora.utils.Log;
 
-import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
@@ -83,7 +83,7 @@ mixin AddLogger!();
 public class EnrollmentManager
 {
     /// SQLite db instance
-    private Database db;
+    private ManagedDatabase db;
 
     /// Node's key pair
     private Pair key_pair;
@@ -139,7 +139,7 @@ public class EnrollmentManager
         this.validator_set = new ValidatorSet(db_path);
         this.enroll_pool = new EnrollmentPool(db_path);
 
-        this.db = Database(db_path);
+        this.db = new ManagedDatabase(db_path);
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
@@ -154,22 +154,6 @@ public class EnrollmentManager
 
         // load next height for preimage revelation
         this.next_reveal_height = this.getNextRevealHeight();
-    }
-
-    /***************************************************************************
-
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.db.close();
-        this.validator_set.shutdown();
-        this.enroll_pool.shutdown();
     }
 
     /// Provide direct access to the `EnrollmentPool`
@@ -518,7 +502,7 @@ public class EnrollmentManager
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {}", ex);
+            log.error("ManagedDatabase operation error: {}", ex);
         }
 
         return en_key;
@@ -564,7 +548,7 @@ public class EnrollmentManager
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {} ({})", ex, enroll);
+            log.error("ManagedDatabase operation error: {} ({})", ex, enroll);
             return false;
         }
 
@@ -595,7 +579,7 @@ public class EnrollmentManager
         }
         catch (Exception ex)
         {
-            log.error("Database operation error {}", ex);
+            log.error("ManagedDatabase operation error {}", ex);
         }
         return next_height;
     }
@@ -628,7 +612,7 @@ public class EnrollmentManager
         }
         catch (Exception ex)
         {
-            log.error("Database operation error {}", ex);
+            log.error("ManagedDatabase operation error {}", ex);
         }
     }
 
@@ -715,7 +699,6 @@ unittest
 
     // create an EnrollmentManager object
     auto man = new EnrollmentManager(":memory:", key_pair);
-    scope (exit) man.shutdown();
     Hash[] utxo_hashes = storage.keys;
 
     // check the return value of `getEnrollmentPublicKey`
@@ -879,7 +862,6 @@ unittest
     }
 
     auto man = new EnrollmentManager(":memory:", key_pair);
-    scope (exit) man.shutdown();
     Hash[] utxo_hashes = storage.keys;
 
     auto utxo_hash = utxo_hashes[0];
@@ -991,7 +973,6 @@ unittest
 
     // create an EnrollmentManager object
     auto man = new EnrollmentManager(":memory:", key_pair);
-    scope (exit) man.shutdown();
     Hash[] utxo_hashes = storage.keys;
 
     Enrollment enrollment;

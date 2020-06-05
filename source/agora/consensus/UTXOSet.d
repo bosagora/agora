@@ -15,14 +15,13 @@ module agora.consensus.UTXOSet;
 
 import agora.common.crypto.Key;
 import agora.common.Hash;
+import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import agora.utils.Log;
-
-import d2sqlite3.database;
 
 import std.file;
 
@@ -50,18 +49,6 @@ public class UTXOSet
     public this (in string utxo_db_path)
     {
         this.utxo_db = new UTXODB(utxo_db_path);
-    }
-
-    /***************************************************************************
-
-        Shut down the utxo store
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.utxo_db.shutdown();
-        this.utxo_db = null;
     }
 
     /***************************************************************************
@@ -219,14 +206,14 @@ public class UTXOSet
 
 /*******************************************************************************
 
-    Database of UTXOs using SQLite as the backing store
+    ManagedDatabase of UTXOs using SQLite as the backing store
 
 *******************************************************************************/
 
 private class UTXODB
 {
     /// SQLite db instance
-    private Database db;
+    private ManagedDatabase db;
 
 
     /***************************************************************************
@@ -247,7 +234,7 @@ private class UTXODB
         // todo: can fail. we would have to recover by either:
         // A) reconstructing it from our blockchain storage
         // B) requesting the UTXO set from our peers
-        this.db = Database(utxo_db_path);
+        this.db = new ManagedDatabase(utxo_db_path);
 
         if (db_exists)
             log.info("Loaded database from: {}", utxo_db_path);
@@ -255,20 +242,6 @@ private class UTXODB
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~
             "(key BLOB PRIMARY KEY, val BLOB NOT NULL, pubkey_hash BLOB NOT NULL)");
-    }
-
-    /***************************************************************************
-
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.db.close();
     }
 
     /***************************************************************************
@@ -393,7 +366,6 @@ unittest
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
 
     // create the first transaction
     Transaction tx1 = Transaction(

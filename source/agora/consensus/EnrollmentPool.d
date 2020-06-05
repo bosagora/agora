@@ -20,6 +20,7 @@ import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Hash;
+import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -29,7 +30,6 @@ import agora.consensus.UTXOSet;
 import agora.consensus.validation;
 import agora.utils.Log;
 
-import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
@@ -40,7 +40,7 @@ mixin AddLogger!();
 public class EnrollmentPool
 {
     /// SQLite DB instance
-    private Database db;
+    private ManagedDatabase db;
 
     /***************************************************************************
 
@@ -54,25 +54,11 @@ public class EnrollmentPool
 
     public this (string db_path)
     {
-        this.db = Database(db_path);
+        this.db = new ManagedDatabase(db_path);
 
         // create the table for enrollment pool if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS enrollment_pool " ~
             "(key TEXT PRIMARY KEY, val BLOB NOT NULL)");
-    }
-
-    /***************************************************************************
-
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.db.close();
     }
 
     /***************************************************************************
@@ -126,7 +112,7 @@ public class EnrollmentPool
         }
         catch (Exception ex)
         {
-            log.error("Database operation error: {}, Data was: {}", ex.msg, enroll);
+            log.error("ManagedDatabase operation error: {}, Data was: {}", ex.msg, enroll);
             return false;
         }
 
@@ -150,7 +136,7 @@ public class EnrollmentPool
         }
         catch (Exception ex)
         {
-            log.error("Database operation error on count");
+            log.error("ManagedDatabase operation error on count");
             return 0;
         }
     }
@@ -173,7 +159,7 @@ public class EnrollmentPool
         }
         catch (Exception ex)
         {
-            log.error("Database operation error on remove");
+            log.error("ManagedDatabase operation error on remove");
         }
     }
 
@@ -336,7 +322,6 @@ unittest
         storage.put(tx);
     }
     EnrollmentPool pool = new EnrollmentPool(":memory:");
-    scope (exit) pool.shutdown();
     Hash[] utxo_hashes = storage.keys;
 
     // add enrollments

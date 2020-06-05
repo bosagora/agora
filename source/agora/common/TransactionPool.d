@@ -14,6 +14,7 @@
 
 module agora.common.TransactionPool;
 
+import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
@@ -21,7 +22,6 @@ import agora.common.Set;
 import agora.consensus.data.Transaction;
 import agora.utils.Log;
 
-import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
@@ -86,7 +86,7 @@ public class TransactionPool
     }
 
     /// SQLite db instance
-    private Database db;
+    private ManagedDatabase db;
 
     /// Map for hashes for Input objects of each transaction in TX pool
     private Set!Hash input_set;
@@ -106,7 +106,7 @@ public class TransactionPool
             log.info("Loading database from: {}", db_path);
 
         // note: can fail. we may want to just recover txes from the network instead.
-        this.db = Database(db_path);
+        this.db = new ManagedDatabase(db_path);
 
         if (db_exists)
             log.info("Loaded database from: {}", db_path);
@@ -241,20 +241,6 @@ public class TransactionPool
 
     /***************************************************************************
 
-        Shut down the database
-
-        Note: this method must be called explicitly, and not inside of
-        a destructor.
-
-    ***************************************************************************/
-
-    public void shutdown ()
-    {
-        this.db.close();
-    }
-
-    /***************************************************************************
-
         Check if the input transaction has any double spending input.
 
         Params:
@@ -336,8 +322,6 @@ unittest
     import agora.consensus.Genesis;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();  // note: must call outside destructor
-
     auto gen_key = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key, null, 1);
 
@@ -376,8 +360,6 @@ unittest
     import std.exception;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();  // note: must call outside destructor
-
     auto gen_key = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key, null, 1);
 
@@ -409,8 +391,6 @@ unittest
     import core.memory;
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
-
     auto gen_key = getGenesisKeyPair();
     auto txs = makeChainedTransactions(gen_key, null, 1);
 
@@ -457,7 +437,6 @@ unittest
 
     // create first transaction pool
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
 
     // create first transaction
     Transaction tx1 =
@@ -487,7 +466,6 @@ unittest
 
     // create second transaction pool
     auto pool2 = new TransactionPool(":memory:");
-    scope(exit) pool2.shutdown();
 
     // add duplicate tx into second pool => return true
     assert(pool2.add(tx2));
