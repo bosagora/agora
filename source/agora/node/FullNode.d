@@ -137,11 +137,8 @@ public class FullNode : API
             config.network, config.dns_seeds, this.metadata, this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
-        scope (failure) this.pool.shutdown();
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
-        scope (failure) this.utxo_set.shutdown();
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
-        scope (failure) this.enroll_man.shutdown();
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage,
             this.enroll_man, config.node, onValidatorsChanged);
         this.exception = new RestException(
@@ -193,11 +190,8 @@ public class FullNode : API
     {
         log.info("Shutting down..");
         this.network.dumpMetadata();
-        this.pool.shutdown();
         this.pool = null;
-        this.utxo_set.shutdown();
         this.utxo_set = null;
-        this.enroll_man.shutdown();
         this.enroll_man = null;
     }
 

@@ -1099,7 +1099,6 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
         Hash txhash = hashFull(tx);
         Hash utxo = UTXOSetValue.getHash(txhash, 0);
         scope enr = new EnrollmentManager(":memory:", key_pair);
-        scope (exit) enr.shutdown();
 
         Enrollment enroll;
         const StartHeight = 1;

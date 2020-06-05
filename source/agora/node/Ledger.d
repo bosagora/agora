@@ -479,12 +479,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
     assert(ledger.getBlockHeight() == 0);
@@ -568,12 +565,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -618,12 +612,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -645,12 +636,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -723,12 +711,9 @@ unittest
     assert(storage.saveBlock(block));
 
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -830,14 +815,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
-
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
-
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -909,12 +889,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -1133,14 +1110,9 @@ unittest
 
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
-    scope(exit) pool.shutdown();
-
     auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
-
     auto config = new Config();
     auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
-    scope (exit) enroll_man.shutdown();
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
 
@@ -1442,13 +1414,10 @@ unittest
     {
         auto key_pair = KeyPair.random();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair);
-        scope (exit) enroll_man.shutdown();
         const blocks = genBlocksToIndex(key_pair, enroll_man, 0);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
-        scope (exit) pool.shutdown();
         scope utxo_set = new UTXOSet(":memory:");
-        scope (exit) utxo_set.shutdown();
         scope config = new Config();
         scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
         Hash[] keys;
@@ -1460,13 +1429,10 @@ unittest
     {
         auto key_pair = KeyPair.random();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair);
-        scope (exit) enroll_man.shutdown();
         const blocks = genBlocksToIndex(key_pair, enroll_man, 1007);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
-        scope (exit) pool.shutdown();
         scope utxo_set = new UTXOSet(":memory:");
-        scope (exit) utxo_set.shutdown();
         scope config = new Config();
         scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
         Hash[] keys;
@@ -1478,13 +1444,10 @@ unittest
     {
         auto key_pair = KeyPair.random();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair);
-        scope (exit) enroll_man.shutdown();
         const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
-        scope (exit) pool.shutdown();
         scope utxo_set = new UTXOSet(":memory:");
-        scope (exit) utxo_set.shutdown();
         scope config = new Config();
         scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
         Hash[] keys;
