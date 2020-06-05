@@ -22,6 +22,7 @@ import agora.common.crypto.Key;
 import agora.common.Metadata;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
@@ -62,9 +63,10 @@ unittest
     static class BadNode : TestFullNode
     {
         ///
-        public this (Config config, Registry* reg, immutable(Block)[] blocks)
+        public this (Config config, Registry* reg, immutable(Block)[] blocks,
+            immutable(ConsensusParams) params)
         {
-            super(config, reg, blocks);
+            super(config, reg, blocks, params);
         }
 
         /// return phony blocks
@@ -98,9 +100,10 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         ///
-        public this (immutable(Block)[] blocks)
+        public this (immutable(Block)[] blocks,
+            immutable(ConsensusParams) params)
         {
-            super(blocks);
+            super(blocks, params);
         }
 
         /// see base class
@@ -116,16 +119,16 @@ unittest
             if (conf.node.is_validator)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, this.blocks, conf.node.timeout.msecs);
+                    conf, &this.reg, this.blocks, this.params, conf.node.timeout.msecs);
             }
             else
             {
                 if (this.nodes.length == 2)
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, this.blocks, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, this.params, conf.node.timeout.msecs);
                 else
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, this.params, conf.node.timeout.msecs);
             }
 
             this.reg.register(conf.node.address, api.tid());

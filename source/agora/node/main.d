@@ -19,6 +19,7 @@
 module agora.node.main;
 
 import agora.common.Config;
+import agora.consensus.data.ConsensusParams;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
@@ -72,7 +73,7 @@ private int main (string[] args)
             return 0;
         }
 
-        runTask(() => node = runNode(config));
+        runTask(() => node = runNode(config, new immutable(ConsensusParams)()));
     }
     catch (Exception ex)
     {

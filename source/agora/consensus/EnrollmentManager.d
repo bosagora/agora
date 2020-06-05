@@ -54,6 +54,7 @@ import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSetValue;
 import agora.consensus.EnrollmentPool;
@@ -113,6 +114,9 @@ public class EnrollmentManager
     /// Ditto
     private PreImageCycle cycle;
 
+    /// Parameters for consensus-critical constants
+    private immutable(ConsensusParams) params;
+
     /***************************************************************************
 
         Constructor
@@ -121,10 +125,12 @@ public class EnrollmentManager
             db_path = path to the database file, or in-memory storage if
                         :memory: was passed
             key_pair = the keypair of the owner node
+            params = the consensus-critical constants
 
     ***************************************************************************/
 
-    public this (string db_path, KeyPair key_pair)
+    public this (string db_path, KeyPair key_pair,
+        immutable(ConsensusParams) params)
     {
         this.cycle = PreImageCycle(
             /* nounce: */ 0,
@@ -135,7 +141,8 @@ public class EnrollmentManager
             /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
         );
 
-        this.validator_set = new ValidatorSet(db_path);
+        this.params = params;
+        this.validator_set = new ValidatorSet(db_path, params);
         this.enroll_pool = new EnrollmentPool(db_path);
 
         this.db = new ManagedDatabase(db_path);
@@ -697,7 +704,8 @@ unittest
     }
 
     // create an EnrollmentManager object
-    auto man = new EnrollmentManager(":memory:", key_pair);
+    auto man = new EnrollmentManager(":memory:", key_pair,
+        new immutable(ConsensusParams)());
     Hash[] utxo_hashes = storage.keys;
 
     // check the return value of `getEnrollmentPublicKey`
@@ -860,7 +868,8 @@ unittest
         storage.put(tx);
     }
 
-    auto man = new EnrollmentManager(":memory:", key_pair);
+    auto man = new EnrollmentManager(":memory:", key_pair,
+        new immutable(ConsensusParams)());
     Hash[] utxo_hashes = storage.keys;
 
     auto utxo_hash = utxo_hashes[0];
@@ -971,7 +980,8 @@ unittest
     }
 
     // create an EnrollmentManager object
-    auto man = new EnrollmentManager(":memory:", key_pair);
+    auto man = new EnrollmentManager(":memory:", key_pair,
+        new immutable(ConsensusParams)());
     Hash[] utxo_hashes = storage.keys;
 
     Enrollment enrollment;

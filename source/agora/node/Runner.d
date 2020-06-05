@@ -16,6 +16,7 @@ module agora.node.Runner;
 import agora.api.FullNode;
 import agora.api.Validator;
 import agora.common.Config;
+import agora.consensus.data.ConsensusParams;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;
@@ -38,10 +39,11 @@ mixin AddLogger!();
 
     Params:
       config = A parsed and validated config file
+      params = the consensus-critical constants
 
 *******************************************************************************/
 
-public FullNode runNode (Config config)
+public FullNode runNode (Config config, immutable(ConsensusParams) params)
 {
     Log.root.level(config.logging.log_level, true);
     log.trace("Config is: {}", config);
@@ -56,14 +58,14 @@ public FullNode runNode (Config config)
     if (config.node.is_validator)
     {
         log.trace("Started Validator...");
-        auto inst = new Validator(config);
+        auto inst = new Validator(config, params);
         router.registerRestInterface!(agora.api.Validator.API)(inst);
         node = inst;
     }
     else
     {
         log.trace("Started FullNode...");
-        node = new FullNode(config);
+        node = new FullNode(config, params);
         router.registerRestInterface!(agora.api.FullNode.API)(node);
     }
 
