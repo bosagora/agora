@@ -242,8 +242,6 @@ public class Ledger
 
         foreach (idx, ref enrollment; block.header.enrollments)
         {
-            this.enroll_man.pool.remove(enrollment.utxo_key);
-
             if (auto r = this.enroll_man.addValidator(enrollment,
                 block.header.height, this.utxo_set.getUTXOFinder()))
             {
