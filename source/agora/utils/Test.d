@@ -363,6 +363,31 @@ public struct WK
         /// This struct is used as a namespace only
         @disable public this ();
 
+        /// Provides a range interface to keys
+        public static auto byRange ()
+        {
+            static struct Range
+            {
+                nothrow @nogc @safe:
+
+                private size_t lbound = 0;
+                private size_t hbound = 26;
+
+                public bool empty () const { return this.lbound >= this.hbound; }
+                public KeyPair front () const { return Keys[this.lbound]; }
+                public void popFront () { this.lbound++; }
+            }
+
+            return Range(0);
+        }
+
+        /// Returns: The `KeyPair` matching this `pubkey`, or `KeyPair.init`
+        public static KeyPair opIndex (PublicKey pubkey) @safe nothrow @nogc
+        {
+            auto result = this.byRange.find!(k => k.address == pubkey);
+            return result.empty ? KeyPair.init : result.front();
+        }
+
         /// Given a keypair, return a name
         public static string opIndex (const KeyPair kp) @safe nothrow @nogc
         {
@@ -552,6 +577,14 @@ unittest
     static assert(WK.Keys[0] == WK.Keys.A);
     static assert(WK.Keys[16] == WK.Keys.Q);
     static assert(WK.Keys[25] == WK.Keys.Z);
+
+    // Range interface
+    static assert(WK.Keys.byRange.count() == 26);
+
+    // Key from index
+    static assert(WK.Keys[WK.Keys.A.address] == WK.Keys.A);
+    static assert(WK.Keys[WK.Keys.Q.address] == WK.Keys.Q);
+    static assert(WK.Keys[WK.Keys.Z.address] == WK.Keys.Z);
 
     // Not accessible at CT
     assert(WK.Keys[WK.Keys.A] == "WK.Keys.A");
