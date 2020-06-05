@@ -93,7 +93,7 @@ public class Validator : FullNode, API
     {
         try
         {
-            this.qc = this.buildQuorumConfig();
+            this.qc = this.rebuildQuorumConfig();
             this.nominator.setQuorumConfig(this.qc);
             buildRequiredKeys(this.config.node.key_pair.address, this.qc,
                 this.required_peer_keys);
@@ -115,7 +115,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private QuorumConfig buildQuorumConfig ()
+    private QuorumConfig rebuildQuorumConfig ()
     {
         Enrollment[] enrollments;
         if (!this.enroll_man.getValidators(enrollments) ||
@@ -125,7 +125,7 @@ public class Validator : FullNode, API
             assert(0);
         }
 
-        return .buildQuorumConfig(this.config.node.key_pair.address,
+        return buildQuorumConfig(this.config.node.key_pair.address,
             enrollments, this.utxo_set.getUTXOFinder());
     }
 
