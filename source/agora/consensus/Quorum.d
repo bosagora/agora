@@ -59,8 +59,8 @@ public QuorumConfig buildQuorumConfig ( const ref PublicKey node_key,
 ///
 unittest
 {
-    // test up to 1024 nodes
-    foreach (num_nodes; iota(1, 10).map!(n => 2 ^^ n))
+    // test various node counts up to 1000 (hard limit)
+    foreach (num_nodes; iota(1, 11).map!(n => min(1000, 2 ^^ n)))
     {
         auto data = genTestEnrolls(num_nodes);
         foreach (key; data.keys)
