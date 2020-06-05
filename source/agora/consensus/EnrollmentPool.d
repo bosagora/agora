@@ -320,7 +320,7 @@ unittest
         tx.inputs[0].signature = signature;
         storage.put(tx);
     }
-    EnrollmentPool pool = new EnrollmentPool(":memory:");
+    auto pool = new EnrollmentPool(":memory:");
     Hash[] utxo_hashes = storage.keys;
 
     // add enrollments

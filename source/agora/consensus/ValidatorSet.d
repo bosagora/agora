@@ -23,6 +23,7 @@ import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXOSetValue;
 import agora.consensus.PreImage;
@@ -41,6 +42,9 @@ public class ValidatorSet
     /// SQLite db instance
     private ManagedDatabase db;
 
+    /// Parameters for consensus-critical constants
+    private immutable(ConsensusParams) params;
+
     /***************************************************************************
 
         Constructor
@@ -48,12 +52,14 @@ public class ValidatorSet
         Params:
             db_path = path to the database file, or in-memory storage if
                         :memory: was passed
+            params = the consensus-critical constants
 
     ***************************************************************************/
 
-    public this (string db_path)
+    public this (string db_path, immutable(ConsensusParams) params)
     {
         this.db = new ManagedDatabase(db_path);
+        this.params = params;
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
@@ -524,7 +530,7 @@ unittest
         // Store the hash of the UTXO as we need it to create enrollments
         utxos[idx % $] = UTXOSetValue.getHash(thisHash, 0);
     }
-    ValidatorSet set = new ValidatorSet(":memory:");
+    auto set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
 
     // add enrollments
     Scalar[Hash] seed_sources;
@@ -665,7 +671,7 @@ unittest
     }
     Hash[] utxos = storage.keys;
 
-    auto set = new ValidatorSet(":memory:");
+    auto set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
 
     // create enrollments
     Enrollment[] enrolls;

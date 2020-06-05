@@ -35,6 +35,7 @@ import agora.common.TransactionPool;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
@@ -339,6 +340,9 @@ public class TestAPIManager
     /// Contains the initial blockchain state of all nodes
     public immutable(Block)[] blocks;
 
+    /// Parameters for consensus-critical constants
+    public immutable(ConsensusParams) params;
+
     /// convenience: returns a random-access range which lets us access clients
     auto clients ()
     {
@@ -349,9 +353,10 @@ public class TestAPIManager
     protected Registry reg;
 
     ///
-    public this (immutable(Block)[] blocks)
+    public this (immutable(Block)[] blocks, immutable(ConsensusParams) params)
     {
         this.blocks = blocks;
+        this.params = params;
         this.reg.initialize();
     }
 
@@ -361,7 +366,6 @@ public class TestAPIManager
 
         Params:
             conf = the configuration passed on to the Node constructor
-            blocks = the blockchain to preload (including genesis)
 
     ***************************************************************************/
 
@@ -372,12 +376,12 @@ public class TestAPIManager
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, conf.node.timeout.msecs);
+                this.blocks, this.params, conf.node.timeout.msecs);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, conf.node.timeout.msecs);
+                this.blocks, this.params, conf.node.timeout.msecs);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -617,11 +621,12 @@ private mixin template TestNodeMixin ()
     private immutable(Block)[] blocks;
 
     ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks)
+    public this (Config config, Registry* reg, immutable(Block)[] blocks,
+        immutable(ConsensusParams) params = null)
     {
         this.registry = reg;
         this.blocks = blocks;
-        super(config);
+        super(config, params);
     }
 
     ///
@@ -688,9 +693,10 @@ private mixin template TestNodeMixin ()
 
     /// Return an enrollment manager backed by an in-memory SQLite db
     protected override EnrollmentManager getEnrollmentManager (
-        string data_dir, in NodeConfig node_config)
+        string data_dir, in NodeConfig node_config,
+        immutable(ConsensusParams) params)
     {
-        return new EnrollmentManager(":memory:", node_config.key_pair);
+        return new EnrollmentManager(":memory:", node_config.key_pair, params);
     }
 }
 
@@ -826,6 +832,7 @@ public struct TestConf
     Params:
         APIManager = Type of API manager to instantiate
         test_conf = the test configuration
+        params = the consensus-critical constants
 
     Returns:
         The set of public key added to the node
@@ -833,7 +840,7 @@ public struct TestConf
 *******************************************************************************/
 
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)(
-    in TestConf test_conf)
+    in TestConf test_conf, immutable(ConsensusParams) params = null)
 {
     import agora.common.Serializer;
     import std.digest;
@@ -986,11 +993,14 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         break;
     }
 
+    immutable cons_params =
+        (params !is null) ? params : new immutable(ConsensusParams)();
+
     auto gen_block = makeGenesisBlock(
         node_configs
             .filter!(conf => conf.is_validator)
             .map!(conf => conf.key_pair)
-            .array);
+            .array, cons_params);
 
     immutable string gen_block_hex = gen_block
         .serializeFull()
@@ -1011,7 +1021,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     immutable(Block)[] blocks = generateBlocks(gen_block,
         test_conf.extra_blocks);
 
-    auto net = new APIManager(blocks);
+    auto net = new APIManager(blocks, cons_params);
     foreach (ref conf; configs)
         net.createNewNode(conf);
 
@@ -1070,13 +1080,15 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
 
     Params:
         key_pairs = key pairs for signing enrollments with
+        params = the consensus-critical constants
 
     Returns:
         The genesis block
 
 *******************************************************************************/
 
-private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
+private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
+    immutable(ConsensusParams) params)
 {
     import agora.common.Serializer;
 
@@ -1098,7 +1110,7 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
         txs ~= tx;
         Hash txhash = hashFull(tx);
         Hash utxo = UTXOSetValue.getHash(txhash, 0);
-        scope enr = new EnrollmentManager(":memory:", key_pair);
+        scope enr = new EnrollmentManager(":memory:", key_pair, params);
 
         Enrollment enroll;
         const StartHeight = 1;

@@ -106,7 +106,7 @@ private int main (string[] args)
 
     FullNode[] nodes;
     foreach (const ref config; configs)
-        nodes ~= runNode(config);
+        nodes ~= runNode(config, new immutable(ConsensusParams)());
 
     scope (exit)
     {

@@ -23,6 +23,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
@@ -68,6 +69,9 @@ public class Ledger
     /// a block was externalized
     private void delegate () nothrow @safe onValidatorsChanged;
 
+    /// Parameters for consensus-critical constants
+    private immutable(ConsensusParams) params;
+
     /***************************************************************************
 
         Constructor
@@ -78,6 +82,7 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             node_config = the node config
+            params = the consensus-critical constants
             onValidatorsChanged = optional delegate to call after the validator
                                   set changes when a block was externalized
 
@@ -88,6 +93,7 @@ public class Ledger
         IBlockStorage storage,
         EnrollmentManager enroll_man,
         NodeConfig node_config,
+        immutable(ConsensusParams) params,
         void delegate () nothrow @safe onValidatorsChanged = null)
     {
         this.pool = pool;
@@ -96,6 +102,7 @@ public class Ledger
         this.enroll_man = enroll_man;
         this.node_config = node_config;
         this.onValidatorsChanged = onValidatorsChanged;
+        this.params = params;
         if (!this.storage.load())
             assert(0);
 
@@ -481,9 +488,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(0).take(10);
@@ -567,9 +576,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     // Valid case
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
@@ -614,9 +625,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
@@ -638,9 +651,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
@@ -713,9 +728,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     assert(utxo_set.length == 8);
     auto finder = utxo_set.getUTXOFinder();
@@ -817,9 +834,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     KeyPair[] in_key_pairs;
     KeyPair[] out_key_pairs;
@@ -891,9 +910,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     Transaction[] splited_txex;
     // Divide 8 'Outputs' that are included in Genesis Block by 40,000
@@ -1112,9 +1133,11 @@ unittest
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair);
+    auto params = new immutable(ConsensusParams)();
+    auto enroll_man = new EnrollmentManager(":memory:", gen_key_pair, params);
     config.node.is_validator = true;
-    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+    scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
+        params);
 
     KeyPair[] splited_keys = getRandomKeyPairs();
 
@@ -1413,13 +1436,15 @@ unittest
     // only genesis loaded: validator is active
     {
         auto key_pair = KeyPair.random();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+        auto params = new immutable(ConsensusParams)();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, enroll_man, 0);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
         scope config = new Config();
-        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man,
+            config.node, params);
         Hash[] keys;
         assert(enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
@@ -1428,13 +1453,15 @@ unittest
     // block 1007 loaded: validator is still active
     {
         auto key_pair = KeyPair.random();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+        auto params = new immutable(ConsensusParams)();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, enroll_man, 1007);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
         scope config = new Config();
-        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man,
+            config.node, params);
         Hash[] keys;
         assert(enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
@@ -1443,13 +1470,15 @@ unittest
     // block 1008 loaded: validator is inactive
     {
         auto key_pair = KeyPair.random();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair);
+        auto params = new immutable(ConsensusParams)();
+        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
         scope config = new Config();
-        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
+        scope ledger = new Ledger(pool, utxo_set, storage, enroll_man,
+            config.node, params);
         Hash[] keys;
         assert(enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 0);

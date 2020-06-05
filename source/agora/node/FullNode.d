@@ -27,6 +27,7 @@ import agora.common.Task;
 import agora.common.Types;
 import agora.common.TransactionPool;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.UTXOSet;
@@ -75,6 +76,9 @@ public class FullNode : API
     /// Config instance
     protected const Config config;
 
+    /// Parameters for consensus-critical constants
+    private immutable(ConsensusParams) params;
+
     /// Task manager
     protected TaskManager taskman;
 
@@ -108,12 +112,13 @@ public class FullNode : API
 
         Params:
             config = Config instance
+            params = the consensus-critical constants
             onValidatorsChanged = delegate to call when the active set of
                                   validators has changed (may be null)
 
     ***************************************************************************/
 
-    public this (const Config config,
+    public this (const Config config, immutable(ConsensusParams) params,
         void delegate () nothrow @trusted onValidatorsChanged = null)
     {
         // custom genesis block provided
@@ -132,15 +137,17 @@ public class FullNode : API
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
+        this.params = params;
         this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
-        this.enroll_man = this.getEnrollmentManager(config.node.data_dir, config.node);
+        this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
+            config.node, params);
         this.ledger = new Ledger(this.pool, this.utxo_set, this.storage,
-            this.enroll_man, config.node, onValidatorsChanged);
+            this.enroll_man, config.node, params, onValidatorsChanged);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
@@ -397,6 +404,7 @@ public class FullNode : API
         Params:
             data_dir = path to the data dirctory
             node_config = the node config
+            params = the consensus-critical constants
 
         Returns:
             the enrollment manager
@@ -404,10 +412,10 @@ public class FullNode : API
     ***************************************************************************/
 
     protected EnrollmentManager getEnrollmentManager (string data_dir,
-        in NodeConfig node_config)
+        in NodeConfig node_config, immutable(ConsensusParams) params)
     {
         return new EnrollmentManager(buildPath(data_dir, "validator_set.dat"),
-            node_config.key_pair);
+            node_config.key_pair, params);
     }
 
     /// GET: /merkle_path

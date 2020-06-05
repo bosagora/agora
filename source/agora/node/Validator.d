@@ -21,6 +21,7 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.TransactionPool;
 import agora.common.Types;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
@@ -62,10 +63,10 @@ public class Validator : FullNode, API
     protected Set!PublicKey required_peer_keys;
 
     /// Ctor
-    public this (const Config config)
+    public this (const Config config, immutable(ConsensusParams) params)
     {
         assert(config.node.is_validator);
-        super(config, &this.onValidatorsChanged);
+        super(config, params, &this.onValidatorsChanged);
 
         this.nominator = this.getNominator(this.network,
             this.config.node.key_pair, this.ledger, this.taskman);
