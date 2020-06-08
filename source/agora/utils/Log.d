@@ -59,21 +59,6 @@ public struct Logger
         GC.removeRoot(cast(void*)this.logger);
     }
 
-    // workaround: weird CT bug in NetworkManager.d call:
-    // log.info("Discovery reached. {} peers connected.", this.peers.length);
-    // source/agora/network/NetworkManager.d(149,12): Error: no property info for type Logger
-    public void info (Args...) (Args args) @safe nothrow
-    {
-        try
-        {
-            this.logger.info(args);
-        }
-        catch (Exception ex)
-        {
-            assert(0, ex.msg);
-        }
-    }
-
     public void opDispatch (string call, Args...) (Args args) @safe nothrow
     {
         try
