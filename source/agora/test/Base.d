@@ -52,8 +52,6 @@ import agora.api.Validator : ValidatorAPI = API;
 
 import scpd.types.Stellar_SCP;
 
-import ocean.util.log.Logger;
-
 static import geod24.LocalRest;
 import geod24.Registry;
 

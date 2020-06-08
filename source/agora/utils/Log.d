@@ -31,86 +31,98 @@ import ocean.transition;
 import ocean.util.log.AppendConsole;
 import ocean.util.log.Appender;
 import ocean.util.log.Event;
-import ocean.util.log.Logger;
+import Ocean = ocean.util.log.Logger;
 
 import std.algorithm : min;
 import std.format;
 import std.stdio;
 import std.range : Cycle, cycle, isOutputRange, take, takeExactly;
 
-/// Insert a logger in the current scope, named log
-public template AddLogger (string moduleName = __MODULE__)
+/// nothrow wrapper around Ocean's Logger
+public struct Logger
 {
-    import Ocean = ocean.util.log.Logger;
-    import agora.common.Types;
+    private Ocean.Logger logger;
 
-    /// nothrow wrapper around Ocean's Logger
-    public static struct Logger
+    /// ctor
+    public this (string moduleName)
     {
-        private Ocean.Logger logger;
+        import core.memory;
+        this.logger = Ocean.Log.lookup(moduleName);
+        this.logger.buffer(new char[](16384));
+        GC.addRoot(cast(void*)this.logger);
+    }
 
-        // workaround: weird CT bug in NetworkManager.d call:
-        // log.info("Discovery reached. {} peers connected.", this.peers.length);
-        // source/agora/network/NetworkManager.d(149,12): Error: no property info for type Logger
-        public void info (Args...) (Args args) @safe nothrow
+    /// dtor
+    public ~this ()
+    {
+        import core.memory;
+        GC.removeRoot(cast(void*)this.logger);
+    }
+
+    // workaround: weird CT bug in NetworkManager.d call:
+    // log.info("Discovery reached. {} peers connected.", this.peers.length);
+    // source/agora/network/NetworkManager.d(149,12): Error: no property info for type Logger
+    public void info (Args...) (Args args) @safe nothrow
+    {
+        try
         {
-            try
-            {
-                this.logger.info(args);
-            }
-            catch (Exception ex)
-            {
-                assert(0, ex.msg);
-            }
+            this.logger.info(args);
         }
-
-        public void opDispatch (string call, Args...) (Args args) @safe nothrow
+        catch (Exception ex)
         {
-            try
-            {
-                mixin("this.logger." ~ call ~ "(args);");
-            }
-            catch (Exception ex)
-            {
-                assert(0, ex.msg);
-            }
-        }
-
-        // Supports `log = Log.lookup("yo")`,
-        // where `log` is of `typeof(this)` type
-        public ref Logger opAssign (Ocean.Logger newLogger)
-            @safe pure nothrow @nogc return
-        {
-            this.logger = newLogger;
-            return this;
-        }
-
-        // Support `Logger log = Log.lookup("yo")` (initialization)
-        public this (Ocean.Logger initRef)
-            @safe pure nothrow @nogc
-        {
-            this.logger = initRef;
+            assert(0, ex.msg);
         }
     }
 
+    public void opDispatch (string call, Args...) (Args args) @safe nothrow
+    {
+        try
+        {
+            mixin("this.logger." ~ call ~ "(args);");
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
+    }
+
+    // Supports `log = Log.lookup("yo")`,
+    // where `log` is of `typeof(this)` type
+    public ref Logger opAssign (Ocean.Logger newLogger)
+        @safe pure nothrow @nogc return
+    {
+        this.logger = newLogger;
+        return this;
+    }
+
+    // Support `Logger log = Log.lookup("yo")` (initialization)
+    public this (Ocean.Logger initRef)
+        @safe pure nothrow @nogc
+    {
+        this.logger = initRef;
+    }
+}
+
+/// Insert a logger in the current scope, named log
+public template AddLogger (string moduleName = __MODULE__)
+{
     private Logger log;
     static this ()
     {
-        import core.memory;
-        log = Logger(Ocean.Log.lookup(moduleName));
-        log.logger.buffer(new char[](16384));
-        GC.addRoot(cast(void*)log.logger);
+        log = Logger(moduleName);
     }
 
     static ~this()
     {
-        import core.memory;
-        GC.removeRoot(cast(void*)log.logger);
+        destroy(log);
     }
 }
 
 /// Convenience alias
-public alias LogLevel = Level;
+public alias LogLevel = Ocean.Level;
+
+/// Ditto
+public alias Log = Ocean.Log;
 
 /// Initialize the logger
 static this ()
@@ -269,12 +281,12 @@ public class AgoraLayout : Appender.Layout
 private extern(C++) void writeDLog (const(char)* logger, int level,
     const(char)* msg)
 {
-    if (level >= Level.min && level <= Level.max)
+    if (level >= LogLevel.min && level <= LogLevel.max)
     {
         import std.string;
 
         auto log = Log.lookup(fromStringz(logger));
         assert(log !is null);
-        log.format(cast(Level) level, fromStringz(msg));
+        log.format(cast(LogLevel) level, fromStringz(msg));
     }
 }
