@@ -31,14 +31,19 @@ module agora.utils.Test;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
+import agora.common.crypto.Schnorr;
 import agora.common.Hash;
+import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 
 import std.algorithm;
+import std.array;
 import std.file;
+import std.format;
 import std.path;
+import std.range;
 
 import core.exception;
 import core.time;
@@ -101,9 +106,7 @@ public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
     Duration timeout, lazy string msg = "",
     string file = __FILE__, size_t line = __LINE__)
 {
-    import core.exception;
     import core.thread;
-    import std.format;
 
     // wait 100 msecs between attempts
     const SleepTime = 100;
@@ -130,7 +133,6 @@ public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
 ///
 unittest
 {
-    import core.exception;
     import std.exception;
 
     static bool willSucceed () { static int x; return ++x == 2; }
@@ -167,8 +169,6 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     ulong spend_amount = 40_000_000, in Transaction gen_tx = GenesisTransaction)
     @safe
 {
-    import agora.common.Amount;
-    import agora.common.Hash;
     import agora.consensus.data.Block;
     import agora.consensus.Genesis;
     import std.conv;
@@ -237,9 +237,7 @@ unittest
 {
     import agora.consensus.data.Block;
     import agora.consensus.Genesis;
-    import agora.common.Amount;
-    import agora.common.Hash;
-    import std.format;
+
     auto gen_key = WK.Keys.Genesis;
 
     /// should spend genesis block's outputs
@@ -279,8 +277,6 @@ unittest
 {
     import agora.consensus.data.Block;
     import agora.consensus.Genesis;
-    import agora.common.Amount;
-    import agora.common.Hash;
 
     auto gen_key = WK.Keys.Genesis;
     const(Transaction)[] txes = makeChainedTransactions(gen_key, null, 1);
@@ -291,11 +287,8 @@ unittest
 unittest
 {
     import std.exception : assumeUnique;
-    import std.range;
     import core.thread;
-    import agora.common.Amount;
     import agora.common.BitField;
-    import agora.common.Hash;
     import agora.consensus.data.Block;
     import agora.consensus.Genesis;
 
@@ -671,94 +664,375 @@ unittest
 
 /*******************************************************************************
 
-    Generate a new transaction that evenly splits the input accross parties
+    A reference to an `Output` within a `Transaction`
 
-    The `input` transaction will be split evenly in `toward.length` outputs,
-    each of which will be controlled by a key in `toward`.
-    If the sum of outputs in the transaction is not a multiple of
-    `toward.length`, the leftover `Amount` will be added to
-    the output for `toward[0]`.
-    Like other testing utilities, if an error happens (e.g. `input` is invalid,
-    or `from` is missing some keys), an `assert` will be triggered.
-
-    Params:
-        type = Type of transaction to generate (frozen or simple payment)
-        input = Transaction to spend completely
-        from = Array of keys controlling all the outputs in `input`
-        toward = Receivers for the newly-created output
-
-    Returns:
-        A newly created, valid, and signed `Transaction` spending `input`.
+    In order to reference an `Output` in an UTXO, one need to know the hash
+    of the transaction, as well as the index. This structure holds both index
+    and `Transaction` for convenience.
 
 *******************************************************************************/
 
-public Transaction split (TxType type = TxType.Payment)
-    (const ref Transaction input, scope const KeyPair[] from,
-     scope const PublicKey[] toward...)
-    @safe
+public struct OutputRef
 {
-    Amount amount;
-    if (!input.getSumOutput(amount))
-        assert(0, "Invalid transaction passed to `split`");
-
-    auto remainder = amount.div(toward.length);
-    Transaction result = Transaction(type);
-    foreach (addr; toward)
-        result.outputs ~= Output(amount, addr);
-
-    // Add the remainder to the first output.
-    result.outputs[0].value.mustAdd(remainder);
-    const inputHash = input.hashFull();
-
-    // Add support for Transactions with multiple recipients
-    foreach (idx, const ref _; input.outputs)
-        result.inputs ~= Input(inputHash, cast(uint) idx);
-
-    scope sign = (KeyPair kp, Hash h) @trusted { return kp.secret.sign(h[]); };
-
-    const resultHash = result.hashFull();
-    foreach (idx, ref in_; result.inputs)
+    ///
+    public Hash hash () const nothrow @safe
     {
-        auto rng = from.find!(a => a.address == input.outputs[idx].address);
-        assert(rng.length);
-        const owner = rng[0];
-        in_.signature = sign(owner, resultHash);
+        return hashFull(this.tx);
     }
-    return result;
+
+    ///
+    public const(Output) output () const @safe pure nothrow @nogc
+    {
+        return this.tx.outputs[index];
+    }
+
+    /// The `Transaction` with the `Output` being referenced
+    public const(Transaction) tx;
+
+    /// The index of the `Output` being referenced
+    public uint index;
+}
+
+/*******************************************************************************
+
+    An helper utility to build transactions
+
+    This utility exposes a mutable transaction builder, used to simplify
+    generating complex `Transaction`s, as well as ensuring that generated
+    transactions are valid. Generating invalid `Transaction`s is not supported,
+    however one can generate a valid `Transaction` and mutate it afterwards.
+
+    Basics:
+    When building a transaction, one must first attach an `Output`,
+    or a `Transaction`, using either the constructors or `attach`.
+    All attached outputs are contributed towards a "refund" `Output`.
+    Operations will draw from this refund transactions and create new `Output`s.
+
+    In order to finalize the `Transaction`, one must call `sign`, which will
+    return the signed `Transaction`. If there is any fund left, the refund
+    `Output` will be the last output in the transaction.
+
+    An example would be:
+    ---
+    auto tx1 = TxBuilder(myTx).split(addr1, addr2)
+                              .attach(otherTx).split(addr3, addr4)
+                              .sign();
+    // Equivalent to:
+    auto tx2 = TxBuilder(myTx.outputs[0].address)
+                   .attach(myTx).split(addr1, addr2)
+                   .attach(otherTx).split(addr3, addr4)
+                   .sign();
+    ---
+    This will create 4 or 5 outputs, depending on the amounts. The first two
+    will split `myTx` evenly towards `addr1` and `addr2`, the next two will
+    split `otherTx` evenly between `addr3` and `addr4`. If either transaction
+    has an uneven amount, a refund transaction towards the owner of the first
+    output of `myTx` will be created.
+
+    Refund_Address:
+    When making a `TxBuilder`, the minimum requirement is to provide a refund
+    address. If an output is provided, the address which owns this output
+    will be the refund address, and if a `Transaction` is provided, the owner
+    of the first output will be the refund address.
+
+    Well_Known_addresses:
+    This utility relies on the signing keys used for the inputs to be part
+    of well-known address (see `WK.Keys`).
+
+    Error_handling:
+    Since this is an utility inteded purely for testing, passing invalid data
+    or inability to perform an operation will result in an assertion failure.
+
+    Chaining:
+    As can be seen in the example, operations which modify the state will
+    return a reference to the `TxBuilder` to allow for easy chaining.
+
+    Note:
+    This `struct` is currently not reusable as there is not yet a use case for
+    it, but could be made so in the future. Currently, calling `sign` will
+    invalidate the internal state.
+
+*******************************************************************************/
+
+public struct TxBuilder
+{
+    /***************************************************************************
+
+        Construct a new transaction builder with the provided refund address
+
+        Params:
+            refundMe = The address to receive the funds by default.
+            tx = The transaction to attach to. If the `index` overload is used,
+                 only the specified `index` will be attached, and it will be
+                 the refund address. Otherwise, the first output is used.
+            index = Index of the sole output to use from the transaction.
+
+    ***************************************************************************/
+
+    public this (in PublicKey refundMe) @safe pure nothrow @nogc
+    {
+        this.leftover = Output(Amount(0), refundMe);
+    }
+
+    /// Ditto
+    public this (const Transaction tx) @safe pure nothrow
+    {
+        this(tx.outputs[0].address);
+        this.attach(tx);
+    }
+
+    /// Ditto
+    public this (const Transaction tx, uint index) @safe pure nothrow
+    {
+        this(tx.outputs[index].address);
+        this.attach(tx, index);
+    }
+
+    /***************************************************************************
+
+        Attaches all or one output(s) of a transaction to this builder
+
+        Params:
+            tx = The transaction to consume
+            index = If present, the index of the `Output` to use.
+                    Otherwise all outputs from `tx` will be used.
+
+        Returns:
+            A reference to `this` to allow for chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) attach (const Transaction tx)
+        @safe pure nothrow return
+    {
+        this.inputs ~= iota(tx.outputs.length)
+            .map!(index => OutputRef(tx, cast(uint) index)).array;
+        tx.outputs.each!(outp => this.leftover.value.mustAdd(outp.value));
+        return this;
+    }
+
+    /// Ditto
+    public ref typeof(this) attach (const Transaction tx, uint index)
+        @safe pure nothrow return
+    {
+        this.inputs ~= OutputRef(tx, index);
+        this.leftover.value.mustAdd(tx.outputs[index].value);
+        return this;
+    }
+
+    /***************************************************************************
+
+        Finalize the transaction, signing the input, and reset the builder
+
+        Params:
+            type = type of `Transaction`
+
+        Returns:
+            The finalized & signed `Transaction`.
+
+    ***************************************************************************/
+
+    public Transaction sign (TxType type = TxType.Payment) @safe
+    {
+        assert(this.inputs.length, "Cannot sign input-less transaction");
+        assert(this.data.outputs.length || this.leftover.value > Amount(0),
+               "Output-less transactions are not valid");
+
+        this.data.type = type;
+
+        // Finalize the transaction by adding inputs
+        foreach (ref in_; this.inputs)
+            this.data.inputs ~= Input(in_.hash(), in_.index);
+
+        // Add the refund tx, if needed
+        if (this.leftover.value > Amount(0))
+            this.data.outputs ~= this.leftover;
+
+        // Get the hash to sign
+        const txHash = this.data.hashFull();
+        // Sign all inputs using WK keys
+        foreach (idx, ref in_; this.inputs)
+        {
+            auto ownerKP = WK.Keys[in_.output.address];
+            assert(ownerKP !is KeyPair.init,
+                    "Address not found in Well-Known keypairs: "
+                    ~ in_.output.address.toString());
+            this.data.inputs[idx].signature = () @trusted
+                { return ownerKP.secret.sign(txHash[]); }();
+        }
+
+        // Return the result and reset this
+        this.inputs = null;
+        this.leftover = Output.init;
+        scope (success) this.data = Transaction.init;
+        return this.data;
+    }
+
+    /***************************************************************************
+
+        Resets the state and changes the address of the refund transaction
+
+        Ideally one should provide the correct address for the refund
+        transaction in the constructor, however if for some reason it is not
+        known in advance, or if the `Output` or `Transaction` overload is used,
+        this function provides a convenient mean to change the refund address.
+
+        Params:
+            toward = Refund address to use for the transaction being built
+
+        Returns:
+            Reference to `this` for easy chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) refund (scope const PublicKey toward)
+        @safe return
+    {
+        assert(this.inputs.length > 0);
+
+        this.leftover = Output(Amount(0), toward);
+        this.inputs.each!(val => this.leftover.value.mustAdd(val.output.value));
+        this.data.outputs = null;
+
+        return this;
+    }
+
+    /***************************************************************************
+
+        Splits the attached input into multiple outputs of the given amounts.
+
+        Any leftover will remain in the refund transaction.
+        The value drawn (`amount * toward.length`) must be lesser or equal
+        to the fund currently attached and in the refund transaction.
+
+        Params:
+            KeyRange = A range of `PublicKey`
+            amount = `Amount` to distribute to each `PublicKey`
+            toward = Array of `PublicKey` to give `amount` to
+
+        Returns:
+            Reference to `this` for easy chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) draw (KeyRange) (Amount amount, scope KeyRange toward)
+        return
+        if (isInputRange!KeyRange && is(ElementType!KeyRange : PublicKey))
+    {
+        assert(!toward.empty, "No beneficiary in `draw` transaction");
+        assert(amount > Amount(0), "Cannot have outputs of value `0`");
+
+        toward.each!((key)
+        {
+            this.data.outputs ~= Output(amount, key);
+            // Provide friendlier error message for developers
+            if (!this.leftover.value.sub(amount))
+                assert(0, format("Error: Withdrawing %d times %s BOA underflown",
+                                 toward.length, amount));
+        });
+
+        return this;
+    }
+
+    /***************************************************************************
+
+        Similar to `draw(Amount, PublicKey[])`, but uses all available funds
+
+        Note that if the available funds are not a multiple of `toward.length`,
+        the refund `Output` will holds the leftovers.
+
+        Params:
+            KeyRange = A range of `PublicKey`
+            toward = Beneficiary to split the currently available amount between
+
+        Returns:
+            Reference to `this` for easy chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) split (KeyRange) (scope KeyRange toward)
+        return
+        if (isInputRange!KeyRange && is(ElementType!KeyRange : PublicKey))
+    {
+        assert(!toward.empty, "No beneficiary in `split` transaction");
+
+        // Cannot reuse `draw` because we might have an input range only
+        // So we append new outputs and act on them directly
+        size_t oldLen = this.data.outputs.length;
+        this.data.outputs ~= toward.map!(key => Output(Amount(0), key)).array;
+        auto newOutputs = this.data.outputs[oldLen .. $];
+
+        // Now we know by how much we can divide out leftover
+        auto forEach = this.leftover.value;
+        this.leftover.value = forEach.div(newOutputs.length);
+        newOutputs.each!((ref output) { output.value = forEach; });
+        assert(newOutputs.all!(output => output.value > Amount(0)));
+
+        return this;
+    }
+
+    /// Refund output for the transaction
+    private Output leftover;
+
+    /// Stores the inputs to consume until `sign` is called
+    private const(OutputRef)[] inputs;
+
+    /// Transactions to be built and returned
+    private Transaction data;
+}
+
+/// Returns: A range of Transactions which are spendable in the Genesis block
+public auto genesisSpendable () @safe
+{
+    return GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment);
+}
+
+///
+@safe nothrow unittest
+{
+    auto spendable = genesisSpendable();
+    assert(!genesisSpendable.empty);
+    Amount total;
+    genesisSpendable.each!(tx => tx.outputs.each!(o => total.mustAdd(o.value)));
+    // Arbitrarily low value
+    assert(total > Amount.MinFreezeAmount);
 }
 
 /// Test for a split with the same amount of outputs as inputs
 /// Essentially doing an equality transformation
 unittest
 {
-    import std.range;
+    auto first = genesisSpendable.front;
+    immutable Number = first.outputs.length;
+    assert(Number == 8);
 
-    KeyPair[] keys = iota(8).map!(_ => KeyPair.random()).array;
-    KeyPair genesisKP = WK.Keys.Genesis;
-    const first = GenesisBlock.txs[0];
-    const equalTx = first.split([genesisKP], keys.map!(k => k.address).array);
+    const tx = TxBuilder(first)
+        .split(WK.Keys.byRange.map!(k => k.address).take(Number))
+        .sign();
+
     // This transaction has 8 txs, hence it's just equality
-    assert(equalTx.inputs.length == 8);
-    assert(equalTx.outputs.length == 8);
+    assert(tx.inputs.length == Number);
+    assert(tx.outputs.length == Number);
     // Since the amount is evenly distributed in Genesis,
     // they all have the same value
     const ExpectedAmount = first.outputs[0].value;
-    assert(equalTx.outputs.all!(val => val.value == ExpectedAmount));
+    assert(tx.outputs.all!(val => val.value == ExpectedAmount));
 }
 
 /// Test with twice as many outputs as inputs
 unittest
 {
-    import std.range;
+    auto first = genesisSpendable.front;
+    immutable Number = first.outputs.length * 2;
+    assert(Number == 16);
 
-    KeyPair[] keys16 = iota(16).map!(_ => KeyPair.random()).array;
-    // Use Genesis
-    KeyPair genesisKP = WK.Keys.Genesis;
-    const first = GenesisBlock.txs[0];
-    const resTx1 = first.split([genesisKP], keys16.map!(k => k.address).array);
+    const resTx1 = TxBuilder(first)
+        .split(WK.Keys.byRange.map!(k => k.address).take(Number))
+        .sign();
+
     // This transaction has 16 txs
-    assert(resTx1.inputs.length == 8);
-    assert(resTx1.outputs.length == 16);
+    assert(resTx1.inputs.length == Number / 2);
+    assert(resTx1.outputs.length == Number);
 
     // 500M / 16
     const Amount ExpectedAmount1 = Amount(31_250_000L * 10_000_000L);
@@ -766,11 +1040,13 @@ unittest
 
     // Test with multi input keys
     // Split into 32 outputs
-    KeyPair[] keys32 = iota(32).map!(_ => KeyPair.random()).array;
-    const resTx2 = resTx1.split(keys16, keys32.map!(k => k.address).array);
+    const resTx2 = TxBuilder(resTx1)
+        .split(iota(Number * 2).map!(_ => KeyPair.random().address))
+        .sign();
+
     // This transaction has 32 txs
-    assert(resTx2.inputs.length == 16);
-    assert(resTx2.outputs.length == 32);
+    assert(resTx2.inputs.length == Number);
+    assert(resTx2.outputs.length == Number * 2);
 
     // 500M / 32
     const Amount ExpectedAmount2 = Amount(15_625_000L * 10_000_000L);
@@ -780,37 +1056,35 @@ unittest
 /// Test with remainder
 unittest
 {
-    import std.range;
+    auto first = genesisSpendable.front;
 
-    KeyPair[] keys = iota(3).map!(_ => KeyPair.random()).array;
-    // Use Genesis
-    KeyPair genesisKP = WK.Keys.Genesis;
-    const first = GenesisBlock.txs[0];
-    const result = first.split([genesisKP], keys.map!(k => k.address).array);
-    // This transaction has 3 txs
+    const result = TxBuilder(first)
+        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+        .sign();
+
+    // This transaction has 4 txs (3 targets + 1 refund)
     assert(result.inputs.length == 8);
-    assert(result.outputs.length == 3);
+    assert(result.outputs.length == 4);
 
     // 500M / 3
     const Amount ExpectedAmount      = Amount(166_666_666_6666_666L);
-    const Amount ExpectedFirstAmount = Amount(166_666_666_6666_668L);
 
-    // The first output includes the remainder.
-    assert(result.outputs[0].value == ExpectedFirstAmount);
+    assert(result.outputs[0].value == ExpectedAmount);
     assert(result.outputs[1].value == ExpectedAmount);
     assert(result.outputs[2].value == ExpectedAmount);
+    // The first output is the remainder
+    assert(result.outputs[3].value == Amount(2));
 }
 
 /// Test with one output key
 unittest
 {
-    import std.range;
+    auto first = genesisSpendable.front;
 
-    KeyPair key = KeyPair.random();
-    // Use Genesis
-    KeyPair genesisKP = WK.Keys.Genesis;
-    const first = GenesisBlock.txs[0];
-    const result = first.split([genesisKP], [key.address]);
+    const result = TxBuilder(first)
+        .split([WK.Keys.A.address])
+        .sign();
+
     // This transaction has 1 txs
     assert(result.inputs.length == 8);
     assert(result.outputs.length == 1);
@@ -818,4 +1092,21 @@ unittest
     // 500M
     const Amount ExpectedAmount = Amount(500_000_000L * 10_000_000L);
     assert(result.outputs[0].value == ExpectedAmount);
+}
+
+/// Test changing the refund address (and merging outputs by extension)
+unittest
+{
+    const result = TxBuilder(genesisSpendable.front)
+        // Refund needs to be called first as it resets the outputs
+        .refund(WK.Keys.Z.address)
+        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+        .sign();
+
+    // This transaction has 4 txs (3 targets + 1 refund)
+    assert(result.inputs.length == 8);
+    assert(result.outputs.length == 4);
+
+    assert(equal!((in Output outp, in KeyPair b) => outp.address == b.address)(
+               result.outputs, [ WK.Keys.A, WK.Keys.B, WK.Keys.C, WK.Keys.Z ]));
 }
