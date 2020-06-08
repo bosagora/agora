@@ -59,7 +59,7 @@ public struct Logger
         GC.removeRoot(cast(void*)this.logger);
     }
 
-    public void opDispatch (string call, Args...) (Args args) @safe nothrow
+    public void opDispatch (string call, Args...) (Args args)
     {
         try
         {
