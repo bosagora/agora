@@ -226,7 +226,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool getEnrollment (const ref Hash enroll_hash,
+    private bool getEnrollment (const ref Hash enroll_hash,
         out Enrollment enroll) @trusted
     {
         auto results = this.db.execute("SELECT key, val FROM validator_set " ~

@@ -189,7 +189,7 @@ public interface API
 
     /***************************************************************************
 
-        Get an enrollment data if the data exists in the validator set
+        Get an enrollment data if the data exists in the enrollment pool
 
         API:
             GET /enrollment
