@@ -266,7 +266,7 @@ public class ValidatorSet
         // the smallest enrolled height would be 0 (genesis block),
         // so the passed block height should be at minimum the
         // size of the validator cycle
-        if (block_height < Enrollment.ValidatorCycle)
+        if (block_height < this.params.ValidatorCycle)
             return;
 
         try
@@ -274,7 +274,7 @@ public class ValidatorSet
             () @trusted {
                 this.db.execute("DELETE FROM validator_set WHERE " ~
                     "enrolled_height <= ?",
-                    block_height - Enrollment.ValidatorCycle);
+                    block_height - this.params.ValidatorCycle);
 
             }();
         }
@@ -306,8 +306,8 @@ public class ValidatorSet
     {
         try
         {
-            const height = (block_height >= Enrollment.ValidatorCycle) ?
-                block_height - Enrollment.ValidatorCycle + 1 : 0;
+            const height = (block_height >= this.params.ValidatorCycle) ?
+                block_height - this.params.ValidatorCycle + 1 : 0;
             return () @trusted {
                 return this.db.execute(
                     "SELECT count(*) FROM validator_set WHERE enrolled_height >= ?",
@@ -418,7 +418,7 @@ public class ValidatorSet
         }
 
         if (auto reason = isInvalidReason(preimage, prev_preimage,
-            Enrollment.ValidatorCycle))
+            this.params.ValidatorCycle))
         {
             log.info("Invalid pre-image data: {}. Pre-image: {}",
                 reason, preimage);
@@ -460,7 +460,7 @@ public class ValidatorSet
         scope UTXOFinder finder) @safe nothrow
     {
         assert(last_height >= block.header.height);
-        if (last_height - block.header.height < Enrollment.ValidatorCycle)
+        if (last_height - block.header.height < this.params.ValidatorCycle)
         {
             foreach (const ref enroll; block.header.enrollments)
             {
@@ -475,7 +475,8 @@ public class ValidatorSet
 
 version (unittest)
 private Enrollment createEnrollment(const ref Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar random_seed_src)
+    const ref KeyPair key_pair, ref Scalar random_seed_src,
+    uint validator_cycle)
 {
     import std.algorithm;
 
@@ -485,11 +486,11 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
 
     auto enroll = Enrollment();
     auto signature_noise = Pair.random();
-    auto cache = PreImageCache(Enrollment.ValidatorCycle, 1);
+    auto cache = PreImageCache(validator_cycle, 1);
     cache.reset(hashFull(random_seed_src));
 
     enroll.utxo_key = utxo_key;
-    enroll.cycle_length = Enrollment.ValidatorCycle;
+    enroll.cycle_length = validator_cycle;
     enroll.random_seed = cache[$ - 1];
     enroll.enroll_sig = sign(pair.v, pair.V, signature_noise.V,
         signature_noise.v, enroll);
@@ -535,19 +536,22 @@ unittest
     // add enrollments
     Scalar[Hash] seed_sources;
     seed_sources[utxos[0]] = Scalar.random();
-    auto enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
+    auto enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
+        set.params.ValidatorCycle);
     assert(set.add(1, &storage.findUTXO, enroll) is null);
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxos[0]));
     assert(set.add(1, &storage.findUTXO, enroll) !is null);
 
     seed_sources[utxos[1]] = Scalar.random();
-    auto enroll2 = createEnrollment(utxos[1], kp[1], seed_sources[utxos[1]]);
+    auto enroll2 = createEnrollment(utxos[1], kp[1], seed_sources[utxos[1]],
+        set.params.ValidatorCycle);
     assert(set.add(1, &storage.findUTXO, enroll2) is null);
     assert(set.count() == 2);
 
     seed_sources[utxos[2]] = Scalar.random();
-    auto enroll3 = createEnrollment(utxos[2], kp[2], seed_sources[utxos[2]]);
+    auto enroll3 = createEnrollment(utxos[2], kp[2], seed_sources[utxos[2]],
+        set.params.ValidatorCycle);
     assert(set.add(9, &storage.findUTXO, enroll3) is null);
     assert(set.count() == 3);
 
@@ -572,7 +576,7 @@ unittest
     ordered_enrollments ~= enroll2;
     ordered_enrollments ~= enroll3;
     /// PreImageCache for the first enrollment
-    PreImageCache cache = PreImageCache(Enrollment.ValidatorCycle, 1);
+    PreImageCache cache = PreImageCache(set.params.ValidatorCycle, 1);
     cache.reset(hashFull(seed_sources[utxos[0]]));
 
     // Reverse ordering
@@ -594,7 +598,8 @@ unittest
 
     // test for clear up expired validators
     seed_sources[utxos[3]] = Scalar.random();
-    enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]]);
+    enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]],
+        set.params.ValidatorCycle);
     assert(set.add(9, &storage.findUTXO, enroll) is null);
     set.clearExpiredValidators(1016);
     keys.length = 0;
@@ -608,7 +613,8 @@ unittest
     set.clearExpiredValidators(long.max);  // clear all
     assert(set.count == 0);
     seed_sources[utxos[0]] = Scalar.random();
-    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
+    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
+        set.params.ValidatorCycle);
     assert(set.add(0, &storage.findUTXO, enroll) is null);
 
     // not cleared yet at height 1007
@@ -627,7 +633,8 @@ unittest
 
     // now try with validator for [1 .. 1009]
     seed_sources[utxos[0]] = Scalar.random();
-    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]]);
+    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
+        set.params.ValidatorCycle);
     assert(set.add(1, &storage.findUTXO, enroll) is null);
 
     // not cleared yet at height 1008
@@ -678,12 +685,14 @@ unittest
     Scalar[] seeds;
     seeds ~= Scalar.random();
     seeds ~= Scalar.random();
-    enrolls ~= createEnrollment(utxos[0], key_pair, seeds[0]);
-    enrolls ~= createEnrollment(utxos[1], key_pair, seeds[1]);
+    enrolls ~= createEnrollment(utxos[0], key_pair, seeds[0],
+        set.params.ValidatorCycle);
+    enrolls ~= createEnrollment(utxos[1], key_pair, seeds[1],
+        set.params.ValidatorCycle);
 
     // make test blocks used for restoring validator set
     Block[] blocks;
-    ulong last_height = Enrollment.ValidatorCycle;
+    ulong last_height = set.params.ValidatorCycle;
     foreach (ulong i; 0 .. last_height + 1)
     {
         Block block;
