@@ -266,7 +266,8 @@ public class EnrollmentPool
 
 version (unittest)
 private Enrollment createEnrollment(const ref Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar random_seed_src)
+    const ref KeyPair key_pair, ref Scalar random_seed_src,
+    uint validator_cycle)
 {
     import std.algorithm;
 
@@ -280,7 +281,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
     auto signature_noise = Pair.random();
 
     enroll.utxo_key = utxo_key;
-    enroll.cycle_length = Enrollment.ValidatorCycle;
+    enroll.cycle_length = validator_cycle;
     preimages ~= hashFull(random_seed_src);
     foreach (i; 0 ..  enroll.cycle_length-1)
         preimages ~= hashFull(preimages[i]);
@@ -294,6 +295,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
 unittest
 {
     import agora.common.Amount;
+    import agora.consensus.data.ConsensusParams;
     import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
     import std.algorithm;
@@ -324,10 +326,12 @@ unittest
     Hash[] utxo_hashes = storage.keys;
 
     // add enrollments
+    auto params = new immutable(ConsensusParams)();
     Scalar[Hash] seed_sources;
     auto utxo_hash = utxo_hashes[0];
     seed_sources[utxo_hash] = Scalar.random();
-    auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash]);
+    auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
+        params.ValidatorCycle);
     assert(pool.add(enroll, &storage.findUTXO));
     assert(pool.count() == 1);
     assert(pool.hasEnrollment(utxo_hash));
@@ -335,13 +339,15 @@ unittest
 
     auto utxo_hash2 = utxo_hashes[1];
     seed_sources[utxo_hash2] = Scalar.random();
-    auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2]);
+    auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2],
+        params.ValidatorCycle);
     assert(pool.add(enroll2, &storage.findUTXO));
     assert(pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     seed_sources[utxo_hash3] = Scalar.random();
-    auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3]);
+    auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3],
+        params.ValidatorCycle);
     assert(pool.add(enroll3, &storage.findUTXO));
     assert(pool.count() == 3);
 

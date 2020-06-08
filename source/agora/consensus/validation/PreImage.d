@@ -14,6 +14,7 @@
 module agora.consensus.validation.PreImage;
 
 import agora.common.Hash;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.PreImageInfo;
 
 version (unittest)
@@ -85,20 +86,21 @@ unittest
     reverse(preimages);
 
     PreImageInfo prev_image = PreImageInfo(hashFull("abc"), preimages[0], 1);
+    auto params = new immutable(ConsensusParams)();
 
     // valid pre-image
     PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
-    assert(new_image.isValid(prev_image, Enrollment.ValidatorCycle));
+    assert(new_image.isValid(prev_image, params.ValidatorCycle));
 
     // invalid pre-image with wrong enrollment key
     new_image = PreImageInfo(hashFull("xyz"), preimages[100], 101);
-    assert(!new_image.isValid(prev_image, Enrollment.ValidatorCycle));
+    assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 
     // invalid pre-image with wrong height number
     new_image = PreImageInfo(hashFull("abc"), preimages[1], 3);
-    assert(!new_image.isValid(prev_image, Enrollment.ValidatorCycle));
+    assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 
     // invalid pre-image with wrong hash value
     new_image = PreImageInfo(hashFull("abc"), preimages[100], 100);
-    assert(!new_image.isValid(prev_image, Enrollment.ValidatorCycle));
+    assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 }

@@ -132,16 +132,18 @@ public class EnrollmentManager
     public this (string db_path, KeyPair key_pair,
         immutable(ConsensusParams) params)
     {
+        assert(params !is null);
+        this.params = params;
         this.cycle = PreImageCycle(
             /* nounce: */ 0,
             /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles, Enrollment.ValidatorCycle),
+            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
+                this.params.ValidatorCycle),
             // Since those pre-images might be accessed often,
             // use an interval of 1 (no interval)
-            /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
+            /* preimages: */ PreImageCache(this.params.ValidatorCycle, 1)
         );
 
-        this.params = params;
         this.validator_set = new ValidatorSet(db_path, params);
         this.enroll_pool = new EnrollmentPool(db_path);
 
@@ -239,7 +241,7 @@ public class EnrollmentManager
         this.enroll_key = frozen_utxo_hash;
 
         // N, cycle length
-        this.data.cycle_length = Enrollment.ValidatorCycle;
+        this.data.cycle_length = this.params.ValidatorCycle;
 
         // X, final seed data and preimages of hashes
         //
@@ -355,7 +357,7 @@ public class EnrollmentManager
         if (height < start_height)
             return false;
         immutable index = (height - start_height);
-        if (index > Enrollment.ValidatorCycle - 1)
+        if (index > this.params.ValidatorCycle - 1)
             return false;
 
         preimage.enroll_key = this.data.utxo_key;
@@ -803,9 +805,9 @@ unittest
     assert(!man.getPreimage(10, preimage));
     assert(man.getPreimage(11, preimage));
     assert(preimage.hash == man.cycle.preimages[$ - 1]);
-    assert(man.getPreimage(10 + Enrollment.ValidatorCycle, preimage));
+    assert(man.getPreimage(10 + man.params.ValidatorCycle, preimage));
     assert(preimage.hash == man.cycle.preimages[0]);
-    assert(!man.getPreimage(11 + Enrollment.ValidatorCycle, preimage));
+    assert(!man.getPreimage(11 + man.params.ValidatorCycle, preimage));
 
     /// test for the functions about periodic revelation of a pre-image
     assert(man.needRevealPreimage(10));
@@ -814,7 +816,7 @@ unittest
 
     // If the height of the requested preimage exceeds the height of the end of
     // the validator cycle, the `getNextPreimage` must return `false`.
-    man.next_reveal_height = 10 + Enrollment.ValidatorCycle;
+    man.next_reveal_height = 10 + man.params.ValidatorCycle;
     assert(!man.getNextPreimage(preimage));
 
     // test for getting validators' UTXO keys
@@ -877,7 +879,7 @@ unittest
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(man.pool.add(enroll, &storage.findUTXO));
 
-    assert(Enrollment.ValidatorCycle - 101 == 907); // Sanity check
+    assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
     assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
     auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
     assert(man.addValidator(enroll, 2, &storage.findUTXO) is null);
@@ -888,13 +890,16 @@ unittest
 /// Test `PreImageCycle` consistency between seeds and preimages
 unittest
 {
+    auto params = new immutable(ConsensusParams)();
+
     // Note: This was copied from `EnrollmentManager` constructor and should
     // be kept in sync with it
     auto cycle = PreImageCycle(
         /* nounce: */ 0,
         /* index:  */ 0,
-        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles, Enrollment.ValidatorCycle),
-        /* preimages: */ PreImageCache(Enrollment.ValidatorCycle, 1)
+        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
+            params.ValidatorCycle),
+        /* preimages: */ PreImageCache(params.ValidatorCycle, 1)
     );
 
     auto secret = Scalar.random();
@@ -919,7 +924,7 @@ unittest
             // is the final pre-image revealed by the previous enrollment
             // (preimages[0])
             immutable SeedIndex = cycle.seeds.length
-                - outerIndex * Enrollment.ValidatorCycle;
+                - outerIndex * params.ValidatorCycle;
             assert(cycle.seeds.byStride[$ - outerIndex] == cycle.preimages[0]);
         }
     }

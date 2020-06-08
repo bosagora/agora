@@ -127,8 +127,8 @@ public class Ledger
         // we are only interested in the last 1008 blocks,
         // because that is the maximum length of an enrollment.
         const ulong min_height =
-            block_count >= Enrollment.ValidatorCycle
-            ? block_count - Enrollment.ValidatorCycle : 0;
+            block_count >= this.params.ValidatorCycle
+            ? block_count - this.params.ValidatorCycle : 0;
 
         // restore validator set from the blockchain.
         // using block_count, as the range is inclusive

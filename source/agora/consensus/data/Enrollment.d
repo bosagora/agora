@@ -48,9 +48,6 @@ public struct Enrollment
     /// S: A signature for the message H(K, X, n, R) and the key K, using R
     public Signature enroll_sig;
 
-    /// The cycle length for a validator
-    public static immutable uint ValidatorCycle = 1008; // freezing period / 2
-
     /***************************************************************************
 
         Implements hashing support
