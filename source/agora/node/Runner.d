@@ -20,8 +20,6 @@ import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;
 
-import ocean.util.log.Logger;
-
 import vibe.http.server;
 import vibe.http.router;
 import vibe.web.rest;

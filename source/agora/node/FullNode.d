@@ -47,8 +47,6 @@ import vibe.http.router;
 import vibe.http.server;
 import vibe.web.rest;
 
-import ocean.util.log.Logger;
-
 import std.algorithm;
 import std.exception;
 import std.file;

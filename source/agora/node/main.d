@@ -25,7 +25,6 @@ import agora.node.Runner;
 import agora.utils.Log;
 
 import vibe.core.core;
-import ocean.util.log.Logger;
 
 import std.getopt;
 import std.stdio;

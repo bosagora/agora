@@ -37,8 +37,6 @@ import agora.utils.PrettyPrinter;
 
 import scpd.types.Stellar_SCP;
 
-import ocean.util.log.Logger;
-
 import core.stdc.stdlib : abort;
 import core.time;
 

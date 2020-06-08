@@ -19,13 +19,12 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
+import agora.utils.Log;
 
 import d2sqlite3.database;
 import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
-
-import ocean.util.log.Logger;
 
 import std.algorithm;
 import std.conv : to;
@@ -51,8 +50,13 @@ version (unittest)
 
 static this ()
 {
-    log = Log.lookup(__MODULE__);
+    log = Logger(__MODULE__);
     TransactionPool.initialize();
+}
+
+static ~this ()
+{
+    destroy(log);
 }
 
 /// Logger instance
@@ -322,14 +326,7 @@ public class TransactionPool
     private static extern(C) void loggerCallback (void *arg, int code,
         const(char)* msg) nothrow
     {
-        try
-        {
-            log.error("SQLite error: ({}) {}", code, msg.fromStringz);
-        }
-        catch (Exception ex)
-        {
-            // should not propagate exceptions to C code
-        }
+        log.error("SQLite error: ({}) {}", code, msg.fromStringz);
     }
 }
 
