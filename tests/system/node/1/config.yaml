@@ -48,17 +48,6 @@ network:
   - http://node-0:2826
   - http://node-2:4826
 
-
-################################################################################
-##                               Quorum slices                                ##
-################################################################################
-quorum:
-  threshold: 66%
-  nodes:
-    - GBUVRIIBMHKC4PE6BK7MO2O26U2NJLW4WGGWKLAVLAA2DLFZTBHHKOEK
-    - GBJABNUCDJCIL5YJQMB5OZ7VCFPKYLMTUXM2ZKQJACT7PXL7EVOMEKNZ
-    - GA3DMXTREDC4AIUTHRFIXCKWKF7BDIXRWM2KLV74OPK2OKDM2VJ235GN
-
 ################################################################################
 ##                               Logging options                              ##
 ################################################################################
