@@ -291,15 +291,14 @@ unittest
     import std.algorithm;
     import std.range;
 
-    auto utxo_set = new UTXOSet(":memory:");
-    scope (exit) utxo_set.shutdown();
+    scope utxo_set = new TestUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
     auto gen_key = getGenesisKeyPair();
     assert(GenesisBlock.isValid(GenesisBlock.header.height, Hash.init, null));
     auto gen_hash = GenesisBlock.header.hashFull();
     foreach (ref tx; GenesisBlock.txs)
-        utxo_set.updateUTXOCache(tx, GenesisBlock.header.height);
+        utxo_set.put(tx);
 
     auto txs_1 = makeChainedTransactions(gen_key, null, 1,
         400_000_000_000 * Block.TxsInBlock).sort.array;
@@ -308,7 +307,7 @@ unittest
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     foreach (ref tx; txs_1)
-        utxo_set.updateUTXOCache(tx, block1.header.height);
+        utxo_set.put(tx);
 
     KeyPair keypair = KeyPair.random();
     Transaction[] txs_2;
@@ -349,7 +348,7 @@ unittest
     auto block2 = makeNewBlock(block1, txs_2);
     assert(block2.isValid(block1.header.height, hashFull(block1.header), findUTXO));
     foreach (ref tx; txs_2)
-        utxo_set.updateUTXOCache(tx, block2.header.height);
+        utxo_set.put(tx);
 
     KeyPair keypair2 = KeyPair.random();
     Transaction[] txs_3;
@@ -372,7 +371,7 @@ unittest
     node_key_pair.v = secretKeyToCurveScalar(keypair.secret);
     node_key_pair.V = node_key_pair.v.toPoint();
 
-    auto utxo_hash1 = utxo_set.getHash(hashFull(txs_2[0]), 0);
+    auto utxo_hash1 = UTXOSet.getHash(hashFull(txs_2[0]), 0);
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
     enroll1.random_seed = hashFull(Scalar.random());
@@ -380,7 +379,7 @@ unittest
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
 
-    auto utxo_hash2 = utxo_set.getHash(hashFull(txs_2[1]), 0);
+    auto utxo_hash2 = UTXOSet.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.random_seed = hashFull(Scalar.random());
