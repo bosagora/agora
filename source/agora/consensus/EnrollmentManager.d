@@ -54,6 +54,7 @@ import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentPool;
 import agora.consensus.PreImage;

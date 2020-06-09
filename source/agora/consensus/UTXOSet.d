@@ -19,6 +19,7 @@ import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSetValue;
 import agora.utils.Log;
 
 import d2sqlite3.database;
@@ -26,23 +27,6 @@ import d2sqlite3.database;
 import std.file;
 
 mixin AddLogger!();
-
-/// Delegate to find an unspent UTXO
-public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
-    out UTXOSetValue) @safe nothrow;
-
-/// The structure of spendable transaction output
-public struct UTXOSetValue
-{
-    /// Height of the block to be unlock
-    ulong unlock_height;
-
-    /// Transaction type
-    TxType type;
-
-    /// Unspend transaction output
-    Output output;
-}
 
 /// ditto
 public class UTXOSet
@@ -125,14 +109,14 @@ public class UTXOSet
 
         foreach (const ref input; tx.inputs)
         {
-            auto utxo_hash = getHash(input.previous, input.index);
+            auto utxo_hash = UTXOSetValue.getHash(input.previous, input.index);
             this.utxo_db.remove(utxo_hash);
         }
 
         Hash tx_hash = tx.hashFull();
         foreach (idx, output; tx.outputs)
         {
-            auto utxo_hash = getHash(tx_hash, idx);
+            auto utxo_hash = UTXOSetValue.getHash(tx_hash, idx);
             auto utxo_value = UTXOSetValue(unlock_height, tx.type, output);
             this.utxo_db[utxo_hash] = utxo_value;
         }
@@ -154,7 +138,7 @@ public class UTXOSet
     private UTXOSetValue getUTXOSetValue (Hash hash, size_t index)
         nothrow @safe
     {
-        auto utxo_hash = getHash(hash, index);
+        auto utxo_hash = UTXOSetValue.getHash(hash, index);
 
         UTXOSetValue value;
         if (!this.utxo_db.find(utxo_hash, value))
@@ -218,7 +202,7 @@ public class UTXOSet
         if (index == size_t.max)
             utxo_hash = hash;
         else
-            utxo_hash = getHash(hash, index);
+            utxo_hash = UTXOSetValue.getHash(hash, index);
 
         if (utxo_hash in this.used_utxos)
             return false;  // double-spend
@@ -230,22 +214,6 @@ public class UTXOSet
         }
 
         return false;
-    }
-
-    /***************************************************************************
-
-        Get the combined hash of the previous hash and index.
-        This makes sure the index is always of the same type,
-        as mixing different-sized uint/ulong would create different hashes.
-
-        Returns:
-            the combined hash of a previous hash and index
-
-    ***************************************************************************/
-
-    public static Hash getHash (Hash hash, ulong index) @safe nothrow
-    {
-        return hashMulti(hash, index);
     }
 }
 
@@ -419,6 +387,7 @@ unittest
 {
     import agora.common.Amount;
     import agora.consensus.data.Transaction;
+    import agora.consensus.data.UTXOSetValue;
     import agora.consensus.UTXOSet;
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
@@ -434,7 +403,7 @@ unittest
     );
     utxo_set.updateUTXOCache(tx1, 0);
     Hash hash1 = hashFull(tx1);
-    auto utxo_hash = utxo_set.getHash(hash1, 0);
+    auto utxo_hash = UTXOSetValue.getHash(hash1, 0);
 
     // test for getting UTXOs
     auto utxos = utxo_set.getUTXOs(key_pairs[0].address);
@@ -463,103 +432,4 @@ unittest
     // test for getting UTXOs for the second KeyPair
     utxos = utxo_set.getUTXOs(key_pairs[1].address);
     assert(utxos.length == 1);
-}
-
-/*******************************************************************************
-
-    This is a simple UTXOSet, used when the AA behavior is desired
-
-    Most unittestsdo not need a full-fledged UTXOSet with all the DB and
-    serialization that comes with it, instead relying on an associative array
-    and a delegate.
-
-    Since this pattern is so common, this class is offered as a mean to achieve
-    this without code duplication. See issue #501 for history.
-
-    Note that this should *NOT* be used to replace the above UTXOSet,
-    when for example doing integration tests with LocalRest.
-
-*******************************************************************************/
-
-version (unittest) public class TestUTXOSet
-{
-    ///
-    public UTXOSetValue[Hash] storage;
-
-    /// Keeps track of spent outputs
-    private Set!Hash used_utxos;
-
-    ///
-    alias storage this;
-
-    /// Similar to `UTXOSet.getUTXOFinder`
-    public UTXOFinder getUTXOFinder () @trusted nothrow
-    {
-        this.used_utxos.clear();
-        return &this.findUTXO_;
-    }
-
-    /// FIXME: Remove and make UTXO-sensible tests use either `peekUTXO`
-    /// or `getUTXOFinder`
-    public alias findUTXO = peekUTXO;
-
-    /// Get an UTXO, no double-spend protection
-    public bool peekUTXO (Hash hash, size_t index, out UTXOSetValue value)
-        nothrow @safe
-    {
-        // Note: Keep this in sync with `findUTXO`
-        Hash utxo_hash = (index == size_t.max) ?
-            hash : UTXOSet.getHash(hash, index);
-        if (auto ptr = utxo_hash in this.storage)
-        {
-            value = *ptr;
-            return true;
-        }
-        return false;
-    }
-
-    /// Short hand to add a transaction
-    public void put (const Transaction tx)
-    {
-        Hash txhash = hashFull(tx);
-        foreach (size_t idx, ref output_; tx.outputs)
-        {
-            Hash h = UTXOSet.getHash(txhash, idx);
-            UTXOSetValue v = {
-                type: tx.type,
-                output: output_
-            };
-            this.storage[h] = v;
-        }
-    }
-
-    /// Workaround 20559...
-    public void clear ()
-    {
-        this.storage.clear();
-    }
-
-    /// Get an UTXO, does not return double spend
-    private bool findUTXO_ (Hash hash, size_t index, out UTXOSetValue value)
-        nothrow @safe
-    {
-        // Note: Keep this in sync with the real `findUTXO`
-        Hash utxo_hash = (index == size_t.max) ?
-            hash : UTXOSet.getHash(hash, index);
-        // double-spend
-        if (utxo_hash in this.used_utxos)
-            return false;
-        if (auto ptr = utxo_hash in this.storage)
-        {
-            value = *ptr;
-            this.used_utxos.put(utxo_hash);
-            return true;
-        }
-        return false;
-    }
-}
-
-unittest
-{
-    testSymmetry!UTXOSetValue();
 }

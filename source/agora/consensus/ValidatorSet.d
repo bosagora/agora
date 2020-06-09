@@ -23,6 +23,7 @@ import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
@@ -578,6 +579,7 @@ unittest
 {
     import agora.common.Amount;
     import agora.consensus.data.Transaction;
+    import agora.consensus.data.UTXOSetValue;
     import agora.consensus.Genesis;
     import std.algorithm;
     import std.format;
@@ -604,7 +606,7 @@ unittest
         tx.inputs[0].signature = signature;
         storage.put(tx);
         // Store the hash of the UTXO as we need it to create enrollments
-        utxos[idx % $] = UTXOSet.getHash(thisHash, 0);
+        utxos[idx % $] = UTXOSetValue.getHash(thisHash, 0);
     }
     ValidatorSet set = new ValidatorSet(":memory:");
     scope (exit) set.shutdown();
