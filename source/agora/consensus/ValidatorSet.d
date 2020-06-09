@@ -258,38 +258,31 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get all the current validators in ascending order with the utxo_key
+        Get all the enrolled validator's UTXO keys.
 
         Params:
-            validators = will be filled with all the validators during
-                their validation cycles
+            utxo_keys = will contain the set of UTXO keys
 
         Returns:
-            Return true if there is no error in getting validators
+            Return true if there was no error in getting the UTXO keys
 
     ***************************************************************************/
 
-    public bool getValidators (out Enrollment[] validators) @safe nothrow
+    public bool getEnrolledUTXOs (out Hash[] utxo_keys) @trusted nothrow
     {
         try
         {
-            () @trusted {
-                auto results = this.db.execute("SELECT val FROM validator_set" ~
-                    " ORDER BY key ASC");
-                foreach (row; results)
-                {
-                    validators ~=
-                        deserializeFull!Enrollment(row.peek!(ubyte[])(0));
-                }
-            }();
+            auto results = this.db.execute("SELECT key " ~
+                "FROM validator_set ORDER BY key ASC");
+            foreach (row; results)
+                utxo_keys ~= Hash(row.peek!(char[])(0));
+            return true;
         }
         catch (Exception ex)
         {
             log.error("Database operation error: {}", ex.msg);
             return false;
         }
-
-        return true;
     }
 
     /***************************************************************************
@@ -643,10 +636,10 @@ unittest
     assert(set.count() == 3);
 
     // check if enrolled heights are not set
-    Enrollment[] enrolls;
-    set.getValidators(enrolls);
-    assert(enrolls.length == 3);
-    assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
+    Hash[] keys;
+    set.getEnrolledUTXOs(keys);
+    assert(keys.length == 3);
+    assert(keys.isStrictlyMonotonic!("a < b"));
 
     // get a specific enrollment object
     Enrollment stored_enroll;
@@ -676,9 +669,9 @@ unittest
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
         assert(set.add(1, &storage.findUTXO, ordered_enroll) is null);
-    set.getValidators(enrolls);
-    assert(enrolls.length == 3);
-    assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
+    set.getEnrolledUTXOs(keys);
+    assert(keys.length == 3);
+    assert(keys.isStrictlyMonotonic!("a < b"));
 
     // test for adding and getting preimage
     assert(!set.hasPreimage(utxos[0], 10));
@@ -694,10 +687,11 @@ unittest
     enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]]);
     assert(set.add(9, &storage.findUTXO, enroll) is null);
     set.clearExpiredValidators(1016);
-    enrolls.length = 0;
-    assert(set.getValidators(enrolls));
-    assert(enrolls.length == 1);
-    assert(enrolls[0].utxo_key == utxos[3]);
+    keys.length = 0;
+    assert(set.getEnrolledUTXOs(keys));
+    assert(keys.length == 1);
+    assert(keys[0] == utxos[3]);
+
 
     // add enrollment at the genesis block:
     // validates blocks [1 .. 1008] inclusively
@@ -709,17 +703,17 @@ unittest
 
     // not cleared yet at height 1007
     set.clearExpiredValidators(1007);
-    enrolls.length = 0;
+    keys.length = 0;
     assert(set.count == 1);
-    assert(set.getValidators(enrolls));
-    assert(enrolls.length == 1);
-    assert(enrolls[0].utxo_key == utxos[0]);
+    assert(set.getEnrolledUTXOs(keys));
+    assert(keys.length == 1);
+    assert(keys[0] == utxos[0]);
 
     // cleared after block height 1008 was externalized
     set.clearExpiredValidators(1008);
     assert(set.count == 0);
-    assert(set.getValidators(enrolls));
-    assert(enrolls.length == 0);
+    assert(set.getEnrolledUTXOs(keys));
+    assert(keys.length == 0);
 
     // now try with validator for [1 .. 1009]
     seed_sources[utxos[0]] = Scalar.random();
@@ -728,17 +722,17 @@ unittest
 
     // not cleared yet at height 1008
     set.clearExpiredValidators(1008);
-    enrolls.length = 0;
+    keys.length = 0;
     assert(set.count == 1);
-    assert(set.getValidators(enrolls));
-    assert(enrolls.length == 1);
-    assert(enrolls[0].utxo_key == utxos[0]);
+    assert(set.getEnrolledUTXOs(keys));
+    assert(keys.length == 1);
+    assert(keys[0] == utxos[0]);
 
     // cleared after block height 1009 was externalized
     set.clearExpiredValidators(1009);
     assert(set.count == 0);
-    assert(set.getValidators(enrolls));
-    assert(enrolls.length == 0);
+    assert(set.getEnrolledUTXOs(keys));
+    assert(keys.length == 0);
 }
 
 /// test for restroing information about validators from blocks

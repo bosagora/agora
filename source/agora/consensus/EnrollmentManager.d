@@ -275,20 +275,19 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get all the current validators
+        Get all the enrolled validator's UTXO keys.
 
         Params:
-            validators = will be filled with all the validators during
-                their validation cycles
+            utxo_keys = will contain the set of UTXO keys
 
         Returns:
-            Return true if there is no error in getting validators
+            Return true if there was no error in getting the UTXO keys
 
     ***************************************************************************/
 
-    public bool getValidators (out Enrollment[] validators) @safe nothrow
+    public bool getEnrolledUTXOs (out Hash[] keys) @safe nothrow
     {
-        return this.validator_set.getValidators(validators);
+        return this.validator_set.getEnrolledUTXOs(keys);
     }
 
     /***************************************************************************
@@ -828,8 +827,8 @@ unittest
     man.next_reveal_height = 10 + Enrollment.ValidatorCycle;
     assert(!man.getNextPreimage(preimage));
 
-    // test for getting validators
-    Enrollment[] validators;
+    // test for getting validators' UTXO keys
+    Hash[] keys;
 
     // validator A with the `utxo_hash` and the enrolled height of 10.
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
@@ -837,8 +836,8 @@ unittest
     assert(man.addValidator(enroll2, 11, &storage.findUTXO) is null);
     man.clearExpiredValidators(11);
     assert(man.validatorCount() == 2);
-    assert(man.getValidators(validators));
-    assert(validators.length == 2);
+    assert(man.getEnrolledUTXOs(keys));
+    assert(keys.length == 2);
 
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
@@ -846,9 +845,9 @@ unittest
     assert(man.addValidator(enroll3, 1019, &storage.findUTXO) is null);
     man.clearExpiredValidators(1019);
     assert(man.validatorCount() == 1);
-    assert(man.getValidators(validators));
-    assert(validators.length == 1);
-    assert(validators[0].utxo_key == enroll3.utxo_key);
+    assert(man.getEnrolledUTXOs(keys));
+    assert(keys.length == 1);
+    assert(keys[0] == enroll3.utxo_key);
 }
 
 /// tests for addPreimage and getValidatorPreimage

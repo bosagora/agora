@@ -1082,9 +1082,9 @@ unittest
     assert(block_4[0].header.enrollments == enrollments);
 
     genNormalBlockTransactions(1008);
-    Enrollment[] validators;
-    assert(enroll_man.getValidators(validators));
-    assert(validators.length == 0);
+    Hash[] keys;
+    assert(enroll_man.getEnrolledUTXOs(keys));
+    assert(keys.length == 0);
     assert(ledger.getBlockHeight() == 1012);
 }
 
@@ -1451,9 +1451,9 @@ unittest
         scope (exit) utxo_set.shutdown();
         scope config = new Config();
         scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
-        Enrollment[] validators;
-        assert(enroll_man.getValidators(validators));
-        assert(validators.length == 1);
+        Hash[] keys;
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);
     }
 
     // block 1007 loaded: validator is still active
@@ -1469,9 +1469,9 @@ unittest
         scope (exit) utxo_set.shutdown();
         scope config = new Config();
         scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
-        Enrollment[] validators;
-        assert(enroll_man.getValidators(validators));
-        assert(validators.length == 1);
+        Hash[] keys;
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 1);
     }
 
     // block 1008 loaded: validator is inactive
@@ -1487,8 +1487,8 @@ unittest
         scope (exit) utxo_set.shutdown();
         scope config = new Config();
         scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node);
-        Enrollment[] validators;
-        assert(enroll_man.getValidators(validators));
-        assert(validators.length == 0);
+        Hash[] keys;
+        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(keys.length == 0);
     }
 }

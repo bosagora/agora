@@ -115,17 +115,13 @@ public class Validator : FullNode, API
 
     private QuorumConfig rebuildQuorumConfig ()
     {
-        Enrollment[] enrollments;
-        if (!this.enroll_man.getValidators(enrollments) ||
-            enrollments.length == 0)
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
         {
             log.fatal("Could not retrieve enrollments / no enrollments found");
             assert(0);
         }
 
-        import std.algorithm;
-        import std.array;
-        auto keys = enrollments.map!(enr => enr.utxo_key).array;
         return buildQuorumConfig(this.config.node.key_pair.address,
             keys, this.utxo_set.getUTXOFinder());
     }
