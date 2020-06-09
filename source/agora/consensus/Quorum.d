@@ -106,35 +106,35 @@ private void verifyQuorumSanity (const ref QuorumConfig quorum)
 
 /*******************************************************************************
 
-    For each enrollment find the staked amount from the associated UTXO
-    in the Enrollment, and build a key => amount map.
+    For each enrollment find the associated public key,
+    and return the set of keys.
 
     Params
         enrolls = the list of enrollments
         finder = UTXO finder delegate
 
     Returns:
-        a mapping of all keys => staken amount
+        a set of all enrolled public keys
 
 *******************************************************************************/
 
 private Set!PublicKey getPublicKeys (in Enrollment[] enrolls,
     in UTXOFinder finder)
 {
-    Set!PublicKey stakes;
+    Set!PublicKey keys;
     foreach (enroll; enrolls)
     {
         UTXOSetValue value;
         if (!finder(enroll.utxo_key, size_t.max, value))
             assert(0, "UTXO for validator not found!");  // should never happen
 
-        if (value.output.address in stakes)  // should never happen
+        if (value.output.address in keys)  // should never happen
             assert(0, "Cannot have multiple enrollments for one validator!");
 
-        stakes.put(value.output.address);
+        keys.put(value.output.address);
     }
 
-    return stakes;
+    return keys;
 }
 
 /*******************************************************************************
