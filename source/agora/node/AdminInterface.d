@@ -34,6 +34,7 @@ import vibe.http.router;
 import vibe.http.server;
 import vibe.stream.operations;
 
+import std.format;
 import std.meta;
 import std.traits;
 
@@ -83,10 +84,10 @@ public class SetupInterface
         auto settings = new HTTPServerSettings("127.0.0.1");
         settings.port = 2827;
         auto router = new URLRouter;
-        router.get("*", serveStaticFiles("public/"));
-        router.get("/", (req, res) => res.redirect("/welcome"));
-        router.get("/welcome", staticTemplate!("setup/welcome.dt"));
-        router.get("/setup", staticTemplate!("setup/setup.dt"));
+        //router.get("*", serveStaticFiles("public/"));
+        //router.get("/", (req, res) => res.redirect("/welcome"));
+        //router.get("/welcome", staticTemplate!("setup/welcome.dt"));
+        //router.get("/setup", staticTemplate!("setup/setup.dt"));
         router.post("/create", &this.handleCreate);
         this.listener = listenHTTP(settings, router);
     }
@@ -111,13 +112,26 @@ public class SetupInterface
         {
             string body = req.bodyReader.readAllUTF8();
             log.error("Received configuration from admin interface: {}", body);
-            auto config = parseConfigString(body, this.path);
-            std.file.write(this.path, body);
-            scope (failure) std.file.remove(this.path);
-            res.writeVoidBody();
-            this.listener.stopListening();
-            log.info("Config written to {}, starting node", this.path);
-            runTask(() => *this.runResult = runNode(config));
+            try
+            {
+                auto config = parseConfigString(body, this.path);
+                res.writeJsonBody(
+                    Response(true,
+                             format("Configuration successfully parsed: %s",
+                                    config.serializeToJsonString)));
+            }
+            catch (Exception e)
+                res.writeJsonBody(Response(false, e.msg), HTTPStatus.badRequest);
+            // Commented out for the test server
+            version (none)
+            {
+                scope (failure) std.file.remove(this.path);
+                std.file.write(this.path, body);
+                res.writeVoidBody();
+                this.listener.stopListening();
+                log.info("Config written to {}, starting node", this.path);
+                runTask(() => *this.runResult = runNode(config));
+            }
         }
         catch (Exception e)
         {
@@ -125,4 +139,10 @@ public class SetupInterface
             res.writeBody(cast(string)e.message(), HTTPStatus.badRequest);
         }
     }
+}
+
+private struct Response
+{
+    bool success;
+    string status;
 }
