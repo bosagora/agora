@@ -19,7 +19,6 @@ import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.UTXOSetValue;
-import agora.consensus.UTXOSet;
 
 import std.algorithm;
 import std.array;

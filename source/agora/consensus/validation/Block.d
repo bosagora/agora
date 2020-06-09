@@ -17,7 +17,6 @@ import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.UTXOSetValue;
-import agora.consensus.UTXOSet;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.consensus.Genesis;
@@ -287,7 +286,6 @@ unittest
     import agora.common.Amount;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.Transaction;
-    import agora.consensus.UTXOSet;
 
     import std.algorithm;
     import std.range;
