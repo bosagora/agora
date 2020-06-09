@@ -415,15 +415,14 @@ public class ValidatorSet
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
                 contained.
-            result_image = will contain the PreImageInfo if exists
 
         Returns:
-            true if getting pre-image is successfully processed
+            the PreImageInfo of the enrolled key if it exists,
+            otherwise PreImageInfo.init
 
     ***************************************************************************/
 
-    public bool getPreimage (const ref Hash enroll_key,
-        out PreImageInfo result_image) @trusted nothrow
+    public PreImageInfo getPreimage (const ref Hash enroll_key) @trusted nothrow
     {
         try
         {
@@ -431,18 +430,16 @@ public class ValidatorSet
                         " WHERE key = ?", enroll_key.toString());
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
-                result_image =
-                    results.oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
+                return results.oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
             }
         }
         catch (Exception ex)
         {
             log.error("Exception occured on getPreimage: {}, " ~
                 "Key for enrollment: {}", ex.msg, enroll_key);
-            return false;
         }
 
-        return true;
+        return PreImageInfo.init;
     }
 
     /***************************************************************************
@@ -497,9 +494,8 @@ public class ValidatorSet
         }
 
         // check the validity of new pre-image based on the stored pre-image
-        PreImageInfo stored_image;
-        if (this.getPreimage(preimage.enroll_key, stored_image) &&
-            stored_image != PreImageInfo.init)
+        PreImageInfo stored_image = this.getPreimage(preimage.enroll_key);
+        if (stored_image != PreImageInfo.init)
         {
             if (auto reason = isInvalidReason(
                     preimage, stored_image, Enrollment.ValidatorCycle))
@@ -685,15 +681,13 @@ unittest
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
     // test for adding and getting preimage
-    PreImageInfo result_image;
     assert(!set.hasPreimage(utxos[0], 10));
-    assert(set.getPreimage(utxos[0], result_image));
-    assert(result_image == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+    assert(set.getPreimage(utxos[0])
+        == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
     auto preimage = PreImageInfo(utxos[0], cache[$ - 11], 10);
     assert(set.addPreimage(preimage));
     assert(set.hasPreimage(utxos[0], 10));
-    assert(set.getPreimage(utxos[0], result_image));
-    assert(result_image == preimage);
+    assert(set.getPreimage(utxos[0]) == preimage);
 
     // test for clear up expired validators
     seed_sources[utxos[3]] = Scalar.random();
