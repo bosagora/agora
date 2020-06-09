@@ -521,7 +521,7 @@ public class NetworkManager
                     return;
 
                 this.getBlocksFrom(
-                    ledger.getBlockHeight() + 1,
+                    Height(ledger.getBlockHeight() + 1),
                     blocks => blocks.all!(block =>
                         // do not alter the state of the ledger if
                         // we're currently nominating (Validator)
@@ -572,22 +572,22 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    private void getBlocksFrom (ulong block_height,
+    private void getBlocksFrom (Height block_height,
         scope bool delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
-        struct Pair { size_t height; NetworkClient client; }
+        struct Pair { Height height; NetworkClient client; }
 
         static Pair[] node_pairs;
         node_pairs.length = 0;
         assumeSafeAppend(node_pairs);
 
-        // return size_t.max if getBlockHeight() fails
-        size_t getHeight (NetworkClient node)
+        // return ulong.max if getBlockHeight() fails
+        Height getHeight (NetworkClient node)
         {
             try
-                return node.getBlockHeight();
+                return Height(node.getBlockHeight());
             catch (Exception ex)
-                return size_t.max;
+                return Height(ulong.max);
         }
 
         auto node_pair = this.peers.byValue

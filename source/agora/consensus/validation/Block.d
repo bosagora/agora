@@ -75,7 +75,7 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (const ref Block block, in ulong prev_height,
+public string isInvalidReason (const ref Block block, Height prev_height,
     in Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
 {
     import std.algorithm;
@@ -239,7 +239,7 @@ unittest
     assert(block.isGenesisBlockValid());
 
     // don't accept block height 0 from the network
-    assert(!block.isValid(0, Hash.init, null));
+    assert(!block.isValid(Height(0), Hash.init, null));
 
     // height check
     block.header.height = 1;
@@ -382,7 +382,7 @@ public bool isGenesisBlockValid (const ref Block genesis_block)
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValid (const ref Block block, ulong prev_height,
+public bool isValid (const ref Block block, Height prev_height,
     Hash prev_hash, UTXOFinder findUTXO) nothrow @safe
 {
     return isInvalidReason(block, prev_height, prev_hash, findUTXO) is null;

@@ -46,7 +46,7 @@ public struct BlockHeader
     public Hash prev_block;
 
     /// Block height (genesis is #0)
-    public ulong height;
+    public Height height;
 
     /// The hash of the merkle root of the transactions
     public Hash merkle_root;
@@ -75,7 +75,7 @@ public struct BlockHeader
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
         dg(this.prev_block[]);
-        hashPart(this.height, dg);
+        hashPart(this.height.value, dg);
         dg(this.merkle_root[]);
         foreach (enrollment; this.enrollments)
             hashPart(enrollment, dg);
@@ -93,7 +93,7 @@ public struct BlockHeader
     public void serialize (scope SerializeDg dg) const @safe
     {
         dg(this.prev_block[]);
-        serializePart(this.height, dg);
+        serializePart(this.height.value, dg);
         dg(this.merkle_root[]);
         serializePart(this.validators, dg);
         serializePart(this.signature, dg);
@@ -413,7 +413,7 @@ unittest
         header:
         {
             prev_block:  Hash.init,
-            height:      0,
+            height:      Height(0),
             merkle_root: merkle,
             validators:  validators,
             signature:   Signature(sig_data),
@@ -445,7 +445,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     Block block;
 
     block.header.prev_block = prev_block.header.hashFull();
-    block.header.height = prev_block.header.height + 1;
+    block.header.height.value = prev_block.header.height.value + 1;
     txs.each!(tx => block.txs ~= tx);
     block.txs.sort;
 
@@ -528,7 +528,7 @@ unittest
     Block block;
 
     block.header.prev_block = Hash.init;
-    block.header.height = 0;
+    block.header.height = Height(0);
     block.txs ~= txs;
     block.header.merkle_root = block.buildMerkleTree();
 

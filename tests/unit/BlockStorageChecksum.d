@@ -13,6 +13,7 @@
 
 module unit.BlockStorageChecksum;
 
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
@@ -41,7 +42,7 @@ private void main ()
     Block block;
 
     // Checksum detection test
-    assertThrown!Exception(storage.readBlock(block, 0));
+    assertThrown!Exception(storage.readBlock(block, Height(0)));
 }
 
 /// Write the block data to disk

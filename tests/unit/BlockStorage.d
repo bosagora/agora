@@ -71,7 +71,7 @@ private void main ()
     Block[] loaded_blocks;
     loaded_blocks.length = count;
     foreach (idx; 0 .. count)
-        storage.readBlock(loaded_blocks[idx], idx);
+        storage.readBlock(loaded_blocks[idx], Height(idx));
 
     // compare
     assert(equal(blocks, loaded_blocks));
@@ -85,7 +85,7 @@ private void main ()
     Block random_block;
     foreach (height; iota(count).randomCover(rnd))
     {
-        storage.readBlock(random_block, height);
+        storage.readBlock(random_block, Height(height));
         assert(random_block.header.height == height);
     }
 
@@ -103,7 +103,7 @@ private void main ()
 
     foreach (height; iota(count).randomCover(rnd))
     {
-        other.readBlock(random_block, height);
+        other.readBlock(random_block, Height(height));
         assert(random_block.header.height == height);
     }
 

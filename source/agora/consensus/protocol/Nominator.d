@@ -255,7 +255,7 @@ extern(D):
 
         auto pub_key = NodeID(uint256(this.key_pair.address));
 
-        foreach (block_idx, block; ledger.getBlocksFrom(0).enumerate)
+        foreach (block_idx, block; ledger.getBlocksFrom(Height(0)).enumerate)
         {
             SCPStatement statement =
             {

@@ -320,7 +320,8 @@ private struct BlockHeaderFmt
         try
         {
             formattedWrite(sink, "Height: %d, Prev: %s, Root: %s",
-                this.value.height, HashFmt(this.value.prev_block), HashFmt(this.value.merkle_root));
+                this.value.height.value, HashFmt(this.value.prev_block),
+                HashFmt(this.value.merkle_root));
         }
         catch (Exception ex)
         {
@@ -395,7 +396,7 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
     immutable Block block2tx = {
         header: {
             prev_block: hashFull(GenesisBlock.header),
-            height: 1,
+            height: Height(1),
             merkle_root: MerkleRoot,
         },
         txs: [ GenesisTransaction, GenesisTransaction ],

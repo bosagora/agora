@@ -74,12 +74,12 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    public void updateUTXOCache (const ref Transaction tx, ulong height) @safe
+    public void updateUTXOCache (const ref Transaction tx, Height height) @safe
     {
         import std.algorithm : any;
 
         // defaults to next block
-        ulong unlock_height = height + 1;
+        Height unlock_height = Height(height + 1);
 
         // for payments of frozen transactions, it will melt after 2016 blocks
         if ((tx.type == TxType.Payment)
@@ -91,7 +91,7 @@ public class UTXOSet
             )
         )
         {
-            unlock_height = height + 2016;
+            unlock_height = Height(height + 2016);
         }
 
         foreach (const ref input; tx.inputs)
@@ -372,7 +372,7 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
     );
-    utxo_set.updateUTXOCache(tx1, 0);
+    utxo_set.updateUTXOCache(tx1, Height(0));
     Hash hash1 = hashFull(tx1);
     auto utxo_hash = UTXOSetValue.getHash(hash1, 0);
 
@@ -386,7 +386,7 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address)]
     );
-    utxo_set.updateUTXOCache(tx2, 0);
+    utxo_set.updateUTXOCache(tx2, Height(0));
 
     // create the third transaction
     Transaction tx3 = Transaction(
@@ -394,7 +394,7 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
     );
-    utxo_set.updateUTXOCache(tx3, 0);
+    utxo_set.updateUTXOCache(tx3, Height(0));
 
     // test for getting UTXOs for the first KeyPair
     utxos = utxo_set.getUTXOs(key_pairs[0].address);

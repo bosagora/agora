@@ -58,3 +58,13 @@ public struct QuorumConfig
     /// List of any sub-quorums
     public QuorumConfig[] quorums;
 }
+
+/// A type to ensure that height and other integer values aren't mixed
+public struct Height
+{
+    ///
+    public ulong value;
+
+    /// Provides implicit conversion to `ulong`
+    public alias value this;
+}

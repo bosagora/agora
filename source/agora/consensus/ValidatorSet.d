@@ -21,6 +21,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.ManagedDatabase;
 import agora.common.Serializer;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.ConsensusParams;
@@ -82,7 +83,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public string add (ulong block_height, scope UTXOFinder finder,
+    public string add (Height block_height, scope UTXOFinder finder,
         const ref Enrollment enroll) @safe nothrow
     {
         // check validaty of the enrollment data
@@ -101,7 +102,7 @@ public class ValidatorSet
                     "(key, cycle_length, enrolled_height, " ~
                     "distance, preimage) VALUES (?, ?, ?, ?, ?)",
                     enroll.utxo_key.toString(), enroll.cycle_length,
-                    block_height, ZeroDistance,
+                    block_height.value, ZeroDistance,
                     enroll.random_seed.toString());
             }();
         }
@@ -171,21 +172,22 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public ulong getEnrolledHeight (const ref Hash enroll_hash) @trusted nothrow
+    public Height getEnrolledHeight (const ref Hash enroll_hash) @trusted nothrow
     {
         try
         {
             auto results = this.db.execute("SELECT enrolled_height FROM validator_set" ~
                 " WHERE key = ?", enroll_hash.toString());
             if (results.empty)
-                return ulong.max;
+                return Height(ulong.max);
 
-            return results.oneValue!(size_t);
+            return Height(results.oneValue!(size_t));
         }
         catch (Exception ex)
         {
+
             log.error("ManagedDatabase operation error: {}", ex.msg);
-            return ulong.max;
+            return Height(ulong.max);
         }
     }
 
@@ -261,7 +263,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public void clearExpiredValidators (ulong block_height) @safe nothrow
+    public void clearExpiredValidators (Height block_height) @safe nothrow
     {
         // the smallest enrolled height would be 0 (genesis block),
         // so the passed block height should be at minimum the
@@ -302,7 +304,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (ulong block_height) @safe nothrow
+    public ulong getValidatorCount (Height block_height) @safe nothrow
     {
         try
         {
@@ -456,7 +458,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public void restoreValidators (ulong last_height, const ref Block block,
+    public void restoreValidators (Height last_height, const ref Block block,
         scope UTXOFinder finder) @safe nothrow
     {
         assert(last_height >= block.header.height);
@@ -538,21 +540,21 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     auto enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(1, &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(1), &storage.findUTXO, enroll) is null);
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxos[0]));
-    assert(set.add(1, &storage.findUTXO, enroll) !is null);
+    assert(set.add(Height(1), &storage.findUTXO, enroll) !is null);
 
     seed_sources[utxos[1]] = Scalar.random();
     auto enroll2 = createEnrollment(utxos[1], kp[1], seed_sources[utxos[1]],
         set.params.ValidatorCycle);
-    assert(set.add(1, &storage.findUTXO, enroll2) is null);
+    assert(set.add(Height(1), &storage.findUTXO, enroll2) is null);
     assert(set.count() == 2);
 
     seed_sources[utxos[2]] = Scalar.random();
     auto enroll3 = createEnrollment(utxos[2], kp[2], seed_sources[utxos[2]],
         set.params.ValidatorCycle);
-    assert(set.add(9, &storage.findUTXO, enroll3) is null);
+    assert(set.add(Height(9), &storage.findUTXO, enroll3) is null);
     assert(set.count() == 3);
 
     // check if enrolled heights are not set
@@ -582,7 +584,7 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(set.add(1, &storage.findUTXO, ordered_enroll) is null);
+        assert(set.add(Height(1), &storage.findUTXO, ordered_enroll) is null);
     set.getEnrolledUTXOs(keys);
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
@@ -600,25 +602,24 @@ unittest
     seed_sources[utxos[3]] = Scalar.random();
     enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]],
         set.params.ValidatorCycle);
-    assert(set.add(9, &storage.findUTXO, enroll) is null);
-    set.clearExpiredValidators(1016);
+    assert(set.add(Height(9), &storage.findUTXO, enroll) is null);
+    set.clearExpiredValidators(Height(1016));
     keys.length = 0;
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[3]);
 
-
     // add enrollment at the genesis block:
     // validates blocks [1 .. 1008] inclusively
-    set.clearExpiredValidators(long.max);  // clear all
+    set.clearExpiredValidators(Height(long.max));  // clear all
     assert(set.count == 0);
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(0, &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(0), &storage.findUTXO, enroll) is null);
 
     // not cleared yet at height 1007
-    set.clearExpiredValidators(1007);
+    set.clearExpiredValidators(Height(1007));
     keys.length = 0;
     assert(set.count == 1);
     assert(set.getEnrolledUTXOs(keys));
@@ -626,7 +627,7 @@ unittest
     assert(keys[0] == utxos[0]);
 
     // cleared after block height 1008 was externalized
-    set.clearExpiredValidators(1008);
+    set.clearExpiredValidators(Height(1008));
     assert(set.count == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
@@ -635,10 +636,10 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(1, &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(1), &storage.findUTXO, enroll) is null);
 
     // not cleared yet at height 1008
-    set.clearExpiredValidators(1008);
+    set.clearExpiredValidators(Height(1008));
     keys.length = 0;
     assert(set.count == 1);
     assert(set.getEnrolledUTXOs(keys));
@@ -646,7 +647,7 @@ unittest
     assert(keys[0] == utxos[0]);
 
     // cleared after block height 1009 was externalized
-    set.clearExpiredValidators(1009);
+    set.clearExpiredValidators(Height(1009));
     assert(set.count == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
@@ -692,11 +693,11 @@ unittest
 
     // make test blocks used for restoring validator set
     Block[] blocks;
-    ulong last_height = set.params.ValidatorCycle;
+    Height last_height = Height(set.params.ValidatorCycle);
     foreach (ulong i; 0 .. last_height + 1)
     {
         Block block;
-        block.header.height = i;
+        block.header.height = Height(i);
         blocks ~= block;
     }
 

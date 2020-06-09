@@ -52,6 +52,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.ManagedDatabase;
 import agora.common.Serializer;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.ConsensusParams;
@@ -98,7 +99,7 @@ public class EnrollmentManager
     private Enrollment data;
 
     /// Next height for pre-image revelation
-    private ulong next_reveal_height;
+    private Height next_reveal_height;
 
     /// The period for revealing a preimage
     /// It is an hour interval if a block is made in every 10 minutes
@@ -182,7 +183,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public ulong getEnrolledHeight (const ref Hash enroll_hash) @trusted
+    public Height getEnrolledHeight (const ref Hash enroll_hash) @trusted
     {
         return this.validator_set.getEnrolledHeight(enroll_hash);
     }
@@ -202,7 +203,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public string addValidator (const ref Enrollment enroll,
-        size_t block_height, scope UTXOFinder finder) @safe
+        Height block_height, scope UTXOFinder finder) @safe
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
@@ -231,7 +232,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool createEnrollment (Hash frozen_utxo_hash, ulong height,
+    public bool createEnrollment (Hash frozen_utxo_hash, Height height,
         out Enrollment enroll) @trusted nothrow
     {
         static ubyte[] buffer;
@@ -311,7 +312,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void clearExpiredValidators (ulong block_height) @safe nothrow
+    public void clearExpiredValidators (Height block_height) @safe nothrow
     {
         this.validator_set.clearExpiredValidators(block_height);
     }
@@ -330,7 +331,7 @@ public class EnrollmentManager
 
     public bool getNextPreimage (out PreImageInfo preimage) @safe
     {
-        auto height = this.next_reveal_height + PreimageRevealPeriod * 2;
+        auto height = Height(this.next_reveal_height + PreimageRevealPeriod * 2);
         return getPreimage(height, preimage);
     }
 
@@ -347,7 +348,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool getPreimage (ulong height, out PreImageInfo preimage) @safe
+    public bool getPreimage (Height height, out PreImageInfo preimage) @safe
     {
         const enrolled_height =
             this.validator_set.getEnrolledHeight(this.enroll_key);
@@ -436,7 +437,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool needRevealPreimage (ulong height) @safe nothrow
+    public bool needRevealPreimage (Height height) @safe nothrow
     {
         return height >= this.next_reveal_height;
     }
@@ -449,9 +450,9 @@ public class EnrollmentManager
 
     public void increaseNextRevealHeight () @safe nothrow
     {
-        ulong next_height = this.getNextRevealHeight();
+        auto next_height = this.getNextRevealHeight();
         if (this.next_reveal_height < ulong.max)
-            this.setNextRevealHeight(next_height + PreimageRevealPeriod);
+            this.setNextRevealHeight(Height(next_height + PreimageRevealPeriod));
     }
 
     /***************************************************************************
@@ -465,7 +466,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void restoreValidators (ulong last_height, const ref Block block,
+    public void restoreValidators (Height last_height, const ref Block block,
         scope UTXOFinder finder) @safe nothrow
     {
         this.validator_set.restoreValidators(last_height, block, finder);
@@ -573,23 +574,23 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private ulong getNextRevealHeight () @safe nothrow
+    private Height getNextRevealHeight () @safe nothrow
     {
-        ulong next_height = ulong.max;
         try
         {
-            () @trusted {
+            return () @trusted {
                 auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
                     "WHERE key = ?", "next_reveal_height");
                 if (!results.empty)
-                    next_height = results.oneValue!(size_t);
+                    return Height(results.oneValue!(ulong));
+                return Height(ulong.max);
             }();
         }
         catch (Exception ex)
         {
             log.error("ManagedDatabase operation error {}", ex);
         }
-        return next_height;
+        return Height(ulong.max);
     }
 
     /***************************************************************************
@@ -601,7 +602,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private void setNextRevealHeight (ulong height) @safe nothrow
+    private void setNextRevealHeight (Height height) @safe nothrow
     {
         try
         {
@@ -610,10 +611,10 @@ public class EnrollmentManager
                     "node_enroll_data WHERE key = ?)", "next_reveal_height");
                 if (results.oneValue!(bool))
                     this.db.execute("UPDATE node_enroll_data SET val = ? " ~
-                        "WHERE key = ?", height, "next_reveal_height");
+                        "WHERE key = ?", height.value, "next_reveal_height");
                 else
                     this.db.execute("INSERT INTO node_enroll_data (key, val)" ~
-                        " VALUES (?, ?)", "next_reveal_height", height);
+                        " VALUES (?, ?)", "next_reveal_height", height.value);
 
                 this.next_reveal_height = height;
             }();
@@ -641,11 +642,11 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private Pair createSignatureNoise (ulong height) nothrow @safe @nogc
+    private Pair createSignatureNoise (Height height) nothrow @safe @nogc
     {
         Pair key_pair;
         key_pair.v = Scalar(hashMulti(this.key_pair.v,
-            "consensus.signature.noise", height));
+            "consensus.signature.noise", height.value));
         key_pair.V = key_pair.v.toPoint();
         return key_pair;
     }
@@ -668,7 +669,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (ulong block_height) @safe nothrow
+    public ulong getValidatorCount (Height block_height) @safe nothrow
     {
         return this.validator_set.getValidatorCount(block_height);
     }
@@ -719,7 +720,7 @@ unittest
     Enrollment enroll2;
     Enrollment fail_enroll;
 
-    Pair signature_noise = man.createSignatureNoise(1);
+    Pair signature_noise = man.createSignatureNoise(Height(1));
     Pair fail_enroll_key_pair;
     fail_enroll_key_pair.v = secretKeyToCurveScalar(gen_key_pair.secret);
     fail_enroll_key_pair.V = fail_enroll_key_pair.v.toPoint();
@@ -729,7 +730,7 @@ unittest
     fail_enroll.cycle_length = 1008;
     fail_enroll.enroll_sig = sign(fail_enroll_key_pair, signature_noise, fail_enroll);
 
-    assert(man.createEnrollment(utxo_hash, 1, enroll));
+    assert(man.createEnrollment(utxo_hash, Height(1), enroll));
     assert(!man.pool.add(fail_enroll, &storage.findUTXO));
     assert(man.pool.add(enroll, &storage.findUTXO));
     assert(man.pool.count() == 1);
@@ -737,13 +738,13 @@ unittest
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
-    assert(man.createEnrollment(utxo_hash2, 1, enroll2));
+    assert(man.createEnrollment(utxo_hash2, Height(1), enroll2));
     assert(man.pool.add(enroll2, &storage.findUTXO));
     assert(man.pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     Enrollment enroll3;
-    assert(man.createEnrollment(utxo_hash3, 1, enroll3));
+    assert(man.createEnrollment(utxo_hash3, Height(1), enroll3));
     assert(man.pool.add(enroll3, &storage.findUTXO));
     assert(man.pool.count() == 3);
 
@@ -766,9 +767,9 @@ unittest
 
     // test for enrollment block height update
     assert(man.getEnrolledHeight(utxo_hash) == ulong.max);
-    assert(man.addValidator(enroll, 9, &storage.findUTXO) is null);
+    assert(man.addValidator(enroll, Height(9), &storage.findUTXO) is null);
     assert(man.getEnrolledHeight(enroll.utxo_key) == 9);
-    assert(man.addValidator(enroll, 9, &storage.findUTXO) !is null);
+    assert(man.addValidator(enroll, Height(9), &storage.findUTXO) !is null);
     assert(man.getEnrolledHeight(enroll2.utxo_key) == ulong.max);
     man.pool.getEnrollments(enrolls);
     assert(enrolls.length == 1);
@@ -794,25 +795,25 @@ unittest
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
     // clear up all validators
-    man.clearExpiredValidators(1018);
+    man.clearExpiredValidators(Height(1018));
 
     // get a pre-image at a certain height
     // A validation can start at the height of the enrolled height plus 1.
     // So, a pre-image can only be got from the start height.
     PreImageInfo preimage;
-    assert(man.createEnrollment(utxo_hash, 1, enroll));
-    assert(man.addValidator(enroll, 10, &storage.findUTXO) is null);
-    assert(!man.getPreimage(10, preimage));
-    assert(man.getPreimage(11, preimage));
+    assert(man.createEnrollment(utxo_hash, Height(1), enroll));
+    assert(man.addValidator(enroll, Height(10), &storage.findUTXO) is null);
+    assert(!man.getPreimage(Height(10), preimage));
+    assert(man.getPreimage(Height(11), preimage));
     assert(preimage.hash == man.cycle.preimages[$ - 1]);
-    assert(man.getPreimage(10 + man.params.ValidatorCycle, preimage));
+    assert(man.getPreimage(Height(10 + man.params.ValidatorCycle), preimage));
     assert(preimage.hash == man.cycle.preimages[0]);
-    assert(!man.getPreimage(11 + man.params.ValidatorCycle, preimage));
+    assert(!man.getPreimage(Height(11 + man.params.ValidatorCycle), preimage));
 
     /// test for the functions about periodic revelation of a pre-image
-    assert(man.needRevealPreimage(10));
+    assert(man.needRevealPreimage(Height(10)));
     man.increaseNextRevealHeight();
-    assert(man.needRevealPreimage(16));
+    assert(man.needRevealPreimage(Height(16)));
 
     // If the height of the requested preimage exceeds the height of the end of
     // the validator cycle, the `getNextPreimage` must return `false`.
@@ -825,8 +826,8 @@ unittest
     // validator A with the `utxo_hash` and the enrolled height of 10.
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
     // validator C with the 'utxo_hash3' and no enrolled height.
-    assert(man.addValidator(enroll2, 11, &storage.findUTXO) is null);
-    man.clearExpiredValidators(11);
+    assert(man.addValidator(enroll2, Height(11), &storage.findUTXO) is null);
+    man.clearExpiredValidators(Height(11));
     assert(man.validatorCount() == 2);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 2);
@@ -834,8 +835,8 @@ unittest
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
     // there is only one validator in the middle of 1020th block being made.
-    assert(man.addValidator(enroll3, 1019, &storage.findUTXO) is null);
-    man.clearExpiredValidators(1019);
+    assert(man.addValidator(enroll3, Height(1019), &storage.findUTXO) is null);
+    man.clearExpiredValidators(Height(1019));
     assert(man.validatorCount() == 1);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
@@ -876,13 +877,13 @@ unittest
 
     auto utxo_hash = utxo_hashes[0];
     Enrollment enroll;
-    assert(man.createEnrollment(utxo_hash, 1, enroll));
+    assert(man.createEnrollment(utxo_hash, Height(1), enroll));
     assert(man.pool.add(enroll, &storage.findUTXO));
 
     assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
     assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
     auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
-    assert(man.addValidator(enroll, 2, &storage.findUTXO) is null);
+    assert(man.addValidator(enroll, Height(2), &storage.findUTXO) is null);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash) == preimage);
 }
@@ -990,7 +991,7 @@ unittest
     Hash[] utxo_hashes = storage.keys;
 
     Enrollment enrollment;
-    ulong block_height = 2;
+    Height block_height = Height(2);
 
     // create and add the first Enrollment object
     auto utxo_hash1 = utxo_hashes[0];
