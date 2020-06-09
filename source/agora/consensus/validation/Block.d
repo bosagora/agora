@@ -16,6 +16,7 @@ module agora.consensus.validation.Block;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
@@ -193,7 +194,7 @@ unittest
     foreach (tx; prev_txs)
     {
         // one utxo missing from the set => fail
-        utxos.storage.remove(UTXOSet.getHash(tx.hashFull(), 0));
+        utxos.storage.remove(UTXOSetValue.getHash(tx.hashFull(), 0));
         assert(!block.isValid(prev_block.header.height, prev_block.header.hashFull(),
             findUTXO));
 
@@ -371,7 +372,7 @@ unittest
     node_key_pair.v = secretKeyToCurveScalar(keypair.secret);
     node_key_pair.V = node_key_pair.v.toPoint();
 
-    auto utxo_hash1 = UTXOSet.getHash(hashFull(txs_2[0]), 0);
+    auto utxo_hash1 = UTXOSetValue.getHash(hashFull(txs_2[0]), 0);
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
     enroll1.random_seed = hashFull(Scalar.random());
@@ -379,7 +380,7 @@ unittest
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
 
-    auto utxo_hash2 = UTXOSet.getHash(hashFull(txs_2[1]), 0);
+    auto utxo_hash2 = UTXOSetValue.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.random_seed = hashFull(Scalar.random());

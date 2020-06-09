@@ -23,6 +23,7 @@ import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.Genesis;
 import agora.consensus.validation;

@@ -37,6 +37,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
@@ -1096,7 +1097,7 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs)
 
         txs ~= tx;
         Hash txhash = hashFull(tx);
-        Hash utxo = UTXOSet.getHash(txhash, 0);
+        Hash utxo = UTXOSetValue.getHash(txhash, 0);
         scope enr = new EnrollmentManager(":memory:", key_pair);
         scope (exit) enr.shutdown();
 

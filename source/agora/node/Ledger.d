@@ -24,6 +24,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
@@ -742,7 +743,8 @@ unittest
 
     auto findUTXO = utxo_set.getUTXOFinder();
     Transaction find_tx = new_txs[0];
-    Hash utxo_hash = utxo_set.getHash(find_tx.inputs[0].previous, find_tx.inputs[0].index);
+    Hash utxo_hash = UTXOSetValue.getHash(find_tx.inputs[0].previous,
+        find_tx.inputs[0].index);
     UTXOSetValue value;
     assert(findUTXO(utxo_hash, size_t.max, value));
 }
@@ -1018,9 +1020,9 @@ unittest
             if (tx.outputs[0].address == key_pair.address)
                 enroll_key_pair ~= key_pair;
 
-    auto utxo_hash_1 = utxo_set.getHash(hashFull(blocks[3].txs[0]),0);
-    auto utxo_hash_2 = utxo_set.getHash(hashFull(blocks[3].txs[1]),0);
-    auto utxo_hash_3 = utxo_set.getHash(hashFull(blocks[3].txs[2]),0);
+    auto utxo_hash_1 = UTXOSetValue.getHash(hashFull(blocks[3].txs[0]),0);
+    auto utxo_hash_2 = UTXOSetValue.getHash(hashFull(blocks[3].txs[1]),0);
+    auto utxo_hash_3 = UTXOSetValue.getHash(hashFull(blocks[3].txs[2]),0);
 
     Pair signature_noise = Pair.random;
     Pair node_key_pair_1;
@@ -1395,7 +1397,7 @@ unittest
 
         gen_txs ~= freeze_tx;
         Hash txhash = hashFull(freeze_tx);
-        Hash utxo = UTXOSet.getHash(txhash, 0);
+        Hash utxo = UTXOSetValue.getHash(txhash, 0);
 
         Enrollment[] enrolls;
         Enrollment enroll;
