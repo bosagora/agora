@@ -129,30 +129,44 @@ public class ValidatorSet
     /***************************************************************************
 
         Returns:
-            the number of enrollments being managed by this EnrollmentManager,
-            which includes both registered and un-registered enrollments.
+            the number of active enrollments, or 0 if there was a database error
 
     ***************************************************************************/
 
-    public size_t count () @trusted
+    public size_t count () @trusted nothrow
     {
-        return this.db.execute("SELECT count(*) FROM validator_set").
-            oneValue!size_t;
+        try
+        {
+            return this.db.execute("SELECT count(*) FROM validator_set").
+                oneValue!size_t;
+        }
+        catch (Exception ex)
+        {
+            log.error("Error while calling ValidatorSet.count(): {}", ex);
+            return 0;
+        }
     }
 
     /***************************************************************************
 
-        Remove the enrollment data with the given key from the validator set
+        Remove the enrollment data with the given UTXO key from the validator set
 
         Params:
-            enroll_hash = key for an enrollment data to remove
+            utxo_key = the UTXO key of the enrollment data to remove
 
     ***************************************************************************/
 
-    public void remove (const ref Hash enroll_hash) @trusted
+    public void remove (const ref Hash enroll_hash) @trusted nothrow
     {
-        this.db.execute("DELETE FROM validator_set WHERE key = ?",
-            enroll_hash.toString());
+        try
+        {
+            this.db.execute("DELETE FROM validator_set WHERE key = ?",
+                enroll_hash.toString());
+        }
+        catch (Exception ex)
+        {
+            log.error("Error while calling ValidatorSet.remove(): {}", ex);
+        }
     }
 
     /***************************************************************************
@@ -167,7 +181,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public ulong getEnrolledHeight (const ref Hash enroll_hash) @trusted
+    public ulong getEnrolledHeight (const ref Hash enroll_hash) @trusted nothrow
     {
         try
         {
