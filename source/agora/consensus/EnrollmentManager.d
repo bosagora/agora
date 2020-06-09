@@ -381,17 +381,17 @@ public class EnrollmentManager
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
                 contained.
-            height = The block height of the preimage to check existence
+            distance = The distance of the preimage
 
         Returns:
             true if the pre-image exists
 
     ***************************************************************************/
 
-    public bool hasPreimage (const ref Hash enroll_key, ulong height) @safe
+    public bool hasPreimage (const ref Hash enroll_key, ulong distance) @safe
         nothrow
     {
-        return this.validator_set.hasPreimage(enroll_key, height);
+        return this.validator_set.hasPreimage(enroll_key, distance);
     }
 
     /***************************************************************************
