@@ -398,22 +398,22 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get validator's pre-image from the validator set
+        Get validator's pre-image from the validator set.
 
         Params:
             enroll_key = The key for the enrollment in which the pre-image is
                 contained.
-            result_image = will contain the PreImageInfo if exists
 
         Returns:
-            true if getting pre-image is successfully processed
+            the PreImageInfo of the enrolled key if it exists,
+            otherwise PreImageInfo.init
 
     ***************************************************************************/
 
-    public bool getValidatorPreimage (const ref Hash enroll_key,
-        out PreImageInfo result_image) @trusted nothrow
+    public PreImageInfo getValidatorPreimage (const ref Hash enroll_key)
+        @trusted nothrow
     {
-        return this.validator_set.getPreimage(enroll_key, result_image);
+        return this.validator_set.getPreimage(enroll_key);
     }
 
     /***************************************************************************
@@ -888,15 +888,12 @@ unittest
     assert(man.createEnrollment(utxo_hash, 1, enroll));
     assert(man.pool.add(enroll, &storage.findUTXO));
 
-    PreImageInfo result_image;
     assert(Enrollment.ValidatorCycle - 101 == 907); // Sanity check
-    assert(man.getValidatorPreimage(utxo_hash, result_image));
-    assert(result_image == PreImageInfo.init);
+    assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
     auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
     assert(man.addValidator(enroll, 2, &storage.findUTXO) is null);
     assert(man.addPreimage(preimage));
-    assert(man.getValidatorPreimage(utxo_hash, result_image));
-    assert(result_image == preimage);
+    assert(man.getValidatorPreimage(utxo_hash) == preimage);
 }
 
 /// Test `PreImageCycle` consistency between seeds and preimages

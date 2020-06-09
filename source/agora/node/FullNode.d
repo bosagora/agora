@@ -453,9 +453,7 @@ public class FullNode : API
     /// GET: /preimage
     public override PreImageInfo getPreimage (Hash enroll_key)
     {
-        PreImageInfo preimage;
-        this.enroll_man.getValidatorPreimage(enroll_key, preimage);
-        return preimage;
+        return this.enroll_man.getValidatorPreimage(enroll_key);
     }
 
     /***************************************************************************
