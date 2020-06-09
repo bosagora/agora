@@ -123,8 +123,11 @@ public class Validator : FullNode, API
             assert(0);
         }
 
+        import std.algorithm;
+        import std.array;
+        auto keys = enrollments.map!(enr => enr.utxo_key).array;
         return buildQuorumConfig(this.config.node.key_pair.address,
-            enrollments, this.utxo_set.getUTXOFinder());
+            keys, this.utxo_set.getUTXOFinder());
     }
 
     /***************************************************************************

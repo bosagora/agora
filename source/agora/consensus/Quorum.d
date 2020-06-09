@@ -36,7 +36,7 @@ import std.string;
 
     Params:
         node_key = the key of the node for which to generate the quorum
-        enrolls = the array of registered enrollments
+        keys = the array of registered enrollment UTXO keys
         finder = UTXO finder delegate
 
     Returns:
@@ -45,9 +45,9 @@ import std.string;
 *******************************************************************************/
 
 public QuorumConfig buildQuorumConfig ( const ref PublicKey node_key,
-    in Enrollment[] enrolls, in UTXOFinder finder )
+    in Hash[] keys, in UTXOFinder finder )
 {
-    Set!PublicKey all_nodes = getPublicKeys(enrolls, finder);
+    Set!PublicKey all_nodes = getPublicKeys(keys, finder);
 
     QuorumConfig quorum;
     all_nodes.each!(node => quorum.nodes ~= node);
@@ -66,7 +66,8 @@ unittest
         auto data = genTestEnrolls(num_nodes);
         foreach (key; data.keys)
         {
-            auto quorum = buildQuorumConfig(key, data.enrolls, data.finder);
+            auto quorum = buildQuorumConfig(key,
+                data.enrolls.map!(enr => enr.utxo_key).array, data.finder);
             verifyQuorumSanity(quorum);
             const expected = QuorumConfig(num_nodes, data.keys);
             assert(quorum == expected,
@@ -110,7 +111,7 @@ private void verifyQuorumSanity (const ref QuorumConfig quorum)
     and return the set of keys.
 
     Params
-        enrolls = the list of enrollments
+        utxo_keys = the list of enrollments' UTXO keys
         finder = UTXO finder delegate
 
     Returns:
@@ -118,14 +119,13 @@ private void verifyQuorumSanity (const ref QuorumConfig quorum)
 
 *******************************************************************************/
 
-private Set!PublicKey getPublicKeys (in Enrollment[] enrolls,
-    in UTXOFinder finder)
+private Set!PublicKey getPublicKeys (in Hash[] utxo_keys, in UTXOFinder finder)
 {
     Set!PublicKey keys;
-    foreach (enroll; enrolls)
+    foreach (utxo_key; utxo_keys)
     {
         UTXOSetValue value;
-        if (!finder(enroll.utxo_key, size_t.max, value))
+        if (!finder(utxo_key, size_t.max, value))
             assert(0, "UTXO for validator not found!");  // should never happen
 
         if (value.output.address in keys)  // should never happen
