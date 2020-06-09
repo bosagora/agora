@@ -12,7 +12,7 @@ This data can also be gathered by running `git submodules`.
 | bitblob          | v1.1.4       | 2019-08-30  | Yes (Owned)  |
 | diet-ng          | v1.6.1       | 2020-01-14  |     No       |
 | dyaml            | v0.8.0       | 2019-05-27  |     No       |
-| eventcore        | v0.8.50      | 2020-03-18  |     Yes      |
+| eventcore        | v0.9.6       | 2020-05-29  |     Yes      |
 | libsodiumd       | 0.1.1+1.0.18 | 2020-04-04  | Yes (Owned)  |
 | localrest        | 89f3a04e1d87 | 2020-05-11  | Yes (Owned)  |
 | mir-linux-kernel | 1.0.1        | 2018-09-17  |     No       |
@@ -20,5 +20,5 @@ This data can also be gathered by running `git submodules`.
 | stdx-allocator   | 2.77.5       | 2000-00-00  |     No       |
 | taggedalgebraic  | 0.11.9       | 2020-02-20  |     No       |
 | tinyendian       | 0.2.0        | 2018-06-10  |     No       |
-| vibe-core        | 1.9.0        | 2020-03-18  |     Yes      |
+| vibe-core        | 1.9.2        | 2020-05-29  |     Yes      |
 | vibe-d           | 4076c01d     | 2020-03-18  | Yes(+Forked) |
