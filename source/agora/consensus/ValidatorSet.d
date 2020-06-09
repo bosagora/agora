@@ -367,7 +367,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool hasPreimage (const ref Hash enroll_key, ulong distance) @safe
+    public bool hasPreimage (const ref Hash enroll_key, ushort distance) @safe
         nothrow
     {
         bool result = false;

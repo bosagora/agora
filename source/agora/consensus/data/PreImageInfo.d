@@ -31,7 +31,7 @@ public struct PreImageInfo
     public Hash hash;
 
     /// The distance between this pre-image and the initial commitment
-    public ulong distance;
+    public ushort distance;
 }
 
 unittest

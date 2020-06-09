@@ -370,7 +370,8 @@ public class EnrollmentManager
             return false;
 
         preimage.enroll_key = this.data.utxo_key;
-        preimage.distance = index;
+        assert(index <= ushort.max);
+        preimage.distance = cast(ushort)index;  // max: Enrollment.ValidatorCycle - 1
         preimage.hash = this.cycle.preimages[$ - index - 1];
         return true;
     }
@@ -389,7 +390,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool hasPreimage (const ref Hash enroll_key, ulong distance) @safe
+    public bool hasPreimage (const ref Hash enroll_key, ushort distance) @safe
         nothrow
     {
         return this.validator_set.hasPreimage(enroll_key, distance);
