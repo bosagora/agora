@@ -58,8 +58,9 @@ public class ValidatorSet
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, " ~
-            "enrolled_height INTEGER, preimage BLOB)");
+            "(key TEXT PRIMARY KEY, " ~
+            "cycle_length INTEGER, enrolled_height INTEGER, " ~
+            "distance INTEGER, preimage TEXT)");
     }
 
     /***************************************************************************
@@ -103,16 +104,14 @@ public class ValidatorSet
 
         try
         {
-            static ubyte[] buffer;
-            serializeToBuffer(enroll, buffer);
-            const img = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
-            static ubyte[] pbuffer;
-            serializeToBuffer(img, pbuffer);
-
             () @trusted {
+                const ZeroDistance = 0;  // initial distance
                 this.db.execute("INSERT INTO validator_set " ~
-                    "(key, val, enrolled_height, preimage) VALUES (?, ?, ?, ?)",
-                    enroll.utxo_key.toString(), buffer, block_height, pbuffer);
+                    "(key, cycle_length, enrolled_height, " ~
+                    "distance, preimage) VALUES (?, ?, ?, ?, ?)",
+                    enroll.utxo_key.toString(), enroll.cycle_length,
+                    block_height, ZeroDistance,
+                    enroll.random_seed.toString());
             }();
         }
         catch (Exception ex)
@@ -229,39 +228,11 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get the enrollment data with the key, and store it to 'enroll' if found
+        Get all the current validators in ascending order with the utxo_key
 
         Params:
-            enroll_hash = key for an enrollment data which is a hash of a frozen
-                            UTXO
-            enroll = will contain the enrollment data if found
-
-        Returns:
-            Return true if the enrollment data was found
-
-    ***************************************************************************/
-
-    private bool getEnrollment (const ref Hash enroll_hash,
-        out Enrollment enroll) @trusted
-    {
-        auto results = this.db.execute("SELECT key, val FROM validator_set " ~
-            "WHERE key = ?", enroll_hash.toString());
-
-        foreach (row; results)
-        {
-            enroll = deserializeFull!Enrollment(row.peek!(ubyte[])(1));
-            return true;
-        }
-
-        return false;
-    }
-
-    /***************************************************************************
-
-        Get all the enrolled validator's UTXO keys.
-
-        Params:
-            utxo_keys = will contain the set of UTXO keys
+            validators = will be filled with all the validators during
+                their validation cycles
 
         Returns:
             Return true if there was no error in getting the UTXO keys
@@ -377,19 +348,13 @@ public class ValidatorSet
     public bool hasPreimage (const ref Hash enroll_key, ushort distance) @safe
         nothrow
     {
-        bool result = false;
         try
         {
-            () @trusted {
-                auto results = this.db.execute("SELECT preimage from " ~
-                        "validator_set WHERE key = ?", enroll_key.toString());
-                if (!results.empty && results.oneValue!(byte[]).length != 0)
-                {
-                    PreImageInfo loaded_image = results.
-                        oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
-                    if (distance <= loaded_image.distance)
-                        result = true;
-                }
+            return () @trusted {
+                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
+                    "validator_set WHERE key = ? AND distance >= ?)",
+                    enroll_key.toString(), distance);
+                return results.front.peek!bool(0);
             }();
         }
         catch (Exception ex)
@@ -398,7 +363,6 @@ public class ValidatorSet
                 "Key for enrollment: {}", ex.msg, enroll_key);
             return false;
         }
-        return result;
     }
 
     /***************************************************************************
@@ -419,11 +383,15 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT preimage from validator_set" ~
-                        " WHERE key = ?", enroll_key.toString());
+            auto results = this.db.execute("SELECT preimage, distance FROM " ~
+                "validator_set WHERE key = ?", enroll_key.toString());
+
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
-                return results.oneValue!(ubyte[]).deserializeFull!(PreImageInfo);
+                auto row = results.front;
+                Hash preimage = Hash(row.peek!(char[])(0));
+                ushort distance = row.peek!ushort(1);
+                return PreImageInfo(enroll_key, preimage, distance);
             }
         }
         catch (Exception ex)
@@ -447,75 +415,33 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool addPreimage (const ref PreImageInfo preimage) @safe nothrow
+    public bool addPreimage (const ref PreImageInfo preimage) @trusted nothrow
     {
-        static ubyte[] buffer;
+        const prev_preimage = this.getPreimage(preimage.enroll_key);
 
-        // check if the enrollment data exists
-        Enrollment stored_enroll;
-        try
+        if (prev_preimage == PreImageInfo.init)
         {
-            if (!this.getEnrollment(preimage.enroll_key, stored_enroll))
-            {
-                log.info("Rejected adding a pre-image for non-existing " ~
-                    "enrollment, Preimage: {}", preimage);
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error on addPreimage: {}, " ~
-                "Preimage: {}", ex.msg, preimage);
+            log.info("Rejected pre-image: validator not enrolled for key: {}",
+                preimage.hash);
             return false;
         }
 
-        // check if already exists
-        try
+        if (auto reason = isInvalidReason(preimage, prev_preimage,
+            Enrollment.ValidatorCycle))
         {
-            if (this.hasPreimage(preimage.enroll_key, preimage.distance))
-            {
-                log.info("Rejected already existing pre-image, Preimage: {}",
-                    preimage);
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Database operation error on addPreimage: {}, " ~
-                "Preimage: {}", ex.msg, preimage);
+            log.info("Invalid pre-image data: {}. Pre-image: {}",
+                reason, preimage);
             return false;
         }
 
-        // check the validity of new pre-image based on the stored pre-image
-        PreImageInfo stored_image = this.getPreimage(preimage.enroll_key);
-        if (stored_image != PreImageInfo.init)
-        {
-            if (auto reason = isInvalidReason(
-                    preimage, stored_image, Enrollment.ValidatorCycle))
-            {
-                log.info("Invalid preimage data: {}, Data was: ", reason,
-                    preimage);
-                return false;
-            }
-        }
-
-        // insert the pre-image into the table
-        try
-        {
-            serializeToBuffer(preimage, buffer);
-        }
-        catch (Exception ex)
-        {
-            log.error("Serialization error on addPreimage: {}, Preimage: {}",
-                ex.msg, preimage);
-            return false;
-        }
-
+        // update the preimage info
         try
         {
             () @trusted {
-                this.db.execute("UPDATE validator_set SET preimage = ? " ~
-                    "WHERE key = ?", buffer, preimage.enroll_key.toString());
+                this.db.execute("UPDATE validator_set SET preimage = ?, " ~
+                    "distance = ? WHERE key = ?",
+                    preimage.hash.toString(), preimage.distance,
+                    preimage.enroll_key.toString());
             }();
         }
         catch (Exception ex)
@@ -641,15 +567,9 @@ unittest
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
-    // get a specific enrollment object
-    Enrollment stored_enroll;
-    assert(set.getEnrollment(utxos[1], stored_enroll));
-    assert(stored_enroll == enroll2);
-
     // remove an enrollment
     set.remove(utxos[1]);
     assert(set.count() == 2);
-    assert(!set.getEnrollment(utxos[1], stored_enroll));
     assert(set.hasEnrollment(utxos[0]));
     set.remove(utxos[0]);
     assert(!set.hasEnrollment(utxos[0]));
