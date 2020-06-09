@@ -1112,7 +1112,7 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
         scope enr = new EnrollmentManager(":memory:", key_pair, params);
 
         Enrollment enroll;
-        const StartHeight = 1;
+        const StartHeight = Height(1);
         assert(enr.createEnrollment(utxo, StartHeight, enroll));
         enrolls ~= enroll;
     }
@@ -1127,7 +1127,7 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
     {
         return immutable(BlockHeader)(
             Hash.init,   // prev
-            0,           // height
+            Height(0),   // height
             merkle_root,
             BitField!uint.init,
             Signature.init,

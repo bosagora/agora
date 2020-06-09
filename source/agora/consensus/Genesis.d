@@ -15,6 +15,7 @@ module agora.consensus.Genesis;
 
 import agora.common.Amount;
 import agora.common.Hash;
+import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
@@ -80,7 +81,7 @@ private immutable Block UnitTestGenesisBlock =
     header:
     {
         prev_block:  Hash.init,
-        height:      0,
+        height:      Height(0),
         merkle_root: UnitTestGenesisMerkleRoot,
     },
     txs: [ UnitTestGenesisTransaction ],
@@ -91,7 +92,7 @@ private immutable Block UnitTestGenesisBlock =
 unittest
 {
     assert(UnitTestGenesisBlock.header.prev_block == Hash.init);
-    assert(UnitTestGenesisBlock.header.height == 0);
+    assert(UnitTestGenesisBlock.header.height == Height(0));
     assert(UnitTestGenesisBlock.header.merkle_root == UnitTestGenesisBlock.merkle_tree[0]);
     assert(UnitTestGenesisBlock.merkle_tree.length == 1);
     assert(UnitTestGenesisBlock.header.merkle_root == hashFull(UnitTestGenesisTransaction));
@@ -180,7 +181,7 @@ private immutable Block CoinNetGenesisBlock =
     header:
     {
         prev_block:  Hash.init,
-        height:      0,
+        height:      Height(0),
         merkle_root: CoinNetGenesisMerkleRoot,
     },
     txs: [ CoinNetGenesisTransaction ],

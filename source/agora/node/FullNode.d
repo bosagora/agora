@@ -258,7 +258,7 @@ public class FullNode : API
     public override const(Block)[] getBlocksFrom (ulong block_height,
         uint max_blocks)  @safe
     {
-        return this.ledger.getBlocksFrom(block_height)
+        return this.ledger.getBlocksFrom(Height(block_height))
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
 
@@ -421,7 +421,7 @@ public class FullNode : API
     /// GET: /merkle_path
     public override Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
-        return this.ledger.getMerklePath(block_height, hash);
+        return this.ledger.getMerklePath(Height(block_height), hash);
     }
 
     /// PUT: /enroll_validator

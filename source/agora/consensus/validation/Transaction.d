@@ -15,6 +15,7 @@ module agora.consensus.validation.Transaction;
 
 import agora.common.Amount;
 import agora.common.Hash;
+import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 
@@ -38,8 +39,8 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO,
-    const ulong height)
+public string isInvalidReason (
+    const Transaction tx, UTXOFinder findUTXO, Height height)
     @safe nothrow
 {
     import std.conv;
@@ -135,7 +136,7 @@ public string isInvalidReason (const Transaction tx, UTXOFinder findUTXO,
 
 /// Ditto but returns a bool, only used in unittests
 version (unittest)
-public bool isValid (const Transaction tx, UTXOFinder findUTXO, ulong height)
+public bool isValid (const Transaction tx, UTXOFinder findUTXO, Height height)
     @safe nothrow
 {
     return isInvalidReason(tx, findUTXO, height) is null;
@@ -170,19 +171,22 @@ unittest
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.isValid(&storage.findUTXO, 0), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(&storage.findUTXO, Height(0)),
+           format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.isValid(&storage.findUTXO, 0), format("Transaction data is not validated %s", secondTx));
+    assert(secondTx.isValid(&storage.findUTXO, Height(0)),
+           format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.isValid(&storage.findUTXO, 0), format("Transaction data is not validated %s", secondTx));
+    assert(!secondTx.isValid(&storage.findUTXO, Height(0)),
+           format("Transaction data is not validated %s", secondTx));
 }
 
 /// negative output amounts disallowed
@@ -206,7 +210,7 @@ unittest
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
-    assert(!tx_2.isValid(&storage.findUTXO, 0));
+    assert(!tx_2.isValid(&storage.findUTXO, Height(0)));
 
     // Creates the third transaction.
     // Reject a transaction whose output value is zero
@@ -219,7 +223,7 @@ unittest
 
     tx_3.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_3)[]);
 
-    assert(!tx_3.isValid(&storage.findUTXO, 0));
+    assert(!tx_3.isValid(&storage.findUTXO, Height(0)));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -257,7 +261,8 @@ unittest
     tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage.put(tx1);
 
-    assert(tx1.isValid(&storage.findUTXO, 0), format("Transaction signature is not validated %s", tx1));
+    assert(tx1.isValid(&storage.findUTXO, Height(0)),
+           format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
         TxType.Payment,
@@ -274,7 +279,8 @@ unittest
     tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage.put(tx2);
     // Signature verification must be error
-    assert(!tx2.isValid(&storage.findUTXO, 0), format("Transaction signature is not validated %s", tx2));
+    assert(!tx2.isValid(&storage.findUTXO, Height(0)),
+           format("Transaction signature is not validated %s", tx2));
 }
 
 /// verify transactions associated with freezing
@@ -314,7 +320,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is valid.
-        assert(secondTx.isValid(&storage.findUTXO, 0));
+        assert(secondTx.isValid(&storage.findUTXO, Height(0)));
     }
 
     // When the privious transaction type is `Freeze`, second transaction type is `Freeze`.
@@ -344,7 +350,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is invalid.
-        assert(!secondTx.isValid(&storage.findUTXO, 0));
+        assert(!secondTx.isValid(&storage.findUTXO, Height(0)));
     }
 
     // When the privious transaction with not enough amount at freezing.
@@ -374,7 +380,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is invalid.
-        assert(!secondTx.isValid(&storage.findUTXO, 0));
+        assert(!secondTx.isValid(&storage.findUTXO, Height(0)));
     }
 
     // When the privious transaction with too many amount at freezings.
@@ -403,7 +409,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is valid.
-        assert(secondTx.isValid(&storage.findUTXO, 0));
+        assert(secondTx.isValid(&storage.findUTXO, Height(0)));
     }
 }
 
@@ -426,7 +432,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    ulong block_height = 0;
+    Height block_height;
 
     Transaction previousTx;
     Transaction secondTx;
@@ -591,7 +597,7 @@ unittest
     storage.put(oneTx);
 
     // test for Payment transaction having no input
-    assert(canFind(toLower(oneTx.isInvalidReason(&storage.findUTXO, 0)), "no input"),
+    assert(canFind(toLower(oneTx.isInvalidReason(&storage.findUTXO, Height(0))), "no input"),
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
@@ -609,7 +615,7 @@ unittest
     storage.put(secondTx);
 
     // test for Freeze transaction having no output
-    assert(canFind(toLower(secondTx.isInvalidReason(&storage.findUTXO, 0)), "no output"),
+    assert(canFind(toLower(secondTx.isInvalidReason(&storage.findUTXO, Height(0))), "no output"),
         format("Tx having no output should not pass validation. tx: %s", secondTx));
 }
 
@@ -650,7 +656,7 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for transaction having combined inputs
-    assert(!thirdTx.isValid(&storage.findUTXO, 0),
+    assert(!thirdTx.isValid(&storage.findUTXO, Height(0)),
         format("Tx having combined inputs should not pass validation. tx: %s", thirdTx));
 }
 
@@ -672,7 +678,7 @@ unittest
     storage[firstHash] = firstTx;
 
     // test for unknown transaction type
-    assert(!firstTx.isValid(null, 0),
+    assert(!firstTx.isValid(null, Height(0)),
         format("Tx having unknown type should not pass validation. tx: %s", firstTx));
 }
 
@@ -729,7 +735,7 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for input overflow in Payment transaction
-    assert(!thirdTx.isValid(findUTXO, 0),
+    assert(!thirdTx.isValid(findUTXO, Height(0)),
         format("Tx having input overflow should not pass validation. tx: %s", thirdTx));
 
     // create the fourth transaction
@@ -744,7 +750,7 @@ unittest
     fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
 
     // test for input overflow in Freeze transaction
-    assert(!fourthTx.isValid(findUTXO, 0),
+    assert(!fourthTx.isValid(findUTXO, Height(0)),
         format("Tx having input overflow should not pass validation. tx: %s", fourthTx));
 }
 
@@ -802,6 +808,6 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for output overflow in Payment transaction
-    assert(!thirdTx.isValid(findUTXO, 0),
+    assert(!thirdTx.isValid(findUTXO, Height(0)),
         format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
 }

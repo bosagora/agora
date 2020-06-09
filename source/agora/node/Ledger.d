@@ -116,7 +116,7 @@ public class Ledger
             Block block;
             foreach (height; 0 .. this.last_block.header.height + 1)
             {
-                this.storage.readBlock(block, height);
+                this.storage.readBlock(block, Height(height));
                 this.updateUTXOSet(block);
             }
         }
@@ -126,9 +126,9 @@ public class Ledger
 
         // we are only interested in the last 1008 blocks,
         // because that is the maximum length of an enrollment.
-        const ulong min_height =
+        const Height min_height =
             block_count >= this.params.ValidatorCycle
-            ? block_count - this.params.ValidatorCycle : 0;
+            ? Height(block_count - this.params.ValidatorCycle) : Height(0);
 
         // restore validator set from the blockchain.
         // using block_count, as the range is inclusive
@@ -209,9 +209,9 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        const expect_height = this.getBlockHeight() + 1;
+        const Height expected_height = Height(this.getBlockHeight() + 1);
         auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
-            expect_height);
+            expected_height);
 
         if (reason !is null || !this.pool.add(tx))
         {
@@ -279,7 +279,7 @@ public class Ledger
 
     private void updateUTXOSet (const ref Block block) @safe
     {
-        const ulong height = block.header.height;
+        const height = block.header.height;
         // add the new UTXOs
         block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height));
 
@@ -304,7 +304,7 @@ public class Ledger
         if (this.pool.length < Block.TxsInBlock)
             return;
 
-        const ulong next_height = this.getBlockHeight() + 1;
+        const next_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         this.enroll_man.pool.getEnrollments(data.enrolls);
@@ -339,7 +339,7 @@ public class Ledger
 
     public string validateConsensusData (ConsensusData data) @trusted
     {
-        const ulong expect_height = this.getBlockHeight() + 1;
+        const expect_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         foreach (tx; data.tx_set)
@@ -384,7 +384,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public ulong getBlockHeight () @safe nothrow
+    public Height getBlockHeight () @safe nothrow
     {
         return this.last_block.header.height;
     }
@@ -401,11 +401,11 @@ public class Ledger
 
     ***************************************************************************/
 
-    public auto getBlocksFrom (size_t start_height) @safe nothrow
+    public auto getBlocksFrom (Height start_height) @safe nothrow
     {
         start_height = min(start_height, this.getBlockHeight() + 1);
 
-        const(Block) readBlock (size_t height)
+        const(Block) readBlock (Height height)
         {
             Block block;
             if (!this.storage.tryReadBlock(block, height))
@@ -414,7 +414,7 @@ public class Ledger
         }
 
         return iota(start_height, this.getBlockHeight() + 1)
-            .map!(idx => readBlock(idx));
+            .map!(idx => readBlock(Height(idx)));
     }
 
     /***************************************************************************
@@ -430,7 +430,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (ulong block_height, Hash hash) @safe nothrow
+    public Hash[] getMerklePath (Height block_height, Hash hash) @safe nothrow
     {
         if (this.getBlockHeight() < block_height)
             return null;
@@ -495,7 +495,7 @@ unittest
         params);
     assert(ledger.getBlockHeight() == 0);
 
-    auto blocks = ledger.getBlocksFrom(0).take(10);
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks[$ - 1] == GenesisBlock);
 
     Transaction[] last_txs;
@@ -517,7 +517,7 @@ unittest
     }
 
     genBlockTransactions(2);
-    blocks = ledger.getBlocksFrom(0).take(10);
+    blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 3);  // two blocks + genesis block
@@ -526,43 +526,43 @@ unittest
     genBlockTransactions(98);
     assert(ledger.getBlockHeight() == 100);
 
-    blocks = ledger.getBlocksFrom(0).takeExactly(10);
+    blocks = ledger.getBlocksFrom(Height(0)).takeExactly(10);
     assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 10);
 
     /// lower limit
-    blocks = ledger.getBlocksFrom(0).takeExactly(5);
+    blocks = ledger.getBlocksFrom(Height(0)).takeExactly(5);
     assert(blocks[0] == GenesisBlock);
     assert(blocks[0].header.height == 0);
     assert(blocks.length == 5);
 
     /// different indices
-    blocks = ledger.getBlocksFrom(1).takeExactly(10);
+    blocks = ledger.getBlocksFrom(Height(1)).takeExactly(10);
     assert(blocks[0].header.height == 1);
     assert(blocks.length == 10);
 
-    blocks = ledger.getBlocksFrom(50).takeExactly(10);
+    blocks = ledger.getBlocksFrom(Height(50)).takeExactly(10);
     assert(blocks[0].header.height == 50);
     assert(blocks.length == 10);
 
-    blocks = ledger.getBlocksFrom(95).take(10);  // only 6 left from here (block 100 included)
+    blocks = ledger.getBlocksFrom(Height(95)).take(10);  // only 6 left from here (block 100 included)
     assert(blocks.front.header.height == 95);
     assert(blocks.walkLength() == 6);
 
-    blocks = ledger.getBlocksFrom(99).take(10);  // only 2 left from here (ditto)
+    blocks = ledger.getBlocksFrom(Height(99)).take(10);  // only 2 left from here (ditto)
     assert(blocks.front.header.height == 99);
     assert(blocks.walkLength() == 2);
 
-    blocks = ledger.getBlocksFrom(100).take(10);  // only 1 block available
+    blocks = ledger.getBlocksFrom(Height(100)).take(10);  // only 1 block available
     assert(blocks.front.header.height == 100);
     assert(blocks.walkLength() == 1);
 
     // over the limit => return up to the highest block
-    assert(ledger.getBlocksFrom(0).take(1000).walkLength() == 101);
+    assert(ledger.getBlocksFrom(Height(0)).take(1000).walkLength() == 101);
 
     // higher index than available => return nothing
-    assert(ledger.getBlocksFrom(1000).take(10).walkLength() == 0);
+    assert(ledger.getBlocksFrom(Height(1000)).take(10).walkLength() == 0);
 }
 
 // Reject a transaction whose output value is 0
@@ -594,7 +594,7 @@ unittest
 
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
-    auto blocks = ledger.getBlocksFrom(0).take(10);
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks.length == 2);
 
     // Invalid case
@@ -608,7 +608,7 @@ unittest
     }
 
     txs.each!(tx => assert(!ledger.acceptTransaction(tx)));
-    blocks = ledger.getBlocksFrom(0).take(10);
+    blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks.length == 2);
 }
 
@@ -689,7 +689,7 @@ unittest
     const Hash habcdefgh = hashMulti(habcd, hefgh);
 
     Hash[] merkle_path;
-    merkle_path = ledger.getMerklePath(1, hc);
+    merkle_path = ledger.getMerklePath(Height(1), hc);
     assert(merkle_path.length == 3);
     assert(merkle_path[0] == hd);
     assert(merkle_path[1] == hab);
@@ -697,7 +697,7 @@ unittest
     assert(habcdefgh == Block.checkMerklePath(hc, merkle_path, 2));
     assert(habcdefgh != Block.checkMerklePath(hd, merkle_path, 2));
 
-    merkle_path = ledger.getMerklePath(1, he);
+    merkle_path = ledger.getMerklePath(Height(1), he);
     assert(merkle_path.length == 3);
     assert(merkle_path[0] == hf);
     assert(merkle_path[1] == hgh);
@@ -705,7 +705,7 @@ unittest
     assert(habcdefgh == Block.checkMerklePath(he, merkle_path, 4));
     assert(habcdefgh != Block.checkMerklePath(hf, merkle_path, 4));
 
-    merkle_path = ledger.getMerklePath(1, Hash.init);
+    merkle_path = ledger.getMerklePath(Height(1), Hash.init);
     assert(merkle_path.length == 0);
 }
 
@@ -875,13 +875,13 @@ unittest
 
     genBlockTransactions(1, TxType.Payment);
     assert(ledger.getBlockHeight() == 1);
-    auto blocks = ledger.getBlocksFrom(0).take(10).array;
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 2);
     assert(blocks[1].header.height == 1);
 
     genBlockTransactions(1, TxType.Freeze);
     assert(ledger.getBlockHeight() == 2);
-    blocks = ledger.getBlocksFrom(0).take(10).array;
+    blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
 }
@@ -1010,7 +1010,7 @@ unittest
     genBlockTransactionsFreeze(1, TxType.Freeze);
     assert(ledger.getBlockHeight() == 3);
 
-    auto blocks = ledger.getBlocksFrom(0).take(10);
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
 
     // make enrollments
     KeyPair[] enroll_key_pair;
@@ -1076,7 +1076,7 @@ unittest
     // Check if there are any unregistered enrollments
     Enrollment[] unreg_enrollments;
     assert(enroll_man.pool.getEnrollments(unreg_enrollments) is null);
-    auto block_4 = ledger.getBlocksFrom(4);
+    auto block_4 = ledger.getBlocksFrom(Height(4));
     enrollments.sort!("a.utxo_key < b.utxo_key");
     assert(block_4[0].header.enrollments == enrollments);
 
@@ -1397,7 +1397,7 @@ unittest
 
         Enrollment[] enrolls;
         Enrollment enroll;
-        const StartHeight = 0;  // not important
+        const StartHeight = Height(0);  // not important
         assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
         enrolls ~= enroll;
 
@@ -1408,7 +1408,7 @@ unittest
         auto genesis = immutable(Block)(
             immutable(BlockHeader)(
                 Hash.init,   // prev
-                0,           // height
+                Height(0),   // height
                 merkle_root,
                 BitField!uint.init,
                 Signature.init,

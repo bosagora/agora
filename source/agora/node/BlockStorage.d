@@ -103,7 +103,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool tryReadBlock (ref Block block, size_t height) nothrow;
+    public bool tryReadBlock (ref Block block, Height height) nothrow;
 
     /***************************************************************************
 
@@ -133,7 +133,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public final void readBlock (ref Block block, size_t height)
+    public final void readBlock (ref Block block, Height height)
     {
         if (!this.tryReadBlock(block, height))
             throw new Exception(format("Reading block at height %d failed", height));
@@ -171,7 +171,7 @@ public immutable size_t ChecksumSize = 4;
 
 private struct HeightPosition
 {
-    size_t              height;
+    Height              height;
     size_t              position;
 }
 
@@ -483,7 +483,7 @@ public class BlockStorage : IBlockStorage
     }
 
     /// See `BlockStorage.tryReadBlock(ref Block, size_t)`
-    public override bool tryReadBlock (ref Block block, size_t height) @safe nothrow
+    public override bool tryReadBlock (ref Block block, Height height) @safe nothrow
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -718,7 +718,7 @@ public class BlockStorage : IBlockStorage
     ***************************************************************************/
 
     private bool saveIndex (
-        size_t height,
+        Height height,
         ubyte[Hash.sizeof] hash,
         size_t pos) @safe nothrow
     {
@@ -779,13 +779,13 @@ public class BlockStorage : IBlockStorage
             return res;
         };
 
-        size_t height, pos;
+        Height height;
+        size_t pos;
         ubyte[Hash.sizeof] hash;
         const DeserializerOptions opts = { compact: CompactMode.No };
         foreach (idx; 0 .. record_count)
         {
-
-            height = deserializeFull!size_t(dg, opts);
+            height = deserializeFull!Height(dg, opts);
             () @trusted { idx_file.rawRead(hash); }();
             pos    = deserializeFull!size_t(dg, opts);
             // add to index of heigth
@@ -1018,7 +1018,7 @@ public class MemBlockStorage : IBlockStorage
     }
 
     /// See `IBlockStorage.tryReadBlock(ref Block, size_t)`
-    public bool tryReadBlock (ref Block block, size_t height) @safe nothrow
+    public bool tryReadBlock (ref Block block, Height height) @safe nothrow
     {
         if ((this.height_idx.length == 0) ||
             (this.height_idx.back.height < height))
@@ -1094,7 +1094,7 @@ unittest
     Block[] loaded_blocks;
     loaded_blocks.length = BlockCount;
     foreach (idx; 0 .. BlockCount)
-        storage.readBlock(loaded_blocks[idx], idx);
+        storage.readBlock(loaded_blocks[idx], Height(idx));
 
     // compare
     assert(equal(blocks, loaded_blocks));
@@ -1108,7 +1108,7 @@ unittest
     Block random_block;
     foreach (height; iota(BlockCount).randomCover(rnd))
     {
-        storage.readBlock(random_block, height);
+        storage.readBlock(random_block, Height(height));
         assert(random_block.header.height == height);
     }
 
@@ -1124,10 +1124,10 @@ unittest
     const ctor_blocks = [GenesisBlock(), cast(const(Block))block_2];
     scope store = new MemBlockStorage(ctor_blocks);
     Block block;
-    assert(!store.tryReadBlock(block, 0));  // nothing loaded yet
+    assert(!store.tryReadBlock(block, Height(0)));  // nothing loaded yet
     store.load();
-    assert(store.tryReadBlock(block, 0));
+    assert(store.tryReadBlock(block, Height(0)));
     assert(block == ctor_blocks[0]);
-    assert(store.tryReadBlock(block, 1));
+    assert(store.tryReadBlock(block, Height(1)));
     assert(block == ctor_blocks[1]);
 }

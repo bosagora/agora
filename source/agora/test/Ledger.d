@@ -212,7 +212,7 @@ unittest
                 GenesisTransaction.outputs[0]
             );
             return true;
-        }, 0));
+        }, Height(0)));
 
     txs.each!(tx => node_1.putTransaction(tx));
 

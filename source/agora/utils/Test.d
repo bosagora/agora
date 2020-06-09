@@ -32,6 +32,7 @@ module agora.utils.Test;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Hash;
+import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 
@@ -323,7 +324,7 @@ unittest
     {
         return immutable(BlockHeader)(
             Hash.init,   // prev
-            0,           // height
+            Height(0),   // height
             merkle_root,
             BitField!uint.init,
             Signature.init,
