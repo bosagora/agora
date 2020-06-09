@@ -335,20 +335,22 @@ public class ValidatorSet
 
     public ulong getValidatorCount (ulong block_height) @safe nothrow
     {
-        ulong validator_count = 0;
         try
         {
-            ulong height = (block_height >= Enrollment.ValidatorCycle) ?
+            const height = (block_height >= Enrollment.ValidatorCycle) ?
                 block_height - Enrollment.ValidatorCycle + 1 : 0;
-            () @trusted {
-                validator_count = this.db.execute("SELECT count(*) FROM validator_set WHERE enrolled_height >= ?", height).oneValue!ulong;
+            return () @trusted {
+                return this.db.execute(
+                    "SELECT count(*) FROM validator_set WHERE enrolled_height >= ?",
+                    height).oneValue!ulong;
             }();
         }
         catch (Exception ex)
         {
             log.error("Database operation error {}", ex);
         }
-        return validator_count;
+
+        return 0;
     }
 
     /***************************************************************************
