@@ -19,6 +19,7 @@ version (unittest):
 import agora.common.Amount;
 import agora.common.Hash;
 import agora.consensus.data.Block;
+import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
@@ -33,8 +34,10 @@ import core.time;
 unittest
 {
     // generate 1007 blocks, 1 short of the enrollments expiring.
-    TestConf conf = { extra_blocks : 1007 };
-    auto network = makeTestNetwork(conf);
+    auto validator_cycle = 10;
+    auto params = new immutable(ConsensusParams)(validator_cycle);
+    TestConf conf = { extra_blocks : validator_cycle - 1 };
+    auto network = makeTestNetwork(conf, params);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -43,9 +46,9 @@ unittest
     auto nodes = network.clients;
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1007, 2.seconds,
+        retryFor(node.getBlockHeight() == validator_cycle - 1, 2.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1007)));
+                idx, node.getBlockHeight(), validator_cycle - 1)));
 
     // create enrollment data
     // send a request to enroll as a Validator
@@ -71,18 +74,18 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1008, 2.seconds,
+        retryFor(node.getBlockHeight() == validator_cycle, 2.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1008)));
+                idx, node.getBlockHeight(), validator_cycle)));
 
     // verify that consensus can still be reached
     txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1009, 2.seconds,
+        retryFor(node.getBlockHeight() == validator_cycle + 1, 2.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1009)));
+                idx, node.getBlockHeight(), validator_cycle + 1)));
 
     // check if nodes have a pre-image newly sent
     // during creating transactions for the new block

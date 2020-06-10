@@ -906,11 +906,12 @@ unittest
     KeyPair[] out_key_pairs_freeze;
     Transaction[] last_txs_freeze;
 
+    auto validator_cycle = 10;
     auto storage = new MemBlockStorage();
     auto pool = new TransactionPool(":memory:");
     auto utxo_set = new UTXOSet(":memory:");
     auto config = new Config();
-    auto params = new immutable(ConsensusParams)();
+    auto params = new immutable(ConsensusParams)(validator_cycle);
     auto enroll_man = new EnrollmentManager(":memory:", gen_key, params);
     config.node.is_validator = true;
     scope ledger = new Ledger(pool, utxo_set, storage, enroll_man, config.node,
@@ -1038,19 +1039,19 @@ unittest
     Enrollment enroll_1;
     enroll_1.utxo_key = utxo_hash_1;
     enroll_1.random_seed = hashFull(Scalar.random());
-    enroll_1.cycle_length = 1008;
+    enroll_1.cycle_length = validator_cycle;
     enroll_1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll_1);
 
     Enrollment enroll_2;
     enroll_2.utxo_key = utxo_hash_2;
     enroll_2.random_seed = hashFull(Scalar.random());
-    enroll_2.cycle_length = 1008;
+    enroll_2.cycle_length = validator_cycle;
     enroll_2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll_2);
 
     Enrollment enroll_3;
     enroll_3.utxo_key = utxo_hash_3;
     enroll_3.random_seed = hashFull(Scalar.random());
-    enroll_3.cycle_length = 1008;
+    enroll_3.cycle_length = validator_cycle;
     enroll_3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll_3);
 
     Enrollment[] enrollments ;
@@ -1079,11 +1080,11 @@ unittest
     enrollments.sort!("a.utxo_key < b.utxo_key");
     assert(block_4[0].header.enrollments == enrollments);
 
-    genNormalBlockTransactions(1008);
+    genNormalBlockTransactions(validator_cycle);
     Hash[] keys;
     assert(enroll_man.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
-    assert(ledger.getBlockHeight() == 1012);
+    assert(ledger.getBlockHeight() == validator_cycle + 4);
 }
 
 version (unittest)
@@ -1452,10 +1453,12 @@ unittest
 
     // block 1007 loaded: validator is still active
     {
+        auto validator_cycle = 10;
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)();
+        auto params = new immutable(ConsensusParams)(validator_cycle);
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, 1007);
+        const blocks = genBlocksToIndex(key_pair, enroll_man,
+            validator_cycle - 1);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
@@ -1469,10 +1472,11 @@ unittest
 
     // block 1008 loaded: validator is inactive
     {
+        auto validator_cycle = 20;
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)();
+        auto params = new immutable(ConsensusParams)(validator_cycle);
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        const blocks = genBlocksToIndex(key_pair, enroll_man, validator_cycle);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
