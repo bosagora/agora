@@ -277,12 +277,40 @@ public class LocalRestTaskManager : TaskManager
             dg = This delegate will be called when the timer fires.
             periodic = Specifies if the timer fires repeatedly or only once.
 
+        Return:
+           An `ITimer` interface with the ability to control the timer
+
     ***************************************************************************/
 
-    public override void setTimer (Duration timeout, void delegate() dg,
+    public override ITimer setTimer (Duration timeout, void delegate() dg,
         Periodic periodic = Periodic.No)
     {
-        geod24.LocalRest.setTimer(timeout, dg, periodic);
+        return new LocalRestTimer(geod24.LocalRest.setTimer(timeout, dg,
+            periodic));
+    }
+}
+
+/*******************************************************************************
+
+    LocalRest only timer (for unittests)
+
+*******************************************************************************/
+
+private final class LocalRestTimer : ITimer
+{
+    import LocalRest = geod24.LocalRest;
+
+    private LocalRest.Timer timer;
+
+    public this (LocalRest.Timer timer)
+    {
+        this.timer = timer;
+    }
+
+    /// Ditto
+    public override void stop ()
+    {
+        this.timer.stop();
     }
 }
 
