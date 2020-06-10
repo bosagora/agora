@@ -74,11 +74,8 @@ public extern (C++) class Nominator : SCPDriver
     private alias TimerType = Slot.timerIDs;
     static assert(TimerType.max == 1);
 
-    /// Tracks unique incremental timer IDs
-    private ulong[TimerType.max + 1] last_timer_id;
-
-    /// Timer IDs with >= of the active timer will be allowed to run
-    private ulong[TimerType.max + 1] active_timer_ids;
+    /// Currently active timers grouped by type
+    private ITimer[TimerType.max + 1] active_timers;
 
     /// Whether we're in the process of nominating
     private bool is_nominating;
@@ -518,24 +515,16 @@ extern(D):
 
         const type = cast(TimerType) timer_type;
         assert(type >= TimerType.min && type <= TimerType.max);
-        if (callback is null || timeout == 0)
+        if (auto timer = this.active_timers[type])
         {
-            // signal deactivation of all current timers with this timer type
-            this.active_timer_ids[type] = this.last_timer_id[type] + 1;
-            return;
+            timer.stop();
+            this.active_timers[type] = null;
         }
 
-        const timer_id = ++this.last_timer_id[type];
-        this.taskman.runTask(
-        {
-            this.taskman.wait(timeout.msecs);
-
-            // timer was cancelled
-            if (timer_id < this.active_timer_ids[type])
-                return;
-
-            callCPPDelegate(callback);
-        });
+        if (callback is null || timeout == 0)
+            return;
+        this.active_timers[type] = this.taskman.setTimer(
+            timeout.msecs, { callCPPDelegate(callback); });
     }
 }
 

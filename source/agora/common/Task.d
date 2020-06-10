@@ -73,14 +73,57 @@ public class TaskManager
             dg = This delegate will be called when the timer fires.
             periodic = Specifies if the timer fires repeatedly or only once.
 
+        Returns:
+            An `ITimer` interface with the ability to control the timer
+
     ***************************************************************************/
 
-    public void setTimer (Duration timeout, void delegate() dg,
+    public ITimer setTimer (Duration timeout, void delegate() dg,
         Periodic periodic = Periodic.No)
     {
         assert(dg !is null, "Cannot call this delegate if null");
-
         static import vibe.core.core;
-        vibe.core.core.setTimer(timeout, dg, periodic);
+        return new VibedTimer(vibe.core.core.setTimer(timeout, dg, periodic));
+    }
+}
+
+/*******************************************************************************
+
+    Defines an abstraction over the timer implementation
+
+*******************************************************************************/
+
+public interface ITimer
+{
+    /***************************************************************************
+
+        Stop or cancel this timer
+
+    ***************************************************************************/
+
+    public void stop ();
+}
+
+/*******************************************************************************
+
+    Vibe.d timer
+
+*******************************************************************************/
+
+private final class VibedTimer : ITimer
+{
+    static import Vibe = vibe.core.core;
+
+    private Vibe.Timer timer;
+
+    public this (Vibe.Timer timer) @safe nothrow
+    {
+        this.timer = timer;
+    }
+
+    /// Ditto
+    public override void stop () @safe nothrow
+    {
+        this.timer.stop();
     }
 }
