@@ -856,14 +856,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     size_t full_node_idx;
     size_t validator_idx;
 
-    NodeConfig makeNodeConfig (bool is_validator)
+    NodeConfig makeNodeConfig (bool is_validator, KeyPair node_key)
     {
-        KeyPair key_pair = KeyPair.random();
         Address address;
 
         if (is_validator)
             address = format("Validator #%s (%s)",
-                validator_idx++, key_pair.address.prettify);
+                validator_idx++, node_key.address.prettify);
         else
             address = format("FullNode #%s", full_node_idx++);
 
@@ -871,7 +870,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             address : address,
             is_validator : is_validator,
-            key_pair : key_pair,
+            key_pair : node_key,
             retry_delay : test_conf.retry_delay, // msecs
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
@@ -945,49 +944,49 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     final switch (test_conf.topology)
     {
     case NetworkTopology.Simple:
-        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        node_configs = iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.FindNetwork:
-        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(false)).array;
+        node_configs = iota(test_conf.nodes).map!(idx => makeNodeConfig(false, WK.Keys[idx])).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeMinimalNetwork(idx, node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.FindQuorums:
-        node_configs = iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        node_configs = iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeMinimalNetQuorum(idx, node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneNonValidator:
-        node_configs ~= iota(test_conf.nodes - 1).map!(_ => makeNodeConfig(true)).array;
-        node_configs ~= makeNodeConfig(false);
+        node_configs ~= iota(test_conf.nodes - 1).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
+        node_configs ~= makeNodeConfig(false, WK.Keys[node_configs.length]);
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneValidator:
-        node_configs ~= makeNodeConfig(true);
-        node_configs ~= iota(test_conf.nodes - 1).map!(_ => makeNodeConfig(false)).array;
+        node_configs ~= makeNodeConfig(true, WK.Keys[0]);
+        node_configs ~= iota(test_conf.nodes - 1).map!(idx => makeNodeConfig(false, WK.Keys[idx + 1])).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
 
     case NetworkTopology.OneFullNodeOutsider:
-        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        node_configs ~= iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
 
         // add one non-validator outside the network
-        node_configs ~= makeNodeConfig(false);
+        node_configs ~= makeNodeConfig(false, WK.Keys[node_configs.length]);
         configs ~= makeConfig(node_configs[$ - 1], node_configs);
         break;
 
     case NetworkTopology.TwoOutsiderValidators:
-        node_configs ~= iota(test_conf.nodes).map!(_ => makeNodeConfig(true)).array;
+        node_configs ~= iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
         configs = iota(test_conf.nodes)
             .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
         break;
@@ -1009,9 +1008,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     // add two additional validators whose enrollments are not in genesis block
     if (test_conf.topology == NetworkTopology.TwoOutsiderValidators)
     {
-        node_configs ~= makeNodeConfig(true);
+        node_configs ~= makeNodeConfig(true, WK.Keys[node_configs.length]);
         configs ~= makeConfig(node_configs[$ - 1], node_configs);
-        node_configs ~= makeNodeConfig(true);
+        node_configs ~= makeNodeConfig(true, WK.Keys[node_configs.length]);
         configs ~= makeConfig(node_configs[$ - 1], node_configs);
     }
 
