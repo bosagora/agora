@@ -148,83 +148,104 @@ unittest
     spends the entire sum of each provided transaction's output as
     set in the parameters.
 
-    If prev_txs is null, the first set of transactions that fill a block will
-    spend the genesis transaction's outputs.
 
     Params:
+        toward = address of destination to be transferred.
         prev_txs = the previous transactions to refer to
-        key_pair = the key pair used to sign transactions and to send
-                   the output to
         block_count = the number of blocks that will be created if the
-                      returned transactions are added to the ledger
-        spend_amount = the total amount to spend (evenly distributed)
-        gen_tx = the genesis transaction to refer to for the first set of
-                 transactions. If none set, the one returned by
-                 GenesisTransaction() is used.
+            returned transactions are added to the ledger
+        share = amount to be distributed to one address
+        use_remainder = whether to use the remaining amount after distribution.
+        type = type of `Transaction`
+        unknowns = unknown `KeyPair`s.
+            finds in `unknowns` first. If not, finds it in 'WK'.
+
+    Returns:
+        returns the `Transaction`.
 
 *******************************************************************************/
 
-public Transaction[] makeChainedTransactions (KeyPair key_pair,
-    const(Transaction)[] prev_txs, size_t block_count,
-    ulong spend_amount = 40_000_000, in Transaction gen_tx = GenesisTransaction)
-    @safe
+public Transaction[] makeChainedTransactions (TxRange) (
+    scope const(PublicKey)[] toward,
+    TxRange prev_txs_range,
+    scope const size_t block_count,
+    scope const Amount share = Amount.MinFreezeAmount,
+    TxType type = TxType.Payment) @safe
+    if (isInputRange!(TxRange))
 {
     import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
-    import std.conv;
 
-    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
-    const TxCount = block_count * Block.TxsInBlock;
+    // https://issues.dlang.org/show_bug.cgi?id=20937
+    const(Transaction)[] prev_txs = () @trusted { return prev_txs_range.array; }();
 
-    // in unittests we use the following blockchain layout:
-    //
-    // genesis => 8 outputs
-    // txs[0] => spend gen_tx.outputs[0]
-    // txs[1] => spend gen_tx.outputs[1]...
-    // ..
-    // tx[9] => spend tx[0].outputs[0]
-    // tx[10] => spend tx[1].outputs[0]
-    // ..
-    // tx[17] => spend tx[9].outputs[0]
-    // tx[18] => spend tx[10].outputs[0]
-    // ..
-    // therefore the genesis block and the 1st block are unique here,
-    // as the 1st block spends all the genesis outputs via separate
-    // transactions, and subsequent blocks have transactions which
-    // spend the only outputs in the transaction from the previous block
+    // The number of prev_txs must be greater than zero and
+    // less than or equal to Block.TxsInBlock.
+    assert((prev_txs.length > 0) && (prev_txs.length <= Block.TxsInBlock));
+
+    // If the number of prev_txs is less than Block.TxsInBlock,
+    // then the number of all outputs are must be greater than or equal to Block.TxsInBlock.
+    assert(
+        (prev_txs.length == Block.TxsInBlock) ||
+        (
+            (prev_txs.length < Block.TxsInBlock) &&
+            (prev_txs.map!(tx => tx.outputs.length).sum() >= Block.TxsInBlock)
+        )
+    );
 
     Transaction[] transactions;
 
-    // always use the same amount, for simplicity
-    const Amount AmountPerTx = spend_amount / Block.TxsInBlock;
-
-    foreach (idx; 0 .. TxCount)
+    if (prev_txs.length == Block.TxsInBlock)
     {
-        Input input;
-        if (prev_txs.length == 0)  // refering to genesis tx's outputs
+        foreach (block_idx; 0 .. block_count)
         {
-            input = Input(hashFull(gen_tx), idx.to!uint);
+            foreach (tx_idx; 0 .. Block.TxsInBlock)
+            {
+                transactions ~= TxBuilder(
+                    (block_idx == 0)
+                        ? prev_txs[tx_idx]
+                        : transactions[(block_idx - 1) * Block.TxsInBlock + tx_idx]
+                    )
+                    .draw(share, toward)
+                    .sign(type);
+            }
         }
-        else  // refering to tx's in the previous block
+    }
+    else
+    {
+        TxBuilder[] builders;
+        foreach (block_idx; 0 .. block_count)
         {
-            input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
-        }
+            uint[] offsets = new uint[](Block.TxsInBlock);
 
-        Transaction tx =
-        {
-            TxType.Payment,
-            [input],
-            [Output(AmountPerTx, key_pair.address)]  // send to the same address
-        };
+            int getAvableIndex (uint last)
+            {
+                foreach_reverse (idx; 0 .. last+1)
+                    if ((idx < prev_txs.length) && (offsets[idx] < prev_txs[idx].outputs.length))
+                        return idx;
+                return -1;
+            }
 
-        auto signature = () @trusted { return key_pair.secret.sign(hashFull(tx)[]); }();
-        tx.inputs[0].signature = signature;
-        transactions ~= tx;
+            // attach
+            uint loop = 0;
+            while (true)
+            {
+                auto tx_idx = loop++ % Block.TxsInBlock;
+                auto avable_idx = getAvableIndex(tx_idx);
 
-        // new transactions will refer to the just created transactions
-        // which will be part of the previous block after the block is created
-        if ((idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
-        {
+                if (avable_idx < 0)
+                    break;
+
+                if (builders.length <= tx_idx)
+                    builders ~= TxBuilder(prev_txs[avable_idx], offsets[avable_idx]);
+                else
+                    builders[tx_idx].attach(prev_txs[avable_idx], offsets[avable_idx]);
+                offsets[avable_idx]++;
+            }
+
+            assert(builders.length == Block.TxsInBlock);
+            builders.each!(b => transactions ~= b.split(toward).sign(type));
+            builders = null;
+
             // refer to tx'es which will be in the previous block
             prev_txs = transactions[$ - Block.TxsInBlock .. $];
         }
@@ -241,7 +262,8 @@ unittest
     auto gen_key = WK.Keys.Genesis;
 
     /// should spend genesis block's outputs
-    auto txes = makeChainedTransactions(gen_key, null, 1);
+    auto txes = makeChainedTransactions([WK.Keys.A.address],
+        genesisSpendable(), 1);
     foreach (idx; 0 .. Block.TxsInBlock)
     {
         assert(txes[idx].inputs.length == 1);
@@ -251,7 +273,7 @@ unittest
 
     auto prev_txs = txes;
     // should spend the previous tx'es outputs
-    txes = makeChainedTransactions(gen_key, txes, 1);
+    txes = makeChainedTransactions([WK.Keys.A.address], txes, 1);
 
     foreach (idx; 0 .. Block.TxsInBlock)
     {
@@ -260,15 +282,15 @@ unittest
         assert(txes[idx].inputs[0].previous == hashFull(prev_txs[idx]));
     }
 
-    const TotalSpend = 20_000_000;
-    txes = makeChainedTransactions(gen_key, prev_txs, 1, TotalSpend);
-    auto SpendPerTx = TotalSpend / Block.TxsInBlock;
+    const share = Amount(20_000_000);
+    txes = makeChainedTransactions([WK.Keys.A.address], prev_txs, 1, share);
+
     foreach (idx; 0 .. Block.TxsInBlock)
     {
         assert(txes[idx].inputs.length == 1);
         assert(txes[idx].inputs[0].index == 0);
         assert(txes[idx].inputs[0].previous == hashFull(prev_txs[idx]));
-        assert(txes[idx].outputs[0].value == Amount(SpendPerTx));
+        assert(txes[idx].outputs[0].value == share);
     }
 }
 
@@ -279,8 +301,9 @@ unittest
     import agora.consensus.Genesis;
 
     auto gen_key = WK.Keys.Genesis;
-    const(Transaction)[] txes = makeChainedTransactions(gen_key, null, 1);
-    txes = makeChainedTransactions(gen_key, txes, 1);
+    const(Transaction)[] txes = makeChainedTransactions([gen_key.address],
+        genesisSpendable(), 1);
+    txes = makeChainedTransactions([gen_key.address], txes, 1);
 }
 
 /// custom genesis tx
@@ -331,7 +354,8 @@ unittest
         merkle_tree.assumeUnique
     );
 
-    auto txes = makeChainedTransactions(key_pair, null, 1, 40_000_000, GenTx);
+    auto txes = makeChainedTransactions([key_pair.address],
+        [GenTx], 1, Amount.MinFreezeAmount);
     foreach (idx; 0 .. Block.TxsInBlock)
     {
         assert(txes[idx].inputs.length == 1);

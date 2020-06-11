@@ -509,12 +509,13 @@ unittest
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks[$ - 1] == GenesisBlock);
 
-    Transaction[] last_txs;
+    const(Transaction)[] last_txs = genesisSpendable().array;
 
     // generate enough transactions to form a block
     void genBlockTransactions (size_t count)
     {
-        auto txes = makeChainedTransactions(config.key_pair, last_txs, count);
+        auto txes = makeChainedTransactions([config.key_pair.address],
+            last_txs, count);
 
         foreach (idx, tx; txes)
         {
@@ -586,14 +587,17 @@ unittest
     scope ledger = new TestLedger(config);
 
     // Valid case
-    auto txs = makeChainedTransactions(config.key_pair, null, 1);
+
+    auto txs = makeChainedTransactions([config.key_pair.address],
+        genesisSpendable(), 1);
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks.length == 2);
 
     // Invalid case
-    txs = makeChainedTransactions(config.key_pair, txs, 1);
+
+    txs = makeChainedTransactions([config.key_pair.address], txs, 1);
     foreach (ref tx; txs)
     {
         foreach (ref output; tx.outputs)
@@ -619,8 +623,8 @@ unittest
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
 
-    auto txs = makeChainedTransactions(config.key_pair, null, 1);
-
+    auto txs = makeChainedTransactions([config.key_pair.address],
+        genesisSpendable(), 1);
     auto valid_block = makeNewBlock(GenesisBlock, txs);
     assert(ledger.acceptBlock(valid_block));
 }
@@ -634,7 +638,8 @@ unittest
     };
     scope ledger = new TestLedger(config);
 
-    auto txs = makeChainedTransactions(config.key_pair, null, 1);
+    auto txs = makeChainedTransactions([config.key_pair.address],
+        genesisSpendable(), 1);
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
 
@@ -694,7 +699,8 @@ unittest
     // TODO: Make this more than one block (e.g. 5)
     //       Currently due to the design of `makeChainedTransactions`,
     //       we can't do that.
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = makeChainedTransactions([WK.Keys.Genesis.address],
+        genesisSpendable(), 1);
     // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
     const(Block)[] blocks = [ GenesisBlock() ];
     blocks ~= makeNewBlock(GenesisBlock, txs);
@@ -725,67 +731,6 @@ unittest
     }
 }
 
-version (unittest)
-private Transaction[] makeTransactionForFreezing (
-    const(KeyPair)[] in_key_pair,
-    KeyPair[] out_key_pair,
-    TxType tx_type,
-    Transaction[] prev_txs,
-    const Transaction default_tx)
-{
-    import std.conv;
-
-    assert(in_key_pair.length == Block.TxsInBlock);
-    assert(out_key_pair.length == Block.TxsInBlock);
-
-    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
-    const TxCount = Block.TxsInBlock;
-
-    Transaction[] transactions;
-
-    // always use the same amount, for simplicity
-    const Amount AmountPerTx = Amount.MinFreezeAmount;
-
-    foreach (idx; 0 .. TxCount)
-    {
-        Input input;
-        if (prev_txs.length == 0)  // refering to genesis tx's outputs
-            input = Input(hashFull(default_tx), idx.to!uint);
-        else  // refering to tx's in the previous block
-            input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
-
-        Transaction tx =
-        {
-            tx_type,
-            [input],
-            [Output(AmountPerTx, out_key_pair[idx % Block.TxsInBlock].address)]  // send to the same address
-        };
-
-        auto signature = in_key_pair[idx % Block.TxsInBlock].secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        transactions ~= tx;
-
-        // new transactions will refer to the just created transactions
-        // which will be part of the previous block after the block is created
-        if (Block.TxsInBlock == 1 ||  // special case
-            (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
-        {
-            // refer to tx'es which will be in the previous block
-            prev_txs = transactions[$ - Block.TxsInBlock .. $];
-        }
-    }
-    return transactions;
-}
-
-version (unittest)
-private KeyPair[] getRandomKeyPairs ()
-{
-    KeyPair[] res;
-    foreach (idx; 0 .. Block.TxsInBlock)
-        res ~= KeyPair.random;
-    return res;
-}
-
 // Use a transaction with the type 'TxType.Freeze' to create a block and test UTXOSet.
 unittest
 {
@@ -795,24 +740,16 @@ unittest
     };
     scope ledger = new TestLedger(config);
 
-    const(KeyPair)[] in_key_pairs =
-        iota(Block.TxsInBlock).map!(_ => WK.Keys.Genesis).array();
-    KeyPair[] out_key_pairs;
-    Transaction[] last_txs;
-
-    out_key_pairs = getRandomKeyPairs();
+    const(Transaction)[] last_txs = genesisSpendable().array;
 
     // generate transactions to form a block
     void genBlockTransactions (size_t count, TxType tx_type)
     {
         foreach (idx; 0 .. count)
         {
-            auto txes = makeTransactionForFreezing (
-                in_key_pairs,
-                out_key_pairs,
-                tx_type,
-                last_txs,
-                GenesisTransaction);
+            auto txes = makeChainedTransactions (
+                [WK.Keys.A.address], last_txs, 1,
+                Amount.MinFreezeAmount, tx_type);
 
             txes.each!((tx)
                 {
@@ -822,9 +759,6 @@ unittest
 
             // keep track of last tx's to chain them to
             last_txs = txes[$ - Block.TxsInBlock .. $];
-
-            in_key_pairs = out_key_pairs;
-            out_key_pairs = getRandomKeyPairs();
         }
     }
 
@@ -856,45 +790,38 @@ unittest
     };
     scope ledger = new TestLedger(config, null, params);
 
-    KeyPair[] splited_keys = getRandomKeyPairs();
-    KeyPair[] in_key_pairs_normal;
-    KeyPair[] out_key_pairs_normal;
     Transaction[] last_txs_normal;
-    KeyPair[] in_key_pairs_freeze;
-    KeyPair[] out_key_pairs_freeze;
     Transaction[] last_txs_freeze;
+    KeyPair[] key_pairs_normal = [WK.Keys.A, WK.Keys.B, WK.Keys.C];
+    KeyPair[] key_pairs_freeze = [WK.Keys.H, WK.Keys.I, WK.Keys.J];
 
-    Transaction[] splited_txex;
-    // Divide 8 'Outputs' that are included in Genesis Block by 40,000
-    // It generates eight addresses and eight transactions,
-    // and one transaction has eight Outputs with a value of 40,000 values.
+    auto toward = iota(Block.TxsInBlock)
+        .map!(idx => WK.Keys[idx].address)
+        .array;
+
     void splitGenesis ()
     {
-        splited_txex = splitGenesisTransaction(splited_keys);
+
+        auto splited_txex = makeChainedTransactions (
+            toward, genesisSpendable(), 1);
         splited_txex.each!((tx)
         {
             assert(ledger.acceptTransaction(tx));
         });
         ledger.forceCreateBlock();
+        last_txs_normal = [splited_txex[0]];
+        last_txs_freeze = [splited_txex[1]];
     }
-
-    in_key_pairs_normal.length = 0;
-    foreach (idx; 0 .. Block.TxsInBlock)
-        in_key_pairs_normal ~= splited_keys[0];
-
-    out_key_pairs_normal = getRandomKeyPairs();
 
     // generate nomal transactions to form a block
     void genNormalBlockTransactions (size_t count, bool is_valid = true)
     {
         foreach (idx; 0 .. count)
         {
-            auto txes = makeTransactionForFreezing (
-                in_key_pairs_normal,
-                out_key_pairs_normal,
-                TxType.Payment,
-                last_txs_normal,
-                splited_txex[0]);
+            auto txes = makeChainedTransactions (
+                key_pairs_normal.map!(k => k.address).array,
+                last_txs_normal, 1,
+                Amount.MinFreezeAmount, TxType.Payment);
 
             txes.each!((tx)
                 {
@@ -906,30 +833,20 @@ unittest
             {
                 // keep track of last tx's to chain them to
                 last_txs_normal = txes[$ - Block.TxsInBlock .. $];
-
-                in_key_pairs_normal = out_key_pairs_normal;
-                out_key_pairs_normal = getRandomKeyPairs();
             }
         }
     }
 
-    in_key_pairs_freeze.length = 0;
-    foreach (idx; 0 .. Block.TxsInBlock)
-        in_key_pairs_freeze ~= splited_keys[1];
-
-    out_key_pairs_freeze = getRandomKeyPairs();
 
     // generate freezing transactions to form a block
     void genBlockTransactionsFreeze (size_t count, TxType tx_type, bool is_valid = true)
     {
         foreach (idx; 0 .. count)
         {
-            auto txes = makeTransactionForFreezing (
-                in_key_pairs_freeze,
-                out_key_pairs_freeze,
-                tx_type,
-                last_txs_freeze,
-                splited_txex[1]);
+            auto txes = makeChainedTransactions (
+                key_pairs_freeze.map!(k => k.address).array,
+                last_txs_freeze, 1,
+                Amount.MinFreezeAmount, tx_type);
 
             txes.each!((tx)
                 {
@@ -941,9 +858,6 @@ unittest
             {
                 // keep track of last tx's to chain them to
                 last_txs_freeze = txes[$ - Block.TxsInBlock .. $];
-
-                in_key_pairs_freeze = out_key_pairs_freeze;
-                out_key_pairs_freeze = getRandomKeyPairs();
             }
         }
     }
@@ -959,28 +873,21 @@ unittest
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
 
-    // make enrollments
-    KeyPair[] enroll_key_pair;
-    foreach (txid, tx; blocks[3].txs)
-        foreach (key_pair; in_key_pairs_freeze)
-            if (tx.outputs[0].address == key_pair.address)
-                enroll_key_pair ~= key_pair;
-
-    auto utxo_hash_1 = UTXOSetValue.getHash(hashFull(blocks[3].txs[0]),0);
-    auto utxo_hash_2 = UTXOSetValue.getHash(hashFull(blocks[3].txs[1]),0);
-    auto utxo_hash_3 = UTXOSetValue.getHash(hashFull(blocks[3].txs[2]),0);
+    auto utxo_hash_1 = UTXOSetValue.getHash(hashFull(blocks[3].txs[0]), 0);
+    auto utxo_hash_2 = UTXOSetValue.getHash(hashFull(blocks[3].txs[0]), 1);
+    auto utxo_hash_3 = UTXOSetValue.getHash(hashFull(blocks[3].txs[0]), 2);
 
     Pair signature_noise = Pair.random;
     Pair node_key_pair_1;
-    node_key_pair_1.v = secretKeyToCurveScalar(enroll_key_pair[0].secret);
+    node_key_pair_1.v = secretKeyToCurveScalar(key_pairs_freeze[0].secret);
     node_key_pair_1.V = node_key_pair_1.v.toPoint();
 
     Pair node_key_pair_2;
-    node_key_pair_2.v = secretKeyToCurveScalar(enroll_key_pair[1].secret);
+    node_key_pair_2.v = secretKeyToCurveScalar(key_pairs_freeze[1].secret);
     node_key_pair_2.V = node_key_pair_2.v.toPoint();
 
     Pair node_key_pair_3;
-    node_key_pair_3.v = secretKeyToCurveScalar(enroll_key_pair[2].secret);
+    node_key_pair_3.v = secretKeyToCurveScalar(key_pairs_freeze[2].secret);
     node_key_pair_3.V = node_key_pair_3.v.toPoint();
 
     Enrollment enroll_1;
@@ -1034,26 +941,6 @@ unittest
     assert(ledger.getBlockHeight() == validator_cycle + 4);
 }
 
-version (unittest)
-private Transaction[] splitGenesisTransaction (
-    KeyPair[] out_key, Amount amount = Amount.MinFreezeAmount)
-{
-    Transaction[] txes;
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        Transaction tx = {TxType.Payment, [], []};
-        tx.inputs ~= Input(hashFull(GenesisTransaction), idx);
-        foreach (idx2; 0 .. Block.TxsInBlock)
-            tx.outputs ~= Output(amount, out_key[idx].address);
-
-        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        txes ~= tx;
-    }
-
-    return txes;
-}
-
 /// Test validation of transactions associated with freezing
 ///
 /// Table of freezing status changes over time
@@ -1076,88 +963,59 @@ unittest
     };
     scope ledger = new TestLedger(config);
 
-    KeyPair[] splited_keys = getRandomKeyPairs();
+    KeyPair[] splited_keys =
+        iota(Block.TxsInBlock).map!(idx => WK.Keys[idx]).array;
 
-    Transaction[] splited_txex;
+    Transaction[] last_txs_normal;
+    Transaction[] last_txs_freeze;
 
     // Divide 8 'Outputs' that are included in Genesis Block by 40,000
     // It generates eight addresses and eight transactions,
     // and one transaction has eight Outputs with a value of 40,000 values.
     void splitGenesis ()
     {
-        splited_txex = splitGenesisTransaction(splited_keys);
-        splited_txex.each!((tx)
+        auto targets = splited_keys.map!(kp => kp.address).array;
+        Transaction[] splited_txex;
+        foreach (idx; 0 .. Block.TxsInBlock)
         {
-            assert(ledger.acceptTransaction(tx));
-        });
+            splited_txex ~= TxBuilder(genesisSpendable.front, idx)
+            .draw(Amount.MinFreezeAmount, iota(Block.TxsInBlock).map!(_ => targets[idx]).array)
+            .sign();
+        }
+        splited_txex.each!(tx => assert(ledger.acceptTransaction(tx)));
         ledger.forceCreateBlock();
+        last_txs_normal = [splited_txex[0]];
+        last_txs_freeze = [splited_txex[1]];
     }
-
-    KeyPair[] in_key_pairs_normal;
-    KeyPair[] out_key_pairs_normal;
-    Transaction[] last_txs_normal;
-
-    in_key_pairs_normal.length = 0;
-    foreach (idx; 0 .. Block.TxsInBlock)
-        in_key_pairs_normal ~= splited_keys[0];
-
-    out_key_pairs_normal = getRandomKeyPairs();
 
     // generate nomal transactions to form a block
     void genNormalBlockTransactions (size_t count, bool is_valid = true)
     {
         foreach (idx; 0 .. count)
         {
-            auto txes = makeTransactionForFreezing (
-                in_key_pairs_normal,
-                out_key_pairs_normal,
-                TxType.Payment,
-                last_txs_normal,
-                splited_txex[0]);
+            auto txes = makeChainedTransactions([splited_keys[0].address],
+                last_txs_normal, 1, Amount.MinFreezeAmount, TxType.Payment);
 
-            txes.each!((tx)
-                {
-                    assert(ledger.acceptTransaction(tx) == is_valid);
-                });
+            txes.each!(tx => assert(ledger.acceptTransaction(tx) == is_valid));
             ledger.forceCreateBlock();
 
             if (is_valid)
             {
                 // keep track of last tx's to chain them to
                 last_txs_normal = txes[$ - Block.TxsInBlock .. $];
-
-                in_key_pairs_normal = out_key_pairs_normal;
-                out_key_pairs_normal = getRandomKeyPairs();
             }
         }
     }
-
-    KeyPair[] in_key_pairs_freeze;
-    KeyPair[] out_key_pairs_freeze;
-    Transaction[] last_txs_freeze;
-
-    in_key_pairs_freeze.length = 0;
-    foreach (idx; 0 .. Block.TxsInBlock)
-        in_key_pairs_freeze ~= splited_keys[1];
-
-    out_key_pairs_freeze = getRandomKeyPairs();
 
     // generate freezing transactions to form a block
     void genBlockTransactionsFreeze (size_t count, TxType tx_type, bool is_valid = true)
     {
         foreach (idx; 0 .. count)
         {
-            auto txes = makeTransactionForFreezing (
-                in_key_pairs_freeze,
-                out_key_pairs_freeze,
-                tx_type,
-                last_txs_freeze,
-                splited_txex[1]);
+            auto txes = makeChainedTransactions([splited_keys[1].address],
+                last_txs_freeze, 1, Amount.MinFreezeAmount, tx_type);
 
-            txes.each!((tx)
-                {
-                    assert(ledger.acceptTransaction(tx) == is_valid);
-                });
+            txes.each!(tx => assert(ledger.acceptTransaction(tx) == is_valid));
 
             if (is_valid)
             {
@@ -1165,9 +1023,6 @@ unittest
 
                 // keep track of last tx's to chain them to
                 last_txs_freeze = txes[$ - Block.TxsInBlock .. $];
-
-                in_key_pairs_freeze = out_key_pairs_freeze;
-                out_key_pairs_freeze = getRandomKeyPairs();
             }
         }
     }
@@ -1356,11 +1211,10 @@ unittest
 
         const(Block)[] blocks = [genesis];
 
-        const(Transaction)[] prev_txs;
+        const(Transaction)[] prev_txs = genesisSpendable().array;
         foreach (_; 0 .. count)
         {
-            auto txs = makeChainedTransactions(WK.Keys.Genesis,
-                prev_txs, 1);
+            auto txs = makeChainedTransactions([WK.Keys.A.address], prev_txs, 1);
 
             const NoEnrollments = null;
             blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);

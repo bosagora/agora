@@ -46,7 +46,8 @@ unittest
     nodes[0].filter!(API.getBlockHeight);
     nodes[1].filter!(API.getBlockHeight);
 
-    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txes = makeChainedTransactions([WK.Keys.Genesis.address],
+        genesisSpendable(), 1);
     txes.each!(tx => node_1.putTransaction(tx));
 
     nodes[0].clearFilter();
@@ -74,15 +75,15 @@ unittest
             uint max_blocks)
         {
             Block[] blocks;
-            Transaction[] last_tx;
-
-            auto prev_key = () @trusted { return KeyPair.random(); }();
+            // https://issues.dlang.org/show_bug.cgi?id=20937
+            const(Transaction)[] last_tx =
+                () @trusted { return genesisSpendable().array; }();
 
             Block last_block;
             // make 20 blocks which have an invalid previous hash
             foreach (idx; 0 .. 20)
             {
-                auto txs = makeChainedTransactions(prev_key, last_tx, 1);
+                auto txs = makeChainedTransactions([WK.Keys.A.address], last_tx, 1);
                 last_tx = txs;
                 auto block = makeNewBlock(last_block, txs);
 
@@ -154,11 +155,12 @@ unittest
     node_test.filter!(API.putTransaction);
 
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
-    Transaction[] last_txs;
+    const(Transaction)[] last_txs = genesisSpendable().array;
     foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
-        auto txs = makeChainedTransactions(WK.Keys.Genesis, last_txs, 1);
+        auto txs = makeChainedTransactions([WK.Keys.Genesis.address],
+            last_txs, 1);
 
         // send it to one node
         txs.each!(tx => node_validator.putTransaction(tx));

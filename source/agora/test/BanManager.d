@@ -51,12 +51,13 @@ unittest
     auto gen_key = WK.Keys.Genesis;
 
     Transaction[] all_txs;
-    Transaction[] last_txs;
+    const(Transaction)[] last_txs = genesisSpendable().array;
 
     // generate enough transactions to form 'count' blocks
     Transaction[] genBlockTransactions (size_t count)
     {
-        auto txes = makeChainedTransactions(gen_key, last_txs, count);
+        auto txes = makeChainedTransactions([WK.Keys.A.address],
+            last_txs, count);
         // keep track of last tx's to chain them to
         last_txs = txes[$ - Block.TxsInBlock .. $];
         all_txs ~= txes;

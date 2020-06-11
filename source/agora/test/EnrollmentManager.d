@@ -69,7 +69,7 @@ unittest
                  node.getEnrollment(enroll_3.utxo_key) == enroll_3,
             5.seconds));
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis,
+    auto txs = makeChainedTransactions([WK.Keys.Genesis.address],
         network.blocks[$ - 1].txs, 1);
     txs.each!(tx => nodes[0].putTransaction(tx));
 
@@ -79,7 +79,7 @@ unittest
                 idx, node.getBlockHeight(), validator_cycle)));
 
     // verify that consensus can still be reached
-    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    txs = makeChainedTransactions([WK.Keys.Genesis.address], txs, 1);
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     nodes.enumerate.each!((idx, node) =>

@@ -43,7 +43,8 @@ unittest
     // reject inbound requests
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txes = makeChainedTransactions([WK.Keys.Genesis.address],
+        genesisSpendable(), 1);
 
     // node 1 will keep trying to send transactions up to
     // (max_retries * retry_delay) seconds (see Base.d)
@@ -76,7 +77,7 @@ unittest
     const DropRequests = true;
     nodes[1 .. $].each!(node => node.sleep(100.msecs, DropRequests));
 
-    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txes = makeChainedTransactions([WK.Keys.Genesis.address], genesisSpendable(), 1);
 
     txes.each!(tx => node_1.putTransaction(tx));
 

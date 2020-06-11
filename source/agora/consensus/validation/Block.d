@@ -402,7 +402,8 @@ unittest
     auto gen_hash = GenesisBlock.header.hashFull();
 
     utxos.put(GenesisTransaction);
-    auto block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
+    auto block = GenesisBlock.makeNewBlock(
+        makeChainedTransactions([WK.Keys.A.address], genesisSpendable(), 1));
 
     // height check
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
@@ -453,7 +454,8 @@ unittest
     prev_txs.each!(tx => utxos.put(tx));  // these will be spent
 
     auto prev_block = block;
-    block = block.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
+    block = block.makeNewBlock(
+        makeChainedTransactions([WK.Keys.A.address], prev_txs, 1));
     assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
         findUTXO));
 
@@ -501,7 +503,8 @@ unittest
     };
 
     // consumed all utxo => fail
-    block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
+    block = GenesisBlock.makeNewBlock(
+        makeChainedTransactions([WK.Keys.A.address], genesisSpendable(), 1));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));
 
@@ -520,7 +523,8 @@ unittest
     // we stopped validation due to a double-spend
     assert(used_set.length == double_spend.length - 1);
 
-    block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
+    block = GenesisBlock.makeNewBlock(
+        makeChainedTransactions([WK.Keys.A.address], prev_txs, 1));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
@@ -538,7 +542,7 @@ unittest
 
     // txs with a different amount
     block = GenesisBlock.makeNewBlock(
-        makeChainedTransactions(gen_key, prev_txs, 1, 20_000_000));
+        makeChainedTransactions([WK.Keys.A.address, WK.Keys[1].address], prev_txs, 1));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO));
 
@@ -567,8 +571,8 @@ unittest
     foreach (ref tx; GenesisBlock.txs)
         utxo_set.put(tx);
 
-    auto txs_1 = makeChainedTransactions(gen_key, null, 1,
-        400_000_000_000 * Block.TxsInBlock).sort.array;
+    auto txs_1 = makeChainedTransactions(
+        [gen_key.address], genesisSpendable(), 1, Amount.MinFreezeAmount).sort.array;
 
     auto block1 = makeNewBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO));

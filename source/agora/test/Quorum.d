@@ -56,38 +56,20 @@ unittest
 
     Transaction makePayTx (in Transaction prev, PublicKey[] addresses, uint index = 0)
     {
-        auto input = Input(hashFull(prev), index);
-
-        Transaction tx =
-        {
-            TxType.Payment,
-            [input],
-            addresses.map!(addr => Output(Amount.MinFreezeAmount, addr)).array
-        };
-
-        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        return tx;
+        return TxBuilder(prev, index)
+            .split(addresses)
+            .sign(TxType.Payment);
     }
 
     Transaction makeFreezeTransaction (in Transaction prev, PublicKey address)
     {
-        auto input = Input(hashFull(prev), 0);
-
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, address)]
-        };
-
-        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        return tx;
+        return TxBuilder(prev, 0)
+            .draw(Amount.MinFreezeAmount, [address])
+            .sign(TxType.Freeze);
     }
 
     // create block with 6 payment and 2 freeze tx's
-    auto txs = makeChainedTransactions(WK.Keys.Genesis,
+    auto txs = makeChainedTransactions([WK.Keys.Genesis.address],
         network.blocks[$ - 1].txs, 1);
 
     // rewrite 3rd to last tx to multiple outputs so we can create 8 spend tx's
@@ -121,7 +103,7 @@ unittest
                  node.getEnrollment(enroll_1.utxo_key) == enroll_1,
             5.seconds));
 
-    auto new_txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    auto new_txs = makeChainedTransactions([WK.Keys.Genesis.address], txs, 1);
     // the last 3 tx's must refer to the outputs in txs[$ - 3] before
     new_txs[$ - 3] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 0);
     new_txs[$ - 2] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 1);
@@ -138,7 +120,7 @@ unittest
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
 
     // verify that consensus can still be reached by the leftover validators
-    txs = makeChainedTransactions(WK.Keys.Genesis, new_txs, 1);
+    txs = makeChainedTransactions([WK.Keys.Genesis.address], new_txs, 1);
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
     nodes[$ - 2 .. $].enumerate.each!((idx, node) =>

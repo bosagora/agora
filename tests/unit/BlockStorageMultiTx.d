@@ -25,6 +25,7 @@ import agora.node.BlockStorage;
 import agora.utils.Test;
 
 import std.algorithm.comparison;
+import std.array;
 import std.file;
 import std.path;
 
@@ -44,14 +45,11 @@ private void main ()
     const(Block)[] blocks;
     blocks ~= GenesisBlock;
 
-    // We can use a random keypair because blocks are not validated
-    auto gen_key_pair = KeyPair.random();
-
-    Transaction[] last_txs;
+    const(Transaction)[] last_txs = genesisSpendable().array;
     foreach (block_idx; 0 .. BlockCount)
     {
         // create enough tx's for a single block
-        auto txs = makeChainedTransactions(gen_key_pair, last_txs, 1);
+        auto txs = makeChainedTransactions([WK.Keys.Genesis.address], last_txs, 1);
 
         auto block = makeNewBlock(blocks[$ - 1], txs, null);
         storage.saveBlock(block);

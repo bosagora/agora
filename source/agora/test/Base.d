@@ -1187,12 +1187,12 @@ private immutable(Block)[] generateBlocks (
     if (count == 0)
         return blocks.assumeUnique;  // just the genesis block
 
-    const(Transaction)[] prev_txs;
+    const(Transaction)[] prev_txs = genesisSpendable().array;
     foreach (_; 0 .. count)
     {
         // 10x more than MinFreezeAmount so we can split it to multiple freezes later
-        auto txs = makeChainedTransactions(WK.Keys.Genesis,
-            prev_txs, 1, 4_000_000_000_000 * Block.TxsInBlock);
+        auto txs = makeChainedTransactions([WK.Keys.Genesis.address], prev_txs,
+            1, Amount(4_000_000_000_000));
 
         const NoEnrollments = null;
         blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);

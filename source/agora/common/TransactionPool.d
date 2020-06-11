@@ -319,11 +319,18 @@ public class TransactionPool
 /// hasTransactionHash tests
 unittest
 {
+    import agora.consensus.data.Block;
     import agora.consensus.Genesis;
 
     auto pool = new TransactionPool(":memory:");
-    auto gen_key = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    Transaction[] txs = [
+        TxBuilder(GenesisBlock.txs[0])
+            .split(WK.Keys.byRange.map!(v => v.address).array)
+            .sign()
+    ];
+    // Just dummy transactions that self-pay
+    foreach (count; 0 .. Block.TxsInBlock)
+        txs ~= TxBuilder(txs[0], count).sign();
 
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);
@@ -360,8 +367,8 @@ unittest
     import std.exception;
 
     auto pool = new TransactionPool(":memory:");
-    auto gen_key = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto txs = makeChainedTransactions([WK.Keys.A.address],
+        genesisSpendable(), 1);
 
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);
@@ -391,8 +398,8 @@ unittest
     import core.memory;
 
     auto pool = new TransactionPool(":memory:");
-    auto gen_key = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto txs = makeChainedTransactions([WK.Keys.A.address],
+        genesisSpendable(), 1);
 
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);

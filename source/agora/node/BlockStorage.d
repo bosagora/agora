@@ -1057,8 +1057,9 @@ unittest
     import agora.common.crypto.Key;
     import agora.consensus.data.Transaction;
     import agora.consensus.Genesis;
-    import std.algorithm.comparison;
     import agora.utils.Test;
+    import std.algorithm.comparison;
+    import std.range;
 
     const size_t BlockCount = 50;
     MemBlockStorage storage = new MemBlockStorage();
@@ -1070,13 +1071,13 @@ unittest
     blocks ~= GenesisBlock;
     storage.saveBlock(GenesisBlock);
     block_hashes ~= hashFull(GenesisBlock.header);
-    Transaction[] last_txs;
+    const(Transaction)[] last_txs = genesisSpendable().array;
 
     void genBlocks (size_t count)
     {
         while (--count)
         {
-            auto txs = makeChainedTransactions(gen_key_pair, last_txs, 1);
+            auto txs = makeChainedTransactions([WK.Keys.A.address], last_txs, 1);
             auto block = makeNewBlock(blocks[$ - 1], txs);
             last_txs = txs;
 
@@ -1117,7 +1118,8 @@ unittest
     }
 
     // test loading in constructor
-    auto txs_1 = makeChainedTransactions(gen_key_pair, null, 1);
+    auto txs_1 = makeChainedTransactions([WK.Keys.A.address],
+        genesisSpendable(), 1);
     auto block_2 = makeNewBlock(GenesisBlock(), txs_1);
     const ctor_blocks = [GenesisBlock(), cast(const(Block))block_2];
     scope store = new MemBlockStorage(ctor_blocks);
