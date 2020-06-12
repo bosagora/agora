@@ -128,6 +128,9 @@ public struct NodeConfig
 
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir = "/var/lib/agora/";
+
+    /// The cycle length for a validator
+    public uint validator_cycle = 1008;
 }
 
 /// Admin API config
@@ -291,6 +294,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
 
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
+    auto validator_cycle = get!(uint, "node", "validator_cycle")(cmdln, node);
 
     NodeConfig makeConf (KeyPair key_pair)
     {
@@ -306,6 +310,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             max_retries : max_retries,
             timeout : timeout,
             data_dir : data_dir,
+            validator_cycle : validator_cycle,
         };
         return r;
     }
