@@ -422,7 +422,7 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     else static if (is(T : E[N], E, size_t N))
     {
         foreach (ref elem; record)
-            serializePart(elem, dg);
+            serializePart(elem, dg, compact);
     }
 
     // Strings can be encoded as binary data
@@ -444,7 +444,7 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     {
         toVarInt(record.length, dg);
         foreach (const ref entry; record)
-            entry.serializePart(dg);
+            entry.serializePart(dg, compact);
     }
 
     // Pointers are handled as arrays, only their size must be 0 or 1
@@ -455,7 +455,7 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
         else
         {
             toVarInt(uint(1), dg);
-            serializePart(*record, dg);
+            serializePart(*record, dg, compact);
         }
     }
 
@@ -478,10 +478,19 @@ public void serializePart (T) (scope const auto ref T record, scope SerializeDg 
     // Recursively serialize fields for structs
     else static if (is(T == struct))
         foreach (const ref field; record.tupleof)
-            serializePart(field, dg);
+            serializePart(field, dg, compact);
 
     else
         static assert(0, "Unhandled type: " ~ T.stringof);
+}
+
+unittest
+{
+    static struct Record { ulong a; }
+    ubyte[][2] stores;
+    serializePart(Record(42), (scope const(ubyte)[] arg) { stores[0] ~= arg; }, CompactMode.No);
+    serializePart(ulong(42),  (scope const(ubyte)[] arg) { stores[1] ~= arg; }, CompactMode.No);
+    assert(stores[0] == stores[1]);
 }
 
 /// Options that configure the behavior of the deserializer
