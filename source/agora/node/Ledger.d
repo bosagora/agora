@@ -584,14 +584,6 @@ unittest
 
     // Valid case
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
-    foreach (ref tx; txs)
-    {
-        foreach (ref output; tx.outputs)
-            output.value = Amount(1_000_000L);
-        foreach (ref input; tx.inputs)
-            input.signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-    }
-
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
