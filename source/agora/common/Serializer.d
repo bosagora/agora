@@ -516,7 +516,7 @@ public struct DeserializerOptions
 
 *******************************************************************************/
 
-public enum DefaultMaxLength = 0x09D0;
+public enum DefaultMaxLength = 0x39D0;
 
 /*******************************************************************************
 
@@ -740,7 +740,7 @@ unittest
     import std.exception;
 
     static struct Bomb { ubyte[] data; }
-    ushort length = 0x2000;
+    ushort length = 0xFF_00;
     ubyte[16192] bomb;
     bomb[0] = 0xFD;
     bomb[1 .. 3] = (cast(ubyte*)&length)[0 .. ushort.sizeof];
