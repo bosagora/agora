@@ -816,9 +816,6 @@ public struct TestConf
 
     /// max listener nodes. If set to 0, set to this.nodes - 1
     size_t max_listeners;
-
-    /// The threshold. If not set, it will default to the number of nodes
-    size_t threshold;
 }
 
 /*******************************************************************************
