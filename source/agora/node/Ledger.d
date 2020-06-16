@@ -777,15 +777,6 @@ private Transaction[] makeTransactionForFreezing (
 }
 
 version (unittest)
-private KeyPair[] getGenKeyPairs ()
-{
-    KeyPair[] res;
-    foreach (idx; 0 .. Block.TxsInBlock)
-        res ~= getGenesisKeyPair();
-    return res;
-}
-
-version (unittest)
 private KeyPair[] getRandomKeyPairs ()
 {
     KeyPair[] res;
@@ -803,11 +794,11 @@ unittest
     };
     scope ledger = new TestLedger(config);
 
-    KeyPair[] in_key_pairs;
+    KeyPair[] in_key_pairs =
+        iota(Block.TxsInBlock).map!(_ => getGenesisKeyPair()).array();
     KeyPair[] out_key_pairs;
     Transaction[] last_txs;
 
-    in_key_pairs = getGenKeyPairs();
     out_key_pairs = getRandomKeyPairs();
 
     // generate transactions to form a block
