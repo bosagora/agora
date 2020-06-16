@@ -686,42 +686,43 @@ unittest
     assert(merkle_path.length == 0);
 }
 
-/// test that the UTXO set is rebuilt if it's empty when the block storage has blocks
+/// Situation: Ledger is constructed with blocks present in storage
+/// Expectation: The UTXOSet is populated with all up-to-date UTXOs
 unittest
 {
-    auto gen_key = getGenesisKeyPair();
-    auto storage = new MemBlockStorage();
-    storage.load();
+    // Make a block to put in storage
+    // TODO: Make this more than one block (e.g. 5)
+    //       Currently due to the design of `makeChainedTransactions`,
+    //       we can't do that.
+    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+    // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
+    const(Block)[] blocks = [ GenesisBlock() ];
+    blocks ~= makeNewBlock(GenesisBlock, txs);
 
-    // First block
-    auto txs = makeChainedTransactions(gen_key, null, 1);
-    auto block = makeNewBlock(GenesisBlock, txs);
-    assert(storage.saveBlock(block));
+    // And provide it to the ledger
+    NodeConfig config = {
+        is_validator: true,
+        key_pair:     getGenesisKeyPair(),
+    };
+    scope ledger = new TestLedger(config, blocks);
 
-    auto pool = new TransactionPool(":memory:");
-    auto utxo_set = new UTXOSet(":memory:");
-    auto config = new Config();
-    auto params = new immutable(ConsensusParams)();
-    auto enroll_man = new EnrollmentManager(":memory:", gen_key, params);
-    config.node.is_validator = true;
-    scope ledger = new Ledger(config.node, params, utxo_set, storage,
-                              enroll_man, pool);
+    assert(ledger.utxo_set.length == 8);
 
-    assert(utxo_set.length == 8);
-    auto finder = utxo_set.getUTXOFinder();
-    auto new_txs = makeChainedTransactions(gen_key, txs, 1);
-
-    assert(new_txs.length > 0);
-    UTXOSetValue _val;
-    new_txs.each!(tx => assert(finder(tx.inputs[0].previous, tx.inputs[0].index,
-        _val)));
-
-    auto findUTXO = utxo_set.getUTXOFinder();
-    Transaction find_tx = new_txs[0];
-    Hash utxo_hash = UTXOSetValue.getHash(find_tx.inputs[0].previous,
-        find_tx.inputs[0].index);
-    UTXOSetValue value;
-    assert(findUTXO(utxo_hash, size_t.max, value));
+    // Ensure that all previously-generated outputs are in the UTXO set
+    {
+        auto findUTXO = ledger.utxo_set.getUTXOFinder();
+        UTXOSetValue utxo;
+        assert(
+            txs.all!(
+                tx => iota(tx.outputs.length).all!(
+                    (idx) {
+                        return findUTXO(tx.hashFull(), idx, utxo) &&
+                            utxo.output == tx.outputs[idx];
+                    }
+                )
+            )
+        );
+    }
 }
 
 version (unittest)
