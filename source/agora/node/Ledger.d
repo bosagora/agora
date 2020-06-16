@@ -878,7 +878,7 @@ unittest
     // and one transaction has eight Outputs with a value of 40,000 values.
     void splitGenesis ()
     {
-        splited_txex = splitGenesisTransaction(getGenKeyPairs(), splited_keys);
+        splited_txex = splitGenesisTransaction(splited_keys);
         splited_txex.each!((tx)
         {
             assert(ledger.acceptTransaction(tx));
@@ -1044,7 +1044,6 @@ unittest
 
 version (unittest)
 private Transaction[] splitGenesisTransaction (
-    KeyPair[] in_key,
     KeyPair[] out_key, Amount amount = Amount.MinFreezeAmount)
 {
     Transaction[] txes;
@@ -1055,7 +1054,7 @@ private Transaction[] splitGenesisTransaction (
         foreach (idx2; 0 .. Block.TxsInBlock)
             tx.outputs ~= Output(amount, out_key[idx].address);
 
-        auto signature = in_key[idx].secret.sign(hashFull(tx)[]);
+        auto signature = getGenesisKeyPair().secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
         txes ~= tx;
     }
@@ -1094,7 +1093,7 @@ unittest
     // and one transaction has eight Outputs with a value of 40,000 values.
     void splitGenesis ()
     {
-        splited_txex = splitGenesisTransaction(getGenKeyPairs(), splited_keys);
+        splited_txex = splitGenesisTransaction(splited_keys);
         splited_txex.each!((tx)
         {
             assert(ledger.acceptTransaction(tx));
