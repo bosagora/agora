@@ -146,8 +146,8 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.node, params);
-        this.ledger = new Ledger(this.pool, this.utxo_set, this.storage,
-            this.enroll_man, config.node, params, onValidatorsChanged);
+        this.ledger = new Ledger(config.node, params, this.utxo_set,
+            this.storage, this.enroll_man, this.pool, onValidatorsChanged);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
     }
