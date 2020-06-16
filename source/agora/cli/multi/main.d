@@ -14,11 +14,11 @@
 module agora.cli.multi.main;
 
 import agora.common.Config;
+import agora.consensus.data.ConsensusParams;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
 import agora.utils.Log;
-
 import vibe.core.core;
 import vibe.web.rest;
 import vibe.inet.url;
