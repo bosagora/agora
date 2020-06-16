@@ -934,13 +934,11 @@ public class MemBlockStorage : IBlockStorage
     public override bool load ()
     {
         if (this._to_load.length == 0)
-            this.saveBlock(GenesisBlock);
-        else
-        {
-            foreach (const ref block; this._to_load)
-                this.saveBlock(block);
-        }
+            return this.saveBlock(GenesisBlock);
 
+        foreach (const ref block; this._to_load)
+            if (!this.saveBlock(block))
+                return false;
         return true;
     }
 
