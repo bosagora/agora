@@ -144,37 +144,6 @@ unittest
     testSymmetry(UnitTestGenesisBlock);
 }
 
-version (unittest)
-{
-    /***************************************************************************
-
-        Get the key-pair which can spend the UTXO in the genesis transaction.
-
-        In unittests, we need the genesis key pair to be known for us to be
-        able to test anything. Hence the genesis block has a different value.
-
-        Seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
-        Address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
-
-        Returns:
-            the key pair which can spend the UTXO in the genesis transaction
-
-    ***************************************************************************/
-
-    public KeyPair getGenesisKeyPair ()
-    {
-        return KeyPair.fromSeed(
-            Seed.fromString(
-                "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-    }
-
-    // Check that the public key matches, temporarily
-    unittest
-    {
-        assert(getGenesisKeyPair().address == UnitTestGenesisOutputAddress);
-    }
-}
-
 /// The genesis block as defined by CoinNet
 private immutable Block CoinNetGenesisBlock =
 {

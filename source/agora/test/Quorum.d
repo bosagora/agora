@@ -65,7 +65,7 @@ unittest
             addresses.map!(addr => Output(Amount.MinFreezeAmount, addr)).array
         };
 
-        auto signature = getGenesisKeyPair().secret.sign(hashFull(tx)[]);
+        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
         return tx;
     }
@@ -81,20 +81,20 @@ unittest
             [Output(Amount.MinFreezeAmount, address)]
         };
 
-        auto signature = getGenesisKeyPair().secret.sign(hashFull(tx)[]);
+        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
         return tx;
     }
 
     // create block with 6 payment and 2 freeze tx's
-    auto txs = makeChainedTransactions(getGenesisKeyPair(),
+    auto txs = makeChainedTransactions(WK.Keys.Genesis,
         network.blocks[$ - 1].txs, 1);
 
     // rewrite 3rd to last tx to multiple outputs so we can create 8 spend tx's
     // in next block
     txs[$ - 3] = makePayTx(network.blocks[$ - 1].txs[$ - 3],
-        [getGenesisKeyPair.address, getGenesisKeyPair.address,
-        getGenesisKeyPair.address]);
+        [WK.Keys.Genesis.address, WK.Keys.Genesis.address,
+        WK.Keys.Genesis.address]);
 
     // rewrite the last two tx's to be freeze tx's for our outsider validator nodes
     txs[$ - 2] = makeFreezeTransaction(network.blocks[$ - 1].txs[$ - 2],
@@ -121,11 +121,11 @@ unittest
                  node.getEnrollment(enroll_1.utxo_key) == enroll_1,
             5.seconds));
 
-    auto new_txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
+    auto new_txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
     // the last 3 tx's must refer to the outputs in txs[$ - 3] before
-    new_txs[$ - 3] = makePayTx(txs[$ - 3], [getGenesisKeyPair.address], 0);
-    new_txs[$ - 2] = makePayTx(txs[$ - 3], [getGenesisKeyPair.address], 1);
-    new_txs[$ - 1] = makePayTx(txs[$ - 3], [getGenesisKeyPair.address], 2);
+    new_txs[$ - 3] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 0);
+    new_txs[$ - 2] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 1);
+    new_txs[$ - 1] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 2);
     new_txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 1008 the validator set has changed
@@ -138,7 +138,7 @@ unittest
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
 
     // verify that consensus can still be reached by the leftover validators
-    txs = makeChainedTransactions(getGenesisKeyPair(), new_txs, 1);
+    txs = makeChainedTransactions(WK.Keys.Genesis, new_txs, 1);
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
     nodes[$ - 2 .. $].enumerate.each!((idx, node) =>

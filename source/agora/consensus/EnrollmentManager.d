@@ -63,6 +63,7 @@ import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.consensus.ValidatorSet;
 import agora.utils.Log;
+version (unittest) import agora.utils.Test;
 
 import d2sqlite3.library;
 import d2sqlite3.results;
@@ -687,7 +688,7 @@ unittest
 
     scope storage = new TestUTXOSet;
 
-    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
     foreach (idx; 0 .. 8)
@@ -852,7 +853,7 @@ unittest
     import std.conv;
 
     scope storage = new TestUTXOSet;
-    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
     foreach (idx; 0 .. 8)
@@ -966,7 +967,7 @@ unittest
 
     scope storage = new TestUTXOSet;
 
-    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
     foreach (idx; 0 .. 8)

@@ -240,7 +240,7 @@ unittest
     import agora.common.Amount;
     import agora.common.Hash;
     import std.format;
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
 
     /// should spend genesis block's outputs
     auto txes = makeChainedTransactions(gen_key, null, 1);
@@ -282,7 +282,7 @@ unittest
     import agora.common.Amount;
     import agora.common.Hash;
 
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
     const(Transaction)[] txes = makeChainedTransactions(gen_key, null, 1);
     txes = makeChainedTransactions(gen_key, txes, 1);
 }
@@ -385,6 +385,9 @@ public struct WK
         /// Returns: The `KeyPair` matching this `pubkey`, or `KeyPair.init`
         public static KeyPair opIndex (PublicKey pubkey) @safe nothrow @nogc
         {
+            if (pubkey == Genesis.address)
+                return Genesis;
+
             auto result = this.byRange.find!(k => k.address == pubkey);
             return result.empty ? KeyPair.init : result.front();
         }
@@ -417,7 +420,39 @@ public struct WK
         {
             static foreach (char c; 'A' .. 'Z' + 1)
                 mixin(`nameMap[`, c, `] = "WK.Keys.`, c, `";`);
+            nameMap[Genesis] = "WK.Keys.Genesis";
         }
+
+        /***********************************************************************
+
+            Genesis KeyPair used in unittests
+
+            In unittests, we need the genesis key pair to be known for us to be
+            able to write tests. Hence the genesis block has a different value.
+
+            Note that while this is a well-known keys, it is not part of the
+            range returned by `byRange`, nor can it be indexed by `size_t`,
+            to avoid it being mistakenly used.
+            It is however accessible via `opIndex(PublicKey)`.
+
+            Seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+            Address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
+
+
+        ***********************************************************************/
+
+        static immutable Genesis = KeyPair(
+            PublicKey([157, 2, 56, 224, 161, 113, 64, 11, 198, 214, 138, 157, 155, 49, 106, 205, 81, 9, 100, 145, 19, 160, 92, 40, 79, 66, 150, 210, 179, 1, 34, 245]),
+            SecretKey([167, 197, 41, 45, 194, 231, 7, 114, 117, 27, 234, 152, 100, 142, 108, 235, 91, 123, 216, 92, 108, 4, 54, 200, 217, 114, 60, 126, 156, 76, 184, 148, 157, 2, 56, 224, 161, 113, 64, 11, 198, 214, 138, 157, 155, 49, 106, 205, 81, 9, 100, 145, 19, 160, 92, 40, 79, 66, 150, 210, 179, 1, 34, 245]),
+            Seed([167, 197, 41, 45, 194, 231, 7, 114, 117, 27, 234, 152, 100, 142, 108, 235, 91, 123, 216, 92, 108, 4, 54, 200, 217, 114, 60, 126, 156, 76, 184, 148]));
+
+
+        /***********************************************************************
+
+            All well-known keypairs
+
+        ***********************************************************************/
+
         static immutable A = KeyPair(
             PublicKey([1, 163, 253, 17, 225, 20, 105, 206, 20, 194, 40, 152, 72, 132, 1, 148, 242, 87, 153, 89, 117, 13, 42, 214, 254, 174, 138, 226, 224, 81, 226, 130]),
             SecretKey([170, 236, 61, 133, 133, 159, 190, 231, 28, 51, 201, 146, 134, 37, 236, 18, 64, 212, 245, 228, 10, 116, 186, 238, 235, 103, 193, 3, 16, 143, 251, 10, 1, 163, 253, 17, 225, 20, 105, 206, 20, 194, 40, 152, 72, 132, 1, 148, 242, 87, 153, 89, 117, 13, 42, 214, 254, 174, 138, 226, 224, 81, 226, 130]),
@@ -623,6 +658,15 @@ unittest
         assert(verify(pz.V, ssz, "WK.Keys.Z".representation));
         assert(!verify(pz.V, ssz, "WK.Keys.z".representation));
     }
+
+    /// Test that Genesis is found
+    {
+        auto genesisKP = WK.Keys.Genesis;
+        assert(WK.Keys[genesisKP] == "WK.Keys.Genesis");
+        assert(WK.Keys[genesisKP.address] == genesisKP);
+        // Sanity check with `agora.consensus.Genesis`
+        assert(WK.Keys.Genesis.address == GenesisBlock.txs[0].outputs[0].address);
+    }
 }
 
 /*******************************************************************************
@@ -690,7 +734,7 @@ unittest
     import std.range;
 
     KeyPair[] keys = iota(8).map!(_ => KeyPair.random()).array;
-    KeyPair genesisKP = getGenesisKeyPair();
+    KeyPair genesisKP = WK.Keys.Genesis;
     const first = GenesisBlock.txs[0];
     const equalTx = first.split([genesisKP], keys.map!(k => k.address).array);
     // This transaction has 8 txs, hence it's just equality
@@ -709,7 +753,7 @@ unittest
 
     KeyPair[] keys16 = iota(16).map!(_ => KeyPair.random()).array;
     // Use Genesis
-    KeyPair genesisKP = getGenesisKeyPair();
+    KeyPair genesisKP = WK.Keys.Genesis;
     const first = GenesisBlock.txs[0];
     const resTx1 = first.split([genesisKP], keys16.map!(k => k.address).array);
     // This transaction has 16 txs
@@ -740,7 +784,7 @@ unittest
 
     KeyPair[] keys = iota(3).map!(_ => KeyPair.random()).array;
     // Use Genesis
-    KeyPair genesisKP = getGenesisKeyPair();
+    KeyPair genesisKP = WK.Keys.Genesis;
     const first = GenesisBlock.txs[0];
     const result = first.split([genesisKP], keys.map!(k => k.address).array);
     // This transaction has 3 txs
@@ -764,7 +808,7 @@ unittest
 
     KeyPair key = KeyPair.random();
     // Use Genesis
-    KeyPair genesisKP = getGenesisKeyPair();
+    KeyPair genesisKP = WK.Keys.Genesis;
     const first = GenesisBlock.txs[0];
     const result = first.split([genesisKP], [key.address]);
     // This transaction has 1 txs

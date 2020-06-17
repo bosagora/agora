@@ -500,7 +500,7 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config);
 
@@ -581,7 +581,7 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config);
 
@@ -612,7 +612,7 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config);
 
@@ -630,7 +630,7 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config);
 
@@ -694,7 +694,7 @@ unittest
     // TODO: Make this more than one block (e.g. 5)
     //       Currently due to the design of `makeChainedTransactions`,
     //       we can't do that.
-    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
     const(Block)[] blocks = [ GenesisBlock() ];
     blocks ~= makeNewBlock(GenesisBlock, txs);
@@ -702,7 +702,7 @@ unittest
     // And provide it to the ledger
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config, blocks);
 
@@ -727,7 +727,7 @@ unittest
 
 version (unittest)
 private Transaction[] makeTransactionForFreezing (
-    KeyPair[] in_key_pair,
+    const(KeyPair)[] in_key_pair,
     KeyPair[] out_key_pair,
     TxType tx_type,
     Transaction[] prev_txs,
@@ -791,12 +791,12 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config);
 
-    KeyPair[] in_key_pairs =
-        iota(Block.TxsInBlock).map!(_ => getGenesisKeyPair()).array();
+    const(KeyPair)[] in_key_pairs =
+        iota(Block.TxsInBlock).map!(_ => WK.Keys.Genesis).array();
     KeyPair[] out_key_pairs;
     Transaction[] last_txs;
 
@@ -852,7 +852,7 @@ unittest
     auto params = new immutable(ConsensusParams)(validator_cycle);
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config, null, params);
 
@@ -1046,7 +1046,7 @@ private Transaction[] splitGenesisTransaction (
         foreach (idx2; 0 .. Block.TxsInBlock)
             tx.outputs ~= Output(amount, out_key[idx].address);
 
-        auto signature = getGenesisKeyPair().secret.sign(hashFull(tx)[]);
+        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
         txes ~= tx;
     }
@@ -1072,7 +1072,7 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     getGenesisKeyPair(),
+        key_pair:     WK.Keys.Genesis,
     };
     scope ledger = new TestLedger(config);
 
@@ -1359,7 +1359,7 @@ unittest
         const(Transaction)[] prev_txs;
         foreach (_; 0 .. count)
         {
-            auto txs = makeChainedTransactions(getGenesisKeyPair(),
+            auto txs = makeChainedTransactions(WK.Keys.Genesis,
                 prev_txs, 1);
 
             const NoEnrollments = null;
