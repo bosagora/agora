@@ -72,7 +72,7 @@ int main (string[] args)
             assert(height == 0);
         }
 
-        auto kp = getGenesisKeyPair();
+        auto kp = WK.Keys.Genesis;
 
         foreach (idx; 0 .. Block.TxsInBlock)
         {

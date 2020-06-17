@@ -48,7 +48,7 @@ unittest
     foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
-        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
+        auto txs = makeChainedTransactions(WK.Keys.Genesis, last_txs, 1);
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
@@ -103,7 +103,7 @@ unittest
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 2);
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 2);
     txs.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 2).retryFor(8.seconds);
 }
@@ -120,7 +120,7 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_key_pair = WK.Keys.Genesis;
     auto txs = makeChainedTransactions(gen_key_pair, null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
 
@@ -182,15 +182,15 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    auto txs = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 1).retryFor(3.seconds);
 
-    txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
+    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
     txs.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 2).retryFor(3.seconds);
 
-    txs = makeChainedTransactions(getGenesisKeyPair(), txs, 1);
+    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
 
     // create a deep-copy of the first tx
     auto backup_tx = deserializeFull!Transaction(serializeFull(txs[0]));
@@ -198,7 +198,7 @@ unittest
     // create a double-spend tx
     txs[0].inputs[0] = txs[1].inputs[0];
     txs[0].outputs[0].value = Amount(100);
-    auto signature = getGenesisKeyPair().secret.sign(hashFull(txs[0])[]);
+    auto signature = WK.Keys.Genesis.secret.sign(hashFull(txs[0])[]);
     txs[0].inputs[0].signature = signature;
 
     // make sure the transaction is still authentic (signature is correct),

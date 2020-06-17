@@ -1191,7 +1191,7 @@ private immutable(Block)[] generateBlocks (
     foreach (_; 0 .. count)
     {
         // 10x more than MinFreezeAmount so we can split it to multiple freezes later
-        auto txs = makeChainedTransactions(getGenesisKeyPair(),
+        auto txs = makeChainedTransactions(WK.Keys.Genesis,
             prev_txs, 1, 4_000_000_000_000 * Block.TxsInBlock);
 
         const NoEnrollments = null;

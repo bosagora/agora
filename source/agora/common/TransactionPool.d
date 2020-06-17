@@ -322,7 +322,7 @@ unittest
     import agora.consensus.Genesis;
 
     auto pool = new TransactionPool(":memory:");
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
     auto txs = makeChainedTransactions(gen_key, null, 1);
 
     txs.each!(tx => pool.add(tx));
@@ -360,7 +360,7 @@ unittest
     import std.exception;
 
     auto pool = new TransactionPool(":memory:");
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
     auto txs = makeChainedTransactions(gen_key, null, 1);
 
     txs.each!(tx => pool.add(tx));
@@ -391,7 +391,7 @@ unittest
     import core.memory;
 
     auto pool = new TransactionPool(":memory:");
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
     auto txs = makeChainedTransactions(gen_key, null, 1);
 
     txs.each!(tx => pool.add(tx));

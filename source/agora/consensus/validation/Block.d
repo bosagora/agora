@@ -397,7 +397,7 @@ unittest
     scope utxos = new TestUTXOSet();
     scope findUTXO = &utxos.findUTXO;
 
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
     assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
 
@@ -561,7 +561,7 @@ unittest
     scope utxo_set = new TestUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
     assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
     foreach (ref tx; GenesisBlock.txs)

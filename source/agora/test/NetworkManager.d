@@ -46,7 +46,7 @@ unittest
     nodes[0].filter!(API.getBlockHeight);
     nodes[1].filter!(API.getBlockHeight);
 
-    auto txes = makeChainedTransactions(getGenesisKeyPair(), null, 1);
+    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     txes.each!(tx => node_1.putTransaction(tx));
 
     nodes[0].clearFilter();
@@ -158,7 +158,7 @@ unittest
     foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
-        auto txs = makeChainedTransactions(getGenesisKeyPair(), last_txs, 1);
+        auto txs = makeChainedTransactions(WK.Keys.Genesis, last_txs, 1);
 
         // send it to one node
         txs.each!(tx => node_validator.putTransaction(tx));

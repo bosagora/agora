@@ -30,6 +30,7 @@ import agora.consensus.data.UTXOSetValue;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.utils.Log;
+version (unittest) import agora.utils.Test;
 
 import d2sqlite3.library;
 import d2sqlite3.results;
@@ -511,7 +512,7 @@ unittest
 
     scope storage = new TestUTXOSet;
 
-    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair[5] kp = [ KeyPair.random(), KeyPair.random(), KeyPair.random(),
                       KeyPair.random(), KeyPair.random() ];
     Hash[5] utxos;
@@ -662,7 +663,7 @@ unittest
     import std.format;
 
     scope storage = new TestUTXOSet;
-    auto key_pair = getGenesisKeyPair();
+    auto key_pair = WK.Keys.Genesis;
     foreach (uint idx; 0 .. 8)
     {
         auto input = Input(hashFull(GenesisTransaction), idx);

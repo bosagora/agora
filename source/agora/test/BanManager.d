@@ -48,7 +48,7 @@ unittest
     auto node_2 = network.nodes[1].client;
     auto node_3 = network.nodes[2].client;  // non-validator
     auto nodes = [node_1, node_2, node_3];
-    auto gen_key = getGenesisKeyPair();
+    auto gen_key = WK.Keys.Genesis;
 
     Transaction[] all_txs;
     Transaction[] last_txs;

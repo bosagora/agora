@@ -1066,7 +1066,7 @@ unittest
     const(Block)[] blocks;
     Hash[] block_hashes;
 
-    auto gen_key_pair = getGenesisKeyPair();
+    auto gen_key_pair = WK.Keys.Genesis;
     blocks ~= GenesisBlock;
     storage.saveBlock(GenesisBlock);
     block_hashes ~= hashFull(GenesisBlock.header);
