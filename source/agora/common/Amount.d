@@ -63,6 +63,13 @@ public struct Amount
         this.value = units;
     }
 
+    /// Copy constructor
+    public this (in Amount other) nothrow pure @nogc @safe
+    {
+        assert(Amount.isInRange(other.value));
+        this.value = other.value;
+    }
+
     /// Pretty-print this value
     public void toString (SinkT dg) const @safe
     {
