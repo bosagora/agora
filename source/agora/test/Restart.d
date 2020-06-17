@@ -1,12 +1,6 @@
 /*******************************************************************************
 
-    Contains the simplest possible block creating test
-
-    This is useful as a starting point for creating more complext test-cases,
-    or just to test new behavior with the simplest creation of blocks.
-
-    Run via:
-    $ dtest=agora.test.Simple dub test
+    Test node restarting behavior
 
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea
@@ -17,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.test.Simple;
+module agora.test.Restart;
 
 version (unittest):
 
@@ -26,7 +20,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.Genesis;
 import agora.test.Base;
 
-/// Simple test
+/// A test that stops and restarts a node
 unittest
 {
     auto network = makeTestNetwork(TestConf.init);
@@ -43,4 +37,11 @@ unittest
 
     nodes.all!(node => node.getBlockHeight() == 1)
         .retryFor(2.seconds);
+
+    // Now shut down & restart one node
+    auto restartMe = nodes[$-1];
+    network.restart(restartMe);
+    network.waitForDiscovery();
+    nodes.all!(node => node.getBlockHeight() == 1)
+        .retryFor(5.seconds);
 }
