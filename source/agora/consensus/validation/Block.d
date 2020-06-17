@@ -258,9 +258,10 @@ unittest
     Transaction[] txs =
         GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
 
-    void buildMerkleTree (ref Block block)
+    void buildMerkleTree (ref Block block, bool shouldSort = true)
     {
         Hash[] merkle_tree;
+        if (shouldSort) block.txs.sort;
         block.header.merkle_root =
             Block.buildMerkleTree(block.txs, merkle_tree);
     }
@@ -285,23 +286,21 @@ unittest
 
         foreach (_; 0 .. Block.TxsInBlock)
             block.txs ~= makeNewTx();
-        block.txs.sort;
         assert(block.txs.length == Block.TxsInBlock);
         buildMerkleTree(block);
         assert(block.isGenesisBlockValid());
 
         // Txs sorting check
         block.txs.reverse;
-        buildMerkleTree(block);
+        buildMerkleTree(block, false);
         assert(!block.isGenesisBlockValid());
 
         block.txs.reverse;
-        buildMerkleTree(block);
+        buildMerkleTree(block, false);
         assert(block.isGenesisBlockValid());
 
         // Txs length out of bounds check
         block.txs ~= makeNewTx();
-        block.txs.sort;
         buildMerkleTree(block);
         assert(block.txs.length == Block.TxsInBlock + 1);
         assert(!block.isGenesisBlockValid());
