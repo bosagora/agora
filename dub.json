@@ -107,6 +107,7 @@
                 "source/agora/consensus/protocol/*",
                 "source/agora/consensus/SCPEnvelopeStore.d",
                 "source/agora/cli/checkvtable/*",
+                "source/agora/cli/history/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/registry/main.d"
@@ -131,8 +132,9 @@
             "targetName": "agora-multi",
             "mainSourceFile": "source/agora/cli/multi/main.d",
             "excludedSourceFiles": [
-                "source/agora/cli/checkvtable/*",
                 "source/agora/cli/client/*",
+                "source/agora/cli/history/*",
+                "source/agora/cli/checkvtable/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/node/main.d",
                 "source/agora/registry/main.d"
@@ -147,6 +149,7 @@
             "excludedSourceFiles": [
                 "source/agora/cli/checkvtable/check.d",
                 "source/agora/cli/client/*",
+                "source/agora/cli/history/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/node/main.d",
@@ -163,10 +166,22 @@
             "excludedSourceFiles": [
                 "source/agora/cli/checkvtable/generate.d",
                 "source/agora/cli/client/*",
+                "source/agora/cli/history/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/node/main.d",
                 "source/agora/registry/main.d"
+            ]
+        },
+        {
+            "name": "history-push",
+            "targetName": "agora-history-push",
+            "mainSourceFile": "source/agora/cli/history/main.d",
+            "excludedSourceFiles": [
+                "source/agora/cli/client/*",
+                "source/agora/cli/multi/*",
+                "source/agora/cli/checkvtable/*",
+                "source/agora/node/main.d"
             ]
         }
     ],
