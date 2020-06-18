@@ -23,49 +23,6 @@ import agora.common.crypto.Key;
 // Can't do this because then `public import` is useless
 //package:
 
-/// Generate all the well-kwnon values, disabled but kept here for documentation
-/// Note that we generate the binary data directly to limit CTFE overhead
-version (none) unittest
-{
-    import std.stdio;
-
-    Seed[size_t] kps;
-    string name = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // Writefln is picky
-    while (kps.length < 26)
-    {
-        auto tmp = KeyPair.random();
-        const addr = tmp.address.toString();
-        /* Addresses always start with G{A,B,C,D}
-         * We pick the addresses that start with GA, then match our expected
-         * char, and are followed by a `2`, so that we have an 'end marker'
-         * in case we want more letters (e.g. AA or AAA).
-         */
-
-        // Check start
-        if (addr[1] != 'A')
-            continue;
-        // Find match for letter(s)
-        if (addr[2] < 'A' || addr[2] > 'Z')
-            continue;
-        // Check last character(s)
-        if (addr[3] != '2')
-            continue;
-        if (addr[4] != '2')
-            continue;
-
-        // It's a match
-        kps[addr[2] - 'A'] = tmp.seed;
-    }
-
-    writeln("==================== Well known KeyPair ====================");
-    foreach (idx, ref seed; kps)
-    {
-        auto kp = KeyPair.fromSeed(seed);
-        writefln("static immutable %c = KeyPair(PublicKey(%s), SecretKey(%s), Seed(%s));",
-                 name[idx], kp.address[], kp.secret[], kp.seed[]);
-    }
-}
-
 /*******************************************************************************
 
     Genesis KeyPair used in unittests

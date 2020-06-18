@@ -1,0 +1,24 @@
+{
+    "name": "vanity",
+    "targetPath": "../../../../build/",
+    "targetName": "agora-vanity",
+    "targetType": "executable",
+
+    "mainSourceFile": "main.d",
+    "importPaths": [ "../../../" ],
+    "sourceFiles": [
+        "../../common/crypto/Crc16.d",
+        "../../common/crypto/Key.d"
+    ],
+
+    "dependencies": {
+        "base32":           { "path": "../../../../submodules/base32/", "version": "*" },
+        "bitblob":          { "path": "../../../../submodules/bitblob/", "version": "*" },
+        "d2sqlite3":        { "path": "../../../../submodules/d2sqlite3/", "version": "*" },
+        "dyaml":            { "path": "../../../../submodules/dyaml/", "version": "*" },
+        "libsodiumd":       { "path": "../../../../submodules/libsodiumd/", "version": "*" },
+        "localrest":        { "path": "../../../../submodules/localrest/", "version": "*" },
+        "ocean":            { "path": "../../../../submodules/ocean/", "version": "*" },
+        "vibe-d":           { "path": "../../../../submodules/vibe.d/", "version": "*" }
+    }
+}

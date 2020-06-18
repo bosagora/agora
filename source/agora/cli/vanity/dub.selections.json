@@ -1,0 +1,25 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"base32": {"path":"../../../../submodules/base32/"},
+		"bitblob": {"path":"../../../../submodules/bitblob/"},
+		"botan": {"path":"../../../../submodules/botan/"},
+		"botan-math": {"path":"../../../../submodules/botan-math/"},
+		"d2sqlite3": {"path":"../../../../submodules/d2sqlite3/"},
+		"diet-ng": {"path":"../../../../submodules/diet-ng/"},
+		"dyaml": {"path":"../../../../submodules/dyaml/"},
+		"eventcore": {"path":"../../../../submodules/eventcore/"},
+		"libasync": {"path":"../../../../submodules/libasync/"},
+		"libsodiumd": {"path":"../../../../submodules/libsodiumd/"},
+		"localrest": {"path":"../../../../submodules/localrest/"},
+		"memutils": {"path":"../../../../submodules/memutils/"},
+		"mir-linux-kernel": {"path":"../../../../submodules/mir-linux-kernel/"},
+		"ocean": {"path":"../../../../submodules/ocean/"},
+		"openssl": {"path":"../../../../submodules/openssl/"},
+		"stdx-allocator": {"path":"../../../../submodules/stdx-allocator/"},
+		"taggedalgebraic": {"path":"../../../../submodules/taggedalgebraic/"},
+		"tinyendian": {"path":"../../../../submodules/tinyendian/"},
+		"vibe-core": {"path":"../../../../submodules/vibe-core/"},
+		"vibe-d": {"path":"../../../../submodules/vibe.d/"}
+	}
+}
