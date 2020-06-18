@@ -98,8 +98,9 @@
                 "source/scpp/*",
                 "source/scpd/*",
                 "source/agora/consensus/protocol/*",
+                "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/checkvtable/*"
+                "source/agora/cli/vanity/*"
             ]
         },
         {
@@ -120,8 +121,9 @@
             "targetName": "agora-multi",
             "mainSourceFile": "source/agora/cli/multi/main.d",
             "excludedSourceFiles": [
-                "source/agora/cli/client/*",
                 "source/agora/cli/checkvtable/*",
+                "source/agora/cli/client/*",
+                "source/agora/cli/vanity/*",
                 "source/agora/node/main.d"
             ]
         },
@@ -132,9 +134,10 @@
             "sourceFiles": [
             ],
             "excludedSourceFiles": [
+                "source/agora/cli/checkvtable/check.d",
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/checkvtable/check.d",
+                "source/agora/cli/vanity/*",
                 "source/agora/node/main.d"
             ]
         },
@@ -146,9 +149,10 @@
                 "source/scpp/build/DVMChecks.o"
             ],
             "excludedSourceFiles": [
+                "source/agora/cli/checkvtable/generate.d",
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/checkvtable/generate.d",
+                "source/agora/cli/vanity/*",
                 "source/agora/node/main.d"
             ]
         }
