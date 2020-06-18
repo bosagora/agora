@@ -19,11 +19,17 @@
 
 module agora.consensus.data.ConsensusParams;
 
+import std.format;
+
 /// Ditto
 public immutable class ConsensusParams
 {
     /// The cycle length for a validator
     public uint ValidatorCycle;
+
+    /// The period for revealing a preimage
+    /// It is an hour interval if a block is made in every about 10 minutes
+    public static immutable uint PreimageRevealPeriod = 6;
 
     /***************************************************************************
 
@@ -36,6 +42,9 @@ public immutable class ConsensusParams
 
     public this (uint validator_cycle = 1008)
     {
+        assert(validator_cycle >= PreimageRevealPeriod,
+            format("The validator cycle must be equal to or greater than " ~
+                "`PreimageRevalePeriod`(%d)", PreimageRevealPeriod));
         this.ValidatorCycle = validator_cycle;
     }
 }

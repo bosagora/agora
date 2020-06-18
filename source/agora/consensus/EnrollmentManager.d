@@ -102,10 +102,6 @@ public class EnrollmentManager
     /// Next height for pre-image revelation
     private Height next_reveal_height;
 
-    /// The period for revealing a preimage
-    /// It is an hour interval if a block is made in every 10 minutes
-    public static immutable uint PreimageRevealPeriod = 6;
-
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
     private ValidatorSet validator_set;
@@ -332,7 +328,8 @@ public class EnrollmentManager
 
     public bool getNextPreimage (out PreImageInfo preimage) @safe
     {
-        auto height = Height(this.next_reveal_height + PreimageRevealPeriod * 2);
+        auto height = Height(this.next_reveal_height +
+            ConsensusParams.PreimageRevealPeriod);
         return getPreimage(height, preimage);
     }
 
@@ -453,7 +450,8 @@ public class EnrollmentManager
     {
         auto next_height = this.getNextRevealHeight();
         if (this.next_reveal_height < ulong.max)
-            this.setNextRevealHeight(Height(next_height + PreimageRevealPeriod));
+            this.setNextRevealHeight(Height(next_height +
+                ConsensusParams.PreimageRevealPeriod));
     }
 
     /***************************************************************************
