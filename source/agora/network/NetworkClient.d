@@ -318,7 +318,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void sendPreimage (ref PreImageInfo preimage) @trusted
+    public void sendPreimage (PreImageInfo preimage) @trusted
     {
         this.taskman.runTask(
         {
