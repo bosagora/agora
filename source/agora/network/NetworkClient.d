@@ -87,7 +87,8 @@ class NetworkClient
         this.retry_delay = retry;
         this.max_retries = max_retries;
         this.exception = new Exception(
-            format("Request failure after %s attempts", max_retries));
+            format("Request failure to %s after %s attempts", address,
+                max_retries));
     }
 
     /***************************************************************************
