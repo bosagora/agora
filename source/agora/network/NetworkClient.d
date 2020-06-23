@@ -241,6 +241,48 @@ class NetworkClient
 
     /***************************************************************************
 
+        Send a enrollment request asynchronously to the node.
+        Any errors are reported to the debugging log.
+
+        The request is retried up to 'this.max_retries',
+        any failures are logged and ignored.
+
+        Params:
+            enroll = the enrollment data to send
+
+    ***************************************************************************/
+
+    public void sendEnrollment (Enrollment enroll) @trusted
+    {
+        this.taskman.runTask(
+        {
+            this.attemptRequest(this.api.enrollValidator(enroll), null);
+        });
+    }
+
+    /***************************************************************************
+
+        Send a preimage asynchronously to the node.
+        Any errors are reported to the debugging log.
+
+        The request is retried up to 'this.max_retries',
+        any failures are logged and ignored.
+
+        Params:
+            preimage = the pre-image information to send
+
+    ***************************************************************************/
+
+    public void sendPreimage (PreImageInfo preimage) @trusted
+    {
+        this.taskman.runTask(
+        {
+            this.attemptRequest(this.api.receivePreimage(preimage), null);
+        });
+    }
+
+    /***************************************************************************
+
         Attempt a request up to 'this.max_retries' attempts, and make the task
         wait this.retry_delay between each attempt.
 
@@ -283,47 +325,5 @@ class NetworkClient
         // ex is null, failure is ignored
         static if (!is(T == void))
             return T.init;
-    }
-
-    /***************************************************************************
-
-        Send a enrollment request asynchronously to the node.
-        Any errors are reported to the debugging log.
-
-        The request is retried up to 'this.max_retries',
-        any failures are logged and ignored.
-
-        Params:
-            enroll = the enrollment data to send
-
-    ***************************************************************************/
-
-    public void sendEnrollment (Enrollment enroll) @trusted
-    {
-        this.taskman.runTask(
-        {
-            this.attemptRequest(this.api.enrollValidator(enroll), null);
-        });
-    }
-
-    /***************************************************************************
-
-        Send a preimage asynchronously to the node.
-        Any errors are reported to the debugging log.
-
-        The request is retried up to 'this.max_retries',
-        any failures are logged and ignored.
-
-        Params:
-            preimage = the pre-image information to send
-
-    ***************************************************************************/
-
-    public void sendPreimage (PreImageInfo preimage) @trusted
-    {
-        this.taskman.runTask(
-        {
-            this.attemptRequest(this.api.receivePreimage(preimage), null);
-        });
     }
 }
