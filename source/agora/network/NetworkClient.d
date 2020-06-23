@@ -39,6 +39,16 @@ mixin AddLogger!();
 /// Used for communicating with a remote node
 class NetworkClient
 {
+    /// Whether to throw an exception when attemptRequest() fails
+    private enum Throw
+    {
+        ///
+        No,
+
+        ///
+        Yes
+    }
+
     /// Address of the node we're interacting with (for logging)
     public const Address address;
 
@@ -103,7 +113,7 @@ class NetworkClient
 
     public PublicKey getPublicKey ()
     {
-        return this.attemptRequest(this.api.getPublicKey(), this.exception);
+        return this.attemptRequest!(API.getPublicKey, Throw.Yes)();
     }
 
     /***************************************************************************
@@ -120,8 +130,7 @@ class NetworkClient
 
     public void registerListener (Address address)
     {
-        return this.attemptRequest(this.api.registerListener(address),
-            this.exception);
+        return this.attemptRequest!(API.registerListener, Throw.Yes)(address);
     }
 
     /***************************************************************************
@@ -139,7 +148,7 @@ class NetworkClient
 
     public NodeInfo getNodeInfo ()
     {
-        return this.attemptRequest(this.api.getNodeInfo(), this.exception);
+        return this.attemptRequest!(API.getNodeInfo, Throw.Yes)();
     }
 
     /***************************************************************************
@@ -163,11 +172,11 @@ class NetworkClient
         this.taskman.runTask(
         {
             // if the node already has this tx, don't send it
-            if (this.attemptRequest!(LogLevel.Trace)(
-                this.api.hasTransactionHash(tx_hash), null))
+            if (this.attemptRequest!(API.hasTransactionHash, Throw.Yes,
+                LogLevel.Trace)(tx_hash))
                 return;
 
-            this.attemptRequest(this.api.putTransaction(tx), null);
+            this.attemptRequest!(API.putTransaction, Throw.No)(tx);
         });
     }
 
@@ -187,8 +196,7 @@ class NetworkClient
         {
             this.taskman.runTask(
             {
-                this.attemptRequest(this.api.receiveEnvelope(envelope),
-                    null);
+                this.attemptRequest!(API.receiveEnvelope, Throw.No)(envelope);
             });
         }
         catch (Exception ex)
@@ -210,7 +218,7 @@ class NetworkClient
 
     public ulong getBlockHeight ()
     {
-        return this.attemptRequest(this.api.getBlockHeight(), this.exception);
+        return this.attemptRequest!(API.getBlockHeight, Throw.Yes)();
     }
 
     /***************************************************************************
@@ -235,8 +243,8 @@ class NetworkClient
 
     public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks)
     {
-        return this.attemptRequest(
-            this.api.getBlocksFrom(block_height, max_blocks), this.exception);
+        return this.attemptRequest!(API.getBlocksFrom, Throw.Yes)(
+            block_height, max_blocks);
     }
 
     /***************************************************************************
@@ -256,7 +264,7 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            this.attemptRequest(this.api.enrollValidator(enroll), null);
+            this.attemptRequest!(API.enrollValidator, Throw.No)(enroll);
         });
     }
 
@@ -277,7 +285,7 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            this.attemptRequest(this.api.receivePreimage(preimage), null);
+            this.attemptRequest!(API.receivePreimage, Throw.No)(preimage);
         });
     }
 
@@ -289,24 +297,30 @@ class NetworkClient
         If all requests fail and 'ex' is not null, throw the exception.
 
         Params:
+            endpoint = the API endpoint (e.g. `API.putTransaction`)
+            DT = whether to throw an exception if the request failed after
+                 all attempted retries
             log_level = the logging level to use for logging failed requests
-            T = the type of delegate
-            dg = the delegate to call
-            ex = the exception to throw if all attempts fail (if not null)
+            Args = deduced
+            args = the arguments to the API endpoint
 
         Returns:
-            the return value of dg(), which may be void
+            the return value of of the API call, which may be void
 
     ***************************************************************************/
 
-    private T attemptRequest (LogLevel log_level = LogLevel.Trace, T)(
-        lazy T dg, Exception ex)
+    private auto attemptRequest (alias endpoint, Throw DT,
+        LogLevel log_level = LogLevel.Trace, Args...)(auto ref Args args)
     {
+        import std.traits;
+        enum name = __traits(identifier, endpoint);
+        alias T = ReturnType!(__traits(getMember, this.api, name));
+
         foreach (idx; 0 .. this.max_retries)
         {
             try
             {
-                return dg();
+                return __traits(getMember, this.api, name)(args);
             }
             catch (Exception ex)
             {
@@ -319,11 +333,9 @@ class NetworkClient
         // request considered failed after max retries reached
         this.banman.onFailedRequest(this.address);
 
-        if (ex !is null)
-            throw ex;
-
-        // ex is null, failure is ignored
-        static if (!is(T == void))
+        static if (DT == Throw.Yes)
+            throw this.exception;
+        else static if (!is(T == void))
             return T.init;
     }
 }
