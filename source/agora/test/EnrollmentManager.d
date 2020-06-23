@@ -96,3 +96,46 @@ unittest
                  node.getPreimage(enroll_3.utxo_key) != PreImageInfo.init,
             5.seconds));
 }
+
+// Test for re-enroll before the validator cycle ends
+unittest
+{
+    // Boilerplate
+    const validator_cycle = 20;
+    const current_height = validator_cycle - 5;
+    auto params = new immutable(ConsensusParams)(validator_cycle);
+    TestConf conf = { extra_blocks : current_height };
+    auto network = makeTestNetwork(conf, params);
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.start();
+    network.waitForDiscovery();
+
+    // Check if the genesis block has enrollments
+    auto nodes = network.clients;
+    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
+    assert(b0.header.enrollments.length >= 1);
+
+    // Request enrollment at the height of 15
+    Enrollment enroll = nodes[0].createEnrollmentData();
+    nodes[0].enrollValidator(enroll);
+
+    // Make 5 blocks in order to finish the validator cycle
+    const(Transaction)[] prev_txs = network.blocks[$ - 1].txs;
+    foreach (height; current_height .. validator_cycle)
+    {
+        auto txs = makeChainedTransactions(WK.Keys.Genesis, prev_txs, 1);
+        txs.each!(tx => nodes[0].putTransaction(tx));
+        nodes.enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == height + 1,
+                2.seconds,
+                format("Node %s has block height %s. Expected: %s",
+                    idx, node.getBlockHeight(), height + 1)));
+        prev_txs = txs;
+    }
+
+    // Check if the enrollment has been added to the last block
+    const b20 = nodes[0].getBlocksFrom(validator_cycle, 2)[0];
+    assert(b20.header.enrollments.length == 1);
+    assert(b20.header.enrollments[0] == enroll);
+}
