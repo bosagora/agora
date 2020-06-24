@@ -19,6 +19,7 @@ version (unittest):
 import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.Config;
+import agora.consensus.data.ConsensusParams;
 import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.consensus.data.Block;
@@ -38,10 +39,11 @@ import core.time;
 ///
 unittest
 {
-    // generate 1006 blocks, 2 short of the enrollments expiring.
+    auto validator_cycle = 10;
+    auto params = new immutable(ConsensusParams)(validator_cycle);
     TestConf conf = { nodes : 4, max_listeners : 5,
-        topology : NetworkTopology.TwoOutsiderValidators, extra_blocks : 1006 };
-    auto network = makeTestNetwork(conf);
+        topology : NetworkTopology.TwoOutsiderValidators, validator_cycle - 2 };
+    auto network = makeTestNetwork(conf, params);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -50,9 +52,9 @@ unittest
     auto nodes = network.clients;
 
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1006, 5.seconds,
+        retryFor(node.getBlockHeight() == 8, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1006)));
+                idx, node.getBlockHeight(), 8)));
 
     Transaction makePayTx (in Transaction prev, PublicKey[] addresses, uint index = 0)
     {
@@ -103,11 +105,11 @@ unittest
         nodes[$ - 1].getPublicKey());
     txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // at block height 1007 the freeze tx's are available
+    // at block height 9 the freeze tx's are available
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1007, 5.seconds,
+        retryFor(node.getBlockHeight() == 9, 5.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1007)));
+                idx, node.getBlockHeight(), 9)));
 
     // now we can create enrollments
     Enrollment enroll_0 = nodes[$ - 2].createEnrollmentData();
@@ -128,11 +130,11 @@ unittest
     new_txs[$ - 1] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 2);
     new_txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // at block height 1008 the validator set has changed
+    // at block height 10 the validator set has changed
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1008, 5.seconds,
+        retryFor(node.getBlockHeight() == 10, 3.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1008)));
+                idx, node.getBlockHeight(), 10)));
 
     //// these are un-enrolled now
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
@@ -142,16 +144,16 @@ unittest
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
     nodes[$ - 2 .. $].enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1009, 3.seconds,
+        retryFor(node.getBlockHeight() == 11, 3.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1009)));
+                idx, node.getBlockHeight(), 11)));
 
     // force wake up
     nodes[0 .. $ - 2].each!(node => node.sleep(0.seconds, false));
 
     // all nodes should have same block height now
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1009, 10.seconds,
+        retryFor(node.getBlockHeight() == 11, 10.seconds,
             format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 1009)));
+                idx, node.getBlockHeight(), 11)));
 }
