@@ -365,7 +365,7 @@ public struct WK
                 nothrow @nogc @safe:
 
                 private size_t lbound = 0;
-                private const size_t hbound = 26;
+                private const size_t hbound = 26 + 26 * 26 * 2;
 
                 public size_t length () const
                 {
@@ -401,16 +401,7 @@ public struct WK
         /// Allow one to use indexes to address the keys
         public static KeyPair opIndex (size_t idx) @safe nothrow @nogc
         {
-            switch (idx)
-            {
-                static foreach (char c; 'A' .. 'Z' + 1)
-                {
-                case (c - 'A'):
-                    return mixin(c);
-                }
-            default:
-                assert(0, "There are only 26 well-known keys");
-            }
+            return wellKnownKeyByIndex(idx);
         }
 
         static immutable string[immutable KeyPair] nameMap;
@@ -436,9 +427,13 @@ unittest
     static assert(WK.Keys[0] == WK.Keys.A);
     static assert(WK.Keys[16] == WK.Keys.Q);
     static assert(WK.Keys[25] == WK.Keys.Z);
+    static assert(WK.Keys[26] == WK.Keys.AA);
+    static assert(WK.Keys[701] == WK.Keys.ZZ);
+    static assert(WK.Keys[702] == WK.Keys.AAA);
+    static assert(WK.Keys[1377] == WK.Keys.AZZ);
 
     // Range interface
-    static assert(WK.Keys.byRange.length == 26);
+    static assert(WK.Keys.byRange.length == 1378);
 
     // Key from index
     static assert(WK.Keys[WK.Keys.A.address] == WK.Keys.A);
