@@ -390,26 +390,10 @@ public struct WK
             return result.empty ? KeyPair.init : result.front();
         }
 
-        /// Given a keypair, return a name
-        public static string opIndex (const KeyPair kp) @safe nothrow @nogc
-        {
-            if (auto name = kp in nameMap)
-                return *name;
-            return "Key.NONAME";
-        }
-
         /// Allow one to use indexes to address the keys
         public static KeyPair opIndex (size_t idx) @safe nothrow @nogc
         {
             return wellKnownKeyByIndex(idx);
-        }
-
-        static immutable string[immutable KeyPair] nameMap;
-        shared static this ()
-        {
-            static foreach (char c; 'A' .. 'Z' + 1)
-                mixin(`nameMap[`, c, `] = "WK.Keys.`, c, `";`);
-            nameMap[Genesis] = "WK.Keys.Genesis";
         }
 
         /// Exposes all keys
@@ -439,11 +423,6 @@ unittest
     static assert(WK.Keys[WK.Keys.A.address] == WK.Keys.A);
     static assert(WK.Keys[WK.Keys.Q.address] == WK.Keys.Q);
     static assert(WK.Keys[WK.Keys.Z.address] == WK.Keys.Z);
-
-    // Not accessible at CT
-    assert(WK.Keys[WK.Keys.A] == "WK.Keys.A");
-    assert(WK.Keys[WK.Keys.Q] == "WK.Keys.Q");
-    assert(WK.Keys[WK.Keys.Z] == "WK.Keys.Z");
 
     /// Sign / Verify work
     const sa = WK.Keys.A.secret.sign("WK.Keys.A".representation);
@@ -480,7 +459,6 @@ unittest
     /// Test that Genesis is found
     {
         auto genesisKP = WK.Keys.Genesis;
-        assert(WK.Keys[genesisKP] == "WK.Keys.Genesis");
         assert(WK.Keys[genesisKP.address] == genesisKP);
         // Sanity check with `agora.consensus.Genesis`
         assert(WK.Keys.Genesis.address == GenesisBlock.txs[0].outputs[0].address);
