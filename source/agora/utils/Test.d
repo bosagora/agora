@@ -365,8 +365,13 @@ public struct WK
                 nothrow @nogc @safe:
 
                 private size_t lbound = 0;
-                private size_t hbound = 26;
+                private const size_t hbound = 26;
 
+                public size_t length () const
+                {
+                    return this.lbound < this.hbound ?
+                        this.hbound - this.lbound : 0;
+                }
                 public bool empty () const { return this.lbound >= this.hbound; }
                 public KeyPair front () const { return Keys[this.lbound]; }
                 public void popFront () { this.lbound++; }
@@ -433,7 +438,7 @@ unittest
     static assert(WK.Keys[25] == WK.Keys.Z);
 
     // Range interface
-    static assert(WK.Keys.byRange.count() == 26);
+    static assert(WK.Keys.byRange.length == 26);
 
     // Key from index
     static assert(WK.Keys[WK.Keys.A.address] == WK.Keys.A);
