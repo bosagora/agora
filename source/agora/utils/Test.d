@@ -389,6 +389,19 @@ public struct WK
             if (pubkey == Genesis.address)
                 return Genesis;
 
+            if (pubkey == NODE2.address)
+                return NODE2;
+            if (pubkey == NODE3.address)
+                return NODE3;
+            if (pubkey == NODE4.address)
+                return NODE4;
+            if (pubkey == NODE5.address)
+                return NODE5;
+            if (pubkey == NODE6.address)
+                return NODE6;
+            if (pubkey == NODE7.address)
+                return NODE7;
+
             auto result = this.byRange.find!(k => k.address == pubkey);
             return result.empty ? KeyPair.init : result.front();
         }
