@@ -258,6 +258,12 @@ unittest
     Transaction[] txs =
         GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
 
+    void checkValidity (const ref Block block)
+    {
+        auto reason = block.isGenesisBlockInvalidReason();
+        assert(reason is null, reason);
+    }
+
     void buildMerkleTree (ref Block block, bool shouldSort = true)
     {
         Hash[] merkle_tree;
@@ -288,7 +294,7 @@ unittest
             block.txs ~= makeNewTx();
         assert(block.txs.length == Block.TxsInBlock);
         buildMerkleTree(block);
-        assert(block.isGenesisBlockValid());
+        checkValidity(block);
 
         // Txs sorting check
         block.txs.reverse;
@@ -297,7 +303,7 @@ unittest
 
         block.txs.reverse;
         buildMerkleTree(block, false);
-        assert(block.isGenesisBlockValid());
+        checkValidity(block);
 
         // Txs length out of bounds check
         block.txs ~= makeNewTx();
@@ -315,11 +321,11 @@ unittest
 
         block.txs[0].type = TxType.Payment;
         buildMerkleTree(block);
-        assert(block.isGenesisBlockValid());
+        checkValidity(block);
 
         block.txs[0].type = TxType.Freeze;
         buildMerkleTree(block);
-        assert(block.isGenesisBlockValid());
+        checkValidity(block);
 
         // Input empty check
         block.txs[0].inputs ~= Input.init;
@@ -328,7 +334,7 @@ unittest
 
         block.txs = txs;
         buildMerkleTree(block);
-        assert(block.isGenesisBlockValid());
+        checkValidity(block);
 
         // Output not empty check
         block.txs[0].outputs = null;
@@ -352,7 +358,7 @@ unittest
     assert(!block.isGenesisBlockValid());
 
     block.header.enrollments.length = 0;
-    assert(block.isGenesisBlockValid());
+    checkValidity(block);
 
     block = GenesisBlock.serializeFull.deserializeFull!Block;
 
@@ -362,7 +368,7 @@ unittest
 
     // now restore it back to what it was
     block.header.merkle_root[][$ - 1]--;
-    assert(block.isGenesisBlockValid());
+    checkValidity(block);
     const last_root = block.header.merkle_root;
 
     // the previous merkle root should not match the new txs
