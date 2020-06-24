@@ -354,6 +354,9 @@ public struct WK
     /// Well known public keys (matching Seed and Key)
     public static struct Keys
     {
+        /// Exposes all keys
+        public import agora.utils.WellKnownKeys;
+
         /// This struct is used as a namespace only
         @disable public this ();
 
@@ -395,9 +398,6 @@ public struct WK
         {
             return wellKnownKeyByIndex(idx);
         }
-
-        /// Exposes all keys
-        public import agora.utils.WellKnownKeys;
     }
 }
 
