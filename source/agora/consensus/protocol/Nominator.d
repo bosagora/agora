@@ -485,7 +485,7 @@ extern(D):
 
             // todo: currently we just pick the first of the candidate values,
             // but we should ideally pick tx's out of the combined set
-            return data.serializeFull().toVec();
+            return duplicate_value(&candidate);
         }
 
         assert(0);  // should not reach here
