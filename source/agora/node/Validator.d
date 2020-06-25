@@ -25,6 +25,7 @@ import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXOSetValue;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
@@ -55,9 +56,6 @@ public class Validator : FullNode, API
 {
     /// Nominator instance
     protected Nominator nominator;
-
-    /// The current quorum configuration (changes as active enrollments change)
-    protected QuorumConfig qc;
 
     /// The current required set of peer keeys to connect to
     protected Set!PublicKey required_peer_keys;
@@ -91,12 +89,15 @@ public class Validator : FullNode, API
     {
         try
         {
+            // we're not enrolled and don't care about quorum sets
             if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
                 return;
 
-            this.qc = this.rebuildQuorumConfig();
-            this.nominator.setQuorumConfig(this.qc);
-            buildRequiredKeys(this.config.node.key_pair.address, this.qc,
+            static QuorumConfig qc;
+            static QuorumConfig[] other_qcs;
+            this.rebuildQuorumConfig(qc, other_qcs);
+            this.nominator.setQuorumConfig(qc, other_qcs);
+            buildRequiredKeys(this.config.node.key_pair.address, qc,
                 this.required_peer_keys);
         }
         catch (Exception ex)
@@ -108,15 +109,17 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        Generate the quorum configuration for this node based on the
-        blockchain state (enrollments).
+        Generate the quorum configuration for this node and all other validator
+        nodes in the network, based on the blockchain state (enrollments).
 
-        Returns:
-            the generated quorum configuration
+        Params:
+            qc = will contain the quorum configuration
+            other_qcs = will contain the list of other nodes' quorum configs.
 
     ***************************************************************************/
 
-    private QuorumConfig rebuildQuorumConfig ()
+    private void rebuildQuorumConfig (ref QuorumConfig qc,
+        ref QuorumConfig[] other_qcs)
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
@@ -125,8 +128,41 @@ public class Validator : FullNode, API
             assert(0);
         }
 
-        return buildQuorumConfig(this.config.node.key_pair.address,
+        qc = buildQuorumConfig(this.config.node.key_pair.address,
             keys, this.utxo_set.getUTXOFinder());
+
+        auto pub_keys = this.getEnrolledPublicKeys(keys);
+        other_qcs.length = 0;
+        assumeSafeAppend(other_qcs);
+        foreach (pub_key; pub_keys)
+        {
+            other_qcs ~= buildQuorumConfig(pub_key, keys,
+                this.utxo_set.getUTXOFinder());
+        }
+    }
+
+    /***************************************************************************
+
+        Params:
+            utxos = the list of enrolled utxos
+
+        Returns:
+            the list of all enrolled public keys
+
+    ***************************************************************************/
+
+    private PublicKey[] getEnrolledPublicKeys (Hash[] utxos) @safe nothrow
+    {
+        PublicKey[] keys;
+        auto finder = this.utxo_set.getUTXOFinder();
+        foreach (utxo; utxos)
+        {
+            UTXOSetValue value;
+            assert(finder(utxo, size_t.max, value));
+            keys ~= value.output.address;
+        }
+
+        return keys;
     }
 
     /***************************************************************************

@@ -112,20 +112,34 @@ extern(D):
 
         Set or update the quorum configuration
 
+        The node additionally takes the list of all other validator's quorum
+        configurations and saves them for later lookup by getQSet().
+
         Params:
-            quorum = the quorum config to set
+            quorum = the quorum config for this node
+            other_quorums = the quorum config for all other nodes in the network
 
     ***************************************************************************/
 
-    public void setQuorumConfig (const ref QuorumConfig quorum)
+    public void setQuorumConfig (const ref QuorumConfig quorum,
+        const(QuorumConfig)[] other_quorums)
     {
         assert(!this.is_nominating);
+        this.quorum_set.clear();
+
+        // store the list of other node's quorum hashes
+        foreach (qc; other_quorums)
+        {
+            auto quorum_set = verifyBuildSCPConfig(qc);
+            auto shared_set = makeSharedSCPQuorumSet(quorum_set);
+            this.quorum_set[hashFull(quorum_set)] = shared_set;
+        }
+
+        // set up our own quorum
         auto quorum_set = verifyBuildSCPConfig(quorum);
         this.scp.updateLocalQuorumSet(quorum_set);
-        auto localQSet = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
-        auto quorum_hash = hashFull(*localQSet);
-        this.quorum_set.clear();
-        this.quorum_set[quorum_hash] = localQSet;
+        auto shared_set = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
+        this.quorum_set[hashFull(quorum_set)] = shared_set;
     }
 
     /***************************************************************************
