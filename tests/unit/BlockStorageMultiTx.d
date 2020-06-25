@@ -24,9 +24,10 @@ import agora.consensus.Genesis;
 import agora.node.BlockStorage;
 import agora.utils.Test;
 
-import std.algorithm.comparison;
+import std.algorithm;
 import std.file;
 import std.path;
+import std.range;
 
 /// The maximum number of block in one file
 private immutable ulong MFILE_MAX_BLOCK = 100;
@@ -44,19 +45,19 @@ private void main ()
     const(Block)[] blocks;
     blocks ~= GenesisBlock;
 
-    // We can use a random keypair because blocks are not validated
-    auto gen_key_pair = KeyPair.random();
-
-    Transaction[] last_txs;
+    // For genesis, we need to use the outputs, not previous transactions
+    Transaction[] txs = iota(Block.TxsInBlock)
+        .map!(idx => TxBuilder(GenesisBlock.txs[0], idx).refund(WK.Keys.A.address).sign())
+        .array();
     foreach (block_idx; 0 .. BlockCount)
     {
-        // create enough tx's for a single block
-        auto txs = makeChainedTransactions(gen_key_pair, last_txs, 1);
-
         auto block = makeNewBlock(blocks[$ - 1], txs, null);
         storage.saveBlock(block);
         blocks ~= block;
-        last_txs = txs;
+        // Prepare transactions for the next block
+        txs = txs
+            .map!(tx => TxBuilder(tx).refund(WK.Keys[block_idx + 1].address).sign())
+            .array();
     }
 
     //// load
@@ -64,7 +65,7 @@ private void main ()
     loaded_blocks.length = BlockCount + 1;
     foreach (idx; 0 .. BlockCount + 1)
         storage.readBlock(loaded_blocks[idx], Height(idx));
-    size_t idx;
 
+    // Finally compare every blocks
     assert(loaded_blocks == blocks);
 }
