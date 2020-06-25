@@ -314,18 +314,18 @@ unittest
         block = GenesisBlock.serializeFull.deserializeFull!Block;
 
         // Txs type check
+        auto pre_type_change_txs = block.txs.dup;
         block.txs[0].type = cast(TxType)2;
         buildMerkleTree(block);
         assert(block.isGenesisBlockInvalidReason()
                .canFind("Invalid enum value"));
 
-        block.txs[0].type = TxType.Payment;
+        block.txs = pre_type_change_txs;
         buildMerkleTree(block);
         checkValidity(block);
 
-        block.txs[0].type = TxType.Freeze;
-        buildMerkleTree(block);
-        checkValidity(block);
+        assert(block.txs.any!(tx => tx.type == TxType.Payment));
+        assert(block.txs.any!(tx => tx.type == TxType.Freeze));
 
         // Input empty check
         block.txs[0].inputs ~= Input.init;
@@ -512,7 +512,9 @@ unittest
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent));
 
-    assert(used_set.length == utxo_set_len);  // consumed all utxos
+    // All `payment` utxos have been consumed
+    assert(GenesisBlock.txs[0].type == TxType.Freeze);
+    assert(used_set.length + GenesisBlock.txs[0].outputs.length == utxo_set_len);
 
     // reset state
     used_set.clear();
