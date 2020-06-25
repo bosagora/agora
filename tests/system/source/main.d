@@ -74,18 +74,9 @@ int main (string[] args)
 
         auto kp = WK.Keys.Genesis;
 
-        foreach (idx; 0 .. Block.TxsInBlock)
-        {
-            Transaction tx = {
-                type: TxType.Payment,
-                inputs: [Input(GenesisBlock.header.merkle_root, idx)],
-                outputs: [Output(GenesisTransaction.outputs[idx].value, kp.address)]
-            };
-
-            auto signature = kp.secret.sign(hashFull(tx)[]);
-            tx.inputs[0].signature = signature;
-            clients[0].putTransaction(tx);
-        }
+        iota(Block.TxsInBlock)
+            .map!(idx => TxBuilder(GenesisBlock.txs[0], idx).refund(kp.address).sign())
+            .each!(tx => clients[0].putTransaction(tx));
 
         checkBlockHeight(addresses, 1);
     }
@@ -125,12 +116,4 @@ private void checkBlockHeight (const string[] addresses, ulong height)
             blockHash = hashFull(blocks[height].header);
         times = 0;
     }
-}
-
-/// Copied from Agora
-public KeyPair getGenesisKeyPair ()
-{
-    return KeyPair.fromSeed(
-        Seed.fromString(
-            "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
 }
