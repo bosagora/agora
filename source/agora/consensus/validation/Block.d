@@ -407,7 +407,7 @@ unittest
     assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
 
-    utxos.put(GenesisTransaction);
+    GenesisBlock.txs.each!(tx => utxos.put(tx));
     auto block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
 
     // height check
@@ -451,7 +451,7 @@ unittest
     utxos.clear();
     assert(!block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
-    utxos.put(GenesisTransaction);
+    GenesisBlock.txs.each!(tx => utxos.put(tx));
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO));
 
     utxos.clear();  // genesis is spent
@@ -479,8 +479,9 @@ unittest
     // the key is hashMulti(hash(prev_tx), index)
     Output[Hash] utxo_set;
 
-    foreach (idx, ref output; GenesisTransaction.outputs)
-        utxo_set[hashMulti(GenesisTransaction.hashFull, idx)] = output;
+    foreach (tx; GenesisBlock.txs)
+        foreach (idx, ref output; tx.outputs)
+            utxo_set[hashMulti(tx.hashFull, idx)] = output;
 
     assert(utxo_set.length != 0);
     const utxo_set_len = utxo_set.length;
