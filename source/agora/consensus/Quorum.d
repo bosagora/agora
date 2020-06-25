@@ -77,35 +77,6 @@ unittest
 
 /*******************************************************************************
 
-    Verify that the provided quorum configuration is considered sane by SCP.
-
-    Params:
-        quorum = the quorum config
-
-    Throws:
-        an Exception if the quorum is not considered sane by SCP.
-
-*******************************************************************************/
-
-private void verifyQuorumSanity (const ref QuorumConfig quorum)
-{
-    import scpd.scp.QuorumSetUtils;
-    auto scp_quorum = toSCPQuorumSet(quorum);
-
-    const bool ExtraChecks = true;
-    const(char)* fail_reason;
-    enforce(isQuorumSetSane(scp_quorum, ExtraChecks, &fail_reason),
-        format("Quorum %s fails sanity check before normalization: %s",
-                quorum, fail_reason.fromStringz));
-
-    normalizeQSet(scp_quorum);
-    enforce(isQuorumSetSane(scp_quorum, ExtraChecks, &fail_reason),
-        format("Quorum %s fails sanity check after normalization: %s",
-                quorum, fail_reason.fromStringz));
-}
-
-/*******************************************************************************
-
     For each enrollment find the associated public key,
     and return the set of keys.
 
@@ -189,4 +160,34 @@ private auto genTestEnrolls (size_t num_enrollments)
     PublicKey[] keys = key_pairs.map!(k => cast()k.address).array;
     keys.sort();
     return Result(keys, enrolls, &storage.findUTXO);
+}
+
+/*******************************************************************************
+
+    Verify that the provided quorum configuration is considered sane by SCP.
+
+    Params:
+        quorum = the quorum config
+
+    Throws:
+        an Exception if the quorum is not considered sane by SCP.
+
+*******************************************************************************/
+
+version (unittest)
+private void verifyQuorumSanity (const ref QuorumConfig quorum)
+{
+    import scpd.scp.QuorumSetUtils;
+    auto scp_quorum = toSCPQuorumSet(quorum);
+
+    const bool ExtraChecks = true;
+    const(char)* fail_reason;
+    enforce(isQuorumSetSane(scp_quorum, ExtraChecks, &fail_reason),
+        format("Quorum %s fails sanity check before normalization: %s",
+                quorum, fail_reason.fromStringz));
+
+    normalizeQSet(scp_quorum);
+    enforce(isQuorumSetSane(scp_quorum, ExtraChecks, &fail_reason),
+        format("Quorum %s fails sanity check after normalization: %s",
+                quorum, fail_reason.fromStringz));
 }
