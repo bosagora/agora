@@ -522,6 +522,26 @@ public class EnrollmentManager
         return PublicKey(this.key_pair.V[]);
     }
 
+    /// Returns: true if this validator is currently enrolled
+    public bool isEnrolled (UTXOFinder finder) nothrow @safe
+    {
+        Hash[] utxo_keys;
+        assert(this.validator_set.getEnrolledUTXOs(utxo_keys));
+
+        const PublicKey key = this.getEnrollmentPublicKey();
+        foreach (utxo_key; utxo_keys)
+        {
+            UTXOSetValue value;
+            if (!finder(utxo_key, size_t.max, value))
+                assert(0, "UTXO for validator not found!");  // should never happen
+
+            if (value.output.address == key)
+                return true;
+        }
+
+        return false;
+    }
+
     /***************************************************************************
 
         Get the key for the enrollment data for this node

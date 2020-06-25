@@ -91,6 +91,9 @@ public class Validator : FullNode, API
     {
         try
         {
+            if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+                return;
+
             this.qc = this.rebuildQuorumConfig();
             this.nominator.setQuorumConfig(this.qc);
             buildRequiredKeys(this.config.node.key_pair.address, this.qc,
@@ -212,6 +215,9 @@ public class Validator : FullNode, API
 
     protected final override void onAcceptedTransaction () @safe
     {
+        if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+            return;  // nothing to do, we're not an active validator
+
         // check if there's enough txs in the pool, and start nominating
         this.nominator.tryNominate();
     }
