@@ -57,6 +57,6 @@ public SCPQuorumSet dup (ref const(SCPQuorumSet) orig)
 extern(C++):
 
 public void push_back(T, VectorT) (ref VectorT this_, ref T value) @safe pure nothrow @nogc;
-// Workaround for Dlang issue #20805
+// Workarounds for Dlang issue #20805
 public void push_back_vec (void*, const(void)*) @safe pure nothrow @nogc;
-public VectorT duplicate(VectorT)(ref const VectorT this_) @safe pure nothrow @nogc;
+public Value duplicate_value (const(void)*) @safe pure nothrow @nogc;
