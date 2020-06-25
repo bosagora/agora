@@ -25,7 +25,6 @@ enum SCPStatementType
 
 struct SCPNomination
 {
-    Hash quorumSetHash; // D
     Value votes<>;      // X
     Value accepted<>;   // Y
 };
@@ -40,7 +39,6 @@ struct SCPStatement
     case SCP_ST_PREPARE:
         struct
         {
-            Hash quorumSetHash;       // D
             SCPBallot ballot;         // b
             SCPBallot* prepared;      // p
             SCPBallot* preparedPrime; // p'
@@ -54,14 +52,12 @@ struct SCPStatement
             uint32 nPrepared;   // p.n
             uint32 nCommit;     // c.n
             uint32 nH;          // h.n
-            Hash quorumSetHash; // D
         } confirm;
     case SCP_ST_EXTERNALIZE:
         struct
         {
             SCPBallot commit;         // c
             uint32 nH;                // h.n
-            Hash commitQuorumSetHash; // D used before EXTERNALIZE
         } externalize;
     case SCP_ST_NOMINATE:
         SCPNomination nominate;

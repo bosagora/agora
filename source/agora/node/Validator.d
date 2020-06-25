@@ -120,26 +120,27 @@ public class Validator : FullNode, API
             return;
         }
 
-        static QuorumConfig[] other_qcs;
-        this.rebuildQuorumConfig(this.qc, other_qcs, height);
-        this.nominator.setQuorumConfig(this.qc, other_qcs);
+        static QuorumConfig[PublicKey] quorums;
+        this.rebuildQuorumConfig(quorums, height);
+        this.qc = quorums[this.config.node.key_pair.address];
+        this.nominator.setQuorumConfig(quorums);
         buildRequiredKeys(this.config.node.key_pair.address, this.qc,
             this.required_peer_keys);
     }
 
     /***************************************************************************
 
-        Generate the quorum configuration for this node and all other validator
-        nodes in the network, based on the blockchain state (enrollments).
+        Generate the quorum configurations for all the actively enrolled
+        validators, using their combined preimages to shuffle the quorums.
 
         Params:
-            qc = will contain the quorum configuration
-            other_qcs = will contain the list of other nodes' quorum configs.
+            quorums = will contain the mapping of all quorum configs
+            height = the new height
 
     ***************************************************************************/
 
-    private void rebuildQuorumConfig (ref QuorumConfig qc,
-        ref QuorumConfig[] other_qcs, Height height) nothrow @safe
+    private void rebuildQuorumConfig (ref QuorumConfig[PublicKey] quorums,
+        Height height) @safe nothrow
     {
         import std.algorithm;
 
@@ -151,18 +152,12 @@ public class Validator : FullNode, API
         }
 
         const rand_seed = this.enroll_man.getRandomSeed(keys, height);
-        qc = buildQuorumConfig(this.config.node.key_pair.address,
-            keys, this.utxo_set.getUTXOFinder(), rand_seed,
-            this.quorum_params);
-
         auto pub_keys = this.getEnrolledPublicKeys(keys);
-        other_qcs.length = 0;
-        () @trusted { assumeSafeAppend(other_qcs); }();
+        () @trusted { quorums.clear(); }();
 
-        foreach (pub_key; pub_keys.filter!(
-            pk => pk != this.config.node.key_pair.address))  // skip our own
+        foreach (pub_key; pub_keys)
         {
-            other_qcs ~= buildQuorumConfig(pub_key, keys,
+            quorums[pub_key] = buildQuorumConfig(pub_key, keys,
                 this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
         }
     }

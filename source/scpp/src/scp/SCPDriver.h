@@ -26,17 +26,15 @@ class SCPDriver
     // Envelope signature
     virtual void signEnvelope(SCPEnvelope& envelope) = 0;
 
-    // Retrieves a quorum set from its hash
+    // Retrieves the quorum set configuration for the given node ID
     //
-    // All SCP statement (see `SCPNomination` and `SCPStatement`) include
-    // a quorum set hash.
-    // SCP does not define how quorum sets are exchanged between nodes,
-    // hence their retrieval is delegated to the user of SCP.
-    // The return value is not cached by SCP, as quorum sets are transient.
+    // Note: In our modified version of SCP we do not include quorum set hashes
+    // in SCP protocol messages as the quorums are implicitly known by the
+    // system for all active validator nodes.
     //
     // `nullptr` is a valid return value which cause the statement to be
     // considered invalid.
-    virtual SCPQuorumSetPtr getQSet(Hash const& qSetHash) = 0;
+    virtual SCPQuorumSetPtr getNodeQSet(NodeID const& nodeID) = 0;
 
     // Users of the SCP library should inherit from SCPDriver and implement the
     // virtual methods which are called by the SCP implementation to

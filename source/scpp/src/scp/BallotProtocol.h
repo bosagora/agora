@@ -91,12 +91,6 @@ class BallotProtocol
     Json::Value getJsonQuorumInfo(NodeID const& id, bool summary,
                                   bool fullKeys = false);
 
-    // returns the hash of the QuorumSet that should be downloaded
-    // with the statement.
-    // note: the companion hash for an EXTERNALIZE statement does
-    // not match the hash of the QSet, but the hash of commitQuorumSetHash
-    static Hash getCompanionQuorumSetHashFromStatement(SCPStatement const& st);
-
     // helper function to retrieve b for PREPARE, P for CONFIRM or
     // c for EXTERNALIZE messages
     static SCPBallot getWorkingBallot(SCPStatement const& st);

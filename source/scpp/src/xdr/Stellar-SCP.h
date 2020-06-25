@@ -90,32 +90,24 @@ template<> struct xdr_traits<::stellar::SCPStatementType>
 } namespace stellar {
 
 struct SCPNomination {
-  Hash quorumSetHash{};
   xdr::xvector<Value> votes{};
   xdr::xvector<Value> accepted{};
 
   SCPNomination() = default;
-  template<typename _quorumSetHash_T,
-           typename _votes_T,
+  template<typename _votes_T,
            typename _accepted_T,
            typename = typename
-           std::enable_if<std::is_constructible<Hash, _quorumSetHash_T>::value
-                          && std::is_constructible<xdr::xvector<Value>, _votes_T>::value
+           std::enable_if<std::is_constructible<xdr::xvector<Value>, _votes_T>::value
                           && std::is_constructible<xdr::xvector<Value>, _accepted_T>::value
                          >::type>
-  explicit SCPNomination(_quorumSetHash_T &&_quorumSetHash,
-                         _votes_T &&_votes,
+  explicit SCPNomination(_votes_T &&_votes,
                          _accepted_T &&_accepted)
-    : quorumSetHash(std::forward<_quorumSetHash_T>(_quorumSetHash)),
-      votes(std::forward<_votes_T>(_votes)),
+    : votes(std::forward<_votes_T>(_votes)),
       accepted(std::forward<_accepted_T>(_accepted)) {}
 };
 } namespace xdr {
 template<> struct xdr_traits<::stellar::SCPNomination>
   : xdr_struct_base<field_ptr<::stellar::SCPNomination,
-                              decltype(::stellar::SCPNomination::quorumSetHash),
-                              &::stellar::SCPNomination::quorumSetHash>,
-                    field_ptr<::stellar::SCPNomination,
                               decltype(::stellar::SCPNomination::votes),
                               &::stellar::SCPNomination::votes>,
                     field_ptr<::stellar::SCPNomination,
@@ -123,13 +115,11 @@ template<> struct xdr_traits<::stellar::SCPNomination>
                               &::stellar::SCPNomination::accepted>> {
   template<typename Archive> static void
   save(Archive &ar, const ::stellar::SCPNomination &obj) {
-    archive(ar, obj.quorumSetHash, "quorumSetHash");
     archive(ar, obj.votes, "votes");
     archive(ar, obj.accepted, "accepted");
   }
   template<typename Archive> static void
   load(Archive &ar, ::stellar::SCPNomination &obj) {
-    archive(ar, obj.quorumSetHash, "quorumSetHash");
     archive(ar, obj.votes, "votes");
     archive(ar, obj.accepted, "accepted");
     xdr::validate(obj);
@@ -140,7 +130,6 @@ template<> struct xdr_traits<::stellar::SCPNomination>
 struct SCPStatement {
   struct _pledges_t {
     struct _prepare_t {
-      Hash quorumSetHash{};
       SCPBallot ballot{};
       xdr::pointer<SCPBallot> prepared{};
       xdr::pointer<SCPBallot> preparedPrime{};
@@ -148,28 +137,24 @@ struct SCPStatement {
       uint32 nH{};
 
       _prepare_t() = default;
-      template<typename _quorumSetHash_T,
-               typename _ballot_T,
+      template<typename _ballot_T,
                typename _prepared_T,
                typename _preparedPrime_T,
                typename _nC_T,
                typename _nH_T,
                typename = typename
-               std::enable_if<std::is_constructible<Hash, _quorumSetHash_T>::value
-                              && std::is_constructible<SCPBallot, _ballot_T>::value
+               std::enable_if<std::is_constructible<SCPBallot, _ballot_T>::value
                               && std::is_constructible<xdr::pointer<SCPBallot>, _prepared_T>::value
                               && std::is_constructible<xdr::pointer<SCPBallot>, _preparedPrime_T>::value
                               && std::is_constructible<uint32, _nC_T>::value
                               && std::is_constructible<uint32, _nH_T>::value
                              >::type>
-      explicit _prepare_t(_quorumSetHash_T &&_quorumSetHash,
-                          _ballot_T &&_ballot,
+      explicit _prepare_t(_ballot_T &&_ballot,
                           _prepared_T &&_prepared,
                           _preparedPrime_T &&_preparedPrime,
                           _nC_T &&_nC,
                           _nH_T &&_nH)
-        : quorumSetHash(std::forward<_quorumSetHash_T>(_quorumSetHash)),
-          ballot(std::forward<_ballot_T>(_ballot)),
+        : ballot(std::forward<_ballot_T>(_ballot)),
           prepared(std::forward<_prepared_T>(_prepared)),
           preparedPrime(std::forward<_preparedPrime_T>(_preparedPrime)),
           nC(std::forward<_nC_T>(_nC)),
@@ -180,52 +165,42 @@ struct SCPStatement {
       uint32 nPrepared{};
       uint32 nCommit{};
       uint32 nH{};
-      Hash quorumSetHash{};
 
       _confirm_t() = default;
       template<typename _ballot_T,
                typename _nPrepared_T,
                typename _nCommit_T,
                typename _nH_T,
-               typename _quorumSetHash_T,
                typename = typename
                std::enable_if<std::is_constructible<SCPBallot, _ballot_T>::value
                               && std::is_constructible<uint32, _nPrepared_T>::value
                               && std::is_constructible<uint32, _nCommit_T>::value
                               && std::is_constructible<uint32, _nH_T>::value
-                              && std::is_constructible<Hash, _quorumSetHash_T>::value
                              >::type>
       explicit _confirm_t(_ballot_T &&_ballot,
                           _nPrepared_T &&_nPrepared,
                           _nCommit_T &&_nCommit,
-                          _nH_T &&_nH,
-                          _quorumSetHash_T &&_quorumSetHash)
+                          _nH_T &&_nH)
         : ballot(std::forward<_ballot_T>(_ballot)),
           nPrepared(std::forward<_nPrepared_T>(_nPrepared)),
           nCommit(std::forward<_nCommit_T>(_nCommit)),
-          nH(std::forward<_nH_T>(_nH)),
-          quorumSetHash(std::forward<_quorumSetHash_T>(_quorumSetHash)) {}
+          nH(std::forward<_nH_T>(_nH)) {}
     };
     struct _externalize_t {
       SCPBallot commit{};
       uint32 nH{};
-      Hash commitQuorumSetHash{};
 
       _externalize_t() = default;
       template<typename _commit_T,
                typename _nH_T,
-               typename _commitQuorumSetHash_T,
                typename = typename
                std::enable_if<std::is_constructible<SCPBallot, _commit_T>::value
                               && std::is_constructible<uint32, _nH_T>::value
-                              && std::is_constructible<Hash, _commitQuorumSetHash_T>::value
                              >::type>
       explicit _externalize_t(_commit_T &&_commit,
-                              _nH_T &&_nH,
-                              _commitQuorumSetHash_T &&_commitQuorumSetHash)
+                              _nH_T &&_nH)
         : commit(std::forward<_commit_T>(_commit)),
-          nH(std::forward<_nH_T>(_nH)),
-          commitQuorumSetHash(std::forward<_commitQuorumSetHash_T>(_commitQuorumSetHash)) {}
+          nH(std::forward<_nH_T>(_nH)) {}
     };
 
     using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
@@ -397,9 +372,6 @@ struct SCPStatement {
 } namespace xdr {
 template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_prepare_t>
   : xdr_struct_base<field_ptr<::stellar::SCPStatement::_pledges_t::_prepare_t,
-                              decltype(::stellar::SCPStatement::_pledges_t::_prepare_t::quorumSetHash),
-                              &::stellar::SCPStatement::_pledges_t::_prepare_t::quorumSetHash>,
-                    field_ptr<::stellar::SCPStatement::_pledges_t::_prepare_t,
                               decltype(::stellar::SCPStatement::_pledges_t::_prepare_t::ballot),
                               &::stellar::SCPStatement::_pledges_t::_prepare_t::ballot>,
                     field_ptr<::stellar::SCPStatement::_pledges_t::_prepare_t,
@@ -416,7 +388,6 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_prepare_t>
                               &::stellar::SCPStatement::_pledges_t::_prepare_t::nH>> {
   template<typename Archive> static void
   save(Archive &ar, const ::stellar::SCPStatement::_pledges_t::_prepare_t &obj) {
-    archive(ar, obj.quorumSetHash, "quorumSetHash");
     archive(ar, obj.ballot, "ballot");
     archive(ar, obj.prepared, "prepared");
     archive(ar, obj.preparedPrime, "preparedPrime");
@@ -425,7 +396,6 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_prepare_t>
   }
   template<typename Archive> static void
   load(Archive &ar, ::stellar::SCPStatement::_pledges_t::_prepare_t &obj) {
-    archive(ar, obj.quorumSetHash, "quorumSetHash");
     archive(ar, obj.ballot, "ballot");
     archive(ar, obj.prepared, "prepared");
     archive(ar, obj.preparedPrime, "preparedPrime");
@@ -446,17 +416,13 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_confirm_t>
                               &::stellar::SCPStatement::_pledges_t::_confirm_t::nCommit>,
                     field_ptr<::stellar::SCPStatement::_pledges_t::_confirm_t,
                               decltype(::stellar::SCPStatement::_pledges_t::_confirm_t::nH),
-                              &::stellar::SCPStatement::_pledges_t::_confirm_t::nH>,
-                    field_ptr<::stellar::SCPStatement::_pledges_t::_confirm_t,
-                              decltype(::stellar::SCPStatement::_pledges_t::_confirm_t::quorumSetHash),
-                              &::stellar::SCPStatement::_pledges_t::_confirm_t::quorumSetHash>> {
+                              &::stellar::SCPStatement::_pledges_t::_confirm_t::nH>> {
   template<typename Archive> static void
   save(Archive &ar, const ::stellar::SCPStatement::_pledges_t::_confirm_t &obj) {
     archive(ar, obj.ballot, "ballot");
     archive(ar, obj.nPrepared, "nPrepared");
     archive(ar, obj.nCommit, "nCommit");
     archive(ar, obj.nH, "nH");
-    archive(ar, obj.quorumSetHash, "quorumSetHash");
   }
   template<typename Archive> static void
   load(Archive &ar, ::stellar::SCPStatement::_pledges_t::_confirm_t &obj) {
@@ -464,7 +430,6 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_confirm_t>
     archive(ar, obj.nPrepared, "nPrepared");
     archive(ar, obj.nCommit, "nCommit");
     archive(ar, obj.nH, "nH");
-    archive(ar, obj.quorumSetHash, "quorumSetHash");
     xdr::validate(obj);
   }
 };
@@ -474,21 +439,16 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_externalize_t
                               &::stellar::SCPStatement::_pledges_t::_externalize_t::commit>,
                     field_ptr<::stellar::SCPStatement::_pledges_t::_externalize_t,
                               decltype(::stellar::SCPStatement::_pledges_t::_externalize_t::nH),
-                              &::stellar::SCPStatement::_pledges_t::_externalize_t::nH>,
-                    field_ptr<::stellar::SCPStatement::_pledges_t::_externalize_t,
-                              decltype(::stellar::SCPStatement::_pledges_t::_externalize_t::commitQuorumSetHash),
-                              &::stellar::SCPStatement::_pledges_t::_externalize_t::commitQuorumSetHash>> {
+                              &::stellar::SCPStatement::_pledges_t::_externalize_t::nH>> {
   template<typename Archive> static void
   save(Archive &ar, const ::stellar::SCPStatement::_pledges_t::_externalize_t &obj) {
     archive(ar, obj.commit, "commit");
     archive(ar, obj.nH, "nH");
-    archive(ar, obj.commitQuorumSetHash, "commitQuorumSetHash");
   }
   template<typename Archive> static void
   load(Archive &ar, ::stellar::SCPStatement::_pledges_t::_externalize_t &obj) {
     archive(ar, obj.commit, "commit");
     archive(ar, obj.nH, "nH");
-    archive(ar, obj.commitQuorumSetHash, "commitQuorumSetHash");
     xdr::validate(obj);
   }
 };

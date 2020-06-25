@@ -31,9 +31,8 @@ nothrow:
     // Envelope signature/verification
     abstract void signEnvelope(ref SCPEnvelope envelope);
 
-    // Delegates the retrieval of the quorum set designated by `qSetHash` to
-    // the user of SCP.
-    abstract SCPQuorumSetPtr getQSet(ref const(Hash) qSetHash);
+    // Delegates the retrieval of the quorum set associated with this node ID
+    abstract SCPQuorumSetPtr getNodeQSet(ref const(NodeID) nodeID);
 
     // Users of the SCP library should inherit from SCPDriver and implement the
     // virtual methods which are called by the SCP implementation to

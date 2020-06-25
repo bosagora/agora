@@ -63,7 +63,6 @@ FieldInfo cppFieldInfo ( SCPBallot &object, const char *field_name )
 
 FieldInfo cppFieldInfo ( SCPNomination &object, const char *field_name )
 {
-    HANDLE(quorumSetHash)
     HANDLE(votes)
     HANDLE(accepted)
     return FieldInfo(-1, -1);  // assert on the D side for better error messages
@@ -71,7 +70,6 @@ FieldInfo cppFieldInfo ( SCPNomination &object, const char *field_name )
 
 FieldInfo cppFieldInfo ( SCPStatement::_pledges_t::_prepare_t &object, const char *field_name )
 {
-    HANDLE(quorumSetHash)
     HANDLE(ballot)
     HANDLE(prepared)
     HANDLE(preparedPrime)
@@ -86,7 +84,6 @@ FieldInfo cppFieldInfo ( SCPStatement::_pledges_t::_confirm_t &object, const cha
     HANDLE(nPrepared)
     HANDLE(nCommit)
     HANDLE(nH)
-    HANDLE(quorumSetHash)
     return FieldInfo(-1, -1);  // assert on the D side for better error messages
 }
 
@@ -94,7 +91,6 @@ FieldInfo cppFieldInfo ( SCPStatement::_pledges_t::_externalize_t &object, const
 {
     HANDLE(commit)
     HANDLE(nH)
-    HANDLE(commitQuorumSetHash)
     return FieldInfo(-1, -1);  // assert on the D side for better error messages
 }
 

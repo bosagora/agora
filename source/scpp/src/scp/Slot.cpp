@@ -215,30 +215,6 @@ Slot::createEnvelope(SCPStatement const& statement)
     return envelope;
 }
 
-Hash
-Slot::getCompanionQuorumSetHashFromStatement(SCPStatement const& st)
-{
-    Hash h;
-    switch (st.pledges.type())
-    {
-    case SCP_ST_PREPARE:
-        h = st.pledges.prepare().quorumSetHash;
-        break;
-    case SCP_ST_CONFIRM:
-        h = st.pledges.confirm().quorumSetHash;
-        break;
-    case SCP_ST_EXTERNALIZE:
-        h = st.pledges.externalize().commitQuorumSetHash;
-        break;
-    case SCP_ST_NOMINATE:
-        h = st.pledges.nominate().quorumSetHash;
-        break;
-    default:
-        dbgAbort();
-    }
-    return h;
-}
-
 std::vector<Value>
 Slot::getStatementValues(SCPStatement const& st)
 {
@@ -266,24 +242,7 @@ Slot::getQuorumSetFromStatement(SCPStatement const& st)
     }
     else
     {
-        Hash h;
-        if (t == SCP_ST_PREPARE)
-        {
-            h = st.pledges.prepare().quorumSetHash;
-        }
-        else if (t == SCP_ST_CONFIRM)
-        {
-            h = st.pledges.confirm().quorumSetHash;
-        }
-        else if (t == SCP_ST_NOMINATE)
-        {
-            h = st.pledges.nominate().quorumSetHash;
-        }
-        else
-        {
-            dbgAbort();
-        }
-        res = getSCPDriver().getQSet(h);
+        res = getSCPDriver().getNodeQSet(st.nodeID);
     }
     return res;
 }
@@ -292,7 +251,7 @@ Json::Value
 Slot::getJsonInfo(bool fullKeys)
 {
     Json::Value ret;
-    std::map<Hash, SCPQuorumSetPtr> qSetsUsed;
+    std::map<NodeID, SCPQuorumSetPtr> qSetsUsed;
 
     int count = 0;
     for (auto const& item : mStatementsHistory)
@@ -302,19 +261,11 @@ Slot::getJsonInfo(bool fullKeys)
         v.append(mSCP.envToStr(item.mStatement, fullKeys));
         v.append(item.mValidated);
 
-        Hash const& qSetHash =
-            getCompanionQuorumSetHashFromStatement(item.mStatement);
-        auto qSet = getSCPDriver().getQSet(qSetHash);
+        auto qSet = getSCPDriver().getNodeQSet(item.mStatement.nodeID);
         if (qSet)
         {
-            qSetsUsed.insert(std::make_pair(qSetHash, qSet));
+            qSetsUsed.insert(std::make_pair(item.mStatement.nodeID, qSet));
         }
-    }
-
-    auto& qSets = ret["quorum_sets"];
-    for (auto const& q : qSetsUsed)
-    {
-        qSets[hexAbbrev(q.first)] = getLocalNode()->toJson(*q.second, fullKeys);
     }
 
     ret["validated"] = mFullyValidated;

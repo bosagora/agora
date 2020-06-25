@@ -246,7 +246,7 @@ BallotProtocol::processEnvelope(SCPEnvelope const& envelope, bool self)
 bool
 BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
 {
-    auto qSet = mSlot.getQuorumSetFromStatement(st);
+    auto qSet = mSlot.getSCPDriver().getNodeQSet(st.nodeID);
     const char* reason = nullptr;
     bool res = qSet != nullptr && isQuorumSetSane(*qSet, false, &reason);
     if (!res)
@@ -543,7 +543,6 @@ BallotProtocol::createStatement(SCPStatementType const& type)
     case SCPStatementType::SCP_ST_PREPARE:
     {
         auto& p = statement.pledges.prepare();
-        p.quorumSetHash = getLocalNode()->getQuorumSetHash();
         if (mCurrentBallot)
         {
             p.ballot = *mCurrentBallot;
@@ -569,7 +568,6 @@ BallotProtocol::createStatement(SCPStatementType const& type)
     case SCPStatementType::SCP_ST_CONFIRM:
     {
         auto& c = statement.pledges.confirm();
-        c.quorumSetHash = getLocalNode()->getQuorumSetHash();
         c.ballot = *mCurrentBallot;
         c.nPrepared = mPrepared->counter;
         c.nCommit = mCommit->counter;
@@ -581,7 +579,6 @@ BallotProtocol::createStatement(SCPStatementType const& type)
         auto& e = statement.pledges.externalize();
         e.commit = *mCommit;
         e.nH = mHighBallot->counter;
-        e.commitQuorumSetHash = getLocalNode()->getQuorumSetHash();
     }
     break;
     default:
@@ -1558,27 +1555,6 @@ BallotProtocol::hasPreparedBallot(SCPBallot const& ballot,
     return res;
 }
 
-Hash
-BallotProtocol::getCompanionQuorumSetHashFromStatement(SCPStatement const& st)
-{
-    Hash h;
-    switch (st.pledges.type())
-    {
-    case SCP_ST_PREPARE:
-        h = st.pledges.prepare().quorumSetHash;
-        break;
-    case SCP_ST_CONFIRM:
-        h = st.pledges.confirm().quorumSetHash;
-        break;
-    case SCP_ST_EXTERNALIZE:
-        h = st.pledges.externalize().commitQuorumSetHash;
-        break;
-    default:
-        dbgAbort();
-    }
-    return h;
-}
-
 SCPBallot
 BallotProtocol::getWorkingBallot(SCPStatement const& st)
 {
@@ -1990,16 +1966,11 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
 
     // find the state of the node `id`
     SCPBallot b;
-    Hash qSetHash;
 
     auto stateit = mLatestEnvelopes.find(id);
     if (stateit == mLatestEnvelopes.end())
     {
         phase = "unknown";
-        if (id == mSlot.getLocalNode()->getNodeID())
-        {
-            qSetHash = mSlot.getLocalNode()->getQuorumSetHash();
-        }
     }
     else
     {
@@ -2022,9 +1993,6 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
         default:
             dbgAbort();
         }
-        // use the companion set here even for externalize to capture
-        // the view of the quorum set during consensus
-        qSetHash = mSlot.getCompanionQuorumSetHashFromStatement(st);
     }
 
     Json::Value& disagree = ret["disagree"];
@@ -2034,7 +2002,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
     int n_missing = 0, n_disagree = 0, n_delayed = 0;
 
     int agree = 0;
-    auto qSet = mSlot.getSCPDriver().getQSet(qSetHash);
+    auto qSet = mSlot.getSCPDriver().getNodeQSet(id);
     if (!qSet)
     {
         phase = "expired";
@@ -2104,7 +2072,6 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
         ret["value"] = getLocalNode()->toJson(*qSet, fullKeys);
     }
 
-    ret["hash"] = hexAbbrev(qSetHash);
     ret["agree"] = agree;
 
     return ret;

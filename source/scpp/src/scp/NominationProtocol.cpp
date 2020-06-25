@@ -148,8 +148,6 @@ NominationProtocol::emitNomination()
     st.pledges.type(SCP_ST_NOMINATE);
     auto& nom = st.pledges.nominate();
 
-    nom.quorumSetHash = mSlot.getLocalNode()->getQuorumSetHash();
-
     for (auto const& v : mVotes)
     {
         nom.votes.emplace_back(v);

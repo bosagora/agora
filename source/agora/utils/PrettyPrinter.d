@@ -408,8 +408,6 @@ private struct EnrollmentFmt
 ///
 unittest
 {
-    Hash quorumSetHash;
-
     Hash key = Hash("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f" ~
                     "1b60a8ce26f000000000019d6689c085ae165831e934ff763ae46a2" ~
                     "a6c172b3f1b60a8ce26f");
@@ -459,8 +457,6 @@ unittest
 {
     import agora.common.Serializer;
     import agora.common.Set;
-
-    Hash quorumSetHash;
 
     Hash key = Hash("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f" ~
                     "1b60a8ce26f000000000019d6689c085ae165831e934ff763ae46a2" ~

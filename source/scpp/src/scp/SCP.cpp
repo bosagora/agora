@@ -316,8 +316,6 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
 {
     std::ostringstream oss;
 
-    Hash const& qSetHash = Slot::getCompanionQuorumSetHashFromStatement(st);
-
     std::string nodeId = mDriver.toStrKey(st.nodeID, fullKeys);
 
     oss << "{ENV@" << nodeId << " | "
@@ -328,7 +326,6 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
     {
         auto const& p = st.pledges.prepare();
         oss << " | PREPARE"
-            << " | D: " << hexAbbrev(qSetHash)
             << " | b: " << ballotToStr(p.ballot)
             << " | p: " << ballotToStr(p.prepared)
             << " | p': " << ballotToStr(p.preparedPrime) << " | c.n: " << p.nC
@@ -339,7 +336,6 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
     {
         auto const& c = st.pledges.confirm();
         oss << " | CONFIRM"
-            << " | D: " << hexAbbrev(qSetHash)
             << " | b: " << ballotToStr(c.ballot) << " | p.n: " << c.nPrepared
             << " | c.n: " << c.nCommit << " | h.n: " << c.nH;
     }
@@ -348,15 +344,13 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
     {
         auto const& ex = st.pledges.externalize();
         oss << " | EXTERNALIZE"
-            << " | c: " << ballotToStr(ex.commit) << " | h.n: " << ex.nH
-            << " | (lastD): " << hexAbbrev(qSetHash);
+            << " | c: " << ballotToStr(ex.commit) << " | h.n: " << ex.nH;
     }
     break;
     case SCPStatementType::SCP_ST_NOMINATE:
     {
         auto const& nom = st.pledges.nominate();
-        oss << " | NOMINATE"
-            << " | D: " << hexAbbrev(qSetHash) << " | X: {";
+        oss << " | NOMINATE";
         bool first = true;
         for (auto const& v : nom.votes)
         {
