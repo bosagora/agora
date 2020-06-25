@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    Verify that expired enrollments and newly added enrollments change
-    the quorum set configuration of a node.
+    Contains various quorum tests, adding and expiring enrollments,
+    making a network with many validators, etc.
 
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea
@@ -156,4 +156,46 @@ unittest
         retryFor(node.getBlockHeight() == 11, 10.seconds,
             format("Node %s has block height %s. Expected: %s",
                 idx, node.getBlockHeight(), 11)));
+}
+
+/// 16 nodes
+version (none)  // disabled due to scaling issues
+unittest
+{
+    TestConf conf = { nodes : 16, timeout : 10_000 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    txes.each!(tx => node_1.putTransaction(tx));
+
+    nodes.all!(node => node.getBlockHeight() == 1)
+        .retryFor(4.seconds);
+}
+
+/// 32 nodes
+version (none)  // disabled due to scaling issues
+unittest
+{
+    TestConf conf = { nodes : 32, timeout : 10_000 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    txes.each!(tx => node_1.putTransaction(tx));
+
+    nodes.all!(node => node.getBlockHeight() == 1)
+        .retryFor(8.seconds);
 }
