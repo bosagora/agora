@@ -76,48 +76,64 @@ public ref immutable(Transaction) GenesisTransaction () nothrow @safe @nogc
 }
 
 /// Genesis block as used by most unittests
-private immutable Block UnitTestGenesisBlock =
-{
-    header:
-    {
+private immutable Block UnitTestGenesisBlock = {
+    header: {
         prev_block:  Hash.init,
         height:      Height(0),
-        merkle_root: UnitTestGenesisMerkleRoot,
+        merkle_root: UnitTestGenesisMerkleTree[$ - 1],
     },
-    txs: [ UnitTestGenesisTransaction ],
-    merkle_tree: [ UnitTestGenesisMerkleRoot ],
+    merkle_tree: UnitTestGenesisMerkleTree,
+    txs: [
+        {
+            TxType.Payment,
+            outputs: [
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+                Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
+            ],
+        },
+    ],
 };
 
 ///
 unittest
 {
-    assert(UnitTestGenesisBlock.header.prev_block == Hash.init);
-    assert(UnitTestGenesisBlock.header.height == Height(0));
-    assert(UnitTestGenesisBlock.header.merkle_root == UnitTestGenesisBlock.merkle_tree[0]);
-    assert(UnitTestGenesisBlock.merkle_tree.length == 1);
-    assert(UnitTestGenesisBlock.header.merkle_root == hashFull(UnitTestGenesisTransaction));
+    import std.algorithm;
+
+    version (none)
+    {
+        import std.stdio;
+        import std.range;
+
+        const txs = UnitTestGenesisBlock.txs;
+
+        if (!txs.isStrictlyMonotonic())
+        {
+            writeln("WARN: Genesis block transactions are unsorted!");
+            txs.enumerate.each!((idx, tx) => writefln("[%d]: %s", idx, tx));
+        }
+
+        Hash[] merkle_tree;
+        writeln("Merkle root: ", Block.buildMerkleTree(txs, merkle_tree));
+        writeln("\tMerkle tree: ", merkle_tree);
+    }
+
+    Amount amount;
+    assert(UnitTestGenesisBlock.txs.all!(tx => tx.getSumOutput(amount)));
+    assert(amount == Amount.MaxUnitSupply, amount.toString());
+    assert(UnitTestGenesisBlock.merkle_tree.length == UnitTestGenesisMerkleTree.length);
+    assert(UnitTestGenesisBlock.header.merkle_root == UnitTestGenesisBlock.merkle_tree[$-1]);
 }
 
-private immutable Hash UnitTestGenesisMerkleRoot =
+private immutable Hash[] UnitTestGenesisMerkleTree = [
     Hash(`0x5d7f6a7a30f7ff591c8649f61eb8a35d034824ed5cd252c2c6f10cdbd223671` ~
-         `3dc369ef2a44b62ba113814a9d819a276ff61582874c9aee9c98efa2aa1f10d73`);
-
-/// The single transaction that are part of the genesis block
-private immutable Transaction UnitTestGenesisTransaction =
-{
-    TxType.Payment,
-    inputs: [],
-    outputs: [
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-        Output(Amount(62_500_000L * 10_000_000L), UnitTestGenesisOutputAddress),
-    ],
-};
+         `3dc369ef2a44b62ba113814a9d819a276ff61582874c9aee9c98efa2aa1f10d73`),
+];
 
 /// GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
 private immutable PublicKey UnitTestGenesisOutputAddress = UnitTestGenesisAddressUbyte;
@@ -140,7 +156,7 @@ unittest
 unittest
 {
     import agora.common.Serializer;
-    testSymmetry(UnitTestGenesisTransaction);
+    testSymmetry(UnitTestGenesisBlock.txs[0]);
     testSymmetry(UnitTestGenesisBlock);
 }
 
