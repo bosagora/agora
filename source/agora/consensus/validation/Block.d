@@ -311,7 +311,8 @@ unittest
         // Txs type check
         block.txs[0].type = cast(TxType)2;
         buildMerkleTree(block);
-        assert(!block.isGenesisBlockValid());
+        assert(block.isGenesisBlockInvalidReason()
+               .canFind("Invalid enum value"));
 
         block.txs[0].type = TxType.Payment;
         buildMerkleTree(block);
