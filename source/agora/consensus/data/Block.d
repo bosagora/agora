@@ -240,8 +240,6 @@ public struct Block
     }
     do
     {
-        () @trusted { merkle_tree.assumeSafeAppend(); }();
-
         immutable pow2_size = getPow2Aligned(txs.length);
         const MerkleLength = (pow2_size * 2) - 1;
 
