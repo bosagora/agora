@@ -67,6 +67,7 @@ void push_back(VectorT& this_, T& value)
     this_.push_back(value);
 }
 
+// todo: use this once dlang #20805 is fixed
 template<typename VectorT>
 VectorT duplicate(const VectorT& this_)
 {

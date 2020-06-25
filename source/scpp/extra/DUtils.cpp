@@ -37,7 +37,7 @@ PUSHBACKINST3(xvector<unsigned char>, std::vector)
 PUSHBACKINST3(unsigned char, std::vector)
 
 PUSHBACKINST1(unsigned char)
-// Workaround for Dlang issue #20805
+// Workarounds for Dlang issue #20805
 #if MSVC
 void push_back_vec (void *this_, void const *value_)
 {
@@ -50,13 +50,19 @@ PUSHBACKINST1(xvector<unsigned char>)
 PUSHBACKINST1(xvector<unsigned char>)
 #endif // !MSVC
 
+opaque_vec<> duplicate_value (void const *value_)
+{
+    auto value = (xvector<unsigned char>*)value_;
+    opaque_vec<> dup = opaque_vec<>(*value);
+    return dup;
+}
+
 PUSHBACKINST1(PublicKey)
 PUSHBACKINST1(SCPQuorumSet)
 PUSHBACKINST3(PublicKey, std::vector)
 PUSHBACKINST3(SCPEnvelope, std::vector)
 PUSHBACKINST3(SCPQuorumSet, std::vector)
 
-template opaque_vec<> duplicate<opaque_vec<>>(opaque_vec<> const&);
 
 #define CPPSETFOREACHINST(T) template int cpp_set_foreach<T>(void*, void*, void*);
 CPPSETFOREACHINST(Value)
