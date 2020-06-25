@@ -246,7 +246,7 @@ unittest
     {
         assert(txes[idx].inputs.length == 1);
         assert(txes[idx].inputs[0].index == idx);
-        assert(txes[idx].inputs[0].previous == hashFull(GenesisBlock.txs[0]));
+        assert(txes[idx].inputs[0].previous == hashFull(GenesisBlock.txs[1]));
     }
 
     auto prev_txs = txes;
@@ -474,7 +474,7 @@ unittest
         auto genesisKP = WK.Keys.Genesis;
         assert(WK.Keys[genesisKP.address] == genesisKP);
         // Sanity check with `agora.consensus.Genesis`
-        assert(WK.Keys.Genesis.address == GenesisBlock.txs[0].outputs[0].address);
+        assert(WK.Keys.Genesis.address == GenesisBlock.txs[1].outputs[0].address);
     }
 }
 
@@ -850,8 +850,8 @@ unittest
     assert(resTx1.inputs.length == Number / 2);
     assert(resTx1.outputs.length == Number);
 
-    // 500M / 16
-    const Amount ExpectedAmount1 = Amount(31_250_000L * 10_000_000L);
+    // 488M / 16
+    const Amount ExpectedAmount1 = Amount(30_500_000L * 10_000_000L);
     assert(resTx1.outputs.all!(val => val.value == ExpectedAmount1));
 
     // Test with multi input keys
@@ -865,7 +865,7 @@ unittest
     assert(resTx2.outputs.length == Number * 2);
 
     // 500M / 32
-    const Amount ExpectedAmount2 = Amount(15_625_000L * 10_000_000L);
+    const Amount ExpectedAmount2 = Amount(15_250_000L * 10_000_000L);
     assert(resTx2.outputs.all!(val => val.value == ExpectedAmount2));
 }
 
@@ -882,8 +882,8 @@ unittest
     assert(result.inputs.length == 8);
     assert(result.outputs.length == 4);
 
-    // 500M / 3
-    const Amount ExpectedAmount      = Amount(166_666_666_6666_666L);
+    // 488M / 3
+    const Amount ExpectedAmount      = Amount(162_666_666_6666_666L);
 
     assert(result.outputs[0].value == ExpectedAmount);
     assert(result.outputs[1].value == ExpectedAmount);
@@ -906,7 +906,7 @@ unittest
     assert(result.outputs.length == 1);
 
     // 500M
-    const Amount ExpectedAmount = Amount(500_000_000L * 10_000_000L);
+    const Amount ExpectedAmount = Amount(488_000_000L * 10_000_000L);
     assert(result.outputs[0].value == ExpectedAmount);
 }
 

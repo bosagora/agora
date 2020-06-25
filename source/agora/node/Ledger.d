@@ -731,7 +731,7 @@ unittest
     };
     scope ledger = new TestLedger(config, blocks);
 
-    assert(ledger.utxo_set.length == 8);
+    assert(ledger.utxo_set.length == 14);
 
     // Ensure that all previously-generated outputs are in the UTXO set
     {

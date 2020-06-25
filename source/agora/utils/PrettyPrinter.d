@@ -296,12 +296,19 @@ private struct TransactionFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
-    const actual = format("%s", TransactionFmt(GenesisTransaction));
-    assert(ResultStr == actual, actual);
+
+    static immutable ResultStr0 = `Type : Freeze, Inputs: None
+Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)`;
+    const actual0 = format("%s", TransactionFmt(GenesisBlock.txs[0]));
+    assert(ResultStr0 == actual0, actual0);
+
+    static immutable ResultStr1 = `Type : Payment, Inputs: None
+Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
+    const actual1 = format("%s", TransactionFmt(GenesisBlock.txs[1]));
+    assert(ResultStr1 == actual1, actual1);
 }
 
 /// Format a block header
@@ -333,7 +340,7 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x5d7f...0d73`;
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual, actual);
 }
@@ -367,11 +374,14 @@ private struct BlockFmt
 @safe unittest
 {
     import agora.consensus.Genesis;
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x5d7f...0d73, Transactions: 1
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Transactions: 2
+Type : Freeze, Inputs: None
+Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)
 Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
+Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
     assert(ResultStr == actual, actual);
 }
@@ -381,15 +391,15 @@ GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
     import agora.common.Hash;
     import agora.consensus.Genesis;
 
-    static immutable ResultStr = `Height: 1, Prev: 0xca2a...4d49, Root: 0xf2ac...6c30, Transactions: 2
+    static immutable ResultStr = `Height: 1, Prev: 0x1bbb...a1f6, Root: 0x6928...0880, Transactions: 2
 Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)
+Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)`;
+Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
 
     immutable MerkleRoot = hashMulti(
         GenesisBlock.header.merkle_root, GenesisBlock.header.merkle_root);
@@ -523,9 +533,9 @@ unittest
     };
 
     static immutable Res1 = `{ tx_set: [Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000),
-GCOQ...LRIJ(62,500,000), GCOQ...LRIJ(62,500,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
+Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));
