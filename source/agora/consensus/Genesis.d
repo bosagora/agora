@@ -57,7 +57,7 @@ public void setGenesisBlock (immutable Block* block)
 {
     assert(block !is null);
 
-    if (auto reason = isGenesisBlockInvalidReason(*gen_block))
+    if (auto reason = isGenesisBlockInvalidReason(*block))
         throw new Exception(reason);
 
     gen_block = block;
