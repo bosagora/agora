@@ -48,6 +48,9 @@ public struct Enrollment
     /// S: A signature for the message H(K, X, n, R) and the key K, using R
     public Signature enroll_sig;
 
+    /// The minimum number of validators required to create a block
+    public static immutable uint MinValidatorCount = 1;
+
     /***************************************************************************
 
         Implements hashing support
