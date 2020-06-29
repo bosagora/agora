@@ -69,7 +69,7 @@ public struct UTXOSetValue
 
 *******************************************************************************/
 
-version (unittest) public class TestUTXOSet
+public class TestUTXOSet
 {
     ///
     public UTXOSetValue[Hash] storage;

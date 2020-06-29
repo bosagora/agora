@@ -114,9 +114,25 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     if (block.header.enrollments.length + active_enrollments < Enrollment.MinValidatorCount)
             return "Enrollment: Insufficient number of active validators";
 
+    /// FIXME: Use a proper type and sensible memory allocation pattern
+    version (all)
+    {
+        scope extraSet = new TestUTXOSet();
+        foreach (const ref tx; block.txs)
+            extraSet.put(tx);
+        scope extraFinder = extraSet.getUTXOFinder();
+        scope UTXOFinder enrollmentsUTXOFinder =
+            (Hash hash, size_t index, out UTXOSetValue val)
+            {
+                if (findUTXO(hash, index, val))
+                    return true;
+                return extraFinder(hash, index, val);
+            };
+    }
+
     foreach (const ref enrollment; block.header.enrollments)
     {
-        if (auto fail_reason = VEn.isInvalidReason(enrollment, findUTXO))
+        if (auto fail_reason = VEn.isInvalidReason(enrollment, enrollmentsUTXOFinder))
             return fail_reason;
     }
 
