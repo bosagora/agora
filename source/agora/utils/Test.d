@@ -800,7 +800,10 @@ public struct TxBuilder
 /// Returns: A range of Transactions which are spendable in the Genesis block
 public auto genesisSpendable () @safe
 {
-    return GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment);
+    return GenesisBlock.txs
+        .filter!(tx => tx.type == TxType.Payment)
+        .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder(tx, cast(uint)idx)))
+        .joiner();
 }
 
 ///
@@ -809,7 +812,7 @@ public auto genesisSpendable () @safe
     auto spendable = genesisSpendable();
     assert(!genesisSpendable.empty);
     Amount total;
-    genesisSpendable.each!(tx => tx.outputs.each!(o => total.mustAdd(o.value)));
+    genesisSpendable.each!(txb => total.mustAdd(txb.leftover.value));
     // Arbitrarily low value
     assert(total > Amount.MinFreezeAmount);
 }
@@ -818,11 +821,10 @@ public auto genesisSpendable () @safe
 /// Essentially doing an equality transformation
 unittest
 {
-    auto first = genesisSpendable.front;
-    immutable Number = first.outputs.length;
+    immutable Number = GenesisBlock.txs[1].outputs.length;
     assert(Number == 8);
 
-    const tx = TxBuilder(first)
+    const tx = TxBuilder(GenesisBlock.txs[1])
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -831,18 +833,17 @@ unittest
     assert(tx.outputs.length == Number);
     // Since the amount is evenly distributed in Genesis,
     // they all have the same value
-    const ExpectedAmount = first.outputs[0].value;
+    const ExpectedAmount = genesisSpendable().front().leftover.value;
     assert(tx.outputs.all!(val => val.value == ExpectedAmount));
 }
 
 /// Test with twice as many outputs as inputs
 unittest
 {
-    auto first = genesisSpendable.front;
-    immutable Number = first.outputs.length * 2;
+    immutable Number = GenesisBlock.txs[1].outputs.length * 2;
     assert(Number == 16);
 
-    const resTx1 = TxBuilder(first)
+    const resTx1 = TxBuilder(GenesisBlock.txs[1])
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -872,9 +873,7 @@ unittest
 /// Test with remainder
 unittest
 {
-    auto first = genesisSpendable.front;
-
-    const result = TxBuilder(first)
+    const result = TxBuilder(GenesisBlock.txs[1])
         .split(WK.Keys.byRange.map!(k => k.address).take(3))
         .sign();
 
@@ -895,9 +894,7 @@ unittest
 /// Test with one output key
 unittest
 {
-    auto first = genesisSpendable.front;
-
-    const result = TxBuilder(first)
+    const result = TxBuilder(GenesisBlock.txs[1])
         .split([WK.Keys.A.address])
         .sign();
 
@@ -913,7 +910,7 @@ unittest
 /// Test changing the refund address (and merging outputs by extension)
 unittest
 {
-    const result = TxBuilder(genesisSpendable.front)
+    const result = TxBuilder(GenesisBlock.txs[1])
         // Refund needs to be called first as it resets the outputs
         .refund(WK.Keys.Z.address)
         .split(WK.Keys.byRange.map!(k => k.address).take(3))
