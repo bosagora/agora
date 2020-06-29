@@ -107,7 +107,7 @@ version (unittest) public class TestUTXOSet
     }
 
     /// Short hand to add a transaction
-    public void put (const Transaction tx)
+    public void put (const Transaction tx) nothrow @safe
     {
         Hash txhash = hashFull(tx);
         foreach (size_t idx, ref output_; tx.outputs)
