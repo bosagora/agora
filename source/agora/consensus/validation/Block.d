@@ -749,7 +749,7 @@ unittest
         {
             tx.type = TxType.Payment;
             foreach (_; 0 .. Block.TxsInBlock)
-                tx.outputs ~= Output(Amount(100), keypair.address);;
+                tx.outputs ~= Output(Amount(100), keypair.address);
         }
 
         tx.inputs[0].signature = gen_key.secret.sign(hashFull(tx)[]);
