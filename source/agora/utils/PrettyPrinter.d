@@ -391,7 +391,7 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
     import agora.common.Hash;
     import agora.consensus.Genesis;
 
-    static immutable ResultStr = `Height: 1, Prev: 0x1bbb...a1f6, Root: 0x6928...0880, Transactions: 2
+    static immutable ResultStr = `Height: 1, Prev: 0x00bc...1b95, Root: 0x6928...0880, Transactions: 2
 Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
