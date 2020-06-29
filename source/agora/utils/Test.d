@@ -797,7 +797,9 @@ public struct TxBuilder
     private Transaction data;
 }
 
-/// Returns: A range of Transactions which are spendable in the Genesis block
+/// Returns:
+///   A range of `TxBuilder`s which reference each Payment output of
+///   the Genesis block
 public auto genesisSpendable () @safe
 {
     return GenesisBlock.txs
