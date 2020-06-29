@@ -309,8 +309,8 @@ unittest
     // Check consistency of `txs` field
     {
         // Txs length check
-        Transaction[] null_txs;
-        block.txs = null_txs;
+        block.txs = null;
+        block.header.enrollments = null;
         assert(!block.isGenesisBlockValid());
 
         foreach (_; 0 .. Block.TxsInBlock)
