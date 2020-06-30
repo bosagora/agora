@@ -167,8 +167,7 @@ public class Ledger
     public bool onExternalized (ConsensusData data)
         @trusted
     {
-        auto block = makeNewBlock(this.last_block, data.tx_set.byKey(),
-            data.enrolls);
+        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls);
         return this.acceptBlock(block);
     }
 
@@ -343,10 +342,13 @@ public class Ledger
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
-                data.tx_set.put(tx);
+                data.tx_set ~= tx;
 
             if (data.tx_set.length >= Block.TxsInBlock)
+            {
+                data.tx_set.sort();
                 return;
+            }
         }
 
         // not enough txs were found
