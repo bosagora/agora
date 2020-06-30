@@ -158,19 +158,15 @@ unittest
         block_count = the number of blocks that will be created if the
                       returned transactions are added to the ledger
         spend_amount = the total amount to spend (evenly distributed)
-        gen_tx = the genesis transaction to refer to for the first set of
-                 transactions. If none set, the one returned by
-                 GenesisTransaction() is used.
 
 *******************************************************************************/
 
 public Transaction[] makeChainedTransactions (KeyPair key_pair,
     const(Transaction)[] prev_txs, size_t block_count,
-    ulong spend_amount = 40_000_000, in Transaction gen_tx = GenesisTransaction)
+    ulong spend_amount = 40_000_000)
     @safe
 {
     import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
     import std.conv;
 
     assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
@@ -197,13 +193,14 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
 
     // always use the same amount, for simplicity
     const Amount AmountPerTx = spend_amount / Block.TxsInBlock;
+    const genesisTxHash = GenesisBlock.txs[1].hashFull();
 
     foreach (idx; 0 .. TxCount)
     {
         Input input;
         if (prev_txs.length == 0)  // refering to genesis tx's outputs
         {
-            input = Input(hashFull(gen_tx), idx.to!uint);
+            input = Input(genesisTxHash, idx.to!uint);
         }
         else  // refering to tx's in the previous block
         {
@@ -236,7 +233,6 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
 unittest
 {
     import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
 
     auto gen_key = WK.Keys.Genesis;
 
@@ -276,68 +272,10 @@ unittest
 unittest
 {
     import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
 
     auto gen_key = WK.Keys.Genesis;
     const(Transaction)[] txes = makeChainedTransactions(gen_key, null, 1);
     txes = makeChainedTransactions(gen_key, txes, 1);
-}
-
-/// custom genesis tx
-unittest
-{
-    import std.exception : assumeUnique;
-    import core.thread;
-    import agora.common.BitField;
-    import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
-
-    auto key_pair = WK.Keys.G;
-
-    Transaction GenTx =
-    {
-        TxType.Payment,
-        outputs: [
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-            Output(Amount(62_500_000L * 10_000_000L), key_pair.address),
-        ],
-    };
-
-    Transaction[] txs = [GenTx];
-    Hash[] merkle_tree;
-    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
-
-    immutable(BlockHeader) makeHeader ()
-    {
-        return immutable(BlockHeader)(
-            Hash.init,   // prev
-            Height(0),   // height
-            merkle_root,
-            BitField!uint.init,
-            Signature.init,
-            null,        // enrollments
-        );
-    }
-
-    auto genesis_block = immutable(Block)(
-        makeHeader(),
-        txs.assumeUnique,
-        merkle_tree.assumeUnique
-    );
-
-    auto txes = makeChainedTransactions(key_pair, null, 1, 40_000_000, GenTx);
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        assert(txes[idx].inputs.length == 1);
-        assert(txes[idx].inputs[0].index == idx);
-        assert(txes[idx].inputs[0].previous == hashFull(genesis_block.txs[0]));
-    }
 }
 
 /*******************************************************************************
