@@ -295,34 +295,18 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
 /// test for function of EnrollmentPool
 unittest
 {
-    import agora.common.Amount;
     import agora.consensus.data.ConsensusParams;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
     import std.algorithm;
     import std.format;
     import std.conv;
 
     scope storage = new TestUTXOSet;
-
-    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
-    foreach (idx; 0 .. 8)
-    {
-        auto input = Input(hashFull(GenesisTransaction), idx.to!uint);
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+        .each!(tx => storage.put(tx));
 
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, key_pair.address)]
-        };
-
-        auto signature = gen_key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        storage.put(tx);
-    }
     auto pool = new EnrollmentPool(":memory:");
     Hash[] utxo_hashes = storage.keys;
 
