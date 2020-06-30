@@ -444,7 +444,7 @@ private struct ConsensusDataFmt
         try
         {
             formattedWrite(sink, "{ tx_set: %s, enrolls: %s }",
-                this.data.tx_set.byKey().map!(tx => TransactionFmt(tx)),
+                this.data.tx_set.map!(tx => TransactionFmt(tx)),
                 this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)));
         }
         catch (Exception ex)
@@ -471,7 +471,7 @@ unittest
     Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
-    Enrollment record =
+    const Enrollment record =
     {
         utxo_key: key,
         random_seed: seed,
@@ -479,19 +479,15 @@ unittest
         enroll_sig: sig,
     };
 
-    Enrollment[] enrollments;
-    enrollments ~= record;
-    enrollments ~= record;
-
-    auto tx_set = Set!Transaction.from([cast(Transaction)GenesisTransaction]);
-
-    ConsensusData cd =
+    const(ConsensusData) cd =
     {
-        tx_set: tx_set,
-        enrolls: enrollments,
+        tx_set: GenesisBlock.txs,
+        enrolls: [ record, record, ],
     };
 
-    static immutable Res1 = `{ tx_set: [Type : Payment, Inputs: None
+    static immutable Res1 = `{ tx_set: [Type : Freeze, Inputs: None
+Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000), Type : Payment, Inputs: None
 Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;

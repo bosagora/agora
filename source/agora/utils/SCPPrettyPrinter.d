@@ -389,7 +389,7 @@ unittest
     Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
-    Enrollment record =
+    const Enrollment record =
     {
         utxo_key: key,
         random_seed: seed,
@@ -397,16 +397,10 @@ unittest
         enroll_sig: sig,
     };
 
-    Enrollment[] enrollments;
-    enrollments ~= record;
-    enrollments ~= record;
-
-    auto tx_set = Set!Transaction.from([cast(Transaction)GenesisTransaction]);
-
-    ConsensusData cd =
+    const(ConsensusData) cd =
     {
-        tx_set: tx_set,
-        enrolls: enrollments,
+        tx_set:  GenesisBlock.txs[1 .. $],
+        enrolls: [ record, record, ],
     };
 
     SCPBallot ballot;
