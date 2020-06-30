@@ -478,7 +478,7 @@ public class ValidatorSet
 
 version (unittest)
 private Enrollment createEnrollment(const ref Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar random_seed_src,
+    const KeyPair key_pair, ref Scalar random_seed_src,
     uint validator_cycle)
 {
     import std.algorithm;
@@ -508,38 +508,23 @@ unittest
     import agora.consensus.data.UTXOSetValue;
     import agora.consensus.Genesis;
     import std.algorithm;
-    import std.format;
+    import std.range;
 
     scope storage = new TestUTXOSet;
+    scope set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
 
-    auto gen_key_pair = WK.Keys.Genesis;
-    KeyPair[5] kp = [ KeyPair.random(), KeyPair.random(), KeyPair.random(),
-                      KeyPair.random(), KeyPair.random() ];
-    Hash[5] utxos;
-    foreach (uint idx; 0 .. 8)
-    {
-        auto input = Input(hashFull(GenesisTransaction), idx);
-
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, kp[idx % $].address)]
-        };
-
-        const thisHash = hashFull(tx);
-        auto signature = gen_key_pair.secret.sign(thisHash[]);
-        tx.inputs[0].signature = signature;
-        storage.put(tx);
-        // Store the hash of the UTXO as we need it to create enrollments
-        utxos[idx % $] = UTXOSetValue.getHash(thisHash, 0);
-    }
-    auto set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
+    Hash[] utxos;
+    genesisSpendable().take(8).enumerate
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign(TxType.Freeze))
+        .each!((tx) {
+            storage.put(tx);
+            utxos ~= UTXOSetValue.getHash(tx.hashFull(), 0);
+        });
 
     // add enrollments
     Scalar[Hash] seed_sources;
     seed_sources[utxos[0]] = Scalar.random();
-    auto enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
+    auto enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.findUTXO, enroll) is null);
     assert(set.count() == 1);
@@ -547,13 +532,13 @@ unittest
     assert(set.add(Height(1), &storage.findUTXO, enroll) !is null);
 
     seed_sources[utxos[1]] = Scalar.random();
-    auto enroll2 = createEnrollment(utxos[1], kp[1], seed_sources[utxos[1]],
+    auto enroll2 = createEnrollment(utxos[1], WK.Keys[1], seed_sources[utxos[1]],
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.findUTXO, enroll2) is null);
     assert(set.count() == 2);
 
     seed_sources[utxos[2]] = Scalar.random();
-    auto enroll3 = createEnrollment(utxos[2], kp[2], seed_sources[utxos[2]],
+    auto enroll3 = createEnrollment(utxos[2], WK.Keys[2], seed_sources[utxos[2]],
         set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.findUTXO, enroll3) is null);
     assert(set.count() == 3);
@@ -601,7 +586,7 @@ unittest
 
     // test for clear up expired validators
     seed_sources[utxos[3]] = Scalar.random();
-    enroll = createEnrollment(utxos[3], kp[3], seed_sources[utxos[3]],
+    enroll = createEnrollment(utxos[3], WK.Keys[3], seed_sources[utxos[3]],
         set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.findUTXO, enroll) is null);
     set.clearExpiredValidators(Height(1016));
@@ -615,7 +600,7 @@ unittest
     set.clearExpiredValidators(Height(long.max));  // clear all
     assert(set.count == 0);
     seed_sources[utxos[0]] = Scalar.random();
-    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
+    enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
     assert(set.add(Height(0), &storage.findUTXO, enroll) is null);
 
@@ -635,7 +620,7 @@ unittest
 
     // now try with validator for [1 .. 1009]
     seed_sources[utxos[0]] = Scalar.random();
-    enroll = createEnrollment(utxos[0], kp[0], seed_sources[utxos[0]],
+    enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.findUTXO, enroll) is null);
 
@@ -657,39 +642,24 @@ unittest
 /// test for restroing information about validators from blocks
 unittest
 {
-    import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
-    import std.format;
+    import std.algorithm;
+    import std.range;
 
     scope storage = new TestUTXOSet;
-    auto key_pair = WK.Keys.Genesis;
-    foreach (uint idx; 0 .. 8)
-    {
-        auto input = Input(hashFull(GenesisTransaction), idx);
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, key_pair.address)]
-        };
+    scope set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
 
-        auto signature = key_pair.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        storage.put(tx);
-    }
+    genesisSpendable().take(8).enumerate
+        .map!(en => en.value.sign(TxType.Freeze))
+        .each!(tx => storage.put(tx));
     Hash[] utxos = storage.keys;
-
-    auto set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
 
     // create enrollments
     Enrollment[] enrolls;
-    Scalar[] seeds;
-    seeds ~= Scalar.random();
-    seeds ~= Scalar.random();
-    enrolls ~= createEnrollment(utxos[0], key_pair, seeds[0],
+    Scalar[] seeds = [ Scalar.random(), Scalar.random() ];
+    enrolls ~= createEnrollment(utxos[0], WK.Keys.Genesis, seeds[0],
         set.params.ValidatorCycle);
-    enrolls ~= createEnrollment(utxos[1], key_pair, seeds[1],
+    enrolls ~= createEnrollment(utxos[1], WK.Keys.Genesis, seeds[1],
         set.params.ValidatorCycle);
 
     // make test blocks used for restoring validator set
