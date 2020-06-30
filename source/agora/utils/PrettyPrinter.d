@@ -386,38 +386,6 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
     assert(ResultStr == actual, actual);
 }
 
-@safe unittest
-{
-    import agora.common.Hash;
-    import agora.consensus.Genesis;
-
-    static immutable ResultStr = `Height: 1, Prev: 0x00bc...1b95, Root: 0x6928...0880, Transactions: 2
-Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
-Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
-
-    immutable MerkleRoot = hashMulti(
-        GenesisBlock.header.merkle_root, GenesisBlock.header.merkle_root);
-    immutable Block block2tx = {
-        header: {
-            prev_block: hashFull(GenesisBlock.header),
-            height: Height(1),
-            merkle_root: MerkleRoot,
-        },
-        txs: [ GenesisTransaction, GenesisTransaction ],
-        merkle_tree: [
-            MerkleRoot,
-            GenesisBlock.header.merkle_root, GenesisBlock.header.merkle_root,
-        ],
-    };
-    assert(ResultStr == format("%s", BlockFmt(block2tx)), format("%s", BlockFmt(block2tx)));
-}
-
 /// Formatting struct for `Enrollment`
 private struct EnrollmentFmt
 {
