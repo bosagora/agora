@@ -503,10 +503,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
 /// test for functions of ValidatorSet
 unittest
 {
-    import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.data.UTXOSetValue;
-    import agora.consensus.Genesis;
     import std.algorithm;
     import std.range;
 

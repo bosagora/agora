@@ -298,8 +298,6 @@ unittest
     import agora.consensus.data.ConsensusParams;
     import agora.consensus.data.Transaction;
     import std.algorithm;
-    import std.format;
-    import std.conv;
 
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random();

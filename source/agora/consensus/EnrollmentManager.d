@@ -734,12 +734,8 @@ public class EnrollmentManager
 /// tests for member functions of EnrollmentManager
 unittest
 {
-    import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
     import std.algorithm;
-    import std.format;
-    import std.conv;
 
     scope storage = new TestUTXOSet;
 
@@ -889,10 +885,7 @@ unittest
 /// tests for addPreimage and getValidatorPreimage
 unittest
 {
-    import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
-    import std.conv;
 
     scope storage = new TestUTXOSet;
     auto gen_key_pair = WK.Keys.Genesis;
@@ -988,11 +981,7 @@ unittest
 /// tests for `EnrollmentManager.getValidatorCount
 unittest
 {
-    import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
-    import std.format;
-    import std.conv;
 
     scope storage = new TestUTXOSet;
 

@@ -24,7 +24,6 @@ version (unittest):
 
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
 import agora.test.Base;
 
 import core.thread;

@@ -1056,7 +1056,6 @@ unittest
 {
     import agora.common.crypto.Key;
     import agora.consensus.data.Transaction;
-    import agora.consensus.Genesis;
     import std.algorithm.comparison;
     import agora.utils.Test;
 
