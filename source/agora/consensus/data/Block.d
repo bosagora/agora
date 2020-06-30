@@ -23,7 +23,6 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.Genesis;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
@@ -469,6 +468,8 @@ version (unittest)
 ///
 @safe nothrow unittest
 {
+    import agora.consensus.Genesis;
+
     auto new_block = makeNewBlock(GenesisBlock, [Transaction.init]);
     auto rng_block = makeNewBlock(GenesisBlock, [Transaction.init].take(1));
     assert(new_block.header.prev_block == hashFull(GenesisBlock.header));

@@ -23,7 +23,6 @@ import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
-import agora.consensus.Genesis;
 
 import std.algorithm;
 

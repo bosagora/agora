@@ -26,6 +26,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+version (unittest) import agora.consensus.Genesis;
 
 import std.algorithm;
 import std.format;
@@ -295,8 +296,6 @@ private struct TransactionFmt
 
 @safe unittest
 {
-    import agora.consensus.Genesis;
-
     static immutable ResultStr0 = `Type : Freeze, Inputs: None
 Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
 GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)`;
@@ -339,7 +338,6 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    import agora.consensus.Genesis;
     static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual, actual);
@@ -373,7 +371,6 @@ private struct BlockFmt
 
 @safe unittest
 {
-    import agora.consensus.Genesis;
     static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
@@ -411,9 +408,6 @@ private struct EnrollmentFmt
 ///
 unittest
 {
-    import agora.common.Hash;
-    import agora.consensus.data.Enrollment;
-
     Hash quorumSetHash;
 
     Hash key = Hash("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f" ~
@@ -463,11 +457,8 @@ private struct ConsensusDataFmt
 ///
 unittest
 {
-    import agora.common.Hash;
     import agora.common.Serializer;
     import agora.common.Set;
-    import agora.consensus.data.Enrollment;
-    import agora.consensus.Genesis;
 
     Hash quorumSetHash;
 

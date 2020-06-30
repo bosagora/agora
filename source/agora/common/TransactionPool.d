@@ -319,8 +319,6 @@ public class TransactionPool
 /// hasTransactionHash tests
 unittest
 {
-    import agora.consensus.Genesis;
-
     auto pool = new TransactionPool(":memory:");
     auto gen_key = WK.Keys.Genesis;
     auto txs = makeChainedTransactions(gen_key, null, 1);
@@ -356,7 +354,6 @@ unittest
 /// add & opApply / remove tests (through take())
 unittest
 {
-    import agora.consensus.Genesis;
     import std.exception;
 
     auto pool = new TransactionPool(":memory:");
@@ -386,7 +383,6 @@ unittest
 unittest
 {
     import agora.consensus.data.Block;
-    import agora.consensus.Genesis;
     import std.exception;
     import core.memory;
 
