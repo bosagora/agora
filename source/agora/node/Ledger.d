@@ -1025,7 +1025,7 @@ unittest
 
     auto findUTXO = ledger.utxo_set.getUTXOFinder();
     foreach (const ref e; enrollments)
-        assert(ledger.enroll_man.pool.add(e, findUTXO));
+        assert(ledger.enroll_man.pool.add(e, Height(3), findUTXO));
 
     Enrollment stored_enroll;
     foreach (idx, hash; utxo_hashes)

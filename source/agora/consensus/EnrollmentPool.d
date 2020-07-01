@@ -22,6 +22,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.ManagedDatabase;
 import agora.common.Serializer;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
@@ -58,7 +59,8 @@ public class EnrollmentPool
 
         // create the table for enrollment pool if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS enrollment_pool " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, " ~
+            "avail_height INTEGER)");
     }
 
     /***************************************************************************
@@ -67,6 +69,7 @@ public class EnrollmentPool
 
         Params:
             enroll = the enrollment data to add
+            avail_height = height at which the enrollment is available
             finder = the delegate to find UTXOs with
 
         Returns:
@@ -74,8 +77,8 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public bool add (const ref Enrollment enroll, scope UTXOFinder finder)
-        @safe nothrow
+    public bool add (const ref Enrollment enroll, Height avail_height,
+        scope UTXOFinder finder) @safe nothrow
     {
         // check validity of the enrollment data
         if (auto reason = isInvalidReason(enroll, finder))
@@ -85,7 +88,7 @@ public class EnrollmentPool
         }
 
         // check if already exists
-        if (this.hasEnrollment(enroll.utxo_key))
+        if (this.hasEnrollment(enroll.utxo_key, avail_height))
         {
             log.info("Rejected already existing enrollment, Data was: {}",
                 enroll);
@@ -99,15 +102,17 @@ public class EnrollmentPool
         }
         catch (Exception ex)
         {
-            log.error("Serialization error: {}, Data was: {}", ex.msg, enroll);
+            log.error("Serialization error: {}, Data was: {}", ex.msg,
+                enroll);
             return false;
         }
 
         try
         {
             () @trusted {
-                this.db.execute("INSERT INTO enrollment_pool (key, val) VALUES (?, ?)",
-                    enroll.utxo_key.toString(), buffer);
+                this.db.execute("REPLACE INTO enrollment_pool " ~
+                    "(key, val, avail_height) VALUES (?, ?, ?)",
+                    enroll.utxo_key.toString(), buffer, avail_height.value);
             }();
         }
         catch (Exception ex)
@@ -169,18 +174,21 @@ public class EnrollmentPool
 
         Params:
             enroll_hash = key for an enrollment data which is hash of frozen UTXO
+            avail_height = height at which the enrollment is available
 
         Returns:
             true if the validator set has the enrollment data
 
     ***************************************************************************/
 
-    public bool hasEnrollment (const ref Hash enroll_hash) @trusted nothrow
+    public bool hasEnrollment (const ref Hash enroll_hash, Height avail_height)
+        @trusted nothrow
     {
         try
         {
             auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                "enrollment_pool WHERE key = ?)", enroll_hash.toString());
+                "enrollment_pool WHERE key = ? AND avail_height >= ?)",
+                enroll_hash.toString(), avail_height.value);
             return results.front().peek!bool(0);
         }
         catch (Exception ex)
@@ -305,6 +313,7 @@ unittest
     KeyPair key_pair = KeyPair.random();
     Scalar[Hash] seed_sources;
     Enrollment[] enrollments;
+    Height avail_height;
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
         .each!(tx => storage.put(tx));
@@ -317,10 +326,11 @@ unittest
         seed_sources[utxo_hash] = Scalar.random();
         enrollments ~= createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
             params.ValidatorCycle);
-        assert(pool.add(enrollments[$ - 1], &storage.findUTXO));
+        avail_height = Height(params.ValidatorCycle);
+        assert(pool.add(enrollments[$ - 1], avail_height, &storage.findUTXO));
         assert(pool.count() == index + 1);
-        assert(pool.hasEnrollment(utxo_hash));
-        assert(!pool.add(enrollments[$ - 1], &storage.findUTXO));
+        assert(pool.hasEnrollment(utxo_hash, avail_height));
+        assert(!pool.add(enrollments[$ - 1], avail_height, &storage.findUTXO));
     }
 
     // check if enrolled heights are not set
@@ -343,9 +353,12 @@ unittest
     pool.getEnrollments(enrolls);
     assert(enrolls.length == 2);
 
-    assert(pool.hasEnrollment(utxo_hashes[0]));
+    avail_height = Height(params.ValidatorCycle);
+    assert(pool.hasEnrollment(utxo_hashes[0], avail_height));
+    avail_height = Height(params.ValidatorCycle * 2);
+    assert(!pool.hasEnrollment(utxo_hashes[0], avail_height));
     pool.remove(utxo_hashes[0]);
-    assert(!pool.hasEnrollment(utxo_hashes[0]));
+    assert(!pool.hasEnrollment(utxo_hashes[0], avail_height));
     pool.remove(utxo_hashes[1]);
     pool.remove(utxo_hashes[2]);
     assert(pool.getEnrollments(enrolls).length == 0);
@@ -354,7 +367,7 @@ unittest
     Enrollment[] ordered_enrollments = enrollments.dup;
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(pool.add(ordered_enroll, &storage.findUTXO));
+        assert(pool.add(ordered_enroll, Height(1), &storage.findUTXO));
     pool.getEnrollments(enrolls);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
