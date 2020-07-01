@@ -192,6 +192,36 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Add a enrollment data to the enrollment pool
+
+        Params:
+            enroll = the enrollment data to add
+            block_height = current block height
+            finder = the delegate to find UTXOs with
+
+        Returns:
+            true if the enrollment data has been added to the enrollment pool
+
+    ***************************************************************************/
+
+    public bool addEnrollment (const ref Enrollment enroll, Height block_height,
+        scope UTXOFinder finder) @safe nothrow
+    {
+        auto enrolled_height = this.getEnrolledHeight(enroll.utxo_key);
+
+        // The last height at which a node plays a role as a validator.
+        ulong avail_height;
+
+        if (enrolled_height == ulong.max)
+            avail_height = block_height + 1;
+        else
+            avail_height = enrolled_height + this.params.ValidatorCycle;
+
+        return this.pool.add(enroll, Height(avail_height), finder);
+    }
+
+    /***************************************************************************
+
         Get the unregistered enrollments that can be validator in the next
         block based on the current block height.
 
@@ -735,20 +765,20 @@ unittest
         EnrollmentManager.makeEnrollment(gen_key_pair, utxo_hash, 1008);
 
     auto enroll = man.createEnrollment(utxo_hash);
-    assert(!man.pool.add(fail_enroll, &storage.findUTXO));
-    assert(man.pool.add(enroll, &storage.findUTXO));
+    assert(!man.addEnrollment(fail_enroll, Height(1), &storage.findUTXO));
+    assert(man.addEnrollment(enroll, Height(1), &storage.findUTXO));
     assert(man.pool.count() == 1);
-    assert(!man.pool.add(enroll, &storage.findUTXO));
+    assert(!man.addEnrollment(enroll, Height(1), &storage.findUTXO));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     auto enroll2 = man.createEnrollment(utxo_hash2);
-    assert(man.pool.add(enroll2, &storage.findUTXO));
+    assert(man.addEnrollment(enroll2, Height(1), &storage.findUTXO));
     assert(man.pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     auto enroll3 = man.createEnrollment(utxo_hash3);
-    assert(man.pool.add(enroll3, &storage.findUTXO));
+    assert(man.addEnrollment(enroll3, Height(1), &storage.findUTXO));
     assert(man.pool.count() == 3);
 
     Enrollment[] enrolls;
@@ -792,7 +822,8 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(man.pool.add(ordered_enroll, &storage.findUTXO));
+        assert(man.addEnrollment(ordered_enroll, Height(10),
+            &storage.findUTXO));
     man.getEnrollments(enrolls, Height(man.params.ValidatorCycle + 8));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
@@ -863,7 +894,7 @@ unittest
 
     auto utxo_hash = utxo_hashes[0];
     auto enroll = man.createEnrollment(utxo_hash);
-    assert(man.pool.add(enroll, &storage.findUTXO));
+    assert(man.addEnrollment(enroll, Height(1), &storage.findUTXO));
 
     assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
     assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
@@ -962,7 +993,7 @@ unittest
     // create and add the first Enrollment object
     auto utxo_hash1 = utxo_hashes[0];
     auto enrollment = man.createEnrollment(utxo_hash1);
-    assert(man.pool.add(enrollment, &storage.findUTXO));
+    assert(man.addEnrollment(enrollment, block_height, &storage.findUTXO));
     assert(man.getValidatorCount(block_height) == 0);  // not active yet
 
     man.clearExpiredValidators(block_height);
@@ -974,7 +1005,7 @@ unittest
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     enrollment = man.createEnrollment(utxo_hash2);
-    assert(man.pool.add(enrollment, &storage.findUTXO));
+    assert(man.addEnrollment(enrollment, block_height, &storage.findUTXO));
     assert(man.getValidatorCount(block_height) == 1);  // not active yet
 
     man.clearExpiredValidators(block_height);
@@ -986,7 +1017,7 @@ unittest
     // create and add the third Enrollment object
     auto utxo_hash3 = utxo_hashes[2];
     enrollment = man.createEnrollment(utxo_hash3);
-    assert(man.pool.add(enrollment, &storage.findUTXO));
+    assert(man.addEnrollment(enrollment, block_height, &storage.findUTXO));
     assert(man.getValidatorCount(block_height) == 2);  // not active yet
 
     man.clearExpiredValidators(block_height);

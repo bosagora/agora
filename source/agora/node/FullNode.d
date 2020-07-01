@@ -428,7 +428,8 @@ public class FullNode : API
     {
         log.trace("Received Enrollment: {}", prettify(enroll));
 
-        if (this.enroll_man.pool.add(enroll, this.utxo_set.getUTXOFinder()))
+        if (this.enroll_man.addEnrollment(enroll, this.ledger.getBlockHeight(),
+            this.utxo_set.getUTXOFinder()))
         {
             this.network.sendEnrollment(enroll);
         }
