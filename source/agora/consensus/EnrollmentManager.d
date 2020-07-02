@@ -288,10 +288,6 @@ public class EnrollmentManager
         // R, signature noise
         this.signature_noise = this.createSignatureNoise(height);
 
-        // save enroll_key
-        if (!this.setEnrollmentKey(enroll))
-            return false;
-
         // signature
         data.enroll_sig = sign(this.key_pair, this.signature_noise, this.data);
 
@@ -569,53 +565,6 @@ public class EnrollmentManager
         }
 
         return en_key;
-    }
-
-    /***************************************************************************
-
-        Set the key for the enrollment data for this node
-
-        Params:
-            enroll = the enrollment data for this node
-
-        Returns:
-            true if setting the data succeeds
-
-    ***************************************************************************/
-
-    private bool setEnrollmentKey (ref Enrollment enroll) @safe nothrow
-    {
-        static ubyte[] buffer;
-        try
-        {
-            serializeToBuffer(enroll.utxo_key, buffer);
-        }
-        catch (Exception ex)
-        {
-            log.error("Serialization error: {} ({})", ex, enroll);
-            return false;
-        }
-
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                    "node_enroll_data WHERE key = ?)", "enroll_key");
-                if (results.oneValue!(bool))
-                    this.db.execute("UPDATE node_enroll_data SET val = ? " ~
-                        "WHERE key = ?", buffer, "enroll_key");
-                else
-                    this.db.execute("INSERT INTO node_enroll_data (key, val)" ~
-                        " VALUES (?, ?)", "enroll_key", buffer);
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error: {} ({})", ex, enroll);
-            return false;
-        }
-
-        return true;
     }
 
     /***************************************************************************
