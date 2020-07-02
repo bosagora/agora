@@ -255,45 +255,97 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Make an enrollment data for enrollment process
+        Build an `Enrollment` using `buildEnrollment`, stores and returns it
 
         Params:
-            frozen_utxo_hash = the hash of a frozen UTXO used to identify a validator
-                        and to generate a siging key
-            height = the starting index for generating pre-images
-            enroll = will contain the Enrollment if created
+            utxo = The hash of the frozen UTXO used as a stake.
+                   It must be owned by the private key this validator controls
+                   (`key_pair` argument to constructor).
 
         Returns:
-            true if the enrollment manager succeeded in creating the Enrollment
+            The `Enrollment` created by `buildEnrollment`
 
     ***************************************************************************/
 
-    public bool createEnrollment (Hash frozen_utxo_hash, Height height,
-        out Enrollment enroll) @trusted nothrow
+    public Enrollment createEnrollment (Hash utxo) @safe nothrow
     {
         // K, frozen UTXO hash
-        this.data.utxo_key = frozen_utxo_hash;
-        this.enroll_key = frozen_utxo_hash;
-
-        // N, cycle length
-        this.data.cycle_length = this.params.ValidatorCycle;
+        this.enroll_key = utxo;
 
         // X, final seed data and preimages of hashes
         //
         // TODO: Move this consume call to `addValidator` and instead
         // make this calculate the future pre-image without changing
         // the state
-        this.data.random_seed = this.cycle.consume(this.key_pair.v);
+        const seed = this.cycle.consume(this.key_pair.v);
+        this.data = makeEnrollment(
+            this.key_pair, utxo, this.params.ValidatorCycle,
+            seed, this.cycle.index);
 
-        // R, signature noise
-        this.signature_noise = this.createSignatureNoise(height);
+        return this.data;
+    }
 
-        // signature
-        data.enroll_sig = sign(this.key_pair, this.signature_noise, this.data);
+    /***************************************************************************
 
-        enroll = this.data;
+        Build enrollment data for an arbitrary utxo + key combination
 
-        return true;
+        This static function builds a valid, real-world 'enrollment' for any
+        private key + utxo combination.  It can be used to generate realistic
+        test data or specialized usage, e.g. by tools.
+
+        To avoid code duplication and overhead, this function has two overload:
+        the one accepting an offset will generate a new `PreImageCache`,
+        which is quite expensive, and retrieve the hash to use based on the
+        offset (defaults to `0`), and then forwards to the second overload
+        that accepts a `Hash` and thus does not incur the cost of re-generating
+        the pre-images.
+
+        Params:
+            key  = `KeyPair` that controls the `utxo`
+            utxo = `Hash` of a frozen UTXO value that can be used for enrollment
+            cycle_length = The cycle length to use (see `ConsensusParams`)
+            seed = Random seed to use
+            offset = The number of times this private key has enrolled before.
+                     If `seed` is provided, this parameter is non-optional.
+
+        Returns:
+            An `Enrollment` refencing `utxo` signed with `key`
+
+    ***************************************************************************/
+
+    public static Enrollment makeEnrollment (
+        Pair key, const ref Hash utxo, uint cycle_length, Hash seed, ulong offset)
+        @safe nothrow @nogc
+    {
+        Enrollment result = {
+            utxo_key: utxo,
+            cycle_length: cycle_length,
+            random_seed: seed,
+        };
+
+        // Generate signature noise
+        const noise_v = Scalar(hashMulti(key.v, "consensus.signature.noise", offset));
+        const Pair noise = Pair(noise_v, noise_v.toPoint());
+
+        // We're done, sign & return
+        result.enroll_sig = sign(key, noise, result);
+        return result;
+    }
+
+    /// Ditto
+    version (unittest) public static Enrollment makeEnrollment (
+        KeyPair key, const ref Hash utxo, uint cycle_length, ulong offset = 0)
+        @trusted nothrow
+    {
+        // Convert stellar-type keypair to curve scalars
+        const kp_v = secretKeyToCurveScalar(key.secret);
+        const kp = Pair(kp_v, kp_v.toPoint());
+
+        // Generate the random seed to use
+        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
+        assert(offset < cache.length);
+
+        return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
 
     /***************************************************************************
@@ -630,32 +682,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Create signature noise for enrollment data.
-
-        It creates a signature noise for enrollment data by hashing the private
-        key, the constant value which states the "purpose", and non-constant
-        value like a block height. This makes the enrollment data for a
-        validator recoverable in any abnormal situation.
-
-        Params:
-            height = the height used for a salt value
-
-        Returns:
-            the signature noise created using the private key
-
-    ***************************************************************************/
-
-    private Pair createSignatureNoise (Height height) nothrow @safe @nogc
-    {
-        Pair key_pair;
-        key_pair.v = Scalar(hashMulti(this.key_pair.v,
-            "consensus.signature.noise", height.value));
-        key_pair.V = key_pair.v.toPoint();
-        return key_pair;
-    }
-
-    /***************************************************************************
-
         Gets the number of active validators at the block height.
 
         `block_height` is the height of the newly created block.
@@ -702,21 +728,12 @@ unittest
 
     // create and add the first Enrollment object
     auto utxo_hash = utxo_hashes[0];
-    Enrollment enroll;
-    Enrollment enroll2;
-    Enrollment fail_enroll;
 
-    Pair signature_noise = man.createSignatureNoise(Height(1));
-    Pair fail_enroll_key_pair;
-    fail_enroll_key_pair.v = secretKeyToCurveScalar(gen_key_pair.secret);
-    fail_enroll_key_pair.V = fail_enroll_key_pair.v.toPoint();
+    // The UTXO belongs to key_pair but we sign with genesis key pair
+    Enrollment fail_enroll =
+        EnrollmentManager.makeEnrollment(gen_key_pair, utxo_hash, 1008);
 
-    fail_enroll.utxo_key = utxo_hash;
-    fail_enroll.random_seed = hashFull(Scalar.random());
-    fail_enroll.cycle_length = 1008;
-    fail_enroll.enroll_sig = sign(fail_enroll_key_pair, signature_noise, fail_enroll);
-
-    assert(man.createEnrollment(utxo_hash, Height(1), enroll));
+    auto enroll = man.createEnrollment(utxo_hash);
     assert(!man.pool.add(fail_enroll, &storage.findUTXO));
     assert(man.pool.add(enroll, &storage.findUTXO));
     assert(man.pool.count() == 1);
@@ -724,13 +741,12 @@ unittest
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
-    assert(man.createEnrollment(utxo_hash2, Height(1), enroll2));
+    auto enroll2 = man.createEnrollment(utxo_hash2);
     assert(man.pool.add(enroll2, &storage.findUTXO));
     assert(man.pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
-    Enrollment enroll3;
-    assert(man.createEnrollment(utxo_hash3, Height(1), enroll3));
+    auto enroll3 = man.createEnrollment(utxo_hash3);
     assert(man.pool.add(enroll3, &storage.findUTXO));
     assert(man.pool.count() == 3);
 
@@ -787,7 +803,7 @@ unittest
     // A validation can start at the height of the enrolled height plus 1.
     // So, a pre-image can only be got from the start height.
     PreImageInfo preimage;
-    assert(man.createEnrollment(utxo_hash, Height(1), enroll));
+    enroll = man.createEnrollment(utxo_hash);
     assert(man.addValidator(enroll, Height(10), &storage.findUTXO) is null);
     assert(!man.getPreimage(Height(10), preimage));
     assert(man.getPreimage(Height(11), preimage));
@@ -846,8 +862,7 @@ unittest
     Hash[] utxo_hashes = storage.keys;
 
     auto utxo_hash = utxo_hashes[0];
-    Enrollment enroll;
-    assert(man.createEnrollment(utxo_hash, Height(1), enroll));
+    auto enroll = man.createEnrollment(utxo_hash);
     assert(man.pool.add(enroll, &storage.findUTXO));
 
     assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
@@ -943,12 +958,11 @@ unittest
         new immutable(ConsensusParams)());
     Hash[] utxo_hashes = storage.keys;
 
-    Enrollment enrollment;
     Height block_height = Height(2);
 
     // create and add the first Enrollment object
     auto utxo_hash1 = utxo_hashes[0];
-    assert(man.createEnrollment(utxo_hash1, block_height, enrollment));
+    auto enrollment = man.createEnrollment(utxo_hash1);
     assert(man.pool.add(enrollment, &storage.findUTXO));
     assert(man.getValidatorCount(block_height) + 1 == 1);
 
@@ -959,7 +973,7 @@ unittest
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
-    assert(man.createEnrollment(utxo_hash2, block_height, enrollment));
+    enrollment = man.createEnrollment(utxo_hash2);
     assert(man.pool.add(enrollment, &storage.findUTXO));
     assert(man.getValidatorCount(block_height) + 1 == 2);
 
@@ -970,7 +984,7 @@ unittest
 
     // create and add the third Enrollment object
     auto utxo_hash3 = utxo_hashes[2];
-    assert(man.createEnrollment(utxo_hash3, block_height, enrollment));
+    enrollment = man.createEnrollment(utxo_hash3);
     assert(man.pool.add(enrollment, &storage.findUTXO));
     assert(man.getValidatorCount(block_height) + 1 == 3);
 

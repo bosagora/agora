@@ -776,11 +776,7 @@ public class TestValidatorNode : Validator, TestAPI
             }
         }
 
-        Enrollment enroll;
-        this.enroll_man.createEnrollment(utxo_hashes[0],
-            this.ledger.getBlockHeight(), enroll);
-
-        return enroll;
+        return this.enroll_man.createEnrollment(utxo_hashes[0]);
     }
 }
 
@@ -1135,11 +1131,7 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
         Hash txhash = hashFull(tx);
         Hash utxo = UTXOSetValue.getHash(txhash, 0);
         scope enr = new EnrollmentManager(":memory:", key_pair, params);
-
-        Enrollment enroll;
-        const StartHeight = Height(1);
-        assert(enr.createEnrollment(utxo, StartHeight, enroll));
-        enrolls ~= enroll;
+        enrolls ~= enr.createEnrollment(utxo);
     }
 
     enrolls.sort!("a.utxo_key < b.utxo_key");
