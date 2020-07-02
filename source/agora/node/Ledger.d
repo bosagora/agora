@@ -532,68 +532,6 @@ version (unittest)
     }
 }
 
-// Generates a genesis block containing the validator's enrollment data.
-//
-// TODO: Once issue #907 are fixed, this can be replaced with `agora.utils.Test.d`.
-// Currently we need it because we need a frozen UTXO and a genesis block
-// with enrollment data.
-version (unittest)
-private const(Block) makeGenesisBlock (immutable(ConsensusParams) params)
-{
-    import agora.common.BitField;
-    import agora.common.Serializer;
-    import std.exception;
-
-    // 1 payment tx, the rest are freeze txs
-    Transaction[] txs;
-    // This function is only called from unittests so we assume that
-    // GenesisBlock is `UnitTestGenesisBlock`
-    txs ~= GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
-    Enrollment[] enrolls;
-
-    foreach (key_pair; iota(Enrollment.MinValidatorCount).map!(idx => WK.Keys[idx]).array)
-    {
-        Transaction tx =
-        {
-            type : TxType.Freeze,
-            outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
-        };
-
-        txs ~= tx;
-        Hash txhash = hashFull(tx);
-        Hash utxo = UTXOSetValue.getHash(txhash, 0);
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-
-        Enrollment enroll;
-        const StartHeight = Height(1);
-        assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
-        enrolls ~= enroll;
-    }
-
-    enrolls.sort!("a.utxo_key < b.utxo_key");
-
-    txs.sort;
-    Hash[] merkle_tree;
-    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
-
-    const(BlockHeader) makeHeader ()
-    {
-        return const(BlockHeader)(
-            Hash.init,   // prev
-            Height(0),   // height
-            merkle_root,
-            BitField!uint.init,
-            Signature.init,
-            enrolls.assumeUnique,
-        );
-    }
-    return const(Block)(
-        makeHeader(),
-        txs.assumeUnique,
-        merkle_tree.assumeUnique
-    );
-}
-
 /// Makes the validator's enrollment data using the UTXO
 /// of the genesis block.
 version (unittest)
@@ -629,39 +567,42 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     WK.Keys.Genesis,
+        key_pair:     WK.Keys.NODE2,
     };
-    auto params = new immutable(ConsensusParams)();
-    const genesis_block = makeGenesisBlock(params);
-    scope ledger = new TestLedger(config, [genesis_block], params);
-
+    scope ledger = new TestLedger(config);
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
-    assert(blocks[$ - 1] == genesis_block);
-
-    Transaction[] last_txs;
+    assert(blocks[$ - 1] == GenesisBlock);
 
     // generate enough transactions to form a block
+    Transaction[] last_txs;
     void genBlockTransactions (size_t count)
     {
-        auto txes = makeChainedTransactions(config.key_pair, last_txs, count);
+        assert(count > 0);
 
-        foreach (idx, tx; txes)
+        // Special case for genesis
+        if (!last_txs.length)
         {
-            assert(ledger.acceptTransaction(tx));
-            if ((idx + 1) % Block.TxsInBlock == 0)
-                ledger.forceCreateBlock();
+            last_txs = genesisSpendable().take(Block.TxsInBlock).enumerate()
+                .map!(en => en.value.refund(WK.Keys.A.address).sign())
+                .array();
+            last_txs.each!(tx => ledger.acceptTransaction(tx));
+            ledger.forceCreateBlock();
+            count--;
         }
 
-        // keep track of last tx's to chain them to
-        last_txs = txes[$ - Block.TxsInBlock .. $];
+        foreach (_; 0 .. count)
+        {
+            last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+            last_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+            ledger.forceCreateBlock();
+        }
     }
 
     genBlockTransactions(2);
     blocks = ledger.getBlocksFrom(Height(0)).take(10);
-    assert(blocks[0] == genesis_block);
-    assert(blocks[0].header.height == 0);
+    assert(blocks[0] == GenesisBlock);
     assert(blocks.length == 3);  // two blocks + genesis block
 
     /// now generate 98 more blocks to make it 100 + genesis block (101 total)
@@ -669,14 +610,12 @@ unittest
     assert(ledger.getBlockHeight() == 100);
 
     blocks = ledger.getBlocksFrom(Height(0)).takeExactly(10);
-    assert(blocks[0] == genesis_block);
-    assert(blocks[0].header.height == 0);
+    assert(blocks[0] == GenesisBlock);
     assert(blocks.length == 10);
 
     /// lower limit
     blocks = ledger.getBlocksFrom(Height(0)).takeExactly(5);
-    assert(blocks[0] == genesis_block);
-    assert(blocks[0].header.height == 0);
+    assert(blocks[0] == GenesisBlock);
     assert(blocks.length == 5);
 
     /// different indices
@@ -714,9 +653,7 @@ unittest
         is_validator: true,
         key_pair:     WK.Keys.Genesis,
     };
-    auto params = new immutable(ConsensusParams)();
-    const genesis_block = makeGenesisBlock(params);
-    scope ledger = new TestLedger(config, [genesis_block], params);
+    scope ledger = new TestLedger(config);
 
     // Valid case
     auto txs = makeChainedTransactions(config.key_pair, null, 1);
@@ -745,18 +682,15 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     WK.Keys.Genesis,
+        key_pair:     WK.Keys.NODE2,
     };
-    auto params = new immutable(ConsensusParams)();
-    const genesis_block = makeGenesisBlock(params);
-    scope ledger = new TestLedger(config, [genesis_block], params);
+    scope ledger = new TestLedger(config);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
 
-    auto txs = makeChainedTransactions(config.key_pair, null, 1);
-
-    auto valid_block = makeNewBlock(genesis_block, txs);
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto valid_block = makeNewBlock(GenesisBlock, txs);
     assert(ledger.acceptBlock(valid_block));
 }
 
@@ -765,13 +699,11 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     WK.Keys.Genesis,
+        key_pair:     WK.Keys.NODE2,
     };
-    auto params = new immutable(ConsensusParams)();
-    const genesis_block = makeGenesisBlock(params);
-    scope ledger = new TestLedger(config, [genesis_block], params);
+    scope ledger = new TestLedger(config);
 
-    auto txs = makeChainedTransactions(config.key_pair, null, 1);
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
 
@@ -827,27 +759,24 @@ unittest
 /// Expectation: The UTXOSet is populated with all up-to-date UTXOs
 unittest
 {
+    // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
+    const(Block)[] blocks = [ GenesisBlock ];
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     // Make a block to put in storage
     // TODO: Make this more than one block (e.g. 5)
     //       Currently due to the design of `makeChainedTransactions`,
     //       we can't do that.
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
-    // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
-
-    auto params = new immutable(ConsensusParams)();
-    const genesis_block = makeGenesisBlock(params);
-
-    const(Block)[] blocks = [ genesis_block ];
-    blocks ~= makeNewBlock(genesis_block, txs);
+    blocks ~= makeNewBlock(GenesisBlock, txs);
 
     // And provide it to the ledger
     NodeConfig config = {
         is_validator: true,
-        key_pair:     WK.Keys.Genesis,
+        key_pair:     WK.Keys.NODE2,
     };
-    scope ledger = new TestLedger(config, blocks, params);
+    scope ledger = new TestLedger(config, blocks);
 
-    assert(ledger.utxo_set.length == 15);
+    assert(ledger.utxo_set.length
+           == /* Genesis, Frozen */ 6 + 8 /* Block #1 Payments*/);
 
     // Ensure that all previously-generated outputs are in the UTXO set
     {
@@ -932,11 +861,9 @@ unittest
 {
     NodeConfig config = {
         is_validator: true,
-        key_pair:     WK.Keys.Genesis,
+        key_pair:     WK.Keys.NODE2,
     };
-    auto params = new immutable(ConsensusParams)();
-    const genesis_block = makeGenesisBlock(params);
-    scope ledger = new TestLedger(config, [genesis_block], params);
+    scope ledger = new TestLedger(config);
 
     const(KeyPair)[] in_key_pairs =
         iota(Block.TxsInBlock).map!(_ => WK.Keys.Genesis).array();
@@ -995,10 +922,9 @@ unittest
     auto params = new immutable(ConsensusParams)(validator_cycle);
     NodeConfig config = {
         is_validator: true,
-        key_pair:     WK.Keys.Genesis,
+        key_pair:     WK.Keys.NODE2,
     };
-    const genesis_block = makeGenesisBlock(params);
-    scope ledger = new TestLedger(config, [genesis_block], params);
+    scope ledger = new TestLedger(config);
 
     KeyPair[] splited_keys = getRandomKeyPairs();
     KeyPair[] in_key_pairs_normal;
@@ -1175,7 +1101,7 @@ unittest
     genNormalBlockTransactions(validator_cycle - 1);
     Hash[] keys;
     assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-    assert(keys.length == 3);
+    assert(keys.length == /* Genesis */ 6 + 3 /* New ones */);
     assert(ledger.getBlockHeight() == validator_cycle + 4 - 1);
 }
 
