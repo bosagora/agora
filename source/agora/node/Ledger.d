@@ -1098,8 +1098,8 @@ private Transaction[] splitGenesisTransaction (
 // generate genesis with a freeze & payment tx, and 'count' number of
 // extra blocks
 version (unittest)
-private const(Block)[] genBlocksToIndex ( KeyPair key_pair,
-    EnrollmentManager enroll_man, size_t count)
+private const(Block)[] genBlocksToIndex (
+    KeyPair key_pair, const(ConsensusParams) params, size_t count)
 {
     // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
     Transaction[] gen_txs;
@@ -1113,16 +1113,13 @@ private const(Block)[] genBlocksToIndex ( KeyPair key_pair,
     };
 
     gen_txs ~= freeze_tx;
-    Hash txhash = hashFull(freeze_tx);
-    Hash utxo = UTXOSetValue.getHash(txhash, 0);
-
-    Enrollment[] enrolls;
-    Enrollment enroll;
-    const StartHeight = Height(0);  // not important
-    assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
-    enrolls ~= enroll;
-
     gen_txs.sort;
+
+    const Hash utxo = UTXOSetValue.getHash(freeze_tx.hashFull(), 0);
+    Enrollment[] enrolls = [
+        EnrollmentManager.makeEnrollment(key_pair, utxo, params.ValidatorCycle, 0)
+    ];
+
     Hash[] merkle_tree;
     auto merkle_root = Block.buildMerkleTree(gen_txs, merkle_tree);
 
@@ -1167,7 +1164,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, 0);
+        const blocks = genBlocksToIndex(key_pair, params, 0);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
@@ -1185,8 +1182,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(validator_cycle);
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man,
-            validator_cycle - 1);
+        const blocks = genBlocksToIndex(key_pair, params, validator_cycle - 1);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
@@ -1204,7 +1200,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(validator_cycle);
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, validator_cycle);
+        const blocks = genBlocksToIndex(key_pair, params, validator_cycle);
         scope storage = new MemBlockStorage(blocks);
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
@@ -1261,7 +1257,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        const blocks = genBlocksToIndex(key_pair, params, 1008);
         assert(blocks.length == 1009);  // +1 for genesis
 
         scope storage = new MemBlockStorage(blocks.takeExactly(1008));
@@ -1293,7 +1289,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        const blocks = genBlocksToIndex(key_pair, params, 1008);
         assert(blocks.length == 1009);  // +1 for genesis
 
         scope storage = new MemBlockStorage(blocks.takeExactly(1008));
@@ -1326,7 +1322,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, enroll_man, 1008);
+        const blocks = genBlocksToIndex(key_pair, params, 1008);
         assert(blocks.length == 1009);  // +1 for genesis
 
         scope storage = new MemBlockStorage(blocks.takeExactly(1008));
