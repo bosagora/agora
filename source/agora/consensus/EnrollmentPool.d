@@ -299,40 +299,29 @@ unittest
     import agora.consensus.data.Transaction;
     import std.algorithm;
 
+    auto params = new immutable(ConsensusParams)();
     scope storage = new TestUTXOSet;
+    scope pool = new EnrollmentPool(":memory:");
     KeyPair key_pair = KeyPair.random();
+    Scalar[Hash] seed_sources;
+    Enrollment[] enrollments;
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
         .each!(tx => storage.put(tx));
 
-    auto pool = new EnrollmentPool(":memory:");
+    // Add enrollments
     Hash[] utxo_hashes = storage.keys;
-
-    // add enrollments
-    auto params = new immutable(ConsensusParams)();
-    Scalar[Hash] seed_sources;
-    auto utxo_hash = utxo_hashes[0];
-    seed_sources[utxo_hash] = Scalar.random();
-    auto enroll = createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
-        params.ValidatorCycle);
-    assert(pool.add(enroll, &storage.findUTXO));
-    assert(pool.count() == 1);
-    assert(pool.hasEnrollment(utxo_hash));
-    assert(!pool.add(enroll, &storage.findUTXO));
-
-    auto utxo_hash2 = utxo_hashes[1];
-    seed_sources[utxo_hash2] = Scalar.random();
-    auto enroll2 = createEnrollment(utxo_hash2, key_pair, seed_sources[utxo_hash2],
-        params.ValidatorCycle);
-    assert(pool.add(enroll2, &storage.findUTXO));
-    assert(pool.count() == 2);
-
-    auto utxo_hash3 = utxo_hashes[2];
-    seed_sources[utxo_hash3] = Scalar.random();
-    auto enroll3 = createEnrollment(utxo_hash3, key_pair, seed_sources[utxo_hash3],
-        params.ValidatorCycle);
-    assert(pool.add(enroll3, &storage.findUTXO));
-    assert(pool.count() == 3);
+    foreach (index; 0 .. 3)
+    {
+        auto utxo_hash = utxo_hashes[index];
+        seed_sources[utxo_hash] = Scalar.random();
+        enrollments ~= createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
+            params.ValidatorCycle);
+        assert(pool.add(enrollments[$ - 1], &storage.findUTXO));
+        assert(pool.count() == index + 1);
+        assert(pool.hasEnrollment(utxo_hash));
+        assert(!pool.add(enrollments[$ - 1], &storage.findUTXO));
+    }
 
     // check if enrolled heights are not set
     Enrollment[] enrolls;
@@ -342,31 +331,27 @@ unittest
 
     // get a specific enrollment object
     Enrollment stored_enroll;
-    assert(pool.getEnrollment(utxo_hash2, stored_enroll));
-    assert(stored_enroll == enroll2);
+    assert(pool.getEnrollment(utxo_hashes[1], stored_enroll));
+    assert(stored_enroll == enrollments[1]);
 
     // remove an enrollment
-    pool.remove(utxo_hash2);
+    pool.remove(utxo_hashes[1]);
     assert(pool.count() == 2);
-    assert(!pool.getEnrollment(utxo_hash2, stored_enroll));
+    assert(!pool.getEnrollment(utxo_hashes[1], stored_enroll));
 
     // test for enrollment block height update
     pool.getEnrollments(enrolls);
     assert(enrolls.length == 2);
 
-    assert(pool.hasEnrollment(utxo_hash));
-    pool.remove(utxo_hash);
-    assert(!pool.hasEnrollment(utxo_hash));
-    pool.remove(utxo_hash2);
-    pool.remove(utxo_hash3);
+    assert(pool.hasEnrollment(utxo_hashes[0]));
+    pool.remove(utxo_hashes[0]);
+    assert(!pool.hasEnrollment(utxo_hashes[0]));
+    pool.remove(utxo_hashes[1]);
+    pool.remove(utxo_hashes[2]);
     assert(pool.getEnrollments(enrolls).length == 0);
 
-    Enrollment[] ordered_enrollments;
-    ordered_enrollments ~= enroll;
-    ordered_enrollments ~= enroll2;
-    ordered_enrollments ~= enroll3;
-
     // Reverse ordering
+    Enrollment[] ordered_enrollments = enrollments.dup;
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
         assert(pool.add(ordered_enroll, &storage.findUTXO));
