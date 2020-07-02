@@ -532,36 +532,6 @@ version (unittest)
     }
 }
 
-/// Makes the validator's enrollment data using the UTXO
-/// of the genesis block.
-version (unittest)
-private const(Enrollment)[] remakeEnrollment (const Block genesis,
-    immutable(ConsensusParams) params)
-{
-    Enrollment[] enrolls;
-    foreach (tx; genesis.txs)
-    {
-        if (tx.type != TxType.Freeze)
-            continue;
-
-        Hash txhash = hashFull(tx);
-        Hash utxo = UTXOSetValue.getHash(txhash, 0);
-
-        auto key_pair = WK.Keys[tx.outputs[0].address];
-        assert(key_pair !is KeyPair.init,
-                "Address not found in Well-Known keypairs: "
-                ~ tx.outputs[0].address.toString());
-
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-
-        Enrollment enroll;
-        const StartHeight = Height(0);
-        assert(enroll_man.createEnrollment(utxo, StartHeight, enroll));
-        enrolls ~= enroll;
-    }
-    return enrolls;
-}
-
 ///
 unittest
 {
