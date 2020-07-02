@@ -271,8 +271,6 @@ public class EnrollmentManager
     public bool createEnrollment (Hash frozen_utxo_hash, Height height,
         out Enrollment enroll) @trusted nothrow
     {
-        static ubyte[] buffer;
-
         // K, frozen UTXO hash
         this.data.utxo_key = frozen_utxo_hash;
         this.enroll_key = frozen_utxo_hash;
