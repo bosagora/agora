@@ -1006,57 +1006,28 @@ unittest
             if (tx.outputs[0].address == key_pair.address)
                 enroll_key_pair ~= key_pair;
 
-    auto utxo_hash_1 = UTXOSetValue.getHash(hashFull(blocks[3].txs[0]),0);
-    auto utxo_hash_2 = UTXOSetValue.getHash(hashFull(blocks[3].txs[1]),0);
-    auto utxo_hash_3 = UTXOSetValue.getHash(hashFull(blocks[3].txs[2]),0);
-
-    Pair signature_noise = Pair.random;
-    Pair node_key_pair_1;
-    node_key_pair_1.v = secretKeyToCurveScalar(enroll_key_pair[0].secret);
-    node_key_pair_1.V = node_key_pair_1.v.toPoint();
-
-    Pair node_key_pair_2;
-    node_key_pair_2.v = secretKeyToCurveScalar(enroll_key_pair[1].secret);
-    node_key_pair_2.V = node_key_pair_2.v.toPoint();
-
-    Pair node_key_pair_3;
-    node_key_pair_3.v = secretKeyToCurveScalar(enroll_key_pair[2].secret);
-    node_key_pair_3.V = node_key_pair_3.v.toPoint();
-
-    Enrollment enroll_1;
-    enroll_1.utxo_key = utxo_hash_1;
-    enroll_1.random_seed = hashFull(Scalar.random());
-    enroll_1.cycle_length = validator_cycle;
-    enroll_1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll_1);
-
-    Enrollment enroll_2;
-    enroll_2.utxo_key = utxo_hash_2;
-    enroll_2.random_seed = hashFull(Scalar.random());
-    enroll_2.cycle_length = validator_cycle;
-    enroll_2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll_2);
-
-    Enrollment enroll_3;
-    enroll_3.utxo_key = utxo_hash_3;
-    enroll_3.random_seed = hashFull(Scalar.random());
-    enroll_3.cycle_length = validator_cycle;
-    enroll_3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll_3);
+    const utxo_hashes = [
+        UTXOSetValue.getHash(hashFull(blocks[3].txs[0]), 0),
+        UTXOSetValue.getHash(hashFull(blocks[3].txs[1]), 0),
+        UTXOSetValue.getHash(hashFull(blocks[3].txs[2]), 0),
+    ];
 
     Enrollment[] enrollments ;
-    enrollments ~= enroll_1;
-    enrollments ~= enroll_2;
-    enrollments ~= enroll_3;
+    foreach (index; 0 .. 3)
+        enrollments ~= EnrollmentManager.makeEnrollment(
+            enroll_key_pair[index], utxo_hashes[index], params.ValidatorCycle);
 
     auto findUTXO = ledger.utxo_set.getUTXOFinder();
-    assert(ledger.enroll_man.pool.add(enroll_1, findUTXO));
-    assert(ledger.enroll_man.pool.add(enroll_2, findUTXO));
-    assert(ledger.enroll_man.pool.add(enroll_3, findUTXO));
+    foreach (const ref e; enrollments)
+        assert(ledger.enroll_man.pool.add(e, findUTXO));
+
     Enrollment stored_enroll;
-    ledger.enroll_man.pool.getEnrollment(utxo_hash_1, stored_enroll);
-    assert(stored_enroll == enroll_1);
-    ledger.enroll_man.pool.getEnrollment(utxo_hash_2, stored_enroll);
-    assert(stored_enroll == enroll_2);
-    ledger.enroll_man.pool.getEnrollment(utxo_hash_3, stored_enroll);
-    assert(stored_enroll == enroll_3);
+    foreach (idx, hash; utxo_hashes)
+    {
+        assert(ledger.enroll_man.pool.getEnrollment(hash, stored_enroll));
+        assert(stored_enroll == enrollments[idx]);
+    }
+
     genNormalBlockTransactions(1);
     assert(ledger.getBlockHeight() == 4);
 
