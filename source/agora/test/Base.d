@@ -516,20 +516,6 @@ public class TestAPIManager
         }
     }
 
-    /// fill in the in-memory metadata with the peers before nodes are started
-    public void addMetadata ()
-    {
-        foreach (api_a; this.nodes)
-        foreach (api_b; this.nodes)
-        {
-            if (api_a.address == api_b.address)
-                continue;
-
-            api_a.client.metaAddPeer(api_b.address);
-            api_b.client.metaAddPeer(api_a.address);
-        }
-    }
-
     /***************************************************************************
 
         Keep polling for nodes to reach discovery, up to 5 seconds.
@@ -621,19 +607,65 @@ public class TestNetworkManager : NetworkManager
     }
 }
 
-/// Used to call start/shutdown outside of main, and for dependency injection
+/*******************************************************************************
+
+    API implemented by the test nodes runs by LocalRest
+
+    This API inherits from ValidatorAPI, and simply adds a few functions that
+    should not be public in a real-world scenario, but are needed in our test
+    setup. Those functions trigger a specific action (e.g. `start`, `printLog`),
+    or in rare cases are a way to force a node to take a specific action.
+
+    However, adding a method here should be carefully considered, as most of the
+    time, the prefered approach to test a specific behavior on a node would be
+    to instantiate a different kind of node (derive from `TestFullNode` or
+    `TestValidatorNode` and implement the desired behavior), as this approach
+    will be localized to the test, instead of being available to every tests.
+
+    Besides the current functions, extra functionalities that would fit in this
+    interface would be machine state changes, e.g. `setTime` or `removeDisk`.
+
+*******************************************************************************/
+
 public interface TestAPI : ValidatorAPI
 {
-    ///
+    /***************************************************************************
+
+        Start the node
+
+        The `FullNode` have a `start` method that is scheduled by the `main`
+        function to start discovery / catchup, etc...
+        Since our node is not instantiated through `main`, the `APIManager`
+        will call this function directly after instantiating a new node.
+
+    ***************************************************************************/
+
     public abstract void start ();
 
-    /// Print out the contents of the log
-    public void printLog ();
+    /***************************************************************************
 
-    ///
-    public abstract void metaAddPeer (string peer);
+        Print out the contents of the log
 
-    ///
+        Each node logs to their own buffer in their own Thread, which is written
+        to a circular buffer to save on memory.
+        Calling this function will dump the content of the node's log buffer
+        to stderr. `TestAPIManager` provides a convenient way to call
+        this method for every node, and most tests will do this on test failure.
+
+    ***************************************************************************/
+
+    public abstract void printLog ();
+
+    /***************************************************************************
+
+        TEMPORARY: Create a valid `Enrollment` for this node
+
+        This method is a temporary workaround to create an Enrollment for a node
+        in tests. In the future it will be replaced by a simple function call,
+        once Enrollment catch-up is fixed and all node keypairs are well-known.
+
+    ***************************************************************************/
+
     public abstract Enrollment createEnrollmentData();
 }
 
@@ -694,12 +726,6 @@ private mixin template TestNodeMixin ()
     protected override UTXOSet getUtxoSet (string data_dir)
     {
         return new UTXOSet(":memory:");
-    }
-
-    /// Used by unittests
-    public override void metaAddPeer (Address peer)
-    {
-        this.metadata.peers.put(peer);
     }
 
     /// Return a LocalRest-backed task manager
