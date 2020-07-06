@@ -41,7 +41,7 @@ private void main ()
     auto path = makeCleanTempDir();
 
     BlockStorage storage = new BlockStorage(path);
-    storage.load();
+    storage.load(GenesisBlock);
     const(Block)[] blocks;
     blocks ~= GenesisBlock;
 

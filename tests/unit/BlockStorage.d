@@ -40,7 +40,7 @@ private void main ()
     Hash[] block_hashes;
 
     blocks ~= GenesisBlock;
-    assert(storage.load());
+    assert(storage.load(GenesisBlock));
 
     const Transaction last_tx = blocks[$ - 1].txs[$-1];
     Hash gen_tx_hash = hashFull(last_tx);
@@ -99,7 +99,7 @@ private void main ()
 
     //  Verify index data that is already stored.
     BlockStorage other = new BlockStorage(path);
-    other.load();
+    other.load(GenesisBlock);
 
     foreach (height; iota(count).randomCover(rnd))
     {
