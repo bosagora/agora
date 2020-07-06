@@ -103,6 +103,7 @@ private UnitTestResult customModuleUnitTester ()
     Log.root.level(Log.root.Level.Error, true);
 
     //
+    const chatty = !!("dchatty" in environment);
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
 
@@ -152,7 +153,12 @@ private UnitTestResult customModuleUnitTester ()
         atomicOp!"+="(executed, 1);
         try
         {
-            //writefln("Unittesting %s..", mod.name);
+            if (chatty)
+            {
+                auto output = stdout.lockingTextWriter();
+                output.formattedWrite("Unittesting %s..\n", mod.name);
+            }
+
             mod.test();
             atomicOp!"+="(passed, 1);
         }
