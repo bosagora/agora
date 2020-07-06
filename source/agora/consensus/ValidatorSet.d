@@ -398,6 +398,62 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Get validator's pre-image for the given block height from the
+        validator set
+
+        Params:
+            enroll_key = The key for the enrollment in which the pre-image is
+                contained.
+            height = the desired preimage block height. If it's older than
+                     the preimage's current block height, the preimage will
+                     be hashed until the older preimage is retrieved.
+                     Otherwise PreImageInfo.init is returned.
+
+        Returns:
+            the PreImageInfo of the enrolled key if it exists,
+            otherwise PreImageInfo.init
+
+    ***************************************************************************/
+
+    public PreImageInfo getPreimageAt (const ref Hash enroll_key,
+        in Height height) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute(
+                "SELECT preimage, enrolled_height, distance " ~
+                "FROM validator_set WHERE key = ? AND enrolled_height <= ? " ~
+                "AND enrolled_height + distance >= ?",
+                enroll_key.toString(), height.value, height.value);
+
+            if (!results.empty && results.oneValue!(byte[]).length != 0)
+            {
+                auto row = results.front;
+                Hash preimage = Hash(row.peek!(char[])(0));
+                Height enrolled_height = Height(row.peek!ulong(1));
+                ushort distance = row.peek!ushort(2);
+
+                // go back to the desired preimage of a previous height
+                while (enrolled_height + distance > height)
+                {
+                    preimage = hashFull(preimage);
+                    distance--;
+                }
+
+                return PreImageInfo(enroll_key, preimage, distance);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured in getPreimageAt: {}, " ~
+                "Key for enrollment: {}", ex.msg, enroll_key);
+        }
+
+        return PreImageInfo.init;
+    }
+
+    /***************************************************************************
+
         Add a pre-image information to a validator data
 
         Params:
@@ -553,6 +609,16 @@ unittest
     assert(set.addPreimage(preimage));
     assert(set.hasPreimage(utxos[0], 10));
     assert(set.getPreimage(utxos[0]) == preimage);
+    assert(set.getPreimageAt(utxos[0], Height(0))  // N/A: enrolled at height 1!
+        == PreImageInfo.init);
+    assert(set.getPreimageAt(utxos[0], Height(12))  // N/A: not revealed yet!
+        == PreImageInfo.init);
+    assert(set.getPreimageAt(utxos[0], Height(1))
+        == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+    assert(set.getPreimageAt(utxos[0], Height(11)) == preimage);
+    assert(set.getPreimageAt(utxos[0], Height(10)) ==
+        PreImageInfo(preimage.enroll_key, hashFull(preimage.hash),
+            cast(ushort)(preimage.distance - 1)));
 
     // test for clear up expired validators
     seed_sources[utxos[3]] = Scalar.random();
