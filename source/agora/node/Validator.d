@@ -60,6 +60,9 @@ public class Validator : FullNode, API
     /// The current required set of peer keeys to connect to
     protected Set!PublicKey required_peer_keys;
 
+    /// Currently active quorum configuration
+    protected QuorumConfig qc;
+
     /// Ctor
     public this (const Config config)
     {
@@ -89,13 +92,15 @@ public class Validator : FullNode, API
     {
         // we're not enrolled and don't care about quorum sets
         if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+        {
+            this.qc = QuorumConfig.init;
             return;
+        }
 
-        static QuorumConfig qc;
         static QuorumConfig[] other_qcs;
-        this.rebuildQuorumConfig(qc, other_qcs);
-        this.nominator.setQuorumConfig(qc, other_qcs);
-        buildRequiredKeys(this.config.node.key_pair.address, qc,
+        this.rebuildQuorumConfig(this.qc, other_qcs);
+        this.nominator.setQuorumConfig(this.qc, other_qcs);
+        buildRequiredKeys(this.config.node.key_pair.address, this.qc,
             this.required_peer_keys);
     }
 
