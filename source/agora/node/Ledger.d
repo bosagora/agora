@@ -1076,7 +1076,7 @@ private Transaction[] splitGenesisTransaction (
 // extra blocks
 version (unittest)
 private const(Block)[] genBlocksToIndex (
-    KeyPair key_pair, const(ConsensusParams) params, size_t count)
+    KeyPair key_pair, uint ValidatorCycle, size_t count)
 {
     // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
     Transaction[] gen_txs;
@@ -1094,7 +1094,7 @@ private const(Block)[] genBlocksToIndex (
 
     const Hash utxo = UTXOSetValue.getHash(freeze_tx.hashFull(), 0);
     Enrollment[] enrolls = [
-        EnrollmentManager.makeEnrollment(key_pair, utxo, params.ValidatorCycle, 0)
+        EnrollmentManager.makeEnrollment(key_pair, utxo, ValidatorCycle, 0)
     ];
 
     Hash[] merkle_tree;
@@ -1141,7 +1141,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, params, 0);
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, 0);
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
@@ -1158,11 +1158,11 @@ unittest
 
     // block 1007 loaded: validator is still active
     {
-        auto validator_cycle = 10;
+        const ValidatorCycle = 10;
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)(validator_cycle);
+        auto params = new immutable(ConsensusParams)(ValidatorCycle);
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, params, validator_cycle - 1);
+        const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle - 1);
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
@@ -1179,11 +1179,11 @@ unittest
 
     // block 1008 loaded: validator is inactive
     {
-        auto validator_cycle = 20;
+        const ValidatorCycle = 20;
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)(validator_cycle);
+        auto params = new immutable(ConsensusParams)(ValidatorCycle);
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, params, validator_cycle);
+        const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle);
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
@@ -1238,18 +1238,19 @@ unittest
         }
     }
 
+    const params = new immutable(ConsensusParams)();
+
     // normal test: UTXO set and Validator set updated
     {
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, params, 1008);
-        assert(blocks.length == 1009);  // +1 for genesis
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
+        assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
-        scope storage = new MemBlockStorage(blocks.takeExactly(1008));
+        scope storage = new MemBlockStorage(blocks.takeExactly(params.ValidatorCycle));
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
         scope config = new Config();
@@ -1260,7 +1261,7 @@ unittest
         assert(keys.length == 1);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == 1008));
+        utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
 
         auto next_block = blocks[$ - 1];
         ledger.addValidatedBlock(next_block);
@@ -1276,15 +1277,14 @@ unittest
     // Validator set was not modified
     {
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, params, 1008);
-        assert(blocks.length == 1009);  // +1 for genesis
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
+        assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
-        scope storage = new MemBlockStorage(blocks.takeExactly(1008));
+        scope storage = new MemBlockStorage(blocks.takeExactly(params.ValidatorCycle));
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
         scope config = new Config();
@@ -1295,7 +1295,7 @@ unittest
         assert(keys.length == 1);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == 1008));
+        utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
 
         ledger.throw_in_update_utxo = true;
         auto next_block = blocks[$ - 1];
@@ -1303,7 +1303,7 @@ unittest
         assert(ledger.last_block == blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == 1008));  // reverted
+        utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
         assert(enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);  // not updated
     }
@@ -1312,15 +1312,14 @@ unittest
     // Validator set reverted
     {
         auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)();
         scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
-        const blocks = genBlocksToIndex(key_pair, params, 1008);
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == 1009);  // +1 for genesis
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
-        scope storage = new MemBlockStorage(blocks.takeExactly(1008));
+        scope storage = new MemBlockStorage(blocks.takeExactly(params.ValidatorCycle));
         scope pool = new TransactionPool(":memory:");
         scope utxo_set = new UTXOSet(":memory:");
         scope config = new Config();
@@ -1331,7 +1330,7 @@ unittest
         assert(keys.length == 1);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == 1008));
+        utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
 
         ledger.throw_in_update_validators = true;
         auto next_block = blocks[$ - 1];
@@ -1339,7 +1338,7 @@ unittest
         assert(ledger.last_block == blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == 1008));  // reverted
+        utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
         assert(enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);  // reverted
     }
