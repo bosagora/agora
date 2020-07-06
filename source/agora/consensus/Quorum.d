@@ -60,17 +60,20 @@ private enum double THRESHOLD = 0.80;
 /*******************************************************************************
 
     Build the quorum configuration for the given public key and the registered
-    enrollment keys.
+    enrollment keys. The random seed is used to introduce partial randomness
+    to the quorum assignment of each node.
 
     Params:
         key = the key of the node for which to generate the quorum
         utxo_keys = the list of UTXO keys of all the active enrollments
         finder = UTXO finder delegate
+        rand_seed = the random seed
 
 *******************************************************************************/
 
 public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
-    in Hash[] utxo_keys, scope UTXOFinder finder ) @safe nothrow
+    in Hash[] utxo_keys, scope UTXOFinder finder, const ref Hash rand_seed ) 
+    @safe nothrow
 {
     // special-case: only 1 validator is active
     if (utxo_keys.length == 1)
@@ -84,7 +87,7 @@ public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
 
     // for filtering duplicates from dice()
     auto added = BitField!uint(stakes.length);
-    auto RNG_gen = getGenerator(key);
+    auto RNG_gen = getGenerator(key, rand_seed);
     auto stake_amounts = stakes.map!(stake => stake.amount.integral);
 
     static assumeNothrow (T)(lazy T exp) nothrow
@@ -115,7 +118,8 @@ public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
 unittest
 {
     auto keys = getKeys(1);
-    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.only, keys);
+    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.only, keys,
+        hashFull(1));
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
     test!"=="(countNodeInclusions(quorums, keys), [1]);
@@ -125,7 +129,8 @@ unittest
 unittest
 {
     auto keys = getKeys(2);
-    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(2), keys);
+    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(2), keys,
+        hashFull(1));
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
     test!"=="(countNodeInclusions(quorums, keys), [2, 2]);
@@ -135,7 +140,8 @@ unittest
 unittest
 {
     auto keys = getKeys(3);
-    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(3), keys);
+    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(3), keys,
+        hashFull(1));
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
     test!"=="(countNodeInclusions(quorums, keys), [3, 3, 3]);
@@ -145,7 +151,8 @@ unittest
 unittest
 {
     auto keys = getKeys(4);
-    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(4), keys);
+    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(4), keys,
+        hashFull(1));
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
     test!"=="(countNodeInclusions(quorums, keys), [4, 4, 4, 4]);
@@ -154,23 +161,37 @@ unittest
 // 8 nodes with equal stakes
 unittest
 {
-
     auto keys = getKeys(8);
-    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys);
-    verifyQuorumsSanity(quorums);
-    verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys), [8, 5, 8, 8, 8, 8, 7, 4]);
+    auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
+        hashFull(1));
+    verifyQuorumsSanity(quorums_1);
+    verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys), [8, 5, 6, 7, 7, 8, 7, 8]);
+
+    auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
+        hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys), [8, 6, 8, 6, 6, 7, 7, 8]);
 }
 
 // 16 nodes with equal stakes
 unittest
 {
     auto keys = getKeys(16);
-    auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys);
-    verifyQuorumsSanity(quorums);
-    verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys),
-        [6, 7, 10, 8, 6, 6, 5, 7, 9, 7, 7, 6, 7, 5, 6, 10]);
+    auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
+        hashFull(1));
+    verifyQuorumsSanity(quorums_1);
+    verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys),
+        [9, 6, 5, 8, 7, 9, 6, 7, 6, 5, 6, 6, 8, 5, 8, 11]);
+
+    auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
+        hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys),
+        [5, 6, 8, 8, 6, 9, 8, 5, 9, 6, 8, 9, 7, 7, 5, 6]);
 }
 
 // 16 nodes with linearly ascending stakes
@@ -179,11 +200,17 @@ unittest
     auto amounts = iota(16)
         .map!(idx => Amount(400000000000uL + (100000000000uL * idx)));
     auto keys = getKeys(16);
-    auto quorums = buildTestQuorums(amounts, keys);
-    verifyQuorumsSanity(quorums);
-    verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys),
-        [2, 3, 8, 3, 7, 6, 4, 10, 6, 8, 8, 9, 8, 9, 13, 8]);
+    auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1));
+    verifyQuorumsSanity(quorums_1);
+    verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys),
+        [2, 5, 5, 6, 6, 6, 9, 4, 8, 7, 11, 9, 10, 5, 8, 11]);
+
+    auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys),
+        [4, 5, 2, 4, 7, 8, 5, 8, 8, 7, 8, 9, 8, 12, 8, 9]);
 }
 
 // 16 nodes where two nodes own 66% of the stake
@@ -192,11 +219,17 @@ unittest
     auto keys = getKeys(16);
     auto amounts = Amount(400000000000uL).repeat(16).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 14);
-    auto quorums = buildTestQuorums(amounts, keys);
-    verifyQuorumsSanity(quorums);
-    verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys),
-        [16, 7, 6, 7, 4, 4, 4, 10, 4, 7, 2, 9, 5, 5, 6, 16]);
+    auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1));
+    verifyQuorumsSanity(quorums_1);
+    verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys),
+        [16, 6, 3, 8, 5, 6, 5, 11, 5, 5, 4, 7, 4, 4, 7, 16]);
+
+    auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys),
+        [16, 7, 5, 1, 4, 8, 3, 5, 6, 9, 7, 8, 6, 3, 8, 16]);
 }
 
 // 32 nodes where two nodes own 66% of the stake
@@ -205,14 +238,23 @@ unittest
     auto keys = getKeys(32);
     auto amounts = Amount(400000000000uL).repeat(32).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 30);
-    auto quorums = buildTestQuorums(amounts, keys);
-    verifyQuorumsSanity(quorums);
+    auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1));
+    verifyQuorumsSanity(quorums_1);
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 seconds)
-    //verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys),
-        [32, 6, 6, 6, 5, 4, 7, 4, 3, 7, 7, 5, 6, 3, 4, 7, 4, 7, 6, 3, 3, 6, 7,
-        4, 3, 5, 6, 7, 5, 11, 3, 32]);
+    //verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys),
+        [32, 5, 5, 6, 4, 5, 6, 8, 5, 6, 7, 2, 4, 5, 3, 10, 4, 7, 6, 5, 6, 3, 8,
+        6, 3, 6, 5, 5, 3, 6, 6, 32]);
+
+    auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    // verified to work but disabled because it runs slow with a
+    // non-max threshold (~20 seconds)
+    //verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys),
+        [31, 2, 8, 3, 5, 8, 1, 5, 7, 5, 5, 7, 6, 6, 9, 5, 3, 5, 3, 9, 7, 2, 3,
+        6, 5, 8, 3, 7, 8, 3, 8, 31]);
 }
 
 // 64 nodes where two nodes own 66% of the stake
@@ -221,15 +263,25 @@ unittest
     auto keys = getKeys(64);
     auto amounts = Amount(400000000000uL).repeat(64).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 62);
-    auto quorums = buildTestQuorums(amounts, keys);
-    verifyQuorumsSanity(quorums);
+    auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1));
+    verifyQuorumsSanity(quorums_1);
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 minutes)
-    //verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys),
-        [64, 7, 5, 3, 7, 6, 6, 4, 6, 6, 6, 6, 2, 4, 9, 5, 6, 1, 5, 5, 5, 8, 8,
-        3, 2, 9, 8, 6, 7, 4, 4, 6, 4, 4, 7, 3, 3, 5, 5, 7, 6, 6, 6, 6, 7, 8, 5,
-        4, 4, 4, 5, 2, 2, 6, 3, 6, 5, 5, 7, 3, 3, 7, 4, 63]);
+    //verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys),
+        [64, 6, 3, 3, 5, 5, 5, 9, 4, 3, 4, 9, 6, 5, 7, 4, 7, 4, 4, 6, 7, 6, 3,
+        6, 12, 6, 9, 4, 4, 9, 2, 4, 3, 5, 5, 5, 7, 4, 4, 6, 5, 5, 6, 6, 7, 6, 4,
+        4, 7, 5, 8, 3, 3, 4, 7, 5, 2, 4, 5, 5, 2, 4, 5, 62]);
+
+    auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    // verified to work but disabled because it runs slow with a
+    // non-max threshold (~20 minutes)
+    //verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys),
+        [61, 6, 4, 5, 5, 6, 5, 4, 1, 4, 6, 5, 5, 7, 3, 6, 3, 5, 6, 6, 3, 3, 3,
+        6, 7, 4, 3, 3, 6, 8, 6, 8, 7, 4, 2, 6, 5, 1, 5, 8, 4, 7, 9, 6, 4, 4, 4,
+        8, 4, 2, 5, 6, 8, 6, 2, 5, 10, 5, 4, 8, 8, 8, 8, 62]);
 }
 
 // 128 nodes where two nodes own 66% of the stake
@@ -238,17 +290,29 @@ unittest
     auto keys = getKeys(128);
     auto amounts = Amount(400000000000uL).repeat(128).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 126);
-    auto quorums = buildTestQuorums(amounts, keys);
-    verifyQuorumsSanity(quorums);
+    auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1));
+    verifyQuorumsSanity(quorums_1);
     // not verified to work.
-    //verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys),
-        [123, 5, 5, 4, 7, 5, 5, 5, 7, 6, 6, 6, 1, 4, 2, 4, 4, 6, 3, 5, 6, 5, 3,
-        6, 6, 3, 3, 7, 8, 5, 5, 10, 4, 6, 5, 4, 7, 5, 5, 6, 6, 3, 4, 8, 6, 3, 6,
-        7, 8, 8, 8, 5, 6, 2, 8, 5, 4, 4, 7, 7, 8, 5, 7, 4, 4, 4, 4, 4, 5, 2, 4,
-        5, 2, 4, 4, 5, 4, 5, 9, 4, 2, 5, 7, 8, 5, 6, 4, 4, 3, 5, 7, 4, 7, 4, 3,
-        3, 6, 6, 8, 5, 4, 6, 8, 5, 3, 6, 4, 8, 5, 6, 4, 6, 7, 2, 7, 4, 5, 6, 7,
-        4, 4, 2, 3, 9, 3, 5, 4, 127]);
+    //verifyQuorumsIntersect(quorums_1);
+    test!"=="(countNodeInclusions(quorums_1, keys),
+        [124, 4, 8, 6, 4, 4, 2, 4, 4, 7, 5, 9, 4, 6, 3, 5, 3, 8, 6, 8, 3, 4, 8,
+        4, 4, 3, 6, 4, 3, 4, 5, 2, 6, 3, 6, 6, 6, 5, 3, 5, 9, 9, 4, 3, 4, 6, 3,
+        7, 3, 6, 6, 6, 4, 5, 7, 5, 8, 4, 3, 5, 3, 5, 6, 6, 5, 5, 7, 5, 6, 5, 6,
+        9, 9, 6, 10, 6, 6, 6, 7, 3, 8, 5, 3, 3, 2, 6, 5, 5, 3, 4, 5, 7, 3, 5, 5,
+        6, 5, 7, 2, 4, 7, 2, 6, 6, 5, 3, 5, 4, 5, 4, 4, 5, 6, 4, 5, 8, 5, 3, 4,
+        9, 6, 3, 6, 6, 5, 5, 6, 124]);
+
+    auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2));
+    verifyQuorumsSanity(quorums_2);
+    // not verified to work.
+    //verifyQuorumsIntersect(quorums_2);
+    test!"=="(countNodeInclusions(quorums_2, keys),
+        [124, 3, 3, 8, 10, 3, 6, 9, 6, 7, 8, 10, 3, 3, 1, 3, 7, 2, 8, 6, 4, 4,
+        6, 2, 10, 7, 6, 4, 6, 7, 6, 3, 6, 3, 3, 9, 3, 7, 9, 7, 5, 6, 5, 4, 8, 3,
+        2, 5, 8, 8, 6, 2, 7, 2, 5, 5, 5, 5, 2, 5, 6, 3, 4, 5, 7, 3, 8, 4, 4, 5,
+        3, 6, 8, 3, 4, 3, 7, 7, 7, 3, 3, 4, 5, 4, 3, 4, 9, 6, 5, 6, 5, 5, 3, 5,
+        3, 6, 4, 10, 6, 8, 6, 3, 6, 3, 12, 3, 4, 3, 6, 9, 2, 7, 4, 1, 5, 2, 3,
+        5, 5, 5, 3, 5, 4, 8, 5, 2, 7, 124]);
 }
 
 version (unittest)
@@ -258,7 +322,7 @@ private const(PublicKey)[] getKeys (size_t count)
 }
 
 /// Create a shorthash from a 64-byte blob for RNG initialization
-private ulong toShortHash (const ref PublicKey key) @trusted nothrow
+private ulong toShortHash (const ref Hash hash) @trusted nothrow
 {
     import libsodium.crypto_shorthash;
     import std.bitmanip;
@@ -267,7 +331,7 @@ private ulong toShortHash (const ref PublicKey key) @trusted nothrow
     static immutable ubyte[crypto_shorthash_KEYBYTES] IV =
         [111, 165, 189, 80, 37, 5, 16, 194, 39, 214, 156, 169, 235, 221, 21, 126];
     ubyte[ulong.sizeof] short_hash;
-    crypto_shorthash(short_hash.ptr, key[].ptr, key[].length, IV.ptr);
+    crypto_shorthash(short_hash.ptr, hash[].ptr, hash[].length, IV.ptr);
 
     // assume a specific endianess for consistency in how we convert to ulong
     return littleEndianToNative!ulong(short_hash[]);
@@ -276,14 +340,16 @@ private ulong toShortHash (const ref PublicKey key) @trusted nothrow
 ///
 unittest
 {
-    test!"=="(toShortHash(WK.Keys.A.address), 13323068528962985137uL);
-    test!"=="(toShortHash(WK.Keys.B.address), 7384142154118289865uL);
+    const hash1 = hashMulti(WK.Keys.A.address, 1);
+    test!"=="(toShortHash(hash1), 4236719086673626116uL);
+    const hash2 = hashMulti(WK.Keys.A.address, 2);
+    test!"=="(toShortHash(hash2), 4202969883338957134uL);
 }
 
 /*******************************************************************************
 
-    Create a random number generator which uses the node's public key as an
-    initializer for the RNG engine.
+    Create a random number generator which uses the node's public key hashed
+    with the random seed as an initializer for the RNG engine.
 
     Using the Mersene Twister 19937 64-bit random number generator.
     The public key is reduced to a short hash of 8 bytes which is then
@@ -291,16 +357,19 @@ unittest
 
     Params
         key = the public key of a node
+        rand_seed = the random seed
 
     Returns:
         a Mersenne Twister 64bit random generator
 
 *******************************************************************************/
 
-private auto getGenerator (PublicKey key) @safe nothrow
+private auto getGenerator (const ref PublicKey key, const ref Hash rand_seed)
+    @safe nothrow
 {
     Mt19937_64 gen;
-    gen.seed(toShortHash(key));
+    const hash = hashMulti(key, rand_seed);
+    gen.seed(toShortHash(hash));
     return gen;
 }
 
@@ -362,7 +431,7 @@ private NodeStake[] buildStakesDescending (const ref PublicKey filter,
 
 version (unittest)
 private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
-    const(PublicKey)[] keys)
+    const(PublicKey)[] keys, auto const ref Hash rand_seed)
 {
     assert(amounts.length == keys.length);
     QuorumConfig[PublicKey] quorums;
@@ -382,7 +451,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
     foreach (idx, _; amounts.enumerate)
     {
         quorums[keys[idx]] = buildQuorumConfig(
-            keys[idx], utxos, &storage.findUTXO);
+            keys[idx], utxos, &storage.findUTXO, rand_seed);
     }
 
     return quorums;
