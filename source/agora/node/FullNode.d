@@ -126,7 +126,7 @@ public class FullNode : API
     ***************************************************************************/
 
     public this (const Config config,
-        void delegate () nothrow @trusted onValidatorsChanged = null)
+        void delegate (Height) nothrow @trusted onValidatorsChanged = null)
     {
         // custom genesis block provided
         if (config.node.genesis_block.length > 0)

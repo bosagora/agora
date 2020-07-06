@@ -77,7 +77,7 @@ public class Ledger
     private NodeConfig node_config;
 
     /// If not null call this delegate when a new block was added to the ledger
-    private void delegate () nothrow @safe onValidatorsChanged;
+    private void delegate (Height) nothrow @safe onValidatorsChanged;
 
     /// If not null call this delegate
     /// A block was externalized
@@ -109,7 +109,7 @@ public class Ledger
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (const Block) @safe onAcceptedBlock = null,
-        void delegate () nothrow @safe onValidatorsChanged = null)
+        void delegate (Height) nothrow @safe onValidatorsChanged = null)
     {
         this.node_config = node_config;
         this.params = params;
@@ -282,7 +282,7 @@ public class Ledger
             assert(0);
 
         if (this.onValidatorsChanged !is null && validators_changed)
-            this.onValidatorsChanged();
+            this.onValidatorsChanged(block.header.height);
 
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block);

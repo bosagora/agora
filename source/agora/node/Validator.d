@@ -71,7 +71,10 @@ public class Validator : FullNode, API
 
         this.nominator = this.getNominator(this.network,
             this.config.node.key_pair, this.ledger, this.taskman);
-        this.onValidatorsChanged();
+
+        // currently we are not saving preimage info,
+        // we only have the commitment in the genesis block
+        this.onValidatorsChanged(Height(0));
     }
 
     /***************************************************************************
@@ -86,9 +89,16 @@ public class Validator : FullNode, API
         find the Validator nodes in the quorum set configuration and connect
         to them.
 
+        Params:
+            height = the height at which the validator set changed.
+                     Note that it may be different to 'ledger.getBlockHeight()'
+                     when the node is booting up for the first time as we
+                     currently only have commitment info from GenesisBlock,
+                     and lack preimages.
+
     ***************************************************************************/
 
-    private void onValidatorsChanged () nothrow @safe
+    private void onValidatorsChanged (Height height) nothrow @safe
     {
         // we're not enrolled and don't care about quorum sets
         if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
@@ -98,7 +108,7 @@ public class Validator : FullNode, API
         }
 
         static QuorumConfig[] other_qcs;
-        this.rebuildQuorumConfig(this.qc, other_qcs);
+        this.rebuildQuorumConfig(this.qc, other_qcs, height);
         this.nominator.setQuorumConfig(this.qc, other_qcs);
         buildRequiredKeys(this.config.node.key_pair.address, this.qc,
             this.required_peer_keys);
@@ -116,7 +126,7 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     private void rebuildQuorumConfig (ref QuorumConfig qc,
-        ref QuorumConfig[] other_qcs) nothrow @safe
+        ref QuorumConfig[] other_qcs, Height height) nothrow @safe
     {
         import std.algorithm;
 
@@ -127,7 +137,7 @@ public class Validator : FullNode, API
             assert(0);
         }
 
-        const rand_seed = hashFull(1);
+        const rand_seed = this.enroll_man.getRandomSeed(keys, height);
         qc = buildQuorumConfig(this.config.node.key_pair.address,
             keys, this.utxo_set.getUTXOFinder(), rand_seed);
 
