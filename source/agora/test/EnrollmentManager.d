@@ -34,10 +34,12 @@ import core.time;
 unittest
 {
     // generate 1007 blocks, 1 short of the enrollments expiring.
-    auto validator_cycle = 10;
-    auto params = new immutable(ConsensusParams)(validator_cycle);
-    TestConf conf = { extra_blocks : validator_cycle - 1 };
-    auto network = makeTestNetwork(conf, params);
+    immutable validator_cycle = 10;
+    TestConf conf = {
+        validator_cycle : validator_cycle,
+        extra_blocks : validator_cycle - 1,
+    };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -100,12 +102,13 @@ unittest
 // Test for re-enroll before the validator cycle ends
 unittest
 {
-    // Boilerplate
-    const validator_cycle = 20;
-    const current_height = validator_cycle - 5;
-    auto params = new immutable(ConsensusParams)(validator_cycle);
-    TestConf conf = { extra_blocks : current_height };
-    auto network = makeTestNetwork(conf, params);
+    immutable validator_cycle = 20;
+    immutable current_height = validator_cycle - 5;
+    TestConf conf = {
+        validator_cycle : validator_cycle,
+        extra_blocks : current_height,
+    };
+    auto network = makeTestNetwork(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
