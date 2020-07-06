@@ -686,6 +686,9 @@ public interface TestAPI : ValidatorAPI
     ***************************************************************************/
 
     public abstract Enrollment createEnrollmentData();
+
+    ///
+    public QuorumConfig getQuorumConfig ();
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -797,6 +800,12 @@ public class TestFullNode : FullNode, TestAPI
     {
         assert(0);
     }
+
+    /// ditto
+    public override QuorumConfig getQuorumConfig ()
+    {
+        assert(0);
+    }
 }
 
 /// A Validator which also implements test routines in TestAPI
@@ -821,6 +830,13 @@ public class TestValidatorNode : Validator, TestAPI
         }
 
         return this.enroll_man.createEnrollment(utxo_hashes[0]);
+    }
+
+
+    /// ditto
+    public override QuorumConfig getQuorumConfig ()
+    {
+        return this.qc;
     }
 }
 
