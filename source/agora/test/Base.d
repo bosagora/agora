@@ -368,9 +368,6 @@ public class TestAPIManager
     /// Contains the initial blockchain state of all nodes
     public immutable(Block)[] blocks;
 
-    /// Parameters for consensus-critical constants
-    public immutable(ConsensusParams) params;
-
     /// convenience: returns a random-access range which lets us access clients
     auto clients ()
     {
@@ -381,10 +378,9 @@ public class TestAPIManager
     protected Registry reg;
 
     ///
-    public this (immutable(Block)[] blocks, immutable(ConsensusParams) params)
+    public this (immutable(Block)[] blocks)
     {
         this.blocks = blocks;
-        this.params = params;
         this.reg.initialize();
     }
 
@@ -404,12 +400,12 @@ public class TestAPIManager
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, this.params, conf.node.timeout.msecs);
+                this.blocks, conf.node.timeout.msecs);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, this.params, conf.node.timeout.msecs);
+                this.blocks, conf.node.timeout.msecs);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -681,12 +677,11 @@ private mixin template TestNodeMixin ()
     private immutable(Block)[] blocks;
 
     ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        immutable(ConsensusParams) params = null)
+    public this (Config config, Registry* reg, immutable(Block)[] blocks)
     {
         this.registry = reg;
         this.blocks = blocks;
-        super(config, params);
+        super(config);
     }
 
     ///
@@ -900,6 +895,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     assert(test_conf.nodes >= 2, "Creating a network require at least 2 nodes");
 
+    immutable cons_params =
+        (params !is null) ? params : new immutable(ConsensusParams)();
+
     size_t full_node_idx;
     size_t validator_idx;
 
@@ -921,6 +919,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             retry_delay : test_conf.retry_delay, // msecs
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
+            validator_cycle : cons_params.ValidatorCycle,
             min_listeners : test_conf.min_listeners == 0
                 ? test_conf.nodes - 1 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
@@ -1039,9 +1038,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         break;
     }
 
-    immutable cons_params =
-        (params !is null) ? params : new immutable(ConsensusParams)();
-
     auto gen_block = makeGenesisBlock(
         node_configs
             .filter!(conf => conf.is_validator)
@@ -1067,7 +1063,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     immutable(Block)[] blocks = generateBlocks(gen_block,
         test_conf.extra_blocks);
 
-    auto net = new APIManager(blocks, cons_params);
+    auto net = new APIManager(blocks);
     foreach (ref conf; configs)
         net.createNewNode(conf);
 

@@ -63,10 +63,9 @@ unittest
     static class BadNode : TestFullNode
     {
         ///
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            immutable(ConsensusParams) params)
+        public this (Config config, Registry* reg, immutable(Block)[] blocks)
         {
-            super(config, reg, blocks, params);
+            super(config, reg, blocks);
         }
 
         /// return phony blocks
@@ -100,10 +99,9 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         ///
-        public this (immutable(Block)[] blocks,
-            immutable(ConsensusParams) params)
+        public this (immutable(Block)[] blocks)
         {
-            super(blocks, params);
+            super(blocks);
         }
 
         /// see base class
@@ -119,16 +117,16 @@ unittest
             if (conf.node.is_validator)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, this.blocks, this.params, conf.node.timeout.msecs);
+                    conf, &this.reg, this.blocks, conf.node.timeout.msecs);
             }
             else
             {
                 if (this.nodes.length == 2)
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, this.blocks, this.params, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, conf.node.timeout.msecs);
                 else
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, this.params, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, conf.node.timeout.msecs);
             }
 
             this.reg.register(conf.node.address, api.tid());

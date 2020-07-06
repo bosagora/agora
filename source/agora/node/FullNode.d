@@ -112,13 +112,12 @@ public class FullNode : API
 
         Params:
             config = Config instance
-            params = the consensus-critical constants
             onValidatorsChanged = delegate to call when the active set of
                                   validators has changed (may be null)
 
     ***************************************************************************/
 
-    public this (const Config config, immutable(ConsensusParams) params,
+    public this (const Config config,
         void delegate () nothrow @trusted onValidatorsChanged = null)
     {
         // custom genesis block provided
@@ -137,7 +136,7 @@ public class FullNode : API
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.params = params;
+        this.params = new immutable(ConsensusParams)(config.node.validator_cycle);
         this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman);

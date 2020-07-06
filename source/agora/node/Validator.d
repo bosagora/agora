@@ -61,10 +61,10 @@ public class Validator : FullNode, API
     protected Set!PublicKey required_peer_keys;
 
     /// Ctor
-    public this (const Config config, immutable(ConsensusParams) params)
+    public this (const Config config)
     {
         assert(config.node.is_validator);
-        super(config, params, &this.onValidatorsChanged);
+        super(config, &this.onValidatorsChanged);
 
         this.nominator = this.getNominator(this.network,
             this.config.node.key_pair, this.ledger, this.taskman);
