@@ -39,11 +39,14 @@ import core.time;
 ///
 unittest
 {
-    auto validator_cycle = 10;
-    auto params = new immutable(ConsensusParams)(validator_cycle);
-    TestConf conf = { nodes : 4, max_listeners : 5,
-        topology : NetworkTopology.TwoOutsiderValidators, validator_cycle - 2 };
-    auto network = makeTestNetwork(conf, params);
+    TestConf conf = {
+        nodes : 4,
+        max_listeners : 5,
+        topology : NetworkTopology.TwoOutsiderValidators,
+        validator_cycle : 10,
+        extra_blocks: 10 - 2,
+    };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

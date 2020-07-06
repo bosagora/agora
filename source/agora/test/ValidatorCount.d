@@ -31,10 +31,11 @@ import core.thread;
 /// ditto
 unittest
 {
-    auto validator_cycle = 20;
-    auto params = new immutable(ConsensusParams)(validator_cycle);
-
-    auto network = makeTestNetwork(TestConf.init, params);
+    immutable validator_cycle = 20;
+    const TestConf conf = {
+        validator_cycle : validator_cycle,
+    };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

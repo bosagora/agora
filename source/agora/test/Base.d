@@ -847,6 +847,9 @@ public struct TestConf
     /// Number of nodes to instantiate
     size_t nodes = 4;
 
+    /// The value to give the `ValidatorCycle` of nodes
+    uint validator_cycle = 1008;
+
     /// whether to set up the peers in the config
     bool configure_network = true;
 
@@ -888,7 +891,7 @@ public struct TestConf
 *******************************************************************************/
 
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)(
-    in TestConf test_conf, immutable(ConsensusParams) params = null)
+    in TestConf test_conf)
 {
     import agora.common.Serializer;
     import std.digest;
@@ -900,9 +903,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     std.concurrency.scheduler = null;
 
     assert(test_conf.nodes >= 2, "Creating a network require at least 2 nodes");
-
-    immutable cons_params =
-        (params !is null) ? params : new immutable(ConsensusParams)();
 
     size_t full_node_idx;
     size_t validator_idx;
@@ -925,7 +925,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             retry_delay : test_conf.retry_delay, // msecs
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
-            validator_cycle : cons_params.ValidatorCycle,
+            validator_cycle : test_conf.validator_cycle,
             min_listeners : test_conf.min_listeners == 0
                 ? test_conf.nodes - 1 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
@@ -1048,7 +1048,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         node_configs
             .filter!(conf => conf.is_validator)
             .map!(conf => conf.key_pair)
-            .array, cons_params.ValidatorCycle);
+            .array, test_conf.validator_cycle);
 
     immutable string gen_block_hex = gen_block
         .serializeFull()
