@@ -307,7 +307,7 @@ unittest
     import agora.common.crypto.Key;
     import agora.consensus.protocol.Nominator;
     import agora.consensus.data.ConsensusData;
-    import agora.consensus.data.genesis;
+    import agora.consensus.data.genesis.Test;
     import agora.node.Ledger;
     import agora.node.Validator;
     import agora.network.NetworkManager;

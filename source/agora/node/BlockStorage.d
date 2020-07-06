@@ -21,7 +21,6 @@ import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
-import agora.consensus.data.genesis;
 import agora.utils.Log;
 
 import std.algorithm;
@@ -1063,9 +1062,10 @@ public class MemBlockStorage : IBlockStorage
 unittest
 {
     import agora.common.crypto.Key;
+    import agora.consensus.data.genesis.Test;
     import agora.consensus.data.Transaction;
-    import std.algorithm.comparison;
     import agora.utils.Test;
+    import std.algorithm.comparison;
 
     const size_t BlockCount = 50;
     MemBlockStorage storage = new MemBlockStorage();
@@ -1125,8 +1125,8 @@ unittest
 
     // test loading in constructor
     auto txs_1 = makeChainedTransactions(gen_key_pair, null, 1);
-    auto block_2 = makeNewBlock(GenesisBlock(), txs_1);
-    const ctor_blocks = [GenesisBlock(), cast(const(Block))block_2];
+    auto block_2 = makeNewBlock(GenesisBlock, txs_1);
+    const ctor_blocks = [ GenesisBlock, cast(const(Block))block_2 ];
     scope store = new MemBlockStorage(ctor_blocks);
     Block block;
     assert(!store.tryReadBlock(block, Height(0)));  // nothing loaded yet

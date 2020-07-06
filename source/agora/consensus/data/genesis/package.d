@@ -21,53 +21,6 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.validation.Block;
 
-/// Contains a pointer to the genesis block.
-version (unittest)
-{
-    import Mod = agora.consensus.data.genesis.Test;
-    private immutable(Block)* gen_block = &Mod.GenesisBlock;
-}
-else
-{
-    import Mod = agora.consensus.data.genesis.Coinnet;
-    private immutable(Block)* gen_block = &Mod.GenesisBlock;
-}
-
-/*******************************************************************************
-
-    Returns:
-        a reference to the genesis block.
-
-*******************************************************************************/
-
-pragma(inline, true)
-public ref immutable(Block) GenesisBlock () nothrow @safe @nogc
-{
-    return *gen_block;
-}
-
-/*******************************************************************************
-
-    Set a custom Genesis block. Any subsequent call to `GenesisBlock`
-    will refer to the Block as configured here.
-
-    Params:
-        block = the new Genesis block to use
-
-*******************************************************************************/
-
-pragma(inline, true)
-public void setGenesisBlock (immutable Block* block)
-    @safe
-{
-    assert(block !is null);
-
-    if (auto reason = isGenesisBlockInvalidReason(*block))
-        throw new Exception(reason);
-
-    gen_block = block;
-}
-
 /*******************************************************************************
 
     Build a Genesis block from the provided data

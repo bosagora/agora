@@ -62,6 +62,7 @@ int main (string[] args)
             clients ~= new RestInterfaceClient!API(addr);
 
         waitForDiscovery(clients, 5.seconds);
+        const GenesisBlock = clients[0].getBlocksFrom(0, 1)[0];
 
         foreach (idx, ref client; clients)
         {
@@ -75,7 +76,7 @@ int main (string[] args)
         auto kp = WK.Keys.Genesis;
 
         iota(Block.TxsInBlock)
-            .map!(idx => TxBuilder(GenesisBlock.txs[0], idx).refund(kp.address).sign())
+            .map!(idx => TxBuilder(GenesisBlock.txs[1], idx).refund(kp.address).sign())
             .each!(tx => clients[0].putTransaction(tx));
 
         checkBlockHeight(addresses, 1);
