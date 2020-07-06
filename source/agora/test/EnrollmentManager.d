@@ -33,7 +33,7 @@ import core.time;
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
-    // generate 1007 blocks, 1 short of the enrollments expiring.
+    // generate 9 blocks, 1 short of the enrollments expiring.
     immutable validator_cycle = 10;
     TestConf conf = {
         validator_cycle : validator_cycle,
