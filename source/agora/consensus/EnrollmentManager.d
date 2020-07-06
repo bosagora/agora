@@ -344,6 +344,7 @@ public class EnrollmentManager
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
         assert(offset < cache.length);
+        cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
 
         return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
@@ -1010,4 +1011,15 @@ unittest
     block_height = 1012; // valid block height : 5 <= H < 1013
     man.clearExpiredValidators(block_height);
     assert(man.getValidatorCount(block_height) == 0);
+}
+
+// https://github.com/bpfkorea/agora/pull/1010#issuecomment-654149650
+unittest
+{
+    // Irrelevant for this test, the seed is only derived from the private key
+    // and the offset (which is 0 in both cases)
+    Hash utxo;
+    auto e1 = EnrollmentManager.makeEnrollment(WK.Keys.A, utxo, 10, 0);
+    auto e2 = EnrollmentManager.makeEnrollment(WK.Keys.B, utxo, 10, 0);
+    assert(e1.random_seed != e2.random_seed);
 }
