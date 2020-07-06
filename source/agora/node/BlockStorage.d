@@ -53,12 +53,16 @@ public interface IBlockStorage
         a Genesis block will be added to the ledger. In this case the calling
         code should treat the block as new and update the set of UTXOs, etc.
 
+        Params:
+            genesis = In case the storage is empty, the genesis block to write
+                      to it.
+
         Returns:
             `false` if the data couldn't be loaded, `true` otherwise.
 
     ***************************************************************************/
 
-    public bool load ();
+    public bool load (const ref Block genesis);
 
     /***************************************************************************
 
@@ -255,12 +259,16 @@ public class BlockStorage : IBlockStorage
 
         Performs loading of the index and the last batch of blocks from disk.
 
+        Params:
+            genesis = In case the storage is empty, the genesis block to write
+                      to it.
+
         Returns:
             `false` when it fails to load.
 
     ***************************************************************************/
 
-    public override bool load () @safe nothrow
+    public override bool load (const ref Block genesis) @safe nothrow
     {
         try
         {
@@ -274,7 +282,7 @@ public class BlockStorage : IBlockStorage
         // Add Genesis if the storage is empty
         if (this.height_idx.length == 0)
         {
-            if (!this.saveBlock(GenesisBlock))
+            if (!this.saveBlock(genesis))
                 return false;
         }
         return true;
@@ -931,10 +939,10 @@ public class MemBlockStorage : IBlockStorage
     }
 
     /// No-op: MemBlockStorage does no I/O
-    public override bool load ()
+    public override bool load (const ref Block genesis)
     {
         if (this._to_load.length == 0)
-            return this.saveBlock(GenesisBlock);
+            return this.saveBlock(genesis);
 
         foreach (const ref block; this._to_load)
             if (!this.saveBlock(block))
@@ -1122,7 +1130,9 @@ unittest
     scope store = new MemBlockStorage(ctor_blocks);
     Block block;
     assert(!store.tryReadBlock(block, Height(0)));  // nothing loaded yet
-    store.load();
+    // If `MemBlockStorage` doesn't load the blocks from the constructor,
+    // `ctor_blocks[1]` will be used as genesis which will then fail this test
+    store.load(ctor_blocks[1]);
     assert(store.tryReadBlock(block, Height(0)));
     assert(block == ctor_blocks[0]);
     assert(store.tryReadBlock(block, Height(1)));

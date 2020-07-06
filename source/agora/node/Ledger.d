@@ -112,7 +112,7 @@ public class Ledger
         this.enroll_man = enroll_man;
         this.pool = pool;
         this.onValidatorsChanged = onValidatorsChanged;
-        if (!this.storage.load())
+        if (!this.storage.load(GenesisBlock))
             assert(0);
 
         // ensure latest checksum can be read
