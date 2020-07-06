@@ -34,8 +34,6 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.ConsensusParams;
-// TODO: Remove me once #955 is fixed
-import agora.consensus.data.genesis;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
@@ -122,7 +120,7 @@ public class Ledger
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
         this.onRegenerateQuorums = onRegenerateQuorums;
-        if (!this.storage.load(GenesisBlock))
+        if (!this.storage.load(params.Genesis))
             assert(0);
 
         // ensure latest checksum can be read
@@ -131,7 +129,7 @@ public class Ledger
 
         Block gen_block;
         this.storage.readBlock(gen_block, Height(0));
-        if (gen_block != cast()GenesisBlock)
+        if (gen_block != cast()params.Genesis)
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
 
@@ -546,8 +544,16 @@ version (unittest)
         public this (
             NodeConfig config,
             const(Block)[] blocks = null,
-            immutable(ConsensusParams) params = new immutable(ConsensusParams)())
+            immutable(ConsensusParams) params_ = null)
         {
+            const params = (params_ !is null)
+                ? params_
+                : (blocks.length > 0
+                   // Use the provided Genesis block
+                   ? new immutable(ConsensusParams)(cast(immutable)blocks[0])
+                   // Use the unittest genesis block
+                   : new immutable(ConsensusParams)());
+
             super(config, params, new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", config.key_pair, params),
@@ -567,7 +573,7 @@ unittest
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
-    assert(blocks[$ - 1] == GenesisBlock);
+    assert(blocks[$ - 1] == ledger.params.Genesis);
 
     // generate enough transactions to form a block
     Transaction[] last_txs;
@@ -596,7 +602,7 @@ unittest
 
     genBlockTransactions(2);
     blocks = ledger.getBlocksFrom(Height(0)).take(10);
-    assert(blocks[0] == GenesisBlock);
+    assert(blocks[0] == ledger.params.Genesis);
     assert(blocks.length == 3);  // two blocks + genesis block
 
     /// now generate 98 more blocks to make it 100 + genesis block (101 total)
@@ -604,12 +610,12 @@ unittest
     assert(ledger.getBlockHeight() == 100);
 
     blocks = ledger.getBlocksFrom(Height(0)).takeExactly(10);
-    assert(blocks[0] == GenesisBlock);
+    assert(blocks[0] == ledger.params.Genesis);
     assert(blocks.length == 10);
 
     /// lower limit
     blocks = ledger.getBlocksFrom(Height(0)).takeExactly(5);
-    assert(blocks[0] == GenesisBlock);
+    assert(blocks[0] == ledger.params.Genesis);
     assert(blocks.length == 5);
 
     /// different indices
@@ -684,7 +690,7 @@ unittest
     assert(!ledger.acceptBlock(invalid_block));
 
     auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
-    auto valid_block = makeNewBlock(GenesisBlock, txs);
+    auto valid_block = makeNewBlock(ledger.params.Genesis, txs);
     assert(ledger.acceptBlock(valid_block));
 }
 
@@ -753,6 +759,8 @@ unittest
 /// Expectation: The UTXOSet is populated with all up-to-date UTXOs
 unittest
 {
+    import agora.consensus.data.genesis.Test;
+
     // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
     const(Block)[] blocks = [ GenesisBlock ];
     auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
@@ -987,7 +995,7 @@ unittest
         Transaction[] txs;
         foreach (idx; 0 .. Block.TxsInBlock)
         {
-            txs ~= TxBuilder(GenesisBlock.txs[1], idx)
+            txs ~= TxBuilder(params.Genesis.txs[1], idx)
                 .split(splited_keys[idx].address.repeat(Block.TxsInBlock))
                 .sign();
         }
@@ -1055,9 +1063,9 @@ unittest
 // Return Genesis block plus 'count' number of blocks
 version (unittest)
 private immutable(Block)[] genBlocksToIndex (
-    KeyPair key_pair, uint ValidatorCycle, size_t count)
+    KeyPair key_pair, size_t count, scope immutable(ConsensusParams) params)
 {
-    const(Block)[] blocks = [GenesisBlock];
+    const(Block)[] blocks = [ params.Genesis ];
 
     const(Transaction)[] prev_txs;
     foreach (_; 0 .. count)
@@ -1093,7 +1101,7 @@ unittest
         const ValidatorCycle = 10;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
-        const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle - 1);
+        const blocks = genBlocksToIndex(key_pair, ValidatorCycle - 1, params);
         scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
@@ -1105,7 +1113,7 @@ unittest
         const ValidatorCycle = 20;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
-        const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle);
+        const blocks = genBlocksToIndex(key_pair, ValidatorCycle, params);
         scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
@@ -1156,7 +1164,7 @@ unittest
     // normal test: UTXO set and Validator set updated
     {
         auto key_pair = KeyPair.random();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
@@ -1182,7 +1190,7 @@ unittest
     // Validator set was not modified
     {
         auto key_pair = KeyPair.random();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
@@ -1209,7 +1217,7 @@ unittest
     // Validator set reverted
     {
         auto key_pair = KeyPair.random();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
+        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params);
         assert(blocks.length == 1009);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
@@ -1237,6 +1245,7 @@ unittest
 unittest
 {
     import agora.common.Serializer;
+    import agora.consensus.data.genesis.Test;
     import std.conv;
 
     immutable gen_block_hex = "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000A616EC13FA34826266C933B65A05D96F4C31A63F29CA477DCF63EB8C0DAECA7DFACABE8C2569A88E843314D768A7BF47D0919FAA6E11E8A8FDF05A9280107E74000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004617531F2DFAEEA395683F65ED5681C16B0BB83F767AFF02597872CBCDA07AF4B2A914197407E0759085CED981D0790B65B9E6D679DE3212E97F1D95024D10D1978D8A787058C14F005545167710F92E3C108D2EABE4A55805731AE369DE2FC71B10C1651E16D39F39156BA3F2C91925C698DF0683F3A9B489B5F11F6174F93C9FDF003FCCCBD842DF1CE7A144A18F95D21B700F26FA87F6C5ABACE9C956419023E2976EC9175C5269D93B0D266A0277302A6583F06BFBDA6BB22DAC7B6FB5BF910C00B70017B4D4FD401A1C26404078B80E8FF68BD0FE0AAB3F4B1B4D56649EF404F9167A96D199BB3DC2F6DD393E6A35976BCDE1C3A608CCFE4666A5608745B9628404CFBD2A497FFC5534F140F9392DDE0C1844CD3353975562822C3E612AAFC897B5F81C3059E607A3A6DAE0EB78F37515F9E616B1B81302CEF33312239B80DE0EBFDF003812C59722A897D54A04EB86DE77D346C07288FC1114F81F0D3A8FAB9D6403348D14631A046D32061CB729C2161F16A81FBE6C9784F9210C2E16E9BFDC8D0560A97741C0642FE1DBC466B19B807F4DD702D6BC64E8494785E779B224C641FBE60BBF4ADDAC2BCF76C578DC2DA7E14E604306156252A7A51323C0090A7AF26A3817E2C4392725D258A3470A61D5E7AB8027FA37D4EFAEEBD1F1C9E5616A6503DA98D4EABCA2C0987BD097902F33740F7312DB45177EF5BB029DC9680A542D70B11FDF003A4058C8B05200EF9E56BD1E55E93613179D1D9AF9A98791099B34E64F89A604E2D750BA2ED29AE789DDCF0001DB2C4829717F56977A7C038CE0F5CD382BB41089A21B3D312AD46F2EA7BB2987BAC43D3AFC78A24CB0133D365368BC1BCFEA4AA096C76DD65F3128C9CD76C0F4C9FB6B8F879161E1F9DC504982EAF1067B92CB898850F7B2F3CFE55050EC8AF3C4029D6DC231B7F917DEE226A2A19A8B590972FEB4E51745AD41BA03E368C32FC06869B14B907D0C0364A6D1544873824C6936BFDF00337CB08432BD8E4283F46518994E0502E13D1DC02EF43AFFCE66410EB155433EC3DCFBE9A6778900085AF974901545FDE9046B7E43811E91A802146F5D0F5F10806010001FF00A0DB215D000000C5AD08A5507996C7347F88C8A0D5CCA047C9A7D082CB2E9D32CCA26FCCDAAFDC010006FF0040E59C30120000DAE1934864C67FCB27BD872D70991330222591CD83B970EB8A28FF51A6556A55FF0040E59C30120000DAE19364B4145DEE6F56FA30436AB831274F84E00437552C1E603AA9FEF21892FF0040E59C30120000DAE1938A993F5850F50AEE830FF52171DFDF97AF79F7FF43DFE4337E8477D967FF0040E59C30120000DAE193B3FCEC9D4B9484A6CFA867A68F038934B970B7E463C1AE80D007DD36F4FF0040E59C30120000DAE193D9BDB4D6B9D0419BAE3024CC5DDD6BCB930E68036CA019884A69AC7F79FF0040E59C30120000DAE193E9E928AFCFC7591DA28E81B6497ADCE977C5C017B5C8159234D0E5A3B4000008FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5FF002050B1CA2A02009D0238E0A171400BC6D68A9D9B316ACD5109649113A05C284F4296D2B30122F5010001FF00A0DB215D000000C1AD7626170CE154129019174AC9919AECDF4833EF93774490E4A85B556FA892010001FF00A0DB215D000000C7AD1F93344D2E91ADD8CE1331829648B53A2A2667C9655351F2494EB0639B12010001FF00A0DB215D000000C3AD413C69DC77B8D6C9B58EA0B755BC310485BFA0D0C7CD90A7E27C58A7BC810F0F1F249A96BE6AFDB2B77033331177BC8C9C54159E958DB9A71F64460025AB86422717F7F9F3B692F35F487FCBD87B367B483DE70D99E201B1FAE310BB028E38BC75F96F82A6EBF8C9776AC315FA1DA5E9E1F26AF3BF631385A359E27C12835C7129DB46AEE9C5C1DB3D4E4C713B61D74746823D3A9C30985B7F1AC49BCE14635CF9F0B2D9962D874079EE7C154C7E8C5F99201664459F6A182BCE732AEC0AFE0677F4A407C3B84A30661C4A4DA89ED53DEAE3FFA7B97C37FAAE9C6FB9FE5B7AE4D18FE7609377496975FBC3CDBA97CD3E491E9F78B541ED9894B26624D9C9710D9797202EF1300F4AA3E5FB095B8135AD447F2B078A0A22BE522B1ADD67A0ADCD1B7B4FEFF9BB56708724114962A9769BE95FCD4E7BED82EBDE799D0463219650573483BA9E0F3F25EA621EDF5232775BB006A39510551D11C3B7920A727BC5927F58D11EC16EA0F4BBBDFEE4122D769FE019C83AE4BB8F1D89832F936747DB39190D9AAAF18A9A8584E563C4457225FD2142681AEDAD9CC76B2C236F69F3FE927F58D11EC16EA0F4BBBDFEE4122D769FE019C83AE4BB8F1D89832F936747DB39190D9AAAF18A9A8584E563C4457225FD2142681AEDAD9CC76B2C236F69F3FE927F58D11EC16EA0F4BBBDFEE4122D769FE019C83AE4BB8F1D89832F936747DB39190D9AAAF18A9A8584E563C4457225FD2142681AEDAD9CC76B2C236F69F3FE91AC2FAECA424AC35C7ECB794630CC4B8C2789A742182D462E07FB02B9939B6040239D3C7E037DE2906F9696D4C56CE18C3B386D687D12CF2FD78520F0765D70EAB756C2E11BD33FBCCDC3ABA51D0F4D7853297AF037663F1D45C693CE9DA36DD7D1C4C778B584A18B838DAE59AE147D4C2D3F4CBAD42F67DA36BE1B7944AD8B3C6D701D94CEC9D571C4486906BD0472D3A78560F5F858DE96E18323F83DC175795FA4C4C8B2873703C02647AE14AFA3D5278A2D63B35F2848E14DACE60ACD37816EDFE6949282AE81712A44AF125C12436FF243948A69303F3E5AE794EC3CB8E4738328CA0C405A42499CB840AA201CB6ECC68FF6D53AE6B84D6FA113CB5E1E65C75DD9F56DBD01437B9C1BE45473EF64DA9F67B9E442FFC68D9A57237696E00E66A35F771A9DC8F1288E1970B576DB780FDFF15793C3B1E3322E5F328ABA9C3448969C98CB86F8C301041D0E1B75D153D73CD97FAB1C3A0364F1890333999C83E06D1534E5CE79C36ACF91175CA2BAF5A87DC37D76C7A4D5346E6AB304EC74A616EC13FA34826266C933B65A05D96F4C31A63F29CA477DCF63EB8C0DAECA7DFACABE8C2569A88E843314D768A7BF47D0919FAA6E11E8A8FDF05A9280107E74";
@@ -1245,14 +1254,18 @@ unittest
     auto block_bytes = gen_block_hex.chunks(2).map!(
         twoDigits => twoDigits.parse!ubyte(16)).array();
     immutable new_gen_block = block_bytes.deserializeFull!(immutable(Block));
-    assert(new_gen_block != GenesisBlock);
+
+    // ConsensusParams is instantiated by default with the test genesis block
+    immutable params = new immutable(ConsensusParams)();
+    assert(new_gen_block != params.Genesis);
 
     NodeConfig config;
     config.is_validator = true;
+    config.genesis_block = gen_block_hex;
 
     try
     {
-        scope ledger = new TestLedger(config, [new_gen_block]);
+        scope ledger = new TestLedger(config, [new_gen_block], params);
         assert(0);
     }
     catch (Exception ex)
@@ -1260,8 +1273,9 @@ unittest
         assert(ex.msg == "Genesis block loaded from disk is different from the one in the config file");
     }
 
-    auto old_gen = &GenesisBlock();
-    setGenesisBlock(&new_gen_block);
-    scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
-    scope ledger = new TestLedger(config, [new_gen_block]);  // will not fail
+    immutable good_params = new immutable(ConsensusParams)(new_gen_block);
+    // will not fail
+    scope ledger = new TestLedger(config, [new_gen_block], good_params);
+    // Neither will the default
+    scope other_ledger = new TestLedger(config, [new_gen_block]);
 }

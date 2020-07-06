@@ -207,13 +207,14 @@ unittest
 
     // make sure the transaction is still authentic (signature is correct),
     // even if it's double spending
+    const genesis_block = node_1.getBlocksFrom(0, 1)[0];
     assert(txs[0].isValid((Hash hash, size_t index, out UTXOSetValue value)
         {
             value =
             UTXOSetValue(
                 0,
                 TxType.Payment,
-                GenesisBlock.txs[1].outputs[0]
+                genesis_block.txs[1].outputs[0]
             );
             return true;
         }, Height(0)));

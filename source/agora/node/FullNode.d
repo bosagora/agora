@@ -34,7 +34,6 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.data.genesis;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
@@ -105,9 +104,6 @@ public class FullNode : API
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
-    /// If a custom genesis block is set it will be stored here
-    private immutable Block genesis_block;
-
     /// Block Externalized Handler list
     protected BlockExternalizedHandler[Address] block_handlers;
 
@@ -129,6 +125,8 @@ public class FullNode : API
     public this (const Config config,
         void delegate (Height) nothrow @trusted onRegenerateQuorums = null)
     {
+        import CNG = agora.consensus.data.genesis.Coinnet;
+
         // custom genesis block provided
         if (config.node.genesis_block.length > 0)
         {
@@ -138,15 +136,19 @@ public class FullNode : API
             // hex => bin
             auto block_bytes = config.node.genesis_block.chunks(2).map!(
                 twoDigits => twoDigits.parse!ubyte(16)).array();
-            this.genesis_block = block_bytes.deserializeFull!(immutable(Block));
-            setGenesisBlock(&this.genesis_block);
+            auto genesis_block = block_bytes.deserializeFull!(immutable(Block));
+            this.params = new immutable(ConsensusParams)(
+                genesis_block, config.node.validator_cycle,
+                config.node.max_quorum_nodes);
         }
+        else
+            this.params = new immutable(ConsensusParams)(
+                CNG.GenesisBlock, config.node.validator_cycle,
+                config.node.max_quorum_nodes);
 
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.params = new immutable(ConsensusParams)(config.node.validator_cycle,
-            config.node.max_quorum_nodes);
         this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman);
@@ -176,7 +178,7 @@ public class FullNode : API
         // Special case
         // Block externalized handler is set and push for Genesis block.
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
-            this.pushBlock(GenesisBlock);
+            this.pushBlock(this.params.Genesis);
     }
 
     /***************************************************************************
