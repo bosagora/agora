@@ -1052,7 +1052,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         node_configs
             .filter!(conf => conf.is_validator)
             .map!(conf => conf.key_pair)
-            .array, cons_params);
+            .array, cons_params.ValidatorCycle);
 
     immutable string gen_block_hex = gen_block
         .serializeFull()
@@ -1132,7 +1132,7 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
 
     Params:
         key_pairs = key pairs for signing enrollments with
-        params = the consensus-critical constants
+        validator_cycle = the consensus-critical `ValidatorCycle` value
 
     Returns:
         The genesis block
@@ -1140,7 +1140,7 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
 *******************************************************************************/
 
 private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
-    immutable(ConsensusParams) params)
+    uint validator_cycle)
 {
     import agora.common.Serializer;
 
@@ -1160,10 +1160,9 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
         };
 
         txs ~= tx;
-        Hash txhash = hashFull(tx);
-        Hash utxo = UTXOSetValue.getHash(txhash, 0);
-        scope enr = new EnrollmentManager(":memory:", key_pair, params);
-        enrolls ~= enr.createEnrollment(utxo);
+        const utxo = UTXOSetValue.getHash(tx.hashFull(), 0);
+        enrolls ~= EnrollmentManager.makeEnrollment(
+            key_pair, utxo, validator_cycle);
     }
 
     enrolls.sort!("a.utxo_key < b.utxo_key");
