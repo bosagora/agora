@@ -121,6 +121,8 @@ public class Validator : FullNode, API
     private void rebuildQuorumConfig (ref QuorumConfig qc,
         ref QuorumConfig[] other_qcs)
     {
+        import std.algorithm;
+
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
         {
@@ -134,7 +136,8 @@ public class Validator : FullNode, API
         auto pub_keys = this.getEnrolledPublicKeys(keys);
         other_qcs.length = 0;
         assumeSafeAppend(other_qcs);
-        foreach (pub_key; pub_keys)
+        foreach (pub_key; pub_keys.filter!(
+            pk => pk != this.config.node.key_pair.address))  // skip our own
         {
             other_qcs ~= buildQuorumConfig(pub_key, keys,
                 this.utxo_set.getUTXOFinder());
