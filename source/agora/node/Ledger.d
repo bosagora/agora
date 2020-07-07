@@ -1191,18 +1191,17 @@ unittest
     import std.exception;
     import std.range;
 
-    class ThrowingLedger : Ledger
+    static class ThrowingLedger : Ledger
     {
         bool throw_in_update_utxo;
         bool throw_in_update_validators;
 
-        this (NodeConfig node_config, immutable(ConsensusParams) params,
-            UTXOSet utxo_set, IBlockStorage storage,
-            EnrollmentManager enroll_man, TransactionPool pool,
-            void delegate () nothrow @safe onValidatorsChanged = null)
+        public this (KeyPair kp, const(Block)[] blocks, immutable(ConsensusParams) params)
         {
-            super(node_config, params, utxo_set, storage, enroll_man, pool,
-                onValidatorsChanged);
+            super(NodeConfig.init, params, new UTXOSet(":memory:"),
+                new MemBlockStorage(blocks),
+                new EnrollmentManager(":memory:", kp, params),
+                new TransactionPool(":memory:"));
         }
 
         override void updateUTXOSet (const ref Block block) @safe
@@ -1225,21 +1224,16 @@ unittest
     // normal test: UTXO set and Validator set updated
     {
         auto key_pair = KeyPair.random();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
-        scope storage = new MemBlockStorage(blocks.takeExactly(params.ValidatorCycle));
-        scope pool = new TransactionPool(":memory:");
-        scope utxo_set = new UTXOSet(":memory:");
-        scope config = new Config();
-        scope ledger = new ThrowingLedger(config.node, params, utxo_set,
-            storage, enroll_man, pool, null);
+        scope ledger = new ThrowingLedger(
+            key_pair, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
@@ -1251,7 +1245,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == 1009));
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 0);
     }
 
@@ -1259,21 +1253,16 @@ unittest
     // Validator set was not modified
     {
         auto key_pair = KeyPair.random();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
-        scope storage = new MemBlockStorage(blocks.takeExactly(params.ValidatorCycle));
-        scope pool = new TransactionPool(":memory:");
-        scope utxo_set = new UTXOSet(":memory:");
-        scope config = new Config();
-        scope ledger = new ThrowingLedger(config.node, params, utxo_set,
-            storage, enroll_man, pool, null);
+        scope ledger = new ThrowingLedger(
+            key_pair, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
@@ -1286,7 +1275,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);  // not updated
     }
 
@@ -1294,21 +1283,16 @@ unittest
     // Validator set reverted
     {
         auto key_pair = KeyPair.random();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == 1009);  // +1 for genesis
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
-        scope storage = new MemBlockStorage(blocks.takeExactly(params.ValidatorCycle));
-        scope pool = new TransactionPool(":memory:");
-        scope utxo_set = new UTXOSet(":memory:");
-        scope config = new Config();
-        scope ledger = new ThrowingLedger(config.node, params, utxo_set,
-            storage, enroll_man, pool, null);
+        scope ledger = new ThrowingLedger(
+            key_pair, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
@@ -1321,7 +1305,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);  // reverted
     }
 }
