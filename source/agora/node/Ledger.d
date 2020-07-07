@@ -1140,19 +1140,13 @@ unittest
     {
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)();
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, 0);
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
-        scope storage = new MemBlockStorage(blocks);
-        scope pool = new TransactionPool(":memory:");
-        scope utxo_set = new UTXOSet(":memory:");
-        scope config = new Config();
-        scope ledger = new Ledger(config.node, params, utxo_set, storage,
-                                  enroll_man, pool);
+        scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
     }
 
@@ -1161,19 +1155,13 @@ unittest
         const ValidatorCycle = 10;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle - 1);
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
-        scope storage = new MemBlockStorage(blocks);
-        scope pool = new TransactionPool(":memory:");
-        scope utxo_set = new UTXOSet(":memory:");
-        scope config = new Config();
-        scope ledger = new Ledger(config.node, params, utxo_set, storage,
-                                  enroll_man, pool);
+        scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 1);
     }
 
@@ -1182,19 +1170,13 @@ unittest
         const ValidatorCycle = 20;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
-        scope enroll_man = new EnrollmentManager(":memory:", key_pair, params);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle);
         auto old_gen = &GenesisBlock();
         setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
         scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
-        scope storage = new MemBlockStorage(blocks);
-        scope pool = new TransactionPool(":memory:");
-        scope utxo_set = new UTXOSet(":memory:");
-        scope config = new Config();
-        scope ledger = new Ledger(config.node, params, utxo_set, storage,
-                                  enroll_man, pool);
+        scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
-        assert(enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 0);
     }
 }
