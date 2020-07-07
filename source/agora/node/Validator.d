@@ -215,6 +215,10 @@ public class Validator : FullNode, API
 
     public override void receiveEnvelope (SCPEnvelope envelope) @safe
     {
+        // we're not enrolled and don't care about messages
+        if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+            return;
+
         this.nominator.receiveEnvelope(envelope);
     }
 
