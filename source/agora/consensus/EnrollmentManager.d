@@ -334,7 +334,7 @@ public class EnrollmentManager
 
     /// Ditto
     version (unittest) public static Enrollment makeEnrollment (
-        KeyPair key, const ref Hash utxo, uint cycle_length, ulong offset = 0)
+        KeyPair key, const Hash utxo, uint cycle_length, ulong offset = 0)
         @trusted nothrow
     {
         // Convert stellar-type keypair to curve scalars
