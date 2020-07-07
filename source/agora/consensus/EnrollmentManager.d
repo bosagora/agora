@@ -209,7 +209,7 @@ public class EnrollmentManager
     {
         auto enrolled_height = this.getEnrolledHeight(enroll.utxo_key);
 
-        // The last height at which a node plays a role as a validator.
+        // The first height at which the enrollment can be enrolled.
         ulong avail_height;
 
         if (enrolled_height == ulong.max)
@@ -241,12 +241,16 @@ public class EnrollmentManager
         assumeSafeAppend(enrolls);
 
         static Enrollment[] pool_enrolls;
-        this.enroll_pool.getEnrollments(pool_enrolls);
+        this.enroll_pool.getEnrollments(pool_enrolls, Height(height + 1));
         foreach (enroll; pool_enrolls)
         {
             const enroll_height = this.getEnrolledHeight(enroll.utxo_key);
+            const avail_height =
+                this.enroll_pool.getAvailableHeight(enroll.utxo_key);
+            assert(avail_height != Height(0));
             if (enroll_height == ulong.max ||
-                height >= enroll_height + this.params.ValidatorCycle - 1)
+                (avail_height >= enroll_height &&
+                    height >= enroll_height + this.params.ValidatorCycle - 1))
             {
                 enrolls ~= enroll;
             }
@@ -1054,4 +1058,60 @@ unittest
     auto e1 = EnrollmentManager.makeEnrollment(WK.Keys.A, utxo, 10, 0);
     auto e2 = EnrollmentManager.makeEnrollment(WK.Keys.B, utxo, 10, 0);
     assert(e1.random_seed != e2.random_seed);
+}
+
+/// Test for the height when the enrollment will be available
+unittest
+{
+    import agora.consensus.data.Transaction;
+
+    scope utxo_set = new TestUTXOSet;
+    KeyPair key_pair = KeyPair.random();
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+        .each!(tx => utxo_set.put(tx));
+
+    // create an EnrollmentManager
+    const validator_cycle = 20;
+    scope man = new EnrollmentManager(":memory:", key_pair,
+        new immutable(ConsensusParams)(validator_cycle));
+
+    // create and add the first enrollment
+    Enrollment[] enrolls;
+    auto enroll = man.createEnrollment(utxo_set.keys[0]);
+    assert(man.addEnrollment(enroll, Height(10), &utxo_set.findUTXO));
+
+    // if the current height is smaller than the available height,
+    // we can get no enrollment
+    man.getEnrollments(enrolls, Height(9));
+    assert(enrolls.length == 0);
+
+    // if the current height is greater than or equal to the available height,
+    // we can get enrollments
+    man.getEnrollments(enrolls, Height(10));
+    assert(enrolls.length == 1);
+
+    // make the enrollment a validator
+    man.addValidator(enroll, Height(11), &utxo_set.findUTXO);
+    man.getEnrollments(enrolls, Height(11));
+    assert(enrolls.length == 0);
+
+    // add the enrollment that is already a validator, and check if
+    // the enrollment can be nominated at the height before the cycle end
+    assert(man.addEnrollment(enroll, Height(11), &utxo_set.findUTXO));
+    man.getEnrollments(enrolls, Height(validator_cycle + 9));
+    assert(enrolls.length == 0);
+    man.getEnrollments(enrolls, Height(validator_cycle + 10));
+    assert(enrolls.length == 1);
+
+    // make the enrollment a validator again
+    man.clearExpiredValidators(Height(validator_cycle + 11));
+    man.addValidator(enroll, Height(validator_cycle + 11), &utxo_set.findUTXO);
+
+    // add the enrollment that has the available height smaller than
+    // the enrolled height of the validator, we can get no enrollment
+    assert(man.addEnrollment(enroll, Height(validator_cycle + 10),
+        &utxo_set.findUTXO));
+    assert(man.pool.count() == 1);
+    man.getEnrollments(enrolls, Height(validator_cycle + 11));
+    assert(enrolls.length == 0);
 }
