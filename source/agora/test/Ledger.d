@@ -103,7 +103,11 @@ unittest
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 2);
+    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    txs.each!(tx => node_1.putTransaction(tx));
+    containSameBlocks(nodes, 1).retryFor(8.seconds);
+
+    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
     txs.each!(tx => node_1.putTransaction(tx));
     containSameBlocks(nodes, 2).retryFor(8.seconds);
 }
