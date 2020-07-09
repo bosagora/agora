@@ -965,10 +965,11 @@ unittest
     auto utxo_hash1 = utxo_hashes[0];
     auto enrollment = man.createEnrollment(utxo_hash1);
     assert(man.pool.add(enrollment, &storage.findUTXO));
-    assert(man.getValidatorCount(block_height) + 1 == 1);
+    assert(man.getValidatorCount(block_height) == 0);  // not active yet
 
     man.clearExpiredValidators(block_height);
     assert(man.addValidator(enrollment, block_height, &storage.findUTXO) is null);
+    assert(man.getValidatorCount(block_height) == 1);  // updated
 
     block_height = 3;
 
@@ -976,10 +977,11 @@ unittest
     auto utxo_hash2 = utxo_hashes[1];
     enrollment = man.createEnrollment(utxo_hash2);
     assert(man.pool.add(enrollment, &storage.findUTXO));
-    assert(man.getValidatorCount(block_height) + 1 == 2);
+    assert(man.getValidatorCount(block_height) == 1);  // not active yet
 
     man.clearExpiredValidators(block_height);
     assert(man.addValidator(enrollment, block_height, &storage.findUTXO) is null);
+    assert(man.getValidatorCount(block_height) == 2);  // updated
 
     block_height = 4;
 
@@ -987,14 +989,15 @@ unittest
     auto utxo_hash3 = utxo_hashes[2];
     enrollment = man.createEnrollment(utxo_hash3);
     assert(man.pool.add(enrollment, &storage.findUTXO));
-    assert(man.getValidatorCount(block_height) + 1 == 3);
+    assert(man.getValidatorCount(block_height) == 2);  // not active yet
 
     man.clearExpiredValidators(block_height);
     assert(man.addValidator(enrollment, block_height, &storage.findUTXO) is null);
+    assert(man.getValidatorCount(block_height) == 3);  // updated
 
     block_height = 5;    // valid block height : 0 <= H < 1008
     man.clearExpiredValidators(block_height);
-    assert(man.getValidatorCount(block_height) == 3);
+    assert(man.getValidatorCount(block_height) == 3);  // not cleared yet
 
     block_height = 1009; // valid block height : 2 <= H < 1010
     man.clearExpiredValidators(block_height);
