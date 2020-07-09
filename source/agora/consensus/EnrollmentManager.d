@@ -852,7 +852,6 @@ unittest
     import agora.consensus.data.Transaction;
 
     scope storage = new TestUTXOSet;
-    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
@@ -948,7 +947,6 @@ unittest
 
     scope storage = new TestUTXOSet;
 
-    auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
