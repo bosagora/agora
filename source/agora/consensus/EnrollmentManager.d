@@ -553,6 +553,41 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Generate the random seed reduced from the preimages for the provided
+        block height.
+
+        Params:
+            keys = the keys to look up (must be sorted)
+            height = the desired block height to look up the images for
+
+        Returns:
+            the random seed
+
+    ***************************************************************************/
+
+    public Hash getRandomSeed (in Hash[] keys, in Height height) @safe nothrow
+    in
+    {
+        assert(keys.length != 0);
+        assert(keys.isStrictlyMonotonic!((a, b) => a < b));
+    }
+    do
+    {
+        Hash rand_seed;
+        foreach (const ref key; keys)
+        {
+            const preimage = this.validator_set.getPreimageAt(key, height);
+            // this should not happen. validators which didn't reveal the
+            // preimage should not be in the active validator set 'keys'.
+            assert(preimage != PreImageInfo.init);
+            rand_seed = hashMulti(rand_seed, preimage);
+        }
+
+        return rand_seed;
+    }
+
+    /***************************************************************************
+
         Get validator's pre-image from the validator set.
 
         Params:
@@ -1255,4 +1290,73 @@ unittest
     assert(man.enroll_pool.count() == 1);
     man.getEnrollments(enrolls, Height(validator_cycle + 11));
     assert(enrolls.length == 0);
+}
+
+// test getRandomSeed()
+unittest
+{
+    import agora.common.crypto.Schnorr;
+    import agora.consensus.data.Transaction;
+    import std.conv;
+    import std.range;
+    import std.stdio;
+
+    scope storage = new TestUTXOSet;
+    Hash[] utxos;
+
+    // genesisSpendable returns 8 outputs
+    auto pairs = iota(8).map!(idx => WK.Keys[idx]).array;
+
+    genesisSpendable()
+        .enumerate
+        .map!(tup => tup.value
+            .refund(pairs[tup.index].address)
+            .sign(TxType.Freeze))
+        .each!((tx) {
+            storage.put(tx);
+            utxos ~= UTXOSetValue.getHash(tx.hashFull(), 0);
+        });
+
+    auto params = new immutable(ConsensusParams);
+    scope man = new EnrollmentManager(":memory:", KeyPair.random(), params);
+
+    foreach (idx, kp; pairs)
+    {
+        Pair pair;
+        pair.v = secretKeyToCurveScalar(kp.secret);
+        pair.V = pair.v.toPoint();
+
+        auto cycle = PreImageCycle(
+            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
+            PreImageCache(params.ValidatorCycle, 1));
+
+        const seed = cycle.populate(pair.v, true);
+        const enroll = EnrollmentManager.makeEnrollment(
+            pair, utxos[idx], params.ValidatorCycle,
+            seed, cycle.index);
+        assert(man.addValidator(enroll, Height(1), &storage.findUTXO,
+            storage.storage) is null);
+
+        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
+        cache.reset(hashMulti(pair.v, "consensus.preimages", 0));
+
+        PreImageInfo preimage = { enroll_key : utxos[idx],
+            distance : cast(ushort)params.ValidatorCycle,
+            hash : cache[$ - params.ValidatorCycle - 1] };
+
+        assert(man.addPreimage(preimage));
+    }
+
+    utxos.sort();  // must be sorted by enrollment key
+    assert(man.getRandomSeed(utxos, Height(1)) ==
+        Hash(`0xbc2a03ae4e9f00074ff201425bf5ad330c311dfd5c9ae54d38bfcfe4f2f02dbd99d6a25c975be9228fe4c9833e423bec9cb1039b05f4d0a23ca2c9310b936849`),
+        man.getRandomSeed(utxos, Height(1)).to!string);
+
+    assert(man.getRandomSeed(utxos, Height(504)) ==
+        Hash(`0xfd2e526f102abb279b21dfaa88ced3eae8bc373fbda3a5b377776bf7b5830c0776370fca30ab978f058a0690e05ae7e795ed65cc3cd069236e78ad486d216b61`),
+        man.getRandomSeed(utxos, Height(504)).to!string);
+
+    assert(man.getRandomSeed(utxos, Height(1008)) ==
+        Hash(`0xa9eca761735203ad896929790aa83c03a2154d8390137b2b59e92ca90150220c1992a1e3ebe318ad8049cf801b9a8b85119410131fc3c4d784ce430dd780a861`),
+        man.getRandomSeed(utxos, Height(1008)).to!string);
 }
