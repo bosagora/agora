@@ -201,20 +201,19 @@ public class EnrollmentPool
 
     /***************************************************************************
 
-        Get the enrollment data with the key, and store it to 'enroll' if found
+        Get the enrollment with the key
 
         Params:
-            enroll_hash = key for an enrollment data which is a hash of a frozen
-                            UTXO
-            enroll = will contain the enrollment data if found
+            enroll_hash = key for the enrollment which has the frozen UTXO
 
         Returns:
-            Return true if the enrollment data was found
+            Return an `Enrollment` if the enrollment is found, otherwise
+                `Enrollment.init`
 
     ***************************************************************************/
 
-    public bool getEnrollment (const ref Hash enroll_hash,
-        out Enrollment enroll) @trusted nothrow
+    public Enrollment getEnrollment (const ref Hash enroll_hash)
+        @trusted nothrow
     {
         try
         {
@@ -223,18 +222,17 @@ public class EnrollmentPool
 
             foreach (row; results)
             {
-                enroll = deserializeFull!Enrollment(row.peek!(ubyte[])(1));
-                return true;
+                return deserializeFull!Enrollment(row.peek!(ubyte[])(1));
             }
         }
         catch (Exception ex)
         {
             log.error("Exception occured on getEnrollment: {}, " ~
                 "Key for enrollment: {}", ex.msg, enroll_hash);
-            return false;
+            return Enrollment.init;
         }
 
-        return false;
+        return Enrollment.init;
     }
 
     /***************************************************************************
@@ -374,13 +372,14 @@ unittest
 
     // get a specific enrollment object
     Enrollment stored_enroll;
-    assert(pool.getEnrollment(utxo_hashes[1], stored_enroll));
+    assert((stored_enroll = pool.getEnrollment(utxo_hashes[1])) !=
+        Enrollment.init);
     assert(stored_enroll == enrollments[1]);
 
     // remove an enrollment
     pool.remove(utxo_hashes[1]);
     assert(pool.count() == 2);
-    assert(!pool.getEnrollment(utxo_hashes[1], stored_enroll));
+    assert(pool.getEnrollment(utxo_hashes[1]) == Enrollment.init);
 
     // test for enrollment block height update
     pool.getEnrollments(enrolls, avail_height);

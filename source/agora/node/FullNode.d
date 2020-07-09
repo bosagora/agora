@@ -438,9 +438,7 @@ public class FullNode : API
     /// GET: /enrollment
     public override Enrollment getEnrollment (Hash enroll_hash) @safe
     {
-        Enrollment enroll;
-        this.enroll_man.pool.getEnrollment(enroll_hash, enroll);
-        return enroll;
+        return this.enroll_man.getEnrollment(enroll_hash);
     }
 
     /// PUT: /receive_preimage

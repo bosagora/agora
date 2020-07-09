@@ -308,7 +308,7 @@ public class Ledger
 
         foreach (idx, ref enrollment; block.header.enrollments)
         {
-            this.enroll_man.pool.remove(enrollment.utxo_key);
+            this.enroll_man.removeEnrollment(enrollment.utxo_key);
 
             if (auto r = this.enroll_man.addValidator(enrollment,
                 block.header.height, this.utxo_set.getUTXOFinder()))
@@ -1025,12 +1025,12 @@ unittest
 
     auto findUTXO = ledger.utxo_set.getUTXOFinder();
     foreach (const ref e; enrollments)
-        assert(ledger.enroll_man.pool.add(e, Height(3), findUTXO));
+        assert(ledger.enroll_man.addEnrollment(e, Height(3), findUTXO));
 
     Enrollment stored_enroll;
     foreach (idx, hash; utxo_hashes)
     {
-        assert(ledger.enroll_man.pool.getEnrollment(hash, stored_enroll));
+        stored_enroll = ledger.enroll_man.getEnrollment(hash);
         assert(stored_enroll == enrollments[idx]);
     }
 
