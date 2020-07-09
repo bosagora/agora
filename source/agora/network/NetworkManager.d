@@ -114,6 +114,16 @@ public class NetworkManager
             this.address = address;
             this.onHandshakeComplete = onHandshakeComplete;
             this.onFailedRequest = onFailedRequest;
+        }
+
+        /***********************************************************************
+
+            Start the connection task
+
+        ***********************************************************************/
+
+        public void start ()
+        {
             this.outer.taskman.runTask(&this.connect);
         }
 
@@ -432,6 +442,7 @@ public class NetworkManager
                 this.todo_addresses.remove(address);
                 this.connection_tasks[address] = new ConnectionTask(
                     address, &onHandshakeComplete, &onFailedRequest);
+                this.connection_tasks[address].start();
             }
         }
     }
