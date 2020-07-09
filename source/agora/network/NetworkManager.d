@@ -308,11 +308,14 @@ public class NetworkManager
     /// Connection tasks for the nodes we're trying to connect to
     protected ConnectionTask[Address] connection_tasks;
 
-    /// Map of Validator key => Address (for lookup in 'peers')
-    protected Address[PublicKey] validator_to_addr;
+    /// List of validator clients
+    protected NetworkClient[] validators;
 
     /// All connected nodes (Validators & FullNodes)
-    protected NetworkClient[Address] peers;
+    protected NetworkClient[] peers;
+
+    /// Easy lookup of currently connected peers
+    protected Set!Address connected_peers;
 
     /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
@@ -369,11 +372,12 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
-        this.peers[node.address] = node.client;
+        this.connected_peers.put(node.address);
+        this.peers ~= node.client;
 
         if (node.is_validator)
         {
-            this.validator_to_addr[node.key] = node.address;
+            this.validators ~= node.client;
             this.required_peer_keys.remove(node.key);
         }
 
@@ -469,7 +473,7 @@ public class NetworkManager
     {
         return !this.isOurOwnAddress(address) &&
             !this.banman.isBanned(address) &&
-            address !in this.peers &&
+            address !in this.connected_peers &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses;
     }
@@ -590,7 +594,7 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        auto node_pair = this.peers.byValue
+        auto node_pair = this.peers
             .map!(node => Pair(getHeight(node), node))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
@@ -647,7 +651,7 @@ public class NetworkManager
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peer_keys.length == 0 &&
-            this.peers.byValue.filter!(node =>
+            this.peers.filter!(node =>
                 !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
     }
 
@@ -724,17 +728,15 @@ public class NetworkManager
 
     public void gossipEnvelope (SCPEnvelope envelope)
     {
-        foreach (key, address; this.validator_to_addr)
+        foreach (client; this.validators)
         {
-            if (this.banman.isBanned(address))
+            if (this.banman.isBanned(client.address))
             {
-                log.trace("Not sending to {} ({}) as it's banned", address, key);
+                log.trace("Not sending to {} as it's banned", client.address);
                 continue;
             }
 
-            auto node = address in this.peers;
-            assert(node !is null);
-            node.sendEnvelope(envelope);
+            client.sendEnvelope(envelope);
         }
     }
 
