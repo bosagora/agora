@@ -36,6 +36,7 @@ import std.range;
 import std.traits;
 
 import core.stdc.time;
+import core.time;
 
 /// Command-line arguments
 public struct CommandLine
@@ -117,14 +118,14 @@ public struct NodeConfig
     /// The seed to use for the keypair of this node
     public immutable KeyPair key_pair;
 
-    /// Number of msecs to wait before retrying failed connections
-    public long retry_delay = 3000;
+    /// Time to wait between request retries
+    public Duration retry_delay = 3.seconds;
 
     /// Maximum number of retries to issue before a request is considered failed
     public size_t max_retries = 5;
 
-    /// Timeout of each request (in milliseconds)
-    public long timeout = 500;
+    /// Timeout for each request
+    public Duration timeout = 500.msecs;
 
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir = "/var/lib/agora/";
@@ -287,10 +288,12 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     auto address = get!(string, "node", "address")(cmdln, node);
     auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
 
-    long retry_delay = cast(long)(opt!(float, "node", "retry_delay")(cmdln, node, 3.0) * 1000);
+    Duration retry_delay = opt!(float, Duration, x => (x * 1000).to!long.msecs,
+        "node", "retry_delay")(cmdln, node, NodeConfig.init.retry_delay);
 
     size_t max_retries = get!(size_t, "node", "max_retries")(cmdln, node);
-    size_t timeout = get!(size_t, "node", "timeout")(cmdln, node);
+    Duration timeout = opt!(long, Duration, msecs, "node", "duration")(cmdln, node,
+        NodeConfig.init.timeout);
 
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
@@ -427,6 +430,16 @@ private T opt (T, string section, string name) (
 {
     try
         return get!(T, section, name)(cmdln, node);
+    catch (Exception e)
+        return def;
+}
+
+/// Optionally get a value and use the converter routine for S => T
+private T opt (S, T, alias conv, string section, string name) (
+    const ref CommandLine cmdln, Node* node, lazy T def = T.init)
+{
+    try
+        return conv(get!(S, section, name)(cmdln, node));
     catch (Exception e)
         return def;
 }

@@ -83,5 +83,5 @@ unittest
     // node 1 will keep trying to send transactions up to
     // max_retries * (retry_delay + timeout) seconds (see Base.d),
     const delay = conf.max_retries * (conf.retry_delay + conf.timeout);
-    nodes.all!(node => node.getBlockHeight() == 1).retryFor(delay.msecs);
+    nodes.all!(node => node.getBlockHeight() == 1).retryFor(delay);
 }
