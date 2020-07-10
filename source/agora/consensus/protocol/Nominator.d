@@ -304,7 +304,7 @@ extern(D):
         if (this.is_nominating)
             return;
 
-        const cur_time = this.clock.time();
+        const cur_time = this.clock.networkTime();
         if (cur_time < this.params.GenesisStartTime)
         {
             log.fatal("Clock is out of sync. " ~
@@ -500,7 +500,7 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
-        const cur_time = this.clock.time();
+        const cur_time = this.clock.networkTime();
         const exp_time = this.getExpectedBlockTime(Height(slot_idx));
 
         try

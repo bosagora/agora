@@ -591,6 +591,9 @@ public class TestAPIManager
 
         The overload allows passing a subset of nodes to simulate clock drift.
 
+        Note that `synchronizeClocks()` must be called manually to adjust the
+        net time clock offset of each node.
+
         Params:
             new_time = the new clock time
 
@@ -608,6 +611,22 @@ public class TestAPIManager
         const exp_time = this.getBlockTime(height);
         foreach (pair; pairs)
             pair.time = exp_time;
+    }
+
+    /***************************************************************************
+
+        Synchronize the clocks of all nodes.
+
+        Note that this is not done implicitly in `setTimeFor` as this might
+        only synchronize the clocks for a subset of the passed clients.
+
+    ***************************************************************************/
+
+    public void synchronizeClocks ()
+    {
+        // calculate the network time offset based on the node's quorum set
+        foreach (node; this.nodes)
+            node.client.synchronizeClock();
     }
 
     /***************************************************************************
@@ -998,6 +1017,24 @@ public interface TestAPI : ValidatorAPI
 
     /// Get the list of expected quorum configs
     public QuorumConfig[] getExpectedQuorums (in PublicKey[], Height);
+
+    /***************************************************************************
+
+        Synchronize the node's clock with the network
+
+    ***************************************************************************/
+
+    public void synchronizeClock ();
+
+    /***************************************************************************
+
+        Returns:
+            the adjusted clock time taking into account the clock drift compared
+            to the median value of the quorum set clock measurements
+
+    ***************************************************************************/
+
+    public time_t getNetworkTime ();
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -1090,10 +1127,16 @@ private mixin template TestNodeMixin ()
         this.network.registerListener(address);
     }
 
-    /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock getClock ()
+    /// Manually initiate a clock synchronization event
+    public override void synchronizeClock ()
     {
-        return new TestClock(this.cur_time);
+        this.clock.synchronize();
+    }
+
+    /// Return the adjusted clock time
+    public override time_t getNetworkTime ()
+    {
+        return this.clock.networkTime();
     }
 }
 
@@ -1104,15 +1147,23 @@ public class TestClock : Clock
     private shared(time_t)* cur_time;
 
     ///
-    public this (shared(time_t)* cur_time)
+    public this (TaskManager taskman, GetNetTimeOffset getNetTimeOffset,
+        shared(time_t)* cur_time)
     {
+        super(taskman, getNetTimeOffset);
         this.cur_time = cur_time;
     }
 
     ///
-    public override time_t time ()
+    public override time_t localTime ()
     {
         return atomicLoad(*this.cur_time);
+    }
+
+    /// we manually sync the clocks in the tests, not using the timer
+    public override void startSyncing () @safe nothrow
+    {
+
     }
 }
 
@@ -1134,6 +1185,13 @@ public class TestFullNode : FullNode, TestAPI
         this.blocks = blocks;
         this.cur_time = cur_time;
         super(config);
+    }
+
+    /// Provides a unittest-adjusted clock source for the node
+    protected override TestClock getClock (TaskManager taskman)
+    {
+        return new TestClock(this.taskman,
+            (out long time_offset) { return true; }, this.cur_time);
     }
 
     /// FullNode does not implement this
@@ -1221,6 +1279,22 @@ public class TestValidatorNode : Validator, TestAPI
     {
         return new TestNominator(params, clock, network, key_pair, ledger,
             taskman, this.txs_to_nominate);
+    }
+
+    /// Provides a unittest-adjusted clock source for the node
+    protected override TestClock getClock (TaskManager taskman)
+    {
+        return new TestClock(this.taskman,
+            (out long time_offset)
+            {
+                // not enrolled - no need to synchronize clocks
+                if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+                    return false;
+
+                return this.network.getNetTimeOffset(this.qc.threshold,
+                    time_offset);
+            },
+            this.cur_time);
     }
 
     /// Gets the expected quorum config for the given keys and height
