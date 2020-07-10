@@ -284,7 +284,7 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
     enforce(conf.network.length > 0, "Network section is empty");
 
     Node* admin = "admin" in root;
-    conf.admin.enabled = opt!(bool,   "admin", "enabled")(cmdln, admin);
+    conf.admin.enabled = get!(bool, "admin", "enabled")(cmdln, admin);
     if (conf.admin.enabled)
     {
         conf.admin.address = get!(string, "admin", "address")(cmdln, admin);
