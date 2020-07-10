@@ -1117,6 +1117,19 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
     return true;
 }
 
+/// Asserts that all nodes in the range are at height `expected`
+public void ensureConsistency (APIS)(
+    APIS nodes, ulong expected, Duration timeout = 2.seconds)
+    if (isInputRange!APIS)
+{
+    foreach (idx, node; nodes.enumerate())
+    {
+        retryFor(node.getBlockHeight() == expected, timeout,
+                 format("Node #%d was at height %d (expected: %d)",
+                        idx, node.getBlockHeight(), expected));
+    }
+}
+
 
 /*******************************************************************************
 
