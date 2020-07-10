@@ -332,26 +332,30 @@ public struct PreImageCycle
 
     /***************************************************************************
 
-        Consume the current cycle
+        Populate the caches of pre-images
 
         This will first populate the caches (seeds and preimages) as necessary,
         then increase the `index` by one, or reset it to 0 and increase `nonce`
         if necessary.
 
         Note that the increment is done after the caches are populated,
-        so `consume` needs to be called once this node has confirmed it
-        is part of consensus.
+        so `populate` needs to be called once this node has confirmed it
+        is part of consensus. If the caches are only needed without the
+        increment, the `consume` parameter must be set to `false`.
 
         Params:
           secret = The secret key of the node, used as part of the hash
                    to generate the cycle seeds
+          consume = If true, calculate the cycle index. Otherwise, just
+                   get the random seed which is the first pre-image
 
         Returns:
           The hash of the current enrollment round
 
     ***************************************************************************/
 
-    public Hash consume (scope const ref Scalar secret) @safe nothrow
+    public Hash populate (scope const ref Scalar secret, bool consume)
+        @safe nothrow
     {
         // Populate the nonce cache if necessary
         if (this.index == 0)
@@ -369,11 +373,14 @@ public struct PreImageCycle
         this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
 
         // Increment index if there are rounds left in this cycle
-        this.index += 1;
-        if (this.index >= NumberOfCycles)
+        if (consume)
         {
-            this.index = 0;
-            this.nonce += 1;
+            this.index += 1;
+            if (this.index >= NumberOfCycles)
+            {
+                this.index = 0;
+                this.nonce += 1;
+            }
         }
 
         return this.preimages[$ - 1];
