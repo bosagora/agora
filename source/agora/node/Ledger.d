@@ -145,6 +145,9 @@ public class Ledger
             block_count >= this.params.ValidatorCycle
             ? Height(block_count - this.params.ValidatorCycle) : Height(0);
 
+        PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
+        UTXOSetValue[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
+
         // restore validator set from the blockchain.
         // using block_count, as the range is inclusive
         foreach (block_idx; min_height .. block_count)
@@ -152,7 +155,7 @@ public class Ledger
             Block block;
             this.storage.readBlock(block, block_idx);
             this.enroll_man.restoreValidators(this.last_block.header.height,
-                block, this.utxo_set.getUTXOFinder());
+                block, this.utxo_set.getUTXOFinder(), utxos);
         }
     }
 
@@ -310,8 +313,10 @@ public class Ledger
         {
             this.enroll_man.removeEnrollment(enrollment.utxo_key);
 
+            PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
+            UTXOSetValue[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
             if (auto r = this.enroll_man.addValidator(enrollment,
-                block.header.height, this.utxo_set.getUTXOFinder()))
+                block.header.height, this.utxo_set.getUTXOFinder(), utxos))
             {
                 log.fatal("Error while adding a new validator: {}", r);
                 log.fatal("Enrollment #{}: {}", idx, enrollment);

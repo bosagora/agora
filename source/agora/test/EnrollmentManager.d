@@ -25,6 +25,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Genesis;
+import agora.consensus.validation.PreImage;
 import agora.test.Base;
 
 import core.thread;
@@ -141,4 +142,82 @@ unittest
     const b20 = nodes[0].getBlocksFrom(validator_cycle, 2)[0];
     assert(b20.header.enrollments.length == 1);
     assert(b20.header.enrollments[0] == enroll);
+}
+
+/// Situation: A node in the network crashes after a new enrollment for the
+///     node has been inserted into a new block with consensus. And the node
+///     starts again
+/// Expectation: The node restores its own enrollment from the chain and
+///     reveals its pre-images periodically.
+unittest
+{
+    // Boilerplate
+    const validator_cycle = 20;
+    TestConf conf = {
+        validator_cycle : validator_cycle,
+    };
+    auto network = makeTestNetwork(conf);
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.start();
+    network.waitForDiscovery();
+    auto nodes = network.clients;
+
+    // Sanity check: Check if genesis block has enrollments
+    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
+    assert(b0.header.enrollments.length >= 1);
+
+    // Make 19 blocks
+    Transaction[] txs;
+    foreach (count; 0 .. 19)
+    {
+        // Use Genesis
+        if (!txs.length)
+            txs = genesisSpendable().take(Block.TxsInBlock).enumerate()
+                .map!(en => en.value.refund(WK.Keys.A.address).sign())
+                .array();
+        else
+            txs = txs
+                .map!(ptx => TxBuilder(ptx).refund(WK.Keys[count].address).sign())
+                .array();
+        txs.each!(tx => nodes[1].putTransaction(tx));
+
+        // Ensure everyone is at the same level
+        ensureConsistency(nodes, count + 1);
+    }
+
+    // Now create an Enrollment for nodes[0], create block #20, and restart nodes[0]
+    auto enroll = nodes[0].createEnrollmentData();
+    nodes[0].enrollValidator(enroll);
+    txs = txs
+        .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
+        .array();
+    txs.each!(tx => nodes[1].putTransaction(tx));
+    ensureConsistency(nodes.take(1), 20);
+    retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
+        2.seconds);
+
+    network.restart(nodes[0]);
+    network.waitForDiscovery();
+    ensureConsistency([nodes[0]], 20, 10.seconds);
+
+    // Now make a new block and make sure only nodes[0] signs it
+    txs = txs
+        .map!(ptx => TxBuilder(ptx).refund(WK.Keys[21].address).sign())
+        .array();
+    txs.each!(tx => nodes[1].putTransaction(tx));
+    ensureConsistency(nodes.take(1), 21);
+
+    PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
+    PreImageInfo preimage_1;
+    retryFor(org_preimage == (preimage_1 = nodes[0].getPreimage(enroll.utxo_key)),
+        5.seconds);
+
+    // Wait for the revelation of new pre-image to complete
+    PreImageInfo preimage_2;
+    retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(enroll.utxo_key)),
+        10.seconds);
+
+    // Check if a new pre-image has been revealed from the restarted node
+    assert(preimage_2.isValid(org_preimage, validator_cycle));
 }
