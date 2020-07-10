@@ -302,12 +302,12 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     auto address = get!(string, "node", "address")(cmdln, node);
     auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
 
-    Duration retry_delay = opt!(float, Duration, x => (x * 1000).to!long.msecs,
-        "node", "retry_delay")(cmdln, node, NodeConfig.init.retry_delay);
+    Duration retry_delay = get!(Duration, "node", "retry_delay",
+                                str => str.to!ulong.msecs)(cmdln, node);
 
     size_t max_retries = get!(size_t, "node", "max_retries")(cmdln, node);
-    Duration timeout = opt!(long, Duration, msecs, "node", "duration")(cmdln, node,
-        NodeConfig.init.timeout);
+    Duration timeout = get!(Duration, "node", "timeout", str => str.to!ulong.msecs)
+        (cmdln, node);
 
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
@@ -448,29 +448,25 @@ private T opt (T, string section, string name) (
         return def;
 }
 
-/// Optionally get a value and use the converter routine for S => T
-private T opt (S, T, alias conv, string section, string name) (
-    const ref CommandLine cmdln, Node* node, lazy T def = T.init)
+/// Helper function to get a config parameter
+private T get (T, string section, string name) (
+    const ref CommandLine cmdln, Node* node)
 {
-    try
-        return conv(get!(S, section, name)(cmdln, node));
-    catch (Exception e)
-        return def;
+    return get!(T, section, name, (string val) => val.to!T)(cmdln, node);
 }
 
-/// Helper function to get a config parameter
-private T get (T, string section, string name) (const ref CommandLine cmdl, Node* node)
+/// Helper function to get a config parameter with a conversion routine
+private T get (T, string section, string name, alias conv)
+    (const ref CommandLine cmdl, Node* node)
 {
-    import std.conv;
-
     static immutable QualifiedName = (section ~ "." ~ name);
 
     if (auto val = QualifiedName in cmdl.overrides)
-        return (*val)[$ - 1].to!T;
+        return conv((*val)[$ - 1]);
 
     if (node)
         if (auto val = name in *node)
-            return (*val).as!string.to!T;
+            return conv((*val).as!string);
 
     // If the user sets a default value, just return it
     static if (is(typeof(mixin(`Config.` ~ QualifiedName)) : T)
@@ -484,6 +480,13 @@ private T get (T, string section, string name) (const ref CommandLine cmdl, Node
         throw new Exception(format(
             "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
             name, section, QualifiedName));
+}
+
+/// Helper function to get a config parameter with a converter
+private auto get (string section, string name, Converter) (
+    const ref CommandLine cmdl, Node* node, scope Converter converter)
+{
+    return converter(get!(ParameterType!convert, section, name)(cmdl, node));
 }
 
 /*******************************************************************************

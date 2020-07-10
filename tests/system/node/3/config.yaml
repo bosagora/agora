@@ -7,7 +7,7 @@ node:
   max_listeners: 10
   address: 0.0.0.0
   port:    5826
-  retry_delay: 1.5
+  retry_delay: 1500
   max_retries: 5
   timeout: 5000
   # Path to the data directory (if the path doesn't exist it will be created)
