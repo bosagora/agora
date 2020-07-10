@@ -146,8 +146,8 @@ public class NetworkManager
             auto client = new NetworkClient(this.outer.taskman,
                 this.outer.banman, this.address,
                 this.outer.getClient(this.address,
-                    this.outer.node_config.timeout.msecs),
-                this.outer.node_config.retry_delay.msecs,
+                    this.outer.node_config.timeout),
+                this.outer.node_config.retry_delay,
                 this.outer.node_config.max_retries);
 
             PublicKey key;
@@ -170,8 +170,7 @@ public class NetworkManager
                         return;
 
                     // else try again
-                    this.outer.taskman.wait(
-                        this.outer.node_config.retry_delay.msecs);
+                    this.outer.taskman.wait(this.outer.node_config.retry_delay);
                 }
             }
 
@@ -429,7 +428,7 @@ public class NetworkManager
         while (!this.peerLimitReached())
         {
             scope (success)
-                this.taskman.wait(this.node_config.retry_delay.msecs);
+                this.taskman.wait(this.node_config.retry_delay);
 
             if (this.connection_tasks.length >= MaxConnectionTasks)
                 continue;

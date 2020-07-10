@@ -32,7 +32,7 @@ unittest
     {
         topology : NetworkTopology.OneNonValidator,
         nodes : 3,
-        retry_delay : 10,
+        retry_delay : 10.msecs,
         max_retries : 10,
         max_failed_requests : 4 * Block.TxsInBlock
     };

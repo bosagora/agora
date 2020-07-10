@@ -406,12 +406,12 @@ public class TestAPIManager
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, conf.node.timeout.msecs);
+                this.blocks, conf.node.timeout);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, conf.node.timeout.msecs);
+                this.blocks, conf.node.timeout);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -853,8 +853,8 @@ public struct TestConf
     /// whether to set up the peers in the config
     bool configure_network = true;
 
-    /// the delay between request retries (in msecs)
-    long retry_delay = 100;
+    /// the delay between request retries
+    Duration retry_delay = 100.msecs;
 
     /// minimum clients to connect to (defaults to nodes.length - 1)
     size_t min_listeners;
@@ -862,8 +862,8 @@ public struct TestConf
     /// max retries before a request is considered failed
     size_t max_retries = 20;
 
-    /// request timeout for each node (in msecs)
-    long timeout = 5000;
+    /// request timeout for each node
+    Duration timeout = 5.seconds;
 
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
@@ -922,7 +922,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             address : address,
             is_validator : is_validator,
             key_pair : node_key,
-            retry_delay : test_conf.retry_delay, // msecs
+            retry_delay : test_conf.retry_delay,
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
             validator_cycle : test_conf.validator_cycle,

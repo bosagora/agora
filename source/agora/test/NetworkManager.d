@@ -117,16 +117,16 @@ unittest
             if (conf.node.is_validator)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, this.blocks, conf.node.timeout.msecs);
+                    conf, &this.reg, this.blocks, conf.node.timeout);
             }
             else
             {
                 if (this.nodes.length == 2)
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, this.blocks, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, conf.node.timeout);
                 else
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, conf.node.timeout.msecs);
+                        &this.reg, this.blocks, conf.node.timeout);
             }
 
             this.reg.register(conf.node.address, api.tid());
