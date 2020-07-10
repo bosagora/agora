@@ -41,6 +41,7 @@ import agora.utils.PrettyPrinter;
 import scpd.types.Stellar_SCP;
 
 import core.stdc.stdlib : abort;
+import core.stdc.time;
 import core.time;
 
 mixin AddLogger!();
@@ -210,6 +211,7 @@ public class Validator : FullNode, API
     {
         this.started = true;
         this.startPeriodicDiscovery();
+        this.clock.startSyncing();
         this.taskman.setTimer(this.config.node.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
         this.network.startPeriodicCatchup(this.ledger);
@@ -283,6 +285,34 @@ public class Validator : FullNode, API
         TaskManager taskman)
     {
         return new Nominator(params, clock, network, key_pair, ledger, taskman);
+    }
+
+    /***************************************************************************
+
+        Get a Clock instance. May be overriden in unittests to
+        simulate clock disparities, as well as provide a custom
+        median retrieveal delegate to simulate delays (task.wait() calls).
+
+        Params:
+            taskman = task manager used to spawn timers
+
+        Returns:
+            a Clock instance
+
+    ***************************************************************************/
+
+    protected override Clock getClock (TaskManager taskman)
+    {
+        return new Clock(this.taskman,
+            (out long time_offset)
+            {
+                // not enrolled - no need to synchronize clocks
+                if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+                    return false;
+
+                return this.network.getNetTimeOffset(this.qc.threshold,
+                    time_offset);
+            });
     }
 
     /***************************************************************************

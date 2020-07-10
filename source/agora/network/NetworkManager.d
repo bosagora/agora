@@ -530,12 +530,12 @@ public class NetworkManager
             if (pk !in this.quorum_set_keys)
                 continue;
 
-            const req_start = this.clock.time();
+            const req_start = this.clock.localTime();
             const node_time = node.getLocalTime();
             if (node_time == 0)
                 continue;  // request failed
 
-            const req_delay = this.clock.time() - req_start;
+            const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
             offsets ~= (node_time - dist_delay) - req_start;
         }

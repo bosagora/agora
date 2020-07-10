@@ -162,7 +162,7 @@ public class FullNode : API
 
         this.config = config;
         this.taskman = this.getTaskManager();
-        this.clock = this.getClock();
+        this.clock = this.getClock(this.taskman);
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman,
             this.clock);
@@ -360,17 +360,20 @@ public class FullNode : API
     /***************************************************************************
 
         Returns an instance of a Clock
-
         May be overriden in unittests to allow test-adjusted clock times.
+
+        Params:
+            taskman = a TaskManager instance
 
         Returns:
             an instance of a Clock
 
     ***************************************************************************/
 
-    protected Clock getClock ()
+    protected Clock getClock (TaskManager taskman)
     {
-        return new Clock();
+        // non-synchronizing clock (for now)
+        return new Clock(taskman, (out long time_offset) { return true; });
     }
 
     /***************************************************************************
@@ -530,7 +533,7 @@ public class FullNode : API
     /// GET /local_time
     public override time_t getLocalTime () @safe nothrow
     {
-        return this.clock.time();
+        return this.clock.localTime();
     }
 
     /***************************************************************************
