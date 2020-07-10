@@ -31,8 +31,8 @@ node:
   address: 0.0.0.0 # Any node can bind - default value
   # Port on which we bind
   port:    2826    # 0xB0A, default value
-  # Number of seconds to wait between retrying requests (floating-point)
-  retry_delay: 1.5
+  # Number of milliseconds to wait between retrying requests
+  retry_delay: 1500
   # Maximum number of retries to issue before a request is considered failed
   max_retries: 5
   # Timeout for each request in milliseconds

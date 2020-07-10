@@ -7,7 +7,7 @@ node:
   max_listeners: 10
   address: 0.0.0.0
   port:    2826
-  retry_delay: 1.5
+  retry_delay: 1500
   max_retries: 5
   timeout: 5000
   # This is a randomly generated keypair
