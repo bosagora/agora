@@ -50,7 +50,7 @@ unittest
 public struct QuorumConfig
 {
     /// Threshold of this quorum set
-    public size_t threshold = 1;
+    public uint threshold = 1;
 
     /// List of nodes in this quorum
     public PublicKey[] nodes;
