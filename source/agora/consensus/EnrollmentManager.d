@@ -771,18 +771,18 @@ unittest
     import agora.consensus.data.Transaction;
     import std.algorithm;
 
-    scope storage = new TestUTXOSet;
+    scope utxo_set = new TestUTXOSet;
 
     auto gen_key_pair = WK.Keys.Genesis;
     KeyPair key_pair = KeyPair.random();
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
-        .each!(tx => storage.put(tx));
+        .each!(tx => utxo_set.put(tx));
 
     // create an EnrollmentManager object
     auto man = new EnrollmentManager(":memory:", key_pair,
         new immutable(ConsensusParams)());
-    Hash[] utxo_hashes = storage.keys;
+    Hash[] utxo_hashes = utxo_set.keys;
 
     // check the return value of `getEnrollmentPublicKey`
     assert(key_pair.address == man.getEnrollmentPublicKey());
@@ -795,20 +795,20 @@ unittest
         EnrollmentManager.makeEnrollment(gen_key_pair, utxo_hash, 1008);
 
     auto enroll = man.createEnrollment(utxo_hash);
-    assert(!man.addEnrollment(fail_enroll, Height(1), &storage.findUTXO));
-    assert(man.addEnrollment(enroll, Height(1), &storage.findUTXO));
+    assert(!man.addEnrollment(fail_enroll, Height(1), &utxo_set.findUTXO));
+    assert(man.addEnrollment(enroll, Height(1), &utxo_set.findUTXO));
     assert(man.enroll_pool.count() == 1);
-    assert(!man.addEnrollment(enroll, Height(1), &storage.findUTXO));
+    assert(!man.addEnrollment(enroll, Height(1), &utxo_set.findUTXO));
 
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     auto enroll2 = man.createEnrollment(utxo_hash2);
-    assert(man.addEnrollment(enroll2, Height(1), &storage.findUTXO));
+    assert(man.addEnrollment(enroll2, Height(1), &utxo_set.findUTXO));
     assert(man.enroll_pool.count() == 2);
 
     auto utxo_hash3 = utxo_hashes[2];
     auto enroll3 = man.createEnrollment(utxo_hash3);
-    assert(man.addEnrollment(enroll3, Height(1), &storage.findUTXO));
+    assert(man.addEnrollment(enroll3, Height(1), &utxo_set.findUTXO));
     assert(man.enroll_pool.count() == 3);
 
     Enrollment[] enrolls;
@@ -831,9 +831,9 @@ unittest
 
     // test for enrollment block height update
     assert(man.getEnrolledHeight(utxo_hash) == ulong.max);
-    assert(man.addValidator(enroll, Height(9), &storage.findUTXO) is null);
+    assert(man.addValidator(enroll, Height(9), &utxo_set.findUTXO) is null);
     assert(man.getEnrolledHeight(enroll.utxo_key) == 9);
-    assert(man.addValidator(enroll, Height(9), &storage.findUTXO) !is null);
+    assert(man.addValidator(enroll, Height(9), &utxo_set.findUTXO) !is null);
     assert(man.getEnrolledHeight(enroll2.utxo_key) == ulong.max);
     man.getEnrollments(enrolls, Height(9));
     assert(enrolls.length == 1);
@@ -854,7 +854,7 @@ unittest
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
         assert(man.addEnrollment(ordered_enroll, Height(10),
-            &storage.findUTXO));
+            &utxo_set.findUTXO));
     man.getEnrollments(enrolls, Height(man.params.ValidatorCycle + 8));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
@@ -867,7 +867,7 @@ unittest
     // So, a pre-image can only be got from the start height.
     PreImageInfo preimage;
     enroll = man.createEnrollment(utxo_hash);
-    assert(man.addValidator(enroll, Height(10), &storage.findUTXO) is null);
+    assert(man.addValidator(enroll, Height(10), &utxo_set.findUTXO) is null);
     assert(!man.getPreimage(Height(10), preimage));
     assert(man.getPreimage(Height(11), preimage));
     assert(preimage.hash == man.cycle.preimages[$ - 1]);
@@ -891,7 +891,7 @@ unittest
     // validator A with the `utxo_hash` and the enrolled height of 10.
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
     // validator C with the 'utxo_hash3' and no enrolled height.
-    assert(man.addValidator(enroll2, Height(11), &storage.findUTXO) is null);
+    assert(man.addValidator(enroll2, Height(11), &utxo_set.findUTXO) is null);
     man.clearExpiredValidators(Height(11));
     assert(man.validatorCount() == 2);
     assert(man.getEnrolledUTXOs(keys));
@@ -900,7 +900,7 @@ unittest
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
     // there is only one validator in the middle of 1020th block being made.
-    assert(man.addValidator(enroll3, Height(1019), &storage.findUTXO) is null);
+    assert(man.addValidator(enroll3, Height(1019), &utxo_set.findUTXO) is null);
     man.clearExpiredValidators(Height(1019));
     assert(man.validatorCount() == 1);
     assert(man.getEnrolledUTXOs(keys));
@@ -913,24 +913,24 @@ unittest
 {
     import agora.consensus.data.Transaction;
 
-    scope storage = new TestUTXOSet;
+    scope utxo_set = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random();
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
-        .each!(tx => storage.put(tx));
+        .each!(tx => utxo_set.put(tx));
 
     auto man = new EnrollmentManager(":memory:", key_pair,
         new immutable(ConsensusParams)());
-    Hash[] utxo_hashes = storage.keys;
+    Hash[] utxo_hashes = utxo_set.keys;
 
     auto utxo_hash = utxo_hashes[0];
     auto enroll = man.createEnrollment(utxo_hash);
-    assert(man.addEnrollment(enroll, Height(1), &storage.findUTXO));
+    assert(man.addEnrollment(enroll, Height(1), &utxo_set.findUTXO));
 
     assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
     assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
     auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
-    assert(man.addValidator(enroll, Height(2), &storage.findUTXO) is null);
+    assert(man.addValidator(enroll, Height(2), &utxo_set.findUTXO) is null);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash) == preimage);
 }
@@ -1007,28 +1007,28 @@ unittest
 {
     import agora.consensus.data.Transaction;
 
-    scope storage = new TestUTXOSet;
+    scope utxo_set = new TestUTXOSet;
 
     KeyPair key_pair = KeyPair.random();
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
-        .each!(tx => storage.put(tx));
+        .each!(tx => utxo_set.put(tx));
 
     // create an EnrollmentManager object
     auto man = new EnrollmentManager(":memory:", key_pair,
         new immutable(ConsensusParams)());
-    Hash[] utxo_hashes = storage.keys;
+    Hash[] utxo_hashes = utxo_set.keys;
 
     Height block_height = Height(2);
 
     // create and add the first Enrollment object
     auto utxo_hash1 = utxo_hashes[0];
     auto enrollment = man.createEnrollment(utxo_hash1);
-    assert(man.addEnrollment(enrollment, block_height, &storage.findUTXO));
+    assert(man.addEnrollment(enrollment, block_height, &utxo_set.findUTXO));
     assert(man.getValidatorCount(block_height) == 0);  // not active yet
 
     man.clearExpiredValidators(block_height);
-    assert(man.addValidator(enrollment, block_height, &storage.findUTXO) is null);
+    assert(man.addValidator(enrollment, block_height, &utxo_set.findUTXO) is null);
     assert(man.getValidatorCount(block_height) == 1);  // updated
 
     block_height = 3;
@@ -1036,11 +1036,11 @@ unittest
     // create and add the second Enrollment object
     auto utxo_hash2 = utxo_hashes[1];
     enrollment = man.createEnrollment(utxo_hash2);
-    assert(man.addEnrollment(enrollment, block_height, &storage.findUTXO));
+    assert(man.addEnrollment(enrollment, block_height, &utxo_set.findUTXO));
     assert(man.getValidatorCount(block_height) == 1);  // not active yet
 
     man.clearExpiredValidators(block_height);
-    assert(man.addValidator(enrollment, block_height, &storage.findUTXO) is null);
+    assert(man.addValidator(enrollment, block_height, &utxo_set.findUTXO) is null);
     assert(man.getValidatorCount(block_height) == 2);  // updated
 
     block_height = 4;
@@ -1048,11 +1048,11 @@ unittest
     // create and add the third Enrollment object
     auto utxo_hash3 = utxo_hashes[2];
     enrollment = man.createEnrollment(utxo_hash3);
-    assert(man.addEnrollment(enrollment, block_height, &storage.findUTXO));
+    assert(man.addEnrollment(enrollment, block_height, &utxo_set.findUTXO));
     assert(man.getValidatorCount(block_height) == 2);  // not active yet
 
     man.clearExpiredValidators(block_height);
-    assert(man.addValidator(enrollment, block_height, &storage.findUTXO) is null);
+    assert(man.addValidator(enrollment, block_height, &utxo_set.findUTXO) is null);
     assert(man.getValidatorCount(block_height) == 3);  // updated
 
     block_height = 5;    // valid block height : 0 <= H < 1008
