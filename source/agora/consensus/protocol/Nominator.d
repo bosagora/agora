@@ -122,10 +122,10 @@ extern(D):
     ***************************************************************************/
 
     public void setQuorumConfig (const ref QuorumConfig quorum,
-        const(QuorumConfig)[] other_quorums)
+        const(QuorumConfig)[] other_quorums) nothrow @safe
     {
         assert(!this.is_nominating);
-        this.known_quorums.clear();
+        () @trusted { this.known_quorums.clear(); }();
 
         // store the list of other node's quorum hashes
         foreach (qc; other_quorums)
@@ -137,8 +137,8 @@ extern(D):
 
         // set up our own quorum
         auto quorum_set = buildSCPConfig(quorum);
-        this.scp.updateLocalQuorumSet(quorum_set);
-        auto shared_set = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
+        () @trusted { this.scp.updateLocalQuorumSet(quorum_set); }();
+        auto shared_set = makeSharedSCPQuorumSet(quorum_set);
         this.known_quorums[hashFull(quorum_set)] = shared_set;
     }
 
