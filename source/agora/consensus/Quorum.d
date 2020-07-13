@@ -70,7 +70,7 @@ private enum double THRESHOLD = 0.80;
 *******************************************************************************/
 
 public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
-    in Hash[] utxo_keys, UTXOFinder finder )
+    in Hash[] utxo_keys, UTXOFinder finder ) @safe nothrow
 {
     // special-case: only 1 validator is active
     if (utxo_keys.length == 1)
@@ -87,11 +87,18 @@ public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
     auto RNG_gen = getGenerator(key);
     auto stake_amounts = stakes.map!(stake => stake.amount.integral);
 
+    auto assumeNothrow (T)(lazy T exp) nothrow
+    {
+        try return exp();
+        catch (Exception ex) assert(0, ex.msg);
+    }
+
     // +1 as we already added ourself
     const MaxNodes = min(stakes.length + 1, MAX_NODES_IN_QUORUM);
     while (quorum.nodes.length < MaxNodes)
     {
-        auto idx = dice(RNG_gen, stake_amounts);
+        // dice() can only throw if the sum of stakes is zero
+        auto idx = assumeNothrow(dice(RNG_gen, stake_amounts));
         if (added[idx])  // skip duplicate
             continue;
 
@@ -251,7 +258,7 @@ private const(PublicKey)[] getKeys (size_t count)
 }
 
 /// Create a shorthash from a 64-byte blob for RNG initialization
-private ulong toShortHash (const ref PublicKey key) @trusted
+private ulong toShortHash (const ref PublicKey key) @trusted nothrow
 {
     import libsodium.crypto_shorthash;
     import std.bitmanip;
@@ -290,7 +297,7 @@ unittest
 
 *******************************************************************************/
 
-private auto getGenerator (PublicKey key)
+private auto getGenerator (PublicKey key) @safe nothrow
 {
     Mt19937_64 gen;
     gen.seed(toShortHash(key));
@@ -322,11 +329,11 @@ private struct NodeStake
 *******************************************************************************/
 
 private NodeStake[] buildStakesDescending (const ref PublicKey filter,
-    in Hash[] utxo_keys, UTXOFinder finder) nothrow
+    in Hash[] utxo_keys, UTXOFinder finder) @safe nothrow
 {
     static NodeStake[] stakes;
     stakes.length = 0;
-    assumeSafeAppend(stakes);
+    () @trusted { assumeSafeAppend(stakes); }();
 
     foreach (utxo_key; utxo_keys)
     {
