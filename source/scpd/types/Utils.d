@@ -19,7 +19,7 @@ import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
 
 extern(C++) public shared_ptr!SCPQuorumSet makeSharedSCPQuorumSet (
-    ref const(SCPQuorumSet));
+    ref const(SCPQuorumSet)) nothrow @nogc;
 
 
 /// Utility function for SCP

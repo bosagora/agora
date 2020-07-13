@@ -122,10 +122,10 @@ extern(D):
     ***************************************************************************/
 
     public void setQuorumConfig (const ref QuorumConfig quorum,
-        const(QuorumConfig)[] other_quorums)
+        const(QuorumConfig)[] other_quorums) nothrow
     {
         assert(!this.is_nominating);
-        this.known_quorums.clear();
+        () @trusted { this.known_quorums.clear(); }();
 
         // store the list of other node's quorum hashes
         foreach (qc; other_quorums)
