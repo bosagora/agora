@@ -100,7 +100,7 @@ public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
     }
 
     quorum.nodes.sort;
-    quorum.threshold = max(1, cast(size_t)ceil(THRESHOLD * quorum.nodes.length));
+    quorum.threshold = max(1, cast(uint)ceil(THRESHOLD * quorum.nodes.length));
     return quorum;
 }
 
