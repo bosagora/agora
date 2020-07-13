@@ -44,7 +44,7 @@ extern(C++, (StdNamespace)) {
         else
             private alias TPtr = T*;
 
-        ~this() {}
+        ~this() @safe {}
         TPtr ptr;
         void* _control_block;
         alias ptr this;
