@@ -501,13 +501,13 @@ private auto get (string section, string name, Converter) (
 
 *******************************************************************************/
 
-public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf ) @safe
+public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf ) @safe nothrow
 {
     import std.conv;
     import scpd.types.Stellar_types : uint256, NodeID;
 
     SCPQuorumSet quorum;
-    quorum.threshold = quorum_conf.threshold.to!uint;
+    quorum.threshold = quorum_conf.threshold;
 
     foreach (node; quorum_conf.nodes)
     {
@@ -536,7 +536,8 @@ public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf ) @safe
 
 *******************************************************************************/
 
-public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum) @safe
+public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
+    @safe nothrow
 {
     import std.conv;
     import scpd.types.Stellar_types : Hash, NodeID;
@@ -552,7 +553,7 @@ public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum) @safe
 
     QuorumConfig quorum =
     {
-        threshold : scp_quorum.threshold.to!uint,
+        threshold : scp_quorum.threshold,
         nodes : nodes,
         quorums : quorums,
     };
