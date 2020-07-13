@@ -85,26 +85,18 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void onValidatorsChanged () nothrow @trusted
+    private void onValidatorsChanged () nothrow @safe
     {
-        try
-        {
-            // we're not enrolled and don't care about quorum sets
-            if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
-                return;
+        // we're not enrolled and don't care about quorum sets
+        if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+            return;
 
-            static QuorumConfig qc;
-            static QuorumConfig[] other_qcs;
-            this.rebuildQuorumConfig(qc, other_qcs);
-            this.nominator.setQuorumConfig(qc, other_qcs);
-            buildRequiredKeys(this.config.node.key_pair.address, qc,
-                this.required_peer_keys);
-        }
-        catch (Exception ex)
-        {
-            log.fatal("onValidatorsChanged() failed: {}", ex);
-            abort();
-        }
+        static QuorumConfig qc;
+        static QuorumConfig[] other_qcs;
+        this.rebuildQuorumConfig(qc, other_qcs);
+        this.nominator.setQuorumConfig(qc, other_qcs);
+        buildRequiredKeys(this.config.node.key_pair.address, qc,
+            this.required_peer_keys);
     }
 
     /***************************************************************************
@@ -119,7 +111,7 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     private void rebuildQuorumConfig (ref QuorumConfig qc,
-        ref QuorumConfig[] other_qcs)
+        ref QuorumConfig[] other_qcs) nothrow @safe
     {
         import std.algorithm;
 
@@ -135,7 +127,8 @@ public class Validator : FullNode, API
 
         auto pub_keys = this.getEnrolledPublicKeys(keys);
         other_qcs.length = 0;
-        assumeSafeAppend(other_qcs);
+        () @trusted { assumeSafeAppend(other_qcs); }();
+
         foreach (pub_key; pub_keys.filter!(
             pk => pk != this.config.node.key_pair.address))  // skip our own
         {
@@ -279,7 +272,7 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     private static void buildRequiredKeys (in PublicKey filter,
-        in QuorumConfig quorum_conf, ref Set!PublicKey nodes) @safe
+        in QuorumConfig quorum_conf, ref Set!PublicKey nodes) @safe nothrow
     {
         foreach (node; quorum_conf.nodes)
         {
