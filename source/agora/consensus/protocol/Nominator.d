@@ -68,8 +68,8 @@ public extern (C++) class Nominator : SCPDriver
     /// Similar to how we use FakeClockBanManager!
     private Set!ulong timers;
 
-    /// The quorum set
-    private SCPQuorumSetPtr[Hash] quorum_set;
+    /// The mapping of all known quorum sets
+    private SCPQuorumSetPtr[Hash] known_quorums;
 
     private alias TimerType = Slot.timerIDs;
     static assert(TimerType.max == 1);
@@ -125,21 +125,21 @@ extern(D):
         const(QuorumConfig)[] other_quorums)
     {
         assert(!this.is_nominating);
-        this.quorum_set.clear();
+        this.known_quorums.clear();
 
         // store the list of other node's quorum hashes
         foreach (qc; other_quorums)
         {
             auto quorum_set = buildSCPConfig(qc);
             auto shared_set = makeSharedSCPQuorumSet(quorum_set);
-            this.quorum_set[hashFull(quorum_set)] = shared_set;
+            this.known_quorums[hashFull(quorum_set)] = shared_set;
         }
 
         // set up our own quorum
         auto quorum_set = buildSCPConfig(quorum);
         this.scp.updateLocalQuorumSet(quorum_set);
         auto shared_set = makeSharedSCPQuorumSet(this.scp.getLocalQuorumSet());
-        this.quorum_set[hashFull(quorum_set)] = shared_set;
+        this.known_quorums[hashFull(quorum_set)] = shared_set;
     }
 
     /***************************************************************************
@@ -421,7 +421,7 @@ extern(D):
 
     public override SCPQuorumSetPtr getQSet (ref const(StellarHash) qSetHash)
     {
-        if (auto scp_quroum = qSetHash in this.quorum_set)
+        if (auto scp_quroum = qSetHash in this.known_quorums)
             return *scp_quroum;
 
         return SCPQuorumSetPtr.init;
