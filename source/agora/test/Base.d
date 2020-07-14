@@ -80,8 +80,21 @@ public import std.range;
 // To print messages to the screen while debugging a test
 public import std.stdio;
 
+version (Posix)
+{
+    import core.sys.posix.signal;
+    __gshared sigaction_t oldseg;
+    __gshared sigaction_t oldbus;
+}
+
 shared static this()
 {
+    version (Posix)
+    {
+        sigaction( SIGSEGV, null, &oldseg);
+        sigaction( SIGBUS, null, &oldbus);
+    }
+
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
 }
 
@@ -92,6 +105,12 @@ shared static this()
 /// Workaround: Don't run ocean submodule unittests
 private UnitTestResult customModuleUnitTester ()
 {
+    version (Posix)
+    {
+        sigaction( SIGSEGV, &oldseg, null);
+        sigaction( SIGBUS, &oldbus, null);
+    }
+
     import std.parallelism;
     import std.process;
     import std.string;

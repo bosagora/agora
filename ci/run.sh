@@ -3,7 +3,6 @@
 set -xeu
 set -o pipefail
 
-dchatty=1 dub test -b unittest-cov --skip-registry=all --compiler=${DC}
-rdmd --compiler=${DC} ./tests/runner.d --compiler=${DC} -cov
-dub build --skip-registry=all --compiler=${DC}
-dub build -c client --skip-registry=all --compiler=${DC}
+dub build -c unittest -b unittest-cov --skip-registry=all --compiler=ldc2
+rdmd --build-only -of./runner --compiler=${DC} ./ci/unittest_runner.d
+sudo ./runner

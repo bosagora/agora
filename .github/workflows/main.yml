@@ -21,8 +21,8 @@ jobs:
       # of the nigthly is broken
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
-        dc: [ ldc-master, ldc-1.22.0, ldc-1.21.0 ]
+        os: [ macOS-10.15 ]
+        dc: [ ldc-1.22.0 ]
         # Define job-specific parameters
         include:
           # By default, don't generate artifacts for push
@@ -32,7 +32,7 @@ jobs:
           - { dc: ldc-1.22.0, artifacts: true }
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
 
     # Checkout this repository and its submodules
@@ -65,6 +65,7 @@ jobs:
         sudo apt-get install libsqlite3-dev
         sudo apt-get install libsodium-dev
         sudo apt-get install g++-9
+        sudo apt-get install gdb
 
     - name: '[Windows] Install dependencies & setup environment'
       if: runner.os == 'Windows'
@@ -93,10 +94,23 @@ jobs:
         dub --version
 
     # Build and run the tests
-    - name: '[POSIX] Build & test Agora'
-      if: runner.os != 'Windows'
+    - name: '[linux] Build & test Agora'
+      if: runner.os == 'Linux'
       #continue-on-error: matrix.dc == 'ldc-master'
-      run: ./ci/run.sh
+      run: |
+        ulimit -c unlimited
+        ./ci/run.sh
+
+    # Build and run the tests
+    - name: '[POSIX] Build & test Agora'
+      if: runner.os == 'macOS'
+      #continue-on-error: matrix.dc == 'ldc-master'
+      run: |
+        ulimit -c unlimited
+        ./ci/run.sh
+        sudo chmod -R +rwx /cores/ || true
+        echo "Core files:"
+        ls -alh /cores/
 
     - name: '[Windows] Build & test Agora'
       if: runner.os == 'Windows'
@@ -116,72 +130,9 @@ jobs:
     # but it provide to be too flakey and would often lead to spurious
     # failures. See https://github.com/bpfkorea/agora/issues/882
     - name: 'Upload build artifacts'
-      if: github.event_name == 'push' && matrix.artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: agora-${{ matrix.os }}
-        path: build/
-
-  # Documentation build: Only runs on Linux
-  # Still need to install dependencies and the compiler because DDOX
-  # does a full build
-  doc:
-    name: Build and upload documentation
-    needs: main
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-
-      # Checkout this repository and its submodules
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      # Install the D compiler
-      - name: Prepare compiler
-        uses: dlang-community/setup-dlang@v1
-        with:
-          compiler: ldc-latest
-
-      - name: 'Install dependencies & setup environment'
-        run: |
-          sudo apt-get update
-          sudo apt-get install libsqlite3-dev
-          sudo apt-get install libsodium-dev
-          sudo apt-get install g++-9
-
-      - name: Build documentation
-        run: |
-          dub build -b ddox
-          # Filter out libraries
-          # `x:ddocFilterArgs` in `dub.json` does not seem to work,
-          # so we do it manually
-          jq '[ .[] | select(.file|startswith("source/")) ]' docs.json > docs.filtered.json
-          # Generate the HTML to docs
-          dub run ddox -- generate-html docs.filtered.json ./docs/
-
-      - name: Upload documentation artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: documentation
-          path: docs/
-
-      - name: Deploy documentation
-        if: github.event_name == 'push'
-        run: |
-          # Remove gh-branch if it already exists, check it out
-          git branch -D gh-pages || true
-          git checkout --orphan gh-pages
-          # Remove all staged files - We only need the docs
-          git rm -rf $(git ls-files)
-          # We can have some leftover files (e.g. build)
-          # So add docs (which is only what we need), then `git mv` it.
-          git add docs/
-          git mv -k docs/* ./
-          # Configure user (because persist-credentials does not persist everything...)
-          git config --global user.name  "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-          # We're done
-          git commit -m "Documentation for commit ${{ github.sha }}"
-          git push -f ${{ github.event.repository.clone_url }} gh-pages:gh-pages
+        name: artifact
+        path: |
+          build/
+          /cores
