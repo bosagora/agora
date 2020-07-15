@@ -16,6 +16,7 @@ module main;
 import agora.api.FullNode;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis;
+import TestGenesis = agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.common.crypto.Key;
 import agora.common.Hash;
@@ -73,10 +74,16 @@ int main (string[] args)
             assert(height == 0);
         }
 
+        // Make sure the nodes use the test genesis block
+        const blocks = clients[0].getBlocksFrom(0, 1);
+        assert(blocks.length == 1);
+        assert(blocks[0] == TestGenesis.GenesisBlock);
+
         auto kp = WK.Keys.Genesis;
 
         iota(Block.TxsInBlock)
-            .map!(idx => TxBuilder(GenesisBlock.txs[1], idx).refund(kp.address).sign())
+            .map!(idx => TxBuilder(TestGenesis.GenesisBlock.txs[1], idx)
+                  .refund(kp.address).sign())
             .each!(tx => clients[0].putTransaction(tx));
 
         checkBlockHeight(addresses, 1);
