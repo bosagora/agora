@@ -297,3 +297,149 @@ unittest
     assert(network.clients().each!(
                client => client.getPreimage(enroll.utxo_key).distance == 0));
 }
+
+/// Situation: One misbehaving node sends an Enrollment for an
+///            already-enrolled validator.
+/// Expectation: The nomination is rejected.
+unittest
+{
+    import agora.common.Config;
+    import agora.common.Task;
+    import agora.common.crypto.Key;
+    import agora.consensus.protocol.Nominator;
+    import agora.consensus.data.ConsensusData;
+    import agora.node.Ledger;
+    import agora.node.Validator;
+    import agora.network.NetworkManager;
+
+    import geod24.Registry;
+    import core.atomic;
+
+    static class BadNominator : Nominator
+    {
+        private Ledger ledger;
+        private bool is_nominating;
+        private shared(size_t)* runCount;
+
+        /// Ctor
+        public this (NetworkManager network, KeyPair key_pair,
+                     Ledger ledger, TaskManager taskman, shared(size_t)* countPtr)
+        {
+            this.runCount = countPtr;
+            this.ledger = ledger;
+            super(network, key_pair, ledger, taskman);
+        }
+
+        ///
+        public override bool isNominating () @safe @nogc nothrow
+        {
+            return this.is_nominating;
+        }
+
+        ///
+        public override void tryNominate () @safe
+        {
+            // Most of the code, save for the line commented as such, are teken
+            // from `Validator.tryNominate`
+            if (this.is_nominating)
+                return;
+
+            this.is_nominating = true;
+            scope (exit) this.is_nominating = false;
+
+            ConsensusData data;
+            this.ledger.prepareNominatingSet(data);
+            if (data.tx_set.length == 0)
+                return;  // not ready yet
+
+            // This behavior is the only difference with a normal Validator:
+            // It adds an enrollment that is already for a node in the ValidatorSet
+            atomicOp!("+=")(*this.runCount, 1);
+            data.enrolls ~= GenesisBlock.header.enrollments[0];
+
+            // Nominate it
+            auto slot_idx = this.ledger.getBlockHeight() + 1;
+            this.nominate(slot_idx, data);
+        }
+    }
+
+    static class MisbehavingValidator : TestValidatorNode
+    {
+        private shared(size_t)* runCount;
+
+        /// Ctor
+        public this (Config config, Registry* reg, immutable(Block)[] blocks,
+                     shared(size_t)* countPtr)
+        {
+            this.runCount = countPtr;
+            super(config, reg, blocks);
+        }
+
+        ///
+        protected override Nominator getNominator (
+            NetworkManager network, KeyPair key_pair, Ledger ledger,
+            TaskManager taskman)
+        {
+            return new BadNominator(
+                network, key_pair, ledger, taskman, this.runCount);
+        }
+    }
+
+    static class BadAPIManager : TestAPIManager
+    {
+        // Make sure the code in BadNominator gets executed
+        shared size_t runCount;
+
+        ///
+        public this (immutable(Block)[] blocks)
+        {
+            super(blocks);
+        }
+
+        /// see base class
+        public override void createNewNode (Config conf)
+        {
+            if (this.nodes.length == 0)
+            {
+                auto api = RemoteAPI!TestAPI.spawn!MisbehavingValidator(
+                    conf, &this.reg, this.blocks, &this.runCount, conf.node.timeout);
+                this.reg.register(conf.node.address, api.tid());
+                this.nodes ~= NodePair(conf.node.address, api);
+            }
+            else
+                super.createNewNode(conf);
+        }
+    }
+
+    auto network = makeTestNetwork!BadAPIManager(TestConf.init);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto bad_validator = network.clients[0];
+    auto validator = network.clients[1];
+
+    // Sanity check: Check if genesis block has enrollments
+    const b0 = validator.getBlocksFrom(0, 2)[0];
+    assert(b0.header.enrollments.length >= 1);
+
+    // Make a block using Genesis
+    Transaction[] txs = genesisSpendable().take(Block.TxsInBlock).enumerate()
+        .map!(en => en.value.refund(WK.Keys.A.address).sign())
+        .array();
+    txs.each!(tx => validator.putTransaction(tx));
+
+    // Make sure that the code in validator gets executed
+    size_t loopCount;
+    while (atomicLoad(network.runCount) < 1)
+    {
+        // That's at least 5 seconds
+        assert(loopCount < 500);
+        loopCount++;
+        Thread.sleep(10.msecs);
+    }
+
+    // Ensure everyone is at the same level although there is a bad Validator
+    ensureConsistency(network.clients, 1);
+}
