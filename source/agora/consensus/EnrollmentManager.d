@@ -497,7 +497,12 @@ public class EnrollmentManager
 
     public bool getNextPreimage (out PreImageInfo preimage) @safe
     {
-        auto height = Height(this.next_reveal_height + PreimageRevealPeriod * 2);
+        const enrolled = this.getEnrolledHeight(this.enroll_key);
+        if (enrolled == ulong.max)
+            return false;
+
+        const height = Height(min(this.next_reveal_height + PreimageRevealPeriod * 2,
+                                enrolled + this.params.ValidatorCycle));
         return getPreimage(height, preimage);
     }
 
@@ -1007,9 +1012,10 @@ unittest
     assert(man.needRevealPreimage(Height(16)));
 
     // If the height of the requested preimage exceeds the height of the end of
-    // the validator cycle, the `getNextPreimage` must return `false`.
+    // the validator cycle, we can get the last pre-image.
     man.next_reveal_height = 10 + man.params.ValidatorCycle;
-    assert(!man.getNextPreimage(preimage));
+    assert(man.getNextPreimage(preimage));
+    assert(preimage.hash == man.cycle.preimages[0]);
 
     // test for getting validators' UTXO keys
     Hash[] keys;
