@@ -53,7 +53,10 @@ jobs:
             source $HOME/dlang/ldc-1.21.0/activate
             ci/system_integration_test.d
             # Work around druntime setting the permissions to 600..
-            sudo chmod 644 tests/system/node/*/*.lst
+            # Need to iterate on the directory to avoid 'list arguments too long'
+            for dir in tests/system/node/*; do
+              sudo chmod 644 ${dir}/*.lst
+            done
           no_output_timeout: 15m
       - run:
           name: Upload code coverage

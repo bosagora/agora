@@ -28,13 +28,21 @@ immutable DockerComposeDown = [ "docker-compose", "-f", ComposeFile, "down", ];
 immutable DockerComposeLogs = [ "docker-compose", "-f", ComposeFile, "logs", "-t", ];
 immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
                                     "http://127.0.0.1:4000",
-                                    "http://127.0.0.1:4001",
                                     "http://127.0.0.1:4002",
-                                    "http://127.0.0.1:4003"];
+                                    "http://127.0.0.1:4003",
+                                    "http://127.0.0.1:4004",
+                                    "http://127.0.0.1:4005",
+                                    "http://127.0.0.1:4006",
+                                    "http://127.0.0.1:4007",
+];
 immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
-                      IntegrationPath.buildPath("node/1/.cache/"),
                       IntegrationPath.buildPath("node/2/.cache/"),
-                      IntegrationPath.buildPath("node/3/.cache/")];
+                      IntegrationPath.buildPath("node/3/.cache/"),
+                      IntegrationPath.buildPath("node/4/.cache/"),
+                      IntegrationPath.buildPath("node/5/.cache/"),
+                      IntegrationPath.buildPath("node/6/.cache/"),
+                      IntegrationPath.buildPath("node/7/.cache/"),
+];
 
 private int main (string[] args)
 {
@@ -70,10 +78,16 @@ private int main (string[] args)
     }
     catch (Exception e)
     {
+        // Full node only
         runCmd(DockerComposeLogs ~ "node-0");
-        runCmd(DockerComposeLogs ~ "node-1");
+
+        // Validators
         runCmd(DockerComposeLogs ~ "node-2");
         runCmd(DockerComposeLogs ~ "node-3");
+        runCmd(DockerComposeLogs ~ "node-4");
+        runCmd(DockerComposeLogs ~ "node-5");
+        runCmd(DockerComposeLogs ~ "node-6");
+        runCmd(DockerComposeLogs ~ "node-7");
         code = 1;
     }
 
