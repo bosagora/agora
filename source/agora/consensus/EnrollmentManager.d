@@ -465,7 +465,7 @@ public class EnrollmentManager
         Clear up expired validators whose cycle for a validator ends
 
         The enrollment manager clears up expired validators from the set based
-        on the block height.
+        on the block height. It also clears up the enrollment of this node.
 
         Params:
             block_height = current block height
@@ -474,6 +474,12 @@ public class EnrollmentManager
 
     public void clearExpiredValidators (Height block_height) @safe nothrow
     {
+        // clear up the enrollment of a node if the validator cycle of the node
+        // ends at the `block_height`
+        const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
+        if (block_height >= enrolled + params.ValidatorCycle)
+            this.resetNodeEnrollment();
+
         this.validator_set.clearExpiredValidators(block_height);
     }
 
@@ -512,7 +518,6 @@ public class EnrollmentManager
     {
         const enrolled_height =
             this.validator_set.getEnrolledHeight(this.enroll_key);
-        // FIXME: This function should only be called if we're enrolled
         assert(enrolled_height != ulong.max);
         const start_height = enrolled_height + 1;
         if (height < start_height)
@@ -742,6 +747,14 @@ public class EnrollmentManager
         try
         {
             () @trusted {
+                this.next_reveal_height = height;
+
+                if (height == ulong.max)
+                {
+                    this.db.execute("DELETE FROM node_enroll_data " ~
+                        "WHERE key = ?", "next_reveal_height");
+                    return;
+                }
                 auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
                     "node_enroll_data WHERE key = ?)", "next_reveal_height");
                 if (results.oneValue!(bool))
@@ -751,7 +764,6 @@ public class EnrollmentManager
                     this.db.execute("INSERT INTO node_enroll_data (key, val)" ~
                         " VALUES (?, ?)", "next_reveal_height", height.value);
 
-                this.next_reveal_height = height;
             }();
         }
         catch (Exception ex)
@@ -807,6 +819,19 @@ public class EnrollmentManager
         {
             log.error("ManagedDatabase operation error {}", ex);
         }
+    }
+
+    /***************************************************************************
+
+        Reset all the information about an enrollment of this node
+
+    ***************************************************************************/
+
+    private void resetNodeEnrollment () @safe nothrow
+    {
+        this.enroll_key = Hash.init;
+        this.data = Enrollment.init;
+        this.setNextRevealHeight(Height(ulong.max));
     }
 
     /***************************************************************************
@@ -1012,7 +1037,7 @@ unittest
     assert(man.getCycleIndex() == 4);
 }
 
-/// tests for addPreimage and getValidatorPreimage
+/// Test for adding and getting pre-images
 unittest
 {
     import agora.consensus.data.Transaction;
@@ -1038,6 +1063,12 @@ unittest
     assert(man.addValidator(enroll, Height(2), &utxo_set.findUTXO, utxos) is null);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash) == preimage);
+
+    // Check if the `needRevealPreimage` returns false after the cycle ends
+    assert(man.next_reveal_height != ulong.max);
+    man.clearExpiredValidators(Height(1010));
+    assert(man.next_reveal_height == ulong.max);
+    assert(!man.needRevealPreimage(Height(1011)));
 }
 
 /// Test `PreImageCycle` consistency between seeds and preimages
