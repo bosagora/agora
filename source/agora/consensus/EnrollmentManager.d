@@ -164,6 +164,11 @@ public class EnrollmentManager
 
         // load next height for preimage revelation
         this.next_reveal_height = this.getNextRevealHeight();
+
+        // load the count of 'populate' of `PreImageCycle`
+        const uint populate_count = this.getCycleIndex();
+        foreach (_; 0 .. populate_count)
+            this.cycle.populate(this.key_pair.v, true);
     }
 
     /***************************************************************************
@@ -289,6 +294,10 @@ public class EnrollmentManager
 
             // consume pre-images
             this.cycle.populate(this.key_pair.v, true);
+
+            // save the count of 'populate' of `PreImageCycle`
+            this.setCycleIndex(
+                (this.cycle.nonce * this.cycle.NumberOfCycles) + this.cycle.index);
         }
 
         return null;
@@ -753,6 +762,55 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the cycle index of `PreImageCycle`
+
+        Returns:
+            the cycle index
+
+    ***************************************************************************/
+
+    private uint getCycleIndex () @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute(
+                `SELECT val FROM node_enroll_data WHERE key = "cycle_index"`);
+            if (results.empty)
+                return 0;
+
+            return results.oneValue!(uint);
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error {}", ex);
+            return 0;
+        }
+    }
+
+    /***************************************************************************
+
+        Set the cycle index of `PreImageCycle`
+
+        Params:
+            cycle_index = the cycle index
+
+    ***************************************************************************/
+
+    private void setCycleIndex (uint cycle_index) @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("REPLACE into node_enroll_data " ~
+                "(key, val) VALUES (?, ?)", "cycle_index", cycle_index);
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error {}", ex);
+        }
+    }
+
+    /***************************************************************************
+
         Gets the number of active validators at the block height.
 
         `block_height` is the height of the newly created block.
@@ -949,6 +1007,9 @@ unittest
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == enroll3.utxo_key);
+
+    // check the cycle count for enrollment
+    assert(man.getCycleIndex() == 4);
 }
 
 /// tests for addPreimage and getValidatorPreimage
