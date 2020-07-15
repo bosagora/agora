@@ -277,7 +277,7 @@ public class EnrollmentManager
 
     public string addValidator (const ref Enrollment enroll,
         Height block_height, scope UTXOFinder finder,
-        const UTXOSetValue[Hash] self_utxos) @safe
+        const UTXOSetValue[Hash] self_utxos) @safe nothrow
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
@@ -641,7 +641,15 @@ public class EnrollmentManager
         scope UTXOFinder finder, const ref UTXOSetValue[Hash] self_utxos)
         @safe nothrow
     {
-        this.validator_set.restoreValidators(last_height, block, finder);
+        assert(last_height >= block.header.height);
+        if (last_height - block.header.height < this.params.ValidatorCycle)
+        {
+            foreach (const ref enroll; block.header.enrollments)
+            {
+                this.addValidator(enroll, block.header.height, finder,
+                    self_utxos);
+            }
+        }
     }
 
     /***************************************************************************

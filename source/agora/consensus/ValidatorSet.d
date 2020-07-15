@@ -447,33 +447,6 @@ public class ValidatorSet
 
         return true;
     }
-
-    /***************************************************************************
-
-        Restore validators' information from block
-
-        Params:
-            last_height = the latest block height
-            block = the block to update the validator set with
-            finder = the delegate to find UTXOs with
-
-    ***************************************************************************/
-
-    public void restoreValidators (Height last_height, const ref Block block,
-        scope UTXOFinder finder) @safe nothrow
-    {
-        assert(last_height >= block.header.height);
-        if (last_height - block.header.height < this.params.ValidatorCycle)
-        {
-            foreach (const ref enroll; block.header.enrollments)
-            {
-                if (auto r = this.add(block.header.height, finder, enroll))
-                {
-                    assert(0, r);
-                }
-            }
-        }
-    }
 }
 
 version (unittest)
@@ -634,51 +607,4 @@ unittest
     assert(set.count == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
-}
-
-/// test for restroing information about validators from blocks
-unittest
-{
-    import agora.consensus.data.Transaction;
-    import std.algorithm;
-    import std.range;
-
-    scope storage = new TestUTXOSet;
-    scope set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
-
-    genesisSpendable().take(8).enumerate
-        .map!(en => en.value.sign(TxType.Freeze))
-        .each!(tx => storage.put(tx));
-    Hash[] utxos = storage.keys;
-
-    // create enrollments
-    Enrollment[] enrolls;
-    Scalar[] seeds = [ Scalar.random(), Scalar.random() ];
-    enrolls ~= createEnrollment(utxos[0], WK.Keys.Genesis, seeds[0],
-        set.params.ValidatorCycle);
-    enrolls ~= createEnrollment(utxos[1], WK.Keys.Genesis, seeds[1],
-        set.params.ValidatorCycle);
-
-    // make test blocks used for restoring validator set
-    Block[] blocks;
-    Height last_height = Height(set.params.ValidatorCycle);
-    foreach (ulong i; 0 .. last_height + 1)
-    {
-        Block block;
-        block.header.height = Height(i);
-        blocks ~= block;
-    }
-
-    // add enrollment data to the block at the height of 100
-    blocks[100].header.enrollments ~= enrolls[0];
-    blocks[100].header.enrollments ~= enrolls[1];
-
-    // restore validators' information from blocks
-    foreach (const ref Block block; blocks)
-        set.restoreValidators(last_height, block, &storage.findUTXO);
-
-    assert(set.getEnrolledHeight(enrolls[0].utxo_key) ==
-                blocks[100].header.height);
-    assert(set.getEnrolledHeight(enrolls[1].utxo_key) ==
-                blocks[100].header.height);
 }
