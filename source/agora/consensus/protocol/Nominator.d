@@ -231,7 +231,7 @@ extern(D):
 
     ***************************************************************************/
 
-    private void nominate (ulong slot_idx, ConsensusData next) @trusted
+    protected void nominate (ulong slot_idx, ConsensusData next) @trusted
     {
         log.info("{}(): Proposing tx set for slot {}", __FUNCTION__, slot_idx);
 

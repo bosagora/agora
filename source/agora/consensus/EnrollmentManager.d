@@ -422,6 +422,37 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Check if an enrollment is a valid candidate for the proposed height
+
+        Params:
+            enroll = The enrollment of the target to be checked
+            height = the height of proposed block
+            findUTXO = delegate to find the referenced unspent UTXOs with
+
+        Returns:
+            `null` if the enrollment can be a validator at the proposed height,
+            otherwise a string explaining the reason it is invalid.
+
+    ***************************************************************************/
+
+    public string isInvalidCandidateReason (const ref Enrollment enroll,
+        Height height, scope UTXOFinder findUTXO) @safe nothrow
+    {
+        if (auto fail_reason = enroll.isInvalidReason(findUTXO))
+            return fail_reason;
+
+        const enrolled = this.validator_set.getEnrolledHeight(enroll.utxo_key);
+        if (enrolled != ulong.max &&
+            height < (enrolled + this.params.ValidatorCycle))
+        {
+            return "Enrollment: Duplicated enrollments";
+        }
+
+        return null;
+    }
+
+    /***************************************************************************
+
         Clear up expired validators whose cycle for a validator ends
 
         The enrollment manager clears up expired validators from the set based

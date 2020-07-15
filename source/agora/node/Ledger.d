@@ -398,10 +398,9 @@ public class Ledger
 
         foreach (enroll; data.enrolls)
         {
-            if (auto fail_reason = enroll.isInvalidReason(utxo_finder))
-            {
+            if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
+                enroll, expect_height, utxo_finder))
                 return fail_reason;
-            }
         }
 
         return null;
