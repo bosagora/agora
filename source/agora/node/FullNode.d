@@ -14,6 +14,8 @@
 module agora.node.FullNode;
 
 import agora.api.FullNode;
+import agora.api.handler.BlockExternalizedHandler;
+import agora.api.handler.PreImageReceivedHandler;
 import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -106,6 +108,12 @@ public class FullNode : API
     /// If a custom genesis block is set it will be stored here
     private immutable Block genesis_block;
 
+    /// Block Externalized Handler list
+    protected BlockExternalizedHandler[Address] block_handlers;
+
+    /// PreImage Received Handler list
+    protected PreImageReceivedHandler[Address] preimage_handlers;
+
     /***************************************************************************
 
         Constructor
@@ -149,6 +157,18 @@ public class FullNode : API
             this.storage, this.enroll_man, this.pool, onValidatorsChanged);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
+
+        // Make `BlockExternalizedHandler` from config
+        foreach (address;
+            config.event_handlers.block_externalized_handler_addresses)
+            this.block_handlers[address] = this.network
+                .getBlockExternalizedHandler(address);
+
+        // Make `PreImageReceivedHandler` from config
+        foreach (address;
+            config.event_handlers.preimage_updated_handler_addresses)
+            this.preimage_handlers[address] = this.network
+                .getPreimageReceivedHandler(address);
     }
 
     /***************************************************************************
@@ -465,5 +485,66 @@ public class FullNode : API
 
     protected void onAcceptedTransaction () @safe
     {
+    }
+
+    /***************************************************************************
+
+        Push the block data to the `block_handlers` target server list
+        set in config.
+
+        Convert block data to JSON serialization and send it POST using Rest.
+
+        Params:
+            block = externalized block data
+
+    ***************************************************************************/
+
+    private void pushBlock (const Block block) @safe
+    {
+        foreach (address, handler; this.block_handlers)
+        {
+            runTask({
+                try
+                {
+                    handler.pushBlock(block);
+                }
+                catch (Exception e)
+                {
+                    log.error("Error sending block height #{} to {} :{}",
+                        block.header.height, address, e);
+                }
+            });
+        }
+    }
+
+    /***************************************************************************
+
+        Push the preimage to the `preimage_handlers` target server list
+        set in config.
+
+        Convert `PreImageInfo` to JSON serialization and send it POST
+        using Rest.
+
+        Params:
+            preImage = Received `PreImageInfo`
+
+    ***************************************************************************/
+
+    private void pushPreImage (const PreImageInfo pre_image) @safe
+    {
+        foreach (address, handler; this.preimage_handlers)
+        {
+            runTask({
+                try
+                {
+                    handler.pushPreImage(pre_image);
+                }
+                catch (Exception e)
+                {
+                    log.error("Error sending preImage (enroll_key: {}) to {} :{}",
+                        pre_image.enroll_key, address, e);
+                }
+            });
+        }
     }
 }

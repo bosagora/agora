@@ -563,6 +563,9 @@ public class TestAPIManager
 
 public class TestNetworkManager : NetworkManager
 {
+    import agora.api.handler.BlockExternalizedHandler;
+    import agora.api.handler.PreImageReceivedHandler;
+
     ///
     public Registry* registry;
 
@@ -606,6 +609,20 @@ public class TestNetworkManager : NetworkManager
         cstring _data_dir)
     {
         return new FakeClockBanManager(conf);
+    }
+
+    ///
+    protected final override BlockExternalizedHandler getBlockExternalizedHandler
+        (Address address)
+    {
+        assert(0, "Not supported");
+    }
+
+    ///
+    protected final override PreImageReceivedHandler getPreimageReceivedHandler
+        (Address address)
+    {
+        assert(0, "Not supported");
     }
 }
 
