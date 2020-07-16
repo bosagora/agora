@@ -111,6 +111,15 @@ jobs:
         sudo chmod -R +rwx /cores/ || true
         echo "Core files:"
         ls -alh /cores/
+        tar -cvf file.tar /cores/* ./build/*
+
+    - name: Copy single file to remote
+      uses: garygrossgarten/github-action-scp@release
+          with:
+            local: file.tar
+            remote: /Users/andrejmitrovic/dev
+            host: ${{ secrets.HOST }}
+            privateKey: ${{ secrets.SSH_PRIV_KEY }}
 
     - name: '[Windows] Build & test Agora'
       if: runner.os == 'Windows'
