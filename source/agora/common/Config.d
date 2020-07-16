@@ -87,6 +87,9 @@ public struct Config
 
     /// Logging config
     public LoggingConfig logging;
+
+    /// Event handler config
+    public EventHandlerConfig event_handlers;
 }
 
 /// Node config
@@ -158,6 +161,16 @@ public struct LoggingConfig
 
     /// The logging level
     LogLevel log_level = LogLevel.Error;
+}
+
+/// Configuration for URLs to push a data when an event occurs
+public struct EventHandlerConfig
+{
+    /// URLs to push a data when a block is externalized
+    public immutable string[] block_externalized_handler_addresses;
+
+    /// URLs to push a data when a pre-image is updated
+    public immutable string[] preimage_updated_handler_addresses;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
@@ -265,6 +278,7 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns", true)),
         logging: parseLoggingSection("logging" in root, cmdln),
+        event_handlers: parserEventHandlers("event_handlers" in root, cmdln),
     };
 
     enforce(conf.network.length > 0, "Network section is empty");
@@ -559,4 +573,84 @@ unittest
 
     auto scp_quorum = toSCPQuorumSet(quorum);
     assert(scp_quorum.toQuorumConfig() == quorum);
+}
+
+/*******************************************************************************
+
+    Parse the `event_handlers` config section
+
+    Params:
+        ptr = pointer to the Yaml node containing the event_handlers configuration
+        c = the parsed command line arguments, for override
+
+    Returns:
+        the parsed event handlers
+
+*******************************************************************************/
+
+private EventHandlerConfig parserEventHandlers (Node* node, const ref CommandLine c)
+{
+    if (node is null)
+        return EventHandlerConfig.init;
+
+    const(string)[] parseSequence (Node node, string section)
+    {
+        if (auto val = section in c.overrides)
+            return *val;
+
+        auto elem = section in node;
+        if (elem is null)
+            return null;
+
+        enforce(elem.type == NodeType.sequence,
+            format("`%s` section must be a sequence", section));
+
+        string[] result;
+        foreach (string item; *elem)
+            result ~= item;
+
+        return result;
+    }
+
+    EventHandlerConfig handlers =
+    {
+        block_externalized_handler_addresses: 
+            assumeUnique(parseSequence(*node, "block_externalized")),
+        preimage_updated_handler_addresses: 
+            assumeUnique(parseSequence(*node, "preimage_received"))
+    };
+    
+    return handlers;
+}
+
+///
+unittest
+{
+    // If the node does not exist
+    {
+        CommandLine cmdln;
+        immutable conf_example = `
+noexist_event_handlers:
+`;
+        auto node = Loader.fromString(conf_example).load();
+        auto conf = parserEventHandlers("event_handlers" in node, cmdln);
+        assert(conf.block_externalized_handler_addresses.length == 0);
+        assert(conf.preimage_updated_handler_addresses.length == 0);
+    }
+
+    // If the nodes and values exist
+    {
+        CommandLine cmdln;
+        immutable conf_example = `
+event_handlers:
+  block_externalized:
+    - http://127.0.0.1:3836
+  preimage_received:
+    - http://127.0.0.1:3836
+`;
+        auto node = Loader.fromString(conf_example).load();
+        auto conf = parserEventHandlers("event_handlers" in node, cmdln);
+        assert(conf.block_externalized_handler_addresses == [ `http://127.0.0.1:3836` ]);
+        assert(conf.preimage_updated_handler_addresses == [ `http://127.0.0.1:3836` ]);
+    }
 }

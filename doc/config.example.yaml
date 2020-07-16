@@ -85,3 +85,14 @@ dns:
 logging:
   # Values: Trace, Info, Warn, Error, Fatal, None (default)
   level: None
+
+################################################################################
+##                               Event Handlers                               ##
+################################################################################
+event_handlers:
+  # URLs to push a data when a block is externalized. (path is "/block_externalized")
+  block_externalized:
+    - http://127.0.0.1:3836/block_externalized
+  # URLs to push a data when a pre-image is updated. (path is "/preimage_received")
+  preimage_received:
+    - http://127.0.0.1:3836/preimage_received
