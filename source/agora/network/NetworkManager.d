@@ -23,6 +23,8 @@
 module agora.network.NetworkManager;
 
 import agora.api.Validator;
+import agora.api.handler.BlockExternalizedHandler;
+import agora.api.handler.PreImageReceivedHandler;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -823,6 +825,62 @@ public class NetworkManager
         // allocates, called infrequently though
         return format("http://%s:%s", this.node_config.address,
             this.node_config.port);
+    }
+
+    /***************************************************************************
+
+        Instantiates a client object implementing `BlockExternalizedHandler`
+
+        In the default implementation, this returns a `BlockExternalizedHandler`
+
+        Params:
+            address = The address (IPv4, IPv6, hostname) of target Server
+        Returns:
+            A BlockExternalizedHandler to communicate with the server
+            at `address`
+
+    ***************************************************************************/
+
+    public BlockExternalizedHandler getBlockExternalizedHandler
+        (Address address)
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = this.node_config.timeout;
+        settings.httpClientSettings.readTimeout = this.node_config.timeout;
+
+        return new RestInterfaceClient!BlockExternalizedHandler(settings);
+    }
+
+    /***************************************************************************
+
+        Instantiates a client object implementing `PreImageReceivedHandler`
+
+        In the default implementation, this returns a `PreImageReceivedHandler`
+
+        Params:
+            address = The address (IPv4, IPv6, hostname) of target Server
+        Returns:
+            A PreImageReceivedHandler to communicate with the server
+            at `address`
+
+    ***************************************************************************/
+
+    public PreImageReceivedHandler getPreimageReceivedHandler
+        (Address address)
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = this.node_config.timeout;
+        settings.httpClientSettings.readTimeout = this.node_config.timeout;
+
+        return new RestInterfaceClient!PreImageReceivedHandler(settings);
     }
 }
 
