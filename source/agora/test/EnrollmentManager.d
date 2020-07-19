@@ -443,3 +443,32 @@ unittest
     // Ensure everyone is at the same level although there is a bad Validator
     ensureConsistency(network.clients, 1);
 }
+
+/// Situation: After the network starts, the Genesis block already has
+///     enrollments and the validators must reveal their pre-images
+/// Expectation: The validators reveal their pre-images timely and the
+///     pre-images are shared in the network
+unittest
+{
+    TestConf conf = {
+        validator_cycle : 20,
+    };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    // Check if the genesis block has enrollments
+    auto nodes = network.clients;
+    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
+    assert(b0.header.enrollments.length >= 1);
+    const e0 = b0.header.enrollments[0];
+
+    // Wait for the revelation of new pre-image to complete
+    const org_preimage = PreImageInfo(e0.utxo_key, e0.random_seed, 0);
+    PreImageInfo preimage_2;
+    retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(e0.utxo_key)),
+        15.seconds);
+    assert(preimage_2 != PreImageInfo.init);
+}

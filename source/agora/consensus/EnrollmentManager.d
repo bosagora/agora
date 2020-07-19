@@ -390,7 +390,7 @@ public class EnrollmentManager
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
         assert(offset < cache.length);
-        cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
+        cache.reset(hashMulti(kp.v, "consensus.preimages", cast(uint)offset));
 
         return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
