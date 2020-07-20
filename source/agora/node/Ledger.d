@@ -76,9 +76,12 @@ public class Ledger
     /// Node config
     private NodeConfig node_config;
 
-    /// If not null call this delegate if the validator set changed after
-    /// a block was externalized
+    /// If not null call this delegate when a new block was added to the ledger
     private void delegate () nothrow @safe onValidatorsChanged;
+
+    /// If not null call this delegate
+    /// A block was externalized
+    private void delegate (const Block) @safe onAcceptedBlock;
 
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
@@ -94,6 +97,8 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             pool = the transaction pool
+            onAcceptedBlock = optional delegate to call
+                              when a block was added to the ledger
             onValidatorsChanged = optional delegate to call after the validator
                                   set changes when a block was externalized
 
@@ -103,6 +108,7 @@ public class Ledger
         NodeConfig node_config, immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
+        void delegate (const Block) @safe onAcceptedBlock = null,
         void delegate () nothrow @safe onValidatorsChanged = null)
     {
         this.node_config = node_config;
@@ -111,6 +117,7 @@ public class Ledger
         this.storage = storage;
         this.enroll_man = enroll_man;
         this.pool = pool;
+        this.onAcceptedBlock = onAcceptedBlock;
         this.onValidatorsChanged = onValidatorsChanged;
         if (!this.storage.load(GenesisBlock))
             assert(0);
@@ -246,6 +253,7 @@ public class Ledger
         and add all of its outputs to the UTXO set.
         If there are any enrollments in the block,
         add enrollments to the validator set.
+        If not null call the `onAcceptedBlock` delegate.
 
         Params:
             block = the block to add
@@ -275,6 +283,9 @@ public class Ledger
 
         if (this.onValidatorsChanged !is null && validators_changed)
             this.onValidatorsChanged();
+
+        if (this.onAcceptedBlock !is null)
+            this.onAcceptedBlock(block);
     }
 
     /***************************************************************************

@@ -154,7 +154,8 @@ public class FullNode : API
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.node, params);
         this.ledger = new Ledger(config.node, params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, onValidatorsChanged);
+            this.storage, this.enroll_man, this.pool, &this.pushBlock,
+            onValidatorsChanged);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 
@@ -169,6 +170,11 @@ public class FullNode : API
             config.event_handlers.preimage_updated_handler_addresses)
             this.preimage_handlers[address] = this.network
                 .getPreimageReceivedHandler(address);
+
+        // Special case
+        // Block externalized handler is set and push for Genesis block.
+        if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
+            this.pushBlock(GenesisBlock);
     }
 
     /***************************************************************************
