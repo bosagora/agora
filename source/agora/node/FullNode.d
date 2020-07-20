@@ -467,7 +467,10 @@ public class FullNode : API
         log.trace("Received Preimage: {}", prettify(preimage));
 
         if (this.enroll_man.addPreimage(preimage))
+        {
             this.network.sendPreimage(preimage);
+            this.pushPreImage(preimage);
+        }
     }
 
     /// GET: /preimage
