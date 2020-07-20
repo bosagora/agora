@@ -221,3 +221,79 @@ unittest
     // Check if a new pre-image has been revealed from the restarted node
     assert(preimage_2.isValid(org_preimage, validator_cycle));
 }
+
+// Situation: A pre-image already known by all nodes is sent on the network
+// Expectation: The new pre-image is rejected because it's already known
+unittest
+{
+    import agora.common.Config;
+    import geod24.Registry;
+
+    /// A node that will assert if it gets more than 400 calls to
+    /// `receivePreimage`.
+    static final class TestNode : TestValidatorNode
+    {
+        private size_t count;
+
+        ///
+        public this (Config config, Registry* reg, immutable(Block)[] blocks)
+        {
+            super(config, reg, blocks);
+        }
+
+        public override void receivePreimage (PreImageInfo preimage)
+        {
+            this.count++;
+            assert(this.count < 100);
+            super.receivePreimage(preimage);
+        }
+    }
+
+    static final class BadAPIManager : TestAPIManager
+    {
+        ///
+        public this (immutable(Block)[] blocks)
+        {
+            super(blocks);
+        }
+
+        /// see base class
+        public override void createNewNode (Config conf)
+        {
+            if (this.nodes.length == 0)
+            {
+                assert(conf.node.is_validator);
+                auto node = RemoteAPI!TestAPI.spawn!TestNode(
+                    conf, &this.reg, this.blocks, conf.node.timeout);
+                this.reg.register(conf.node.address, node.ctrl.tid());
+                this.nodes ~= NodePair(conf.node.address, node);
+            }
+            else
+                super.createNewNode(conf);
+        }
+    }
+
+    auto network = makeTestNetwork!BadAPIManager(TestConf.init);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    const blocks = network.clients.front().getBlocksFrom(0, 1);
+    assert(blocks.length == 1);
+    assert(blocks[0].header.enrollments.length >= 1);
+    const enroll = blocks[0].header.enrollments[0];
+
+    const known_preimage = network.clients.front().getPreimage(enroll.utxo_key);
+    assert(known_preimage.distance == 0);
+    assert(known_preimage.hash == enroll.random_seed);
+    // Send the same pre-image as received
+    network.clients().front().receivePreimage(
+        PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+
+    // Just to be sure, in case this unittest runs last
+    Thread.sleep(50.msecs);
+
+    assert(network.clients().each!(
+               client => client.getPreimage(enroll.utxo_key).distance == 0));
+}
