@@ -53,8 +53,8 @@ public string isInvalidReason (const ref PreImageInfo new_image,
     if (new_image.enroll_key != prev_image.enroll_key)
         return "The pre-image's enrollment key differs from its descendant";
 
-    if (new_image.distance < prev_image.distance)
-        return "The height of new pre-image is smaller than that of previous one";
+    if (new_image.distance <= prev_image.distance)
+        return "The height of new pre-image is not greater than that of the previous one";
 
     if (new_image.distance > validator_cycle)
         return "The hashing count of two pre-images is above the validator cycle";
