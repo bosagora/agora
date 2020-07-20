@@ -160,7 +160,7 @@ public struct LoggingConfig
         "Type must be shareable accross threads");
 
     /// The logging level
-    LogLevel log_level = LogLevel.Error;
+    LogLevel level = LogLevel.Error;
 }
 
 /// Configuration for URLs to push a data when an event occurs
@@ -396,7 +396,7 @@ private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLi
 private LoggingConfig parseLoggingSection (Node* ptr, const ref CommandLine c)
 {
     LoggingConfig ret;
-    ret.log_level = opt!(LogLevel, "logging", "level")(c, ptr, LogLevel.Error);
+    ret.level = get!(LogLevel, "logging", "level")(c, ptr);
     return ret;
 }
 
@@ -415,11 +415,11 @@ logging:
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseLoggingSection("logging" in node, cmdln);
-        assert(config.log_level == LogLevel.Trace);
+        assert(config.level == LogLevel.Trace);
 
         cmdln.overrides["logging.level"] = [ "None" ];
         auto config2 = parseLoggingSection("logging" in node, cmdln);
-        assert(config2.log_level == LogLevel.None);
+        assert(config2.level == LogLevel.None);
     }
 
     {
@@ -430,11 +430,11 @@ logging:
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseLoggingSection("logging" in node, cmdln);
-        assert(config.log_level == LogLevel.Error);
+        assert(config.level == LogLevel.Error);
 
         cmdln.overrides["logging.level"] = [ "Trace" ];
         auto config2 = parseLoggingSection("logging" in node, cmdln);
-        assert(config2.log_level == LogLevel.Trace);
+        assert(config2.level == LogLevel.Trace);
     }
 }
 
