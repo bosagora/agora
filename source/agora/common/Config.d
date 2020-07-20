@@ -614,12 +614,12 @@ private EventHandlerConfig parserEventHandlers (Node* node, const ref CommandLin
 
     EventHandlerConfig handlers =
     {
-        block_externalized_handler_addresses: 
+        block_externalized_handler_addresses:
             assumeUnique(parseSequence(*node, "block_externalized")),
-        preimage_updated_handler_addresses: 
+        preimage_updated_handler_addresses:
             assumeUnique(parseSequence(*node, "preimage_received"))
     };
-    
+
     return handlers;
 }
 
