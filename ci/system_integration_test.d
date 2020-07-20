@@ -9,6 +9,7 @@ import std.format;
 import std.path;
 import std.process;
 import std.stdio;
+import core.sys.posix.signal;
 
 /// Root of the repository
 immutable RootPath = __FILE_FULL_PATH__.dirName.dirName;
@@ -22,7 +23,7 @@ immutable ComposeFile = IntegrationPath.buildPath("docker-compose.yml");
 immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
                        "-t", "agora", RootPath, ];
 immutable TestContainer = [ "docker", "run", "agora", "--help", ];
-immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", "-d", ];
+immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", "--abort-on-container-exit", ];
 immutable DockerComposeDown = [ "docker-compose", "-f", ComposeFile, "down", ];
 immutable DockerComposeLogs = [ "docker-compose", "-f", ComposeFile, "logs", "-t", ];
 immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
@@ -37,6 +38,10 @@ immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
 
 private int main (string[] args)
 {
+    // Use a recognizable value so that if an unexpected code path is taken,
+    // we see it. Success sets this to 0, failure to 1.x
+    int code = 42;
+
     // If the user pass `nobuild` as first argument, skip docker image build,
     // which is the most expensive operation this script performs
     if (args.length < 2 || args[1] != "nobuild")
@@ -49,19 +54,38 @@ private int main (string[] args)
     // as the docker-compose bind volumes
     runCmd(Cleanup);
 
-    // Now run the tests
-    runCmd(DockerComposeUp);
-    scope (exit) runCmd(DockerComposeDown);
-    scope (failure)
+    // We need to have a "foreground" process to use `--abort-on-container-exit`
+    // This option allows us to detect when the node stops / crash even before
+    // the test starts (or after it completes).
+    // So we start this process with `spawnProcess` and kill it with SIGINT,
+    // simulating a CTRL+C
+    writeln(DockerComposeUp);
+    auto upPid = spawnProcess(DockerComposeUp);
+
+    try
+    {
+        // Now run the tests
+        runCmd(RunIntegrationTests);
+        code = 0;
+    }
+    catch (Exception e)
     {
         runCmd(DockerComposeLogs ~ "node-0");
         runCmd(DockerComposeLogs ~ "node-1");
         runCmd(DockerComposeLogs ~ "node-2");
         runCmd(DockerComposeLogs ~ "node-3");
+        code = 1;
     }
-    runCmd(RunIntegrationTests);
 
-    return 0;
+    upPid.kill(SIGINT);
+    if (auto upCode = upPid.wait())
+    {
+        writeln("docker-compose up returned error code: ", upCode);
+        code = 1;
+    }
+    runCmd(DockerComposeDown);
+
+    return code;
 }
 
 /// Utility function to run a command and throw on error
