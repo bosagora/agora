@@ -72,7 +72,7 @@ private int main (string[] args)
             // Multiple nodes simultaneously output logs to the console.
             // To reduce complexity, only errors are printed.
             // Other improvements are needed in the future.
-            config.logging.log_level = LogLevel.Error;
+            config.logging.level = LogLevel.Error;
 
             // Change the network address of the nodes.
             string[] converted_network;

@@ -43,7 +43,7 @@ mixin AddLogger!();
 
 public FullNode runNode (Config config)
 {
-    Log.root.level(config.logging.log_level, true);
+    Log.root.level(config.logging.level, true);
     log.trace("Config is: {}", config);
 
     auto settings = new HTTPServerSettings(config.node.address);
