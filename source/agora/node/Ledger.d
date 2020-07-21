@@ -836,7 +836,9 @@ private KeyPair[] getRandomKeyPairs ()
     return res;
 }
 
-// Use a transaction with the type 'TxType.Freeze' to create a block and test UTXOSet.
+/// Situation : Create two blocks, one containing only `Payment` transactions,
+///             the other containing only `Freeze` ones
+/// Expectation: Block creation succeeds
 unittest
 {
     NodeConfig config = {
@@ -845,46 +847,24 @@ unittest
     };
     scope ledger = new TestLedger(config);
 
-    const(KeyPair)[] in_key_pairs =
-        iota(Block.TxsInBlock).map!(_ => WK.Keys.Genesis).array();
-    KeyPair[] out_key_pairs;
-    Transaction[] last_txs;
-
-    out_key_pairs = getRandomKeyPairs();
-
-    // generate transactions to form a block
-    void genBlockTransactions (size_t count, TxType tx_type)
-    {
-        foreach (idx; 0 .. count)
-        {
-            auto txes = makeTransactionForFreezing (
-                in_key_pairs,
-                out_key_pairs,
-                tx_type,
-                last_txs,
-                GenesisBlock.txs[1]);
-
-            txes.each!((tx)
-                {
-                    assert(ledger.acceptTransaction(tx));
-                });
-            ledger.forceCreateBlock();
-
-            // keep track of last tx's to chain them to
-            last_txs = txes[$ - Block.TxsInBlock .. $];
-
-            in_key_pairs = out_key_pairs;
-            out_key_pairs = getRandomKeyPairs();
-        }
-    }
-
-    genBlockTransactions(1, TxType.Payment);
+    // Generate payment transactions to the first 8 well-known keypairs
+    auto txs = genesisSpendable().enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 2);
     assert(blocks[1].header.height == 1);
 
-    genBlockTransactions(1, TxType.Freeze);
+    // Now generate a block with only freezing transactions
+    txs.enumerate()
+        .map!(en => TxBuilder(en.value)
+              .refund(WK.Keys[Block.TxsInBlock + en.index].address)
+              .sign(TxType.Freeze))
+        .each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 2);
     blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 3);
