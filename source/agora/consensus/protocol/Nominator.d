@@ -179,6 +179,14 @@ extern(D):
         if (data.tx_set.length == 0)
             return;  // not ready yet
 
+        // check whether the consensus data is valid before nominating it.
+        if (auto msg = this.ledger.validateConsensusData(data))
+        {
+            log.fatal("tryNominate(): Invalid consensus data: {}. Data: {}",
+                    msg, data);
+            return;
+        }
+
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
         auto slot_idx = this.ledger.getBlockHeight() + 1;
