@@ -53,7 +53,7 @@ jobs:
     - name: '[OSX] Install dependencies & setup environment'
       if: runner.os == 'macOS'
       run: |
-        brew install pkg-config
+        brew install coreutils pkg-config
         ./ci/ci_osx_setup.sh
         echo ::set-env name=LIBRARY_PATH::${LD_LIBRARY_PATH-}:/usr/local/lib/
         echo ::set-env name=PKG_CONFIG_PATH::/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/
