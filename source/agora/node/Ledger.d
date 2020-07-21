@@ -895,18 +895,6 @@ unittest
     Transaction[] last_txs_freeze;
 
     Transaction[] splited_txex;
-    // Divide 8 'Outputs' that are included in Genesis Block by 40,000
-    // It generates eight addresses and eight transactions,
-    // and one transaction has eight Outputs with a value of 40,000 values.
-    void splitGenesis ()
-    {
-        splited_txex = splitGenesisTransaction(splited_keys);
-        splited_txex.each!((tx)
-        {
-            assert(ledger.acceptTransaction(tx));
-        });
-        ledger.forceCreateBlock();
-    }
 
     in_key_pairs_normal.length = 0;
     foreach (idx; 0 .. Block.TxsInBlock)
@@ -978,7 +966,21 @@ unittest
         }
     }
 
-    splitGenesis();
+    // Divide 8 'Outputs' that are included in Genesis Block by 40,000
+    // It generates eight addresses and eight transactions,
+    // and one transaction has eight Outputs with a value of 40,000 values.
+    splited_txex = () {
+        Transaction[] txs;
+        foreach (idx; 0 .. Block.TxsInBlock)
+        {
+            txs ~= TxBuilder(GenesisBlock.txs[1], idx)
+                .split(splited_keys[idx].address.repeat(Block.TxsInBlock))
+                .sign();
+        }
+        return txs;
+    }();
+    splited_txex.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
 
     genNormalBlockTransactions(1);
@@ -1034,27 +1036,6 @@ unittest
     assert(ledger.enroll_man.getEnrolledUTXOs(keys));
     assert(keys.length == /* Genesis */ 6 + 3 /* New ones */);
     assert(ledger.getBlockHeight() == validator_cycle + 4 - 1);
-}
-
-version (unittest)
-private Transaction[] splitGenesisTransaction (
-    KeyPair[] out_key, Amount amount = Amount.MinFreezeAmount)
-{
-    Transaction[] txes;
-    const gen_tx_hash = GenesisBlock.txs[1].hashFull();
-    foreach (idx; 0 .. Block.TxsInBlock)
-    {
-        Transaction tx = {TxType.Payment, [], []};
-        tx.inputs ~= Input(gen_tx_hash, idx);
-        foreach (idx2; 0 .. Block.TxsInBlock)
-            tx.outputs ~= Output(amount, out_key[idx].address);
-
-        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        txes ~= tx;
-    }
-
-    return txes;
 }
 
 // generate genesis with a freeze & payment tx, and 'count' number of
