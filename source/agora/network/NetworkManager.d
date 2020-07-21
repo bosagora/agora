@@ -216,13 +216,16 @@ public class NetworkManager
         /// queue (unless they were banned)
         private DList!NetworkClient clients;
 
+        /// Convenience alias
+        public alias Callback = void delegate (Set!Address addresses);
+
         /// Called when we have retrieved a set of addresses from a client
-        private void delegate (Set!Address addresses) onNewAddresses;
+        private Callback onNewAddresses;
 
 
         /***********************************************************************
 
-            Ctor
+            Constructor
 
             Params:
                 onNewAddresses = called when a set of addresses were retrieved
@@ -230,7 +233,7 @@ public class NetworkManager
 
         ***********************************************************************/
 
-        public this (void delegate (Set!Address addresses) onNewAddresses)
+        public this (Callback onNewAddresses) @safe pure nothrow @nogc
         {
             this.onNewAddresses = onNewAddresses;
         }
