@@ -23,12 +23,6 @@ banman:
   ban_duration: 86400
 
 ################################################################################
-##                          Administrative interface                          ##
-################################################################################
-admin:
-  enabled: false
-
-################################################################################
 ##                               Node discovery                               ##
 ##                                                                            ##
 ## When the network first starts, we need to connect to some peers to learn   ##

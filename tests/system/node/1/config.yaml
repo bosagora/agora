@@ -30,14 +30,6 @@ banman:
   ban_duration: 86400
 
 ################################################################################
-##                          Administrative interface                          ##
-################################################################################
-admin:
-  enabled: false
-  address: 127.0.0.1
-  port:    2827
-
-################################################################################
 ##                               Node discovery                               ##
 ##                                                                            ##
 ## When the network first starts, we need to connect to some peers to learn   ##
