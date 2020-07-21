@@ -66,19 +66,6 @@ public void setGenesisBlock (immutable Block* block)
 
 /*******************************************************************************
 
-    Returns:
-        a reference to the genesis transaction
-
-*******************************************************************************/
-
-pragma(inline, true)
-public ref immutable(Transaction) GenesisTransaction () nothrow @safe @nogc
-{
-    return gen_block.txs[1];
-}
-
-/*******************************************************************************
-
     The genesis block as used by most unittests
 
     Note that this is more of a 'test' block than a 'unittest' block,

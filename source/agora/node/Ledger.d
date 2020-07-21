@@ -862,7 +862,7 @@ unittest
                 out_key_pairs,
                 tx_type,
                 last_txs,
-                GenesisTransaction);
+                GenesisBlock.txs[1]);
 
             txes.each!((tx)
                 {
@@ -1061,10 +1061,11 @@ private Transaction[] splitGenesisTransaction (
     KeyPair[] out_key, Amount amount = Amount.MinFreezeAmount)
 {
     Transaction[] txes;
+    const gen_tx_hash = GenesisBlock.txs[1].hashFull();
     foreach (idx; 0 .. Block.TxsInBlock)
     {
         Transaction tx = {TxType.Payment, [], []};
-        tx.inputs ~= Input(hashFull(GenesisTransaction), idx);
+        tx.inputs ~= Input(gen_tx_hash, idx);
         foreach (idx2; 0 .. Block.TxsInBlock)
             tx.outputs ~= Output(amount, out_key[idx].address);
 
@@ -1085,7 +1086,7 @@ private const(Block)[] genBlocksToIndex (
     // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
     Transaction[] gen_txs;
     // need mutable
-    gen_txs ~= GenesisTransaction().serializeFull.deserializeFull!Transaction;
+    gen_txs ~= GenesisBlock.txs[1].serializeFull.deserializeFull!Transaction;
 
     Transaction freeze_tx =
     {
