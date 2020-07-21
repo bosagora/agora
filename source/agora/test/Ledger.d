@@ -213,7 +213,7 @@ unittest
             UTXOSetValue(
                 0,
                 TxType.Payment,
-                GenesisTransaction.outputs[0]
+                GenesisBlock.txs[1].outputs[0]
             );
             return true;
         }, Height(0)));
