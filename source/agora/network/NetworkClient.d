@@ -310,7 +310,8 @@ class NetworkClient
     ***************************************************************************/
 
     private auto attemptRequest (alias endpoint, Throw DT,
-        LogLevel log_level = LogLevel.Trace, Args...)(auto ref Args args)
+        LogLevel log_level = LogLevel.Trace, Args...)
+        (auto ref Args args, string file = __FILE__, uint line = __LINE__)
     {
         import std.traits;
         enum name = __traits(identifier, endpoint);
@@ -335,7 +336,11 @@ class NetworkClient
         this.banman.onFailedRequest(this.address);
 
         static if (DT == Throw.Yes)
+        {
+            this.exception.file = file;
+            this.exception.line = line;
             throw this.exception;
+        }
         else static if (!is(T == void))
             return T.init;
     }
