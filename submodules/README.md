@@ -14,7 +14,7 @@ This data can also be gathered by running `git submodules`.
 | dyaml            | v0.8.0       | 2019-05-27  |     No       |
 | eventcore        | v0.9.6       | 2020-05-29  |     Yes      |
 | libsodiumd       | 0.1.1+1.0.18 | 2020-04-04  | Yes (Owned)  |
-| localrest        | 1fb149484a3f | 2020-06-12  | Yes (Owned)  |
+| localrest        | 5196f35edbc2 | 2020-07-22  | Yes (Owned)  |
 | mir-linux-kernel | 1.0.1        | 2018-09-17  |     No       |
 | openssl          | 1.1.6+1.0.1g | 2017-11-06  |     No       |
 | stdx-allocator   | 2.77.5       | 2000-00-00  |     No       |

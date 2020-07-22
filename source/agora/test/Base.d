@@ -264,7 +264,7 @@ public class LocalRestTaskManager : TaskManager
 
     ***************************************************************************/
 
-    public override void wait (Duration dur)
+    public override void wait (Duration dur) nothrow
     {
         geod24.LocalRest.sleep(dur);
     }
