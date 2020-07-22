@@ -17,7 +17,11 @@
 
 module agora.common.Task;
 
+import agora.utils.Log;
+
 import core.time;
+
+mixin AddLogger!();
 
 /// Whether the timer periodic type
 public enum Periodic : bool
@@ -53,10 +57,17 @@ public class TaskManager
 
     ***************************************************************************/
 
-    public void wait (Duration dur)
+    public void wait (Duration dur) nothrow
     {
         static import vibe.core.core;
-        vibe.core.core.sleep(dur);
+        try
+            vibe.core.core.sleep(dur);
+        catch (Exception exc)
+        {
+            log.fatal("Call to wait({}) failed: {}", dur, exc);
+            // TODO: Replace with a busy loop in non-debug mode ?
+            assert(0);
+        }
     }
 
     /***************************************************************************
