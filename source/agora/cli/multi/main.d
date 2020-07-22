@@ -107,9 +107,7 @@ private int main (string[] args)
     FullNode[] nodes;
     foreach (const ref config; configs)
     {
-        auto params = new immutable(ConsensusParams)(
-            config.node.validator_cycle);
-        nodes ~= runNode(config, params);
+        nodes ~= runNode(config);
     }
 
     scope (exit)
