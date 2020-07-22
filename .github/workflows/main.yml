@@ -86,7 +86,7 @@ jobs:
         echo "::set-env name=INCLUDE::${{ github.workspace }}\lib\libsodium\include\;$INCLUDE"
 
     # Add whatever debugging information can be useful in the long run here
-    - name: Print system informations
+    - name: Print system information
       shell: bash
       run: |
         ${DC} --version
