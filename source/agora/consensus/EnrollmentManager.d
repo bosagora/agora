@@ -799,7 +799,7 @@ public class EnrollmentManager
         try
         {
             auto results = this.db.execute(
-                `SELECT val FROM node_enroll_data WHERE key = "cycle_index"`);
+                `SELECT val FROM node_enroll_data WHERE key = 'cycle_index'`);
             if (results.empty)
                 return 0;
 
