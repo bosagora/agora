@@ -64,7 +64,7 @@
         "source/scpp/build/uint128_t.obj"
     ],
 
-    "dflags": [ "-extern-std=c++14" ],
+    "dflags": [ "-extern-std=c++14", "-fsanitize=address" ],
     "lflags-posix": [ "-lstdc++", "-lsqlite3" ],
     "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],
     "libs-windows": [ "iphlpapi" ],
