@@ -259,6 +259,9 @@ extern(D):
 
         foreach (block_idx, block; ledger.getBlocksFrom(Height(0)).enumerate)
         {
+            auto serialized = block.serializeFull();
+            auto vec = serialized.toVec();
+            auto value = duplicate_value(&vec);
             SCPStatement statement =
             {
                 nodeID: pub_key,
@@ -268,7 +271,7 @@ extern(D):
                     externalize_: {
                         commit: {
                             counter: 0,
-                            value: block.serializeFull().toVec(),
+                            value: value,
                         },
                         nH: 0,
                     },
