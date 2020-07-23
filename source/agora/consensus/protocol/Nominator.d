@@ -257,32 +257,30 @@ extern(D):
 
         auto pub_key = NodeID(uint256(this.key_pair.address));
 
-        foreach (block_idx, block; ledger.getBlocksFrom(Height(0)).enumerate)
+        auto block = ledger.getBlocksFrom(ledger.getBlockHeight()).front;
+        auto serialized = block.serializeFull();
+        auto vec = serialized.toVec();
+        auto value = duplicate_value(&vec);
+        SCPStatement statement =
         {
-            auto serialized = block.serializeFull();
-            auto vec = serialized.toVec();
-            auto value = duplicate_value(&vec);
-            SCPStatement statement =
-            {
-                nodeID: pub_key,
-                slotIndex: block_idx,
-                pledges: {
-                    type_: SCPStatementType.SCP_ST_EXTERNALIZE,
-                    externalize_: {
-                        commit: {
-                            counter: 0,
-                            value: value,
-                        },
-                        nH: 0,
+            nodeID: pub_key,
+            slotIndex: block.header.height,
+            pledges: {
+                type_: SCPStatementType.SCP_ST_EXTERNALIZE,
+                externalize_: {
+                    commit: {
+                        counter: 0,
+                        value: value,
                     },
+                    nH: 0,
                 },
-            };
+            },
+        };
 
-            SCPEnvelope env = SCPEnvelope(statement);
-            this.scp.setStateFromEnvelope(block_idx, env);
-            if (!this.scp.isSlotFullyValidated(block_idx))
-                assert(0);
-        }
+        SCPEnvelope env = SCPEnvelope(statement);
+        this.scp.setStateFromEnvelope(block.header.height, env);
+        if (!this.scp.isSlotFullyValidated(block.header.height))
+            assert(0);
 
         // there should at least be a genesis block
         if (this.scp.empty())
