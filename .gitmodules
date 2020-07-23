@@ -42,7 +42,7 @@
 	url = https://github.com/bpfkorea/vibe.d.git
 [submodule "d2sqlite3"]
 	path = submodules/d2sqlite3
-	url = https://github.com/biozic/d2sqlite3.git
+	url = https://github.com/bpfkorea/d2sqlite3.git
 [submodule "ocean"]
 	path = submodules/ocean
 	url = https://github.com/bpfkorea/ocean.git
