@@ -146,10 +146,10 @@ public class EnrollmentManager
             /* preimages: */ PreImageCache(this.params.ValidatorCycle, 1)
         );
 
-        this.validator_set = new ValidatorSet(db_path, params);
-        this.enroll_pool = new EnrollmentPool(db_path);
-
         this.db = new ManagedDatabase(db_path);
+        this.validator_set = new ValidatorSet(this.db, params);
+        this.enroll_pool = new EnrollmentPool(this.db);
+
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
