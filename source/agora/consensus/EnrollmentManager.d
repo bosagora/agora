@@ -96,9 +96,6 @@ public class EnrollmentManager
     /// Random key for enrollment
     private Pair signature_noise;
 
-    /// Enrollment data object
-    private Enrollment data;
-
     /// Next height for pre-image revelation
     private Height next_reveal_height;
 
@@ -158,9 +155,6 @@ public class EnrollmentManager
         // create Pair object from KeyPair object
         this.key_pair.v = secretKeyToCurveScalar(key_pair.secret);
         this.key_pair.V = this.key_pair.v.toPoint();
-
-        // load enroll_key
-        this.enroll_key = this.getEnrollmentKey();
 
         // load next height for preimage revelation
         this.next_reveal_height = this.getNextRevealHeight();
@@ -286,7 +280,6 @@ public class EnrollmentManager
 
         if (enroll.utxo_key in self_utxos)
         {
-            this.data = enroll;
             this.enroll_key = enroll.utxo_key;
 
             // set next height for revealing a pre-image
@@ -324,11 +317,11 @@ public class EnrollmentManager
 
         // X, final seed data and preimages of hashes
         const seed = this.cycle.populate(this.key_pair.v, false);
-        this.data = makeEnrollment(
+        const enroll = makeEnrollment(
             this.key_pair, utxo, this.params.ValidatorCycle,
             seed, this.cycle.index);
 
-        return this.data;
+        return enroll;
     }
 
     /***************************************************************************
@@ -531,7 +524,7 @@ public class EnrollmentManager
         if (index > this.params.ValidatorCycle - 1)
             return false;
 
-        preimage.enroll_key = this.data.utxo_key;
+        preimage.enroll_key = this.enroll_key;
         assert(index <= ushort.max);
         preimage.distance = cast(ushort)index;  // max: Enrollment.ValidatorCycle - 1
         preimage.hash = this.cycle.preimages[$ - index - 1];
@@ -688,37 +681,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the key for the enrollment data for this node
-
-        Returns:
-            the key for the enrollment data
-
-    ***************************************************************************/
-
-    private Hash getEnrollmentKey () @safe nothrow
-    {
-        Hash en_key;
-
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                    "WHERE key = ?", "enroll_key");
-
-                if (!results.empty)
-                    en_key = results.oneValue!(ubyte[]).deserializeFull!(Hash);
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error: {}", ex);
-        }
-
-        return en_key;
-    }
-
-    /***************************************************************************
-
         Get the next block height to reveal a pre-image
 
         Returns:
@@ -843,7 +805,6 @@ public class EnrollmentManager
     private void resetNodeEnrollment () @safe nothrow
     {
         this.enroll_key = Hash.init;
-        this.data = Enrollment.init;
         this.setNextRevealHeight(Height(ulong.max));
     }
 
