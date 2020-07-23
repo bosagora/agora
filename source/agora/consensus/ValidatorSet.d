@@ -52,15 +52,14 @@ public class ValidatorSet
         Constructor
 
         Params:
-            db_path = path to the database file, or in-memory storage if
-                        :memory: was passed
+            db = the managed database instance
             params = the consensus-critical constants
 
     ***************************************************************************/
 
-    public this (string db_path, immutable(ConsensusParams) params)
+    public this (ManagedDatabase db, immutable(ConsensusParams) params)
     {
-        this.db = new ManagedDatabase(db_path);
+        this.db = db;
         this.params = params;
 
         // create the table for validator set if it doesn't exist yet
@@ -481,7 +480,8 @@ unittest
     import std.range;
 
     scope storage = new TestUTXOSet;
-    scope set = new ValidatorSet(":memory:", new immutable(ConsensusParams)());
+    scope set = new ValidatorSet(new ManagedDatabase(":memory:"),
+        new immutable(ConsensusParams)());
 
     Hash[] utxos;
     genesisSpendable().take(8).enumerate

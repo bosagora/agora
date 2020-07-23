@@ -48,14 +48,13 @@ public class EnrollmentPool
         Constructor
 
         Params:
-            db_path = path to the database file, or in-memory storage if
-                        :memory: was passed
+            db = the managed database instance
 
     ***************************************************************************/
 
-    public this (string db_path)
+    public this (ManagedDatabase db)
     {
-        this.db = new ManagedDatabase(db_path);
+        this.db = db;
 
         // create the table for enrollment pool if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS enrollment_pool " ~
@@ -340,7 +339,7 @@ unittest
 
     auto params = new immutable(ConsensusParams)();
     scope storage = new TestUTXOSet;
-    scope pool = new EnrollmentPool(":memory:");
+    scope pool = new EnrollmentPool(new ManagedDatabase(":memory:"));
     KeyPair key_pair = KeyPair.random();
     Scalar[Hash] seed_sources;
     Enrollment[] enrollments;
