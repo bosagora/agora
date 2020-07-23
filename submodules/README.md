@@ -10,6 +10,7 @@ This data can also be gathered by running `git submodule`.
 |------------------|--------------|:-----------:|:------------:|
 | base32           | d08059d      | 2019-06-20  | Yes (Forked) |
 | bitblob          | v1.1.4       | 2019-08-30  | Yes (Owned)  |
+| d2sqlite3        | 8bd3a7b      | 2020-07-23  | Yes (Forked) |
 | diet-ng          | v1.6.1       | 2020-01-14  |     No       |
 | dyaml            | v0.8.0       | 2019-05-27  |     No       |
 | eventcore        | v0.9.6       | 2020-05-29  |     Yes      |
