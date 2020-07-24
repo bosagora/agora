@@ -20,6 +20,8 @@ import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;
 
+import ocean.util.log.ILogger;
+
 import vibe.http.server;
 import vibe.http.router;
 import vibe.web.rest;
@@ -43,6 +45,7 @@ mixin AddLogger!();
 
 public FullNode runNode (Config config)
 {
+    setVibeLogLevel(config.logging.level);
     Log.root.level(config.logging.level, true);
     log.trace("Config is: {}", config);
 
@@ -72,4 +75,47 @@ public FullNode runNode (Config config)
     log.info("About to listen to HTTP: {}", settings.port);
     listenHTTP(settings, router);
     return node;
+}
+
+/*******************************************************************************
+
+    Set Vibe.d log level according to the configuration's log level
+
+    This is used to ensure we get the right amount of information from Vibe.d
+    Since a log level is the "minimum accepted" level, some level values might
+    not match. For example, if we want Vibe.d's "diagnostic" to be part of
+    the output when we set the loglevel to info, then that's what we must pass
+    to Vibe's `setLogLevel` (and since diagnostic < info, it will include the
+    latter too).
+
+    Params:
+        level = The level at which we want to set the logger
+
+*******************************************************************************/
+
+private void setVibeLogLevel (ILogger.Level level) @safe
+{
+    import vibe.core.log;
+
+    final switch (level)
+    {
+    case ILogger.Level.Trace:
+        setLogLevel(LogLevel.trace);
+        break;
+    case ILogger.Level.Info:
+        setLogLevel(LogLevel.diagnostic);
+        break;
+    case ILogger.Level.Warn:
+        setLogLevel(LogLevel.warn);
+        break;
+    case ILogger.Level.Error:
+        setLogLevel(LogLevel.error);
+        break;
+    case ILogger.Level.Fatal:
+        setLogLevel(LogLevel.critical);
+        break;
+    case ILogger.Level.None:
+        setLogLevel(LogLevel.none);
+        break;
+    }
 }

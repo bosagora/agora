@@ -46,4 +46,4 @@ network:
 ################################################################################
 logging:
   # Values: Trace, Info, Warn, Error, Fatal, None (default)
-  level: Trace
+  level: Info
