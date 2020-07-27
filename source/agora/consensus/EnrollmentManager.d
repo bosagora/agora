@@ -373,7 +373,7 @@ public class EnrollmentManager
 
     /// Ditto
     version (unittest) public static Enrollment makeEnrollment (
-        KeyPair key, const Hash utxo, uint cycle_length, ulong offset = 0)
+        KeyPair key, const Hash utxo, uint cycle_length, uint offset = 0)
         @trusted nothrow
     {
         // Convert stellar-type keypair to curve scalars
@@ -383,7 +383,7 @@ public class EnrollmentManager
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
         assert(offset < cache.length);
-        cache.reset(hashMulti(kp.v, "consensus.preimages", cast(uint)offset));
+        cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
 
         return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
