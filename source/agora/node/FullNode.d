@@ -139,12 +139,14 @@ public class FullNode : API
             auto genesis_block = block_bytes.deserializeFull!(immutable(Block));
             this.params = new immutable(ConsensusParams)(
                 genesis_block, config.node.validator_cycle,
-                config.node.max_quorum_nodes, config.node.quorum_threshold);
+                config.node.max_quorum_nodes, config.node.quorum_threshold,
+                config.node.quorum_shuffle_interval);
         }
         else
             this.params = new immutable(ConsensusParams)(
                 CNG.GenesisBlock, config.node.validator_cycle,
-                config.node.max_quorum_nodes, config.node.quorum_threshold);
+                config.node.max_quorum_nodes, config.node.quorum_threshold,
+                config.node.quorum_shuffle_interval);
 
         this.metadata = this.getMetadata(config.node.data_dir);
 
