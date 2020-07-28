@@ -1156,6 +1156,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
             validator_cycle : test_conf.validator_cycle,
             max_quorum_nodes : test_conf.max_quorum_nodes,
             quorum_threshold : test_conf.quorum_threshold,
+            preimage_reveal_interval : 1.seconds,  // check revealing frequently
             min_listeners : test_conf.min_listeners == 0
                 ? (test_conf.validators + test_conf.full_nodes) - 1
                 : test_conf.min_listeners,
