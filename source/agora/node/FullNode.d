@@ -79,7 +79,7 @@ public class FullNode : API
     protected const Config config;
 
     /// Parameters for consensus-critical constants
-    private immutable(ConsensusParams) params;
+    protected immutable(ConsensusParams) params;
 
     /// Task manager
     protected TaskManager taskman;
@@ -145,7 +145,8 @@ public class FullNode : API
         this.metadata = this.getMetadata(config.node.data_dir);
 
         this.config = config;
-        this.params = new immutable(ConsensusParams)(config.node.validator_cycle);
+        this.params = new immutable(ConsensusParams)(config.node.validator_cycle,
+            config.node.max_quorum_nodes);
         this.taskman = this.getTaskManager();
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman);
