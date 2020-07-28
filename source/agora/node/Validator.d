@@ -137,9 +137,11 @@ public class Validator : FullNode, API
             assert(0);
         }
 
+        const quorum_params = QuorumParams.init;
         const rand_seed = this.enroll_man.getRandomSeed(keys, height);
         qc = buildQuorumConfig(this.config.node.key_pair.address,
-            keys, this.utxo_set.getUTXOFinder(), rand_seed);
+            keys, this.utxo_set.getUTXOFinder(), rand_seed,
+            quorum_params);
 
         auto pub_keys = this.getEnrolledPublicKeys(keys);
         other_qcs.length = 0;
@@ -149,7 +151,7 @@ public class Validator : FullNode, API
             pk => pk != this.config.node.key_pair.address))  // skip our own
         {
             other_qcs ~= buildQuorumConfig(pub_key, keys,
-                this.utxo_set.getUTXOFinder(), rand_seed);
+                this.utxo_set.getUTXOFinder(), rand_seed, quorum_params);
         }
     }
 
