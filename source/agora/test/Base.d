@@ -1067,6 +1067,9 @@ public struct TestConf
     /// Overrides the default quorum threshold
     uint quorum_threshold = 80;
 
+    /// Quorum shuffle cycle
+    uint quorum_shuffle_interval = 30;
+
     /// whether to set up the peers in the config
     bool configure_network = true;
 
@@ -1156,6 +1159,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
             validator_cycle : test_conf.validator_cycle,
             max_quorum_nodes : test_conf.max_quorum_nodes,
             quorum_threshold : test_conf.quorum_threshold,
+            quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
             min_listeners : test_conf.min_listeners == 0
                 ? (test_conf.validators + test_conf.full_nodes) - 1
