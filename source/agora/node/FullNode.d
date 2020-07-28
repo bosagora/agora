@@ -120,13 +120,14 @@ public class FullNode : API
 
         Params:
             config = Config instance
-            onValidatorsChanged = delegate to call when the active set of
-                                  validators has changed (may be null)
+            onRegenerateQuorums = optional delegate to call when the active set
+                                  of validators has changed and the quorums
+                                  must be regenerated
 
     ***************************************************************************/
 
     public this (const Config config,
-        void delegate (Height) nothrow @trusted onValidatorsChanged = null)
+        void delegate (Height) nothrow @trusted onRegenerateQuorums = null)
     {
         // custom genesis block provided
         if (config.node.genesis_block.length > 0)
@@ -155,7 +156,7 @@ public class FullNode : API
             config.node, params);
         this.ledger = new Ledger(config.node, params, this.utxo_set,
             this.storage, this.enroll_man, this.pool, &this.pushBlock,
-            onValidatorsChanged);
+            onRegenerateQuorums);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 

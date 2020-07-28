@@ -79,7 +79,7 @@ public class Ledger
     private NodeConfig node_config;
 
     /// If not null call this delegate when a new block was added to the ledger
-    private void delegate (Height) nothrow @safe onValidatorsChanged;
+    private void delegate (Height) nothrow @safe onRegenerateQuorums;
 
     /// If not null call this delegate
     /// A block was externalized
@@ -101,8 +101,9 @@ public class Ledger
             pool = the transaction pool
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
-            onValidatorsChanged = optional delegate to call after the validator
-                                  set changes when a block was externalized
+            onRegenerateQuorums = optional delegate to call when the active set
+                                  of validators has changed and the quorums
+                                  must be regenerated
 
     ***************************************************************************/
 
@@ -111,7 +112,7 @@ public class Ledger
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (const Block) @safe onAcceptedBlock = null,
-        void delegate (Height) nothrow @safe onValidatorsChanged = null)
+        void delegate (Height) nothrow @safe onRegenerateQuorums = null)
     {
         this.node_config = node_config;
         this.params = params;
@@ -120,7 +121,7 @@ public class Ledger
         this.enroll_man = enroll_man;
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
-        this.onValidatorsChanged = onValidatorsChanged;
+        this.onRegenerateQuorums = onRegenerateQuorums;
         if (!this.storage.load(GenesisBlock))
             assert(0);
 
@@ -283,8 +284,8 @@ public class Ledger
         if (!this.storage.readLastBlock(this.last_block))
             assert(0);
 
-        if (this.onValidatorsChanged !is null && validators_changed)
-            this.onValidatorsChanged(block.header.height);
+        if (this.onRegenerateQuorums !is null && validators_changed)
+            this.onRegenerateQuorums(block.header.height);
 
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block);
