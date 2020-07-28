@@ -979,16 +979,19 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 .filter!(conf => conf != self)
                 .map!(conf => conf.address);
 
-        auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
-
         string[] network;
         if (test_conf.configure_network)
         {
-            // nodes form a network chain: n2 < n0 < n1 < n2
+            // nodes form a network chain: n2 <- n0 <- n1 <- n2
             if (test_conf.topology == NetworkTopology.MinimallyConnected)
+            {
+                auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
                 network = [prev_node.address];
+            }
             else
+            {
                 network = other_nodes.array;
+            }
         }
 
         Config conf =
