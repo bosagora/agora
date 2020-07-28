@@ -39,12 +39,3 @@ public immutable class ConsensusParams
         this.ValidatorCycle = validator_cycle;
     }
 }
-
-unittest
-{
-    auto params = new immutable(ConsensusParams)(100);
-    assert(params.ValidatorCycle == 100);
-
-    auto params2 = new immutable(ConsensusParams)();
-    assert(params2.ValidatorCycle == 1008);
-}
