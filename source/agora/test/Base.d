@@ -116,6 +116,7 @@ private UnitTestResult customModuleUnitTester ()
 
     ModTest[] mod_tests;
     ModTest[] single_threaded;
+    ModTest[] heavy_tests;
 
     foreach (ModuleInfo* mod; ModuleInfo)
     {
@@ -138,10 +139,10 @@ private UnitTestResult customModuleUnitTester ()
 
             // this test checks GC usage stats before / after tests,
             // but other threads can change the outcome of the GC usage stats
-            if (mod.name.startsWith("agora.common.Serializer"))
+            if (mod.name == "agora.common.Serializer")
                 single_threaded ~= ModTest(mod.name, fp);
-            else
-                mod_tests ~= ModTest(mod.name, fp);
+            else if (mod.name == "agora.test.ManyValidators")
+                heavy_tests ~= ModTest(mod.name, fp);
         }
     }
 
@@ -177,6 +178,9 @@ private UnitTestResult customModuleUnitTester ()
         runTest(mod);
 
     foreach (mod; parallel(mod_tests))
+        runTest(mod);
+
+    foreach (mod; parallel(heavy_tests))
         runTest(mod);
 
     UnitTestResult result = { executed : executed, passed : passed };
