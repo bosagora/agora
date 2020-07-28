@@ -1032,7 +1032,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     // otherwise it will be [n1 <-> n2] <- o1 and [n1 <-> n2] <- o2
     extra_node_configs.enumerate.each!(
         pair => main_configs ~= makeMainConfig(
-            pair.index, pair.value, node_configs));
+            pair.index % node_configs.length, pair.value, node_configs));
 
     auto gen_block = makeGenesisBlock(
         node_configs
