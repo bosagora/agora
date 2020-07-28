@@ -29,8 +29,8 @@ unittest
 {
     TestConf conf =
     {
-        topology : NetworkTopology.OneNonValidator,
-        nodes : 3,
+        validators : 2,
+        full_nodes : 1,
         retry_delay : 10.msecs,
         max_retries : 10,
         max_failed_requests : 4 * Block.TxsInBlock

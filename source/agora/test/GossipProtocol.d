@@ -67,8 +67,7 @@ unittest
 unittest
 {
     // node #5 is the outsider, so total foreign nodes may be 4
-    TestConf conf = { nodes : 4, max_listeners : 4,
-        topology : NetworkTopology.OneFullNodeOutsider };
+    TestConf conf = { validators : 4, max_listeners : 4, outsider_full_nodes : 1 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

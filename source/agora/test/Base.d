@@ -843,42 +843,36 @@ public class TestValidatorNode : Validator, TestAPI
 /// Describes a network topology for testing purpose
 public enum NetworkTopology
 {
-    /// A number of nodes which all know about each other. Figure 9 in the SCP paper.
-    Simple,
+    /// The nodes know about each other's IPs,
+    /// and additionally outsider nodes will connect to them.
+    FullyConnected,
 
-    /// Set a minimal networking config, the node should use network discovery
-    /// to connect to a min_listeners number of nodes
-    FindNetwork,
-
-    /// Set a minimal networking config,
-    /// The node should attempt to connect to all its quorum peers even
-    /// if it only knows their public keys via the enrollments
-    FindQuorums,
-
-    /// Same as Simple, with one additional non-validating node
-    OneNonValidator,
-
-    /// Only one of the nodes is a validator, the rest are full nodes
-    OneValidator,
-
-    /// One FullNode is not part of the network for any other nodes
-    OneFullNodeOutsider,
-
-    /// Two Validators are not part of the network for any other nodes
-    TwoOutsiderValidators,
+    /// The nodes are connected in a chain: v1 <- v2 <- v3 <- v1,
+    /// and additionally outsider nodes are minimally connected to them
+    /// via v1 <- o1, v2 <- o2 (o = outsider node)
+    MinimallyConnected,
 }
 
 /// Node / Network / Quorum configuration for use with makeTestNetwork
 public struct TestConf
 {
     /// Network topology to use
-    NetworkTopology topology = NetworkTopology.Simple;
+    NetworkTopology topology = NetworkTopology.FullyConnected;
 
     /// Extra blocks to generate in addition to the genesis block
     size_t extra_blocks = 0;
 
-    /// Number of nodes to instantiate
-    size_t nodes = 4;
+    /// Number of validator nodes to instantiate
+    size_t validators = 4;
+
+    /// Number of full nodes to instantiate
+    size_t full_nodes = 0;
+
+    /// Number of extra validators which are initially outside the network
+    size_t outsider_validators = 0;
+
+    /// Number of extra full nodes which are initially outside the network
+    size_t outsider_full_nodes = 0;
 
     /// The value to give the `ValidatorCycle` of nodes
     uint validator_cycle = 1008;
@@ -935,7 +929,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
-    assert(test_conf.nodes >= 2, "Creating a network require at least 2 nodes");
+    const TotalNodes = test_conf.validators + test_conf.full_nodes +
+        test_conf.outsider_validators + test_conf.outsider_full_nodes;
+
+    assert(TotalNodes >= 2, "Creating a network require at least 2 nodes");
 
     size_t full_node_idx;
     size_t validator_idx;
@@ -960,9 +957,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             timeout : test_conf.timeout,
             validator_cycle : test_conf.validator_cycle,
             min_listeners : test_conf.min_listeners == 0
-                ? test_conf.nodes - 1 : test_conf.min_listeners,
+                ? (test_conf.validators + test_conf.full_nodes) - 1
+                : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
-                ? test_conf.nodes - 1 : test_conf.max_listeners,
+                ? TotalNodes - 1 : test_conf.max_listeners,
         };
 
         return conf;
@@ -974,108 +972,62 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         ban_duration: 300
     };
 
-    Config makeConfig (NodeConfig self, NodeConfig[] node_confs)
+    Config makeConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs)
     {
         auto other_nodes =
             node_confs
                 .filter!(conf => conf != self)
                 .map!(conf => conf.address);
 
-        Config conf =
-        {
-            banman : ban_conf,
-            node : self,
-            network : test_conf.configure_network ? assumeUnique(other_nodes.array) : null
-        };
-
-        return conf;
-    }
-
-    // for discovery testing: only 1 node in the 'network' section, rest is discovered
-    Config makeMinimalNetwork (size_t idx, NodeConfig self, NodeConfig[] node_confs)
-    {
         auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
 
-        Config conf =
+        string[] network;
+        if (test_conf.configure_network)
         {
-            banman : ban_conf,
-            node : self,
-            network : test_conf.configure_network ? [prev_node.address] : null
-        };
-
-        return conf;
-    }
-
-    // for discovery testing: full quorum, but only 1 node in the 'network' section
-    Config makeMinimalNetQuorum (size_t idx, NodeConfig self, NodeConfig[] node_confs)
-    {
-        auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
-
-        node_confs.each!(conf => assert(conf.is_validator));
+            // nodes form a network chain: n2 < n0 < n1 < n2
+            if (test_conf.topology == NetworkTopology.MinimallyConnected)
+                network = [prev_node.address];
+            else
+                network = other_nodes.array;
+        }
 
         Config conf =
         {
             banman : ban_conf,
             node : self,
-            network : test_conf.configure_network ? [prev_node.address] : null,
+            network : assumeUnique(network),
         };
 
         return conf;
     }
+
+    auto key_range = WK.Keys.byRange();
+    auto keys = refRange(&key_range);
 
     NodeConfig[] node_configs;
     Config[] configs;
 
-    final switch (test_conf.topology)
-    {
-    case NetworkTopology.Simple:
-        node_configs = iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
-        break;
+    keys.take(test_conf.validators)
+        .each!(key => node_configs ~= makeNodeConfig(true, key));
+    keys.take(test_conf.full_nodes)
+        .each!(key => node_configs ~= makeNodeConfig(false, key));
 
-    case NetworkTopology.FindNetwork:
-        node_configs = iota(test_conf.nodes).map!(idx => makeNodeConfig(false, WK.Keys[idx])).array;
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeMinimalNetwork(idx, node_configs[idx], node_configs)).array;
-        break;
+    // network these nodes together using the configured NetworkTopology
+    node_configs.enumerate.each!(
+        pair => configs ~= makeConfig(pair.index, pair.value, node_configs));
 
-    case NetworkTopology.FindQuorums:
-        node_configs = iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeMinimalNetQuorum(idx, node_configs[idx], node_configs)).array;
-        break;
+    NodeConfig[] extra_node_configs;
+    keys.take(test_conf.outsider_validators)
+        .each!(key => extra_node_configs ~= makeNodeConfig(true, key));
+    keys.take(test_conf.outsider_full_nodes)
+        .each!(key => extra_node_configs ~= makeNodeConfig(false, key));
 
-    case NetworkTopology.OneNonValidator:
-        node_configs ~= iota(test_conf.nodes - 1).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
-        node_configs ~= makeNodeConfig(false, WK.Keys[node_configs.length]);
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
-        break;
-
-    case NetworkTopology.OneValidator:
-        node_configs ~= makeNodeConfig(true, WK.Keys[0]);
-        node_configs ~= iota(test_conf.nodes - 1).map!(idx => makeNodeConfig(false, WK.Keys[idx + 1])).array;
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
-        break;
-
-    case NetworkTopology.OneFullNodeOutsider:
-        node_configs ~= iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
-
-        // add one non-validator outside the network
-        node_configs ~= makeNodeConfig(false, WK.Keys[node_configs.length]);
-        configs ~= makeConfig(node_configs[$ - 1], node_configs);
-        break;
-
-    case NetworkTopology.TwoOutsiderValidators:
-        node_configs ~= iota(test_conf.nodes).map!(idx => makeNodeConfig(true, WK.Keys[idx])).array;
-        configs = iota(test_conf.nodes)
-            .map!(idx => makeConfig(node_configs[idx], node_configs)).array;
-        break;
-    }
+    // generate the outsider configs. pair.index is correct here despite
+    // passing 'node_configs'. in 'MinimallyConnected' mode the connection will be
+    // n2 <- n1 <- n2 and n1 <- o1 and n2 <- o2, (o = outsider).
+    // otherwise it will be [n1 <-> n2] <- o1 and [n1 <-> n2] <- o2
+    extra_node_configs.enumerate.each!(
+        pair => configs ~= makeConfig(pair.index, pair.value, node_configs));
 
     auto gen_block = makeGenesisBlock(
         node_configs
@@ -1086,15 +1038,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     immutable string gen_block_hex = gen_block
         .serializeFull()
         .toHexString();
-
-    // add two additional validators whose enrollments are not in genesis block
-    if (test_conf.topology == NetworkTopology.TwoOutsiderValidators)
-    {
-        node_configs ~= makeNodeConfig(true, WK.Keys[node_configs.length]);
-        configs ~= makeConfig(node_configs[$ - 1], node_configs);
-        node_configs ~= makeNodeConfig(true, WK.Keys[node_configs.length]);
-        configs ~= makeConfig(node_configs[$ - 1], node_configs);
-    }
 
     foreach (ref conf; configs)
         conf.node.genesis_block = gen_block_hex;

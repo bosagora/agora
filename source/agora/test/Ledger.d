@@ -89,7 +89,7 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    TestConf conf = { topology : NetworkTopology.OneValidator };
+    TestConf conf = { validators : 1, full_nodes : 3 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -176,7 +176,7 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    TestConf conf = { nodes : 2 };
+    TestConf conf = { validators : 2 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
