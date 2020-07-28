@@ -39,8 +39,10 @@ import core.time;
 unittest
 {
     import agora.common.Types;
-    TestConf conf = { nodes : 6, max_listeners : 7,
-        topology : NetworkTopology.TwoOutsiderValidators,
+    TestConf conf = {
+        validators : 6,
+        outsider_validators : 2,
+        max_listeners : 7,
         extra_blocks : 8,
         validator_cycle : 10 };
     auto network = makeTestNetwork(conf);

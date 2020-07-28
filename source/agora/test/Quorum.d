@@ -39,9 +39,9 @@ import core.time;
 unittest
 {
     TestConf conf = {
-        nodes : 4,
+        validators : 4,
+        outsider_validators : 2,
         max_listeners : 5,
-        topology : NetworkTopology.TwoOutsiderValidators,
         validator_cycle : 10,
         extra_blocks: 10 - 2,
     };

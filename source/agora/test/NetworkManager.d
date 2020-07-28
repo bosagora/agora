@@ -133,7 +133,7 @@ unittest
         }
     }
 
-    TestConf conf = { topology : NetworkTopology.OneValidator, nodes : 3 };
+    TestConf conf = { validators : 1, full_nodes : 2 };
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
