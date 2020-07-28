@@ -306,7 +306,7 @@ public struct WK
                 nothrow @nogc @safe:
 
                 private size_t lbound = 0;
-                private const size_t hbound = 26 + 26 * 26 * 2;
+                private enum size_t hbound = 26 + 26 * 26 * 2;
 
                 public size_t length () const
                 {
