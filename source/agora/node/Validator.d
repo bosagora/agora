@@ -259,10 +259,12 @@ public class Validator : FullNode, API
     }
 
     /***************************************************************************
+
         Called when a transaction was accepted into the transaction pool.
         Currently, nomination is triggered by an inclusion of a new transaction
         in the transaction pool.
         In the future, this will be replaced with a nominating timer.
+
     ***************************************************************************/
 
     protected final override void onAcceptedTransaction () @safe
