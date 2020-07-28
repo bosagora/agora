@@ -972,7 +972,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         ban_duration: 300
     };
 
-    Config makeConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs)
+    Config makeMainConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs)
     {
         auto other_nodes =
             node_confs
@@ -1005,7 +1005,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     auto keys = refRange(&key_range);
 
     NodeConfig[] node_configs;
-    Config[] configs;
+    Config[] main_configs;
 
     keys.take(test_conf.validators)
         .each!(key => node_configs ~= makeNodeConfig(true, key));
@@ -1014,7 +1014,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     // network these nodes together using the configured NetworkTopology
     node_configs.enumerate.each!(
-        pair => configs ~= makeConfig(pair.index, pair.value, node_configs));
+        pair => main_configs ~= makeMainConfig(
+            pair.index, pair.value, node_configs));
 
     NodeConfig[] extra_node_configs;
     keys.take(test_conf.outsider_validators)
@@ -1022,12 +1023,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     keys.take(test_conf.outsider_full_nodes)
         .each!(key => extra_node_configs ~= makeNodeConfig(false, key));
 
-    // generate the outsider configs. pair.index is correct here despite
+    // generate the outsider main_configs. pair.index is correct here despite
     // passing 'node_configs'. in 'MinimallyConnected' mode the connection will be
     // n2 <- n1 <- n2 and n1 <- o1 and n2 <- o2, (o = outsider).
     // otherwise it will be [n1 <-> n2] <- o1 and [n1 <-> n2] <- o2
     extra_node_configs.enumerate.each!(
-        pair => configs ~= makeConfig(pair.index, pair.value, node_configs));
+        pair => main_configs ~= makeMainConfig(
+            pair.index, pair.value, node_configs));
 
     auto gen_block = makeGenesisBlock(
         node_configs
@@ -1039,14 +1041,14 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .serializeFull()
         .toHexString();
 
-    foreach (ref conf; configs)
+    foreach (ref conf; main_configs)
         conf.node.genesis_block = gen_block_hex;
 
     immutable(Block)[] blocks = generateBlocks(gen_block,
         test_conf.extra_blocks);
 
     auto net = new APIManager(blocks);
-    foreach (ref conf; configs)
+    foreach (ref conf; main_configs)
         net.createNewNode(conf);
 
     return net;
