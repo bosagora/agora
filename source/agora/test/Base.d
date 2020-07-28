@@ -44,6 +44,7 @@ import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.protocol.Nominator;
+import agora.consensus.Quorum;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
@@ -836,6 +837,9 @@ public interface TestAPI : ValidatorAPI
     ***************************************************************************/
 
     public void registerListenerAddress (Address address);
+
+    /// Get the list of expected quorum configs
+    public QuorumConfig[] getExpectedQuorums (in PublicKey[], Height);
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -969,6 +973,12 @@ public class TestFullNode : FullNode, TestAPI
     {
         assert(0);
     }
+
+    /// ditto
+    public override QuorumConfig[] getExpectedQuorums (in PublicKey[], Height)
+    {
+        assert(0);
+    }
 }
 
 /// A Validator which also implements test routines in TestAPI
@@ -1021,6 +1031,20 @@ public class TestValidatorNode : Validator, TestAPI
     {
         return new TestNominator(network, key_pair, ledger, taskman,
             this.txs_to_nominate);
+    }
+
+    /// Gets the expected quorum config for the given keys and height
+    public override QuorumConfig[] getExpectedQuorums (in PublicKey[] pub_keys,
+        Height height)
+    {
+        Hash[] utxos;
+        assert(this.enroll_man.getEnrolledUTXOs(utxos) && utxos.length > 0);
+        const rand_seed = this.enroll_man.getRandomSeed(utxos, height);
+        QuorumConfig[] quorums;
+        foreach (pub_key; pub_keys)
+            quorums ~= buildQuorumConfig(pub_key, utxos,
+                this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
+        return quorums;
     }
 }
 
