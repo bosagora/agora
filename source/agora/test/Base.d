@@ -1203,9 +1203,9 @@ private immutable(Block)[] generateBlocks (
     const(Transaction)[] prev_txs;
     foreach (_; 0 .. count)
     {
-        // 10x more than MinFreezeAmount so we can split it to multiple freezes later
+        // see `agora.consensus.data.genesis.Test` for the magic amount
         auto txs = makeChainedTransactions(WK.Keys.Genesis,
-            prev_txs, 1, 4_000_000_000_000 * Block.TxsInBlock);
+            prev_txs, 1, 61_000_000uL * 10_000_000uL * Block.TxsInBlock);
 
         const NoEnrollments = null;
         blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
