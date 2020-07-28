@@ -67,14 +67,14 @@ public class Validator : FullNode, API
     public this (const Config config)
     {
         assert(config.node.is_validator);
-        super(config, &this.onValidatorsChanged);
+        super(config, &this.onRegenerateQuorums);
 
         this.nominator = this.getNominator(this.network,
             this.config.node.key_pair, this.ledger, this.taskman);
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
-        this.onValidatorsChanged(Height(0));
+        this.onRegenerateQuorums(Height(0));
     }
 
     /***************************************************************************
@@ -98,7 +98,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void onValidatorsChanged (Height height) nothrow @safe
+    private void onRegenerateQuorums (Height height) nothrow @safe
     {
         // we're not enrolled and don't care about quorum sets
         if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
