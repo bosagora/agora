@@ -21,6 +21,7 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.TransactionPool;
 import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
@@ -66,6 +67,11 @@ public class Validator : FullNode, API
     /// Quorum generator parameters
     protected QuorumParams quorum_params;
 
+    /// The last height at which a quorum shuffle took place.
+    /// If a new block is externalized and `last_shuffle_height`
+    /// is >= `QuorumShuffleInterval` then the quorum will be reshuffled again.
+    private Height last_shuffle_height = Height(0);
+
     /// Ctor
     public this (const Config config)
     {
@@ -105,6 +111,8 @@ public class Validator : FullNode, API
 
     private void onRegenerateQuorums (Height height) nothrow @safe
     {
+        this.last_shuffle_height = height;
+
         // we're not enrolled and don't care about quorum sets
         if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
         {
@@ -169,7 +177,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private PublicKey[] getEnrolledPublicKeys (Hash[] utxos) @safe nothrow
+    protected PublicKey[] getEnrolledPublicKeys (Hash[] utxos) @safe nothrow
     {
         PublicKey[] keys;
         auto finder = this.utxo_set.getUTXOFinder();
@@ -281,6 +289,34 @@ public class Validator : FullNode, API
 
         // check if there's enough txs in the pool, and start nominating
         this.nominator.tryNominate();
+    }
+
+    /***************************************************************************
+
+        Calls the base class `onAcceptedBlock` and additionally
+        shuffles the quorum set if the new block header height
+        is `QuorumShuffleInterval` blocks newer than the last
+        shuffle height.
+
+        Params:
+            block = the block which was added to the ledger
+
+    ***************************************************************************/
+
+    protected final override void onAcceptedBlock (const ref Block block) @safe
+    {
+        super.onAcceptedBlock(block);
+        assert(block.header.height >= this.last_shuffle_height);
+
+        if (block.header.height == this.last_shuffle_height)
+            return;  // onRegenerateQuorums() was already called
+
+        if ((this.last_shuffle_height + this.params.QuorumShuffleInterval)
+            > block.header.height)
+            return;  // no shuffle yet
+
+        // shuffle the quorum
+        this.onRegenerateQuorums(block.header.height);
     }
 
     /***************************************************************************
