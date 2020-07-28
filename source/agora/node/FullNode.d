@@ -160,7 +160,7 @@ public class FullNode : API
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.node, params);
         this.ledger = new Ledger(config.node, params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, &this.pushBlock,
+            this.storage, this.enroll_man, this.pool, &this.onAcceptedBlock,
             onRegenerateQuorums);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
@@ -510,6 +510,20 @@ public class FullNode : API
 
     protected void onAcceptedTransaction () @safe
     {
+    }
+
+    /***************************************************************************
+
+        Called when a block was externalized.
+
+        Calls pushBlock(), but additionally the Validator overrides this
+        and implements quorum shuffling.
+
+    ***************************************************************************/
+
+    protected void onAcceptedBlock (const ref Block block) @safe
+    {
+        this.pushBlock(block);
     }
 
     /***************************************************************************

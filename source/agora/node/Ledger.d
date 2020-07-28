@@ -81,7 +81,7 @@ public class Ledger
 
     /// If not null call this delegate
     /// A block was externalized
-    private void delegate (const Block) @safe onAcceptedBlock;
+    private void delegate (const ref Block) @safe onAcceptedBlock;
 
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
@@ -109,7 +109,7 @@ public class Ledger
         NodeConfig node_config, immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        void delegate (const Block) @safe onAcceptedBlock = null,
+        void delegate (const ref Block) @safe onAcceptedBlock = null,
         void delegate (Height) nothrow @safe onRegenerateQuorums = null)
     {
         this.node_config = node_config;
