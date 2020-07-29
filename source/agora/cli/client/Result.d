@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    The Agora client Result Constans
+    Constants returned by the agora CLI client
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
