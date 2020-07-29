@@ -171,13 +171,12 @@ extern(D):
         if (this.is_nominating)
             return;
 
-        this.is_nominating = true;
-        scope (exit) this.is_nominating = false;
-
         ConsensusData data;
         this.ledger.prepareNominatingSet(data);
         if (data.tx_set.length == 0)
             return;  // not ready yet
+
+        this.is_nominating = true;
 
         // check whether the consensus data is valid before nominating it.
         if (auto msg = this.ledger.validateConsensusData(data))
@@ -383,6 +382,9 @@ extern(D):
         if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
 
+        // ready for nominating again
+        this.is_nominating = false;
+        this.scp.stopNomination(slot_idx);
         ConsensusData data = void;
         try
             data = deserializeFull!ConsensusData(value[]);
