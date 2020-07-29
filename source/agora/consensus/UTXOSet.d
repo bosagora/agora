@@ -114,7 +114,7 @@ public class UTXOSet
         get an UTXOSetValue in the UTXO set.
 
         Params:
-            hash = the hash of transation
+            hash = the hash of the transaction introducing the `Output`
             index = the index of the output
 
         Return:
@@ -171,7 +171,7 @@ public class UTXOSet
         Find an UTXOSetValue in the UTXO set.
 
         Params:
-            hash = the hash of transation
+            hash = the hash of the transaction introducing the `Output`
             index = the index of the output
                 If size_t.max, find the hash parameter by UTXO Hash.
             output = will contain the UTXOSetValue if found

@@ -26,7 +26,7 @@ import agora.common.Serializer;
 
 import std.algorithm;
 
-/// The Agora Transaction Type constans
+/// Type of the transaction: defines the content that follows and the semantic of it
 public enum TxType : ubyte
 {
     Payment,
@@ -44,7 +44,7 @@ public enum TxType : ubyte
 
 public struct Transaction
 {
-    /// Transation type
+    /// Transaction type
     public TxType type;
 
     /// The list of unspent `outputs` from previous transaction(s) that will be spent
@@ -180,7 +180,7 @@ public bool isCoinbaseTx (Transaction tx) nothrow pure @safe @nogc
         value = The initial value
 
     Return:
-        Return coinbase transation
+        Return coinbase transaction
 
 *******************************************************************************/
 
