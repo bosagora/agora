@@ -404,7 +404,7 @@ public class NetworkManager
         this.connection_tasks.remove(node.address);
 
         // todo: this should keep re-trying.
-        node.client.registerListener(this.getAddress());
+        node.client.registerListener();
     }
 
     /// Discover the network, connect to all required peers
