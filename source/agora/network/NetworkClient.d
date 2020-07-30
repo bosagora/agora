@@ -325,8 +325,16 @@ class NetworkClient
             }
             catch (Exception ex)
             {
-                log.format(log_level, "Request '{}' to {} failed: {}",
-                    name, this.address, ex.message);
+                try
+                {
+                    log.format(log_level, "Request '{}' to {} failed: {}",
+                        name, this.address, ex.message);
+                }
+                catch (Exception ex)
+                {
+                    // nothing we can do
+                }
+
                 if (idx + 1 < this.max_retries) // wait after each failure except last
                     this.taskman.wait(this.retry_delay);
             }
