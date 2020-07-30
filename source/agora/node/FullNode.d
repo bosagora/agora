@@ -231,8 +231,18 @@ public class FullNode : API
         this.enroll_man = null;
     }
 
-    /// PUT /register_listener
-    public override void registerListener (Address address) @trusted
+    /***************************************************************************
+
+        Register the given address as a listener for gossip / consensus messages.
+
+        This register the given address into the `NetworkManager`.
+
+        Params:
+            address = the address of node to register
+
+    ***************************************************************************/
+
+    public void registerListener (Address address) @trusted
     {
         this.network.registerListener(address);
     }

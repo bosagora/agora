@@ -72,21 +72,6 @@ public interface API
 
     /***************************************************************************
 
-        Register the given address to listen for gossiping messages.
-
-        Params:
-            address = the address of the node to register
-
-        API:
-            PUT /register_listener
-
-    ***************************************************************************/
-
-    @method(HTTPMethod.PUT)
-    public void registerListener (Address address);
-
-    /***************************************************************************
-
         Returns:
             The peer information on this node
 

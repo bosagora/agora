@@ -27,6 +27,7 @@ import vibe.http.router;
 import vibe.web.rest;
 
 import std.file;
+import std.format;
 
 mixin AddLogger!();
 
@@ -69,6 +70,17 @@ public FullNode runNode (Config config)
         node = new FullNode(config);
         router.registerRestInterface!(agora.api.FullNode.API)(node);
     }
+
+    // Register a path for `register_listener` adding client's address.
+    router.route("/register_listener")
+        .post((scope HTTPServerRequest req, scope HTTPServerResponse res)
+        {
+            string addr = format("http://%s:%d",
+                req.clientAddress.toAddressString(), req.clientAddress.port());
+            node.registerListener(addr);
+            res.statusCode = 200;
+            res.writeVoidBody();
+        });
 
     node.start();  // asynchronous
 
