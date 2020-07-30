@@ -131,7 +131,7 @@ public class CircularAppender : Appender
     private size_t used_length;
 
     /// Backing store for the cyclic buffer
-    private char[2 ^^ 16] buffer;
+    private char[2 ^^ 20] buffer;
 
     /// Cyclic Output range over buffer
     private Cycle!(typeof(buffer)) cyclic;
