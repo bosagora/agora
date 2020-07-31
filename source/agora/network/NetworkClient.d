@@ -42,7 +42,7 @@ mixin AddLogger!();
 class NetworkClient
 {
     /// Whether to throw an exception when attemptRequest() fails
-    private enum Throw
+    protected enum Throw
     {
         ///
         No,
@@ -69,7 +69,7 @@ class NetworkClient
     private BanManager banman;
 
     /// API client to the node
-    private API api;
+    protected API api;
 
     /// Reusable exception
     private Exception exception;
@@ -115,7 +115,7 @@ class NetworkClient
 
     public PublicKey getPublicKey ()
     {
-        return this.attemptRequest!(API.getPublicKey, Throw.Yes)();
+        return this.attemptRequest!(API.getPublicKey, Throw.Yes)(this.api);
     }
 
     /***************************************************************************
@@ -180,7 +180,7 @@ class NetworkClient
 
     public NodeInfo getNodeInfo ()
     {
-        return this.attemptRequest!(API.getNodeInfo, Throw.Yes)();
+        return this.attemptRequest!(API.getNodeInfo, Throw.Yes)(this.api);
     }
 
     /***************************************************************************
@@ -205,10 +205,10 @@ class NetworkClient
         {
             // if the node already has this tx, don't send it
             if (this.attemptRequest!(API.hasTransactionHash, Throw.Yes,
-                LogLevel.Trace)(tx_hash))
+                LogLevel.Trace)(this.api, tx_hash))
                 return;
 
-            this.attemptRequest!(API.putTransaction, Throw.No)(tx);
+            this.attemptRequest!(API.putTransaction, Throw.No)(this.api, tx);
         });
     }
 
@@ -228,7 +228,8 @@ class NetworkClient
         {
             this.taskman.runTask(
             {
-                this.attemptRequest!(API.receiveEnvelope, Throw.No)(envelope);
+                this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
+                    envelope);
             });
         }
         catch (Exception ex)
@@ -250,7 +251,7 @@ class NetworkClient
 
     public ulong getBlockHeight ()
     {
-        return this.attemptRequest!(API.getBlockHeight, Throw.Yes)();
+        return this.attemptRequest!(API.getBlockHeight, Throw.Yes)(this.api);
     }
 
     /***************************************************************************
@@ -275,7 +276,7 @@ class NetworkClient
 
     public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks)
     {
-        return this.attemptRequest!(API.getBlocksFrom, Throw.Yes)(
+        return this.attemptRequest!(API.getBlocksFrom, Throw.Yes)(this.api,
             block_height, max_blocks);
     }
 
@@ -296,7 +297,8 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            this.attemptRequest!(API.enrollValidator, Throw.No)(enroll);
+            this.attemptRequest!(API.enrollValidator, Throw.No)(this.api,
+                enroll);
         });
     }
 
@@ -317,7 +319,8 @@ class NetworkClient
     {
         this.taskman.runTask(
         {
-            this.attemptRequest!(API.receivePreimage, Throw.No)(preimage);
+            this.attemptRequest!(API.receivePreimage, Throw.No)(this.api,
+                preimage);
         });
     }
 
@@ -333,7 +336,9 @@ class NetworkClient
             DT = whether to throw an exception if the request failed after
                  all attempted retries
             log_level = the logging level to use for logging failed requests
+            API = deduced
             Args = deduced
+            api = the interface to communicate with a node
             args = the arguments to the API endpoint
 
         Returns:
@@ -341,19 +346,19 @@ class NetworkClient
 
     ***************************************************************************/
 
-    private auto attemptRequest (alias endpoint, Throw DT,
-        LogLevel log_level = LogLevel.Trace, Args...)
-        (auto ref Args args, string file = __FILE__, uint line = __LINE__)
+    protected auto attemptRequest (alias endpoint, Throw DT,
+        LogLevel log_level = LogLevel.Trace, API, Args...)
+        (API api, auto ref Args args, string file = __FILE__, uint line = __LINE__)
     {
         import std.traits;
         enum name = __traits(identifier, endpoint);
-        alias T = ReturnType!(__traits(getMember, this.api, name));
+        alias T = ReturnType!(__traits(getMember, api, name));
 
         foreach (idx; 0 .. this.max_retries)
         {
             try
             {
-                return __traits(getMember, this.api, name)(args);
+                return __traits(getMember, api, name)(args);
             }
             catch (Exception ex)
             {

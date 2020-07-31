@@ -145,7 +145,7 @@ public class NetworkManager
 
         private void connect ()
         {
-            auto client = new NetworkClient(this.outer.taskman,
+            auto client = this.outer.getNetworkClient(this.outer.taskman,
                 this.outer.banman, this.address,
                 this.outer.getClient(this.address,
                     this.outer.node_config.timeout),
@@ -403,8 +403,13 @@ public class NetworkManager
         this.known_addresses.put(node.address);
         this.connection_tasks.remove(node.address);
 
-        // todo: this should keep re-trying.
-        node.client.registerListener();
+        this.registerAsListener(node.client);
+    }
+
+    /// Overridable for LocalRest which uses public keys
+    protected void registerAsListener (NetworkClient client)
+    {
+        client.registerListener();
     }
 
     /// Discover the network, connect to all required peers
@@ -710,6 +715,25 @@ public class NetworkManager
         settings.httpClientSettings.readTimeout = timeout;
 
         return new RestInterfaceClient!API(settings);
+    }
+
+    /***************************************************************************
+
+        Instantiates a networking client to be used with the given API instance.
+
+        Overridable in unittests.
+
+        Returns:
+            a NetworkClient
+
+    ***************************************************************************/
+
+    public NetworkClient getNetworkClient (TaskManager taskman,
+        BanManager banman, Address address, API api, Duration retry,
+        size_t max_retries)
+    {
+        return new NetworkClient(taskman, banman, address, api, retry,
+            max_retries);
     }
 
     /***************************************************************************
