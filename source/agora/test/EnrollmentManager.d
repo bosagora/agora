@@ -172,7 +172,7 @@ unittest
     {
         // Use Genesis
         if (!txs.length)
-            txs = genesisSpendable().take(Block.TxsInBlock).enumerate()
+            txs = genesisSpendable().take(8).enumerate()
                 .map!(en => en.value.refund(WK.Keys.A.address).sign())
                 .array();
         else
@@ -235,9 +235,10 @@ unittest
         private size_t count;
 
         ///
-        public this (Config config, Registry* reg, immutable(Block)[] blocks)
+        public this (Config config, Registry* reg, immutable(Block)[] blocks,
+            ulong txs_to_nominate)
         {
-            super(config, reg, blocks);
+            super(config, reg, blocks, txs_to_nominate);
         }
 
         public override void receivePreimage (PreImageInfo preimage)
@@ -251,9 +252,9 @@ unittest
     static final class BadAPIManager : TestAPIManager
     {
         ///
-        public this (immutable(Block)[] blocks)
+        public this (immutable(Block)[] blocks, TestConf test_conf)
         {
-            super(blocks);
+            super(blocks, test_conf);
         }
 
         /// see base class
@@ -263,7 +264,8 @@ unittest
             {
                 assert(conf.node.is_validator);
                 auto node = RemoteAPI!TestAPI.spawn!TestNode(
-                    conf, &this.reg, this.blocks, conf.node.timeout);
+                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf.node.timeout);
                 this.reg.register(conf.node.address, node.ctrl.tid());
                 this.nodes ~= NodePair(conf.node.address, node);
             }
@@ -321,10 +323,10 @@ unittest
 
         /// Ctor
         public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman, shared(size_t)* countPtr)
+            TaskManager taskman, ulong txs_to_nominate, shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            super(network, key_pair, ledger, taskman);
+            super(network, key_pair, ledger, taskman, txs_to_nominate);
         }
 
         ///
@@ -349,10 +351,10 @@ unittest
 
         /// Ctor
         public this (Config config, Registry* reg, immutable(Block)[] blocks,
-                     shared(size_t)* countPtr)
+                     ulong txs_to_nominate, shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            super(config, reg, blocks);
+            super(config, reg, blocks, txs_to_nominate);
         }
 
         ///
@@ -361,7 +363,8 @@ unittest
             TaskManager taskman)
         {
             return new BadNominator(
-                network, key_pair, ledger, taskman, this.runCount);
+                network, key_pair, ledger, taskman, this.txs_to_nominate,
+                this.runCount);
         }
     }
 
@@ -371,9 +374,9 @@ unittest
         shared size_t runCount;
 
         ///
-        public this (immutable(Block)[] blocks)
+        public this (immutable(Block)[] blocks, TestConf test_conf)
         {
-            super(blocks);
+            super(blocks, test_conf);
         }
 
         /// see base class
@@ -382,7 +385,8 @@ unittest
             if (this.nodes.length == 0)
             {
                 auto api = RemoteAPI!TestAPI.spawn!MisbehavingValidator(
-                    conf, &this.reg, this.blocks, &this.runCount, conf.node.timeout);
+                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    &this.runCount, conf.node.timeout);
                 this.reg.register(conf.node.address, api.tid());
                 this.nodes ~= NodePair(conf.node.address, api);
             }
@@ -405,7 +409,7 @@ unittest
     assert(b0.header.enrollments.length >= 1);
 
     // Make a block using Genesis
-    Transaction[] txs = genesisSpendable().take(Block.TxsInBlock).enumerate()
+    Transaction[] txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys.A.address).sign())
         .array();
     txs.each!(tx => validator.putTransaction(tx));

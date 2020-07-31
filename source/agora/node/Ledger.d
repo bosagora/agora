@@ -520,14 +520,16 @@ public class Ledger
     }
 }
 
+/// Note: these unittests historically assume a block always contains
+/// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
 {
     /// simulate block creation as if a nomination and externalize round completed
     private void forceCreateBlock (Ledger ledger)
     {
         ConsensusData data;
-        ledger.prepareNominatingSet(data, Block.TxsInBlock);
-        assert(data.tx_set.length == Block.TxsInBlock);
+        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+        assert(data.tx_set.length == Block.TxsInTestBlock);
         assert(ledger.onExternalized(data));
     }
 
@@ -577,7 +579,7 @@ unittest
         // Special case for genesis
         if (!last_txs.length)
         {
-            last_txs = genesisSpendable().take(Block.TxsInBlock).enumerate()
+            last_txs = genesisSpendable().take(Block.TxsInTestBlock).enumerate()
                 .map!(en => en.value.refund(WK.Keys.A.address).sign())
                 .array();
             last_txs.each!(tx => ledger.acceptTransaction(tx));
@@ -800,11 +802,11 @@ private Transaction[] makeTransactionForFreezing (
 {
     import std.conv;
 
-    assert(in_key_pair.length == Block.TxsInBlock);
-    assert(out_key_pair.length == Block.TxsInBlock);
+    assert(in_key_pair.length == Block.TxsInTestBlock);
+    assert(out_key_pair.length == Block.TxsInTestBlock);
 
-    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
-    const TxCount = Block.TxsInBlock;
+    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInTestBlock);
+    const TxCount = Block.TxsInTestBlock;
 
     Transaction[] transactions;
 
@@ -817,26 +819,26 @@ private Transaction[] makeTransactionForFreezing (
         if (prev_txs.length == 0)  // refering to genesis tx's outputs
             input = Input(hashFull(default_tx), idx.to!uint);
         else  // refering to tx's in the previous block
-            input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
+            input = Input(hashFull(prev_txs[idx % Block.TxsInTestBlock]), 0);
 
         Transaction tx =
         {
             tx_type,
             [input],
-            [Output(AmountPerTx, out_key_pair[idx % Block.TxsInBlock].address)]  // send to the same address
+            [Output(AmountPerTx, out_key_pair[idx % Block.TxsInTestBlock].address)]  // send to the same address
         };
 
-        auto signature = in_key_pair[idx % Block.TxsInBlock].secret.sign(hashFull(tx)[]);
+        auto signature = in_key_pair[idx % Block.TxsInTestBlock].secret.sign(hashFull(tx)[]);
         tx.inputs[0].signature = signature;
         transactions ~= tx;
 
         // new transactions will refer to the just created transactions
         // which will be part of the previous block after the block is created
-        if (Block.TxsInBlock == 1 ||  // special case
-            (idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
+        if (Block.TxsInTestBlock == 1 ||  // special case
+            (idx > 0 && ((idx + 1) % Block.TxsInTestBlock == 0)))
         {
             // refer to tx'es which will be in the previous block
-            prev_txs = transactions[$ - Block.TxsInBlock .. $];
+            prev_txs = transactions[$ - Block.TxsInTestBlock .. $];
         }
     }
     return transactions;
@@ -846,7 +848,7 @@ version (unittest)
 private KeyPair[] getRandomKeyPairs ()
 {
     KeyPair[] res;
-    foreach (idx; 0 .. Block.TxsInBlock)
+    foreach (idx; 0 .. Block.TxsInTestBlock)
         res ~= KeyPair.random;
     return res;
 }
@@ -876,7 +878,7 @@ unittest
     // Now generate a block with only freezing transactions
     txs.enumerate()
         .map!(en => TxBuilder(en.value)
-              .refund(WK.Keys[Block.TxsInBlock + en.index].address)
+              .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
               .sign(TxType.Freeze))
         .each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
@@ -912,7 +914,7 @@ unittest
     Transaction[] splited_txex;
 
     in_key_pairs_normal.length = 0;
-    foreach (idx; 0 .. Block.TxsInBlock)
+    foreach (idx; 0 .. Block.TxsInTestBlock)
         in_key_pairs_normal ~= splited_keys[0];
 
     out_key_pairs_normal = getRandomKeyPairs();
@@ -938,7 +940,7 @@ unittest
             if (is_valid)
             {
                 // keep track of last tx's to chain them to
-                last_txs_normal = txes[$ - Block.TxsInBlock .. $];
+                last_txs_normal = txes[$ - Block.TxsInTestBlock .. $];
 
                 in_key_pairs_normal = out_key_pairs_normal;
                 out_key_pairs_normal = getRandomKeyPairs();
@@ -947,7 +949,7 @@ unittest
     }
 
     in_key_pairs_freeze.length = 0;
-    foreach (idx; 0 .. Block.TxsInBlock)
+    foreach (idx; 0 .. Block.TxsInTestBlock)
         in_key_pairs_freeze ~= splited_keys[1];
 
     out_key_pairs_freeze = getRandomKeyPairs();
@@ -973,7 +975,7 @@ unittest
             if (is_valid)
             {
                 // keep track of last tx's to chain them to
-                last_txs_freeze = txes[$ - Block.TxsInBlock .. $];
+                last_txs_freeze = txes[$ - Block.TxsInTestBlock .. $];
 
                 in_key_pairs_freeze = out_key_pairs_freeze;
                 out_key_pairs_freeze = getRandomKeyPairs();
@@ -986,10 +988,10 @@ unittest
     // and one transaction has eight Outputs with a value of 40,000 values.
     splited_txex = () {
         Transaction[] txs;
-        foreach (idx; 0 .. Block.TxsInBlock)
+        foreach (idx; 0 .. Block.TxsInTestBlock)
         {
             txs ~= TxBuilder(params.Genesis.txs[1], idx)
-                .split(splited_keys[idx].address.repeat(Block.TxsInBlock))
+                .split(splited_keys[idx].address.repeat(Block.TxsInTestBlock))
                 .sign();
         }
         return txs;

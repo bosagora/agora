@@ -81,7 +81,7 @@ int main (string[] args)
 
         auto kp = WK.Keys.Genesis;
 
-        iota(Block.TxsInBlock)
+        iota(8)
             .map!(idx => TxBuilder(TestGenesis.GenesisBlock.txs[1], idx)
                   .refund(kp.address).sign())
             .each!(tx => clients[0].putTransaction(tx));

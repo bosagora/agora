@@ -46,7 +46,7 @@ private void main ()
     blocks ~= GenesisBlock;
 
     // For genesis, we need to use the outputs, not previous transactions
-    Transaction[] txs = iota(Block.TxsInBlock)
+    Transaction[] txs = iota(8)
         .map!(idx => TxBuilder(GenesisBlock.txs[1], idx).refund(WK.Keys.A.address).sign())
         .array();
     foreach (block_idx; 0 .. BlockCount)

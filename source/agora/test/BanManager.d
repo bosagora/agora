@@ -27,13 +27,15 @@ import core.thread;
 /// test node banning after putTransaction fails a number of times
 unittest
 {
+    const txs_to_nominate = 8;
     TestConf conf =
     {
         validators : 2,
         full_nodes : 1,
         retry_delay : 10.msecs,
         max_retries : 10,
-        max_failed_requests : 4 * Block.TxsInBlock
+        txs_to_nominate : txs_to_nominate,
+        max_failed_requests : 4 * txs_to_nominate
     };
 
     auto network = makeTestNetwork(conf);
@@ -57,7 +59,7 @@ unittest
     {
         auto txes = makeChainedTransactions(gen_key, last_txs, count);
         // keep track of last tx's to chain them to
-        last_txs = txes[$ - Block.TxsInBlock .. $];
+        last_txs = txes[$ - 8 .. $];
         all_txs ~= txes;
         return txes;
     }

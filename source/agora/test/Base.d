@@ -35,6 +35,7 @@ import agora.common.TransactionPool;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.ConsensusData;
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
@@ -356,11 +357,33 @@ public class FakeClockBanManager : BanManager
 public extern (C++) class TestNominator : Nominator
 {
 extern(D):
+    /// number of txs required for nomination
+    private ulong txs_to_nominate;
+
     ///
     public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman)
+        TaskManager taskman, ulong txs_to_nominate)
     {
+        this.txs_to_nominate = txs_to_nominate;
         super(network, key_pair, ledger, taskman);
+    }
+
+    /// Overrides the default behavior and changes nomination behavior based
+    /// on the TestConf 'txs_to_nominate' option
+    protected override bool prepareNominatingSet (out ConsensusData data) @safe
+    {
+        // if 0 take all txs, otherwise nominate exactly this many txs
+        this.ledger.prepareNominatingSet(data,
+            this.txs_to_nominate ? this.txs_to_nominate : ulong.max);
+        if (data.tx_set.length < this.txs_to_nominate)
+            return false;  // not enough txs
+
+        // defensive coding, same as base class
+        // (but may be overruled by derived classes)
+        if (auto msg = this.ledger.validateConsensusData(data))
+            return false;
+
+        return true;
     }
 }
 
@@ -385,6 +408,9 @@ public struct NodePair
 
 public class TestAPIManager
 {
+    /// Test configuration
+    protected TestConf test_conf;
+
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
@@ -403,8 +429,9 @@ public class TestAPIManager
     protected Registry reg;
 
     ///
-    public this (immutable(Block)[] blocks)
+    public this (immutable(Block)[] blocks, TestConf test_conf)
     {
+        this.test_conf = test_conf;
         this.blocks = blocks;
         this.reg.initialize();
     }
@@ -418,14 +445,14 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void createNewNode (Config conf)
+    public void createNewNode (Config conf )
     {
         RemoteAPI!TestAPI api;
 
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, conf.node.timeout);
+                this.blocks, this.test_conf.txs_to_nominate, conf.node.timeout);
         }
         else
         {
@@ -725,14 +752,6 @@ private mixin template TestNodeMixin ()
     private immutable(Block)[] blocks;
 
     ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks)
-    {
-        this.registry = reg;
-        this.blocks = blocks;
-        super(config);
-    }
-
-    ///
     public override void start ()
     {
         super.start();
@@ -806,8 +825,20 @@ private mixin template TestNodeMixin ()
 /// A FullNode which also implements test routines in TestAPI
 public class TestFullNode : FullNode, TestAPI
 {
+    /// txs to nominate in the TestNominator
+    protected ulong txs_to_nominate;
+
     ///
     mixin TestNodeMixin!();
+
+
+    ///
+    public this (Config config, Registry* reg, immutable(Block)[] blocks)
+    {
+        this.registry = reg;
+        this.blocks = blocks;
+        super(config);
+    }
 
     /// FullNode does not implement this
     public override Enrollment createEnrollmentData ()
@@ -839,8 +870,21 @@ public class TestFullNode : FullNode, TestAPI
 /// A Validator which also implements test routines in TestAPI
 public class TestValidatorNode : Validator, TestAPI
 {
+    /// for TestNominator
+    protected ulong txs_to_nominate;
+
     ///
     mixin TestNodeMixin!();
+
+    ///
+    public this (Config config, Registry* reg, immutable(Block)[] blocks,
+        ulong txs_to_nominate)
+    {
+        this.registry = reg;
+        this.blocks = blocks;
+        this.txs_to_nominate = txs_to_nominate;
+        super(config);
+    }
 
     /// Create an enrollment data used as information for an validator
     public override Enrollment createEnrollmentData ()
@@ -871,7 +915,8 @@ public class TestValidatorNode : Validator, TestAPI
     protected override TestNominator getNominator ( NetworkManager network,
         KeyPair key_pair, Ledger ledger, TaskManager taskman)
     {
-        return new TestNominator(network, key_pair, ledger, taskman);
+        return new TestNominator(network, key_pair, ledger, taskman,
+            this.txs_to_nominate);
     }
 }
 
@@ -935,6 +980,14 @@ public struct TestConf
 
     /// max listener nodes. If set to 0, set to this.nodes - 1
     size_t max_listeners;
+
+    /// Number of transactions nominated for each nomination slot.
+    /// This is only used for the TestNominator - it's not part of Consensus rules.
+    /// Many existing tests have been originally written with the assumption that
+    /// a block contains 8 transactions.
+    /// If set to 0 there will be no limits on the number of nominated transactions
+    /// (unless Consensus rules dictate otherwise)
+    ulong txs_to_nominate = 8;
 }
 
 /*******************************************************************************
@@ -1089,7 +1142,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     immutable(Block)[] blocks = generateBlocks(gen_block,
         test_conf.extra_blocks);
 
-    auto net = new APIManager(blocks);
+    auto net = new APIManager(blocks, test_conf);
     foreach (ref conf; main_configs)
         net.createNewNode(conf);
 
@@ -1244,7 +1297,7 @@ private immutable(Block)[] generateBlocks (
     {
         // see `agora.consensus.data.genesis.Test` for the magic amount
         auto txs = makeChainedTransactions(WK.Keys.Genesis,
-            prev_txs, 1, 61_000_000uL * 10_000_000uL * Block.TxsInBlock);
+            prev_txs, 1, 61_000_000uL * 10_000_000uL * 8);
 
         const NoEnrollments = null;
         blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);

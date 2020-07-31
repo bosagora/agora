@@ -42,7 +42,7 @@ version (unittest)
     A block is considered valid if:
         - its height is the previous block height + 1
         - its prev_hash is the previous block header's hash
-        - the number of transactions in the block are equal to Block.TxsInBlock
+        - the number of transactions in the block is at least 1
         - the merkle root in the header matches the re-built merkle tree root
           based on the included transactions in the block
         - Transactions are ordered by their hash value
@@ -89,8 +89,8 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     if (block.header.prev_block != prev_hash)
         return "Block: Header.prev_block does not match previous block";
 
-    if (block.txs.length != Block.TxsInBlock)
-        return "Block: Number of transaction mismatch";
+    if (block.txs.length == 0)
+        return "Block: Must contain at least one transaction";
 
     if (!block.txs.isSorted())
         return "Block: Transactions are not sorted";
@@ -143,8 +143,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     Follow the same rules as for `Block` except for the following:
         - Block height must be 0
         - The previous block hash of the block must be empty
-        - The number of transactions in the block must be in the range `(0;
-          Block.TxsInBlock]`.
+        - The block must contain at least 1 transaction
         - Transactions must have no input
         - Transactions must have at least one output
         - All the enrollments pass validation, which implies:
@@ -171,8 +170,8 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
     if (block.txs.length == 0)
         return "GenesisBlock: Transaction(s) are empty";
 
-    if (block.txs.length > Block.TxsInBlock)
-        return "GenesisBlock: The number of transactions is out of bounds";
+    if (block.txs.length == 0)
+        return "GenesisBlock: Must contain at least one transaction";
 
     if (!block.txs.isSorted())
         return "GenesisBlock: Transactions are not sorted";
@@ -310,9 +309,15 @@ unittest
         block.header.enrollments = null;
         assert(!block.isGenesisBlockValid());
 
-        foreach (_; 0 .. Block.TxsInBlock)
+        // at least 1 tx needed (todo: relax this?)
+        block.txs ~= makeNewTx();
+        buildMerkleTree(block);
+        checkValidity(block);
+        block.txs = null;
+
+        foreach (_; 0 .. 8)
             block.txs ~= makeNewTx();
-        assert(block.txs.length == Block.TxsInBlock);
+        assert(block.txs.length == 8);
         buildMerkleTree(block);
         checkValidity(block);
 
@@ -325,11 +330,11 @@ unittest
         buildMerkleTree(block, false);
         checkValidity(block);
 
-        // Txs length out of bounds check
+        // there may be any number of txs, does not need to be power of 2
         block.txs ~= makeNewTx();
         buildMerkleTree(block);
-        assert(block.txs.length == Block.TxsInBlock + 1);
-        assert(!block.isGenesisBlockValid());
+        assert(block.txs.length == 9);
+        assert(block.isGenesisBlockValid());
 
         block = GenesisBlock.serializeFull.deserializeFull!Block;
 
@@ -611,7 +616,7 @@ unittest
         utxo_set.put(tx);
 
     auto txs_1 = makeChainedTransactions(gen_key, null, 1,
-        400_000_000_000 * Block.TxsInBlock).sort.array;
+        400_000_000_000 * 8).sort.array;
 
     auto block1 = makeNewBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
@@ -636,7 +641,7 @@ unittest
 
         if (idx == 7)
         {
-            foreach (_; 0 .. Block.TxsInBlock)
+            foreach (_; 0 .. 8)
             {
                 Output output;
                 output.value = Amount(100);
@@ -664,7 +669,7 @@ unittest
 
     KeyPair keypair2 = KeyPair.random();
     Transaction[] txs_3;
-    foreach (idx; 0 .. Block.TxsInBlock)
+    foreach (idx; 0 .. 8)
     {
         Input input = Input(hashFull(txs_2[7]), idx);
 
@@ -733,7 +738,7 @@ unittest
         utxo_set.put(tx);
 
     auto txs_1 = makeChainedTransactions(gen_key, null, 1,
-        400_000_000_000 * 10 * Block.TxsInBlock).sort.array;
+        400_000_000_000 * 10 * 8).sort.array;
 
     auto block1 = makeNewBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
@@ -761,7 +766,7 @@ unittest
         else
         {
             tx.type = TxType.Payment;
-            foreach (_; 0 .. Block.TxsInBlock)
+            foreach (_; 0 .. 8)
                 tx.outputs ~= Output(Amount(100), keypair.address);
         }
 
@@ -780,7 +785,7 @@ unittest
     {
         KeyPair keypair2 = KeyPair.random();
         Transaction[] txs_3;
-        foreach (idx; 0 .. Block.TxsInBlock)
+        foreach (idx; 0 .. 8)
         {
             Transaction tx =
             {
@@ -807,7 +812,7 @@ unittest
     {
         KeyPair keypair2 = KeyPair.random();
         Transaction[] txs_3;
-        foreach (idx; 0 .. Block.TxsInBlock)
+        foreach (idx; 0 .. 8)
         {
             Transaction tx =
             {
@@ -845,7 +850,7 @@ unittest
     {
         KeyPair keypair2 = KeyPair.random();
         Transaction[] txs_3;
-        foreach (idx; 0 .. Block.TxsInBlock)
+        foreach (idx; 0 .. 8)
         {
             Transaction tx =
             {
