@@ -689,6 +689,9 @@ public interface TestAPI : ValidatorAPI
 
     ///
     public QuorumConfig getQuorumConfig ();
+
+    /// Get the active validator count for the current block height
+    public ulong getValidatorCount ();
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -772,6 +775,12 @@ private mixin template TestNodeMixin ()
         immutable(ConsensusParams) params)
     {
         return new EnrollmentManager(":memory:", node_config.key_pair, params);
+    }
+
+    /// Get the active validator count for the current block height
+    public override ulong getValidatorCount ()
+    {
+        return this.enroll_man.validatorCount();
     }
 }
 
