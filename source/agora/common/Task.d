@@ -90,7 +90,7 @@ public class TaskManager
     ***************************************************************************/
 
     public ITimer setTimer (Duration timeout, void delegate() dg,
-        Periodic periodic = Periodic.No)
+        Periodic periodic = Periodic.No) nothrow
     {
         assert(dg !is null, "Cannot call this delegate if null");
         static import vibe.core.core;
@@ -112,7 +112,7 @@ public interface ITimer
 
     ***************************************************************************/
 
-    public void stop ();
+    public void stop () @safe nothrow;
 }
 
 /*******************************************************************************
