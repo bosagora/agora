@@ -63,11 +63,6 @@ public extern (C++) class Nominator : SCPDriver
     /// Ledger instance
     private Ledger ledger;
 
-    /// The set of active timers
-    /// Todo: SCPTests.cpp uses fake timers,
-    /// Similar to how we use FakeClockBanManager!
-    private Set!ulong timers;
-
     /// The mapping of all known quorum sets
     private SCPQuorumSetPtr[Hash] known_quorums;
 
