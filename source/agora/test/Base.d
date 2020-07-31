@@ -44,6 +44,7 @@ import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.protocol.Nominator;
+import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
@@ -627,6 +628,39 @@ public class TestAPIManager
 
 /*******************************************************************************
 
+    Adds additional networking capabilities for use in unittests
+
+*******************************************************************************/
+
+public class TestNetworkClient : NetworkClient
+{
+    /// See NetworkClient ctor
+    public this (TaskManager taskman, BanManager banman, Address address,
+        ValidatorAPI api, Duration retry, size_t max_retries)
+    {
+        super(taskman, banman, address, api, retry, max_retries);
+    }
+
+    /***************************************************************************
+
+        Register the node's address to listen for gossiping messages.
+
+        address = the adddress of the node
+
+        Throws:
+            `Exception` if the request failed.
+
+    ***************************************************************************/
+
+    public void registerListenerAddress (Address address)
+    {
+        return this.attemptRequest!(TestAPI.registerListenerAddress, Throw.Yes)(
+            cast(TestAPI)this.api, address);
+    }
+}
+
+/*******************************************************************************
+
     Base class for `NetworkManager` used in unittests.
     This class is instantiated once per unittested node.
 
@@ -663,14 +697,23 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override ValidatorAPI getClient (Address address,
+    protected final override TestAPI getClient (Address address,
         Duration timeout)
     {
         auto tid = this.registry.locate(address);
         if (tid != typeof(tid).init)
-            return new RemoteAPI!ValidatorAPI(tid, timeout);
+            return new RemoteAPI!TestAPI(tid, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
+    }
+
+    ///
+    protected final override TestNetworkClient getNetworkClient (
+        TaskManager taskman, BanManager banman, Address address,
+        ValidatorAPI api, Duration retry, size_t max_retries)
+    {
+        return new TestNetworkClient(taskman, banman, address, api, retry,
+            max_retries);
     }
 
     /***************************************************************************
@@ -701,6 +744,13 @@ public class TestNetworkManager : NetworkManager
         (Address address)
     {
         assert(0, "Not supported");
+    }
+
+    /// Overridable for LocalRest which uses public keys
+    protected final override void registerAsListener (NetworkClient client)
+    {
+        (cast(TestNetworkClient)client).registerListenerAddress(
+            this.node_config.address);
     }
 }
 
@@ -770,6 +820,23 @@ public interface TestAPI : ValidatorAPI
 
     /// Get the active validator count for the current block height
     public ulong getValidatorCount ();
+
+    /***************************************************************************
+
+        Register the given address to listen for gossiping messages.
+
+        This method is the API endpoint for LocalRest, which is corresponding to
+        the `register_address` REST interface.
+
+        Params:
+            address = the address of node to register
+
+        Throws:
+            `Exception` if the request failed.
+
+    ***************************************************************************/
+
+    public void registerListenerAddress (Address address);
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -851,6 +918,12 @@ private mixin template TestNodeMixin ()
     public override ulong getValidatorCount ()
     {
         return this.enroll_man.validatorCount();
+    }
+
+    /// Localrest: the address (key) is provided directly to the network manager
+    public override void registerListenerAddress (Address address)
+    {
+        this.network.registerListener(address);
     }
 }
 
