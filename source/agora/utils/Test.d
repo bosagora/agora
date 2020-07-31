@@ -144,6 +144,9 @@ unittest
 
 /*******************************************************************************
 
+    Note: This is an outdated function which assumes a block always contains
+    exactly 8 transactions. New code should be using `TxBuilder` instead.
+
     Create a set of transactions, where each newly created transaction
     spends the entire sum of each provided transaction's output as
     set in the parameters.
@@ -169,8 +172,8 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     import agora.consensus.data.Block;
     import std.conv;
 
-    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInBlock);
-    const TxCount = block_count * Block.TxsInBlock;
+    assert(prev_txs.length == 0 || prev_txs.length == 8);
+    const TxCount = block_count * 8;
 
     // in unittests we use the following blockchain layout:
     //
@@ -192,7 +195,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
     Transaction[] transactions;
 
     // always use the same amount, for simplicity
-    const Amount AmountPerTx = spend_amount / Block.TxsInBlock;
+    const Amount AmountPerTx = spend_amount / 8;
     const genesisTxHash = GenesisBlock.txs[1].hashFull();
 
     foreach (idx; 0 .. TxCount)
@@ -204,7 +207,7 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
         }
         else  // refering to tx's in the previous block
         {
-            input = Input(hashFull(prev_txs[idx % Block.TxsInBlock]), 0);
+            input = Input(hashFull(prev_txs[idx % 8]), 0);
         }
 
         Transaction tx =
@@ -220,10 +223,10 @@ public Transaction[] makeChainedTransactions (KeyPair key_pair,
 
         // new transactions will refer to the just created transactions
         // which will be part of the previous block after the block is created
-        if ((idx > 0 && ((idx + 1) % Block.TxsInBlock == 0)))
+        if ((idx > 0 && ((idx + 1) % 8 == 0)))
         {
             // refer to tx'es which will be in the previous block
-            prev_txs = transactions[$ - Block.TxsInBlock .. $];
+            prev_txs = transactions[$ - 8 .. $];
         }
     }
     return transactions;
@@ -238,7 +241,7 @@ unittest
 
     /// should spend genesis block's outputs
     auto txes = makeChainedTransactions(gen_key, null, 1);
-    foreach (idx; 0 .. Block.TxsInBlock)
+    foreach (idx; 0 .. 8)
     {
         assert(txes[idx].inputs.length == 1);
         assert(txes[idx].inputs[0].index == idx);
@@ -249,7 +252,7 @@ unittest
     // should spend the previous tx'es outputs
     txes = makeChainedTransactions(gen_key, txes, 1);
 
-    foreach (idx; 0 .. Block.TxsInBlock)
+    foreach (idx; 0 .. 8)
     {
         assert(txes[idx].inputs.length == 1);
         assert(txes[idx].inputs[0].index == 0);  // always refers to only output in tx
@@ -258,8 +261,8 @@ unittest
 
     const TotalSpend = 20_000_000;
     txes = makeChainedTransactions(gen_key, prev_txs, 1, TotalSpend);
-    auto SpendPerTx = TotalSpend / Block.TxsInBlock;
-    foreach (idx; 0 .. Block.TxsInBlock)
+    auto SpendPerTx = TotalSpend / 8;
+    foreach (idx; 0 .. 8)
     {
         assert(txes[idx].inputs.length == 1);
         assert(txes[idx].inputs[0].index == 0);

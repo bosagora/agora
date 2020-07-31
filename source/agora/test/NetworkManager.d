@@ -96,9 +96,9 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         ///
-        public this (immutable(Block)[] blocks)
+        public this (immutable(Block)[] blocks, TestConf test_conf)
         {
-            super(blocks);
+            super(blocks, test_conf);
         }
 
         /// see base class
@@ -114,7 +114,8 @@ unittest
             if (conf.node.is_validator)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, this.blocks, conf.node.timeout);
+                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf.node.timeout);
             }
             else
             {
