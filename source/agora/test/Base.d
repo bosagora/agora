@@ -289,7 +289,7 @@ public class LocalRestTaskManager : TaskManager
     ***************************************************************************/
 
     public override ITimer setTimer (Duration timeout, void delegate() dg,
-        Periodic periodic = Periodic.No)
+        Periodic periodic = Periodic.No) nothrow
     {
         return new LocalRestTimer(geod24.LocalRest.setTimer(timeout, dg,
             periodic));
@@ -308,13 +308,13 @@ private final class LocalRestTimer : ITimer
 
     private LocalRest.Timer timer;
 
-    public this (LocalRest.Timer timer)
+    public this (LocalRest.Timer timer) @safe nothrow
     {
         this.timer = timer;
     }
 
     /// Ditto
-    public override void stop ()
+    public override void stop () @safe nothrow
     {
         this.timer.stop();
     }
