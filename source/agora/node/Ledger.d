@@ -340,21 +340,19 @@ public class Ledger
 
     /***************************************************************************
 
-        Try to collect a set of transactions to nominate.
+        Collect up to a maximum number of transactions to nominate
 
         Params:
             txs = will contain the transaction set to nominate,
                   or empty if not enough txs were found
+            max_txs = the maximum number of transactions to prepare.
 
     ***************************************************************************/
 
-    public void prepareNominatingSet (ref ConsensusData data) @safe
+    public void prepareNominatingSet (ref ConsensusData data, ulong max_txs)
+        @safe
     {
-        assert(data.tx_set.length == 0);
-
-        if (this.pool.length < Block.TxsInBlock)
-            return;
-
+        data = ConsensusData.init;
         const next_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
@@ -367,17 +365,12 @@ public class Ledger
             else
                 data.tx_set ~= tx;
 
-            if (data.tx_set.length >= Block.TxsInBlock)
+            if (data.tx_set.length >= max_txs)
             {
                 data.tx_set.sort();
                 return;
             }
         }
-
-        // not enough txs were found
-        () @trusted {
-            data = ConsensusData.init;
-        }();
     }
 
     /***************************************************************************
@@ -533,8 +526,8 @@ version (unittest)
     private void forceCreateBlock (Ledger ledger)
     {
         ConsensusData data;
-        ledger.prepareNominatingSet(data);
-        assert(data.tx_set.length > 0);
+        ledger.prepareNominatingSet(data, Block.TxsInBlock);
+        assert(data.tx_set.length == Block.TxsInBlock);
         assert(ledger.onExternalized(data));
     }
 

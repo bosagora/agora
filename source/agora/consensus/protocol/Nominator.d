@@ -170,8 +170,8 @@ extern(D):
         scope (exit) this.is_nominating = false;
 
         ConsensusData data;
-        this.ledger.prepareNominatingSet(data);
-        if (data.tx_set.length == 0)
+        this.ledger.prepareNominatingSet(data, Block.TxsInBlock);
+        if (data.tx_set.length != Block.TxsInBlock)
             return;  // not ready yet
 
         // check whether the consensus data is valid before nominating it.

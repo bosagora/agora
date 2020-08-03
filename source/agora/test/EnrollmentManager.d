@@ -348,7 +348,7 @@ unittest
             scope (exit) this.is_nominating = false;
 
             ConsensusData data;
-            this.ledger.prepareNominatingSet(data);
+            this.ledger.prepareNominatingSet(data, Block.TxsInBlock);
             if (data.tx_set.length == 0)
                 return;  // not ready yet
 
