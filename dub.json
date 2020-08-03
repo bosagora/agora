@@ -115,7 +115,7 @@
                 "source/scpp/build/DSizeChecks.obj",
                 "source/scpp/build/DLayoutChecks.obj"
             ],
-            "dflags": [ "-extern-std=c++14", "--link-defaultlib-debug" ],
+            "dflags": [ "-extern-std=c++14", "--link-defaultlib-debug" ]
         },
         {
             "name": "multi",
