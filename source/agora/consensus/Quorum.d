@@ -483,7 +483,7 @@ private NodeStake[] buildStakesDescending (const ref PublicKey filter,
 
 version (unittest)
 private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
-    const(PublicKey)[] keys, auto const ref Hash rand_seed,
+    const(PublicKey)[] keys, const auto ref Hash rand_seed,
     const auto ref QuorumParams params)
 {
     assert(amounts.length == keys.length);
