@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Tests creating blocks of arbitrary transaction counts.
+    Tests behavior of `block_interval_sec`
 
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea
@@ -11,19 +11,19 @@
 
 *******************************************************************************/
 
-module agora.test.VariableBlockSize;
+module agora.test.TimeBlockInterval;
 
 version (unittest):
 
 import agora.api.Validator;
+import agora.common.Hash;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
 
 ///
 unittest
 {
-    const txs_to_nominate = 2;
-    TestConf conf = { txs_to_nominate : txs_to_nominate };
+    TestConf conf = { txs_to_nominate : 2, block_interval_sec : 2 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -43,12 +43,25 @@ unittest
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
         .array;
 
-    foreach (block_idx, block_txs; txs.chunks(txs_to_nominate).enumerate)
-    {
-        block_txs.each!(tx => nodes[0].putTransaction(tx));
-        network.expectBlock(Height(block_idx + 1), 5.seconds);
-    }
+    // 8 transactions is enough for 4 blocks with 2 txs each
+    txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // 8 txs will create 4 blocks if we nominate 2 per block
+    // wait for propagation
+    nodes.each!(node =>
+       txs.each!(tx =>
+           node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)
+    ));
+
+    // time updated, block height 1
+    network.setTimeFor(Height(1));
+    ensureConsistency(nodes, 1);
+
+    network.setTimeFor(Height(2));
+    ensureConsistency(nodes, 2);
+
+    network.setTimeFor(Height(3));
+    ensureConsistency(nodes, 3);
+
+    network.setTimeFor(Height(4));
     ensureConsistency(nodes, 4);
 }
