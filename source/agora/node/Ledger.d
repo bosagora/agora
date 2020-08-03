@@ -1052,48 +1052,12 @@ unittest
     assert(ledger.getBlockHeight() == validator_cycle + 4 - 1);
 }
 
-// generate genesis with a freeze & payment tx, and 'count' number of
-// extra blocks
+// Return Genesis block plus 'count' number of blocks
 version (unittest)
-private const(Block)[] genBlocksToIndex (
+private immutable(Block)[] genBlocksToIndex (
     KeyPair key_pair, uint ValidatorCycle, size_t count)
 {
-    // 1 payment and 1 freeze tx (must be a power of 2 due to #797)
-    Transaction[] gen_txs;
-    // need mutable
-    gen_txs ~= GenesisBlock.txs[1].serializeFull.deserializeFull!Transaction;
-
-    Transaction freeze_tx =
-    {
-        type : TxType.Freeze,
-        outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
-    };
-
-    gen_txs ~= freeze_tx;
-    gen_txs.sort;
-
-    const Hash utxo = UTXOSetValue.getHash(freeze_tx.hashFull(), 0);
-    Enrollment[] enrolls = [
-        EnrollmentManager.makeEnrollment(key_pair, utxo, ValidatorCycle, 0)
-    ];
-
-    Hash[] merkle_tree;
-    auto merkle_root = Block.buildMerkleTree(gen_txs, merkle_tree);
-
-    auto genesis = immutable(Block)(
-        immutable(BlockHeader)(
-            Hash.init,   // prev
-            Height(0),   // height
-            merkle_root,
-            BitField!uint.init,
-            Signature.init,
-            enrolls.assumeUnique,
-        ),
-        gen_txs.assumeUnique,
-        merkle_tree.assumeUnique
-    );
-
-    const(Block)[] blocks = [genesis];
+    const(Block)[] blocks = [GenesisBlock];
 
     const(Transaction)[] prev_txs;
     foreach (_; 0 .. count)
@@ -1116,44 +1080,32 @@ unittest
     import agora.common.Serializer;
     import std.exception;
 
-    // only genesis loaded: validator is active
+    // Default test genesis block has 6 validators
     {
-        auto key_pair = KeyPair.random();
-        auto params = new immutable(ConsensusParams)();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, 0);
-        auto old_gen = &GenesisBlock();
-        setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
-        scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
-        scope ledger = new TestLedger(NodeConfig.init, blocks, params);
+        scope ledger = new TestLedger(NodeConfig.init);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);
+        assert(keys.length == 6);
     }
 
-    // block 1007 loaded: validator is still active
+    // One block before `ValidatorCycle`, validator is still active
     {
         const ValidatorCycle = 10;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle - 1);
-        auto old_gen = &GenesisBlock();
-        setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
-        scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
         scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);
+        assert(keys.length == 6);
     }
 
-    // block 1008 loaded: validator is inactive
+    // Past `ValidatorCycle`, validator is inactive
     {
         const ValidatorCycle = 20;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle, ValidatorCycle);
-        auto old_gen = &GenesisBlock();
-        setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
-        scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
         scope ledger = new TestLedger(NodeConfig.init, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
@@ -1206,22 +1158,19 @@ unittest
         auto key_pair = KeyPair.random();
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
-        auto old_gen = &GenesisBlock();
-        setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
-        scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
         scope ledger = new ThrowingLedger(
             key_pair, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);
+        assert(keys.length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
 
         auto next_block = blocks[$ - 1];
         ledger.addValidatedBlock(next_block);
-        assert(ledger.last_block == next_block);
+        assert(ledger.last_block == cast()next_block);
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == 1009));
@@ -1235,15 +1184,12 @@ unittest
         auto key_pair = KeyPair.random();
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
-        auto old_gen = &GenesisBlock();
-        setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
-        scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
         scope ledger = new ThrowingLedger(
             key_pair, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);
+        assert(keys.length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
@@ -1251,12 +1197,12 @@ unittest
         ledger.throw_in_update_utxo = true;
         auto next_block = blocks[$ - 1];
         assertThrown!Exception(ledger.addValidatedBlock(next_block));
-        assert(ledger.last_block == blocks[$ - 2]);  // not updated
+        assert(ledger.last_block == cast()blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);  // not updated
+        assert(keys.length == 6);  // not updated
     }
 
     // throws in updateValidatorSet() => rollback() called, UTXO set and
@@ -1265,15 +1211,12 @@ unittest
         auto key_pair = KeyPair.random();
         const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params.ValidatorCycle);
         assert(blocks.length == 1009);  // +1 for genesis
-        auto old_gen = &GenesisBlock();
-        setGenesisBlock(cast(immutable(Block)*)&blocks[0]);
-        scope (exit) setGenesisBlock(old_gen);  // must reset it for other tests
 
         scope ledger = new ThrowingLedger(
             key_pair, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);
+        assert(keys.length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
@@ -1281,12 +1224,12 @@ unittest
         ledger.throw_in_update_validators = true;
         auto next_block = blocks[$ - 1];
         assertThrown!Exception(ledger.addValidatedBlock(next_block));
-        assert(ledger.last_block == blocks[$ - 2]);  // not updated
+        assert(ledger.last_block == cast()blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 1);  // reverted
+        assert(keys.length == 6);  // reverted
     }
 }
 
