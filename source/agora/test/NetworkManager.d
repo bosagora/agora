@@ -28,7 +28,10 @@ import agora.consensus.data.Transaction;
 import agora.test.Base;
 
 import geod24.Registry;
+
 import std.array;
+
+import core.stdc.time;
 
 /// test behavior when getBlockHeight() call fails
 unittest
@@ -61,9 +64,10 @@ unittest
     static class BadNode : TestFullNode
     {
         ///
-        public this (Config config, Registry* reg, immutable(Block)[] blocks)
+        public this (Config config, Registry* reg, immutable(Block)[] blocks,
+            shared(time_t)* cur_time)
         {
-            super(config, reg, blocks);
+            super(config, reg, blocks, cur_time);
         }
 
         /// return phony blocks
@@ -118,15 +122,16 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         ///
-        public this (immutable(Block)[] blocks, TestConf test_conf)
+        public this (immutable(Block)[] blocks, TestConf test_conf, time_t initial_time)
         {
-            super(blocks, test_conf);
+            super(blocks, test_conf, initial_time);
         }
 
         /// see base class
         public override void createNewNode (Config conf, string file, int line)
         {
             RemoteAPI!TestAPI api;
+            auto time = new shared(time_t)(this.initial_time);
 
             // the test has 3 nodes:
             // 1 validator => used for creating blocks
@@ -137,20 +142,20 @@ unittest
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
                     conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
-                    conf.node.timeout);
+                    time, conf.node.timeout);
             }
             else
             {
                 if (this.nodes.length == 2)
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, this.blocks, conf.node.timeout);
+                        &this.reg, this.blocks, time, conf.node.timeout);
                 else
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, conf.node.timeout);
+                        &this.reg, this.blocks, time, conf.node.timeout);
             }
 
             this.reg.register(conf.node.address, api.tid());
-            this.nodes ~= NodePair(conf.node.address, api);
+            this.nodes ~= NodePair(conf.node.address, api, time);
         }
     }
 

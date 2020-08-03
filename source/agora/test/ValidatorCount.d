@@ -73,6 +73,7 @@ unittest
          blocks ~= node_1.getBlocksFrom(validator_cycle, 1);
     }
 
+    network.setTimeFor(Height(validator_cycle));  // trigger consensus round
     Thread.sleep(2.seconds);  // wait for propagation
 
     // New block was not created because all validators would expire
