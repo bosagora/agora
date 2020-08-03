@@ -61,7 +61,7 @@ public extern (C++) class Nominator : SCPDriver
     private TaskManager taskman;
 
     /// Ledger instance
-    private Ledger ledger;
+    protected Ledger ledger;
 
     /// The mapping of all known quorum sets
     private SCPQuorumSetPtr[Hash] known_quorums;
@@ -151,6 +151,42 @@ extern(D):
 
     /***************************************************************************
 
+        Check whether we're ready to nominate a new block.
+
+        Overriden in unittests to get fine-grained control
+        of when blocks are created:
+
+        - We may want to create blocks faster than `BlockIntervalSeconds`
+          in order to speed up the unittests.
+        - We may want to wait until we have a specific number of TXs in the
+          pool before we start nominating. Otherwise timing issues may cause
+          the unittest nodes to nominate wildly different transaction sets,
+          skewing the assumptions in the tests and causing failures.
+
+        Returns:
+            true if the validator is ready to start nominating
+
+    ***************************************************************************/
+
+    protected bool prepareNominatingSet (out ConsensusData data) @safe
+    {
+        this.ledger.prepareNominatingSet(data, Block.TxsInBlock);
+        if (data.tx_set.length != Block.TxsInBlock)
+            return false;  // not ready to nominate yet
+
+        // check whether the consensus data is valid before nominating it.
+        if (auto msg = this.ledger.validateConsensusData(data))
+        {
+            log.fatal("tryNominate(): Invalid consensus data: {}. Data: {}",
+                    msg, data);
+            return false;
+        }
+
+        return true;
+    }
+
+    /***************************************************************************
+
         Try to begin a nomination round.
 
         If there is already one in progress, or if there are not enough
@@ -170,17 +206,8 @@ extern(D):
         scope (exit) this.is_nominating = false;
 
         ConsensusData data;
-        this.ledger.prepareNominatingSet(data, Block.TxsInBlock);
-        if (data.tx_set.length != Block.TxsInBlock)
-            return;  // not ready yet
-
-        // check whether the consensus data is valid before nominating it.
-        if (auto msg = this.ledger.validateConsensusData(data))
-        {
-            log.fatal("tryNominate(): Invalid consensus data: {}. Data: {}",
-                    msg, data);
+        if (!this.prepareNominatingSet(data))
             return;
-        }
 
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)

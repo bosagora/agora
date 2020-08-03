@@ -317,49 +317,29 @@ unittest
 
     static class BadNominator : TestNominator
     {
-        private Ledger ledger;
-        private bool is_nominating;
         private shared(size_t)* runCount;
 
         /// Ctor
-        public this (NetworkManager network, KeyPair key_pair,
-                     Ledger ledger, TaskManager taskman, shared(size_t)* countPtr)
+        public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
+            TaskManager taskman, shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            this.ledger = ledger;
             super(network, key_pair, ledger, taskman);
         }
 
         ///
-        public override bool isNominating () @safe @nogc nothrow
+        protected override bool prepareNominatingSet (out ConsensusData data) @safe
         {
-            return this.is_nominating;
-        }
+            if (super.prepareNominatingSet(data))
+            {
+                // This behavior is the only difference with a normal Validator:
+                // It adds an enrollment that is already for a node in the ValidatorSet
+                atomicOp!("+=")(*this.runCount, 1);
+                data.enrolls ~= GenesisBlock.header.enrollments[0];
+                return true;
+            }
 
-        ///
-        public override void tryNominate () @safe
-        {
-            // Most of the code, save for the line commented as such, are teken
-            // from `Validator.tryNominate`
-            if (this.is_nominating)
-                return;
-
-            this.is_nominating = true;
-            scope (exit) this.is_nominating = false;
-
-            ConsensusData data;
-            this.ledger.prepareNominatingSet(data, Block.TxsInBlock);
-            if (data.tx_set.length == 0)
-                return;  // not ready yet
-
-            // This behavior is the only difference with a normal Validator:
-            // It adds an enrollment that is already for a node in the ValidatorSet
-            atomicOp!("+=")(*this.runCount, 1);
-            data.enrolls ~= GenesisBlock.header.enrollments[0];
-
-            // Nominate it
-            auto slot_idx = this.ledger.getBlockHeight() + 1;
-            this.nominate(slot_idx, data);
+            return false;
         }
     }
 
