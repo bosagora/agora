@@ -27,7 +27,7 @@ import agora.consensus.data.Transaction;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.utils.Log;
-import agora.utils.PrettyPrinter;
+import agora.utils.SCPPrettyPrinter;
 
 import scpd.Cpp;
 import scpd.scp.SCP;
@@ -310,7 +310,7 @@ extern(D):
         }
 
         if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
-            log.info("Rejected invalid envelope: {}", envelope);
+            log.info("Rejected invalid envelope: {}", scpPrettify(&envelope));
     }
 
     extern (C++):
