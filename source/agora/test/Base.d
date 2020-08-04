@@ -413,11 +413,12 @@ extern(D):
     private ulong txs_to_nominate;
 
     ///
-    public this (Clock clock, NetworkManager network, KeyPair key_pair,
-        Ledger ledger, TaskManager taskman, ulong txs_to_nominate)
+    public this (immutable(ConsensusParams) params, Clock clock,
+        NetworkManager network, KeyPair key_pair, Ledger ledger,
+        TaskManager taskman, ulong txs_to_nominate)
     {
         this.txs_to_nominate = txs_to_nominate;
-        super(clock, network, key_pair, ledger, taskman);
+        super(params, clock, network, key_pair, ledger, taskman);
     }
 
     /// Overrides the default behavior and changes nomination behavior based
@@ -1106,12 +1107,13 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Returns an instance of a TestNominator with customizable behavior
-    protected override TestNominator getNominator ( Clock clock,
+    protected override TestNominator getNominator (
+        immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
         TaskManager taskman)
     {
-        return new TestNominator(clock, network, key_pair, ledger, taskman,
-            this.txs_to_nominate);
+        return new TestNominator(params, clock, network, key_pair, ledger,
+            taskman, this.txs_to_nominate);
     }
 
     /// Gets the expected quorum config for the given keys and height
