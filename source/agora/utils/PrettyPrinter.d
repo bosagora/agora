@@ -79,7 +79,7 @@ private struct AmountFmt
 {
     private Amount value;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -119,7 +119,7 @@ private struct HashFmt
 {
     private const(Hash) value;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -127,7 +127,7 @@ private struct HashFmt
             enum StartUntil = 6;
             enum EndFrom    = Hash.StringBufferSize - 4;
             size_t count;
-            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
+            scope void delegate (in char[]) @safe wrapper = (scope data) @safe {
                     if (count < StartUntil)
                     {
                         sink(data);
@@ -160,7 +160,7 @@ private struct PubKeyFmt
 {
     private const(PublicKey) value;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -169,7 +169,7 @@ private struct PubKeyFmt
             enum StartUntil = 4;
             enum EndFrom    = 56 - 4;
             size_t count;
-            scope void delegate(scope const(char)[]) @safe wrapper = (scope data) @safe {
+            scope void delegate (in char[]) @safe wrapper = (scope data) @safe {
                     if (count < StartUntil)
                     {
                         sink(data);
@@ -206,7 +206,7 @@ private struct InputFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -237,7 +237,7 @@ private struct OutputFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -267,7 +267,7 @@ private struct TransactionFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         @safe nothrow
     {
         try
@@ -320,7 +320,7 @@ private struct BlockHeaderFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) nothrow
         @safe
     {
         try
@@ -353,7 +353,7 @@ private struct BlockFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         @safe nothrow
     {
         try
@@ -388,7 +388,7 @@ private struct EnrollmentFmt
 {
     private const(Enrollment) enroll;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         @safe nothrow
     {
         try
@@ -438,7 +438,7 @@ private struct ConsensusDataFmt
 {
     private const(ConsensusData) data;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         @safe nothrow
     {
         try
@@ -501,7 +501,7 @@ private struct QuorumConfigFmt
 {
     private const(QuorumConfig) data;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         @safe nothrow
     {
         try
