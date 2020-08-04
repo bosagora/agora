@@ -42,6 +42,7 @@ import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.genesis.Test;
+import agora.consensus.protocol.Nominator;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
@@ -349,6 +350,18 @@ public class FakeClockBanManager : BanManager
 
     /// no-op
     public override void dump () { }
+}
+
+/// Nominator with custom rules for when blocks should be nominated
+public extern (C++) class TestNominator : Nominator
+{
+extern(D):
+    ///
+    public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
+        TaskManager taskman)
+    {
+        super(network, key_pair, ledger, taskman);
+    }
 }
 
 /// We use a pair of (key, client) rather than a hashmap client[key],
@@ -852,6 +865,13 @@ public class TestValidatorNode : Validator, TestAPI
     public override QuorumConfig getQuorumConfig ()
     {
         return this.qc;
+    }
+
+    /// Returns an instance of a TestNominator with customizable behavior
+    protected override TestNominator getNominator ( NetworkManager network,
+        KeyPair key_pair, Ledger ledger, TaskManager taskman)
+    {
+        return new TestNominator(network, key_pair, ledger, taskman);
     }
 }
 
