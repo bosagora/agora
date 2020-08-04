@@ -315,7 +315,7 @@ unittest
     import geod24.Registry;
     import core.atomic;
 
-    static class BadNominator : Nominator
+    static class BadNominator : TestNominator
     {
         private Ledger ledger;
         private bool is_nominating;
@@ -376,7 +376,7 @@ unittest
         }
 
         ///
-        protected override Nominator getNominator (
+        protected override TestNominator getNominator (
             NetworkManager network, KeyPair key_pair, Ledger ledger,
             TaskManager taskman)
         {
