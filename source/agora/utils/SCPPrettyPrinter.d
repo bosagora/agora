@@ -57,7 +57,7 @@ public struct SCPBallotFmt
 {
     private const(SCPBallot) ballot;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @trusted nothrow
     {
         try
         {
@@ -95,7 +95,7 @@ private struct QuorumFmt
     private const(Hash) hash;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         @trusted nothrow
     {
         try
@@ -129,7 +129,7 @@ private struct PrepareFmt
     private const(SCPStatement._pledges_t._prepare_t) prepare;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -167,7 +167,7 @@ private struct ConfirmFmt
     private const(SCPStatement._pledges_t._confirm_t) confirm;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -192,7 +192,7 @@ private struct ExternalizeFmt
     private const(SCPStatement._pledges_t._externalize_t) externalize;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -215,7 +215,7 @@ private struct SCPNominationFmt
     private const(SCPNomination) nominate;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @trusted nothrow
     {
         try
         {
@@ -264,7 +264,7 @@ private struct PledgesFmt
     private const(SCPStatement._pledges_t) pledges;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @trusted nothrow
     {
         try
         {
@@ -297,7 +297,7 @@ private struct SCPStatementFmt
     private const(SCPStatement) statement;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -350,7 +350,7 @@ private struct SCPEnvelopeFmt
 
     ***************************************************************************/
 
-    public void toString (scope void delegate(scope const(char)[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
     {
         try
         {
