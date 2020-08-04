@@ -114,8 +114,8 @@ private UnitTestResult customModuleUnitTester ()
         void function() test;
     }
 
-    ModTest[] mod_tests;
     ModTest[] single_threaded;
+    ModTest[] parallel_tests;
     ModTest[] heavy_tests;
 
     foreach (ModuleInfo* mod; ModuleInfo)
@@ -143,6 +143,8 @@ private UnitTestResult customModuleUnitTester ()
                 single_threaded ~= ModTest(mod.name, fp);
             else if (mod.name == "agora.test.ManyValidators")
                 heavy_tests ~= ModTest(mod.name, fp);
+            else
+                parallel_tests ~= ModTest(mod.name, fp);
         }
     }
 
@@ -177,7 +179,7 @@ private UnitTestResult customModuleUnitTester ()
     foreach (mod; single_threaded)
         runTest(mod);
 
-    foreach (mod; parallel(mod_tests))
+    foreach (mod; parallel(parallel_tests))
         runTest(mod);
 
     foreach (mod; parallel(heavy_tests))
