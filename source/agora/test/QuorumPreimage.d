@@ -188,8 +188,8 @@ unittest
     enum quorums_2 = [
         // 0
         QuorumConfig(6, [
+            WK.Keys.D.address,
             WK.Keys.F.address,
-            WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
@@ -201,20 +201,20 @@ unittest
             WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
-            WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
+            WK.Keys.C.address,
             WK.Keys.E.address]),
 
         // 2
         QuorumConfig(6, [
+            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.C.address]),
 
         // 3
         QuorumConfig(6, [
@@ -244,12 +244,12 @@ unittest
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address]),
+            WK.Keys.E.address]),
 
         // 6
         QuorumConfig(6, [
             WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
@@ -258,12 +258,12 @@ unittest
 
         // 7
         QuorumConfig(6, [
-            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
+            WK.Keys.C.address,
             WK.Keys.E.address]),
     ];
 
@@ -314,12 +314,12 @@ unittest
     enum quorums_3 = [
         // 0
         QuorumConfig(6, [
+            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address,
             WK.Keys.E.address]),
 
         // 1
@@ -327,10 +327,10 @@ unittest
             WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
-            WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address]),
+            WK.Keys.C.address,
+            WK.Keys.E.address]),
 
         // 2
         QuorumConfig(6, [
@@ -364,17 +364,17 @@ unittest
 
         // 5
         QuorumConfig(6, [
+            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.C.address]),
 
         // 6
         QuorumConfig(6, [
-            WK.Keys.F.address,
+            WK.Keys.D.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
@@ -384,7 +384,7 @@ unittest
 
         // 7
         QuorumConfig(6, [
-            WK.Keys.F.address,
+            WK.Keys.D.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
