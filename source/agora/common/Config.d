@@ -29,6 +29,7 @@ import dyaml.loader;
 
 import std.algorithm;
 import std.conv;
+import std.datetime;
 import std.exception;
 import std.format;
 import std.getopt;
@@ -101,6 +102,14 @@ public struct NodeConfig
     /// If set, a hexdump serialized representation of the genesis block to use
     /// in place of the built-in genesis block as defined by CoinNet
     public string genesis_block;
+
+    /// The Unix timestamp of the Genesis block. Blocks are created at a
+    /// regular interval starting from this time.
+    public time_t genesis_start_time =
+        SysTime(DateTime.fromISOString("20200731T000000"), UTC()).toUnixTime;
+
+    /// How often a block should be created
+    public uint block_interval_sec = 600;
 
     /// Is this a validator node
     public bool is_validator;
@@ -315,6 +324,9 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
     auto address = get!(string, "node", "address")(cmdln, node);
     auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
+    auto genesis_start_time = get!(time_t, "node", "genesis_start_time",
+        str => SysTime(DateTime.fromISOString(str)).toUnixTime)(cmdln, node);
+    uint block_interval_sec = get!(uint, "node", "block_interval_sec")(cmdln, node);
 
     Duration retry_delay = get!(Duration, "node", "retry_delay",
                                 str => str.to!ulong.msecs)(cmdln, node);
@@ -341,6 +353,8 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             min_listeners : min_listeners,
             max_listeners : max_listeners,
             genesis_block : genesis_block,
+            genesis_start_time : genesis_start_time,
+            block_interval_sec : block_interval_sec,
             address : address,
             port : port,
             key_pair : key_pair,

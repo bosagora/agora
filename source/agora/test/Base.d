@@ -1205,6 +1205,9 @@ public struct TestConf
     /// If set to 0 there will be no limits on the number of nominated transactions
     /// (unless Consensus rules dictate otherwise)
     ulong txs_to_nominate = 8;
+
+    /// How often blocks should be created - in seconds
+    uint block_interval_sec = 1;
 }
 
 /*******************************************************************************
@@ -1268,6 +1271,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
             quorum_threshold : test_conf.quorum_threshold,
             quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
+            block_interval_sec : test_conf.block_interval_sec,
             min_listeners : test_conf.min_listeners == 0
                 ? (test_conf.validators + test_conf.full_nodes) - 1
                 : test_conf.min_listeners,
@@ -1356,8 +1360,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
         .serializeFull()
         .toHexString();
 
+    // for unittests the time begins now
+    const genesis_start_time = time(null);
     foreach (ref conf; main_configs)
+    {
         conf.node.genesis_block = gen_block_hex;
+        conf.node.genesis_start_time = genesis_start_time;
+    }
 
     immutable(Block)[] blocks = generateBlocks(gen_block,
         test_conf.extra_blocks);
