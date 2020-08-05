@@ -51,64 +51,70 @@ public immutable Block GenesisBlock = {
         height:      Height(0),
         merkle_root: GenesisMerkleTree[$ - 1],
         enrollments: [
+            // Node 4
             Enrollment(
                 Hash(`0x46883e83778481d640a95fcffd6e1a1b6defeaac5a8001cd3f99e17576b809c` ~
                      `7e9bc7a44c3917806765a5ff997366e217ff54cd4da09c0c51dc339c47052a3ac`),
-                Hash(`0x34404dca05b15527046f83f03da31a9684d03d2d0204d3cb5849d13fb3c989d` ~
-                     `df4f2f04f388355e12f4ed2976e0966d5e02a6f7f1d735ca52e192abbb019c79c`),
-                1008,
-                Signature(`0x0c2fd79ec6deb83eb2baa4da7bdfe37595bb42a768dcd66abc62943023fa806` ~
-                          `8dc8b89135fe3f5df9e2815b9bdb763c41b8b2dab5911e313acc82470c2147422`)
+                Hash(`0x0a8201f9f5096e1ce8e8de4147694940a57a188b78293a55144fc8777a774f2` ~
+                     `349b3a910fb1fb208514fb16deaf49eb05882cdb6796a81f913c6daac3eb74328`),
+                20,
+                Signature(`0x0cab27862571d2d2e33d6480e1eab4c82195a508b72672d609610d01f23b0be` ~
+                          `edc8b89135fe3f5df9e2815b9bdb763c41b8b2dab5911e313acc82470c2147422`)
             ),
 
+            // Node 7
             Enrollment(
-                Hash(`0x4dde806d2e09367f9d5bdaaf46deab01a336a64fdb088dbb94edb171560c63c` ~
-                     `f6a39377bf0c4d35118775681d989dee46531926299463256da303553f09be6ef`),
-                Hash(`0xd2324c1865135aaba469afa5381df223a4fce45ea1ecca1f6ba2633917aa242` ~
-                     `7c3b425e3beccd6077cf8b377ed23c6420d120e2a863f9e31100d10d7fb700967`),
-                1008,
-                Signature(`0x0e5907fbe526e9d9f7310c5e3d4be7cd39c281d9f32f34cb5d2d522fa4bdc14` ~
-                          `b2692d0b8b04133a34716169a4b1d33d77c3e585357d8a2a2c48a772275255c01`)
+                Hash(`0x4dde806d2e09367f9d5bdaaf46deab01a336a64fdb088dbb94edb171560c63cf` ~
+                     `6a39377bf0c4d35118775681d989dee46531926299463256da303553f09be6ef`),
+                Hash(`0xd0348a88f9b7456228e4df5689a57438766f4774d760776ec450605c82348c4` ~
+                     `61db84587c2c9b01c67c8ed17f297ee4008424ad3e0e5039179719d7e9df297c1`),
+                20,
+                Signature(`0x0ed498b867c33d316b468d817ba8238aec68541abd912cecc499f8e780a8cda` ~
+                          `f2692d0b8b04133a34716169a4b1d33d77c3e585357d8a2a2c48a772275255c01`)
             ),
 
+            // Node 6
             Enrollment(
                 Hash(`0x8c1561a4475df42afa0830da1f8a678ad4b1d82b6c610f7b03ce69b7e0fabcf` ~
                      `537d48ecd0aee6f1cab14290a0fc6313c729edf928ff3576f8656f3b7be5670e0`),
-                Hash(`0x3372d562f2dd84848c06baadc24bbaa7163cbc516d0bab8c1c215779001ee8e` ~
-                     `ad187699f88b2d2dc590a4f3053e9487dd60d2b33f3ef81399ad702626547a7ba`),
-                1008,
-                Signature(`0x00db1855a7a0dcff59e311e4a038f2e41235081881d0ce4da6e6c6f3d81909a` ~
-                          `47e3d4753b6b4ccdb35c2864be4195e83b7b8433ca1d27a57fb9f48a631001304`)
+                Hash(`0xaf43c67d9dd0f53de3eaede63cdcda8643422d62205df0b5af65706ec28b372` ~
+                     `adb785ce681d559d7a7137a4494ccbab4658ce11ec75a8ec84be5b73590bffceb`),
+                20,
+                Signature(`0x09474f489579c930dbac46f638f3202ac24407f1fa419c1d95be38ab474da29` ~
+                          `d7e3d4753b6b4ccdb35c2864be4195e83b7b8433ca1d27a57fb9f48a631001304`)
             ),
 
+            // Node 5
             Enrollment(
                 Hash(`0x94908ec79866cf54bb8e87b605e31ce0b5d7c3090f3498237d83edaca9c8ba2` ~
                      `d3d180c572af46c1221fb81add163e14adf738df26e3679626e82113b9fe085b0`),
-                Hash(`0x8827a2c313ada26b42bac150aa7a87d0bab0a9472f244fcba60f465bb8a8595` ~
-                     `4bac18b9469e3c0110fec871144df401f7dcb1dab59e1c1add5338098f43b5957`),
-                1008,
-                Signature(`0x0dad7f1ca61325d10c50a9feb95d034ea88954c9840ee15e23c206a5ea11d67` ~
-                          `7fd787c4518b78ab9ed73a3760741d557ac2aca631fc2796be86fcf391d3a6634`)
+                Hash(`0xa24b7e6843220d3454523ceb7f9b43f037e56a01d2bee82958b080dc6350eba` ~
+                     `c2da12b561cbd96c6fb3f5ae5a3c8df0ac2c559ae1c45b11d42fdf866558112bc`),
+                20,
+                Signature(`0x0e4566eca30feb9ad47a65e7ff7e7ce1a7555ccedcf61e1143c2e5fddbec686` ~
+                          `6fd787c4518b78ab9ed73a3760741d557ac2aca631fc2796be86fcf391d3a6634`)
             ),
 
+            // Node 2
             Enrollment(
                 Hash(`0xb20da9cfbda971f3f573f55eabcd677feaf12f7948e8994a97cdf9e570799b7` ~
                      `1631e87bb9ebce0d6a402275adfb6e365fdb72139c18559a10df0e5fe4bae08eb`),
-                Hash(`0xae5acc1a182469a8da33e25ebf18bba01f31b4599fe56e61acd4cd73849ada4` ~
-                     `ed4bfda5eaac47ada6f2223aa4a149170c4c461a96651bd724ee848df4166a951`),
-                1008,
-                Signature(`0x09cb5c2f1493d207021226b28c190a8b049b5f5a72580464c06d65dd97ebca9` ~
-                          `bd79a36ace4d3097869dc009b8939fc83bdf940c8822c6931d5c09326aa746b31`)
+                Hash(`0xa0502960ddbe816729f60aeaa480c7924fb020d864deec6a9db778b8e56dd2f` ~
+                     `f8e987be748ff6ca0a43597ecb575da5d532696e376dc70bb4567b5b1fa512cb4`),
+                20,
+                Signature(`0x052ee1d975c49f19fd26b077740dcac399f174f40b5df1aba5f09ebea11faac` ~
+                          `fd79a36ace4d3097869dc009b8939fc83bdf940c8822c6931d5c09326aa746b31`)
             ),
-
+            
+            // Node 3
             Enrollment(
                 Hash(`0xdb3931bd87d2cea097533d82be0a5e36c54fec8e5570790c3369bd8300c65a0` ~
                      `3d76d12a74aa38ec3e6866fd64ae56091ed3cbc3ca278ae0c8265ab699ffe2d85`),
-                Hash(`0xedf7098f88b74d7f80c7bc782dea8c5002ca2dc51333002cc8b596eb0e23af5` ~
-                     `e4611d59947fbeb13acab663483172d13993faf6239a5641fb5ca18b4e1764605`),
-                1008,
-                Signature(`0x018c71ee3eb2030ee6dc60a41bae6119f8d8de7055f63393979dc22b9ce7f5b` ~
-                          `e5c71e74382a24b7e644d32b0306fe3cf14ecd7de5635c70aa592f4721aa74fe2`)
+                Hash(`0xdd1b9c62d4c62246ea124e5422d5a2e23d3ca9accb0eba0e46cd46708a4e7b4` ~
+                     `17f46df34dc2e3cba9a57b1dc35a66dfc2d5ef239ebeaaa00299232bc7e3b7bfa`),
+                20,
+                Signature(`0x0e0070e5951ef5be897cb593c4c57ce28b7529463f7e5644b1314ab7cc69fd6` ~
+                          `25c71e74382a24b7e644d32b0306fe3cf14ecd7de5635c70aa592f4721aa74fe2`)
             ),
         ],
     },
