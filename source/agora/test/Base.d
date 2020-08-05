@@ -68,6 +68,7 @@ import core.stdc.time;
 
  // Contains utilities for testing, e.g. `retryFor`
 public import agora.utils.Test;
+public import agora.common.Types : Height;
 // `core.time` provides duration-related utilities, used e.g. for `retryFor`
 public import core.time;
 // Useful to express complex pipeline simply
@@ -407,6 +408,36 @@ public class TestAPIManager
     {
         this.blocks = blocks;
         this.reg.initialize();
+    }
+
+    /***************************************************************************
+
+        Checks that all the nodes contain the given block height in their ledger.
+
+        The overload allows passing a subset of nodes to verify the block
+        heights for only these nodes.
+
+        Params:
+            height = the expected block height
+            timeout = the request timeout to each node
+
+    ***************************************************************************/
+
+    public void expectBlock (Height height, Duration timeout,
+        string file = __FILE__, int line = __LINE__)
+    {
+        this.expectBlock(this.clients, height, timeout, file, line);
+    }
+
+    /// Ditto
+    public void expectBlock (Clients)(Clients clients, Height height,
+        Duration timeout, string file = __FILE__, int line = __LINE__)
+        if (isInputRange!Clients)
+    {
+        clients.enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == height, timeout,
+                format("Node %s has block height %s. Expected: %s",
+                    idx, node.getBlockHeight(), height), file, line));
     }
 
     /***************************************************************************

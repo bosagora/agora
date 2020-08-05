@@ -46,11 +46,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == validator_cycle - 1, 2.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), validator_cycle - 1)));
+    network.expectBlock(Height(validator_cycle - 1), 2.seconds);
 
     // create enrollment data
     // send a request to enroll as a Validator
@@ -74,20 +70,12 @@ unittest
     auto txs = makeChainedTransactions(WK.Keys.Genesis,
         network.blocks[$ - 1].txs, 1);
     txs.each!(tx => nodes[0].putTransaction(tx));
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == validator_cycle, 2.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), validator_cycle)));
+    network.expectBlock(Height(validator_cycle), 2.seconds);
 
     // verify that consensus can still be reached
     txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
     txs.each!(tx => nodes[0].putTransaction(tx));
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == validator_cycle + 1, 2.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), validator_cycle + 1)));
+    network.expectBlock(Height(validator_cycle + 1), 2.seconds);
 
     // check if nodes have a pre-image newly sent
     // during creating transactions for the new block
@@ -129,11 +117,7 @@ unittest
     {
         auto txs = makeChainedTransactions(WK.Keys.Genesis, prev_txs, 1);
         txs.each!(tx => nodes[0].putTransaction(tx));
-        nodes.enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == height + 1,
-                2.seconds,
-                format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), height + 1)));
+        network.expectBlock(Height(height + 1), 2.seconds);
         prev_txs = txs;
     }
 
@@ -180,9 +164,7 @@ unittest
                 .map!(ptx => TxBuilder(ptx).refund(WK.Keys[count].address).sign())
                 .array();
         txs.each!(tx => nodes[1].putTransaction(tx));
-
-        // Ensure everyone is at the same level
-        ensureConsistency(nodes, count + 1);
+        network.expectBlock(Height(count + 1), 3.seconds);
     }
 
     // Now create an Enrollment for nodes[0], create block #20, and restart nodes[0]
@@ -192,20 +174,20 @@ unittest
         .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
-    ensureConsistency(nodes.take(1), 20);
+    network.expectBlock(nodes.take(1), Height(validator_cycle), 3.seconds);
     retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
         2.seconds);
 
     network.restart(nodes[0]);
     network.waitForDiscovery();
-    ensureConsistency([nodes[0]], 20, 10.seconds);
+    network.expectBlock(nodes.take(1), Height(20), 10.seconds);
 
     // Now make a new block and make sure only nodes[0] signs it
     txs = txs
         .map!(ptx => TxBuilder(ptx).refund(WK.Keys[21].address).sign())
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
-    ensureConsistency(nodes.take(1), 21);
+    network.expectBlock(nodes.take(1), Height(21), 3.seconds);
 
     PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
     PreImageInfo preimage_1;

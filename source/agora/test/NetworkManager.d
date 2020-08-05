@@ -50,9 +50,7 @@ unittest
 
     nodes[0].clearFilter();
     nodes[1].clearFilter();
-
-    nodes.all!(node => node.getBlockHeight() == 1)
-        .retryFor(2.seconds, "Nodes should have same block height");
+    network.expectBlock(Height(1), 2.seconds);
 }
 
 /// test behavior when a node sends bad block data
@@ -159,13 +157,7 @@ unittest
 
         // send it to one node
         txs.each!(tx => node_validator.putTransaction(tx));
-
-        [node_validator].enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == block_idx + 1,
-                4.seconds,
-                format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), block_idx + 1)));
-
+        network.expectBlock([node_validator], Height(block_idx + 1), 4.seconds);
         block_txes ~= txs.sort.array;
         last_txs = txs;
     }

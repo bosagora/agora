@@ -52,11 +52,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 8, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 8)));
+    network.expectBlock(Height(8), 10.seconds);
 
     enum quorums_1 = [
         // 0
@@ -150,10 +146,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 9 the freeze txs are available
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 9, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 9)));
+    network.expectBlock(Height(9), 10.seconds);
 
     // now we re-enroll existing validators (extension),
     // and enroll 2 new validators.
@@ -180,10 +173,7 @@ unittest
     makeBlock();
 
     // at block height 10 the validator set has changed
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 10, 3.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 10)));
+    network.expectBlock(Height(10), 3.seconds);
 
     enum quorums_2 = [
         // 0
@@ -284,10 +274,7 @@ unittest
         makeBlock();
 
         // at block height 10 the validator set has changed
-        nodes.enumerate.each!((node_idx, node) =>
-            retryFor(node.getBlockHeight() == 10 + idx + 1, 3.seconds,
-                format("Node %s has block height %s. Expected: %s",
-                    node_idx, node.getBlockHeight(), 10 + idx + 1)));
+        network.expectBlock(Height(10 + idx + 1), 3.seconds);
     }
 
     // re-enroll all validators before they expire
@@ -304,10 +291,7 @@ unittest
     makeBlock();
 
     // at block height 20 the validator set has changed
-    nodes.enumerate.each!((node_idx, node) =>
-        retryFor(node.getBlockHeight() == 20, 3.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                node_idx, node.getBlockHeight(), 20)));
+    network.expectBlock(Height(20), 10.seconds);
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage

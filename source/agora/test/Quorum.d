@@ -52,11 +52,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 8, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 8)));
+    network.expectBlock(Height(8), 5.seconds);
 
     Transaction makePayTx (in Transaction prev, PublicKey[] addresses, uint index = 0)
     {
@@ -108,10 +104,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 9 the freeze tx's are available
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 9, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 9)));
+    network.expectBlock(Height(9), 5.seconds);
 
     // now we can create enrollments
     Enrollment enroll_0 = nodes[$ - 2].createEnrollmentData();
@@ -133,10 +126,7 @@ unittest
     new_txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 10 the validator set has changed
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 10, 3.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 10)));
+    network.expectBlock(Height(10), 3.seconds);
 
     //// these are un-enrolled now
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
@@ -145,17 +135,11 @@ unittest
     txs = makeChainedTransactions(WK.Keys.Genesis, new_txs, 1);
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
-    nodes[$ - 2 .. $].enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 11, 3.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 11)));
+    network.expectBlock(nodes[$ - 2 .. $], Height(11), 3.seconds);
 
     // force wake up
     nodes[0 .. $ - 2].each!(node => node.sleep(0.seconds, false));
 
     // all nodes should have same block height now
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 11, 10.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 11)));
+    network.expectBlock(Height(11), 10.seconds);
 }

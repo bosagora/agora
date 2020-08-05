@@ -50,13 +50,7 @@ unittest
     ));
     // When a block is created, the transaction is deleted from the transaction pool.
     node_1.putTransaction(txs[$-1]);
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 1,
-        2.seconds,
-        format("Node %s has block height %s. Expected: %s",
-        idx,
-        node.getBlockHeight(),
-        1)));
+    network.expectBlock(Height(1), 2.seconds);
 
     nodes.each!(node =>
         txs.each!(tx =>

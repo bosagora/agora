@@ -63,9 +63,9 @@ unittest
     }
 
     genBlockTransactions(1).each!(tx => node_1.putTransaction(tx));
-
     // wait until the transactions were gossiped
-    containSameBlocks(nodes, 1).retryFor(3.seconds);
+    network.expectBlock(Height(1), 3.seconds);
+
 
     // node 3 will be banned if it cannot communicate
     node_1.filter!(node_1.getBlocksFrom);  // node 1 refuses to send blocks
@@ -80,20 +80,14 @@ unittest
         auto new_tx = genBlockTransactions(1);
         left_txs ~= new_tx;
         new_tx.each!(tx => node_1.putTransaction(tx));
-
-        [node_1, node_2].enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == 1 + (block_idx + 1),
-                4.seconds,
-                format("Block %s Node %s has block height %s. Expected: %s",
-                    block_idx + 1, idx, node.getBlockHeight(), 1 + (block_idx + 1))));
-
+        network.expectBlock([node_1, node_2], Height(1 + block_idx + 1), 4.seconds);
         retryFor(node_3.getBlockHeight() == 1, 1.seconds, node_3.getBlockHeight().to!string);
     }
 
     // wait for node 3 to be banned and all putTransaction requests to time-out
     Thread.sleep(2.seconds);
 
-    // sanity check: block height should not updated, node 3 is not a validator and cannot make new blocks,
+    // sanity check: block height should not be updated, node 3 is not a validator and cannot make new blocks,
     // it may only add to its ledger through the getBlocksFrom() API.
     node_3.clearFilter();
     left_txs.each!(tx => node_3.putTransaction(tx));
@@ -108,10 +102,5 @@ unittest
     auto new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
     new_tx.each!(tx => node_1.putTransaction(tx));
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 6,
-            4.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 6)));
+    network.expectBlock(Height(6), 4.seconds);
 }

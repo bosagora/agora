@@ -51,8 +51,7 @@ unittest
     // clear filter after 100 msecs, the above requests will eventually be gossiped
     Thread.sleep(100.msecs);
     nodes[1 .. $].each!(node => node.clearFilter());
-
-    nodes.all!(node => node.getBlockHeight() == 1).retryFor(2.seconds);
+    network.expectBlock(Height(1), 2.seconds);
 }
 
 /// test request timeouts
@@ -82,5 +81,5 @@ unittest
     // node 1 will keep trying to send transactions up to
     // max_retries * (retry_delay + timeout) seconds (see Base.d),
     const delay = conf.max_retries * (conf.retry_delay + conf.timeout);
-    nodes.all!(node => node.getBlockHeight() == 1).retryFor(delay);
+    network.expectBlock(Height(1), delay);
 }
