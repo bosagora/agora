@@ -56,8 +56,7 @@ unittest
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
-
-        containSameBlocks(nodes, block_idx).retryFor(5.seconds);
+        network.expectBlock(Height(block_idx), 5.seconds);
     }
 
     // Block will not be created because otherwise there would be no active validators

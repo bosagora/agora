@@ -38,7 +38,5 @@ unittest
 
     auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     txes.each!(tx => node_1.putTransaction(tx));
-
-    nodes.all!(node => node.getBlockHeight() == 1)
-        .retryFor(2.seconds);
+    network.expectBlock(Height(1), 2.seconds);
 }

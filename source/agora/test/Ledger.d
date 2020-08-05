@@ -52,12 +52,7 @@ unittest
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
-
-        nodes.enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == block_idx + 1,
-                4.seconds,
-                format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), block_idx + 1)));
+        network.expectBlock(Height(block_idx + 1), 4.seconds);
 
         block_txes ~= txs.sort.array;
         last_txs = txs;
@@ -105,11 +100,11 @@ unittest
 
     auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 1).retryFor(8.seconds);
+    network.expectBlock(Height(1), 8.seconds);
 
     txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(8.seconds);
+    network.expectBlock(Height(2), 8.seconds);
 }
 
 /// Merkle Proof
@@ -147,7 +142,7 @@ unittest
     const Hash expected_root = hashMulti(habcd, hefgh);
 
     // wait for transaction propagation
-    nodes.each!(node => retryFor(node.getBlockHeight() == 1, 4.seconds));
+    network.expectBlock(Height(1), 4.seconds);
 
     Hash[] merkle_path;
     foreach (node; nodes)
@@ -188,11 +183,11 @@ unittest
 
     auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 1).retryFor(3.seconds);
+    network.expectBlock(Height(1), 3.seconds);
 
     txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
     txs.each!(tx => node_1.putTransaction(tx));
-    containSameBlocks(nodes, 2).retryFor(3.seconds);
+    network.expectBlock(Height(2), 3.seconds);
 
     txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
 
@@ -222,8 +217,8 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation
-    containSameBlocks(nodes, 2).retryFor(3.seconds);  // no new block yet (1 rejected tx)
+    network.expectBlock(Height(2), 3.seconds);  // no new block yet (1 rejected tx)
 
     node_1.putTransaction(backup_tx);
-    containSameBlocks(nodes, 3).retryFor(3.seconds);  // new block finally created
+    network.expectBlock(Height(3), 3.seconds);  // new block finally created
 }

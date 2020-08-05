@@ -50,11 +50,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 7, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 7)));
+    network.expectBlock(Height(7), 5.seconds);
 
     auto spendable = network.blocks[$ - 1].txs
         .filter!(tx => tx.type == TxType.Payment)
@@ -71,12 +67,8 @@ unittest
     txs ~= spendable[6].split(WK.Keys.byRange.take(16).map!(k => k.address)).sign();
     txs ~= spendable[7].split(WK.Keys.Genesis.address.repeat(8)).sign();
     txs.each!(tx => nodes[0].putTransaction(tx));
-
     // block 8
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 8, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 8)));
+    network.expectBlock(Height(8), 5.seconds);
 
     // freeze builders
     auto freezable = txs[$ - 2]  // contains 16 payment UTXOs
@@ -94,17 +86,11 @@ unittest
 
     // block 9
     freeze_txs[0 .. 8].each!(tx => nodes[0].putTransaction(tx));
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 9, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 9)));
+    network.expectBlock(Height(9), 5.seconds);
 
     // block 10
     freeze_txs[8 .. 16].each!(tx => nodes[0].putTransaction(tx));
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 10, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 10)));
+    network.expectBlock(Height(10), 5.seconds);
 
     // now we re-enroll existing validators (extension),
     // and enroll 10 new validators.
@@ -125,10 +111,7 @@ unittest
             .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
         txs.each!(tx => nodes[0].putTransaction(tx));
 
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 11, 3.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 11)));
+    network.expectBlock(Height(11), 3.seconds);
 
     // sanity check
     nodes.enumerate.each!((idx, node) =>
@@ -147,10 +130,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // consensus check
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 12, 3.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 12)));
+    network.expectBlock(Height(12), 3.seconds);
 }
 
 /// 32 nodes
@@ -173,11 +153,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 7, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 7)));
+    network.expectBlock(Height(7), 5.seconds);
 
     auto spendable = network.blocks[$ - 1].txs
         .filter!(tx => tx.type == TxType.Payment)
@@ -196,10 +172,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // block 8
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 8, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 8)));
+    network.expectBlock(Height(8), 5.seconds);
 
     // freeze builders
     auto freezable = txs[$ - 2]  // contains 32 payment UTXOs
@@ -218,31 +191,19 @@ unittest
 
     // block 9
     freeze_txs[0 .. 8].each!(tx => nodes[0].putTransaction(tx));
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 9, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 9)));
+    network.expectBlock(Height(9), 5.seconds);
 
     // block 10
     freeze_txs[8 .. 16].each!(tx => nodes[0].putTransaction(tx));
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 10, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 10)));
+    network.expectBlock(Height(10), 5.seconds);
 
     // block 11
     freeze_txs[16 .. 24].each!(tx => nodes[0].putTransaction(tx));
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 11, 10.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 11)));
+    network.expectBlock(Height(11), 10.seconds);
 
     // block 12
     freeze_txs[24 .. 32].each!(tx => nodes[0].putTransaction(tx));
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 12, 10.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 12)));
+    network.expectBlock(Height(12), 10.seconds);
 
     // now we re-enroll existing validators (extension),
     // and enroll 10 new validators.
@@ -263,10 +224,7 @@ unittest
             .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
         txs.each!(tx => nodes[0].putTransaction(tx));
 
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 13, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 13)));
+    network.expectBlock(Height(13), 5.seconds);
 
     // sanity check
     nodes.enumerate.each!((idx, node) =>
@@ -285,8 +243,5 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // consensus check
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 14, 10.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 14)));
+    network.expectBlock(Height(14), 10.seconds);
 }
