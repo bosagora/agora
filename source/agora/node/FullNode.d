@@ -34,6 +34,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
+import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
@@ -82,6 +83,9 @@ public class FullNode : API
 
     /// Task manager
     protected TaskManager taskman;
+
+    /// Clock instance
+    protected Clock clock;
 
     /// Network of connected nodes
     protected NetworkManager network;
@@ -148,6 +152,7 @@ public class FullNode : API
 
         this.config = config;
         this.taskman = this.getTaskManager();
+        this.clock = this.getClock();
         this.network = this.getNetworkManager(config.node, config.banman,
             config.network, config.dns_seeds, this.metadata, this.taskman);
         this.storage = this.getBlockStorage(config.node.data_dir);
@@ -341,6 +346,22 @@ public class FullNode : API
     protected TaskManager getTaskManager ()
     {
         return new TaskManager();
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a Clock
+
+        May be overriden in unittests to allow test-adjusted clock times.
+
+        Returns:
+            an instance of a Clock
+
+    ***************************************************************************/
+
+    protected Clock getClock ()
+    {
+        return new Clock();
     }
 
     /***************************************************************************

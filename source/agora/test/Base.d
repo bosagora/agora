@@ -45,6 +45,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
+import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
@@ -412,11 +413,11 @@ extern(D):
     private ulong txs_to_nominate;
 
     ///
-    public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, ulong txs_to_nominate)
+    public this (Clock clock, NetworkManager network, KeyPair key_pair,
+        Ledger ledger, TaskManager taskman, ulong txs_to_nominate)
     {
         this.txs_to_nominate = txs_to_nominate;
-        super(network, key_pair, ledger, taskman);
+        super(clock, network, key_pair, ledger, taskman);
     }
 
     /// Overrides the default behavior and changes nomination behavior based
@@ -1105,10 +1106,11 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Returns an instance of a TestNominator with customizable behavior
-    protected override TestNominator getNominator ( NetworkManager network,
-        KeyPair key_pair, Ledger ledger, TaskManager taskman)
+    protected override TestNominator getNominator ( Clock clock,
+        NetworkManager network, KeyPair key_pair, Ledger ledger,
+        TaskManager taskman)
     {
-        return new TestNominator(network, key_pair, ledger, taskman,
+        return new TestNominator(clock, network, key_pair, ledger, taskman,
             this.txs_to_nominate);
     }
 

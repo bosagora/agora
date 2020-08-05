@@ -25,6 +25,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.validation.PreImage;
+import agora.network.Clock;
 import agora.test.Base;
 
 import core.thread;
@@ -299,11 +300,12 @@ unittest
         private shared(size_t)* runCount;
 
         /// Ctor
-        public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman, ulong txs_to_nominate, shared(size_t)* countPtr)
+        public this (Clock clock, NetworkManager network, KeyPair key_pair,
+            Ledger ledger, TaskManager taskman, ulong txs_to_nominate,
+            shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            super(network, key_pair, ledger, taskman, txs_to_nominate);
+            super(clock, network, key_pair, ledger, taskman, txs_to_nominate);
         }
 
         ///
@@ -335,12 +337,12 @@ unittest
         }
 
         ///
-        protected override TestNominator getNominator (
+        protected override TestNominator getNominator (Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
             TaskManager taskman)
         {
             return new BadNominator(
-                network, key_pair, ledger, taskman, this.txs_to_nominate,
+                clock, network, key_pair, ledger, taskman, this.txs_to_nominate,
                 this.runCount);
         }
     }

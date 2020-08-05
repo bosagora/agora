@@ -30,6 +30,7 @@ import agora.consensus.data.UTXOSetValue;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
+import agora.network.Clock;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
@@ -80,7 +81,7 @@ public class Validator : FullNode, API
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
-        this.nominator = this.getNominator(this.network,
+        this.nominator = this.getNominator(this.clock, this.network, 
             this.config.node.key_pair, this.ledger, this.taskman);
 
         // currently we are not saving preimage info,
@@ -257,6 +258,7 @@ public class Validator : FullNode, API
         simulate byzantine nodes.
 
         Params:
+            clock = Clock instance
             network = the network manager for gossiping SCPEnvelopes
             key_pair = the key pair of the node
             ledger = Ledger instance
@@ -267,10 +269,10 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected Nominator getNominator (NetworkManager network, KeyPair key_pair,
-        Ledger ledger, TaskManager taskman)
+    protected Nominator getNominator (Clock clock, NetworkManager network, 
+        KeyPair key_pair, Ledger ledger, TaskManager taskman)
     {
-        return new Nominator(network, key_pair, ledger, taskman);
+        return new Nominator(clock, network, key_pair, ledger, taskman);
     }
 
     /***************************************************************************

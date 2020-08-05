@@ -24,6 +24,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.network.Clock;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.utils.Log;
@@ -48,6 +49,9 @@ mixin AddLogger!();
 /// Ditto
 public extern (C++) class Nominator : SCPDriver
 {
+    /// Clock instance
+    private Clock clock;
+
     /// SCP instance
     protected SCP* scp;
 
@@ -82,6 +86,7 @@ extern(D):
         Constructor
 
         Params:
+            clock = clock instance
             network = the network manager for gossiping SCP messages
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
@@ -89,9 +94,11 @@ extern(D):
 
     ***************************************************************************/
 
-    public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
+    public this (Clock clock,
+        NetworkManager network, KeyPair key_pair, Ledger ledger,
         TaskManager taskman)
     {
+        this.clock = clock;
         this.network = network;
         this.key_pair = key_pair;
         auto node_id = NodeID(uint256(key_pair.address));
