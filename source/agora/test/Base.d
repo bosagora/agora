@@ -61,6 +61,7 @@ import geod24.Registry;
 import std.array;
 import std.exception;
 
+import core.exception;
 import core.runtime;
 import core.stdc.time;
 
@@ -1173,13 +1174,13 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
 }
 
 /// Asserts that all nodes in the range are at height `expected`
-public void ensureConsistency (APIS)(
+public void ensureConsistency (Exc : Throwable = AssertError, APIS)(
     APIS nodes, ulong expected, Duration timeout = 2.seconds)
     if (isInputRange!APIS)
 {
     foreach (idx, node; nodes.enumerate())
     {
-        retryFor(node.getBlockHeight() == expected, timeout,
+        retryFor!Exc(node.getBlockHeight() == expected, timeout,
                  format("Node #%d was at height %d (expected: %d)",
                         idx, node.getBlockHeight(), expected));
     }
