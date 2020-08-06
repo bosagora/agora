@@ -3,7 +3,7 @@
 ################################################################################
 node:
   is_validator: false  # non-validator node
-  min_listeners: 3
+  min_listeners: 3  # subset number of other nodes
   max_listeners: 10
   address: 0.0.0.0
   port:    1826

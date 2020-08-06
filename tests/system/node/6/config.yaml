@@ -3,7 +3,7 @@
 ################################################################################
 node:
   is_validator: true
-  min_listeners: 6
+  min_listeners: 5
   max_listeners: 10
   address: 0.0.0.0
   port:    6826
