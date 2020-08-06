@@ -71,7 +71,8 @@ public class Validator : FullNode, API
     {
         assert(config.node.is_validator);
         super(config, &this.onRegenerateQuorums);
-        this.quorum_params = QuorumParams(this.params.MaxQuorumNodes);
+        this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
+            this.params.QuorumThreshold);
 
         this.nominator = this.getNominator(this.network,
             this.config.node.key_pair, this.ledger, this.taskman);
