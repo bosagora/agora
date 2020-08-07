@@ -8,8 +8,8 @@ node:
   address: 0.0.0.0
   port:    4826
   retry_delay: 1500
-  max_retries: 5
-  timeout: 5000
+  max_retries: 25
+  timeout: 1000
   # This is a randomly generated keypair
   # If this node is not a validator, this will be ignored
   #
