@@ -250,7 +250,9 @@ extern(D):
 
         auto prev_value = ConsensusData.init.serializeFull().toVec();
         auto next_value = next.serializeFull().toVec();
-        if (this.scp.nominate(slot_idx, next_value, prev_value))
+        auto prev_dup = duplicate_value(&prev_value);
+        auto next_dup = duplicate_value(&next_value);
+        if (this.scp.nominate(slot_idx, next_dup, prev_dup))
         {
             log.info("{}(): Tx set nominated", __FUNCTION__);
         }
