@@ -162,11 +162,14 @@ public class NetworkManager
                     key = client.getPublicKey();
                     break;
                 }
-                catch (HTTPStatusException ex)
+                catch (Exception ex)
                 {
-                    // 404 => API not implemented, it's a FullNode
-                    if (ex.status == 404)
-                        break;
+                    if (auto http = cast(HTTPStatusException)ex)
+                    {
+                        // 404 => API not implemented, it's a FullNode
+                        if (http.status == 404)
+                            break;
+                    }
 
                     if (!this.onFailedRequest(this.address))
                         return;
