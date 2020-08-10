@@ -3,7 +3,7 @@
 ################################################################################
 node:
   is_validator: true
-  min_listeners: 6
+  min_listeners: 7
   max_listeners: 10
   address: 0.0.0.0
   port:    3826
@@ -38,6 +38,7 @@ banman:
 ################################################################################
 network:
   # Supported value: IPv4, IPv6
+  - http://node-0:1826
   - http://node-2:2826
   - http://node-4:4826
   - http://node-5:5826
