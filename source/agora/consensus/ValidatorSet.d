@@ -475,6 +475,10 @@ public class ValidatorSet
             return false;
         }
 
+        // Ignore same height pre-image because validators will gossip them
+        if (prev_preimage.distance == preimage.distance)
+            return false;
+
         if (auto reason = isInvalidReason(preimage, prev_preimage,
             this.params.ValidatorCycle))
         {
