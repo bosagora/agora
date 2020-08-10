@@ -325,6 +325,10 @@ class NetworkClient
             }
             catch (Exception ex)
             {
+                import vibe.http.common : HTTPStatusException;
+                if (auto http = cast(HTTPStatusException)ex)
+                    throw http;  // e.g. getPublicKey() might not be implemented
+
                 try
                 {
                     log.format(log_level, "Request '{}' to {} failed: {}",
