@@ -141,3 +141,64 @@ unittest
     new_txs.each!(tx => set_b[0].putTransaction(tx));
     network.expectBlock(set_b, Height(11), 5.seconds);
 }
+
+/// Situation: A validator is stopped and wiped clean after the block height
+///     is 1, and then, two blocks are inserted into the ledger. After the
+///     validator restarts, another new block is in the middle of a consensus.
+/// Expectation: The new block is inserted into the ledger because the validator
+///     has started to validate immediately.
+unittest
+{
+    TestConf conf = { validators : 3, full_nodes : 1 , quorum_threshold : 66 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    // The node_1, node_2, node_3 are the validators
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    auto node_2 = nodes[1];
+    auto on_nodes = nodes[1 .. $-1];
+
+    // Create a block from the Genesis block
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
+    txs.each!(tx => node_1.putTransaction(tx));
+    network.expectBlock(Height(1), 5.seconds);
+
+    // The node_1 restarts and is disabled to respond
+    network.restart(node_1);
+    node_1.ctrl.sleep(5.seconds);
+
+    // Make 2 blocks
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs.each!(tx => node_2.putTransaction(tx));
+    network.expectBlock(on_nodes, Height(2), 5.seconds);
+
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs.each!(tx => node_2.putTransaction(tx));
+    network.expectBlock(on_nodes, Height(3), 5.seconds);
+
+    // Wait for node_1 to wake up
+    node_1.ctrl.withTimeout(10.seconds,
+        (scope TestAPI api) {
+            api.getPublicKey();
+        }
+    );
+
+    network.expectBlock(Height(3), 5.seconds);
+
+    // The node_2 restart and is disabled to respond, which means that
+    // the node_2 will be slashed soon.
+    network.restart(node_2);
+    node_2.ctrl.sleep(5.seconds);
+
+    // A new block is in the middle of a consensus.
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs.each!(tx => node_1.putTransaction(tx));
+
+    // The new block has been inserted to the ledger with the approval
+    // of the node_1, although node_2 was shutdown.
+    network.expectBlock(Height(4), 10.seconds);
+}
