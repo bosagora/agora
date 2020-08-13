@@ -77,7 +77,11 @@ public FullNode runNode (Config config)
         {
             string addr = format("http://%s:%d",
                 req.clientAddress.toAddressString(), req.clientAddress.port());
-            node.registerListener(addr);
+
+            // TODO: disabled as this code is wrong. The client port here is not
+            // the listening port of the node which tried to establish a connection.
+            version (none)
+                node.registerListener(addr);
             res.statusCode = 200;
             res.writeVoidBody();
         });
