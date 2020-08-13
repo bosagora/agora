@@ -443,7 +443,11 @@ public class NetworkManager
                 this.taskman.wait(this.node_config.retry_delay);
 
             if (this.connection_tasks.length >= MaxConnectionTasks)
+            {
+                log.info("Connection task limit reached. Trying again in {}..",
+                    this.node_config.retry_delay);
                 continue;
+            }
 
             const num_addresses = MaxConnectionTasks -
                 this.connection_tasks.length;
