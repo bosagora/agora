@@ -22,12 +22,15 @@ import agora.utils.Log;
 
 import ocean.util.log.ILogger;
 
+import vibe.core.core;
 import vibe.http.server;
 import vibe.http.router;
 import vibe.web.rest;
 
 import std.file;
 import std.format;
+
+import core.time;
 
 mixin AddLogger!();
 
@@ -86,7 +89,7 @@ public FullNode runNode (Config config)
             res.writeVoidBody();
         });
 
-    node.start();  // asynchronous
+    setTimer(0.seconds, &node.start, false);  // asynchronous
 
     log.info("About to listen to HTTP: {}", settings.port);
     listenHTTP(settings, router);
