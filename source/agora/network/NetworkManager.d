@@ -400,7 +400,6 @@ public class NetworkManager
 
         this.discovery_task.add(node.client);
         this.metadata.peers.put(node.address);
-        this.known_addresses.put(node.address);
         this.connection_tasks.remove(node.address);
 
         this.registerAsListener(node.client);
