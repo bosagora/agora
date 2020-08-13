@@ -31,7 +31,7 @@ public immutable class ConsensusParams
     public uint MaxQuorumNodes;
 
     /// The threshold to use for the generated quorums
-    public double QuorumThreshold;
+    public uint QuorumThreshold;
 
     /// The Genesis block of the chain
     public Block Genesis;
@@ -49,7 +49,7 @@ public immutable class ConsensusParams
     ***************************************************************************/
 
     public this (immutable(Block) genesis, uint validator_cycle = 1008,
-                 uint max_quorum_nodes = 7, double quorum_threshold = 0.80)
+                 uint max_quorum_nodes = 7, uint quorum_threshold = 80)
     {
         this.Genesis = genesis;
         this.ValidatorCycle = validator_cycle;
@@ -60,7 +60,7 @@ public immutable class ConsensusParams
     /// Default for unittest, uses the test genesis block
     version (unittest) public this (
         uint validator_cycle = 1008, uint max_quorum_nodes = 7,
-        double quorum_threshold = 0.80)
+        uint quorum_threshold = 80)
     {
         import agora.consensus.data.genesis.Test : GenesisBlock;
         this(GenesisBlock, validator_cycle, max_quorum_nodes, quorum_threshold);
