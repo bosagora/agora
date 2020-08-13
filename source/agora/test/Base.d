@@ -1066,7 +1066,7 @@ public struct TestConf
     uint max_quorum_nodes = 7;
 
     /// Overrides the default quorum threshold
-    double quorum_threshold = 0.8;
+    uint quorum_threshold = 80;
 
     /// whether to set up the peers in the config
     bool configure_network = true;

@@ -57,8 +57,8 @@ public struct QuorumParams
     /// Maximum number of nodes to include in a quorum.
     const MaxQuorumNodes = 7;
 
-    /// Threshold to use for the quorum configuration (e.g. 0.80 = 80%)
-    const double QuorumThreshold = 0.80;
+    /// Threshold percentage to use for the quorum configuration
+    const uint QuorumThreshold = 80;
 }
 
 /*******************************************************************************
@@ -117,7 +117,7 @@ public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
 
     quorum.nodes.sort;
     quorum.threshold = max(1, cast(uint)ceil(
-        params.QuorumThreshold * quorum.nodes.length));
+        (params.QuorumThreshold * double(0.01)) * quorum.nodes.length));
     return quorum;
 }
 
@@ -335,7 +335,7 @@ unittest
 // using various different quorum parameter configurations
 unittest
 {
-    QuorumParams qp_1 = { MaxQuorumNodes : 4, QuorumThreshold : 0.80 };
+    QuorumParams qp_1 = { MaxQuorumNodes : 4, QuorumThreshold : 80 };
     auto keys = getKeys(10);
     auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
         hashFull(1), qp_1);
@@ -346,7 +346,7 @@ unittest
     test!"=="(countNodeInclusions(quorums_1, keys),
         [3, 3, 2, 4, 4, 3, 3, 8, 6, 4]);
 
-    QuorumParams qp_2 = { MaxQuorumNodes : 8, QuorumThreshold : 0.80 };
+    QuorumParams qp_2 = { MaxQuorumNodes : 8, QuorumThreshold : 80 };
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
         hashFull(1), qp_2);
     verifyQuorumsSanity(quorums_2);
@@ -356,7 +356,7 @@ unittest
     test!"=="(countNodeInclusions(quorums_2, keys),
         [8, 7, 3, 9, 8, 10, 8, 10, 10, 7]);
 
-    QuorumParams qp_3 = { MaxQuorumNodes : 8, QuorumThreshold : 0.60 };
+    QuorumParams qp_3 = { MaxQuorumNodes : 8, QuorumThreshold : 60 };
     auto quorums_3 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
         hashFull(1), qp_3);
     verifyQuorumsSanity(quorums_3);
