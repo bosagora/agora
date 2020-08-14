@@ -7,9 +7,9 @@ node:
   max_listeners: 10
   address: 0.0.0.0
   port:    2826
-  retry_delay: 1500
+  retry_delay: 50
   max_retries: 25
-  timeout: 1000
+  timeout: 100
   # This is a randomly generated keypair
   # If this node is not a validator, this will be ignored
   #
