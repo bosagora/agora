@@ -35,6 +35,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 
@@ -738,15 +739,32 @@ public struct TxBuilder
     private Transaction data;
 }
 
-/// Returns:
-///   A range of `TxBuilder`s which reference each Payment output of
-///   the Genesis block
-public auto genesisSpendable () @safe
+    /***************************************************************************
+
+        Takes a block object and filters the spendable outputs
+        into a `TxBuilder` object.
+
+        Params:
+            block = a `Block` object
+
+        Returns:
+            A range of `TxBuilder`s which reference each Payment output of
+            the input block
+
+    ***************************************************************************/
+
+public auto spendable (const ref Block block) @safe pure nothrow
 {
-    return GenesisBlock.txs
+    return block.txs
         .filter!(tx => tx.type == TxType.Payment)
         .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder(tx, cast(uint)idx)))
         .joiner();
+}
+
+/// Convenience function for Genesis Block unittest
+public auto genesisSpendable () @safe pure nothrow
+{
+    return GenesisBlock.spendable;
 }
 
 ///
