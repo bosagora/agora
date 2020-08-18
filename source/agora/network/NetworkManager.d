@@ -47,9 +47,11 @@ import vibe.web.rest;
 
 import std.algorithm;
 import std.array;
+import std.container : DList;
 import std.exception;
 import std.format;
 import std.random;
+import std.range : walkLength;
 
 import core.stdc.time;
 import core.time;
@@ -326,10 +328,10 @@ public class NetworkManager
     protected ConnectionTask[Address] connection_tasks;
 
     /// List of validator clients
-    protected NetworkClient[] validators;
+    protected DList!NetworkClient validators;
 
     /// All connected nodes (Validators & FullNodes)
-    protected NetworkClient[] peers;
+    protected DList!NetworkClient peers;
 
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
@@ -390,11 +392,11 @@ public class NetworkManager
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
         this.connected_peers.put(node.address);
-        this.peers ~= node.client;
+        this.peers.insertBack(node.client);
 
         if (node.is_validator)
         {
-            this.validators ~= node.client;
+            this.validators.insertBack(node.client);
             this.required_peer_keys.remove(node.key);
         }
 
@@ -547,7 +549,7 @@ public class NetworkManager
         {
             void catchup ()
             {
-                if (this.peers.length == 0)  // no clients yet (discovery)
+                if (this.peers.empty())  // no clients yet (discovery)
                     return;
 
                 this.getBlocksFrom(
@@ -620,7 +622,7 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        auto node_pair = this.peers
+        auto node_pair = this.peers[]
             .map!(node => Pair(getHeight(node), node))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
@@ -668,21 +670,21 @@ public class NetworkManager
     }
 
     ///
-    private bool minPeersConnected ()  pure nothrow @safe @nogc
+    private bool minPeersConnected ()  pure nothrow @safe
     {
         return this.required_peer_keys.length == 0 &&
-            this.peers.length >= this.node_config.min_listeners;
+            this.peers[].walkLength >= this.node_config.min_listeners;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peer_keys.length == 0 &&
-            this.peers.filter!(node =>
+            this.peers[].filter!(node =>
                 !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
-    public NodeInfo getNetworkInfo () pure nothrow @safe @nogc
+    public NodeInfo getNetworkInfo () pure nothrow @safe
     {
         return NodeInfo(
             this.minPeersConnected()
@@ -750,7 +752,7 @@ public class NetworkManager
 
     public void gossipTransaction (Transaction tx) @safe
     {
-        foreach (ref node; this.peers)
+        foreach (ref node; this.peers[])
         {
             if (this.banman.isBanned(node.address))
             {
@@ -773,7 +775,7 @@ public class NetworkManager
 
     public void gossipEnvelope (SCPEnvelope envelope)
     {
-        foreach (client; this.validators)
+        foreach (client; this.validators[])
         {
             if (this.banman.isBanned(client.address))
             {
@@ -796,7 +798,7 @@ public class NetworkManager
 
     public void sendEnrollment (Enrollment enroll) @safe
     {
-        foreach (ref node; this.peers)
+        foreach (ref node; this.peers[])
         {
             if (this.banman.isBanned(node.address))
             {
@@ -819,7 +821,7 @@ public class NetworkManager
 
     public void sendPreimage (PreImageInfo preimage) @safe
     {
-        foreach (ref node; this.peers)
+        foreach (ref node; this.peers[])
         {
             if (this.banman.isBanned(node.address))
             {
