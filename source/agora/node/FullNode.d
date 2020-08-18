@@ -238,7 +238,7 @@ public class FullNode : API
     }
 
     /// GET: /node_info
-    public override NodeInfo getNodeInfo () pure nothrow @safe @nogc
+    public override NodeInfo getNodeInfo () pure nothrow @safe
     {
         return this.network.getNetworkInfo();
     }
