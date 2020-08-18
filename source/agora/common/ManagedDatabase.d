@@ -21,7 +21,9 @@ import agora.utils.Log;
 import d2sqlite3.database;
 import d2sqlite3.sqlite3;
 
-import core.stdc.stdlib : abort;
+import std.conv : emplace;
+
+import core.stdc.stdlib : abort, free, malloc;
 
 mixin AddLogger!();
 
@@ -34,20 +36,27 @@ public class ManagedDatabase
     /// Close all database handles
     static ~this ()
     {
-        try
+        foreach (db; thread_dbs)
         {
-            foreach (db; thread_dbs)
+            try
+            {
                 db.close();
-        }
-        catch (Exception ex)
-        {
-            log.error("Error closing database handles: {}", ex.message);
-            throw ex;
+            }
+            catch (Exception ex)
+            {
+                log.error("Error closing database handles: {}", ex.message);
+            }
+            finally
+            {
+                db.__xdtor();  // we cannot use the destroy(db) call here, as the object is not GC allocated
+                free(db);
+                db=null;
+            }
         }
     }
 
     /// Pointer to the database handle
-    private Database* database;
+    private Database* database; // this object is NOT GC allocated and will be destroyed by the static destructor
 
     /// Subtype
     public alias getDatabase this;
@@ -65,7 +74,7 @@ public class ManagedDatabase
     public this (string path,
         int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
     {
-        this.database = new Database(path, flags);
+        this.database = emplace(cast(Database*) malloc(Database.sizeof), path, flags);
         thread_dbs ~= this.database;
     }
 
