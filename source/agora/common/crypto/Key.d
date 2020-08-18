@@ -120,7 +120,7 @@ public struct PublicKey
     }
 
     /// Uses Stellar's representation instead of hex
-    public string toString () const @trusted
+    public string toString () const @trusted nothrow
     {
         ubyte[1 + PublicKey.Width + 2] bin;
         bin[0] = VersionByte.AccountID;

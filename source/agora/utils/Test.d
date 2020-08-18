@@ -590,7 +590,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public Transaction sign (TxType type = TxType.Payment) @safe
+    public Transaction sign (TxType type = TxType.Payment) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
