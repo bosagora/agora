@@ -336,6 +336,9 @@ public class NetworkManager
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
 
+    /// Keeps track of Validator keys we're already connected to
+    private Set!PublicKey connected_validator_keys;
+
     /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
 
@@ -398,6 +401,7 @@ public class NetworkManager
         {
             this.validators.insertBack(node.client);
             this.required_peer_keys.remove(node.key);
+            this.connected_validator_keys.put(node.key);
         }
 
         this.discovery_task.add(node.client);
@@ -421,6 +425,8 @@ public class NetworkManager
         log.info("Doing network discovery..");
 
         this.required_peer_keys = required_peer_keys;
+        foreach (key; this.connected_validator_keys)
+            this.required_peer_keys.remove(key);
 
         // actually just runs it once, but we need the scheduler to run first
         // and it doesn't run in the constructor yet (LocalRest)
