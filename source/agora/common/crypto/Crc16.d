@@ -88,6 +88,7 @@ private immutable ushort[256] crc16tab = [
 /// Checksum returns the 2-byte checksum for the provided data
 /// Data returned is in little endian
 ubyte[2] checksum(scope const(ubyte)[] data)
+    @safe pure nothrow @nogc
 {
     ushort crc;
     foreach (elem; data)
@@ -102,6 +103,7 @@ ubyte[2] checksum(scope const(ubyte)[] data)
 /// Validate returns an error if the provided checksum does not match
 /// the calculated checksum of the provided data
 bool validate(scope const ubyte[] data, scope const ubyte[] expected)
+    @safe pure nothrow @nogc
 {
     assert(expected.length == 2);
     const actual = checksum(data);
