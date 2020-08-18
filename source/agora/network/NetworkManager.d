@@ -347,6 +347,9 @@ public class NetworkManager
     /// See 'minPeersConnected'
     private Set!PublicKey required_peer_keys;
 
+    /// Ditto
+    private Set!PublicKey connected_peer_keys;
+
     /// Address ban manager
     protected BanManager banman;
 
@@ -398,6 +401,7 @@ public class NetworkManager
         {
             this.validators.insertBack(node.client);
             this.required_peer_keys.remove(node.key);
+            this.connected_peer_keys.put(node.key);
         }
 
         this.discovery_task.add(node.client);
@@ -421,6 +425,8 @@ public class NetworkManager
         log.info("Doing network discovery..");
 
         this.required_peer_keys = required_peer_keys;
+        foreach (key; this.connected_peer_keys)
+            this.required_peer_keys.remove(key);
 
         // actually just runs it once, but we need the scheduler to run first
         // and it doesn't run in the constructor yet (LocalRest)
