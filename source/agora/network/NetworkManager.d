@@ -227,6 +227,10 @@ public class NetworkManager
         /// Called when we have retrieved a set of addresses from a client
         private Callback onNewAddresses;
 
+        // workaround to only run this task once
+        // (cannot run it in the ctor as the scheduler may not be running yet)
+        // todo: move it to the ctor once we have `schedule` implemented.
+        private bool is_running;
 
         /***********************************************************************
 
@@ -251,13 +255,9 @@ public class NetworkManager
 
         public void run ()
         {
-            // workaround to only run this task once
-            // (cannot run it in the ctor as the scheduler may not be running yet)
-            // todo: move it to the ctor once we have `schedule` implemented.
-            static bool is_running;
-            if (!is_running)
+            if (!this.is_running)
             {
-                is_running = true;
+                this.is_running = true;
                 this.outer.taskman.runTask(&this.getNewAddresses);
             }
         }
