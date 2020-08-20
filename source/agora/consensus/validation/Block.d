@@ -584,9 +584,9 @@ unittest
         findUTXO, Enrollment.MinValidatorCount));
     const last_root = block.header.merkle_root;
 
-    // txs with a different amount
-    block = GenesisBlock.makeNewBlock(
-        makeChainedTransactions(gen_key, prev_txs, 1, 20_000_000));
+    block = GenesisBlock.makeNewBlock(prev_txs.enumerate.map!(en =>
+        TxBuilder(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
+
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount));
 
@@ -615,8 +615,7 @@ unittest
     foreach (ref tx; GenesisBlock.txs)
         utxo_set.put(tx);
 
-    auto txs_1 = makeChainedTransactions(gen_key, null, 1,
-        400_000_000_000 * 8).sort.array;
+    auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
 
     auto block1 = makeNewBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
@@ -737,8 +736,7 @@ unittest
     foreach (ref tx; GenesisBlock.txs)
         utxo_set.put(tx);
 
-    auto txs_1 = makeChainedTransactions(gen_key, null, 1,
-        400_000_000_000 * 10 * 8).sort.array;
+    auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
 
     auto block1 = makeNewBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO,

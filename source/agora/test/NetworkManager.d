@@ -19,6 +19,7 @@ import agora.api.Validator;
 import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.crypto.Key;
+import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -75,22 +76,43 @@ unittest
             auto prev_key = () @trusted { return KeyPair.random(); }();
 
             Block last_block;
-            // make 20 blocks which have an invalid previous hash
-            foreach (idx; 0 .. 20)
+            // make 3 blocks which have an invalid previous hash
+
+            auto txs = genesisSpendable().map!(txb => txb.sign()).array();
+            auto block = makeNewBlock(last_block, txs);
+            blocks ~= block;
+            last_tx = txs;
+            last_block = block;
+
+            foreach (idx; 1 .. 3)
             {
-                auto txs = makeChainedTransactions(prev_key, last_tx, 1);
+                txs = last_tx.map!(tx => TxBuilder(tx).sign()).array();
                 last_tx = txs;
-                auto block = makeNewBlock(last_block, txs);
+                block = makeNewBlock(last_block, txs);
 
                 blocks ~= block;
                 last_block = block;
+            }
+
+            auto signTx (Transaction tx) @trusted { return prev_key.secret.sign(hashFull(tx)[]); }
+
+            foreach (block1; blocks)
+            {
+                foreach (idx1, txs1; block1.txs)
+                {
+                    foreach (idx2, txs2; block1.txs[idx1].outputs)
+                        block1.txs[idx1].outputs[idx2].address = prev_key.address;
+                    foreach (idx3, txs3; block1.txs[idx1].inputs)
+                        block1.txs[idx1].inputs[idx3].signature = signTx(block1.txs[idx1]);
+                }
+                block1.header.merkle_root = block1.buildMerkleTree();
             }
 
             return blocks;
         }
 
         /// return block length as returned by function above
-        public override ulong getBlockHeight () { return 20; }
+        public override ulong getBlockHeight () { return 3; }
     }
 
     static class BadAPIManager : TestAPIManager
@@ -149,29 +171,23 @@ unittest
     node_bad.filter!(API.getBlocksFrom);
     node_test.filter!(API.putTransaction);
 
-    Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
     Transaction[] last_txs;
 
     // create genesis block
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
     last_txs.each!(tx => node_validator.putTransaction(tx));
     network.expectBlock([node_validator], Height(1), 4.seconds);
-    block_txes ~= last_txs.sort.array;
 
-    foreach (block_idx; 1 .. 10)  // create 9 additional blocks
-    {
-        // create enough tx's for a single block
-        auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
-        // send it to one node
-        txs.each!(tx => node_validator.putTransaction(tx));
-        network.expectBlock([node_validator], Height(block_idx + 1), 4.seconds);
-        block_txes ~= txs.sort.array;
-        last_txs = txs;
-    }
+    // create 1 additional block and enough `tx`es
+    auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+    // send it to one node
+    txs.each!(tx => node_validator.putTransaction(tx));
+    network.expectBlock([node_validator], Height(2), 4.seconds);
+    last_txs = txs;
 
-    // the validator node has 10 blocks, but bad node pretends to have 20
-    assert(node_validator.getBlockHeight() == 10, node_validator.getBlockHeight().to!string);
-    assert(node_bad.getBlockHeight() == 20);
+    // the validator node has 2 blocks, but bad node pretends to have 3
+    assert(node_validator.getBlockHeight() == 2, node_validator.getBlockHeight().to!string);
+    assert(node_bad.getBlockHeight() == 3);
     assert(node_test.getBlockHeight() == 0);  // only genesis
 
     node_bad.clearFilter();
@@ -179,6 +195,6 @@ unittest
 
     // node test will accept its blocks from node_validator,
     // as the blocks in node_bad do not pass validation
-    retryFor(node_test.getBlockHeight() == 10, 4.seconds);
-    assert(containSameBlocks([node_test, node_validator], 10));
+    retryFor(node_test.getBlockHeight() == 2, 4.seconds);
+    assert(containSameBlocks([node_test, node_validator], 2));
 }

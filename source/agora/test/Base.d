@@ -1429,16 +1429,12 @@ private immutable(Block)[] generateBlocks (
     if (count == 0)
         return blocks.assumeUnique;  // just the genesis block
 
-    const(Transaction)[] prev_txs;
     foreach (_; 0 .. count)
     {
-        // see `agora.consensus.data.genesis.Test` for the magic amount
-        auto txs = makeChainedTransactions(WK.Keys.Genesis,
-            prev_txs, 1, 61_000_000uL * 10_000_000uL * 8);
+        auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
 
         const NoEnrollments = null;
         blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
-        prev_txs = txs;
     }
 
     return blocks.assumeUnique;
