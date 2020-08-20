@@ -35,17 +35,19 @@ import core.thread;
 import core.time;
 
 // keep polling the nodes for a complete network discovery, until a timeout
-private void waitForDiscovery (API[] clients, Duration timeout)
+private void waitForDiscovery(API[] clients, Duration timeout)
 {
-    clients.enumerate.each!((idx, api) =>
-        retryFor(api.getNodeInfo().ifThrown(NodeInfo.init)
-            .state == NetworkState.Complete,
-            timeout,
-            format("Node %s has not completed discovery after %s.",
-                idx, timeout)));
+    writeln("====================   waitForDiscovery ==========================");
+    writefln("clients=%s", clients.length);
+    clients.enumerate.each!((idx, api) {
+        writefln("Wait for client number %s to complete discovery", idx + 1);
+        retryFor(api.getNodeInfo().ifThrown(NodeInfo.init).state == NetworkState.Complete, timeout,
+            format("Client number %s has not completed discovery after %s.", idx + 1, timeout));
+    });
+    writeln("====================   waitForDiscovery ==========================");
 }
 
-int main (string[] args)
+int main(string[] args)
 {
     if (args.length < 2)
     {
@@ -55,13 +57,12 @@ int main (string[] args)
     }
 
     /// Address array of nodes
-    const addresses = args[1..$];
+    const addresses = args[1 .. $];
 
     {
         API[] clients;
-        foreach (const ref addr; addresses)
+        foreach (const ref addr; addresses) 
             clients ~= new RestInterfaceClient!API(addr);
-
         waitForDiscovery(clients, 5.seconds);
         const GenesisBlock = clients[0].getBlocksFrom(0, 1)[0];
 
@@ -81,9 +82,8 @@ int main (string[] args)
 
         auto kp = WK.Keys.Genesis;
 
-        iota(8)
-            .map!(idx => TxBuilder(TestGenesis.GenesisBlock.txs[1], idx)
-                  .refund(kp.address).sign())
+        iota(8).map!(idx => TxBuilder(TestGenesis.GenesisBlock.txs[1], idx)
+                .refund(kp.address).sign())
             .each!(tx => clients[0].putTransaction(tx));
 
         checkBlockHeight(addresses, 1);
@@ -93,7 +93,7 @@ int main (string[] args)
 }
 
 /// Check block generation
-private void checkBlockHeight (const string[] addresses, ulong height)
+private void checkBlockHeight(const string[] addresses, ulong height)
 {
     // TODO: This is a hack because of issue #312
     // https://github.com/bpfkorea/agora/issues/312
@@ -117,7 +117,7 @@ private void checkBlockHeight (const string[] addresses, ulong height)
         writefln("[%s] getBlocksFrom: %s", idx, blocks.map!prettify);
         writeln("----------------------------------------");
         assert(getHeight == height);
-        assert(blocks.length == height+1);
+        assert(blocks.length == height + 1);
         if (idx != 0)
             assert(blockHash == hashFull(blocks[height].header));
         else

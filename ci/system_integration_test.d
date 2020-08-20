@@ -4,6 +4,8 @@ module system_integration_test;
 private:
 
 import std.algorithm;
+import std.algorithm.iteration;
+import std.range;
 import std.file;
 import std.format;
 import std.path;
@@ -26,23 +28,13 @@ immutable TestContainer = [ "docker", "run", "agora", "--help", ];
 immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", "--abort-on-container-exit", ];
 immutable DockerComposeDown = [ "docker-compose", "-f", ComposeFile, "down", ];
 immutable DockerComposeLogs = [ "docker-compose", "-f", ComposeFile, "logs", "-t", ];
-immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
-                                    "http://127.0.0.1:4000",
-                                    "http://127.0.0.1:4002",
-                                    "http://127.0.0.1:4003",
-                                    "http://127.0.0.1:4004",
-                                    "http://127.0.0.1:4005",
-                                    "http://127.0.0.1:4006",
-                                    "http://127.0.0.1:4007",
-];
-immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
-                      IntegrationPath.buildPath("node/2/.cache/"),
-                      IntegrationPath.buildPath("node/3/.cache/"),
-                      IntegrationPath.buildPath("node/4/.cache/"),
-                      IntegrationPath.buildPath("node/5/.cache/"),
-                      IntegrationPath.buildPath("node/6/.cache/"),
-                      IntegrationPath.buildPath("node/7/.cache/"),
-];
+immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--", ];
+immutable Cleanup = [ "rm", "-rf", ];
+
+auto Nodes = iota(8);
+private auto testNodes() {
+    return Nodes.filter!(i => i != 1); // Until we get a vanity address for node 1
+}
 
 private int main (string[] args)
 {
@@ -59,8 +51,12 @@ private int main (string[] args)
     runCmd(TestContainer);
 
     // First make sure that there we start from a clean slate,
-    // as the docker-compose bind volumes
-    runCmd(Cleanup);
+    // as the docker-compose bind volumes and we write docker log files on failure
+    runCmd(
+        Cleanup ~ 
+        testNodes.map!(i => IntegrationPath.buildPath(format("node/%s/.cache/",i))).array() ~
+        testNodes.map!(i => IntegrationPath.buildPath(format("node/%s/docker.log",i))).array()
+        );
 
     // We need to have a "foreground" process to use `--abort-on-container-exit`
     // This option allows us to detect when the node stops / crash even before
@@ -73,21 +69,19 @@ private int main (string[] args)
     try
     {
         // Now run the tests
-        runCmd(RunIntegrationTests);
+        runCmd(
+            RunIntegrationTests ~ 
+            testNodes.map!(i => format("http://127.0.0.1:400%s", i)).array()
+            );
         code = 0;
     }
     catch (Exception e)
     {
-        // Full node only
-        runCmd(DockerComposeLogs ~ "node-0");
-
-        // Validators
-        runCmd(DockerComposeLogs ~ "node-2");
-        runCmd(DockerComposeLogs ~ "node-3");
-        runCmd(DockerComposeLogs ~ "node-4");
-        runCmd(DockerComposeLogs ~ "node-5");
-        runCmd(DockerComposeLogs ~ "node-6");
-        runCmd(DockerComposeLogs ~ "node-7");
+        testNodes.each!(
+            i => runCmdOutputToFile(
+                DockerComposeLogs ~ format("node-%s", i), 
+                IntegrationPath.buildPath(format("node/%s/docker.log",i)))
+                );
         code = 1;
     }
 
@@ -107,6 +101,17 @@ private void runCmd (const string[] cmd)
 {
     writeln(cmd);
     auto pid = spawnProcess(cmd);
+    if (pid.wait() != 0)
+        throw new Exception(format("Command failed: %s", cmd));
+}
+
+/// Utility function to run a command and throw on error
+private void runCmdOutputToFile (const string[] cmd, const string outputFile)
+{
+    auto outFile = File(outputFile, "w");
+    writeln(cmd);
+    writeln("Output to logfile ", outFile);
+    auto pid = spawnProcess(cmd, std.stdio.stdin, outFile, std.stdio.stderr);
     if (pid.wait() != 0)
         throw new Exception(format("Command failed: %s", cmd));
 }
