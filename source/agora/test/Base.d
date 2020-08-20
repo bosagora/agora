@@ -478,19 +478,18 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void createNewNode (Config conf )
+    public void createNewNode (Config conf, string file = __FILE__, int line = __LINE__)
     {
         RemoteAPI!TestAPI api;
-
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, this.test_conf.txs_to_nominate, conf.node.timeout);
+                this.blocks, this.test_conf.txs_to_nominate, conf.node.timeout, file, line);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, conf.node.timeout);
+                this.blocks, conf.node.timeout, file, line);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -1116,7 +1115,7 @@ public struct TestConf
 
 *******************************************************************************/
 
-public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)(
+public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager, string file = __FILE__, int line = __LINE__)(
     in TestConf test_conf)
 {
     import agora.common.Serializer;
@@ -1253,7 +1252,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto net = new APIManager(blocks, test_conf);
     foreach (ref conf; main_configs)
-        net.createNewNode(conf);
+        net.createNewNode(conf, file, line);
 
     return net;
 }

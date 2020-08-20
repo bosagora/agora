@@ -102,7 +102,7 @@ unittest
         }
 
         /// see base class
-        public override void createNewNode (Config conf)
+        public override void createNewNode (Config conf, string file, int line)
         {
             RemoteAPI!TestAPI api;
 
