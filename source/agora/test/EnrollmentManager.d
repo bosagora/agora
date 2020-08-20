@@ -239,7 +239,7 @@ unittest
         }
 
         /// see base class
-        public override void createNewNode (Config conf)
+        public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 0)
             {
@@ -251,7 +251,7 @@ unittest
                 this.nodes ~= NodePair(conf.node.address, node);
             }
             else
-                super.createNewNode(conf);
+                super.createNewNode(conf, file, line);
         }
     }
 
@@ -361,7 +361,7 @@ unittest
         }
 
         /// see base class
-        public override void createNewNode (Config conf)
+        public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 0)
             {
@@ -372,7 +372,7 @@ unittest
                 this.nodes ~= NodePair(conf.node.address, api);
             }
             else
-                super.createNewNode(conf);
+                super.createNewNode(conf, file, line);
         }
     }
 
