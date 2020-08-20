@@ -196,7 +196,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void sendTransaction (Transaction tx) @trusted
+    public void sendTransaction (Transaction tx) @trusted nothrow
     {
         import agora.common.Hash;
         const tx_hash = tx.hashFull();
@@ -224,18 +224,11 @@ class NetworkClient
 
     public void sendEnvelope (SCPEnvelope envelope) nothrow
     {
-        try
+        this.taskman.runTask(
         {
-            this.taskman.runTask(
-            {
-                this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
-                    envelope);
-            });
-        }
-        catch (Exception ex)
-        {
-            assert(0, "attemptRequest should have caught it");
-        }
+            this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
+                envelope);
+        });
     }
 
     /***************************************************************************
@@ -293,7 +286,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void sendEnrollment (Enrollment enroll) @trusted
+    public void sendEnrollment (Enrollment enroll) @trusted nothrow
     {
         this.taskman.runTask(
         {
@@ -315,7 +308,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void sendPreimage (PreImageInfo preimage) @trusted
+    public void sendPreimage (PreImageInfo preimage) @trusted nothrow
     {
         this.taskman.runTask(
         {
@@ -364,7 +357,12 @@ class NetworkClient
             {
                 import vibe.http.common : HTTPStatusException;
                 if (auto http = cast(HTTPStatusException)ex)
-                    throw http;  // e.g. getPublicKey() might not be implemented
+                {
+                    static if (DT == Throw.Yes)
+                        throw http;  // e.g. getPublicKey() might not be implemented
+                    else
+                        break;
+                }
 
                 try
                 {
