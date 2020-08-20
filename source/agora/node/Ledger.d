@@ -651,14 +651,14 @@ unittest
     scope ledger = new TestLedger(config);
 
     // Valid case
-    auto txs = makeChainedTransactions(config.key_pair, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks.length == 2);
 
     // Invalid case
-    txs = makeChainedTransactions(config.key_pair, txs, 1);
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     foreach (ref tx; txs)
     {
         foreach (ref output; tx.outputs)
@@ -684,7 +684,7 @@ unittest
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     auto valid_block = makeNewBlock(ledger.params.Genesis, txs);
     assert(ledger.acceptBlock(valid_block));
 }
@@ -698,7 +698,7 @@ unittest
     };
     scope ledger = new TestLedger(config);
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
 
@@ -758,7 +758,7 @@ unittest
 
     // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
     const(Block)[] blocks = [ GenesisBlock ];
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     // Make a block to put in storage
     // TODO: Make this more than one block (e.g. 5)
     //       Currently due to the design of `makeChainedTransactions`,
@@ -919,7 +919,7 @@ unittest
 
     out_key_pairs_normal = getRandomKeyPairs();
 
-    // generate nomal transactions to form a block
+    // generate normal transactions to form a block
     void genNormalBlockTransactions (size_t count, bool is_valid = true)
     {
         foreach (idx; 0 .. count)
@@ -1062,15 +1062,12 @@ private immutable(Block)[] genBlocksToIndex (
 {
     const(Block)[] blocks = [ params.Genesis ];
 
-    const(Transaction)[] prev_txs;
     foreach (_; 0 .. count)
     {
-        auto txs = makeChainedTransactions(WK.Keys.Genesis,
-            prev_txs, 1);
+        auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
 
         const NoEnrollments = null;
         blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
-        prev_txs = txs;
     }
 
     return blocks.assumeUnique;

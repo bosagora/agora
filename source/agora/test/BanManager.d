@@ -57,11 +57,25 @@ unittest
     // generate enough transactions to form 'count' blocks
     Transaction[] genBlockTransactions (size_t count)
     {
-        auto txes = makeChainedTransactions(gen_key, last_txs, count);
-        // keep track of last tx's to chain them to
-        last_txs = txes[$ - 8 .. $];
-        all_txs ~= txes;
-        return txes;
+        assert(count > 0);
+        Transaction[] txes;
+
+         if (!last_txs.length)
+         {
+             txes = genesisSpendable().map!(txb => txb.sign()).array();
+             last_txs = txes[$ - 8 .. $];
+             all_txs ~= last_txs;
+             count--;
+         }
+
+         foreach (idx; 0 .. count)
+         {
+             txes = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+             // keep track of last tx's to chain them to
+             last_txs = txes[$ - 8 .. $];
+             all_txs ~= txes;
+         }
+         return txes;
     }
 
     genBlockTransactions(1).each!(tx => node_1.putTransaction(tx));

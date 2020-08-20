@@ -24,6 +24,7 @@ import agora.consensus.data.Block;
 import agora.utils.Log;
 
 import std.algorithm;
+import std.array;
 import std.container.rbtree;
 import std.digest.crc;
 import std.exception;
@@ -1078,18 +1079,33 @@ unittest
     storage.saveBlock(GenesisBlock);
     block_hashes ~= hashFull(GenesisBlock.header);
     Transaction[] last_txs;
+    Transaction[] txs;
+    Block last_block;
 
     void genBlocks (size_t count)
     {
-        while (--count)
+        if (!last_txs.length)
         {
-            auto txs = makeChainedTransactions(gen_key_pair, last_txs, 1);
-            auto block = makeNewBlock(blocks[$ - 1], txs);
+            txs = genesisSpendable().map!(txb => txb.sign()).array();
+            last_block = makeNewBlock(blocks[$ - 1], txs);
             last_txs = txs;
 
-            blocks ~= block;
-            block_hashes ~= hashFull(block.header);
-            storage.saveBlock(block);
+            blocks ~= last_block;
+            block_hashes ~= hashFull(last_block.header);
+            storage.saveBlock(last_block);
+
+            count--;
+        }
+
+        while (--count)
+        {
+            txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+            last_block = makeNewBlock(blocks[$ - 1], txs);
+            last_txs = txs;
+
+            blocks ~= last_block;
+            block_hashes ~= hashFull(last_block.header);
+            storage.saveBlock(last_block);
         }
     }
 
@@ -1124,7 +1140,7 @@ unittest
     }
 
     // test loading in constructor
-    auto txs_1 = makeChainedTransactions(gen_key_pair, null, 1);
+    auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
     auto block_2 = makeNewBlock(GenesisBlock, txs_1);
     const ctor_blocks = [ GenesisBlock, cast(const(Block))block_2 ];
     scope store = new MemBlockStorage(ctor_blocks);

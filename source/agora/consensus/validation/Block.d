@@ -435,7 +435,7 @@ unittest
     auto gen_hash = GenesisBlock.header.hashFull();
 
     GenesisBlock.txs.each!(tx => utxos.put(tx));
-    auto block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
+    auto block = GenesisBlock.makeNewBlock(genesisSpendable().map!(txb => txb.sign()));
 
     // height check
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
@@ -498,7 +498,7 @@ unittest
     prev_txs.each!(tx => utxos.put(tx));  // these will be spent
 
     auto prev_block = block;
-    block = block.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
+    block = block.makeNewBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
     assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount));
 
@@ -547,7 +547,7 @@ unittest
     };
 
     // consumed all utxo => fail
-    block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, null, 1));
+    block = GenesisBlock.makeNewBlock(genesisSpendable().map!(txb => txb.sign()));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent, Enrollment.MinValidatorCount));
 
@@ -568,7 +568,7 @@ unittest
     // we stopped validation due to a double-spend
     assert(used_set.length == double_spend.length - 1);
 
-    block = GenesisBlock.makeNewBlock(makeChainedTransactions(gen_key, prev_txs, 1));
+    block = GenesisBlock.makeNewBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount));
 

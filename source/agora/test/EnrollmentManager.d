@@ -67,13 +67,12 @@ unittest
                  node.getEnrollment(enroll_3.utxo_key) == enroll_3,
             5.seconds));
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis,
-        network.blocks[$ - 1].txs, 1);
+    auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(validator_cycle), 2.seconds);
 
     // verify that consensus can still be reached
-    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(validator_cycle + 1), 2.seconds);
 
@@ -115,7 +114,7 @@ unittest
     const(Transaction)[] prev_txs = network.blocks[$ - 1].txs;
     foreach (height; current_height .. validator_cycle)
     {
-        auto txs = makeChainedTransactions(WK.Keys.Genesis, prev_txs, 1);
+        auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
         txs.each!(tx => nodes[0].putTransaction(tx));
         network.expectBlock(Height(height + 1), 2.seconds);
         prev_txs = txs;
