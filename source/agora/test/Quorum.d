@@ -87,8 +87,7 @@ unittest
     }
 
     // create block with 6 payment and 2 freeze tx's
-    auto txs = makeChainedTransactions(WK.Keys.Genesis,
-        network.blocks[$ - 1].txs, 1);
+    auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
 
     // rewrite 3rd to last tx to multiple outputs so we can create 8 spend tx's
     // in next block
@@ -118,7 +117,7 @@ unittest
                  node.getEnrollment(enroll_1.utxo_key) == enroll_1,
             5.seconds));
 
-    auto new_txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    auto new_txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     // the last 3 tx's must refer to the outputs in txs[$ - 3] before
     new_txs[$ - 3] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 0);
     new_txs[$ - 2] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 1);
@@ -132,7 +131,7 @@ unittest
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
 
     // verify that consensus can still be reached by the leftover validators
-    txs = makeChainedTransactions(WK.Keys.Genesis, new_txs, 1);
+    txs = new_txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
     network.expectBlock(nodes[$ - 2 .. $], Height(11), 3.seconds);

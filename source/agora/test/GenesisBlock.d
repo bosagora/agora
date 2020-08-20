@@ -36,7 +36,7 @@ unittest
     nodes.all!(node => node.getBlocksFrom(0, 1)[0] == network.blocks[0])
         .retryFor(2.seconds);
 
-    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1), 2.seconds);
 }

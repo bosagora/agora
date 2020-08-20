@@ -45,6 +45,8 @@ unittest
     auto node_1 = nodes[0];
 
     auto gen_key_pair = WK.Keys.Genesis;
+    // Get the genesis block, make sure it's the only block externalized
+    auto blocks = node_1.getBlocksFrom(0, 2);
 
     Transaction[] txs;
 
@@ -52,17 +54,23 @@ unittest
     foreach (block_idx; 1 .. validator_cycle)
     {
         // create enough tx's for a single block
-        txs = makeChainedTransactions(gen_key_pair, txs, 1);
+        txs = blocks[block_idx - 1].spendable().map!(txb => txb.sign()).array();
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
         network.expectBlock(Height(block_idx), 5.seconds);
+
+        // add next block
+         blocks ~= node_1.getBlocksFrom(block_idx, 1);
     }
 
     // Block will not be created because otherwise there would be no active validators
     {
-        txs = makeChainedTransactions(gen_key_pair, txs, 1);
+        txs = blocks[validator_cycle - 1].spendable().map!(txb => txb.sign()).array();
         txs.each!(tx => node_1.putTransaction(tx));
+
+        // try to add next block
+         blocks ~= node_1.getBlocksFrom(validator_cycle, 1);
     }
 
     Thread.sleep(2.seconds);  // wait for propagation

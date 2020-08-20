@@ -37,7 +37,7 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1), 2.seconds);
 }

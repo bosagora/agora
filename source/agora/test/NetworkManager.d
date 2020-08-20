@@ -45,7 +45,7 @@ unittest
     nodes[0].filter!(API.getBlockHeight);
     nodes[1].filter!(API.getBlockHeight);
 
-    auto txes = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
 
     nodes[0].clearFilter();
@@ -151,11 +151,17 @@ unittest
 
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
     Transaction[] last_txs;
-    foreach (block_idx; 0 .. 10)  // create 10 blocks
+
+    // create genesis block
+    last_txs = genesisSpendable().map!(txb => txb.sign()).array();
+    last_txs.each!(tx => node_validator.putTransaction(tx));
+    network.expectBlock([node_validator], Height(1), 4.seconds);
+    block_txes ~= last_txs.sort.array;
+
+    foreach (block_idx; 1 .. 10)  // create 9 additional blocks
     {
         // create enough tx's for a single block
-        auto txs = makeChainedTransactions(WK.Keys.Genesis, last_txs, 1);
-
+        auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
         // send it to one node
         txs.each!(tx => node_validator.putTransaction(tx));
         network.expectBlock([node_validator], Height(block_idx + 1), 4.seconds);

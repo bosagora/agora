@@ -321,7 +321,7 @@ unittest
 {
     auto pool = new TransactionPool(":memory:");
     auto gen_key = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);
@@ -358,7 +358,7 @@ unittest
 
     auto pool = new TransactionPool(":memory:");
     auto gen_key = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);
@@ -388,7 +388,7 @@ unittest
 
     auto pool = new TransactionPool(":memory:");
     auto gen_key = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);

@@ -38,7 +38,7 @@ unittest
 
     Transaction[] last_txs;
     // create enough tx's for a single block
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, last_txs, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
     auto send_txs = txs[0..$-1];
     // send it to tx to node
@@ -74,7 +74,7 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
     auto send_txs = txs[0 .. $ - 1];  // 1 short of making a block (don't start consensus)
     send_txs.each!(tx => node_1.putTransaction(tx));

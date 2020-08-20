@@ -45,21 +45,24 @@ unittest
 
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
     Transaction[] last_txs;
+
+    // Get the genesis block, make sure it's the only block externalized
+    auto blocks = node_1.getBlocksFrom(0, 2);
+    assert(blocks.length == 1);
+
     foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
-        auto txs = makeChainedTransactions(WK.Keys.Genesis, last_txs, 1);
+        auto txs = blocks[block_idx].spendable().map!(txb => txb.sign()).array();
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
         network.expectBlock(Height(block_idx + 1), 4.seconds);
 
+        blocks ~= node_1.getBlocksFrom(block_idx + 1, 1);
         block_txes ~= txs.sort.array;
         last_txs = txs;
     }
-
-    // get all the blocks (including genesis block)
-    auto blocks = node_1.getBlocksFrom(0, 101);
 
     assert(blocks[0] == network.blocks[0]);
 
@@ -98,11 +101,11 @@ unittest
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
     nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1), 8.seconds);
 
-    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(2), 8.seconds);
 }
@@ -120,7 +123,7 @@ unittest
     auto node_1 = nodes[0];
 
     auto gen_key_pair = WK.Keys.Genesis;
-    auto txs = makeChainedTransactions(gen_key_pair, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
 
     Hash[] hashes;
@@ -181,15 +184,15 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    auto txs = makeChainedTransactions(WK.Keys.Genesis, null, 1);
+    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1), 3.seconds);
 
-    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(2), 3.seconds);
 
-    txs = makeChainedTransactions(WK.Keys.Genesis, txs, 1);
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
 
     // create a deep-copy of the first tx
     auto backup_tx = deserializeFull!Transaction(serializeFull(txs[0]));
