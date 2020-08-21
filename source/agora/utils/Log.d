@@ -49,21 +49,24 @@ public struct Logger
         import core.memory;
         this.logger = Ocean.Log.lookup(moduleName);
         this.logger.buffer(new char[](16384));
-        GC.addRoot(cast(void*)this.logger);
-    }
-
-    /// dtor
-    public ~this ()
-    {
-        import core.memory;
-        GC.removeRoot(cast(void*)this.logger);
     }
 
     public void opDispatch (string call, Args...) (Args args)
     {
         try
         {
-            mixin("this.logger." ~ call ~ "(args);");
+            import core.memory : GC;
+            if (GC.inFinalizer())
+            {
+                writeln("allowing logging from the destructor on a GC thread would risk running into segfaults, please see issue #1128");
+                return;
+            }
+            else if (logger is null)
+            {
+                assert(0,"\nplease make sure you are declaring the \nmixin AddLogger!(); statement on top, followed by:\nstatic this{}; followed by:\nstatic ~this{};");
+                return;
+            }
+            mixin("this.logger." ~ call ~ "(args);");            
         }
         catch (Exception ex)
         {
@@ -91,15 +94,10 @@ public struct Logger
 /// Insert a logger in the current scope, named log
 public template AddLogger (string moduleName = __MODULE__)
 {
-    private Logger log;
+    private Logger* log;
     static this ()
     {
-        log = Logger(moduleName);
-    }
-
-    static ~this()
-    {
-        destroy(log);
+        log = new Logger(moduleName);
     }
 }
 
