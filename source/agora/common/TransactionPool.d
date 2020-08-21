@@ -48,19 +48,12 @@ version (unittest)
 
 *******************************************************************************/
 
+mixin AddLogger!();
+
 static this ()
 {
-    log = Logger(__MODULE__);
     TransactionPool.initialize();
 }
-
-static ~this ()
-{
-    destroy(log);
-}
-
-/// Logger instance
-private Logger log;
 
 /// A transaction pool that is serializable to disk, backed by SQLite
 public class TransactionPool
