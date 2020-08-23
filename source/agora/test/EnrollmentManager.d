@@ -189,9 +189,6 @@ unittest
     network.expectBlock(nodes.take(1), Height(21), 3.seconds);
 
     PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
-    PreImageInfo preimage_1;
-    retryFor(org_preimage == (preimage_1 = nodes[0].getPreimage(enroll.utxo_key)),
-        5.seconds);
 
     // Wait for the revelation of new pre-image to complete
     PreImageInfo preimage_2;
