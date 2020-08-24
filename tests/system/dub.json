@@ -3,18 +3,59 @@
     "targetType": "executable",
     "targetPath": "build",
     "dflags": [ "-i" ],
-    "lflags": [ "-lsodium" ],
-    "importPaths": [
-        "../../source",
-        "../../submodules/d2sqlite3/source",
+    "libs-posix": [ "sodium" ],
+    "libs-windows": [ "libsodium" ],
+    "versions": 
+    [
+        "EventcoreEpollDriver",
+        "Have_base32",
+        "Have_bitblob",
+        "Have_d2sqlite3",
+        "Have_diet_ng",
+        "Have_eventcore",
+        "Have_libsodiumd",
+        "Have_mir_linux_kernel",
+        "Have_ocean",
+        "Have_stdx_allocator",
+        "Have_systemtest_simple",
+        "Have_taggedalgebraic",
+        "Have_vibe_core",
+        "Have_vibe_d",
+        "Have_vibe_d_core",
+        "Have_vibe_d_crypto",
+        "Have_vibe_d_data",
+        "Have_vibe_d_http",
+        "Have_vibe_d_inet",
+        "Have_vibe_d_mail",
+        "Have_vibe_d_mongodb",
+        "Have_vibe_d_redis",
+        "Have_vibe_d_stream",
+        "Have_vibe_d_textfilter",
+        "Have_vibe_d_tls",
+        "Have_vibe_d_utils",
+        "Have_vibe_d_web"
     ],
-
-    "dependencies": {
-        "base32":           { "path": "../../submodules/base32/", "version": "*" },
-        "bitblob":          { "path": "../../submodules/bitblob/", "version": "*" },
-        "d2sqlite3":        { "path": "../../submodules/d2sqlite3/", "version": "*" },
-        "libsodiumd":       { "path": "../../submodules/libsodiumd/", "version": "*" },
-        "ocean":            { "path": "../../submodules/ocean/", "version": "*" },
-        "vibe-d":           { "path": "../../submodules/vibe.d/", "version": "*" }
-    }
+    "importPaths": 
+    [
+        "../../source",
+        "../../submodules/base32/src",
+        "../../submodules/bitblob/source",
+        "../../submodules/d2sqlite3/source",
+        "../../submodules/diet-ng/source",
+        "../../submodules/eventcore/source",
+        "../../submodules/libsodiumd/source",
+        "../../submodules/ocean/src",
+        "../../submodules/stdx-allocator/source",
+        "../../submodules/taggedalgebraic/source",
+        "../../submodules/vibe-core/source",
+        "../../submodules/vibe.d/crypto",
+        "../../submodules/vibe.d/data",
+        "../../submodules/vibe.d/http",
+        "../../submodules/vibe.d/inet",
+        "../../submodules/vibe.d/stream",
+        "../../submodules/vibe.d/textfilter",
+        "../../submodules/vibe.d/tls",
+        "../../submodules/vibe.d/utils",
+        "../../submodules/vibe.d/web"
+    ]
 }
