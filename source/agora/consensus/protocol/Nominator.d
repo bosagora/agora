@@ -139,14 +139,29 @@ extern(D):
 
     /***************************************************************************
 
-        Returns:
-            true if we're currently in the process of nominating
+        Stop the current nominating round
+
+        This does not stop the periodic nomination check timer,
+        but it stops the node from continuing nominating any transaction sets
+        which were proposed based on a previous ledger state.
+
+        This routine should be called after every externalize event and
+        after any valid block is received from the network (getBlocksFrom()).
 
     ***************************************************************************/
 
-    public bool isNominating () @safe @nogc nothrow
+    public void stopNominationRound (Height height) @safe nothrow
     {
-        return this.is_nominating;
+        this.is_nominating = false;
+        () @trusted { this.scp.stopNomination(height); }();
+
+        foreach (timer; this.active_timers)
+        {
+            if (timer !is null)
+                timer.stop();
+        }
+
+        this.active_timers[] = null;
     }
 
     /***************************************************************************

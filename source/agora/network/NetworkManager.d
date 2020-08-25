@@ -540,15 +540,10 @@ public class NetworkManager
 
         Params:
             ledger = the Ledger to apply received blocks to
-            isNominating = if not null, returns true if we're a Validator
-                that is currently in the process of nominating blocks.
-                In this case we do not want to alter the state of the Ledger
-                until the nomination process finishes (isNominating() => false)
 
     ***************************************************************************/
 
-    public void startPeriodicCatchup (Ledger ledger,
-        bool delegate() @safe isNominating = null)
+    public void startPeriodicCatchup (Ledger ledger)
     {
         this.taskman.runTask(
         ()
@@ -560,11 +555,8 @@ public class NetworkManager
 
                 this.getBlocksFrom(
                     Height(ledger.getBlockHeight() + 1),
-                    blocks => blocks.all!(block =>
-                        // do not alter the state of the ledger if
-                        // we're currently nominating (Validator)
-                        (isNominating is null || !isNominating())
-                         && ledger.acceptBlock(block)));
+                    // if any blocks fail validation => short-circuit
+                    blocks => blocks.all!(block => ledger.acceptBlock(block)));
             }
             catchup(); // avoid delay
             this.taskman.setTimer(2.seconds, &catchup, Periodic.Yes);
