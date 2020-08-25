@@ -116,14 +116,10 @@ public class FullNode : API
 
         Params:
             config = Config instance
-            onRegenerateQuorums = optional delegate to call when the active set
-                                  of validators has changed and the quorums
-                                  must be regenerated
 
     ***************************************************************************/
 
-    public this (const Config config,
-        void delegate (Height) nothrow @trusted onRegenerateQuorums = null)
+    public this (const Config config)
     {
         import CNG = agora.consensus.data.genesis.Coinnet;
 
@@ -160,8 +156,7 @@ public class FullNode : API
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.node, params);
         this.ledger = new Ledger(config.node, params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, &this.onAcceptedBlock,
-            onRegenerateQuorums);
+            this.storage, this.enroll_man, this.pool, &this.onAcceptedBlock);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 
@@ -519,9 +514,14 @@ public class FullNode : API
         Calls pushBlock(), but additionally the Validator overrides this
         and implements quorum shuffling.
 
+        Params:
+            block = the new block
+            validators_changed = whether the validator set has changed
+
     ***************************************************************************/
 
-    protected void onAcceptedBlock (const ref Block block) @safe
+    protected void onAcceptedBlock (const ref Block block,
+        bool validators_changed) @safe
     {
         this.pushBlock(block);
     }

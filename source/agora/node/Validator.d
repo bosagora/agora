@@ -76,7 +76,7 @@ public class Validator : FullNode, API
     public this (const Config config)
     {
         assert(config.node.is_validator);
-        super(config, &this.onRegenerateQuorums);
+        super(config);
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
@@ -85,7 +85,7 @@ public class Validator : FullNode, API
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
-        this.onRegenerateQuorums(Height(0));
+        this.regenerateQuorums(Height(0));
     }
 
     /***************************************************************************
@@ -109,7 +109,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void onRegenerateQuorums (Height height) nothrow @safe
+    private void regenerateQuorums (Height height) nothrow @safe
     {
         this.last_shuffle_height = height;
 
@@ -303,20 +303,18 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected final override void onAcceptedBlock (const ref Block block) @safe
+    protected final override void onAcceptedBlock (const ref Block block,
+        bool validators_changed) @safe
     {
-        super.onAcceptedBlock(block);
+        super.onAcceptedBlock(block, validators_changed);
         assert(block.header.height >= this.last_shuffle_height);
 
-        if (block.header.height == this.last_shuffle_height)
-            return;  // onRegenerateQuorums() was already called
+        const need_shuffle = block.header.height >=
+            (this.last_shuffle_height + this.params.QuorumShuffleInterval);
 
-        if ((this.last_shuffle_height + this.params.QuorumShuffleInterval)
-            > block.header.height)
-            return;  // no shuffle yet
-
-        // shuffle the quorum
-        this.onRegenerateQuorums(block.header.height);
+        // regenerate the quorums
+        if (validators_changed || need_shuffle)
+            this.regenerateQuorums(block.header.height);
     }
 
     /***************************************************************************
