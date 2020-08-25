@@ -198,7 +198,7 @@ public class Ledger
     {
         if (auto fail_reason = this.validateBlock(block))
         {
-            log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
+            log.error("Rejected block: {}: {}", fail_reason, block.prettify());
             return false;
         }
 
