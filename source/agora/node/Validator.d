@@ -203,7 +203,7 @@ public class Validator : FullNode, API
         this.startPeriodicDiscovery();
         this.taskman.setTimer(this.config.node.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
-        this.network.startPeriodicCatchup(this.ledger, &this.nominator.isNominating);
+        this.network.startPeriodicCatchup(this.ledger);
     }
 
     /***************************************************************************
@@ -311,6 +311,11 @@ public class Validator : FullNode, API
         bool validators_changed) @safe
     {
         super.onAcceptedBlock(block, validators_changed);
+
+        // block received either via externalize or getBlocksFrom(),
+        // we need to cancel any existing nominating rounds
+        this.nominator.stopNominationRound(block.header.height);
+
         assert(block.header.height >= this.last_shuffle_height);
 
         const need_shuffle = block.header.height >=
