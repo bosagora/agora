@@ -222,6 +222,7 @@ public class FullNode : API
     public void shutdown ()
     {
         log.info("Shutting down..");
+        this.taskman.logStats();
         this.network.dumpMetadata();
         this.pool = null;
         this.utxo_set = null;
