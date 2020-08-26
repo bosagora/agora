@@ -104,16 +104,19 @@ private int main (string[] args)
         }
     }
 
-    FullNode[] nodes;
+    NodeListenerTuple[] node_listener_tuples;
     foreach (const ref config; configs)
     {
-        nodes ~= runNode(config);
+        node_listener_tuples ~= runNode(config);
     }
 
     scope (exit)
     {
-        foreach (node; nodes)
+        foreach (node_listener_tuple; node_listener_tuples) with (node_listener_tuple)
+        {
             node.shutdown();
+            http_listener.stopListening();
+        }
     }
 
     return runEventLoop();
