@@ -29,10 +29,14 @@ import vibe.web.rest;
 
 import std.file;
 import std.format;
+import std.typecons : Tuple, tuple;
 
 import core.time;
 
 mixin AddLogger!();
+
+///
+public alias NodeListenerTuple = Tuple!(FullNode, "node", HTTPListener, "http_listener");
 
 /*******************************************************************************
 
@@ -47,7 +51,7 @@ mixin AddLogger!();
 
 *******************************************************************************/
 
-public FullNode runNode (Config config)
+public NodeListenerTuple runNode (Config config)
 {
     setVibeLogLevel(config.logging.level);
     Log.root.level(config.logging.level, true);
@@ -92,8 +96,7 @@ public FullNode runNode (Config config)
     setTimer(0.seconds, &node.start, false);  // asynchronous
 
     log.info("About to listen to HTTP: {}", settings.port);
-    listenHTTP(settings, router);
-    return node;
+    return tuple!("node","http_listener")(node, listenHTTP(settings, router));
 }
 
 /*******************************************************************************

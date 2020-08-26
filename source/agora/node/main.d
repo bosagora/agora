@@ -25,6 +25,7 @@ import agora.node.Runner;
 import agora.utils.Log;
 
 import vibe.core.core;
+import vibe.http.server;
 
 import std.getopt;
 import std.stdio;
@@ -62,7 +63,7 @@ private int main (string[] args)
             ex.message);
     }
 
-    FullNode node;
+    NodeListenerTuple node_listener_tuple;
     try
     {
         auto config = parseConfigFile(cmdln);
@@ -72,7 +73,7 @@ private int main (string[] args)
             return 0;
         }
 
-        runTask(() => node = runNode(config));
+        runTask(() => node_listener_tuple = runNode(config));
     }
     catch (Exception ex)
     {
@@ -81,6 +82,13 @@ private int main (string[] args)
         return 1;
     }
 
-    scope(exit) if (node !is null) node.shutdown();
+    scope(exit)
+    {
+        if (node_listener_tuple != NodeListenerTuple.init) with (node_listener_tuple)
+        {
+            node.shutdown();
+            http_listener.stopListening();
+        }
+    }
     return runEventLoop();
 }
