@@ -61,6 +61,54 @@ nothrow @nogc @safe unittest
     assert(verify(kp.V, signature, "Hello world"));
 }
 
+/// Complex API, allow multisig
+public Signature mySign (T) (
+    const ref Scalar k, const ref Scalar r, auto ref T data)
+    nothrow @nogc @trusted
+{
+    Scalar c = hashMulti(r.toPoint(), data);
+    Scalar s = r + (k * c);
+    return Sig(r.toPoint(), s).toBlob();
+}
+
+public bool myVerify (T) (
+    const ref Signature sig, Point[] K, Point[] R, auto ref T data)
+    nothrow @nogc @trusted
+{
+    Scalar c0 = hashMulti(R[0], data);
+    auto bigS = R[0] + K[0] * c0;
+
+    foreach (idx; 1 .. R.length)
+    {
+        Scalar c = hashMulti(R[idx], data);
+        bigS = bigS + R[idx] + K[idx] * c;
+    }
+
+    Sig s = Sig.fromBlob(sig);
+    return s.s.toPoint() == bigS;
+}
+
+/// Multi-signature example
+nothrow /*@nogc*/ @safe unittest
+{
+    static immutable string message = "BOSAGORA for the win";
+    Pair kp1 = Pair.random();
+    Pair kp2 = Pair.random();
+    Pair kp3 = Pair.random();
+    Pair R1 = Pair.random();
+    Pair R2 = Pair.random();
+    Pair R3 = Pair.random();
+
+    const sig1 = mySign(kp1.v, R1.v, message);
+    const sig2 = mySign(kp2.v, R2.v, message);
+    const sig3 = mySign(kp3.v, R3.v, message);
+
+    const comb = Sig(R1.V + R2.V + R3.V,
+        Sig.fromBlob(sig1).s + Sig.fromBlob(sig2).s + Sig.fromBlob(sig3).s).toBlob();
+
+    assert(myVerify(comb, [kp1.V, kp2.V, kp3.V], [R1.V, R2.V, R3.V], message));
+}
+
 /// Multi-signature example
 nothrow @nogc @safe unittest
 {
