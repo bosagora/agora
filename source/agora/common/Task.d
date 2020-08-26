@@ -33,6 +33,9 @@ public enum Periodic : bool
 /// Exposes primitives to run tasks through Vibe.d
 public class TaskManager
 {
+    /// stats: total number of task started
+    protected ulong tasks_started;
+
     /***************************************************************************
 
         Run an asynchronous task in vibe.d's event loop
@@ -45,6 +48,7 @@ public class TaskManager
     public void runTask (void delegate() dg) nothrow
     {
         static import vibe.core.core;
+        this.tasks_started++;
         vibe.core.core.runTask(dg);
     }
 
@@ -92,9 +96,21 @@ public class TaskManager
     public ITimer setTimer (Duration timeout, void delegate() dg,
         Periodic periodic = Periodic.No) nothrow
     {
+        this.tasks_started++;
         assert(dg !is null, "Cannot call this delegate if null");
         static import vibe.core.core;
         return new VibedTimer(vibe.core.core.setTimer(timeout, dg, periodic));
+    }
+
+    /***************************************************************************
+
+        Log out the request stats
+
+    ***************************************************************************/
+
+    public void logStats () @safe nothrow
+    {
+        log.info("Tasks started: {}", this.tasks_started);
     }
 }
 

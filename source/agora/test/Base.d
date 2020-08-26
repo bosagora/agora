@@ -264,6 +264,7 @@ public class LocalRestTaskManager : TaskManager
 
     public override void runTask (void delegate() dg) nothrow
     {
+        this.tasks_started++;
         geod24.LocalRest.runTask(dg);
     }
 
@@ -303,6 +304,7 @@ public class LocalRestTaskManager : TaskManager
     public override ITimer setTimer (Duration timeout, void delegate() dg,
         Periodic periodic = Periodic.No) nothrow
     {
+        this.tasks_started++;
         return new LocalRestTimer(geod24.LocalRest.setTimer(timeout, dg,
             periodic));
     }
