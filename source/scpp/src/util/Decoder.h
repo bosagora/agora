@@ -3,6 +3,7 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include <lib/util/basen.h>
+#include <iterator>
 #include <string>
 
 namespace stellar
