@@ -215,8 +215,6 @@ public class NetworkManager
 
     private class AddressDiscoveryTask
     {
-        import std.container : DList;
-
         /// A queue of clients. Each client is contacted, and pushed back to the
         /// queue (unless they were banned)
         private DList!NetworkClient clients;
