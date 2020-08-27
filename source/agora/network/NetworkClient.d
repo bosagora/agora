@@ -204,7 +204,7 @@ class NetworkClient
         this.taskman.runTask(
         {
             // if the node already has this tx, don't send it
-            if (this.attemptRequest!(API.hasTransactionHash, Throw.Yes,
+            if (this.attemptRequest!(API.hasTransactionHash, Throw.No,
                 LogLevel.Trace)(this.api, tx_hash))
                 return;
 
