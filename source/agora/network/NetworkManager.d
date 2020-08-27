@@ -58,6 +58,126 @@ import core.time;
 
 mixin AddLogger!();
 
+/// Schedules and processes requests with a single fiber
+public class RequestQueue
+{
+    /// Network client with retry / yield mechanism
+    private NetworkClient client;
+
+    /// The task manager - used for spawning a single fiber
+    private TaskManager taskman;
+
+    /// Ban manager - used to sleep the fiber for a prolonged time
+    private BanManager banman;
+
+    /// Whether the request queue fiber is running
+    private bool is_running;
+
+    /// Contains the request callback
+    /// (may be supplemented with a timestamp / priority number later)
+    private struct Request
+    {
+        /// The callback that will issue the actual request
+        private void delegate (NetworkClient) @safe nothrow callback;
+    }
+
+    /// The list of active requests
+    private DList!Request requests;
+
+
+    /***************************************************************************
+
+        Constructor.
+
+        Params:
+            client = network client
+            taskman = task manager
+            banman = the ban manager
+
+    ***************************************************************************/
+
+    public this (NetworkClient client, TaskManager taskman, BanManager banman)
+        @trusted
+    {
+        this.client = client;
+        this.taskman = taskman;
+        this.banman = banman;
+    }
+
+    /***************************************************************************
+
+        Start the event handling by the fiber spawned in the constructor.
+
+        The fiber will continue issuing requests scheduled via `schedule` and
+        will only terminate itself when `stop` is called.
+
+    ***************************************************************************/
+
+    private void run () @safe
+    {
+        this.is_running = true;
+
+        while (this.is_running)
+        {
+            // if banned then sleep this fiber until the scheduled unban time
+            if (this.banman.isBanned(this.client.address))
+            {
+                const cur_time = time(null);  // todo: replace with our Clock
+                const unban_time = this.banman.getUnbanTime(this.client.address);
+                if (unban_time > cur_time)
+                    () @trusted { this.taskman.wait((unban_time - cur_time).seconds); }();
+            }
+
+            if (this.requests.empty)
+            {
+                // we need yield() support in LocalRest and use it in TaskManager
+                version (unittest)
+                {
+                    () @trusted { this.taskman.wait(0.seconds); }();  // yield
+                }
+                else
+                {
+                    import vibe.core.core;
+                    yield();
+                }
+
+                continue;
+            }
+
+            auto next_req = this.requests.front;
+            this.requests.removeFront();
+            next_req.callback(this.client);
+        }
+    }
+
+    /***************************************************************************
+
+        Stop all request handling. The next time the `run()` fiber wakes up
+        it will terminate itself and allow this class to be collected.
+
+    ***************************************************************************/
+
+    public void stop () @safe @nogc nothrow
+    {
+        this.is_running = false;
+    }
+
+    /***************************************************************************
+
+        Schedule a request
+
+        Params:
+            callback = the callback which will be invoked to start the request
+
+    ***************************************************************************/
+
+    public void schedule (void delegate (NetworkClient) @safe nothrow callback)
+        @safe nothrow
+    {
+        this.requests.insertBack(Request(callback));
+    }
+}
+
 /// Ditto
 public class NetworkManager
 {
@@ -326,10 +446,10 @@ public class NetworkManager
     protected ConnectionTask[Address] connection_tasks;
 
     /// List of validator clients
-    protected DList!NetworkClient validators;
+    protected DList!RequestQueue validators;
 
     /// All connected nodes (Validators & FullNodes)
-    protected DList!NetworkClient peers;
+    protected DList!RequestQueue peers;
 
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
@@ -393,11 +513,14 @@ public class NetworkManager
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
         this.connected_peers.put(node.address);
-        this.peers.insertBack(node.client);
+
+        auto req_queue = new RequestQueue(node.client, this.taskman,
+            this.banman);
+        this.peers.insertBack(req_queue);
 
         if (node.is_validator)
         {
-            this.validators.insertBack(node.client);
+            this.validators.insertBack(req_queue);
             this.required_peer_keys.remove(node.key);
             this.connected_validator_keys.put(node.key);
         }
@@ -407,6 +530,7 @@ public class NetworkManager
         this.connection_tasks.remove(node.address);
 
         this.registerAsListener(node.client);
+        req_queue.run();
     }
 
     /// Overridable for LocalRest which uses public keys
@@ -627,7 +751,7 @@ public class NetworkManager
         }
 
         auto node_pair = this.peers[]
-            .map!(node => Pair(getHeight(node), node))
+            .map!(node => Pair(getHeight(node.client), node.client))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
 
@@ -683,8 +807,9 @@ public class NetworkManager
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peer_keys.length == 0 &&
-            this.peers[].filter!(node =>
-                !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
+            this.peers[].filter!(req_queue =>
+                !this.banman.isBanned(req_queue.client.address)).count
+                    >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
@@ -756,15 +881,16 @@ public class NetworkManager
 
     public void gossipTransaction (Transaction tx) @safe
     {
-        foreach (ref node; this.peers[])
+        foreach (req_queue; this.peers[])
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(req_queue.client.address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned",
+                    req_queue.client.address);
                 continue;
             }
 
-            node.sendTransaction(tx);
+            req_queue.schedule(client => client.sendTransaction(tx));
         }
     }
 
@@ -779,15 +905,16 @@ public class NetworkManager
 
     public void gossipEnvelope (SCPEnvelope envelope)
     {
-        foreach (client; this.validators[])
+        foreach (req_queue; this.validators[])
         {
-            if (this.banman.isBanned(client.address))
+            if (this.banman.isBanned(req_queue.client.address))
             {
-                log.trace("Not sending to {} as it's banned", client.address);
+                log.trace("Not sending to {} as it's banned",
+                    req_queue.client.address);
                 continue;
             }
 
-            client.sendEnvelope(envelope);
+            req_queue.schedule(client => client.sendEnvelope(envelope));
         }
     }
 
@@ -802,15 +929,16 @@ public class NetworkManager
 
     public void sendEnrollment (Enrollment enroll) @safe
     {
-        foreach (ref node; this.peers[])
+        foreach (req_queue; this.peers[])
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(req_queue.client.address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned",
+                    req_queue.client.address);
                 continue;
             }
 
-            node.sendEnrollment(enroll);
+            req_queue.schedule(client => client.sendEnrollment(enroll));
         }
     }
 
@@ -825,15 +953,16 @@ public class NetworkManager
 
     public void sendPreimage (PreImageInfo preimage) @safe
     {
-        foreach (ref node; this.peers[])
+        foreach (req_queue; this.peers[])
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(req_queue.client.address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned",
+                    req_queue.client.address);
                 continue;
             }
 
-            node.sendPreimage(preimage);
+            req_queue.schedule(client => client.sendPreimage(preimage));
         }
     }
 

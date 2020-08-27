@@ -219,7 +219,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public void sendEnvelope (SCPEnvelope envelope) nothrow
+    public void sendEnvelope (SCPEnvelope envelope) @trusted nothrow
     {
         this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
             envelope);
