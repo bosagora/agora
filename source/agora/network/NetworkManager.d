@@ -475,7 +475,7 @@ public class NetworkManager
     private Metadata metadata;
 
     /// Maximum connection tasks to run in parallel
-    private enum MaxConnectionTasks = 10;
+    private enum MaxConnectionTasks = 64;
 
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
