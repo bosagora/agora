@@ -201,15 +201,12 @@ class NetworkClient
         import agora.common.Hash;
         const tx_hash = tx.hashFull();
 
-        this.taskman.runTask(
-        {
-            // if the node already has this tx, don't send it
-            if (this.attemptRequest!(API.hasTransactionHash, Throw.No,
-                LogLevel.Trace)(this.api, tx_hash))
-                return;
+        // if the node already has this tx, don't send it
+        if (this.attemptRequest!(API.hasTransactionHash, Throw.No,
+            LogLevel.Trace)(this.api, tx_hash))
+            return;
 
-            this.attemptRequest!(API.putTransaction, Throw.No)(this.api, tx);
-        });
+        this.attemptRequest!(API.putTransaction, Throw.No)(this.api, tx);
     }
 
 
@@ -224,11 +221,8 @@ class NetworkClient
 
     public void sendEnvelope (SCPEnvelope envelope) nothrow
     {
-        this.taskman.runTask(
-        {
-            this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
-                envelope);
-        });
+        this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
+            envelope);
     }
 
     /***************************************************************************
@@ -288,11 +282,8 @@ class NetworkClient
 
     public void sendEnrollment (Enrollment enroll) @trusted nothrow
     {
-        this.taskman.runTask(
-        {
-            this.attemptRequest!(API.enrollValidator, Throw.No)(this.api,
-                enroll);
-        });
+        this.attemptRequest!(API.enrollValidator, Throw.No)(this.api,
+            enroll);
     }
 
     /***************************************************************************
@@ -310,11 +301,8 @@ class NetworkClient
 
     public void sendPreimage (PreImageInfo preimage) @trusted nothrow
     {
-        this.taskman.runTask(
-        {
-            this.attemptRequest!(API.receivePreimage, Throw.No)(this.api,
-                preimage);
-        });
+        this.attemptRequest!(API.receivePreimage, Throw.No)(this.api,
+            preimage);
     }
 
     /***************************************************************************
