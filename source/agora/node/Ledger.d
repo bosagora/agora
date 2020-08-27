@@ -747,12 +747,14 @@ unittest
 
     // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
     const(Block)[] blocks = [ GenesisBlock ];
-    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    // Make a block to put in storage
-    // TODO: Make this more than one block (e.g. 5)
-    //       Currently due to the design of `makeChainedTransactions`,
-    //       we can't do that.
-    blocks ~= makeNewBlock(GenesisBlock, txs);
+    auto txs = GenesisBlock.spendable().map!(txb => txb.sign()).array();
+    blocks ~= makeNewBlock(blocks[$ - 1], txs);
+    // Make 3 more blocks to put in storage
+    foreach (idx; 2 .. 5)
+    {
+        txs = blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
+        blocks ~= makeNewBlock(blocks[$ - 1], txs);
+    }
 
     // And provide it to the ledger
     NodeConfig config = {
