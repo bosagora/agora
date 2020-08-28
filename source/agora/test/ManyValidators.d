@@ -13,10 +13,6 @@
 
 module agora.test.ManyValidators;
 
-// temporarily disabled until failures are resolved
-// see #1145
-version (none):
-
 import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.Config;
