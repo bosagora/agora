@@ -98,11 +98,12 @@ shared static this()
 /// Workaround: Don't run ocean submodule unittests
 private UnitTestResult customModuleUnitTester ()
 {
-    import std.parallelism;
+    import std.parallelism : totalCPUs;
     import std.process;
     import std.string;
     import std.uni;
     import core.atomic;
+    import core.thread.osthread;
 
     // by default emit only errors during unittests.
     // can be re-set by calling code.
@@ -190,11 +191,50 @@ private UnitTestResult customModuleUnitTester ()
     foreach (mod; single_threaded)
         runTest(mod);
 
-    foreach (mod; parallel(parallel_tests))
-        runTest(mod);
+    immutable ThreadCount = totalCPUs;
+    shared uint avail_threads = ThreadCount;
 
-    foreach (mod; parallel(heavy_tests))
-        runTest(mod);
+    // parallelize tests
+    // note: we do not want to use parallel() as this reuses threads and
+    // doesn't call the static module ctors/dtors when the thread is reused.
+    void runInParallel (ModTest[] parallel_tests)
+    {
+        class WorkThread : Thread
+        {
+            ModTest test;
+            this (ModTest test)
+            {
+                this.test = test;
+                super(&this.run);
+            }
+
+            void run ()
+            {
+                scope (exit) atomicOp!"+="(avail_threads, 1);
+                runTest(this.test);
+            }
+        }
+
+        while (parallel_tests.length)
+        {
+            auto test = parallel_tests.front;
+            parallel_tests.popFront();
+
+            // wait for a thread to become available
+            while (atomicLoad(avail_threads) == 0)
+                Thread.sleep(100.msecs);
+
+            atomicOp!"-="(avail_threads, 1);
+            (new WorkThread(test)).start();
+        }
+
+        // wait for all tests to finish
+        while (atomicLoad(avail_threads) < ThreadCount)
+            Thread.sleep(500.msecs);
+    }
+
+    runInParallel(parallel_tests);
+    runInParallel(heavy_tests);
 
     UnitTestResult result = { executed : executed, passed : passed };
     if (filtered > 0)
