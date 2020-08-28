@@ -76,13 +76,13 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(validator_cycle + 1), 2.seconds);
 
-    // check if nodes have a pre-image newly sent
-    // during creating transactions for the new block
+    // check if the distance of newly sent pre-image is greater than
+    // or equal to 1, during creating transactions for the new block
     nodes.each!(node =>
-        retryFor(node.getPreimage(enroll_0.utxo_key) != PreImageInfo.init &&
-                 node.getPreimage(enroll_1.utxo_key) != PreImageInfo.init &&
-                 node.getPreimage(enroll_2.utxo_key) != PreImageInfo.init &&
-                 node.getPreimage(enroll_3.utxo_key) != PreImageInfo.init,
+        retryFor(node.getPreimage(enroll_0.utxo_key).distance >= 1 &&
+                 node.getPreimage(enroll_1.utxo_key).distance >= 1 &&
+                 node.getPreimage(enroll_2.utxo_key).distance >= 1 &&
+                 node.getPreimage(enroll_3.utxo_key).distance >= 1,
             5.seconds));
 }
 
