@@ -113,11 +113,11 @@ unittest
             .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
         txs.each!(tx => nodes[0].putTransaction(tx));
 
-    network.expectBlock(Height(11), 3.seconds);
+    network.expectBlock(Height(11), 10.seconds);
 
     // sanity check
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount() == 16, 3.seconds,
+        retryFor(node.getValidatorCount() == 16, 10.seconds,
             format("Node %s has validator count %s. Expected: %s",
                 idx, node.getValidatorCount(), 16)));
 
@@ -132,7 +132,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // consensus check
-    network.expectBlock(Height(12), 3.seconds);
+    network.expectBlock(Height(12), 10.seconds);
 }
 
 /// 32 nodes

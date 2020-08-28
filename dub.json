@@ -100,7 +100,8 @@
                 "source/agora/consensus/protocol/*",
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/vanity/*"
+                "source/agora/cli/vanity/*",
+                "source/agora/test/*"
             ]
         },
         {
