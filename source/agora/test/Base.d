@@ -538,8 +538,8 @@ public class TestAPIManager
         /// Private functions used for `shutdown`
         static void shutdownWithLogs (TestAPI node)
         {
-            node.printLog();
             (cast(FullNode)node).shutdown();
+            node.printLog();
         }
         static void shutdownSilent (TestAPI node)
         {
