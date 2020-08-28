@@ -28,9 +28,8 @@ import core.thread.osthread: getpid;
 
 struct FileBasedLock
 {
-
     ///
-    private string lock_file_name;
+    private string file_name;
 
     ///
     private string lock_file_dir;
