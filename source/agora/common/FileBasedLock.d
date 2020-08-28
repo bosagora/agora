@@ -26,7 +26,7 @@ import core.thread.osthread: getpid;
 
 *******************************************************************************/
 
-struct FileBasedLock
+public struct FileBasedLock
 {
     ///
     private string file_name;
