@@ -19,6 +19,7 @@
 module agora.node.main;
 
 import agora.common.Config;
+import agora.common.FileBasedLock;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
@@ -63,32 +64,35 @@ private int main (string[] args)
             ex.message);
     }
 
-    NodeListenerTuple node_listener_tuple;
     try
     {
-        auto config = parseConfigFile(cmdln);
+        NodeListenerTuple node_listener_tuple;
+        Config config = parseConfigFile(cmdln);
         if (cmdln.config_check)
         {
             writefln("Config file '%s' succesfully parsed.", cmdln.config_path);
             return 0;
         }
 
+        auto file_based_lock = FileBasedLock("agoraNode.lock", config.node.data_dir, true); 
+        file_based_lock.lockThrow();
+        scope(exit) file_based_lock.unlock();
+
         runTask(() => node_listener_tuple = runNode(config));
+        scope(exit)
+        {
+            if (node_listener_tuple != NodeListenerTuple.init) with (node_listener_tuple)
+            {
+                node.shutdown();
+                http_listener.stopListening();
+            }
+        }
+        return runEventLoop();
     }
-    catch (Exception ex)
+    catch (ConfigException ex)
     {
         writefln("Failed to parse config file '%s'. Error: %s",
             cmdln.config_path, ex.message);
         return 1;
-    }
-
-    scope(exit)
-    {
-        if (node_listener_tuple != NodeListenerTuple.init) with (node_listener_tuple)
-        {
-            node.shutdown();
-            http_listener.stopListening();
-        }
-    }
-    return runEventLoop();
+    }	
 }

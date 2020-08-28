@@ -64,6 +64,14 @@ public struct CommandLine
     }
 }
 
+/// Thrown when there is a configuration error
+class ConfigException : Exception
+{
+    this(string msg, string file = __FILE__, size_t line = __LINE__) {
+        super(msg, file, line);
+    }
+}
+
 /// Main config
 public struct Config
 {
@@ -225,16 +233,54 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 
 public Config parseConfigFile (ref const CommandLine cmdln)
 {
-    Node root = Loader.fromFile(cmdln.config_path).load();
-    return parseConfigImpl(cmdln, root);
+    return 
+    transformException!(Exception, ConfigException)(
+    {
+        Node root = Loader.fromFile(cmdln.config_path).load();
+        return parseConfigImpl(cmdln, root);
+    });
 }
 
 /// ditto
 public Config parseConfigString (string data, string path)
 {
-    CommandLine cmdln = { config_path: path };
-    Node root = Loader.fromString(data).load();
-    return parseConfigImpl(cmdln, root);
+    return
+    transformException!(Exception, ConfigException)(
+    {
+        CommandLine cmdln = { config_path: path };
+        Node root = Loader.fromString(data).load();
+        return parseConfigImpl(cmdln, root);
+    });
+}
+
+/*******************************************************************************
+
+    Transfroms exceptions from one type to an other
+
+    Params:
+        OriginalExT = original exception type
+        TransformedExT = transformed exception type
+        CallableT = any type/function that implements () operator
+        callable = code for which we want to tranfrom OriginalExtT to TransformedExT
+
+    Throws:
+        `TransformedExT` if the `callable` trew `OriginalExT`
+
+    Returns:
+        whatever the `callable` returns
+
+*******************************************************************************/
+
+private ReturnType!CallableT transformException(OriginalExT, TransformedExT, CallableT)(CallableT callable)
+{
+    try
+    { 
+        return callable(); 
+    }
+    catch (OriginalExT ex)
+    {
+        throw new TransformedExT(ex.msg, ex.file, ex.line);
+    }
 }
 
 ///
