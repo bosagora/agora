@@ -63,25 +63,30 @@ private int main (string[] args)
             ex.message);
     }
 
-    NodeListenerTuple node_listener_tuple;
-    try
-    {
-        auto config = parseConfigFile(cmdln);
-        if (cmdln.config_check)
+    bool config_error;
+    auto config = ()
         {
-            writefln("Config file '%s' succesfully parsed.", cmdln.config_path);
-            return 0;
-        }
-
-        runTask(() => node_listener_tuple = runNode(config));
-    }
-    catch (Exception ex)
-    {
-        writefln("Failed to parse config file '%s'. Error: %s",
-            cmdln.config_path, ex.message);
+            try
+                return parseConfigFile(cmdln);
+            catch (Exception ex)
+            {
+                writefln("Failed to parse config file '%s'. Error: %s",
+                         cmdln.config_path, ex.message);
+                config_error = true;
+                return Config.init;
+            }
+        }();
+    if (config_error)
         return 1;
+
+    if (cmdln.config_check)
+    {
+        writefln("Config file '%s' successfully parsed.", cmdln.config_path);
+        return 0;
     }
 
+    NodeListenerTuple node_listener_tuple;
+    runTask(() => node_listener_tuple = runNode(config));
     scope(exit)
     {
         if (node_listener_tuple != NodeListenerTuple.init) with (node_listener_tuple)
