@@ -19,6 +19,7 @@
 module agora.node.main;
 
 import agora.common.Config;
+import agora.common.FileBasedLock;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
@@ -29,6 +30,7 @@ import vibe.http.server;
 
 import std.getopt;
 import std.stdio;
+import std.typecons : Nullable;
 
 /**
  * Workaround for segfault similar (or identical) to https://github.com/dlang/dub/issues/1812
@@ -63,20 +65,18 @@ private int main (string[] args)
             ex.message);
     }
 
-    bool config_error;
-    auto config = ()
+    Nullable!Config config = ()
         {
             try
-                return parseConfigFile(cmdln);
+                return Nullable!Config(parseConfigFile(cmdln));
             catch (Exception ex)
             {
                 writefln("Failed to parse config file '%s'. Error: %s",
                          cmdln.config_path, ex.message);
-                config_error = true;
-                return Config.init;
+                return Nullable!Config();
             }
         }();
-    if (config_error)
+    if (config.isNull)
         return 1;
 
     if (cmdln.config_check)
@@ -85,8 +85,19 @@ private int main (string[] args)
         return 0;
     }
 
+    auto file_based_lock = FileBasedLock("agoraNode.lock", config.get().node.data_dir, true); 
+    try{
+        file_based_lock.lockThrow();
+    }
+    catch (Exception ex)
+    {
+        writefln("Unable to lock '%s' file. Error: %s", file_based_lock.file_path, ex);
+        return 2;
+    }
+    scope(exit) file_based_lock.unlock();
+
     NodeListenerTuple node_listener_tuple;
-    runTask(() => node_listener_tuple = runNode(config));
+    runTask(() => node_listener_tuple = runNode(config.get()));
     scope(exit)
     {
         if (node_listener_tuple != NodeListenerTuple.init) with (node_listener_tuple)
