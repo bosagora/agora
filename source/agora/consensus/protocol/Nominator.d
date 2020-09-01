@@ -17,8 +17,9 @@ import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Config;
-import agora.common.Hash : Hash, HashDg, hashPart, hashFull;
+import agora.common.Hash : Hash, HashDg, hashPart, hashFull, hashMulti;
 import agora.common.ManagedDatabase;
+import agora.common.SCPHash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
@@ -730,6 +731,52 @@ extern(D):
             return;
         this.active_timers[type] = this.taskman.setTimer(
             timeout.msecs, { callCPPDelegate(callback); });
+    }
+
+    /***************************************************************************
+
+        Used by the nomination protocol to randomize the order of messages
+        between nodes.
+
+        Params:
+            slot_idx = the slot index we're currently reaching consensus for.
+            prev = the previous data set for the provided slot index.
+            is_priority = the flag to check that this call is for priority.
+            round_num = the nomination round
+            node_id = the id of the node for which this computation is being made
+
+        Returns:
+            the 8-byte hash
+
+    ***************************************************************************/
+
+    public override uint64_t computeHashNode (uint64_t slot_idx,
+        ref const(Value) prev, bool is_priority, int32_t round_num,
+        ref const(NodeID) node_id) nothrow
+    {
+        const uint hash_N = 1;
+        const uint hash_P = 2;
+
+        const seed = this.ledger.getValidatorRandomSeed(Height(slot_idx - 1));
+        uint512 hash;
+        try
+        {
+            hash = uint512(hashMulti(slot_idx, prev[],
+                is_priority ? hash_P : hash_N, round_num, node_id, seed));
+        }
+        catch (Exception ex)
+        {
+            log.fatal("Computing hash of the node({}) failed: {}, Data was: " ~
+                "slot_idx: {}, prev: {}, is_priority: {}, seed: {}",
+                node_id, ex.msg, slot_idx, prev, is_priority, seed);
+            assert(0);
+        }
+
+        uint64_t res = 0;
+        for (size_t i = 0; i < res.sizeof; i++)
+            res = (res << 8) | hash[][i];
+
+        return res;
     }
 }
 
