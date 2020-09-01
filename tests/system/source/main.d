@@ -102,13 +102,13 @@ private void checkBlockHeight (const string[] addresses, ulong height)
         clients ~= new RestInterfaceClient!API(addr);
 
     Hash blockHash;
-    size_t times; // Number of times we slept for 50 msecs
+    size_t times; // Number of times we slept for 500 msecs
     foreach (idx, ref client; clients)
     {
         ulong getHeight;
         do
         {
-            Thread.sleep(50.msecs);
+            Thread.sleep(500.msecs);
             getHeight = client.getBlockHeight();
         }
         while (getHeight < height && times++ < 100); // Retry if we're too early
