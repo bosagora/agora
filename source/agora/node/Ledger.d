@@ -75,7 +75,7 @@ public class Ledger
 
     /// If not null call this delegate
     /// A block was externalized
-    private void delegate (const ref Block, bool) @safe onAcceptedBlock;
+    private void delegate (const ref Block, bool) @safe nothrow onAcceptedBlock;
 
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
@@ -98,7 +98,7 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
+        void delegate (const ref Block, bool) @safe nothrow onAcceptedBlock = null)
     {
         this.params = params;
         this.utxo_set = utxo_set;
@@ -218,7 +218,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptTransaction (Transaction tx) @safe
+    public bool acceptTransaction (Transaction tx) @safe nothrow
     {
         const Height expected_height = Height(this.getBlockHeight() + 1);
         auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
@@ -368,7 +368,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateConsensusData (ConsensusData data) @trusted
+    public string validateConsensusData (ConsensusData data) @trusted nothrow
     {
         const expect_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
@@ -406,7 +406,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateBlock (const ref Block block) nothrow @safe
+    public string validateBlock (const ref Block block) @safe nothrow
     {
         size_t active_enrollments = enroll_man.getValidatorCount(
                 block.header.height);
@@ -497,7 +497,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool hasTransactionHash (const ref Hash tx) @safe
+    public bool hasTransactionHash (const ref Hash tx) @safe nothrow
     {
         return this.pool.hasTransactionHash(tx);
     }

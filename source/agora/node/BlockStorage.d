@@ -62,7 +62,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool load (const ref Block genesis);
+    public bool load (const ref Block genesis) nothrow;
 
     /***************************************************************************
 
@@ -76,7 +76,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool readLastBlock (ref Block block);
+    public bool readLastBlock (ref Block block) nothrow;
 
 
     /***************************************************************************
@@ -91,7 +91,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool saveBlock (const ref Block block);
+    public bool saveBlock (const ref Block block) nothrow;
 
 
     /***************************************************************************
@@ -973,7 +973,7 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool readLastBlock (ref Block block) @safe
+    public bool readLastBlock (ref Block block) @safe nothrow
     {
         if (this.height_idx.length == 0)
             return false;

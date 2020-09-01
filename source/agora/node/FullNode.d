@@ -522,9 +522,17 @@ public class FullNode : API
     ***************************************************************************/
 
     protected void onAcceptedBlock (const ref Block block,
-        bool validators_changed) @safe
+        bool validators_changed) @safe nothrow
     {
-        this.pushBlock(block);
+        try
+        {
+            this.pushBlock(block);
+        }
+        catch (Exception ex)
+        {
+            log.error("Error pushing block: {}" ~
+                "Block: {}", ex.msg, block);
+        }
     }
 
     /***************************************************************************

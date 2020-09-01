@@ -411,9 +411,16 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public size_t validatorCount () @safe
+    public size_t validatorCount () @safe nothrow
     {
-        return this.validator_set.count();
+        try
+        {
+            return this.validator_set.count();
+        }
+        catch (Exception ex)
+        {
+            log.error("Error while getting validator count: {}", ex.msg);
+        }
     }
 
     /***************************************************************************
@@ -482,7 +489,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool getNextPreimage (out PreImageInfo preimage) @safe
+    public bool getNextPreimage (out PreImageInfo preimage) @safe nothrow
     {
         const enrolled = this.getEnrolledHeight(this.enroll_key);
         if (enrolled == ulong.max)
@@ -631,7 +638,7 @@ public class EnrollmentManager
     }
 
     /// Returns: true if this validator is currently enrolled
-    public bool isEnrolled (UTXOFinder finder) nothrow @safe
+    public bool isEnrolled (UTXOFinder finder) @safe nothrow
     {
         Hash[] utxo_keys;
         assert(this.validator_set.getEnrolledUTXOs(utxo_keys));
@@ -830,7 +837,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Enrollment getEnrollment (const ref Hash enroll_hash) @trusted
+    public Enrollment getEnrollment (const ref Hash enroll_hash) @trusted nothrow
     {
         return this.enroll_pool.getEnrollment(enroll_hash);
     }
@@ -844,7 +851,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void removeEnrollment (const ref Hash enroll_hash) @trusted
+    public void removeEnrollment (const ref Hash enroll_hash) @trusted nothrow
     {
         this.enroll_pool.remove(enroll_hash);
     }

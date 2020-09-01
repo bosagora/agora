@@ -128,26 +128,34 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public bool add (Transaction tx) @safe
+    public bool add (Transaction tx) @safe nothrow
     {
         static ubyte[] buffer;
 
         // check double-spend
         if (!isValidTransaction(tx))
             return false;
+        try
+        {
+            // insert each input information of the transaction
+            foreach (const ref input; tx.inputs)
+                this.input_set.put(input.hashFull());
 
-        // insert each input information of the transaction
-        foreach (const ref input; tx.inputs)
-            this.input_set.put(input.hashFull());
+            serializeToBuffer(tx, buffer);
 
-        serializeToBuffer(tx, buffer);
+            () @trusted {
+                db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
+                    hashFull(tx)[], buffer);
+            }();
 
-        () @trusted {
-            db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
-                hashFull(tx)[], buffer);
-        }();
-
-        return true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.error("Error adding transaction: {}" ~
+                "Transaction: {}", ex.msg, tx);
+            return false;
+        }
     }
 
     /***************************************************************************
@@ -244,10 +252,19 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public bool hasTransactionHash (const ref Hash tx) @trusted
+    public bool hasTransactionHash (const ref Hash tx) @trusted nothrow
     {
-        return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-            "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);
+        try
+        {
+            return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
+                "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);
+        }
+        catch (Exception ex)
+        {
+            log.error("Error finding transaction hash: {}, " ~
+                "Hash: {}", ex.msg, tx);
+            return false;
+        }
     }
 
     /***************************************************************************
@@ -262,7 +279,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private bool isValidTransaction (const ref Transaction tx) @trusted
+    private bool isValidTransaction (const ref Transaction tx) @trusted nothrow
     {
         auto txHash = tx.hashFull();
 
