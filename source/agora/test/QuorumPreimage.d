@@ -148,11 +148,13 @@ unittest
     // at block height 9 the freeze txs are available
     network.expectBlock(Height(9), 10.seconds);
 
+    Enrollment[] enrolls;
     // now we re-enroll existing validators (extension),
     // and enroll 2 new validators.
     foreach (node; nodes)
     {
         Enrollment enroll = node.createEnrollmentData();
+        enrolls ~= enroll;
         node.enrollValidator(enroll);
 
         // check enrollment
@@ -174,6 +176,22 @@ unittest
 
     // at block height 10 the validator set has changed
     network.expectBlock(Height(10), 3.seconds);
+
+    auto b10 = nodes[0].getBlocksFrom(10, 1)[0];
+
+    retryFor(nodes[0].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds);
+    retryFor(nodes[1].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds);
+    retryFor(nodes[2].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds);
+    retryFor(nodes[3].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds);
+    retryFor(nodes[4].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds);
+    retryFor(nodes[5].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds);
+
+    // fails
+    retryFor(nodes[6].getPreimage(enrolls[0].utxo_key).distance >= 9, 5.seconds,
+        format("\nGot '%s'.\n\nExpected '%s'.\n\nBlock 10 enrollments: %s",
+            nodes[6].getPreimage(enrolls[0].utxo_key),
+            nodes[0].getPreimage(enrolls[0].utxo_key),
+            b10.header.enrollments));
 
     enum quorums_2 = [
         // 0
