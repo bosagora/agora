@@ -477,7 +477,15 @@ public class ValidatorSet
 
         // Ignore same height pre-image because validators will gossip them
         if (prev_preimage.distance == preimage.distance)
+        {
+            if (prev_preimage == preimage)
+                log.info("Rejected pre-image: distance is same: {}. Prev: {}. New: {}",
+                    preimage.hash, prev_preimage, preimage);
+            else
+                log.info("Rejected pre-image: distance is same (HASHES DIFFER): {}. Prev: {}. New: {}",
+                    preimage.hash, prev_preimage, preimage);
             return false;
+        }
 
         if (auto reason = isInvalidReason(preimage, prev_preimage,
             this.params.ValidatorCycle))

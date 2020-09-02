@@ -486,8 +486,16 @@ public class FullNode : API
 
         if (this.enroll_man.addPreimage(preimage))
         {
+            if (preimage.hash == Hash(`0xabfa663edf1156503d4da365e1163268778991cc5a694b4a1b34a1d0ff773719b4a5b37c1cb13ce1c64576a34d4a92db0c4db264e9b83eb79168f37f1befe353`))
+                log.info("Accepted `0xabfa663edf1156503d4da365e1163268778991cc5a694b4a1b34a1d0ff773719b4a5b37c1cb13ce1c64576a34d4a92db0c4db264e9b83eb79168f37f1befe353`");
+
             this.network.sendPreimage(preimage);
             this.pushPreImage(preimage);
+        }
+        else
+        {
+            if (preimage.hash == Hash(`0xabfa663edf1156503d4da365e1163268778991cc5a694b4a1b34a1d0ff773719b4a5b37c1cb13ce1c64576a34d4a92db0c4db264e9b83eb79168f37f1befe353`))
+                log.error("Rejected `0xabfa663edf1156503d4da365e1163268778991cc5a694b4a1b34a1d0ff773719b4a5b37c1cb13ce1c64576a34d4a92db0c4db264e9b83eb79168f37f1befe353`");
         }
     }
 
