@@ -172,8 +172,9 @@ public struct Scalar
         Returns:
             the inverted scalar.
 
-        See_Also: https://libsodium.gitbook.io/doc/advanced/point-arithmetic
-        See_Also: https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#why-do-we-need-the-nonce
+        See_Also:
+            https://libsodium.gitbook.io/doc/advanced/point-arithmetic
+            https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#why-do-we-need-the-nonce
 
     ***************************************************************************/
 

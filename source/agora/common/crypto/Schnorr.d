@@ -291,3 +291,62 @@ nothrow @nogc @safe unittest
     Scalar stolen_key = s * c.invert();
     assert(stolen_key == kp.v);
 }
+
+// possibly secure signature scheme
+/*@nogc*/ @safe unittest
+{
+    static immutable string message = "BOSAGORA for the win";
+
+    Pair kp = Pair.random();  // key-pair
+    Pair Rp = Pair.random();  // (R, r), the public and private nonce
+    Scalar c = hashFull(message);  // challenge
+    Scalar s = Rp.v + (kp.v * c);  // signature
+
+    // known public data of the node
+    Point K = kp.V;
+    Point R = Rp.V;
+
+    // other nodes verify
+    assert(s.toPoint() == R + (K * c));
+
+    // other nodes cannot extract the private key, they don't know 'r'
+    Scalar stolen_key = s * c.invert();
+    assert(stolen_key != kp.v);
+}
+
+// ditto, but using multi-sig
+/*@nogc*/ @safe unittest
+{
+    static immutable string message = "BOSAGORA for the win";
+
+    Scalar c = hashFull(message);  // challenge
+
+    Pair kp_1 = Pair.random();  // key-pair
+    Pair Rp_1 = Pair.random();  // (R, r), the public and private nonce
+    Scalar s_1 = Rp_1.v + (kp_1.v * c);  // signature
+
+    Pair kp_2 = Pair.random();  // key-pair
+    Pair Rp_2 = Pair.random();  // (R, r), the public and private nonce
+    Scalar s_2 = Rp_2.v + (kp_2.v * c);  // signature
+
+    // known public data of the nodes
+    Point K_1 = kp_1.V;
+    Point R_1 = Rp_1.V;
+
+    Point K_2 = kp_2.V;
+    Point R_2 = Rp_2.V;
+
+    // verification of individual signatures
+    assert(s_1.toPoint() == R_1 + (K_1 * c));
+    assert(s_2.toPoint() == R_2 + (K_2 * c));
+
+    // "multi-sig" - collection of one or more signatures
+    auto sum_s = s_1 + s_2;
+    assert(sum_s.toPoint() ==
+        (R_1 + (K_1 * c)) +
+        (R_2 + (K_2 * c)));
+
+    // Or the equivalent:
+    assert(sum_s.toPoint() ==
+        (R_1 + R_2) + (K_1 * c) + (K_2 * c));
+}
