@@ -66,7 +66,7 @@ public Signature mySign (T) (
     const ref Scalar k, const ref Scalar r, auto ref T data)
     nothrow @nogc @trusted
 {
-    Scalar c = hashMulti(r.toPoint(), data);
+    Scalar c = hashFull(data);
     Scalar s = r + (k * c);
     return Sig(r.toPoint(), s).toBlob();
 }
@@ -75,12 +75,12 @@ public bool myVerify (T) (
     const ref Signature sig, Point[] K, Point[] R, auto ref T data)
     nothrow @nogc @trusted
 {
-    Scalar c0 = hashMulti(R[0], data);
+    Scalar c0 = hashMulti(data);
     auto bigS = R[0] + K[0] * c0;
 
     foreach (idx; 1 .. R.length)
     {
-        Scalar c = hashMulti(R[idx], data);
+        Scalar c = hashFull(data);
         bigS = bigS + R[idx] + K[idx] * c;
     }
 
