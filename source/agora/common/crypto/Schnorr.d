@@ -269,3 +269,25 @@ nothrow @nogc @safe unittest
     assert(verify(kp2.V, sig2, secret));
     assert(!verify(kp2.V, sig1, secret));
 }
+
+// example of extracting the private key from an insecure signature scheme
+// which did not include 'r' during the signing
+// https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#why-do-we-need-the-nonce
+/*@nogc*/ @safe unittest
+{
+    static immutable string message = "BOSAGORA for the win";
+
+    Pair kp = Pair.random();  // key-pair
+    Scalar c = hashFull(message);  // challenge
+    Scalar s = (kp.v * c);  // signature
+
+    // known public data of the node
+    Point K = kp.V;
+
+    // other nodes verify
+    assert(s.toPoint() == K * c);
+
+    // but the other node can also extract the private key!
+    Scalar stolen_key = s * c.invert();
+    assert(stolen_key == kp.v);
+}
