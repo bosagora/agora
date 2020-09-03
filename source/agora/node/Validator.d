@@ -352,14 +352,13 @@ public class Validator : FullNode, API
 
     private void checkRevealPreimage () @safe
     {
-        if (!this.enroll_man.needRevealPreimage(this.ledger.getBlockHeight()))
-            return;
-
         PreImageInfo preimage;
         if (this.enroll_man.getNextPreimage(preimage))
         {
-            this.receivePreimage(preimage);
-            this.enroll_man.increaseNextRevealHeight();
+            this.enroll_man.addPreimage(preimage);
+            this.network.sendPreimage(preimage);
+            this.pushPreImage(preimage);
+            this.enroll_man.updateRevealDistance(this.ledger.getBlockHeight());
         }
     }
 }

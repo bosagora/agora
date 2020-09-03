@@ -570,7 +570,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    private void pushPreImage (const PreImageInfo pre_image) @safe
+    protected void pushPreImage (const PreImageInfo pre_image) @safe
     {
         foreach (address, handler; this.preimage_handlers)
         {

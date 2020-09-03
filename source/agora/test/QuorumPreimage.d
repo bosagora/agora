@@ -150,9 +150,11 @@ unittest
 
     // now we re-enroll existing validators (extension),
     // and enroll 2 new validators.
+    Enrollment[] enrolls;
     foreach (node; nodes)
     {
         Enrollment enroll = node.createEnrollmentData();
+        enrolls ~= enroll;
         node.enrollValidator(enroll);
 
         // check enrollment
@@ -174,6 +176,11 @@ unittest
 
     // at block height 10 the validator set has changed
     network.expectBlock(Height(10), 3.seconds);
+
+    // check if the needed pre-images are revealed timely
+    enrolls.each!(enroll =>
+        nodes.each!(node =>
+            retryFor(node.getPreimage(enroll.utxo_key).distance >= 6, 5.seconds)));
 
     enum quorums_2 = [
         // 0
