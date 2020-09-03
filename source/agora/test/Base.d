@@ -150,7 +150,12 @@ private UnitTestResult customModuleUnitTester ()
             else if (mod.name == "agora.test.ManyValidators")
                 heavy_tests ~= ModTest(mod.name, fp);
             else
-                parallel_tests ~= ModTest(mod.name, fp);
+                // due to problems with the parallelism test,
+                // the test is performed with single threads
+                version (Windows)
+                    single_threaded ~= ModTest(mod.name, fp);
+                else
+                    parallel_tests ~= ModTest(mod.name, fp);
         }
     }
 
