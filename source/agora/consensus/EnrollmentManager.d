@@ -496,24 +496,6 @@ public class EnrollmentManager
 
         const height = Height(min(this.next_reveal_height + PreimageRevealPeriod * 2,
                                 enrolled + this.params.ValidatorCycle));
-        return getPreimage(height, preimage);
-    }
-
-    /***************************************************************************
-
-        Get a pre-image at a certain height
-
-        Params:
-            height = the number of the height at which the pre-image exists
-            preimage = will contain the PreImageInfo if exists
-
-        Returns:
-            true if the pre-image exists
-
-    ***************************************************************************/
-
-    public bool getPreimage (Height height, out PreImageInfo preimage) @safe
-    {
         const enrolled_height =
             this.validator_set.getEnrolledHeight(this.enroll_key);
         assert(enrolled_height != ulong.max);
@@ -997,18 +979,10 @@ unittest
     // clear up all validators
     man.clearExpiredValidators(Height(1018));
 
-    // get a pre-image at a certain height
-    // A validation can start at the height of the enrolled height plus 1.
-    // So, a pre-image can only be got from the start height.
+    // A validation is enrolled at the height of 10.
     PreImageInfo preimage;
     enroll = man.createEnrollment(utxo_hash);
     assert(man.addValidator(enroll, Height(10), &utxo_set.findUTXO, utxos) is null);
-    assert(!man.getPreimage(Height(10), preimage));
-    assert(man.getPreimage(Height(11), preimage));
-    assert(preimage.hash == man.cycle.preimages[$ - 1]);
-    assert(man.getPreimage(Height(10 + man.params.ValidatorCycle), preimage));
-    assert(preimage.hash == man.cycle.preimages[0]);
-    assert(!man.getPreimage(Height(11 + man.params.ValidatorCycle), preimage));
 
     /// test for the functions about periodic revelation of a pre-image
     assert(man.needRevealPreimage(Height(10)));
