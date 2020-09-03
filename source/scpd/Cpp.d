@@ -381,9 +381,10 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
         public void push_back (ref T value) @trusted pure nothrow @nogc
         {
             import Utils = scpd.types.Utils;
+            import scpd.types.XDRBase;
 
             // Workaround for Dlang issue #20805
-            static if (is(T == ubyte))
+            static if (is(T == xvector!ubyte))
             {
                 version (Windows)
                     Utils.push_back_vec(&this, &value);
