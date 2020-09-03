@@ -96,8 +96,8 @@ public class EnrollmentManager
     /// Random key for enrollment
     private Pair signature_noise;
 
-    /// Next height for pre-image revelation
-    private Height next_reveal_height;
+    /// Distance of the preimage being revealed next time
+    private uint next_reveal_distance;
 
     /// The period for revealing a preimage
     /// It is an hour interval if a block is made in every 10 minutes
@@ -157,7 +157,7 @@ public class EnrollmentManager
         this.key_pair.V = this.key_pair.v.toPoint();
 
         // load next height for preimage revelation
-        this.next_reveal_height = this.getNextRevealHeight();
+        this.next_reveal_distance = this.getNextRevealDistance();
 
         // load the count of 'populate' of `PreImageCycle`
         const uint populate_count = this.getCycleIndex();
@@ -283,7 +283,7 @@ public class EnrollmentManager
             this.enroll_key = enroll.utxo_key;
 
             // set next height for revealing a pre-image
-            this.setNextRevealHeight(block_height);
+            this.updateRevealDistance(block_height);
 
             // consume pre-images
             this.cycle.populate(this.key_pair.v, true);
@@ -494,22 +494,12 @@ public class EnrollmentManager
         if (enrolled == ulong.max)
             return false;
 
-        const height = Height(min(this.next_reveal_height + PreimageRevealPeriod * 2,
-                                enrolled + this.params.ValidatorCycle));
-        const enrolled_height =
-            this.validator_set.getEnrolledHeight(this.enroll_key);
-        assert(enrolled_height != ulong.max);
-        const start_height = enrolled_height + 1;
-        if (height < start_height)
-            return false;
-        immutable index = (height - start_height);
-        if (index > this.params.ValidatorCycle - 1)
+        if (this.next_reveal_distance >= this.params.ValidatorCycle)
             return false;
 
         preimage.enroll_key = this.enroll_key;
-        assert(index <= ushort.max);
-        preimage.distance = cast(ushort)index;  // max: Enrollment.ValidatorCycle - 1
-        preimage.hash = this.cycle.preimages[$ - index - 1];
+        preimage.distance = cast(ushort)this.next_reveal_distance;
+        preimage.hash = this.cycle.preimages[$ - this.next_reveal_distance - 1];
         return true;
     }
 
@@ -607,36 +597,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Check if revealing a pre-image is needed at a certain height
-
-        Params:
-            height = block height to check
-
-        Returns:
-            true if revealing a pre-image is needed
-
-    ***************************************************************************/
-
-    public bool needRevealPreimage (Height height) @safe nothrow
-    {
-        return height >= this.next_reveal_height;
-    }
-
-    /***************************************************************************
-
-        Increase the next reveal height by the revelation period
-
-    ***************************************************************************/
-
-    public void increaseNextRevealHeight () @safe nothrow
-    {
-        auto next_height = this.getNextRevealHeight();
-        if (this.next_reveal_height < ulong.max)
-            this.setNextRevealHeight(Height(next_height + PreimageRevealPeriod));
-    }
-
-    /***************************************************************************
-
         Restore validators' information from block
 
         Params:
@@ -698,63 +658,56 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the next block height to reveal a pre-image
+        Get the distance of the pre-image that will be revealed next time
 
         Returns:
-            the next block height to reveal a pre-image. if any problem in
-            getting the value, it returns the MAX ulong value.
+            Get the distance of the pre-image that will be revealed next time,
+            or 0 if there's no preimage to reveal
 
     ***************************************************************************/
 
-    private Height getNextRevealHeight () @safe nothrow
+    private uint getNextRevealDistance () @safe nothrow
     {
         try
         {
             return () @trusted {
                 auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                    "WHERE key = ?", "next_reveal_height");
+                    "WHERE key = ?", "next_reveal_distance");
                 if (!results.empty)
-                    return Height(results.oneValue!(ulong));
-                return Height(ulong.max);
+                    return results.oneValue!(uint);
+                return 0;
             }();
         }
         catch (Exception ex)
         {
             log.error("ManagedDatabase operation error {}", ex);
         }
-        return Height(ulong.max);
+        return 0;
     }
 
     /***************************************************************************
 
-        Set the next block height to reveal a pre-image
+        Set the distance of the pre-image that will be revealed next time
 
         Params:
-            height = the next block height to reveal a pre-image
+            distance = the distance to reveal a pre-image
 
     ***************************************************************************/
 
-    private void setNextRevealHeight (Height height) @safe nothrow
+    private void setNextRevealDistance (uint distance) @safe nothrow
     {
+        this.next_reveal_distance = distance;
         try
         {
             () @trusted {
-                this.next_reveal_height = height;
-
-                if (height == ulong.max)
-                {
-                    this.db.execute("DELETE FROM node_enroll_data " ~
-                        "WHERE key = ?", "next_reveal_height");
-                    return;
-                }
                 auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                    "node_enroll_data WHERE key = ?)", "next_reveal_height");
+                    "node_enroll_data WHERE key = ?)", "next_reveal_distance");
                 if (results.oneValue!(bool))
                     this.db.execute("UPDATE node_enroll_data SET val = ? " ~
-                        "WHERE key = ?", height.value, "next_reveal_height");
+                        "WHERE key = ?", distance, "next_reveal_distance");
                 else
                     this.db.execute("INSERT INTO node_enroll_data (key, val)" ~
-                        " VALUES (?, ?)", "next_reveal_height", height.value);
+                        " VALUES (?, ?)", "next_reveal_distance", distance);
 
             }();
         }
@@ -815,6 +768,28 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Update the distance of the pre-image that will be revealed next time
+
+        Params:
+            height = block height to check
+
+    ***************************************************************************/
+
+    public void updateRevealDistance (Height height) @safe nothrow
+    {
+        const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
+        if (enrolled == ulong.max)
+            return;
+
+        assert(height >= enrolled);
+        auto curr = cast(uint)(height - enrolled);
+        auto next = min(PreimageRevealPeriod * ((curr / PreimageRevealPeriod) + 1),
+            this.params.ValidatorCycle - 1);
+        this.setNextRevealDistance(next);
+    }
+
+    /***************************************************************************
+
         Reset all the information about an enrollment of this node
 
     ***************************************************************************/
@@ -822,7 +797,7 @@ public class EnrollmentManager
     private void resetNodeEnrollment () @safe nothrow
     {
         this.enroll_key = Hash.init;
-        this.setNextRevealHeight(Height(ulong.max));
+        this.setNextRevealDistance(0);
     }
 
     /***************************************************************************
@@ -983,15 +958,8 @@ unittest
     PreImageInfo preimage;
     enroll = man.createEnrollment(utxo_hash);
     assert(man.addValidator(enroll, Height(10), &utxo_set.findUTXO, utxos) is null);
-
-    /// test for the functions about periodic revelation of a pre-image
-    assert(man.needRevealPreimage(Height(10)));
-    man.increaseNextRevealHeight();
-    assert(man.needRevealPreimage(Height(16)));
-
-    // If the height of the requested preimage exceeds the height of the end of
-    // the validator cycle, we can get the last pre-image.
-    man.next_reveal_height = 10 + man.params.ValidatorCycle;
+    assert(man.getNextPreimage(preimage));
+    man.updateRevealDistance(Height(10 + man.params.ValidatorCycle));
     assert(man.getNextPreimage(preimage));
     assert(preimage.hash == man.cycle.preimages[0]);
 
@@ -1047,12 +1015,6 @@ unittest
     assert(man.addValidator(enroll, Height(2), &utxo_set.findUTXO, utxos) is null);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash) == preimage);
-
-    // Check if the `needRevealPreimage` returns false after the cycle ends
-    assert(man.next_reveal_height != ulong.max);
-    man.clearExpiredValidators(Height(1010));
-    assert(man.next_reveal_height == ulong.max);
-    assert(!man.needRevealPreimage(Height(1011)));
 }
 
 /// Test `PreImageCycle` consistency between seeds and preimages
