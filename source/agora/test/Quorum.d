@@ -54,52 +54,23 @@ unittest
     auto nodes = network.clients;
     network.expectBlock(Height(8), 5.seconds);
 
-    Transaction makePayTx (in Transaction prev, PublicKey[] addresses, uint index = 0)
-    {
-        auto input = Input(hashFull(prev), index);
-
-        Transaction tx =
-        {
-            TxType.Payment,
-            [input],
-            addresses.map!(addr => Output(Amount.MinFreezeAmount, addr)).array
-        };
-
-        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        return tx;
-    }
-
-    Transaction makeFreezeTransaction (in Transaction prev, PublicKey address)
-    {
-        auto input = Input(hashFull(prev), 0);
-
-        Transaction tx =
-        {
-            TxType.Freeze,
-            [input],
-            [Output(Amount.MinFreezeAmount, address)]
-        };
-
-        auto signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
-        return tx;
-    }
-
     // create block with 6 payment and 2 freeze tx's
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
 
     // rewrite 3rd to last tx to multiple outputs so we can create 8 spend tx's
     // in next block
-    txs[$ - 3] = makePayTx(network.blocks[$ - 1].txs[$ - 3],
-        [WK.Keys.Genesis.address, WK.Keys.Genesis.address,
-        WK.Keys.Genesis.address]);
+    txs[$ - 3] = TxBuilder(network.blocks[$ - 1].txs[$ - 3])
+        .split(WK.Keys.Genesis.address.repeat(3)).sign();
 
     // rewrite the last two tx's to be freeze tx's for our outsider validator nodes
-    txs[$ - 2] = makeFreezeTransaction(network.blocks[$ - 1].txs[$ - 2],
-        nodes[$ - 2].getPublicKey());
-    txs[$ - 1] = makeFreezeTransaction(network.blocks[$ - 1].txs[$ - 1],
-        nodes[$ - 1].getPublicKey());
+    txs[$ - 2] = TxBuilder(network.blocks[$ - 1].txs[$ - 2])
+        .draw(txs[$ - 2].outputs[0].value,
+            iota(txs[$ - 2].outputs.length).map!(k => nodes[$ - 2].getPublicKey()))
+        .sign(TxType.Freeze);
+    txs[$ - 1] = TxBuilder(network.blocks[$ - 1].txs[$ - 1])
+        .draw(txs[$ - 1].outputs[0].value,
+            iota(txs[$ - 1].outputs.length).map!(k => nodes[$ - 1].getPublicKey()))
+        .sign(TxType.Freeze);
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 9 the freeze tx's are available
@@ -119,9 +90,12 @@ unittest
 
     auto new_txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     // the last 3 tx's must refer to the outputs in txs[$ - 3] before
-    new_txs[$ - 3] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 0);
-    new_txs[$ - 2] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 1);
-    new_txs[$ - 1] = makePayTx(txs[$ - 3], [WK.Keys.Genesis.address], 2);
+    new_txs[$ - 3] = TxBuilder(txs[$ - 3], 0)
+        .split(WK.Keys.Genesis.address.only()).sign();
+    new_txs[$ - 2] = TxBuilder(txs[$ - 3], 1)
+        .split(WK.Keys.Genesis.address.only()).sign();
+    new_txs[$ - 1] = TxBuilder(txs[$ - 3], 2)
+        .split(WK.Keys.Genesis.address.only()).sign();
     new_txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 10 the validator set has changed
