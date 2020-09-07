@@ -113,7 +113,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public PublicKey getPublicKey ()
+    public PublicKey getPublicKey () @trusted
     {
         return this.attemptRequest!(API.getPublicKey, Throw.Yes)(this.api);
     }
