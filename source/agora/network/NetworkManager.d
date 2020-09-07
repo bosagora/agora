@@ -348,6 +348,9 @@ public class NetworkManager
     /// See 'minPeersConnected'
     private Set!PublicKey required_peer_keys;
 
+    /// Current quorum set
+    private Set!PublicKey quorum_set_keys;
+
     /// Address ban manager
     protected BanManager banman;
 
@@ -422,6 +425,7 @@ public class NetworkManager
     {
         log.info("Doing network discovery..");
 
+        this.quorum_set_keys = required_peer_keys;
         this.required_peer_keys = Set!PublicKey.from(
             required_peer_keys.byKey()
             .filter!(key => key !in this.connected_validator_keys));
