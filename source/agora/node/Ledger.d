@@ -379,7 +379,7 @@ public class Ledger
         const expect_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        foreach (tx; data.tx_set)
+        foreach (const ref tx; data.tx_set)
         {
             if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height))
                 return fail_reason;
@@ -390,7 +390,7 @@ public class Ledger
         if (data.enrolls.length + active_enrollments < Enrollment.MinValidatorCount)
             return "Enrollment: Insufficient number of active validators";
 
-        foreach (enroll; data.enrolls)
+        foreach (const ref enroll; data.enrolls)
         {
             if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
                 enroll, expect_height, utxo_finder))
