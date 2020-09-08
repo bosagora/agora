@@ -161,27 +161,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Called when a consensus data set is externalized.
-
-        This will create a new block and add it to the ledger.
-
-        Params:
-            data = the consensus data which was externalized
-
-        Returns:
-            true if the consensus data was accepted
-
-    ***************************************************************************/
-
-    public bool onExternalized (ConsensusData data)
-        @trusted
-    {
-        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls);
-        return this.acceptBlock(block);
-    }
-
-    /***************************************************************************
-
         Add a block to the ledger.
 
         If the block fails verification, it is not added to the ledger.
@@ -519,7 +498,8 @@ version (unittest)
         ConsensusData data;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
         assert(data.tx_set.length == Block.TxsInTestBlock);
-        assert(ledger.onExternalized(data));
+        auto block = makeNewBlock(ledger.last_block, data.tx_set, data.enrolls);
+        assert(ledger.acceptBlock(block));
     }
 
     /// A `Ledger` with sensible defaults for `unittest` blocks

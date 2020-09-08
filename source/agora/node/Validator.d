@@ -112,6 +112,7 @@ public class Validator : FullNode, API
 
     private void regenerateQuorums (Height height) nothrow @safe
     {
+        import std.algorithm : map;
         this.last_shuffle_height = height;
 
         // we're not enrolled and don't care about quorum sets
@@ -121,9 +122,26 @@ public class Validator : FullNode, API
             return;
         }
 
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        auto finder = this.utxo_set.getUTXOFinder();
+        auto key_range = keys.map!(
+            (in utxo_hash)
+            {
+                UTXOSetValue value;
+                assert(finder(utxo_hash, size_t.max, value));
+                return value.output.address;
+            });
+
         static QuorumConfig[] other_qcs;
         this.rebuildQuorumConfig(this.qc, other_qcs, height);
         this.nominator.setQuorumConfig(this.qc, other_qcs);
+        this.nominator.updateValidatorIndices(key_range, height);
         buildRequiredKeys(this.config.node.key_pair.address, this.qc,
             this.required_peer_keys);
     }
