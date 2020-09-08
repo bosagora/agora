@@ -177,6 +177,7 @@ struct SCPStatement {
     };
     struct _confirm_t {
       SCPBallot ballot{};
+      xdr::opaque_array<32> value_sig{};
       uint32 nPrepared{};
       uint32 nCommit{};
       uint32 nH{};
@@ -184,23 +185,27 @@ struct SCPStatement {
 
       _confirm_t() = default;
       template<typename _ballot_T,
+               typename _value_sigT,
                typename _nPrepared_T,
                typename _nCommit_T,
                typename _nH_T,
                typename _quorumSetHash_T,
                typename = typename
                std::enable_if<std::is_constructible<SCPBallot, _ballot_T>::value
+                              && std::is_constructible<xdr::opaque_array<32>, _value_sigT>::value
                               && std::is_constructible<uint32, _nPrepared_T>::value
                               && std::is_constructible<uint32, _nCommit_T>::value
                               && std::is_constructible<uint32, _nH_T>::value
                               && std::is_constructible<Hash, _quorumSetHash_T>::value
                              >::type>
       explicit _confirm_t(_ballot_T &&_ballot,
+                          _value_sigT &&_value_sig,
                           _nPrepared_T &&_nPrepared,
                           _nCommit_T &&_nCommit,
                           _nH_T &&_nH,
                           _quorumSetHash_T &&_quorumSetHash)
         : ballot(std::forward<_ballot_T>(_ballot)),
+          value_sig(std::forward<_value_sigT>(_value_sig)),
           nPrepared(std::forward<_nPrepared_T>(_nPrepared)),
           nCommit(std::forward<_nCommit_T>(_nCommit)),
           nH(std::forward<_nH_T>(_nH)),
