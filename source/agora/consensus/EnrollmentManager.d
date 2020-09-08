@@ -93,9 +93,6 @@ public class EnrollmentManager
     /// Key used for enrollment which is actually an UTXO hash
     private Hash enroll_key;
 
-    /// Random key for enrollment
-    private Pair signature_noise;
-
     /// Distance of the preimage being revealed next time
     private uint next_reveal_distance;
 
