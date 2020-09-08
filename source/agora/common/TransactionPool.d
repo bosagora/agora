@@ -137,7 +137,7 @@ public class TransactionPool
             return false;
 
         // insert each input information of the transaction
-        foreach (input; tx.inputs)
+        foreach (const ref input; tx.inputs)
             this.input_set.put(input.hashFull());
 
         serializeToBuffer(tx, buffer);
@@ -162,7 +162,7 @@ public class TransactionPool
     public void remove (const ref Transaction tx) @trusted
     {
         // delete inputs of transaction from the set of Input hashes
-        foreach (ref input; tx.inputs)
+        foreach (const ref input; tx.inputs)
             this.input_set.remove(input.hashFull());
 
         auto hash = tx.hashFull();
@@ -269,7 +269,7 @@ public class TransactionPool
         if (this.hasTransactionHash(txHash))
             return false;  // double-spend
 
-        foreach (input; tx.inputs)
+        foreach (const ref input; tx.inputs)
         {
             auto hash = input.hashFull();
             if (hash in this.input_set)
