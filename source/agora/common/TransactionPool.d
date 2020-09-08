@@ -109,7 +109,7 @@ public class TransactionPool
             "(key BLOB PRIMARY KEY, val BLOB NOT NULL)");
 
         // populate the input set from the tx'es in the DB
-        foreach (_, tx; this)
+        foreach (const ref Transaction tx; this)
         {
             foreach (const ref input; tx.inputs)
                 this.input_set.put(input.hashFull());
@@ -197,20 +197,38 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public int opApply (scope int delegate(Hash hash, Transaction tx) dg) @trusted
+    public int opApply (DGT) (scope DGT dg)
+        if (is(DGT : int delegate(Transaction)) ||
+            is(DGT : int delegate(ref Transaction)) ||
+            is(DGT : int delegate(const Transaction)) ||
+            is(DGT : int delegate(const ref Transaction)))
     {
-        auto results = this.db.execute("SELECT key, val FROM tx_pool");
-
-        foreach (row; results)
+        () @trusted
         {
-            auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
-            auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(1));
+            auto results = this.db.execute("SELECT val FROM tx_pool");
 
-            // break
-            if (auto ret = dg(hash, tx))
-                return ret;
+            foreach (ref row; results)
+            {
+                auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(0));
+
+                // break
+                if (auto ret = dg(tx))
+                    return ret;
+            }
+            return 0;
+        }();
+
+        // HACK: We don't want this code to ever execute and the dg should never
+        // be `null` (it would have segfaulted in the iteration).
+        // However, we want the delegate attributes to determine the `opApply`'s
+        // attribute, hence this block.
+        // Remove when the SQLite binding is `@safe` and the `@trusted` delegate
+        // can be removed
+        if (dg is null)
+        {
+            Transaction tx;
+            dg(tx);
         }
-
         return 0;
     }
 
@@ -273,13 +291,13 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    version (unittest) private Transaction[] take (size_t count) @safe
+    version (unittest) private const(Transaction)[] take (size_t count) @safe
     {
         const len_prev = this.length();
         assert(len_prev >= count);
-        Transaction[] txs;
+        const(Transaction)[] txs;
 
-        foreach (hash, tx; this)
+        foreach (const ref Transaction tx; this)
         {
             txs ~= tx;
             if (txs.length == count)
@@ -319,7 +337,7 @@ unittest
     txs.each!(tx => pool.add(tx));
     assert(pool.length == txs.length);
 
-    foreach (tx; txs)
+    foreach (const ref tx; txs)
     {
         const(Hash) hash = hashFull(tx);
         assert(pool.hasTransactionHash(hash));
