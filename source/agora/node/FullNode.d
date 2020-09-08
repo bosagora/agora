@@ -176,6 +176,8 @@ public class FullNode : API
         // Block externalized handler is set and push for Genesis block.
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
             this.pushBlock(this.params.Genesis);
+
+        this.enroll_man.updateValidatorIndexMaps();
     }
 
     /***************************************************************************

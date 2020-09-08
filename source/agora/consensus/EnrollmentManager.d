@@ -113,6 +113,22 @@ public class EnrollmentManager
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
 
+    /// TODO: this should actually be based on block ranges
+    /// For example the height ranges [0 .. 9], [10 .. 19] might have a different
+    /// active validator set for those ranges. But they cannot be predicted in
+    /// advance, so the data structure will need to be flexible (maybe a tree?)
+    /// In order to support collecting signatures *after* a block was externalized,
+    /// we must know the key index for the block header bitmask for the active
+    /// validator set *for that block height*. Once a block is externalized,
+    /// the validator set might change - hence why the bitmask index will be
+    /// wrong for late signatures - unless we keep a range map as suggested above.
+
+    /// used for setting the signature bitmask during signature collection
+    private ulong[Point] key_to_index;
+
+    /// used for validating the signature
+    private Point[ulong] index_to_key;
+
     /***************************************************************************
 
         Constructor
@@ -159,6 +175,79 @@ public class EnrollmentManager
         const uint populate_count = this.getCycleIndex();
         foreach (_; 0 .. populate_count)
             this.cycle.populate(this.key_pair.v, true);
+    }
+
+    /***************************************************************************
+
+        Update the validator key index maps
+
+    ***************************************************************************/
+
+    public void updateValidatorIndexMaps () @safe
+    {
+        PublicKey[] keys;
+        if (!this.getEnrolledPublicKeys(keys))
+            assert(0);  // should not happen
+
+        assert(keys.length > 0);
+        import std.algorithm : each, sort;
+
+        static PublicKey[] keys_arr;
+        keys_arr.length = 0;
+        () @trusted { assumeSafeAppend(keys_arr); }();
+        foreach (ref PublicKey k; keys)
+            keys_arr ~= k;
+        keys_arr.sort();
+
+        () @trusted {
+            this.key_to_index.clear();
+            this.index_to_key.clear();
+        }();
+
+        foreach (idx, key; keys_arr)
+        {
+            const K = Point(key[]);
+            this.key_to_index[K] = idx;
+            this.index_to_key[idx] = K;
+        }
+    }
+
+    /***************************************************************************
+
+        Params:
+            height = the height at which to look up the mapping for
+            K = the Key for which to find the bitfield index to use
+
+        Returns:
+            the index of this key, or ulong.max if none was found
+
+    ***************************************************************************/
+
+    public ulong getIndexOfValidator (Height height, Point K) nothrow @safe
+    {
+        if (auto index = K in this.key_to_index)
+            return *index;
+
+        return ulong.max;
+    }
+
+    /***************************************************************************
+
+        Params:
+            height = the height at which to look up the mapping for
+            index = the index for which to find the associated Key
+
+        Returns:
+            the key belonging to this index, or Point.init if none was found
+
+    ***************************************************************************/
+
+    public Point getValidatorAtIndex (Height height, ulong index) nothrow @safe
+    {
+        if (auto K = index in this.index_to_key)
+            return *K;
+
+        return Point.init;
     }
 
     /***************************************************************************
