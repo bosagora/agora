@@ -347,7 +347,7 @@ public class Ledger
 
         this.enroll_man.getEnrollments(data.enrolls,
             Height(this.getBlockHeight()));
-        foreach (hash, tx; this.pool)
+        foreach (ref Transaction tx; this.pool)
         {
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
