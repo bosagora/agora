@@ -353,6 +353,7 @@ extern(D):
 
     public override void signEnvelope (ref SCPEnvelope envelope)
     {
+        // envelope.signature = ; // TODO sign
     }
 
     /***************************************************************************
@@ -555,6 +556,33 @@ extern(D):
             return;
         this.active_timers[type] = this.taskman.setTimer(
             timeout.msecs, { callCPPDelegate(callback); });
+    }
+
+       /***************************************************************************
+
+        When a ballot is accepted commit.
+
+        Params:
+            ballot = the SCPBallot accepted commited.
+
+    ***************************************************************************/
+
+    public override void acceptedCommit (uint64_t slotIndex, ref const(SCPBallot) ballot)
+    {
+        try
+        {
+            debug { import std.stdio : writeln; 
+            try { 
+                log.trace("acceptedCommit");
+                // auto block = ledger.getBlocksFrom(ledger.getBlockHeight()).front;
+                // ledger.signBlock(block);
+                } catch (Exception) {} }
+        }
+        catch (Exception ex)
+        {
+            import std.conv;
+            assert(0, ex.to!string);
+        }
     }
 }
 

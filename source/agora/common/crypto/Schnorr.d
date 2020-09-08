@@ -48,6 +48,7 @@ module agora.common.crypto.Schnorr;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.crypto.ECC;
+import agora.common.crypto.Key;
 
 import std.algorithm;
 import std.range;
@@ -142,6 +143,14 @@ private struct Message (T)
     public T     message;
 }
 
+///
+unittest
+{
+    const Scalar s = Scalar.random();
+    const pair1 = Pair(s, s.toPoint());
+    const pair2 = Pair.fromScalar(s);
+    assert(pair1 == pair2);
+}
 
 /// Contains a scalar and its projection on the elliptic curve (`v` and `v.G`)
 public struct Pair
@@ -150,6 +159,10 @@ public struct Pair
     public Scalar v;
     /// v.G
     public Point V;
+
+    public static Pair fromScalar(const Scalar v) nothrow @nogc @safe {
+        return Pair(v, v.toPoint());
+    }
 
     /// Generate a random value `v` and a point on the curve `V` where `V = v.G`
     public static Pair random () nothrow @nogc @safe
@@ -253,7 +266,7 @@ nothrow @nogc @safe unittest
 {
     Scalar key = Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`);
     Pair kp = Pair(key, key.toPoint());
-    auto signature = sign(kp, "Hello world.");
+    auto signature = sign(kp, "Hello world!");
     assert(!verify(kp.V, signature, "Hello world"));
 }
 
@@ -268,4 +281,19 @@ nothrow @nogc @safe unittest
     assert(!verify(kp1.V, sig2, secret));
     assert(verify(kp2.V, sig2, secret));
     assert(!verify(kp2.V, sig1, secret));
+}
+
+unittest
+{
+    KeyPair kp = KeyPair.fromSeed(
+        Seed.fromString(
+            "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
+    Pair pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+
+    assert(pair.V.data == kp.address.data);
+    
+    static immutable string message = "X";
+
+    Signature signature = sign(pair, message);
+    assert(verify(pair.V, signature, "X"));
 }

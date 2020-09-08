@@ -203,6 +203,7 @@ public class Ledger
         }
 
         this.addValidatedBlock(block);
+        this.signBlock(block);
         return true;
     }
 
@@ -507,6 +508,46 @@ public class Ledger
     {
         return this.pool.hasTransactionHash(tx);
     }
+
+    /***************************************************************************
+
+        Sign the block
+
+        The signature in the header is updated with a combined signature of the validators who signed
+
+        Params:
+            block = the block to sign
+
+        Returns:
+            signed block
+
+    ***************************************************************************/
+
+    public auto signBlock (const ref Block block) @trusted
+    {
+        import agora.common.crypto.Schnorr;
+        import agora.common.crypto.ECC;
+        Pair node_pair = Pair.fromScalar(secretKeyToCurveScalar(this.node_config.key_pair.secret));
+        Pair use_once_pair = Pair.random(); //TODO: Should be derived from preimage and used ONLY once
+        Signature signed_header_hash = sign(node_pair, use_once_pair, hashFull(block.header));
+        debug { import std.stdio : writefln; try {
+            writefln("signBlock sig=%s", signed_header_hash);
+            Point node_public = Point(this.node_config.key_pair.address.data);
+            verify(node_public, signed_header_hash, hashFull(block.header));
+        } catch (Exception) {} 
+        return const(Block) (
+            const(BlockHeader) (
+                    block.header.prev_block,
+                    block.header.height,
+                    block.header.merkle_root,
+                    BitField!uint(1), // TODO: Should be bit mask of validators who signed
+                    signed_header_hash, // TODO: Should be combined signature of those who signed
+                    block.header.enrollments),
+                block.txs,
+                block.merkle_tree);
+        }
+    }
+
 }
 
 /// Note: these unittests historically assume a block always contains
