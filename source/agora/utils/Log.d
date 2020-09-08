@@ -36,7 +36,7 @@ import Ocean = ocean.util.log.Logger;
 import std.algorithm : min;
 import std.format;
 import std.stdio;
-import std.range : Cycle, cycle, isOutputRange, take, takeExactly;
+import std.range : Cycle, cycle, isOutputRange, take, takeExactly, put;
 
 /// nothrow wrapper around Ocean's Logger
 public struct Logger
@@ -111,7 +111,7 @@ public alias Log = Ocean.Log;
 static this ()
 {
     version (unittest)
-        auto appender = CircularAppender();
+        auto appender = CircularAppender!()();
     else
         auto appender = new AppendConsole();
 
@@ -120,7 +120,7 @@ static this ()
 }
 
 /// Circular appender which appends to an internal buffer
-public class CircularAppender : Appender
+public class CircularAppender (size_t BufferSize = 2^^20) : Appender
 {
     /// Mask
     private Mask mask_;
@@ -129,7 +129,7 @@ public class CircularAppender : Appender
     private size_t used_length;
 
     /// Backing store for the cyclic buffer
-    private char[2 ^^ 20] buffer;
+    private char[BufferSize] buffer;
 
     /// Cyclic Output range over buffer
     private Cycle!(typeof(buffer)) cyclic;
@@ -143,9 +143,9 @@ public class CircularAppender : Appender
 
     public static CircularAppender opCall ()
     {
-        static CircularAppender appender;
+        static CircularAppender!BufferSize appender;
         if (appender is null)
-            appender = new CircularAppender();
+            appender = new CircularAppender!BufferSize();
 
         return appender;
     }
@@ -156,7 +156,7 @@ public class CircularAppender : Appender
     {
         // edge-case: if the buffer isn't filled yet,
         // write from buffer index 0, not the cycle's current index
-        if (this.used_length <= this.buffer.length)
+        if (this.used_length < this.buffer.length)
             output.put(this.buffer[0 .. this.used_length]);
         else
             // Create a new range to work around `const` issue:
@@ -196,6 +196,48 @@ public class CircularAppender : Appender
                     this.used_length + content.length);
             });
     }
+}
+
+///
+unittest
+{
+    static class MockLayout : Appender.Layout
+    {
+        /// Format the message
+        public override void format (LogEvent event, scope FormatterSink dg)
+        {
+            sformat(dg, "{}", event);
+        }
+    }
+
+    scope get_log_output = (string log_msg){
+        import ocean.util.log.ILogger;
+
+        immutable buffer_size = 7;
+        char[buffer_size + 1] result_buff;
+        LogEvent event;
+        scope appender = new CircularAppender!(buffer_size);
+        event.set(ILogger.Context.init, ILogger.Level.init, log_msg, "");
+        appender.layout(new MockLayout());
+        appender.append(event);
+        appender.print(result_buff[]);
+        return result_buff[0 .. min(log_msg.length, buffer_size)].dup;
+    };
+
+    // case 1
+    // the internal buffer size is greater than the length of the messages 
+    // that we are trying to log
+    assert(get_log_output("01234") == "01234");
+
+    // case 2
+    // the internal buffer size is equal to the length of the messages 
+    // that we are trying to log(there is a terminating newline)
+    assert(get_log_output("012345") == "012345");
+
+    // case 3
+    // the internal buffer size is smaller than the length of the messages 
+    // that we are trying to log
+    assert(get_log_output("0123456789") == "3456789");
 }
 
 /// A layout with colored LogLevel

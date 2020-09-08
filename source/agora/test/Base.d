@@ -182,7 +182,7 @@ private UnitTestResult customModuleUnitTester ()
             output.formattedWrite("Module tests failed: %s\n", mod.name);
             output.formattedWrite("%s\n", ex);
             // print logs of the work thread
-            CircularAppender().print(output);
+            CircularAppender!()().print(output);
         }
     }
 
@@ -872,7 +872,7 @@ private mixin template TestNodeMixin ()
         auto output = stdout.lockingTextWriter();
         output.formattedWrite("Log for node: %s\n", this.config.node.address);
         output.put("======================================================================\n");
-        CircularAppender().print(output);
+        CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
     }
 
