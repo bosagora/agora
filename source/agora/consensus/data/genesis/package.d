@@ -15,6 +15,7 @@ module agora.consensus.data.genesis;
 
 import agora.common.Amount;
 import agora.common.Hash;
+import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -32,7 +33,7 @@ import agora.consensus.validation.Block;
 *******************************************************************************/
 
 public immutable(Block) makeGenesis (
-    Transaction[] txs, Enrollment[] enrolls, Signature delegate(Hash) sigcb)
+    Transaction[] txs, Enrollment[] enrolls, Scalar delegate(Hash) sigcb)
 {
     Block genesis;
     // Add provided txs and generate Merkle tree

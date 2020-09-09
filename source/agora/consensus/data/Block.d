@@ -17,6 +17,7 @@ module agora.consensus.data.Block;
 
 import agora.common.Amount;
 import agora.common.BitField;
+import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Hash;
@@ -54,7 +55,7 @@ public struct BlockHeader
     public BitField!uint validators;
 
     /// Schnorr multisig of all validators which signed this block
-    public Signature signature;
+    public Scalar signature;
 
     /// Enrolled validators
     public Enrollment[] enrollments;
@@ -407,7 +408,6 @@ unittest
     enrollments ~= Enrollment.init;
     enrollments ~= Enrollment.init;
 
-    const ubyte[Signature.sizeof] sig_data = 42;
     Block block =
     {
         header:
@@ -416,7 +416,7 @@ unittest
             height:      Height(0),
             merkle_root: merkle,
             validators:  validators,
-            signature:   Signature(sig_data),
+            signature:   Scalar.init,
             enrollments: enrollments,
         },
         txs: [ tx ],
