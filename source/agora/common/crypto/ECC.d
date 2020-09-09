@@ -67,7 +67,7 @@ public struct Scalar
     /// Internal state
     package BitBlob!(crypto_core_ed25519_SCALARBYTES * 8) data;
 
-    private this (typeof(this.data) data) @safe
+    private this (typeof(this.data) data) @safe inout
     {
         this.data = data;
     }
