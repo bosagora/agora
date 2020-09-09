@@ -119,37 +119,71 @@ public class Ledger
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
 
-        // need to regenerate the UTXO set, starting from the genesis block
+        // need to rebuild the UTXO set and Validator set,
+        // starting from the genesis block
         if (this.utxo_set.length == 0)
         {
-            Block block;
+            ManagedDatabase.beginBatch();
+            scope (failure) ManagedDatabase.rollback();
+
+            // clear validator set
+            this.enroll_man.removeAllValidators();
+
+            Block last_read_block = gen_block;
             foreach (height; 0 .. this.last_block.header.height + 1)
             {
+                Block block;
                 this.storage.readBlock(block, Height(height));
+                if (height == 0)
+                {
+                    if (auto reason = block.isGenesisBlockInvalidReason())
+                        throw new Exception(
+                            "Genesis block loaded from disk is invalid: " ~
+                            reason);
+                }
+                else
+                {
+                    const active_enrollments = enroll_man.getValidatorCount(
+                        block.header.height);
+
+                    if (auto fail_reason = block.isInvalidReason(
+                        last_read_block.header.height,
+                        last_read_block.header.hashFull,
+                        this.utxo_set.getUTXOFinder(),
+                        active_enrollments))
+                        throw new Exception(
+                            "A block loaded from disk is invalid: " ~
+                            fail_reason);
+                }
                 this.updateUTXOSet(block);
+                this.updateValidatorSet(block);
+                last_read_block = block;
             }
+            ManagedDatabase.commitBatch();
         }
-
-        // +1 because the genesis block counts as one
-        const ulong block_count = this.last_block.header.height + 1;
-
-        // we are only interested in the last 1008 blocks,
-        // because that is the maximum length of an enrollment.
-        const Height min_height =
-            block_count >= this.params.ValidatorCycle
-            ? Height(block_count - this.params.ValidatorCycle) : Height(0);
-
-        PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
-        UTXOSetValue[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
-
-        // restore validator set from the blockchain.
-        // using block_count, as the range is inclusive
-        foreach (block_idx; min_height .. block_count)
+        else
         {
-            Block block;
-            this.storage.readBlock(block, block_idx);
-            this.enroll_man.restoreValidators(this.last_block.header.height,
-                block, this.utxo_set.getUTXOFinder(), utxos);
+            // +1 because the genesis block counts as one
+            const ulong block_count = this.last_block.header.height + 1;
+
+            // we are only interested in the last 1008 blocks,
+            // because that is the maximum length of an enrollment.
+            const Height min_height =
+                block_count >= this.params.ValidatorCycle
+                ? Height(block_count - this.params.ValidatorCycle) : Height(0);
+
+            PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
+            UTXOSetValue[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
+
+            // restore validator set from the blockchain.
+            // using block_count, as the range is inclusive
+            foreach (block_idx; min_height .. block_count)
+            {
+                Block block;
+                this.storage.readBlock(block, block_idx);
+                this.enroll_man.restoreValidators(this.last_block.header.height,
+                    block, this.utxo_set.getUTXOFinder(), utxos);
+            }
         }
     }
 
@@ -1062,10 +1096,8 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle, params);
-        scope ledger = new TestLedger(WK.Keys.A, blocks, params);
-        Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
-        assert(keys.length == 0);
+        // Enrollment: Insufficient number of active validators
+        assertThrown!Exception(new TestLedger(WK.Keys.A, blocks, params));
     }
 }
 
