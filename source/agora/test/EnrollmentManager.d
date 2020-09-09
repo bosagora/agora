@@ -48,6 +48,12 @@ unittest
     auto nodes = network.clients;
     network.expectBlock(Height(validator_cycle - 1), 2.seconds);
 
+    // wait for preimages to be revealed before making block 10
+    nodes.each!(node =>
+        network.blocks[0].header.enrollments.each!(enroll =>
+            retryFor(node.getPreimage(enroll.utxo_key).distance >= 9,
+                5.seconds)));
+
     // create enrollment data
     // send a request to enroll as a Validator
     Enrollment enroll_0 = nodes[0].createEnrollmentData();
@@ -59,7 +65,7 @@ unittest
     nodes[2].enrollValidator(enroll_3);
     nodes[3].enrollValidator(enroll_0);
 
-    // re-enroll every validator
+    // wait until new enrollments are propagated to the pools
     nodes.each!(node =>
         retryFor(node.getEnrollment(enroll_0.utxo_key) == enroll_0 &&
                  node.getEnrollment(enroll_1.utxo_key) == enroll_1 &&
@@ -67,23 +73,23 @@ unittest
                  node.getEnrollment(enroll_3.utxo_key) == enroll_3,
             5.seconds));
 
+    // re-enroll every validator
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(validator_cycle), 2.seconds);
 
-    // verify that consensus can still be reached
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle + 1), 2.seconds);
-
-    // check if the distance of newly sent pre-image is greater than
-    // or equal to 1, during creating transactions for the new block
+    // wait until preimages are revealed before creating a new block
     nodes.each!(node =>
         retryFor(node.getPreimage(enroll_0.utxo_key).distance >= 1 &&
                  node.getPreimage(enroll_1.utxo_key).distance >= 1 &&
                  node.getPreimage(enroll_2.utxo_key).distance >= 1 &&
                  node.getPreimage(enroll_3.utxo_key).distance >= 1,
             5.seconds));
+
+    // verify that consensus can still be reached
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(Height(validator_cycle + 1), 2.seconds);
 }
 
 // Test for re-enroll before the validator cycle ends
