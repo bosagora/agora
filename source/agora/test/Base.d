@@ -103,6 +103,8 @@ private UnitTestResult customModuleUnitTester ()
     import std.string;
     import std.uni;
     import core.atomic;
+    import core.sync.semaphore;
+    import core.thread.osthread;
 
     // by default emit only errors during unittests.
     // can be re-set by calling code.
@@ -190,11 +192,49 @@ private UnitTestResult customModuleUnitTester ()
     foreach (mod; single_threaded)
         runTest(mod);
 
-    foreach (mod; parallel(parallel_tests))
-        runTest(mod);
+    auto available_cores = new Semaphore(totalCPUs);
+    auto finished_tasks_num = new Semaphore(0);
+    // we cannot use phobos' parallel function, as that function will not
+    // re-initialize static variables at the start of a new task
+    void runInParallel (ModTest[] parallel_tests)
+    {
+        class WorkThread : Thread
+        {
+            ModTest test;
+            this (ModTest test)
+            {
+                this.test = test;
+                super(&this.run);
+            }
 
-    foreach (mod; parallel(heavy_tests))
-        runTest(mod);
+            void run ()
+            {
+                scope (exit)
+                {
+                    available_cores.notify();
+                    finished_tasks_num.notify();
+                }
+                runTest(this.test);
+            }
+        }
+
+        while (parallel_tests.length)
+        {
+            auto test = parallel_tests.front;
+            parallel_tests.popFront();
+
+            // wait for a core to become available
+            available_cores.wait();
+
+            (new WorkThread(test)).start();
+        }
+    }
+
+    runInParallel(parallel_tests);
+    runInParallel(heavy_tests);
+
+    //waiting for all parallel tasks to finish
+    iota(parallel_tests.length + heavy_tests.length).each!(x => finished_tasks_num.wait());
 
     UnitTestResult result = { executed : executed, passed : passed };
     if (filtered > 0)
