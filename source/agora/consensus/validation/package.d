@@ -35,6 +35,7 @@
 module agora.consensus.validation;
 
 public import agora.consensus.validation.Block       : isInvalidReason;
+public import agora.consensus.validation.Block       : isGenesisBlockInvalidReason;
 public import agora.consensus.validation.Enrollment  : isInvalidReason;
 public import agora.consensus.validation.PreImage    : isInvalidReason;
 public import agora.consensus.validation.Transaction : isInvalidReason;

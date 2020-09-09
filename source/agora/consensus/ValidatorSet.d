@@ -162,6 +162,24 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Remove all validators from the validator set
+
+    ***************************************************************************/
+
+    public void removeAll () @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("DELETE FROM validator_set");
+        }
+        catch (Exception ex)
+        {
+            log.error("Error while calling ValidatorSet.removeAll(): {}", ex);
+        }
+    }
+
+    /***************************************************************************
+
         In validatorSet DB, return the enrolled block height.
 
         Params:
@@ -577,14 +595,13 @@ unittest
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
-    // remove an enrollment
+    // remove ValidatorSet
     set.remove(utxos[1]);
     assert(set.count() == 2);
     assert(set.hasEnrollment(utxos[0]));
     set.remove(utxos[0]);
     assert(!set.hasEnrollment(utxos[0]));
-    set.remove(utxos[1]);
-    set.remove(utxos[2]);
+    set.removeAll();
     assert(set.count() == 0);
 
     Enrollment[] ordered_enrollments;

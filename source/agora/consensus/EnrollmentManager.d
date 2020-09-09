@@ -848,6 +848,17 @@ public class EnrollmentManager
     {
         this.enroll_pool.remove(enroll_hash);
     }
+
+    /***************************************************************************
+
+        Remove all validators from the validator set
+
+    ***************************************************************************/
+
+    public void removeAllValidators () @trusted
+    {
+        this.validator_set.removeAll();
+    }
 }
 
 /// tests for member functions of EnrollmentManager
