@@ -408,13 +408,16 @@ public class Ledger
 
     public string validateBlock (const ref Block block) nothrow @safe
     {
+        size_t prev_active_validators = enroll_man.getValidatorCount(
+                Height(block.header.height - 1));
         size_t active_enrollments = enroll_man.getValidatorCount(
                 block.header.height);
 
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
-            active_enrollments);
+            active_enrollments,
+            prev_active_validators);
     }
 
     /***************************************************************************
