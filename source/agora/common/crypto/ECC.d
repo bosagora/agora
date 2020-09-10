@@ -166,6 +166,13 @@ public struct Scalar
     {
         dg(this.data[]);
     }
+
+    /// Convenience overload to allow this to be converted to an `opaque_array`,
+    /// as used in the `confirm_t` statement signature in SCP
+    public const(ubyte)[] opSlice () const @safe pure nothrow @nogc
+    {
+        return this.data[];
+    }
 }
 
 ///
