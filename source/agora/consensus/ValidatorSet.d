@@ -64,7 +64,7 @@ public class ValidatorSet
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key TEXT PRIMARY KEY, " ~
+            "(key TEXT PRIMARY KEY, pubkey TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
             "distance INTEGER, preimage TEXT)");
     }
@@ -87,7 +87,8 @@ public class ValidatorSet
         const ref Enrollment enroll) @safe nothrow
     {
         // check validaty of the enrollment data
-        if (auto reason = isInvalidReason(enroll, finder))
+        UTXOSetValue utxo_set_value;
+        if (auto reason = isInvalidReason(enroll, finder, utxo_set_value))
             return reason;
 
         // check if already exists
@@ -99,9 +100,10 @@ public class ValidatorSet
             () @trusted {
                 const ZeroDistance = 0;  // initial distance
                 this.db.execute("INSERT INTO validator_set " ~
-                    "(key, cycle_length, enrolled_height, " ~
-                    "distance, preimage) VALUES (?, ?, ?, ?, ?)",
+                    "(key, pubkey, cycle_length, enrolled_height, " ~
+                    "distance, preimage, nonce) VALUES (?, ?, ?, ?, ?, ?)",
                     enroll.utxo_key.toString(), enroll.cycle_length,
+                    utxo_set_value.output.address.toString(),
                     block_height.value, ZeroDistance,
                     enroll.random_seed.toString());
             }();
@@ -447,6 +449,63 @@ public class ValidatorSet
         {
             log.error("Exception occured in getPreimageAt: {}, " ~
                 "Key for enrollment: {}", ex.msg, enroll_key);
+        }
+
+        return PreImageInfo.init;
+    }
+
+    /***************************************************************************
+
+        Get validator's pre-image for the given block height from the
+        validator set
+
+        Params:
+            enroll_key = The key for the enrollment in which the pre-image is
+                contained.
+            height = the desired preimage block height. If it's older than
+                     the preimage's current block height, the preimage will
+                     be hashed until the older preimage is retrieved.
+                     Otherwise PreImageInfo.init is returned.
+
+        Returns:
+            the PreImageInfo of the enrolled key if it exists,
+            otherwise PreImageInfo.init
+
+    ***************************************************************************/
+
+    public PreImageInfo getPreimageAt (const ref PublicKey pub_key,
+        in Height height) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute(
+                "SELECT key, preimage, enrolled_height, distance " ~
+                "FROM validator_set WHERE pubkey = ? AND enrolled_height <= ? " ~
+                "AND enrolled_height + distance >= ?",
+                pub_key.toString(), height.value, height.value);
+
+            if (!results.empty && results.oneValue!(byte[]).length != 0)
+            {
+                auto row = results.front;
+                Hash enroll_key = Hash(row.peek!(char[])(0));
+                Hash preimage = Hash(row.peek!(char[])(1));
+                Height enrolled_height = Height(row.peek!ulong(2));
+                ushort distance = row.peek!ushort(3);
+
+                // go back to the desired preimage of a previous height
+                while (enrolled_height + distance > height)
+                {
+                    preimage = hashFull(preimage);
+                    distance--;
+                }
+
+                return PreImageInfo(enroll_key, preimage, distance);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured in getPreimageAt: {}, " ~
+                "for public key: {}", ex.msg, pub_key);
         }
 
         return PreImageInfo.init;
