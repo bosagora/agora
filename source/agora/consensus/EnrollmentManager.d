@@ -616,6 +616,26 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get a validator's pre-image from the validator set for a specific height
+
+        Params:
+            key = The public key of the validator
+            height = the height to look up
+
+        Returns:
+            the PreImageInfo of the associated key if it exists,
+            otherwise `PreImageInfo.init`
+
+    ***************************************************************************/
+
+    public PreImageInfo getValidatorPreimageAt (const ref PublicKey key,
+        in Height height) @trusted nothrow
+    {
+        return this.validator_set.getPreimageAt(key, height);
+    }
+
+    /***************************************************************************
+
         Add a pre-image information to a validator data
 
         Params:
