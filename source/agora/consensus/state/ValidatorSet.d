@@ -27,6 +27,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.PreImage;
+import agora.consensus.data.UTXO;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.validation;
 import agora.utils.Log;
@@ -87,7 +88,7 @@ public class ValidatorSet
         const ref Enrollment enroll) @safe nothrow
     {
         // check validaty of the enrollment data
-        UTXOSetValue utxo_set_value;
+        UTXO utxo_set_value;
         if (auto reason = isInvalidReason(enroll, finder, utxo_set_value))
             return reason;
 

@@ -23,6 +23,7 @@ import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.protocol.Data;
@@ -72,10 +73,10 @@ private extern(C++) class ByzantineNominator : TestNominator
 
     extern(D) this (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir, ByzantineReason reason)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ByzantineReason reason)
     {
         this.reason = reason;
-        super(params, clock, network, key_pair, ledger, taskman, data_dir,
+        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
             this.txs_to_nominate);
     }
 
@@ -109,10 +110,10 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 
     protected override TestNominator getNominator (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new ByzantineNominator(params, clock, network, key_pair, ledger,
-            taskman, data_dir, reason);
+            enroll_man, taskman, data_dir, reason);
     }
 }
 
@@ -125,12 +126,12 @@ private class SpyNominator : TestNominator
     /// Ctor
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir, ulong txs_to_nominate,
-        shared(time_t)* curr_time,
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+        ulong txs_to_nominate, shared(time_t)* curr_time,
         shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
         this.envelope_type_counts = envelope_type_counts;
-        super(params, clock, network, key_pair, ledger, taskman, data_dir,
+        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
         txs_to_nominate);
     }
 
@@ -173,10 +174,10 @@ private class SpyingValidator : TestValidatorNode
     protected override TestNominator getNominator (
         immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new SpyNominator(
-            params, clock, network, key_pair, ledger, taskman, data_dir,
+            params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
             this.txs_to_nominate, this.cur_time, this.envelope_type_counts);
     }
 }

@@ -448,10 +448,12 @@ extern(D):
     ///
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir, ulong txs_to_nominate)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+        ulong txs_to_nominate)
     {
         this.txs_to_nominate = txs_to_nominate;
-        super(params, clock, network, key_pair, ledger, taskman, data_dir);
+        super(params, clock, network, key_pair, ledger, enroll_man, taskman,
+            data_dir);
     }
 
     /// Overrides the default behavior and changes nomination behavior based
@@ -1565,10 +1567,10 @@ public class TestValidatorNode : Validator, TestAPI
     /// Returns an instance of a TestNominator with customizable behavior
     protected override TestNominator getNominator (
         immutable(ConsensusParams) params, Clock clock, NetworkManager network,
-        KeyPair key_pair, Ledger ledger, TaskManager taskman, string data_dir)
+        KeyPair key_pair, Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new TestNominator(params, clock, network, key_pair, ledger,
-            taskman, data_dir, this.txs_to_nominate);
+            enroll_man, taskman, data_dir, this.txs_to_nominate);
     }
 
     /// Provides a unittest-adjusted clock source for the node

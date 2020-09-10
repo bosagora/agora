@@ -23,6 +23,7 @@ import agora.common.Config;
 import agora.common.Task;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.common.crypto.Key;
 import agora.common.Hash;
@@ -55,10 +56,10 @@ unittest
         /// Ctor
         public this (immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman, string data_dir, ulong txs_to_nominate,
-            shared(time_t)* curr_time)
+            EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+            ulong txs_to_nominate, shared(time_t)* curr_time)
         {
-            super(params, clock, network, key_pair, ledger, taskman,
+            super(params, clock, network, key_pair, ledger, enroll_man, taskman,
                 data_dir, txs_to_nominate);
         }
 
@@ -88,10 +89,10 @@ unittest
         protected override CustomNominator getNominator (
             immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman, string data_dir)
+            EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
         {
             return new CustomNominator(
-                params, clock, network, key_pair, ledger, taskman,
+                params, clock, network, key_pair, ledger, enroll_man, taskman,
                 data_dir, this.txs_to_nominate, this.cur_time);
         }
     }

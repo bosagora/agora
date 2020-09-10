@@ -42,6 +42,7 @@ version (unittest)
     Params:
         enrollment = The enrollment of the target to be verified
         findUTXO = delegate to find the referenced unspent UTXOs with
+        utxo_set_value = will contain the associated UTXO if found
 
     Returns:
         `null` if the validator's UTXO is valid, otherwise a string
@@ -50,9 +51,8 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Enrollment enrollment,
-    scope UTXOFinder findUTXO) nothrow @safe
+    UTXOFinder findUTXO, out UTXO utxo_set_value) nothrow @safe
 {
-    UTXO utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
         return "Enrollment: UTXO not found";
 
@@ -81,6 +81,14 @@ public string isInvalidReason (const ref Enrollment enrollment,
     }
 
     return null;
+}
+
+/// Ditto
+public string isInvalidReason (const ref Enrollment enrollment,
+    scope UTXOFinder findUTXO) nothrow @safe
+{
+    UTXO utxo_set_value;
+    return isInvalidReason(enrollment, findUTXO, utxo_set_value);
 }
 
 /// Ditto but returns `bool`, only usable in unittests
