@@ -255,6 +255,36 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Get all the current validators in ascending order with the utxo_key
+
+        Params:
+            pub_keys = will contain the public keys
+
+        Returns:
+            Return true if there was no error in getting the public keys
+
+    ***************************************************************************/
+
+    public bool getEnrolledPublicKeys (out PublicKey[] pub_keys)
+        @trusted nothrow
+    {
+        try
+        {
+            assumeSafeAppend(pub_keys);
+            auto results = this.db.execute("SELECT pubkey FROM validator_set");
+            foreach (row; results)
+                pub_keys ~= PublicKey.fromString(row.peek!(char[])(0));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error: {}", ex.msg);
+            return false;
+        }
+    }
+
+    /***************************************************************************
+
         Clear up expired validators whose cycle for a validator ends
 
         The validator set clears up expired validators from the set based on
