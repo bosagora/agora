@@ -127,6 +127,7 @@ public class Validator : FullNode, API
 
     private void regenerateQuorums (Height height) nothrow @safe
     {
+        import std.algorithm : map;
         this.last_shuffle_height = height;
 
         // we're not enrolled and don't care about quorum sets
@@ -135,6 +136,13 @@ public class Validator : FullNode, API
             this.nominator.stopNominatingTimer();
             this.qc = QuorumConfig.init;
             return;
+        }
+
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
         }
 
         static QuorumConfig[] other_qcs;

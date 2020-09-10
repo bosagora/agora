@@ -20,6 +20,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXOSet;
 import VEn = agora.consensus.validation.Enrollment;
@@ -71,6 +72,8 @@ version (unittest)
         active_enrollments = the number of enrollments that do not expire
             at the next block height (prev_height + 1).
         checkPayload = delegate for checking data payload
+        prev_active_validators = active validators at prev_height
+
 
     Returns:
         `null` if the block is valid, a string explaining the reason it
@@ -79,8 +82,12 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Block block, Height prev_height,
-    in Hash prev_hash, scope UTXOFinder findUTXO,
-    size_t active_enrollments, scope PayloadChecker checkPayload) nothrow @safe
+    in Hash prev_hash, scope UTXOFinder findUTXO, size_t active_enrollments,
+    scope PayloadChecker checkPayload, size_t prev_active_validators = 0,
+    Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex = null,
+    Point delegate (const ref Point) nothrow @safe getCommitmentNonce = null,
+    PreImageInfo delegate (const ref Point key, in Height height) nothrow @safe
+        getValidatorPreimageAt = null) nothrow @safe
 {
     import std.algorithm;
 
@@ -135,6 +142,40 @@ public string isInvalidReason (const ref Block block, Height prev_height,
         if (auto fail_reason = VEn.isInvalidReason(enrollment, enrollmentsUTXOFinder))
             return fail_reason;
     }
+
+    // TODO: fix all unittests so they always sign the block
+    if (getValidatorAtIndex is null)
+        return null;
+
+    if (prev_active_validators > block.header.validators.length())
+        return "Block: Validators bitfield mask is too small for the " ~
+            "active validator set";
+
+    Point SumK;
+    Point SumR;
+    foreach (idx; 0 .. prev_active_validators)
+    {
+        if (!block.header.validators[idx])
+            continue;  // this validator hasn't signed
+
+        const K = getValidatorAtIndex(block.header.height, idx);
+        if (K == Point.init)
+            return "Block: Cannot find a Validator for the given index";
+
+        const CR = getCommitmentNonce(K);  // commited R
+        if (CR == Point.init)
+            return "Block: Couldn't find commitment for this validator";
+
+        const preimage = getValidatorPreimageAt(K, prev_height);
+        const R = CR + Scalar(preimage.hash).toPoint();
+
+        SumK = SumK == Point.init ? K : (SumK + K);
+        SumR = SumR == Point.init ? R : (SumR + R);
+    }
+
+    Scalar challenge = hashFull(block);
+    if (block.header.signature.toPoint() != SumR + (SumK * challenge))
+        return "Block: Invalid schnorr signature";
 
     return null;
 }

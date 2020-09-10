@@ -13,6 +13,7 @@
 
 module agora.consensus.protocol.Nominator;
 
+import agora.common.BitField;
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
@@ -28,6 +29,7 @@ import agora.consensus.data.Block;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.SCPEnvelopeStore;
 import agora.network.Clock;
@@ -46,6 +48,9 @@ import scpd.types.Stellar_types;
 import scpd.types.Stellar_types : StellarHash = Hash;
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
+import scpd.types.XDRBase;
+
+import geod24.bitblob;
 
 import core.stdc.stdint;
 import core.stdc.stdlib : abort;
@@ -108,6 +113,14 @@ public extern (C++) class Nominator : SCPDriver
 
     /// SCPEnvelopeStore instance
     protected SCPEnvelopeStore scp_envelope_store;
+
+    // slot index => Scalar (challenge) => key => signature
+    // the Scalar (challenge) is there because:
+    // 1. we need to take into account if an ill-behaved node lies about a
+    //    confirmation ballot (we collect sigs before SCP validation)
+    // 2. we want to be able to slash nodes. 2 sigs with the same R on a
+    //    different challenge will reveal their private key.
+    private Scalar[Point][Scalar][ulong] slot_sigs;
 
     /// Enrollment manager
     private EnrollmentManager enroll_man;
@@ -495,6 +508,25 @@ extern(D):
             return;
         }
 
+        // we check confirmed statements before validating with
+        // 'scp.receiveEnvelope()'
+        // There are two reasons why:
+        // 1. in the example of { N: 6, T: 4 }, we may
+        //    receive 4 confimed messages and decide to externalize.
+        //    then the 2 additional confirmations would be rejected because the
+        //    ledger state has changed and the 2 messages now contain only
+        //    double-spend transactions.
+        //    so we must collect confirm signatures regardless.
+        // 2. catching nodes which try to sign two incompatible ballots
+        //    -> if they use the same R which they must as they have committed
+        //       to it, then they will reveal their private key
+
+        PublicKey key = PublicKey(envelope.statement.nodeID);
+        Point K = Point(key[]);
+        if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM
+            && !this.collectBallotSignature(K, envelope))
+            return;
+
         if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
             log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope));
     }
@@ -551,7 +583,9 @@ extern(D):
 
     /***************************************************************************
 
-        Signs the SCPEnvelope with the node's private key.
+        Signs the SCPEnvelope with the node's private key, and if it's
+        a confirm ballot additionally provides the block header signature
+        and saves the header signature for later collection on externalize.
 
         Params:
             envelope = the SCPEnvelope to sign
@@ -810,7 +844,48 @@ extern(D):
         log.info("Externalized consensus data set at {}: {}", slot_idx, data);
         try
         {
-            if (!this.ledger.onExternalized(data))
+            auto blocks = this.ledger.getBlocksFrom(Height(slot_idx - 1));
+            assert(!blocks.empty);  // should not happen
+            const prev_block = blocks.front;
+
+            auto proposed_block = makeNewBlock(prev_block, data.tx_set,
+                data.enrolls);
+            const Scalar challenge = hashFull(proposed_block);
+
+            auto challenge_sigs = slot_idx in this.slot_sigs;
+            if (challenge_sigs is null)
+            {
+                import std.stdio;
+                writeln("Couldnt' find any sigs for externalizing slot");
+                return;
+            }
+
+            assert(challenge_sigs !is null);  // there must be at least N/M sigs
+            auto block_sigs = challenge in *challenge_sigs;
+            // there must exist signatures if externalizing
+            assert(block_sigs !is null);
+
+            Scalar multi_sig;
+            auto validator_mask = BitField!uint(block_sigs.length);
+            foreach (K, sig; *block_sigs)
+            {
+                ulong idx = this.enroll_man.getIndexOfValidator(
+                    Height(slot_idx), K);
+                if (idx == ulong.max)
+                    assert(0);  // should not happen, accepted bad signature
+
+                multi_sig = (multi_sig == Scalar.init) ? sig : (multi_sig + sig);
+                validator_mask[idx] = true;
+            }
+
+            // TODO: need to keep updating the block's sig + bitfield
+            // as new confirm messages arrive after valueExternalized()
+            // because we externalize when we reach threshold - but we want
+            // to collect as many signatures as possible
+            proposed_block.header.signature = multi_sig;
+            proposed_block.header.validators = validator_mask;
+
+            if (!this.ledger.acceptBlock(proposed_block))
                 assert(0);
         }
         catch (Exception exc)

@@ -210,27 +210,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Called when a consensus data set is externalized.
-
-        This will create a new block and add it to the ledger.
-
-        Params:
-            data = the consensus data which was externalized
-
-        Returns:
-            true if the consensus data was accepted
-
-    ***************************************************************************/
-
-    public bool onExternalized (ConsensusData data)
-        @trusted
-    {
-        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls);
-        return this.acceptBlock(block);
-    }
-
-    /***************************************************************************
-
         Add a block to the ledger.
 
         If the block fails verification, it is not added to the ledger.
@@ -335,6 +314,9 @@ public class Ledger
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
             assert(0, format!"Failed to read last block: %s"(prettify(this.last_block)));
+
+        if (validators_changed)
+            this.enroll_man.updateValidatorIndexMaps();
 
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
@@ -506,6 +488,9 @@ public class Ledger
 
     public string validateBlock (const ref Block block) nothrow @safe
     {
+        import agora.common.crypto.ECC : Point;
+        size_t prev_active_validators = enroll_man.getValidatorCount(
+                Height(block.header.height - 1));
         size_t active_enrollments = enroll_man.getValidatorCount(
                 block.header.height);
 
@@ -513,7 +498,21 @@ public class Ledger
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
             active_enrollments,
-            &this.payload_checker.check);
+            &this.payload_checker.check,
+            prev_active_validators,
+            &this.enroll_man.getValidatorAtIndex,
+            (const ref Point key) @safe nothrow
+            {
+                // todo: fix up this Point / PublicKey mess
+                const PK = PublicKey(key[]);
+                return this.enroll_man.getCommitmentNonce(PK);
+            },
+            (const ref Point key, in Height height) @safe nothrow
+            {
+                // todo: fix up this Point / PublicKey mess
+                const PK = PublicKey(key[]);
+                return this.enroll_man.getValidatorPreimageAt(PK, height);
+            });
     }
 
     /***************************************************************************
