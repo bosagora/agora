@@ -135,6 +135,25 @@ public struct Scalar
         return result;
     }
 
+    /***************************************************************************
+
+        Returns:
+            the inverted scalar.
+
+        See_Also:
+            https://libsodium.gitbook.io/doc/advanced/point-arithmetic
+            https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#why-do-we-need-the-nonce
+
+    ***************************************************************************/
+
+    public Scalar invert () @trusted
+    {
+        Scalar scalar = this;  // copy
+        assert(crypto_core_ed25519_scalar_invert(scalar.data[].ptr,
+            this.data[].ptr) == 0);
+        return scalar;
+    }
+
     /// Generate a random scalar
     public static Scalar random () nothrow @nogc @trusted
     {
@@ -165,25 +184,6 @@ public struct Scalar
     public void serialize (scope SerializeDg dg) const @safe
     {
         dg(this.data[]);
-    }
-
-    /***************************************************************************
-
-        Returns:
-            the inverted scalar.
-
-        See_Also:
-            https://libsodium.gitbook.io/doc/advanced/point-arithmetic
-            https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#why-do-we-need-the-nonce
-
-    ***************************************************************************/
-
-    public Scalar invert () @trusted
-    {
-        Scalar scalar = this;  // copy
-        assert(crypto_core_ed25519_scalar_invert(scalar.data[].ptr,
-            this.data[].ptr) == 0);
-        return scalar;
     }
 }
 
