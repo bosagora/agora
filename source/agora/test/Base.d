@@ -414,10 +414,11 @@ extern(D):
 
     ///
     public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, ulong txs_to_nominate)
+        EnrollmentManager enroll_man, TaskManager taskman,
+        ulong txs_to_nominate)
     {
         this.txs_to_nominate = txs_to_nominate;
-        super(network, key_pair, ledger, taskman);
+        super(network, key_pair, ledger, enroll_man, taskman);
     }
 
     /// Overrides the default behavior and changes nomination behavior based
@@ -1075,9 +1076,10 @@ public class TestValidatorNode : Validator, TestAPI
 
     /// Returns an instance of a TestNominator with customizable behavior
     protected override TestNominator getNominator ( NetworkManager network,
-        KeyPair key_pair, Ledger ledger, TaskManager taskman)
+        KeyPair key_pair, Ledger ledger, EnrollmentManager enroll_man,
+        TaskManager taskman)
     {
-        return new TestNominator(network, key_pair, ledger, taskman,
+        return new TestNominator(network, key_pair, ledger, enroll_man, taskman,
             this.txs_to_nominate);
     }
 

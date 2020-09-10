@@ -81,7 +81,8 @@ public class Validator : FullNode, API
             this.params.QuorumThreshold);
 
         this.nominator = this.getNominator(this.network,
-            this.config.node.key_pair, this.ledger, this.taskman);
+            this.config.node.key_pair, this.ledger, this.enroll_man,
+            this.taskman);
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
@@ -260,6 +261,7 @@ public class Validator : FullNode, API
             network = the network manager for gossiping SCPEnvelopes
             key_pair = the key pair of the node
             ledger = Ledger instance
+            enroll_man = Enrollment manager
             taskman = the task manager
 
         Returns:
@@ -268,9 +270,9 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     protected Nominator getNominator (NetworkManager network, KeyPair key_pair,
-        Ledger ledger, TaskManager taskman)
+        Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman)
     {
-        return new Nominator(network, key_pair, ledger, taskman);
+        return new Nominator(network, key_pair, ledger, enroll_man, taskman);
     }
 
     /***************************************************************************
