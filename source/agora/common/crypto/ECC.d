@@ -146,11 +146,11 @@ public struct Scalar
 
     ***************************************************************************/
 
-    public Scalar invert () @trusted
+    public Scalar invert () const @nogc @trusted
     {
         Scalar scalar = this;  // copy
-        assert(crypto_core_ed25519_scalar_invert(scalar.data[].ptr,
-            this.data[].ptr) == 0);
+        if (crypto_core_ed25519_scalar_invert(scalar.data[].ptr, this.data[].ptr) != 0)
+            assert(0);
         return scalar;
     }
 
