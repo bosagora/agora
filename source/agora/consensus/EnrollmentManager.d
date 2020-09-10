@@ -441,6 +441,23 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get all the enrolled validator's public keys.
+
+        Params:
+            utxo_keys = will contain the set of public keys
+
+        Returns:
+            Return true if there was no error in getting the public keys
+
+    ***************************************************************************/
+
+    public bool getEnrolledPublicKeys (out PublicKey[] keys) @safe nothrow
+    {
+        return this.validator_set.getEnrolledPublicKeys(keys);
+    }
+
+    /***************************************************************************
+
         Get the number of active validators.
 
         Client code can use this between clearExpiredValidators() calls to
