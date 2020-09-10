@@ -683,9 +683,7 @@ unittest
     }
 
     Pair signature_noise = Pair.random;
-    Pair node_key_pair;
-    node_key_pair.v = secretKeyToCurveScalar(keypair.secret);
-    node_key_pair.V = node_key_pair.v.toPoint();
+    Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
 
     auto utxo_hash1 = UTXOSetValue.getHash(hashFull(txs_2[0]), 0);
     Enrollment enroll1;
@@ -796,9 +794,7 @@ unittest
         }
 
         Pair signature_noise = Pair.random;
-        Pair node_key_pair;
-        node_key_pair.v = secretKeyToCurveScalar(keypair.secret);
-        node_key_pair.V = node_key_pair.v.toPoint();
+        Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
 
         auto block3 = makeNewBlock(block2, txs_3);
         assert(block3.header.enrollments.length == 0);
@@ -823,9 +819,7 @@ unittest
         }
 
         Pair signature_noise = Pair.random;
-        Pair node_key_pair;
-        node_key_pair.v = secretKeyToCurveScalar(keypair.secret);
-        node_key_pair.V = node_key_pair.v.toPoint();
+        Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
 
         auto utxo_hash1 = UTXOSetValue.getHash(hashFull(txs_2[1]), 0);
         Enrollment enroll1;

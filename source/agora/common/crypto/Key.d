@@ -407,7 +407,7 @@ public static Scalar secretKeyToCurveScalar (SecretKey secret) nothrow @nogc
     return x25519_sk;
 }
 
-///
+// Test signing using Stellar seed
 unittest
 {
     import agora.common.crypto.Schnorr;
@@ -420,9 +420,7 @@ unittest
     assert(scalar ==
         Scalar(`0x44245dd23bd7453bf5fe07ec27a29be3dfe8e18d35bba28c7b222b71a4802db8`));
 
-    Pair pair;
-    pair.v = scalar;
-    pair.V = pair.v.toPoint();
+    Pair pair = Pair.fromScalar(scalar);
 
     assert(pair.V.data == kp.address.data);
     Signature enroll_sig = sign(pair, "BOSAGORA");
@@ -431,7 +429,7 @@ unittest
     assert(verify(point_Address, enroll_sig, "BOSAGORA"));
 }
 
-/// Test for converting from `Point` to `PublicKey`
+// Test for converting from `Point` to `PublicKey`
 unittest
 {
     import agora.common.crypto.Schnorr;

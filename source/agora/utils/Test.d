@@ -250,22 +250,19 @@ unittest
 
     // Also with the Schnorr functions
     {
-        auto pa = Pair(WK.Keys.A.secret.secretKeyToCurveScalar());
-        pa.V = pa.v.toPoint();
+        auto pa = Pair.fromScalar(WK.Keys.A.secret.secretKeyToCurveScalar());
         assert(pa.V == Point(WK.Keys.A.address));
         const ssa = sign(pa, "WK.Keys.A".representation);
         assert(verify(pa.V, ssa, "WK.Keys.A".representation));
         assert(!verify(pa.V, ssa, "WK.Keys.a".representation));
 
-        auto pq = Pair(WK.Keys.Q.secret.secretKeyToCurveScalar());
-        pq.V = pq.v.toPoint();
+        auto pq = Pair.fromScalar(WK.Keys.Q.secret.secretKeyToCurveScalar());
         assert(pq.V == Point(WK.Keys.Q.address));
         const ssq = sign(pq, "WK.Keys.Q".representation);
         assert(verify(pq.V, ssq, "WK.Keys.Q".representation));
         assert(!verify(pq.V, ssq, "WK.Keys.q".representation));
 
-        auto pz = Pair(WK.Keys.Z.secret.secretKeyToCurveScalar());
-        pz.V = pz.v.toPoint();
+        auto pz = Pair.fromScalar(WK.Keys.Z.secret.secretKeyToCurveScalar());
         assert(pz.V == Point(WK.Keys.Z.address));
         const ssz = sign(pz, "WK.Keys.Z".representation);
         assert(verify(pz.V, ssz, "WK.Keys.Z".representation));

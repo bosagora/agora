@@ -136,9 +136,7 @@ unittest
 
     Pair signature_noise = Pair.random;
 
-    Pair node_key_pair_1;
-    node_key_pair_1.v = secretKeyToCurveScalar(key_pairs[0].secret);
-    node_key_pair_1.V = node_key_pair_1.v.toPoint();
+    Pair node_key_pair_1 = Pair.fromScalar(secretKeyToCurveScalar(key_pairs[0].secret));
 
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
@@ -146,9 +144,7 @@ unittest
     enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
-    Pair node_key_pair_2;
-    node_key_pair_2.v = secretKeyToCurveScalar(key_pairs[1].secret);
-    node_key_pair_2.V = node_key_pair_2.v.toPoint();
+    Pair node_key_pair_2 = Pair.fromScalar(secretKeyToCurveScalar(key_pairs[1].secret));
 
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
@@ -156,9 +152,7 @@ unittest
     enroll2.cycle_length = 1008;
     enroll2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll2);
 
-    Pair node_key_pair_3;
-    node_key_pair_3.v = secretKeyToCurveScalar(key_pairs[2].secret);
-    node_key_pair_3.V = node_key_pair_3.v.toPoint();
+    Pair node_key_pair_3 = Pair.fromScalar(secretKeyToCurveScalar(key_pairs[2].secret));
 
     Enrollment enroll3;
     enroll3.utxo_key = utxo_hash3;
@@ -166,16 +160,14 @@ unittest
     enroll3.cycle_length = 1008;
     enroll3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll3);
 
-    Pair node_key_pair_4;
-    // Invalid secret key
-    node_key_pair_4.v = secretKeyToCurveScalar(key_pairs[1].secret);
-    node_key_pair_4.V = node_key_pair_4.v.toPoint();
+    // Make pair with non matching scalar and point
+    Pair node_key_pair_invalid = Pair(node_key_pair_2.v, node_key_pair_3.V);
 
     Enrollment enroll4;
     enroll4.utxo_key = utxo_hash4;
     enroll4.random_seed = hashFull(Scalar.random());
     enroll4.cycle_length = 1008;
-    enroll4.enroll_sig = sign(node_key_pair_4, signature_noise, enroll4);
+    enroll4.enroll_sig = sign(node_key_pair_invalid, signature_noise, enroll4);
 
     assert(!enroll1.isValid(utxoFinder));
     assert(!enroll2.isValid(utxoFinder));

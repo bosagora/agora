@@ -26,11 +26,9 @@
     See_Also:
       - https://en.wikipedia.org/wiki/Curve25519
       - https://en.wikipedia.org/wiki/Schnorr_signature
-      - https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki
-      - https://www.secg.org/sec1-v2.pdf
+      - https://medium.com/blockstream/reducing-bitcoin-transaction-sizes-with-x-only-pubkeys-f86476af05d7
 
     TODO:
-      - Compress signature according to SEC1 v2 (Section 2.3) (#304)
       - Audit GDC and LDC generated code
       - Proper audit
 
@@ -123,7 +121,7 @@ package struct Sig
     }
 }
 
-///
+// Test serialization
 unittest
 {
     import agora.common.Serializer;
@@ -142,7 +140,6 @@ private struct Message (T)
     public T     message;
 }
 
-
 /// Contains a scalar and its projection on the elliptic curve (`v` and `v.G`)
 public struct Pair
 {
@@ -151,12 +148,26 @@ public struct Pair
     /// v.G
     public Point V;
 
+    /// Construct a Pair from a Scalar 
+    public static Pair fromScalar(const Scalar v) nothrow @nogc @safe 
+    {
+        return Pair(v, v.toPoint());
+    }    
+    
     /// Generate a random value `v` and a point on the curve `V` where `V = v.G`
     public static Pair random () nothrow @nogc @safe
     {
-        Scalar sc = Scalar.random();
-        return Pair(sc, sc.toPoint());
+        return Pair.fromScalar(Scalar.random());
     }
+}
+
+// Test constructing Pair from scalar
+unittest
+{
+    const Scalar s = Scalar.random();
+    const pair1 = Pair(s, s.toPoint());
+    const pair2 = Pair.fromScalar(s);
+    assert(pair1 == pair2);
 }
 
 /// Single-signer trivial API
@@ -231,30 +242,51 @@ public bool verify (T) (const ref Point X, const ref Signature sig, auto ref T d
     nothrow @nogc @trusted
 {
     Sig s = Sig.fromBlob(sig);
+    if (!s.s.isValid())
+        return false;
+    /// Compute `s.G`
+    auto S = s.s.toPoint();
     // Compute the challenge and reduce the hash to a scalar
     Scalar c = hashFull(Message!T(X, s.R, data));
     // Compute `R + c*X`
     Point RcX = s.R + (c * X);
-    /// Compute `s.G`
-    auto S = s.s.toPoint();
     return S == RcX;
 }
 
-///
+// Valid signing test with valid scalar
 nothrow @nogc @safe unittest
 {
-    Scalar key = Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`);
-    Pair kp = Pair(key, key.toPoint());
-    auto signature = sign(kp, "Hello world");
-    assert(verify(kp.V, signature, "Hello world"));
+    Pair kp = Pair.fromScalar(Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`));
+    static immutable string message = "Bosagora:-)";
+    auto signature = sign(kp, message);
+    assert(verify(kp.V, signature, message));
 }
 
+// Valid with scalar value 1
 nothrow @nogc @safe unittest
 {
-    Scalar key = Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`);
-    Pair kp = Pair(key, key.toPoint());
-    auto signature = sign(kp, "Hello world.");
-    assert(!verify(kp.V, signature, "Hello world"));
+    Pair kp = Pair.fromScalar(Scalar(`0x0000000000000000000000000000000000000000000000000000000000000001`));
+    static immutable string message = "Bosagora:-)";
+    auto signature = sign(kp, message);
+    assert(verify(kp.V, signature, message));
+}
+
+// Largest value for Scalar. One less than Ed25519 prime order l where l=2^252 + 27742317777372353535851937790883648493
+nothrow @nogc @safe unittest
+{
+    Pair kp = Pair.fromScalar(Scalar(`0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec`));
+    static immutable string message = "Bosagora:-)";
+    auto signature = sign(kp, message);
+    assert(verify(kp.V, signature, message));
+}
+
+// Not valid with blank signature
+nothrow @nogc @safe unittest
+{
+    Pair kp = Pair.fromScalar(Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`));
+    static immutable string message = "Bosagora:-)";
+    Signature signature;
+    assert(!verify(kp.V, signature, message));
 }
 
 nothrow @nogc @safe unittest

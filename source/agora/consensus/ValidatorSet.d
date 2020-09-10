@@ -515,9 +515,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
 {
     import std.algorithm;
 
-    Pair pair;
-    pair.v = secretKeyToCurveScalar(key_pair.secret);
-    pair.V = pair.v.toPoint();
+    Pair pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
 
     auto enroll = Enrollment();
     auto signature_noise = Pair.random();

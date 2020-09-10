@@ -150,8 +150,7 @@ public class EnrollmentManager
             "(key CHAR(128) PRIMARY KEY, val BLOB NOT NULL)");
 
         // create Pair object from KeyPair object
-        this.key_pair.v = secretKeyToCurveScalar(key_pair.secret);
-        this.key_pair.V = this.key_pair.v.toPoint();
+        this.key_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
 
         // load next height for preimage revelation
         this.next_reveal_distance = this.getNextRevealDistance();
@@ -360,8 +359,7 @@ public class EnrollmentManager
         };
 
         // Generate signature noise
-        const noise_v = Scalar(hashMulti(key.v, "consensus.signature.noise", offset));
-        const Pair noise = Pair(noise_v, noise_v.toPoint());
+        const Pair noise = Pair.fromScalar(Scalar(hashMulti(key.v, "consensus.signature.noise", offset)));
 
         // We're done, sign & return
         result.enroll_sig = sign(key, noise, result);
@@ -374,8 +372,7 @@ public class EnrollmentManager
         @trusted nothrow
     {
         // Convert stellar-type keypair to curve scalars
-        const kp_v = secretKeyToCurveScalar(key.secret);
-        const kp = Pair(kp_v, kp_v.toPoint());
+        const kp = Pair.fromScalar(secretKeyToCurveScalar(key.secret));
 
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
@@ -1256,8 +1253,7 @@ unittest
     foreach (idx, kp; pairs)
     {
         Pair pair;
-        pair.v = secretKeyToCurveScalar(kp.secret);
-        pair.V = pair.v.toPoint();
+        pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),

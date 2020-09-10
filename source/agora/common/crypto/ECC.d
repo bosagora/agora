@@ -169,13 +169,22 @@ public struct Scalar
         return ret;
     }
 
+    /// Scalar should be greater than zero and less than L:2^252 + 27742317777372353535851937790883648493
+    public bool isValid() () nothrow @nogc @safe
+    {
+        const auto ED25519_L =  BitBlob!256("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed");
+        const auto ZERO =       BitBlob!256("0x0000000000000000000000000000000000000000000000000000000000000000");
+        return this.data > ZERO && this.data < ED25519_L;
+    }
+
     /// Return the point corresponding to this scalar multiplied by the generator
-    public Point toPoint () const nothrow @nogc @trusted
-    out (val) { assert(crypto_core_ed25519_is_valid_point(val.data[].ptr)); }
-    do {
+    public Point toPoint () const nothrow @nogc @trusted 
+    {
         Point ret = void;
-        if (crypto_scalarmult_ed25519_base_noclamp(ret.data[].ptr, this.data[].ptr))
-            assert(0);
+        if (crypto_scalarmult_ed25519_base_noclamp(ret.data[].ptr, this.data[].ptr) != 0)
+            assert(0, "Scalar is not valid");
+        if (crypto_core_ed25519_is_valid_point(ret.data[].ptr) != 1)
+            assert(0, "Point is not valid");
         return ret;
     }
 
@@ -194,7 +203,32 @@ public struct Scalar
     }
 }
 
-///
+// Test Scalar fromString / toString functions
+@safe unittest
+{
+    static immutable string s = "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec";
+    assert(Scalar.fromString(s).toString == s);
+}
+
+// Test valid Scalars
+nothrow @nogc @safe unittest
+{
+    assert(Scalar(`0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec`).isValid);
+    assert(Scalar(`0x0eadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef`).isValid);
+    assert(Scalar(`0x0000000000000000000000000000000000000000000000000000000000000001`).isValid);
+}
+
+// Test invalid Scalars
+nothrow @nogc @safe unittest
+{
+    assert(!Scalar().isValid);
+    assert(!Scalar(`0x0000000000000000000000000000000000000000000000000000000000000000`).isValid);
+    assert(!Scalar(`0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed`).isValid);
+    assert(!Scalar(`0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef`).isValid);
+    assert(!Scalar(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`).isValid);
+}
+
+//
 unittest
 {
     testSymmetry!Scalar();
