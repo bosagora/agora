@@ -73,9 +73,6 @@ public class Ledger
     /// Enrollment manager
     private EnrollmentManager enroll_man;
 
-    /// Node config
-    private NodeConfig node_config;
-
     /// If not null call this delegate
     /// A block was externalized
     private void delegate (const ref Block, bool) @safe onAcceptedBlock;
@@ -88,7 +85,6 @@ public class Ledger
         Constructor
 
         Params:
-            node_config = the node config
             params = the consensus-critical constants
             utxo_set = the set of unspent outputs
             storage = the block storage
@@ -99,13 +95,11 @@ public class Ledger
 
     ***************************************************************************/
 
-    public this (
-        NodeConfig node_config, immutable(ConsensusParams) params,
+    public this (immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
     {
-        this.node_config = node_config;
         this.params = params;
         this.utxo_set = utxo_set;
         this.storage = storage;
@@ -525,8 +519,7 @@ version (unittest)
     /// A `Ledger` with sensible defaults for `unittest` blocks
     private final class TestLedger : Ledger
     {
-        public this (
-            NodeConfig config,
+        public this (KeyPair key_pair,
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null)
         {
@@ -538,9 +531,9 @@ version (unittest)
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
 
-            super(config, params, new UTXOSet(":memory:"),
+            super(params, new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(":memory:", config.key_pair, params),
+                new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"));
         }
     }
@@ -549,11 +542,7 @@ version (unittest)
 ///
 unittest
 {
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.NODE2,
-    };
-    scope ledger = new TestLedger(config);
+    scope ledger = new TestLedger(WK.Keys.NODE2);
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
@@ -633,11 +622,7 @@ unittest
 // Reject a transaction whose output value is 0
 unittest
 {
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.Genesis,
-    };
-    scope ledger = new TestLedger(config);
+    scope ledger = new TestLedger(WK.Keys.Genesis);
 
     // Valid case
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
@@ -653,7 +638,7 @@ unittest
         foreach (ref output; tx.outputs)
             output.value = Amount(0);
         foreach (ref input; tx.inputs)
-            input.signature = config.key_pair.secret.sign(hashFull(tx)[]);
+            input.signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
     }
 
     txs.each!(tx => assert(!ledger.acceptTransaction(tx)));
@@ -664,11 +649,7 @@ unittest
 /// basic block verification
 unittest
 {
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.NODE2,
-    };
-    scope ledger = new TestLedger(config);
+    scope ledger = new TestLedger(WK.Keys.NODE2);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
@@ -681,11 +662,7 @@ unittest
 /// Merkle Proof
 unittest
 {
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.NODE2,
-    };
-    scope ledger = new TestLedger(config);
+    scope ledger = new TestLedger(WK.Keys.NODE2);
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
@@ -757,11 +734,7 @@ unittest
     }
 
     // And provide it to the ledger
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.NODE2,
-    };
-    scope ledger = new TestLedger(config, blocks);
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks);
 
     assert(ledger.utxo_set.length
            == /* Genesis, Frozen */ 6 + 8 /* Block #1 Payments*/);
@@ -849,11 +822,7 @@ private KeyPair[] getRandomKeyPairs ()
 /// Expectation: Block creation succeeds
 unittest
 {
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.NODE2,
-    };
-    scope ledger = new TestLedger(config);
+    scope ledger = new TestLedger(WK.Keys.NODE2);
 
     // Generate payment transactions to the first 8 well-known keypairs
     auto txs = genesisSpendable().enumerate()
@@ -888,11 +857,7 @@ unittest
 
     auto validator_cycle = 10;
     auto params = new immutable(ConsensusParams)(validator_cycle);
-    NodeConfig config = {
-        is_validator: true,
-        key_pair:     WK.Keys.NODE2,
-    };
-    scope ledger = new TestLedger(config);
+    scope ledger = new TestLedger(WK.Keys.NODE2);
 
     KeyPair[] splited_keys = getRandomKeyPairs();
     KeyPair[] in_key_pairs_normal;
@@ -1073,7 +1038,7 @@ unittest
 
     // Default test genesis block has 6 validators
     {
-        scope ledger = new TestLedger(NodeConfig.init);
+        scope ledger = new TestLedger(WK.Keys.A);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 6);
@@ -1085,7 +1050,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle - 1, params);
-        scope ledger = new TestLedger(NodeConfig.init, blocks, params);
+        scope ledger = new TestLedger(WK.Keys.A, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 6);
@@ -1097,7 +1062,7 @@ unittest
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(key_pair, ValidatorCycle, params);
-        scope ledger = new TestLedger(NodeConfig.init, blocks, params);
+        scope ledger = new TestLedger(WK.Keys.A, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 0);
@@ -1121,7 +1086,7 @@ unittest
 
         public this (KeyPair kp, const(Block)[] blocks, immutable(ConsensusParams) params)
         {
-            super(NodeConfig.init, params, new UTXOSet(":memory:"),
+            super(params, new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", kp, params),
                 new TransactionPool(":memory:"));
@@ -1242,13 +1207,9 @@ unittest
     immutable params = new immutable(ConsensusParams)();
     assert(new_gen_block != params.Genesis);
 
-    NodeConfig config;
-    config.is_validator = true;
-    config.genesis_block = gen_block_hex;
-
     try
     {
-        scope ledger = new TestLedger(config, [new_gen_block], params);
+        scope ledger = new TestLedger(WK.Keys.A, [new_gen_block], params);
         assert(0);
     }
     catch (Exception ex)
@@ -1258,7 +1219,7 @@ unittest
 
     immutable good_params = new immutable(ConsensusParams)(new_gen_block);
     // will not fail
-    scope ledger = new TestLedger(config, [new_gen_block], good_params);
+    scope ledger = new TestLedger(WK.Keys.A, [new_gen_block], good_params);
     // Neither will the default
-    scope other_ledger = new TestLedger(config, [new_gen_block]);
+    scope other_ledger = new TestLedger(WK.Keys.A, [new_gen_block]);
 }
