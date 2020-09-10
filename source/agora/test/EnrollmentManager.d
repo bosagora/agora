@@ -301,10 +301,11 @@ unittest
 
         /// Ctor
         public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman, ulong txs_to_nominate, shared(size_t)* countPtr)
+            EnrollmentManager enroll_man, TaskManager taskman,
+            ulong txs_to_nominate, shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            super(network, key_pair, ledger, taskman, txs_to_nominate);
+            super(network, key_pair, ledger, enroll_man, taskman, txs_to_nominate);
         }
 
         ///
@@ -338,11 +339,11 @@ unittest
         ///
         protected override TestNominator getNominator (
             NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman)
+            EnrollmentManager enroll_man, TaskManager taskman)
         {
             return new BadNominator(
-                network, key_pair, ledger, taskman, this.txs_to_nominate,
-                this.runCount);
+                network, key_pair, ledger, enroll_man, taskman,
+                this.txs_to_nominate, this.runCount);
         }
     }
 

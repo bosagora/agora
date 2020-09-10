@@ -26,6 +26,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusData;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.EnrollmentManager;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.utils.Log;
@@ -77,6 +78,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Whether we're in the process of nominating
     private bool is_nominating;
 
+    /// Enrollment manager
+    private EnrollmentManager enroll_man;
+
 extern(D):
 
     /***************************************************************************
@@ -87,12 +91,13 @@ extern(D):
             network = the network manager for gossiping SCP messages
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
+            enroll_man = used to look up the commitment & preimages
             taskman = used to run timers
 
     ***************************************************************************/
 
     public this (NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman)
+        EnrollmentManager enroll_man, TaskManager taskman)
     {
         this.network = network;
         this.key_pair.v = secretKeyToCurveScalar(key_pair.secret);
@@ -103,6 +108,7 @@ extern(D):
         this.scp = createSCP(this, node_id, IsValidator, no_quorum);
         this.taskman = taskman;
         this.ledger = ledger;
+        this.enroll_man = enroll_man;
         this.restoreSCPState(ledger);
     }
 
