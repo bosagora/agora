@@ -403,6 +403,23 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the r that was used to sign the enrollment of this validator node
+
+        Returns:
+            The initial `r` used when signing the Enrollment
+
+    ***************************************************************************/
+
+    public Scalar getCommitmentNonceScalar () nothrow
+    {
+        // we have to do -1 because the cycle index is incremented
+        // after createEnrollment() is called!
+        return Scalar(hashMulti(this.key_pair.v, "consensus.signature.noise",
+            ulong(this.cycle.index - 1)));
+    }
+
+    /***************************************************************************
+
         Get all the enrolled validator's UTXO keys.
 
         Params:
