@@ -66,7 +66,7 @@ public class ValidatorSet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
             "(key TEXT PRIMARY KEY, pubkey TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
-            "distance INTEGER, preimage TEXT)");
+            "distance INTEGER, preimage TEXT, nonce BLOB)");
     }
 
     /***************************************************************************
@@ -101,12 +101,13 @@ public class ValidatorSet
                 const ZeroDistance = 0;  // initial distance
                 this.db.execute("INSERT INTO validator_set " ~
                     "(key, pubkey, cycle_length, enrolled_height, " ~
-                    "distance, preimage, nonce) VALUES (?, ?, ?, ?, ?, ?)",
+                    "distance, preimage, nonce) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     enroll.utxo_key.toString(),
                     utxo_set_value.output.address.toString(),
                     enroll.cycle_length,
                     block_height.value, ZeroDistance,
-                    enroll.random_seed.toString());
+                    enroll.random_seed.toString(),
+                    extractNonce(enroll.enroll_sig)[]);
             }();
         }
         catch (Exception ex)
@@ -359,6 +360,41 @@ public class ValidatorSet
                 "Key for enrollment: {}", ex.msg, enroll_key);
             return false;
         }
+    }
+
+    /***************************************************************************
+
+        Extract the `R` used in the signing of the associated enrollment
+
+        Params:
+            key = The public key of the validator
+
+        Returns:
+            the `R` that was used in the signing of the Enrollment,
+            or `Point.init` if one was not found
+
+    ***************************************************************************/
+
+    public Point getCommitmentNonce (const ref PublicKey key) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT nonce FROM validator_set " ~
+                "WHERE pubkey = ?", key.toString());
+
+            if (!results.empty && results.oneValue!(ubyte[]).length != 0)
+            {
+                auto row = results.front;
+                return Point(row.peek!(ubyte[])(0));
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on getCommitmentNonce: {}, " ~
+                "for public key: {}", ex.msg, key);
+        }
+
+        return Point.init;
     }
 
     /***************************************************************************
