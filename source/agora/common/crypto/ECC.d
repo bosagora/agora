@@ -37,7 +37,10 @@ nothrow @nogc unittest
     assert(-s3 == -s1 - s2);
     assert(-s3 == -s2 - s1);
 
-    const Scalar One = (s3 + (-s3));
+    const Scalar Zero = (s3 + (-s3));
+    assert(Zero == Scalar.init);
+
+    const Scalar One = (s3 + (~s3));
     assert(One * One == One);
     // Get the generator
     const Point G = One.toPoint();
@@ -121,17 +124,21 @@ public struct Scalar
             crypto_core_ed25519_scalar_mul(
                 result.data[].ptr, this.data[].ptr, rhs.data[].ptr);
         else
-            static assert(0, "Operator " ~ op ~ " not implemented");
+            static assert(0, "Binary operator `" ~ op ~ "` not implemented");
         return result;
     }
 
     /// Get the complement of this scalar
     public Scalar opUnary (string s)()
         const nothrow @nogc @trusted
-        if (s == "-")
     {
         Scalar result = void;
-        crypto_core_ed25519_scalar_complement(result.data[].ptr, this.data[].ptr);
+        static if (s == "-")
+            crypto_core_ed25519_scalar_negate(result.data[].ptr, this.data[].ptr);
+        else static if (s == "~")
+            crypto_core_ed25519_scalar_complement(result.data[].ptr, this.data[].ptr);
+        else
+            static assert(0, "Unary operator `" ~ op ~ "` not implemented");
         return result;
     }
 
