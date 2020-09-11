@@ -268,7 +268,7 @@ public class FullNode : API
         log.trace("Received Transaction: {}", prettify(tx));
 
         auto tx_hash = hashFull(tx);
-        if (this.ledger.hasTransactionHash(tx_hash))
+        if (this.pool.hasTransactionHash(tx_hash))
             return;
 
         if (this.ledger.acceptTransaction(tx))
@@ -282,7 +282,7 @@ public class FullNode : API
     /// GET: /has_transaction_hash
     public override bool hasTransactionHash (Hash tx) @safe
     {
-        return this.ledger.hasTransactionHash(tx);
+        return this.pool.hasTransactionHash(tx);
     }
 
     /// GET: /block_height
