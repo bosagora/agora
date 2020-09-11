@@ -56,21 +56,22 @@ unittest
 
     // create enrollment data
     // send a request to enroll as a Validator
-    Enrollment enroll_0 = nodes[0].createEnrollmentData();
-    Enrollment enroll_1 = nodes[1].createEnrollmentData();
-    Enrollment enroll_2 = nodes[2].createEnrollmentData();
-    Enrollment enroll_3 = nodes[3].createEnrollmentData();
-    nodes[0].enrollValidator(enroll_1);
-    nodes[1].enrollValidator(enroll_2);
-    nodes[2].enrollValidator(enroll_3);
-    nodes[3].enrollValidator(enroll_0);
+    Enrollment[] enrolls;
+    enrolls ~= nodes[0].createEnrollmentData();
+    enrolls ~= nodes[1].createEnrollmentData();
+    enrolls ~= nodes[2].createEnrollmentData();
+    enrolls ~= nodes[3].createEnrollmentData();
+    nodes[0].enrollValidator(enrolls[0]);
+    nodes[1].enrollValidator(enrolls[1]);
+    nodes[2].enrollValidator(enrolls[2]);
+    nodes[3].enrollValidator(enrolls[3]);
 
     // wait until new enrollments are propagated to the pools
     nodes.each!(node =>
-        retryFor(node.getEnrollment(enroll_0.utxo_key) == enroll_0 &&
-                 node.getEnrollment(enroll_1.utxo_key) == enroll_1 &&
-                 node.getEnrollment(enroll_2.utxo_key) == enroll_2 &&
-                 node.getEnrollment(enroll_3.utxo_key) == enroll_3,
+        retryFor(node.getEnrollment(enrolls[0].utxo_key) == enrolls[0] &&
+                 node.getEnrollment(enrolls[1].utxo_key) == enrolls[1] &&
+                 node.getEnrollment(enrolls[2].utxo_key) == enrolls[2] &&
+                 node.getEnrollment(enrolls[3].utxo_key) == enrolls[3],
             5.seconds));
 
     // re-enroll every validator
