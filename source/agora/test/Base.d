@@ -519,6 +519,38 @@ public class TestAPIManager
 
     /***************************************************************************
 
+        Checks if all the nodes contain the given distance of pre-images for
+        the given enrollments.
+
+        The overload allows passing a subset of nodes to verify the distance
+        for only these nodes.
+
+        Params:
+            enrolls = the enrollments whose pre-image will be checked
+            distance = the expected distance of pre-images
+            timeout = the request timeout to each node
+
+    ***************************************************************************/
+
+    public void waitForPreimages (const(Enrollment)[] enrolls, ushort distance,
+        Duration timeout, string file = __FILE__, int line = __LINE__)
+    {
+        this.waitForPreimages(this.clients, enrolls, distance, timeout, file,
+            line);
+    }
+
+    /// Ditto
+    public void waitForPreimages (Clients)(Clients clients,
+        const(Enrollment)[] enrolls, ushort distance, Duration timeout,
+        string file = __FILE__, int line = __LINE__) if (isInputRange!Clients)
+    {
+        clients.each!(node => enrolls.each!(enroll =>
+            retryFor(node.getPreimage(enroll.utxo_key).distance >= distance,
+                timeout)));
+    }
+
+    /***************************************************************************
+
         Create a new node
 
         Params:

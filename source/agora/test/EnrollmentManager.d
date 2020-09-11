@@ -49,10 +49,7 @@ unittest
     network.expectBlock(Height(validator_cycle - 1), 2.seconds);
 
     // wait for preimages to be revealed before making block 10
-    nodes.each!(node =>
-        network.blocks[0].header.enrollments.each!(enroll =>
-            retryFor(node.getPreimage(enroll.utxo_key).distance >= 9,
-                5.seconds)));
+    network.waitForPreimages(network.blocks[0].header.enrollments, 9, 5.seconds);
 
     // create enrollment data
     // send a request to enroll as a Validator
@@ -80,12 +77,7 @@ unittest
     network.expectBlock(Height(validator_cycle), 2.seconds);
 
     // wait until preimages are revealed before creating a new block
-    nodes.each!(node =>
-        retryFor(node.getPreimage(enroll_0.utxo_key).distance >= 1 &&
-                 node.getPreimage(enroll_1.utxo_key).distance >= 1 &&
-                 node.getPreimage(enroll_2.utxo_key).distance >= 1 &&
-                 node.getPreimage(enroll_3.utxo_key).distance >= 1,
-            5.seconds));
+    network.waitForPreimages(enrolls, 1, 5.seconds);
 
     // verify that consensus can still be reached
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
