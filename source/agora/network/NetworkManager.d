@@ -422,9 +422,9 @@ public class NetworkManager
     {
         log.info("Doing network discovery..");
 
-        this.required_peer_keys = required_peer_keys;
-        foreach (key; this.connected_validator_keys)
-            this.required_peer_keys.remove(key);
+        this.required_peer_keys = Set!PublicKey.from(
+            required_peer_keys.byKey()
+            .filter!(key => key !in this.connected_validator_keys));
 
         // actually just runs it once, but we need the scheduler to run first
         // and it doesn't run in the constructor yet (LocalRest)
