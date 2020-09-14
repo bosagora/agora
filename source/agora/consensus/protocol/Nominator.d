@@ -125,13 +125,13 @@ extern(D):
         // store the list of other node's quorum hashes
         foreach (qc; other_quorums)
         {
-            auto quorum_set = buildSCPConfig(qc);
+            auto quorum_set = buildSCPQuorumSet(qc);
             auto shared_set = makeSharedSCPQuorumSet(quorum_set);
             this.known_quorums[hashFull(quorum_set)] = shared_set;
         }
 
         // set up our own quorum
-        auto quorum_set = buildSCPConfig(quorum);
+        auto quorum_set = buildSCPQuorumSet(quorum);
         () @trusted { this.scp.updateLocalQuorumSet(quorum_set); }();
         auto shared_set = makeSharedSCPQuorumSet(quorum_set);
         this.known_quorums[hashFull(quorum_set)] = shared_set;
@@ -224,7 +224,7 @@ extern(D):
 
     ***************************************************************************/
 
-    private static SCPQuorumSet buildSCPConfig (ref const QuorumConfig config)
+    private static SCPQuorumSet buildSCPQuorumSet (ref const QuorumConfig config)
         @safe nothrow
     {
         import scpd.scp.QuorumSetUtils;
