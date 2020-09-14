@@ -167,7 +167,7 @@ public class FullNode : API
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
-            config.node, params);
+            config.validator, params);
         this.ledger = new Ledger(params, this.utxo_set,
             this.storage, this.enroll_man, this.pool, &this.onAcceptedBlock);
         this.exception = new RestException(
@@ -474,10 +474,10 @@ public class FullNode : API
     ***************************************************************************/
 
     protected EnrollmentManager getEnrollmentManager (string data_dir,
-        in NodeConfig node_config, immutable(ConsensusParams) params)
+        in ValidatorConfig validator_config, immutable(ConsensusParams) params)
     {
         return new EnrollmentManager(buildPath(data_dir, "validator_set.dat"),
-            node_config.key_pair, params);
+            validator_config.key_pair, params);
     }
 
     /// GET: /merkle_path

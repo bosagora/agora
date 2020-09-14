@@ -16,12 +16,6 @@
 ##                             Network interface                              ##
 ################################################################################
 node:
-  # The server can operate in two modes: full node and validator node.
-  # The full node does not participate in consensus,
-  # it only replicates the state of the blockchain.
-  # When validating, the `seed` of an eligible account is required
-  # An eligible account has at least 4 units frozen in it
-  is_validator: true
   # Minimum number of non-validating nodes to connect to before discovery is
   # considered complete
   min_listeners: 2
@@ -37,6 +31,20 @@ node:
   max_retries: 5
   # Timeout for each request in milliseconds
   timeout: 2500
+  # Path to the data directory (if the path doesn't exist it will be created)
+  data_dir: .cache
+
+################################################################################
+##                             Validator configuration                        ##
+## The server can operate in two modes: full node and validator node.         ##
+## The full node does not participate in consensus,                           ##
+## it only replicates the state of the blockchain.                            ##
+################################################################################
+validator:
+  # Whether or not we should act as a validator
+  # When validating, the `seed` of an eligible account is required
+  # An eligible account has at least 40k coins frozen in it
+  enabled: true
   # This is a randomly generated keypair
   # If this node is not a validator, this will be ignored
   #
@@ -44,8 +52,6 @@ node:
   # Private seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
   # Public address:  GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
   seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
-  # Path to the data directory (if the path doesn't exist it will be created)
-  data_dir: .cache
 
 ################################################################################
 ##                         Ban manager configuration                          ##

@@ -64,7 +64,7 @@ public NodeListenerTuple runNode (Config config)
     mkdirRecurse(config.node.data_dir);
 
     FullNode node;
-    if (config.node.is_validator)
+    if (config.validator.enabled)
     {
         log.trace("Started Validator...");
         auto inst = new Validator(config);
