@@ -43,6 +43,7 @@ import agora.consensus.data.UTXOSetValue;
 import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.genesis.Test;
+import agora.consensus.SCPEnvelopeStore;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
 import agora.network.Clock;
@@ -417,10 +418,10 @@ extern(D):
     ///
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, ulong txs_to_nominate)
+        TaskManager taskman, string data_dir, ulong txs_to_nominate)
     {
         this.txs_to_nominate = txs_to_nominate;
-        super(params, clock, network, key_pair, ledger, taskman);
+        super(params, clock, network, key_pair, ledger, taskman, data_dir);
     }
 
     /// Overrides the default behavior and changes nomination behavior based
@@ -439,6 +440,18 @@ extern(D):
             return false;
 
         return true;
+    }
+
+    // set the DB instance of SCPEnvelopeStore
+    protected void setSCPEnvelopeStore (SCPEnvelopeStore envelope_store)
+    {
+        this.scp_envelope_store = envelope_store;
+    }
+
+    // return a SCPEnvelopeStore backed by an in-memory SQLite db
+    protected override SCPEnvelopeStore getSCPEnvelopeStore (string data_dir)
+    {
+        return new SCPEnvelopeStore(":memory:");
     }
 }
 
@@ -1275,10 +1288,10 @@ public class TestValidatorNode : Validator, TestAPI
     /// Returns an instance of a TestNominator with customizable behavior
     protected override TestNominator getNominator (
         immutable(ConsensusParams) params, Clock clock, NetworkManager network,
-        KeyPair key_pair, Ledger ledger, TaskManager taskman)
+        KeyPair key_pair, Ledger ledger, TaskManager taskman, string data_dir)
     {
         return new TestNominator(params, clock, network, key_pair, ledger,
-            taskman, this.txs_to_nominate);
+            taskman, data_dir, this.txs_to_nominate);
     }
 
     /// Provides a unittest-adjusted clock source for the node

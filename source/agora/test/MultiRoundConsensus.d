@@ -55,11 +55,11 @@ unittest
         /// Ctor
         public this (immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman, ulong txs_to_nominate,
+            TaskManager taskman, string data_dir, ulong txs_to_nominate,
             shared(time_t)* curr_time)
         {
             super(params, clock, network, key_pair, ledger, taskman,
-                txs_to_nominate);
+                data_dir, txs_to_nominate);
         }
 
     extern (C++):
@@ -88,11 +88,11 @@ unittest
         protected override CustomNominator getNominator (
             immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
-            TaskManager taskman)
+            TaskManager taskman, string data_dir)
         {
             return new CustomNominator(
                 params, clock, network, key_pair, ledger, taskman,
-                this.txs_to_nominate, this.cur_time);
+                data_dir, this.txs_to_nominate, this.cur_time);
         }
     }
 

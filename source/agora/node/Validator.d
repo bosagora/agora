@@ -87,7 +87,8 @@ public class Validator : FullNode, API
             this.params.QuorumThreshold);
 
         this.nominator = this.getNominator(this.params, this.clock,
-            this.network, this.config.validator.key_pair, this.ledger, this.taskman);
+            this.network, this.config.validator.key_pair, this.ledger, this.taskman,
+            this.config.node.data_dir);
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
@@ -274,6 +275,7 @@ public class Validator : FullNode, API
             key_pair = the key pair of the node
             ledger = Ledger instance
             taskman = the task manager
+            data_dir = path to the data directory
 
         Returns:
             An instance of a `Nominator`
@@ -282,9 +284,10 @@ public class Validator : FullNode, API
 
     protected Nominator getNominator (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman)
+        TaskManager taskman, string data_dir)
     {
-        return new Nominator(params, clock, network, key_pair, ledger, taskman);
+        return new Nominator(params, clock, network, key_pair, ledger, taskman,
+            data_dir);
     }
 
     /***************************************************************************
@@ -389,5 +392,17 @@ public class Validator : FullNode, API
             this.pushPreImage(preimage);
             this.enroll_man.updateRevealDistance(this.ledger.getBlockHeight());
         }
+    }
+
+    /***************************************************************************
+
+        Calls the base class `shutdown` and store the latest SCP state
+
+    ***************************************************************************/
+
+    override void shutdown ()
+    {
+        super.shutdown();
+        this.nominator.storeLatestState();
     }
 }

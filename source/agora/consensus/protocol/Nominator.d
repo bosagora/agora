@@ -18,6 +18,7 @@ import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Config;
 import agora.common.Hash : Hash, HashDg, hashPart, hashFull;
+import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
@@ -27,6 +28,7 @@ import agora.consensus.data.ConsensusData;
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.SCPEnvelopeStore;
 import agora.network.Clock;
 import agora.network.NetworkManager;
 import agora.node.Ledger;
@@ -48,6 +50,7 @@ import core.stdc.stdlib : abort;
 import core.stdc.time;
 
 import std.conv;
+import std.path : buildPath;
 import core.time : msecs, seconds;
 
 mixin AddLogger!();
@@ -95,6 +98,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Note that Clock network synchronization is not yet implemented.
     private ITimer nomination_timer;
 
+    /// SCPEnvelopeStore instance
+    protected SCPEnvelopeStore scp_envelope_store;
+
 extern(D):
 
     /***************************************************************************
@@ -108,12 +114,13 @@ extern(D):
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
             taskman = used to run timers
+            data_dir = path to the data directory
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman)
+        TaskManager taskman, string data_dir)
     {
         this.params = params;
         this.clock = clock;
@@ -125,7 +132,8 @@ extern(D):
         this.scp = createSCP(this, node_id, IsValidator, no_quorum);
         this.taskman = taskman;
         this.ledger = ledger;
-        this.restoreSCPState(ledger);
+        this.scp_envelope_store = this.getSCPEnvelopeStore(data_dir);
+        this.restoreSCPState();
     }
 
     /***************************************************************************
@@ -379,50 +387,19 @@ extern(D):
 
     /***************************************************************************
 
-        Restore SCP's internal state based on the provided ledger state
-
-        Params:
-            ledger = the ledger instance
+        Restore SCP's internal state based on the stored latest envelopes
 
     ***************************************************************************/
 
-    private void restoreSCPState (Ledger ledger)
+    protected void restoreSCPState ()
     {
-        import agora.common.Serializer;
-        import scpd.types.Stellar_SCP;
-        import scpd.types.Utils;
-        import scpd.types.Stellar_types : StellarHash = Hash, NodeID;
-        import std.range;
-
-        auto pub_key = NodeID(uint256(PublicKey(this.schnorr_pair.V[])));
-        auto block = ledger.getBlocksFrom(ledger.getBlockHeight()).front;
-        auto serialized = block.serializeFull();
-        auto vec = serialized.toVec();
-        auto value = duplicate_value(&vec);
-        SCPStatement statement =
+        foreach (const ref SCPEnvelope envelope; this.scp_envelope_store)
         {
-            nodeID: pub_key,
-            slotIndex: block.header.height,
-            pledges: {
-                type_: SCPStatementType.SCP_ST_EXTERNALIZE,
-                externalize_: {
-                    commit: {
-                        counter: 0,
-                        value: value,
-                    },
-                    nH: 0,
-                },
-            },
-        };
-
-        SCPEnvelope env = SCPEnvelope(statement);
-        this.scp.setStateFromEnvelope(block.header.height, env);
-        if (!this.scp.isSlotFullyValidated(block.header.height))
-            assert(0);
-
-        // there should at least be a genesis block
-        if (this.scp.empty())
-            assert(0);
+            this.scp.setStateFromEnvelope(envelope.statement.slotIndex,
+                envelope);
+            if (!this.scp.isSlotFullyValidated(envelope.statement.slotIndex))
+                assert(0);
+        }
     }
 
     /***************************************************************************
@@ -464,6 +441,53 @@ extern(D):
 
         if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
             log.info("Rejected invalid envelope: {}", scpPrettify(&envelope));
+    }
+
+    /***************************************************************************
+
+        Store the latest SCP sate for restore
+
+    ***************************************************************************/
+
+    public void storeLatestState () @safe
+    {
+        vector!SCPEnvelope envelopes;
+
+        () @trusted
+        {
+            if (this.scp.empty())
+                return;
+            envelopes = this.scp.getLatestMessagesSend(this.scp.getHighSlotIndex());
+        }();
+
+        ManagedDatabase.beginBatch();
+        scope (failure) ManagedDatabase.rollback();
+
+        // Clean the previous envelopes from the DB
+        this.scp_envelope_store.removeAll();
+
+        // Store the latest envelopes
+        foreach (const ref env; envelopes)
+            this.scp_envelope_store.add(env);
+
+        ManagedDatabase.commitBatch();
+    }
+
+    /***************************************************************************
+
+        Returns an instance of an SCPEnvelopeStore
+
+        Params:
+            data_dir = path to the data directory
+
+        Returns:
+            the SCPEnvelopeStore instance
+
+    ***************************************************************************/
+
+    protected SCPEnvelopeStore getSCPEnvelopeStore (string data_dir)
+    {
+        return new SCPEnvelopeStore(buildPath(data_dir, "scp_envelopes.dat"));
     }
 
     extern (C++):
