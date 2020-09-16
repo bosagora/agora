@@ -240,7 +240,6 @@ public struct PublicKey
 /// this does not expose any Stellar serialization shenanigans.
 public struct SecretKey
 {
-    nothrow @nogc:
     /// Alias to the BitBlob type
     private alias DataType = BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8);
 
@@ -271,7 +270,7 @@ public struct SecretKey
 
     ***************************************************************************/
 
-    public Signature sign (scope const(ubyte)[] msg) const
+    public Signature sign (scope const(ubyte)[] msg) const nothrow @nogc
     {
         Signature result;
         // The second argument, `siglen_p`, a pointer to the length of the
