@@ -210,7 +210,7 @@ public class Validator : FullNode, API
     {
         this.started = true;
         this.startPeriodicDiscovery();
-        this.taskman.setTimer(this.config.node.preimage_reveal_interval,
+        this.taskman.setTimer(this.config.validator.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
         this.network.startPeriodicCatchup(this.ledger);
 

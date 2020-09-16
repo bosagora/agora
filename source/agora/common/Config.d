@@ -138,6 +138,16 @@ public struct NodeConfig
 
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir = "/var/lib/agora/";
+}
+
+/// Validator config
+public struct ValidatorConfig
+{
+    /// Whether or not this node should try to act as a validator
+    public bool enabled;
+
+    /// The seed to use for the keypair of this node
+    public immutable KeyPair key_pair;
 
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
@@ -155,16 +165,6 @@ public struct NodeConfig
 
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
-}
-
-/// Validator config
-public struct ValidatorConfig
-{
-    /// Whether or not this node should try to act as a validator
-    public bool enabled;
-
-    /// The seed to use for the keypair of this node
-    public immutable KeyPair key_pair;
 }
 
 /// Admin API config
@@ -344,14 +344,6 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
 
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
-    auto validator_cycle = get!(uint, "node", "validator_cycle")(cmdln, node);
-    auto max_quorum_nodes = get!(uint, "node", "max_quorum_nodes")(cmdln, node);
-    auto quorum_threshold = get!(uint, "node", "quorum_threshold")(cmdln, node);
-    assert(quorum_threshold >= 1 && quorum_threshold <= 100);
-    auto quorum_shuffle_interval = get!(uint, "node", "quorum_shuffle_interval")(
-        cmdln, node);
-    auto preimage_reveal_interval = get!(Duration, "node", "preimage_reveal_interval",
-        str => str.to!ulong.seconds)(cmdln, node);
 
     NodeConfig result = {
             min_listeners : min_listeners,
@@ -365,11 +357,6 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             max_retries : max_retries,
             timeout : timeout,
             data_dir : data_dir,
-            validator_cycle : validator_cycle,
-            max_quorum_nodes : max_quorum_nodes,
-            quorum_threshold : quorum_threshold,
-            quorum_shuffle_interval : quorum_shuffle_interval,
-            preimage_reveal_interval : preimage_reveal_interval,
     };
     return result;
 }
@@ -387,16 +374,12 @@ node:
   address: 0.0.0.0
   port: 2926
   data_dir: .cache
-  quorum_shuffle_interval: 10
-  preimage_reveal_interval: 5
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
         assert(config.min_listeners == 2);
         assert(config.max_listeners == 10);
         assert(config.data_dir == ".cache");
-        assert(config.quorum_shuffle_interval == 10);
-        assert(config.preimage_reveal_interval == 5.seconds);
     }
 }
 
@@ -406,11 +389,23 @@ private ValidatorConfig parseValidatorConfig (Node* node, const ref CommandLine 
     const enabled = get!(bool, "validator", "enabled")(cmdln, node);
     if (!enabled)
         return ValidatorConfig(false);
+    auto quorum_threshold = get!(uint, "validator", "quorum_threshold")(cmdln, node);
+    assert(quorum_threshold >= 1 && quorum_threshold <= 100);
 
     ValidatorConfig result = {
         enabled: true,
         key_pair:
             KeyPair.fromSeed(Seed.fromString(get!(string, "validator", "seed")(cmdln, node))),
+        validator_cycle:
+            get!(uint, "validator", "validator_cycle")(cmdln, node),
+        max_quorum_nodes:
+            get!(uint, "validator", "max_quorum_nodes")(cmdln, node),
+        quorum_threshold: quorum_threshold,
+        quorum_shuffle_interval:
+            get!(uint, "validator", "quorum_shuffle_interval")(cmdln, node),
+        preimage_reveal_interval:
+            get!(Duration, "validator", "preimage_reveal_interval",
+                 str => str.to!ulong.seconds)(cmdln, node),
     };
     return result;
 }
@@ -426,12 +421,22 @@ unittest
 validator:
   enabled: true
   seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  validator_cycle: 20
+  max_quorum_nodes: 7
+  quorum_threshold: 50
+  quorum_shuffle_interval: 10
+  preimage_reveal_interval: 5
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseValidatorConfig("validator" in node, cmdln);
         assert(config.enabled);
         assert(config.key_pair == KeyPair.fromSeed(
             Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
+        assert(config.validator_cycle == 20);
+        assert(config.max_quorum_nodes == 7);
+        assert(config.quorum_threshold == 50);
+        assert(config.quorum_shuffle_interval == 10);
+        assert(config.preimage_reveal_interval == 5.seconds);
     }
     {
     immutable conf_example = `

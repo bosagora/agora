@@ -1373,11 +1373,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
             retry_delay : test_conf.retry_delay,
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
-            validator_cycle : test_conf.validator_cycle,
-            max_quorum_nodes : test_conf.max_quorum_nodes,
-            quorum_threshold : test_conf.quorum_threshold,
-            quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
-            preimage_reveal_interval : 1.seconds,  // check revealing frequently
             block_interval_sec : test_conf.block_interval_sec,
             min_listeners : test_conf.min_listeners == 0
                 ? (test_conf.validators + test_conf.full_nodes) - 1
@@ -1395,6 +1390,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
         {
             enabled : true,
             key_pair : node_key,
+            validator_cycle : test_conf.validator_cycle,
+            max_quorum_nodes : test_conf.max_quorum_nodes,
+            quorum_threshold : test_conf.quorum_threshold,
+            quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
+            preimage_reveal_interval : 1.seconds,  // check revealing frequently
         };
 
         return conf;
