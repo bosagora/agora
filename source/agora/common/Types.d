@@ -37,6 +37,15 @@ public enum CompactMode : bool
     Yes
 }
 
+/// Describe print modes for `toString`
+public enum PrintMode
+{
+    /// Print hidden version
+    Obfuscated,
+    /// Print original value
+    Clear,
+}
+
 unittest
 {
     // Check that our type match libsodium's definition

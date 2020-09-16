@@ -23,6 +23,7 @@ import base32;
 import libsodium;
 
 import std.exception;
+import std.format;
 
 
 /// Simple signature example
@@ -260,6 +261,63 @@ public struct SecretKey
 
     /***************************************************************************
 
+        Print the secret key
+
+        By default, this function prints the hidden version of the secret key.
+        Changing the mode to `Clear` makes it print the original value.
+        This mode is intended for debugging.
+
+        Params:
+          sink = The sink to write the piecemeal string data to
+          mode = The `PrintMode` to use for printing the content.
+                 By default, the hidden value is printed.
+
+    ***************************************************************************/
+
+    public void toString (scope void delegate(const(char)[]) @safe sink,
+                          PrintMode mode = PrintMode.Obfuscated) const @safe
+    {
+        final switch (mode)
+        {
+        case PrintMode.Obfuscated:
+            formattedWrite(sink, "**SECRET**");
+            break;
+
+        case PrintMode.Clear:
+            formattedWrite(sink, "%s", this.data);
+            break;
+        }
+    }
+
+    /// Ditto
+    public string toString (PrintMode mode = PrintMode.Obfuscated) const @safe
+    {
+        string result;
+        this.toString((data) { result ~= data; }, mode);
+        return result;
+    }
+
+    ///
+    unittest
+    {
+        auto sk = KeyPair.fromSeed(Seed.fromString(
+                  "SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS"))
+                  .secret;
+
+        assert(sk.toString(PrintMode.Obfuscated) == "**SECRET**");
+        assert(sk.toString(PrintMode.Clear) ==
+               "0xbca6b465149f8d3f4bc1794c246b2df64dcab0e65beb1862c5a0843d3e06e2f5" ~
+               "6ee7ca148718de68bd5b15d73d71d77f38197ff59e4a1bb19697fa47c8d492e0");
+
+        // Test default formatting behavior with writeln, log, etc...
+        import std.format : phobos_format = format;
+        import ocean.text.convert.Formatter : ocean_format = format;
+        assert(phobos_format("%s", sk) == "**SECRET**");
+        assert(ocean_format("{}", sk) == "**SECRET**");
+    }
+
+    /***************************************************************************
+
         Signs a message with this private key
 
         Params:
@@ -310,24 +368,62 @@ public struct Seed
         this.data = args;
     }
 
-    /// Uses Stellar's representation instead of hex
-    public string toString () const
+    /***************************************************************************
+
+        Print the seed
+
+        By default, this function prints the hidden version of the seed.
+        Changing the mode to `Clear` makes it print the original value.
+        This mode is intended for debugging.
+
+        Params:
+          sink = The sink to write the piecemeal string data to
+          mode = The `PrintMode` to use for printing the content.
+                 By default, the hidden value is printed.
+
+    ***************************************************************************/
+
+    public void toString (scope void delegate(const(char)[]) sink,
+                          PrintMode mode = PrintMode.Obfuscated) const
     {
-        ubyte[1 + Seed.Width + 2] bin;
-        bin[0] = VersionByte.Seed;
-        bin[1 .. $ - 2] = this.data[];
-        bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
-        return Base32.encode(bin).assumeUnique;
+        final switch (mode)
+        {
+        case PrintMode.Obfuscated:
+            formattedWrite(sink, "**SEED**");
+            break;
+
+        case PrintMode.Clear:
+            ubyte[1 + Seed.Width + 2] bin;
+            bin[0] = VersionByte.Seed;
+            bin[1 .. $ - 2] = this.data[];
+            bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
+            formattedWrite(sink, "%s", Base32.encode(bin));
+            break;
+        }
     }
 
-    /// Make sure the sink overload of BitBlob is not picked
-    public void toString (scope void delegate(const(char)[]) sink) const
+    /// Uses Stellar's representation instead of hex
+    public string toString (PrintMode mode = PrintMode.Obfuscated) const
     {
-        ubyte[1 + Seed.Width + 2] bin;
-        bin[0] = VersionByte.Seed;
-        bin[1 .. $ - 2] = this.data[];
-        bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
-        Base32.encode(bin, sink);
+        string result;
+        this.toString((data) { result ~= data; }, mode);
+        return result;
+    }
+
+    ///
+    unittest
+    {
+        auto sd = Seed.fromString("SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS");
+
+        assert(sd.toString(PrintMode.Obfuscated) == "**SEED**");
+        assert(sd.toString(PrintMode.Clear) ==
+               "SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS");
+
+        // Test default formatting behavior with writeln, log, etc...
+        import std.format : phobos_format = format;
+        import ocean.text.convert.Formatter : ocean_format = format;
+        assert(phobos_format("%s", sd) == "**SEED**");
+        assert(ocean_format("{}", sd) == "**SEED**");
     }
 
     /// Create a Seed from Stellar's string representation
