@@ -1369,12 +1369,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
     {
         NodeConfig conf =
         {
-            address : address,
-            retry_delay : test_conf.retry_delay,
-            max_retries : test_conf.max_retries,
-            timeout : test_conf.timeout,
-            block_interval_sec : test_conf.block_interval_sec,
-            min_listeners : test_conf.min_listeners == 0
+            address: address,
+            retry_delay: test_conf.retry_delay,
+            max_retries: test_conf.max_retries,
+            timeout: test_conf.timeout,
+            block_interval_sec: test_conf.block_interval_sec,
+            min_listeners: test_conf.min_listeners == 0
                 ? (test_conf.validators + test_conf.full_nodes) - 1
                 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
@@ -1388,13 +1388,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
     {
         ValidatorConfig conf =
         {
-            enabled : true,
-            key_pair : node_key,
-            validator_cycle : test_conf.validator_cycle,
-            max_quorum_nodes : test_conf.max_quorum_nodes,
-            quorum_threshold : test_conf.quorum_threshold,
-            quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
-            preimage_reveal_interval : 1.seconds,  // check revealing frequently
+            enabled: true,
+            key_pair: node_key,
+            validator_cycle: test_conf.validator_cycle,
+            max_quorum_nodes: test_conf.max_quorum_nodes,
+            quorum_threshold: test_conf.quorum_threshold,
+            quorum_shuffle_interval: test_conf.quorum_shuffle_interval,
+            preimage_reveal_interval: 1.seconds,  // check revealing frequently
         };
 
         return conf;
@@ -1402,7 +1402,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
 
     BanManager.Config ban_conf =
     {
-        max_failed_requests : test_conf.max_failed_requests,
+        max_failed_requests: test_conf.max_failed_requests,
         ban_duration: 300
     };
 
@@ -1431,10 +1431,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
 
         Config conf =
         {
-            banman : ban_conf,
-            node : self,
-            validator : validator_self,
-            network : assumeUnique(network),
+            banman: ban_conf,
+            node: self,
+            validator: validator_self,
+            network: assumeUnique(network),
         };
 
         return conf;

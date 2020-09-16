@@ -303,11 +303,11 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
 
     Config conf =
     {
-        banman : parseBanManagerConfig("banman" in root, cmdln),
-        node : parseNodeConfig("node" in root, cmdln),
-        validator : parseValidatorConfig("validator" in root, cmdln),
-        network : assumeUnique(parseSequence("network")),
-        dns_seeds : assumeUnique(parseSequence("dns", true)),
+        banman: parseBanManagerConfig("banman" in root, cmdln),
+        node: parseNodeConfig("node" in root, cmdln),
+        validator: parseValidatorConfig("validator" in root, cmdln),
+        network: assumeUnique(parseSequence("network")),
+        dns_seeds: assumeUnique(parseSequence("dns", true)),
         logging: parseLoggingSection("logging" in root, cmdln),
         event_handlers: parserEventHandlers("event_handlers" in root, cmdln),
     };
@@ -327,36 +327,32 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
 /// Parse the node config section
 private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
 {
-    auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
-    auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
-    auto address = get!(string, "node", "address")(cmdln, node);
-    auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
-    auto genesis_start_time = get!(time_t, "node", "genesis_start_time",
-        str => SysTime(DateTime.fromISOString(str)).toUnixTime)(cmdln, node);
-    uint block_interval_sec = get!(uint, "node", "block_interval_sec")(cmdln, node);
-
-    Duration retry_delay = get!(Duration, "node", "retry_delay",
-                                str => str.to!ulong.msecs)(cmdln, node);
-
-    size_t max_retries = get!(size_t, "node", "max_retries")(cmdln, node);
-    Duration timeout = get!(Duration, "node", "timeout", str => str.to!ulong.msecs)
-        (cmdln, node);
-
-    string data_dir = get!(string, "node", "data_dir")(cmdln, node);
-    auto port = get!(ushort, "node", "port")(cmdln, node);
-
     NodeConfig result = {
-            min_listeners : min_listeners,
-            max_listeners : max_listeners,
-            genesis_block : genesis_block,
-            genesis_start_time : genesis_start_time,
-            block_interval_sec : block_interval_sec,
-            address : address,
-            port : port,
-            retry_delay : retry_delay,
-            max_retries : max_retries,
-            timeout : timeout,
-            data_dir : data_dir,
+        genesis_block:
+            opt!(string, "node", "genesis_block")(cmdln, node),
+        genesis_start_time:
+            get!(time_t, "node", "genesis_start_time",
+                str => SysTime(DateTime.fromISOString(str)).toUnixTime)(cmdln, node),
+        block_interval_sec:
+            get!(uint, "node", "block_interval_sec")(cmdln, node),
+        min_listeners:
+            get!(size_t, "node", "min_listeners")(cmdln, node),
+        max_listeners:
+            get!(size_t, "node", "max_listeners")(cmdln, node),
+        address:
+            get!(string, "node", "address")(cmdln, node),
+        port:
+            get!(ushort, "node", "port")(cmdln, node),
+        retry_delay:
+            get!(Duration, "node", "retry_delay",
+                str => str.to!ulong.msecs)(cmdln, node),
+        max_retries:
+            get!(size_t, "node", "max_retries")(cmdln, node),
+        timeout:
+            get!(Duration, "node", "timeout",
+                str => str.to!ulong.msecs)(cmdln, node),
+        data_dir:
+            get!(string, "node", "data_dir")(cmdln, node),
     };
     return result;
 }
