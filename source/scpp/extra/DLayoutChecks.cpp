@@ -83,6 +83,7 @@ FieldInfo cppFieldInfo ( SCPStatement::_pledges_t::_prepare_t &object, const cha
 FieldInfo cppFieldInfo ( SCPStatement::_pledges_t::_confirm_t &object, const char *field_name )
 {
     HANDLE(ballot)
+    HANDLE(value_sig)
     HANDLE(nPrepared)
     HANDLE(nCommit)
     HANDLE(nH)

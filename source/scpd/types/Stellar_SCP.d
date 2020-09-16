@@ -76,13 +76,14 @@ struct SCPStatement {
 
         static struct _confirm_t {
             SCPBallot ballot;
+            uint256 value_sig;  // used for Scalar of Signature for this ballot
             uint32_t nPrepared;
             uint32_t nCommit;
             uint32_t nH;
             Hash quorumSetHash;
         }
 
-        static assert(_confirm_t.sizeof == 112);
+        static assert(_confirm_t.sizeof == 144);
 
         static struct _externalize_t {
             SCPBallot commit;
@@ -258,7 +259,7 @@ struct SCPStatement {
     _pledges_t pledges;
 }
 
-static assert(SCPStatement.sizeof == 176);
+static assert(SCPStatement.sizeof == 200);
 static assert(Signature.sizeof == 64);
 
 struct SCPEnvelope {
@@ -266,7 +267,7 @@ struct SCPEnvelope {
   Signature signature;
 }
 
-static assert(SCPEnvelope.sizeof == 240);
+static assert(SCPEnvelope.sizeof == 264);
 
 struct SCPQuorumSet {
     import agora.common.Hash;
@@ -339,8 +340,3 @@ static assert(SCPQuorumSet.sizeof == 56);
 /// From SCPDriver, here for convenience
 public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
 
-/// TODO: Move to a test folder and/or automate this
-static assert(SCPBallot.sizeof == 32);
-static assert(Value.sizeof == 24);
-static assert(SCPQuorumSet.sizeof == 56);
-static assert(SCPEnvelope.sizeof == 240);
