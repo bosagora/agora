@@ -46,7 +46,8 @@ unittest
     foreach (block_idx, block_txs; txs.chunks(txs_to_nominate).enumerate)
     {
         block_txs.each!(tx => nodes[0].putTransaction(tx));
-        network.expectBlock(Height(block_idx + 1), 5.seconds);
+        network.expectBlock(Height(block_idx + 1), network.blocks[0].header,
+            5.seconds);
     }
 
     // 8 txs will create 4 blocks if we nominate 2 per block

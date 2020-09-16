@@ -48,7 +48,7 @@ unittest
     auto nodes = network.clients;
     auto set_a = network.clients[0 .. 4];
     auto set_b = network.clients[4 .. $];
-    network.expectBlock(Height(7), 5.seconds);
+    network.expectBlock(Height(7), network.blocks[0].header, 5.seconds);
 
     auto spendable = network.blocks[$ - 1].spendable().array;
 
@@ -64,7 +64,7 @@ unittest
 
     // Block 8
     txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(8), 5.seconds);
+    network.expectBlock(Height(8), network.blocks[0].header, 5.seconds);
 
     // Freeze builders
     auto freezable = txs[$ - 3]
@@ -83,7 +83,7 @@ unittest
 
     // Block 9
     freeze_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(9), 5.seconds);
+    network.expectBlock(Height(9), network.blocks[0].header, 5.seconds);
 
     // Now we enroll four new validators. After this, the already enrolled
     // validators will be expired.
@@ -103,10 +103,10 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
     new_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(10), 5.seconds);
+    network.expectBlock(Height(10), network.blocks[0].header, 5.seconds);
 
     // Sanity check
-    auto b10 = set_a[0].getBlocksFrom(0, 2)[0];
+    auto b10 = set_a[0].getBlocksFrom(10, 2)[0];
     assert(b10.header.enrollments.length == 4);
 
     // Now restarting the validators in the set B, all the data of those
@@ -139,7 +139,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
     new_txs.each!(tx => set_b[0].putTransaction(tx));
-    network.expectBlock(set_b, Height(11), 5.seconds);
+    network.expectBlock(set_b, Height(11), b10.header, 5.seconds);
 }
 
 /// Situation: A validator is stopped and wiped clean after the block height

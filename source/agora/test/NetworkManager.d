@@ -54,7 +54,8 @@ unittest
 
     nodes[0].clearFilter();
     nodes[1].clearFilter();
-    network.expectBlock(Height(1), 2.seconds);
+    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
+    network.expectBlock(Height(1), b0.header, 2.seconds);
 }
 
 /// test behavior when a node sends bad block data
@@ -170,6 +171,10 @@ unittest
     auto node_validators = nodes[0 .. 4];  // validators, create blocks
     auto node_test = nodes[4];  // full node, does not create blocks
     auto node_bad = nodes[5];  // full node, returns bad blocks in getBlocksFrom()
+
+    // wait for preimages to be revealed before making blocks
+    network.waitForPreimages(network.blocks[0].header.enrollments, 6,
+        5.seconds);
 
     // enable filtering first
     node_validators.each!(node => node.filter!(API.getBlocksFrom));
