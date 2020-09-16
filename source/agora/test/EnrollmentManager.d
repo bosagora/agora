@@ -242,7 +242,7 @@ unittest
             if (this.nodes.length == 0)
             {
                 auto time = new shared(time_t)(this.initial_time);
-                assert(conf.node.is_validator);
+                assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!TestNode(
                     conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
                     time, conf.node.timeout);

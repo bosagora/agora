@@ -77,6 +77,9 @@ public struct Config
     /// The node config
     public NodeConfig node;
 
+    /// The validator config
+    public ValidatorConfig validator;
+
     /// The administrator interface config
     public AdminConfig admin;
 
@@ -111,9 +114,6 @@ public struct NodeConfig
     /// How often a block should be created
     public uint block_interval_sec = 600;
 
-    /// Is this a validator node
-    public bool is_validator;
-
     /// The minimum number of listeners to connect to
     /// before discovery is considered complete
     public size_t min_listeners = 2;
@@ -126,9 +126,6 @@ public struct NodeConfig
 
     /// Bind port
     public ushort port = 0xB0A;
-
-    /// The seed to use for the keypair of this node
-    public immutable KeyPair key_pair;
 
     /// Time to wait between request retries
     public Duration retry_delay = 3.seconds;
@@ -158,6 +155,16 @@ public struct NodeConfig
 
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
+}
+
+/// Validator config
+public struct ValidatorConfig
+{
+    /// Whether or not this node should try to act as a validator
+    public bool enabled;
+
+    /// The seed to use for the keypair of this node
+    public immutable KeyPair key_pair;
 }
 
 /// Admin API config
@@ -298,6 +305,7 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
     {
         banman : parseBanManagerConfig("banman" in root, cmdln),
         node : parseNodeConfig("node" in root, cmdln),
+        validator : parseValidatorConfig("validator" in root, cmdln),
         network : assumeUnique(parseSequence("network")),
         dns_seeds : assumeUnique(parseSequence("dns", true)),
         logging: parseLoggingSection("logging" in root, cmdln),
@@ -319,7 +327,6 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
 /// Parse the node config section
 private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
 {
-    auto is_validator = get!(bool, "node", "is_validator")(cmdln, node);
     auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
     auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
     auto address = get!(string, "node", "address")(cmdln, node);
@@ -346,10 +353,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     auto preimage_reveal_interval = get!(Duration, "node", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
 
-    NodeConfig makeConf (KeyPair key_pair)
-    {
-        NodeConfig r = {
-            is_validator : is_validator,
+    NodeConfig result = {
             min_listeners : min_listeners,
             max_listeners : max_listeners,
             genesis_block : genesis_block,
@@ -357,7 +361,6 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             block_interval_sec : block_interval_sec,
             address : address,
             port : port,
-            key_pair : key_pair,
             retry_delay : retry_delay,
             max_retries : max_retries,
             timeout : timeout,
@@ -367,16 +370,8 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             quorum_threshold : quorum_threshold,
             quorum_shuffle_interval : quorum_shuffle_interval,
             preimage_reveal_interval : preimage_reveal_interval,
-        };
-        return r;
-    }
-
-    if (is_validator)
-    {
-        string node_seed = get!(string, "node", "seed")(cmdln, node);
-        return makeConf(KeyPair.fromSeed(Seed.fromString(node_seed)));
-    }
-    return makeConf(KeyPair.init);
+    };
+    return result;
 }
 
 ///
@@ -399,18 +394,52 @@ node:
         auto config = parseNodeConfig("node" in node, cmdln);
         assert(config.min_listeners == 2);
         assert(config.max_listeners == 10);
-        assert(config.is_validator == false);
         assert(config.data_dir == ".cache");
         assert(config.quorum_shuffle_interval == 10);
         assert(config.preimage_reveal_interval == 5.seconds);
     }
+}
+
+/// Parse the validator config section
+private ValidatorConfig parseValidatorConfig (Node* node, const ref CommandLine cmdln)
+{
+    const enabled = get!(bool, "validator", "enabled")(cmdln, node);
+    if (!enabled)
+        return ValidatorConfig(false);
+
+    ValidatorConfig result = {
+        enabled: true,
+        key_pair:
+            KeyPair.fromSeed(Seed.fromString(get!(string, "validator", "seed")(cmdln, node))),
+    };
+    return result;
+}
+
+unittest
+{
+    import dyaml.loader;
+
+    CommandLine cmdln;
+
     {
-    immutable conf_example = `
-node:
-  is_validator: true
+        immutable conf_example = `
+validator:
+  enabled: true
+  seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
 `;
         auto node = Loader.fromString(conf_example).load();
-        assertThrown!Exception(parseNodeConfig("node" in node, cmdln));
+        auto config = parseValidatorConfig("validator" in node, cmdln);
+        assert(config.enabled);
+        assert(config.key_pair == KeyPair.fromSeed(
+            Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
+    }
+    {
+    immutable conf_example = `
+validator:
+  enabled: true
+`;
+        auto node = Loader.fromString(conf_example).load();
+        assertThrown!Exception(parseValidatorConfig("validator" in node, cmdln));
     }
 }
 

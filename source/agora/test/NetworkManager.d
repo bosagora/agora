@@ -138,7 +138,7 @@ unittest
             // 1 byzantine FullNode => lies about the blockchain
             //   (returns syntactically invalid data)
             // 1 good FullNode => it accepts only the valid blockchain
-            if (conf.node.is_validator)
+            if (conf.validator.enabled)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
                     conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
