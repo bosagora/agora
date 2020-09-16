@@ -1016,8 +1016,8 @@ unittest
 
     assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
     assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
-    auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
     assert(man.addValidator(enroll, Height(2), &utxo_set.findUTXO, utxos) is null);
+    auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[100], 907);
     assert(man.addPreimage(preimage));
     assert(man.getValidatorPreimage(utxo_hash) == preimage);
 }
@@ -1299,4 +1299,32 @@ unittest
     assert(man.getRandomSeed(utxos, Height(1008)) ==
         Hash(`0xa9eca761735203ad896929790aa83c03a2154d8390137b2b59e92ca90150220c1992a1e3ebe318ad8049cf801b9a8b85119410131fc3c4d784ce430dd780a861`),
         man.getRandomSeed(utxos, Height(1008)).to!string);
+}
+
+// Tests for not consuming pre-images before being a validator
+unittest
+{
+    import std.stdio;
+    import std.range;
+    import agora.consensus.data.Transaction;
+
+    scope utxo_set = new TestUTXOSet;
+    genesisSpendable()
+        .map!(txb => txb.refund(WK.Keys[0].address).sign(TxType.Freeze))
+        .each!(tx => utxo_set.put(tx));
+    scope man = new EnrollmentManager(":memory:", WK.Keys[0],
+        new immutable(ConsensusParams)(10));
+
+    // create the first enrollment and add it as a validator
+    auto enroll = man.createEnrollment(utxo_set.keys[0]);
+    assert(man.addValidator(
+            enroll, Height(2), &utxo_set.findUTXO, utxo_set.storage) is null);
+    auto preimages_valid = man.cycle.preimages.byStride().dup;
+
+    // create the second enrollment
+    enroll = man.createEnrollment(utxo_set.keys[0]);
+
+    // pre-images of the current cycle have not changed
+    auto preimages_enroll = man.cycle.preimages.byStride().dup;
+    assert(preimages_enroll[] == preimages_valid[]);
 }

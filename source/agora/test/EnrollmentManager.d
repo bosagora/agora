@@ -117,6 +117,7 @@ unittest
     {
         auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
         txs.each!(tx => nodes[0].putTransaction(tx));
+        network.waitForPreimages(b0.header.enrollments, cast(ushort)height, 5.seconds);
         network.expectBlock(Height(height + 1), 2.seconds);
         prev_txs = txs;
     }
