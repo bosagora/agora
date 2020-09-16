@@ -1,0 +1,13 @@
+diff --git a/source/scpp/src/xdr/Stellar-SCP.h b/source/scpp/src/xdr/Stellar-SCP.h
+index 6f6f4d52..8755b4fc 100644
+--- a/source/scpp/src/xdr/Stellar-SCP.h
++++ b/source/scpp/src/xdr/Stellar-SCP.h
+@@ -234,7 +234,7 @@ struct SCPStatement {
+     };
+ 
+     using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
+-  private:
++  public:
+     _xdr_case_type type_;
+     union {
+       _prepare_t prepare_;

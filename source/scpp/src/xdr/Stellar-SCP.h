@@ -177,6 +177,7 @@ struct SCPStatement {
     };
     struct _confirm_t {
       SCPBallot ballot{};
+      uint256 value_sig{};
       uint32 nPrepared{};
       uint32 nCommit{};
       uint32 nH{};
@@ -184,23 +185,27 @@ struct SCPStatement {
 
       _confirm_t() = default;
       template<typename _ballot_T,
+               typename _value_sig_T,
                typename _nPrepared_T,
                typename _nCommit_T,
                typename _nH_T,
                typename _quorumSetHash_T,
                typename = typename
                std::enable_if<std::is_constructible<SCPBallot, _ballot_T>::value
+                              && std::is_constructible<uint256, _value_sig_T>::value
                               && std::is_constructible<uint32, _nPrepared_T>::value
                               && std::is_constructible<uint32, _nCommit_T>::value
                               && std::is_constructible<uint32, _nH_T>::value
                               && std::is_constructible<Hash, _quorumSetHash_T>::value
                              >::type>
       explicit _confirm_t(_ballot_T &&_ballot,
+                          _value_sig_T &&_value_sig,
                           _nPrepared_T &&_nPrepared,
                           _nCommit_T &&_nCommit,
                           _nH_T &&_nH,
                           _quorumSetHash_T &&_quorumSetHash)
         : ballot(std::forward<_ballot_T>(_ballot)),
+          value_sig(std::forward<_value_sig_T>(_value_sig)),
           nPrepared(std::forward<_nPrepared_T>(_nPrepared)),
           nCommit(std::forward<_nCommit_T>(_nCommit)),
           nH(std::forward<_nH_T>(_nH)),
@@ -229,7 +234,7 @@ struct SCPStatement {
     };
 
     using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
-/*  private:*/  // BPFK note: cannot be private as we require runtime layout checks
+  public:
     _xdr_case_type type_;
     union {
       _prepare_t prepare_;
@@ -439,6 +444,9 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_confirm_t>
                               decltype(::stellar::SCPStatement::_pledges_t::_confirm_t::ballot),
                               &::stellar::SCPStatement::_pledges_t::_confirm_t::ballot>,
                     field_ptr<::stellar::SCPStatement::_pledges_t::_confirm_t,
+                              decltype(::stellar::SCPStatement::_pledges_t::_confirm_t::value_sig),
+                              &::stellar::SCPStatement::_pledges_t::_confirm_t::value_sig>,
+                    field_ptr<::stellar::SCPStatement::_pledges_t::_confirm_t,
                               decltype(::stellar::SCPStatement::_pledges_t::_confirm_t::nPrepared),
                               &::stellar::SCPStatement::_pledges_t::_confirm_t::nPrepared>,
                     field_ptr<::stellar::SCPStatement::_pledges_t::_confirm_t,
@@ -453,6 +461,7 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_confirm_t>
   template<typename Archive> static void
   save(Archive &ar, const ::stellar::SCPStatement::_pledges_t::_confirm_t &obj) {
     archive(ar, obj.ballot, "ballot");
+    archive(ar, obj.value_sig, "value_sig");
     archive(ar, obj.nPrepared, "nPrepared");
     archive(ar, obj.nCommit, "nCommit");
     archive(ar, obj.nH, "nH");
@@ -461,6 +470,7 @@ template<> struct xdr_traits<::stellar::SCPStatement::_pledges_t::_confirm_t>
   template<typename Archive> static void
   load(Archive &ar, ::stellar::SCPStatement::_pledges_t::_confirm_t &obj) {
     archive(ar, obj.ballot, "ballot");
+    archive(ar, obj.value_sig, "value_sig");
     archive(ar, obj.nPrepared, "nPrepared");
     archive(ar, obj.nCommit, "nCommit");
     archive(ar, obj.nH, "nH");
