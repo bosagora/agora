@@ -362,24 +362,32 @@ public struct PreImageCycle
             this.seeds.reset(cycle_seed);
         }
 
-        // Populate the current enrollment round cache
-        // The index into `seeds` is the absolute index of the cycle,
-        // not the number of round, hence why we use `byStrides`
-        // The alternative would be:
-        // [$ - (this.index + 1) * this.preimages.length]
-        this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
-
-        // Increment index if there are rounds left in this cycle
         if (consume)
         {
+            // Populate the current enrollment round cache
+            // The index into `seeds` is the absolute index of the cycle,
+            // not the number of round, hence why we use `byStrides`
+            // The alternative would be:
+            // [$ - (this.index + 1) * this.preimages.length]
+            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+
+            // Increment index if there are rounds left in this cycle
             this.index += 1;
             if (this.index >= NumberOfCycles)
             {
                 this.index = 0;
                 this.nonce += 1;
             }
+            return this.preimages[$ - 1];
         }
-
-        return this.preimages[$ - 1];
+        else
+        {
+            // If this is used for getting initial pre-image for enrollment
+            // it just creates initial pre-image of the cycle seed.
+            auto next_images = PreImageCache(this.preimages.data.length,
+            this.preimages.interval);
+            next_images.reset(this.seeds.byStride[$ - 1 - this.index]);
+            return next_images[$ - 1];
+        }
     }
 }
