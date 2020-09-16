@@ -52,7 +52,8 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    network.expectBlock(Height(8), 5.seconds);
+    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
+    network.expectBlock(Height(8), b0.header,  5.seconds);
 
     // create block with 6 payment and 2 freeze tx's
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
@@ -74,7 +75,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 9 the freeze tx's are available
-    network.expectBlock(Height(9), 5.seconds);
+    network.expectBlock(Height(9), b0.header, 5.seconds);
 
     // now we can create enrollments
     Enrollment enroll_0 = nodes[$ - 2].createEnrollmentData();
@@ -99,7 +100,7 @@ unittest
     new_txs.each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 10 the validator set has changed
-    network.expectBlock(Height(10), 3.seconds);
+    network.expectBlock(Height(10), b0.header, 3.seconds);
 
     //// these are un-enrolled now
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
@@ -108,11 +109,12 @@ unittest
     txs = new_txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
-    network.expectBlock(nodes[$ - 2 .. $], Height(11), 3.seconds);
+    const b10 = nodes[$ - 2].getBlocksFrom(10, 2)[0];
+    network.expectBlock(nodes[$ - 2 .. $], Height(11), b10.header, 3.seconds);
 
     // force wake up
     nodes[0 .. $ - 2].each!(node => node.sleep(0.seconds, false));
 
     // all nodes should have same block height now
-    network.expectBlock(Height(11), 10.seconds);
+    network.expectBlock(Height(11), b10.header, 10.seconds);
 }

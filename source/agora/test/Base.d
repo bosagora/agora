@@ -566,6 +566,42 @@ public class TestAPIManager
 
     /***************************************************************************
 
+        Checks the needed pre-images are revealed, sets the clock time to the
+        expected clock time to produce a block at the given height, and verifies
+        that the nodes have generated a block at the given block height.
+
+        The overload allows passing a subset of nodes to verify the block
+        heights for only these nodes. Note that the clock time is adjusted
+        for all nodes (this is what most tests expect).
+
+        Params:
+            height = the expected block height
+            enroll_header = the header which contains enrollment information
+            timeout = the request timeout to each node
+
+    ***************************************************************************/
+
+    public void expectBlock (Height height, const(BlockHeader) enroll_header,
+        Duration timeout, string file = __FILE__, int line = __LINE__)
+    {
+        this.expectBlock(this.clients, height, enroll_header, timeout, file,
+            line);
+    }
+
+    /// Ditto
+    public void expectBlock (Clients)(Clients clients, Height height,
+        const(BlockHeader) enroll_header, Duration timeout,
+        string file = __FILE__, int line = __LINE__) if (isInputRange!Clients)
+    {
+        assert(height > enroll_header.height);
+        auto distance = cast(ushort)(height - enroll_header.height - 1);
+        waitForPreimages(clients, enroll_header.enrollments, distance,
+            timeout);
+        this.expectBlock(clients, height, timeout, file, line);
+    }
+
+    /***************************************************************************
+
         Checks if all the nodes contain the given distance of pre-images for
         the given enrollments.
 
