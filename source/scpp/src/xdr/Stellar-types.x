@@ -5,9 +5,9 @@
 namespace stellar
 {
 
-typedef opaque Hash[32];
+typedef opaque Hash[64];
 typedef opaque uint256[32];
-
+typedef opaque uint512[64];
 typedef unsigned int uint32;
 typedef int int32;
 
