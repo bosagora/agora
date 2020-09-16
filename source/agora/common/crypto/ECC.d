@@ -24,6 +24,8 @@ import agora.common.Types;
 import geod24.bitblob;
 import libsodium;
 
+import std.format;
+
 ///
 nothrow @nogc unittest
 {
@@ -90,17 +92,58 @@ public struct Scalar
         crypto_core_ed25519_scalar_reduce(this.data[].ptr, param[].ptr);
     }
 
-    /// Expose `toString`
-    public void toString (scope void delegate(const(char)[]) @safe sink)
-        const @safe
+    /***************************************************************************
+
+        Print the scalar
+
+        By default, this function prints the hidden version of the scalar.
+        Changing the mode to `Clear` makes it print the original value.
+        This mode is intended for debugging.
+
+        Params:
+          sink = The sink to write the piecemeal string data to
+          mode = The `PrintMode` to use for printing the content.
+                 By default, the hidden value is printed.
+
+    ***************************************************************************/
+
+    public void toString (scope void delegate(const(char)[]) @safe sink,
+                          PrintMode mode = PrintMode.Obfuscated) const @safe
     {
-        this.data.toString(sink);
+        final switch (mode)
+        {
+        case PrintMode.Obfuscated:
+            formattedWrite(sink, "**SCALAR**");
+            break;
+
+        case PrintMode.Clear:
+            formattedWrite(sink, "%s", this.data);
+            break;
+        }
     }
 
     /// Ditto
-    public string toString () const @safe
+    public string toString (PrintMode mode = PrintMode.Obfuscated) const @safe
     {
-        return this.data.toString();
+        string result;
+        this.toString((data) { result ~= data; }, mode);
+        return result;
+    }
+
+    ///
+    unittest
+    {
+        auto s = Scalar("0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778");
+
+        assert(s.toString(PrintMode.Obfuscated) == "**SCALAR**");
+        assert(s.toString(PrintMode.Clear) ==
+               "0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778");
+
+        // Test default formatting behavior with writeln, log, etc...
+        import std.format : phobos_format = format;
+        import ocean.text.convert.Formatter : ocean_format = format;
+        assert(phobos_format("%s", s) == "**SCALAR**");
+        assert(ocean_format("{}", s) == "**SCALAR**");
     }
 
     /// Vibe.d deserialization
@@ -207,7 +250,7 @@ public struct Scalar
 @safe unittest
 {
     static immutable string s = "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec";
-    assert(Scalar.fromString(s).toString == s);
+    assert(Scalar.fromString(s).toString(PrintMode.Clear) == s);
 }
 
 // Test valid Scalars
