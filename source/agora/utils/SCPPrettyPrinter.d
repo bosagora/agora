@@ -69,8 +69,7 @@ public struct SCPBallotFmt
             {
                 formattedWrite(sink,
                     "value: %s }",
-                    prettify(  // cast: deserializer should take const(ubyte)[]
-                    (cast(ubyte[])this.ballot.value[]).deserializeFull!ConsensusData));
+                    prettify(this.ballot.value[].deserializeFull!ConsensusData));
             }
             catch (Exception ex)
             {
@@ -229,8 +228,7 @@ private struct SCPNominationFmt
                     "votes: %s, ",
                     this.nominate.votes[]
                         .map!(cd => prettify(
-                            // cast: deserializer should take const(ubyte)[]
-                            (cast(ubyte[])cd[]).deserializeFull!ConsensusData)));
+                            cd[].deserializeFull!ConsensusData)));
             }
             catch (Exception ex)
             {
@@ -243,8 +241,7 @@ private struct SCPNominationFmt
                     "accepted: %s }",
                     this.nominate.accepted[]
                         .map!(cd => prettify(
-                            // cast: deserializer should take const(ubyte)[]
-                            (cast(ubyte[])cd[]).deserializeFull!ConsensusData)));
+                            cd[].deserializeFull!ConsensusData)));
             }
             catch (Exception ex)
             {
