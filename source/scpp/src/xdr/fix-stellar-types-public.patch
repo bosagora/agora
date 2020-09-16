@@ -1,0 +1,13 @@
+diff --git a/source/scpp/src/xdr/Stellar-types.h b/source/scpp/src/xdr/Stellar-types.h
+index a339d691..b2957206 100644
+--- a/source/scpp/src/xdr/Stellar-types.h
++++ b/source/scpp/src/xdr/Stellar-types.h
+@@ -113,7 +113,7 @@ template<> struct xdr_traits<::stellar::SignerKeyType>
+ 
+ struct PublicKey {
+   using _xdr_case_type = xdr::xdr_traits<PublicKeyType>::case_type;
+-private:
++public:
+   _xdr_case_type type_;
+   union {
+     uint256 ed25519_;

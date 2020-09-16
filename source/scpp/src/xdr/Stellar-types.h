@@ -9,8 +9,6 @@
 
 namespace stellar {
 
-// note: Hash was changed to 64-bytes in #737.
-// uint256 was also changed to reflect that.
 using Hash = xdr::opaque_array<64>;
 using uint256 = xdr::opaque_array<32>;
 using uint512 = xdr::opaque_array<64>;
@@ -115,7 +113,7 @@ template<> struct xdr_traits<::stellar::SignerKeyType>
 
 struct PublicKey {
   using _xdr_case_type = xdr::xdr_traits<PublicKeyType>::case_type;
-/*private:*/  // BPFK note: cannot be private as we require runtime layout checks
+public:
   _xdr_case_type type_;
   union {
     uint256 ed25519_;
