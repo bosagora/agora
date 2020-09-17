@@ -1409,8 +1409,8 @@ public struct TestConf
 
 *******************************************************************************/
 
-public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager, string file = __FILE__, int line = __LINE__)(
-    in TestConf test_conf)
+public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
+    (in TestConf test_conf, string file = __FILE__, int line = __LINE__)
 {
     import agora.common.Serializer;
     import std.digest;
