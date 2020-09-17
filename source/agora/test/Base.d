@@ -1351,19 +1351,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     const TotalNodes = test_conf.validators + test_conf.full_nodes +
         test_conf.outsider_validators + test_conf.outsider_full_nodes;
 
-    size_t full_node_idx;
-    size_t validator_idx;
-
-    string validatorAddress (KeyPair node_key)
-    {
-        return format("Validator #%s (%s)",
-            validator_idx++, node_key.address.prettify);
-    }
-    string fullNodeAddress ()
-    {
-        return format("FullNode #%s", full_node_idx++);
-    }
-
     NodeConfig makeNodeConfig (Address address)
     {
         NodeConfig conf =
@@ -1388,109 +1375,108 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
-    ValidatorConfig makeValidatorConfig (KeyPair node_key)
-    {
-        ValidatorConfig conf =
-        {
-            enabled : true,
-            key_pair : node_key,
-        };
-
-        return conf;
-    }
-
     BanManager.Config ban_conf =
     {
         max_failed_requests : test_conf.max_failed_requests,
         ban_duration: 300
     };
 
-    Config makeMainConfig (size_t idx, NodeConfig self, NodeConfig[] node_confs,
-        ValidatorConfig validator_self = ValidatorConfig.init)
+    immutable(Address[]) makeNetworkConfig (size_t idx, Address[] addresses)
     {
-        auto other_nodes =
-            node_confs
-                .filter!(conf => conf != self)
-                .map!(conf => conf.address);
+        if (!test_conf.configure_network)
+            return null;
 
-        string[] network;
-        if (test_conf.configure_network)
-        {
-            // nodes form a network chain: n2 <- n0 <- n1 <- n2
-            if (test_conf.topology == NetworkTopology.MinimallyConnected)
-            {
-                auto prev_node = idx == 0 ? node_confs[$ - 1] : node_confs[idx - 1];
-                network = [prev_node.address];
-            }
-            else
-            {
-                network = other_nodes.array;
-            }
-        }
+        assert(addresses.length > 0);
+        idx %= addresses.length;  // clamp to limit
 
+        // nodes form a network chain: n2 <- n0 <- n1 <- n2
+        if (test_conf.topology == NetworkTopology.MinimallyConnected)
+            return [(idx == 0) ? addresses[$ - 1] : addresses[idx - 1]]
+                .assumeUnique;
+        else
+            return addresses.idup;
+    }
+
+    Config makeValidatorConfig (size_t idx, KeyPair key_pair,
+        Address self_address, Address[] addresses)
+    {
         Config conf =
         {
             banman : ban_conf,
-            node : self,
-            validator : validator_self,
-            network : assumeUnique(network),
+            node : makeNodeConfig(self_address),
+            validator : ValidatorConfig(true, key_pair),
+            network : makeNetworkConfig(idx, addresses),
         };
 
         return conf;
     }
 
-    auto key_range = WK.Keys.byRange().takeExactly(
-        test_conf.validators + test_conf.outsider_validators).array();
-    auto validator_keys = key_range[0 .. test_conf.validators];
-    key_range.popFrontN(test_conf.validators);
-    auto outsider_validator_keys = key_range[0 .. test_conf.outsider_validators];
-    key_range.popFrontN(test_conf.outsider_validators);
+    Config makeFullNodeConfig (size_t idx, Address self_address,
+        Address[] addresses)
+    {
+        Config conf =
+        {
+            banman : ban_conf,
+            node : makeNodeConfig(self_address),
+            network : makeNetworkConfig(idx, addresses),
+        };
 
-    ValidatorConfig[] validator_configs;
-    NodeConfig[] node_configs;
-    Config[] main_configs;
+        return conf;
+    }
 
-    validator_keys
-        .each!(key => validator_configs ~= makeValidatorConfig(key));
-    validator_keys
-        .each!(key => node_configs ~= makeNodeConfig(validatorAddress(key)));
-    iota(test_conf.full_nodes)
-        .each!(_ => node_configs ~= makeNodeConfig(fullNodeAddress()));
+    string validatorAddress (size_t idx, KeyPair key)
+    {
+        return format("Validator #%s (%s)", idx, key.address);
+    }
 
-    // network these nodes together using the configured NetworkTopology
-    node_configs.take(test_conf.validators).zip(validator_keys).enumerate
-        .each!(pair => main_configs ~= makeMainConfig(
-            pair.index, pair.value[0], node_configs,
-                makeValidatorConfig(pair.value[1])));
-    node_configs.drop(test_conf.validators).enumerate(test_conf.validators)
-        .each!(pair => main_configs ~= makeMainConfig(
-            pair.index, pair.value, node_configs));
+    string fullNodeAddress (size_t idx)
+    {
+        return format("FullNode #%s", idx);
+    }
 
-    NodeConfig[] extra_validator_configs;
-    NodeConfig[] extra_node_configs;
+    const num_validators = test_conf.validators + test_conf.outsider_validators;
+    auto validator_keys = WK.Keys.byRange().enumerate().take(num_validators);
 
-    outsider_validator_keys
-        .each!(key => extra_validator_configs ~= makeNodeConfig(validatorAddress(key)));
-    iota(test_conf.outsider_full_nodes)
-        .each!(_ => extra_node_configs ~= makeNodeConfig(fullNodeAddress()));
+    // all enrolled and un-enrolled validators
+    auto validator_addresses = validator_keys
+        .map!(en => validatorAddress(en.index, en.value)).array;
 
-    // generate the outsider main_configs. pair.index is correct here despite
-    // passing 'node_configs'. in 'MinimallyConnected' mode the connection will be
-    // n2 <- n1 <- n2 and n1 <- o1 and n2 <- o2, (o = outsider).
-    // otherwise it will be [n1 <-> n2] <- o1 and [n1 <-> n2] <- o2
+    // only enrolled validators
+    auto enrolled_addresses = validator_keys.take(test_conf.validators)
+        .map!(en => validatorAddress(en.index, en.value)).array;
 
-    extra_validator_configs.zip(outsider_validator_keys).enumerate
-        .each!(pair => main_configs ~= makeMainConfig(
-            pair.index % node_configs.length, pair.value[0], node_configs,
-                makeValidatorConfig(pair.value[1])));
-    extra_node_configs.enumerate(test_conf.outsider_validators).each!(
-        pair => main_configs ~= makeMainConfig(
-            pair.index % node_configs.length, pair.value, node_configs));
+    auto validator_configs = validator_keys
+        .map!(en => makeValidatorConfig(
+            en.index,
+            en.value,
+            validator_addresses[en.index],
+            enrolled_addresses.filter!(  // don't connect the validator to itself
+                addr => addr != validator_addresses[en.index]).array));
+
+    const num_full_nodes = test_conf.full_nodes + test_conf.outsider_full_nodes;
+    auto full_node_addresses = num_full_nodes.iota.map!(
+        idx => fullNodeAddress(idx)).array;
+
+    // full nodes will connect to enrolled addresses + other full nodes
+    // (but not to outsider nodes)
+    auto connect_addresses = enrolled_addresses.chain(full_node_addresses);
+
+    auto full_node_configs = num_full_nodes
+        .iota
+        .map!(index => makeFullNodeConfig(
+            index,
+            full_node_addresses[index],
+            connect_addresses.filter!(  // don't connect the fullnode to itself
+                addr => addr != full_node_addresses[index]).array));
+
+    auto all_configs = validator_configs.chain(full_node_configs).array;
 
     auto gen_block = makeGenesisBlock(
         validator_configs
-            .map!(conf => conf.key_pair)
-            .array, test_conf.validator_cycle);
+            .take(test_conf.validators)  // only enrolled validators
+            .map!(conf => conf.validator.key_pair)
+            .array,
+        test_conf.validator_cycle);
 
     immutable string gen_block_hex = gen_block
         .serializeFull()
@@ -1498,7 +1484,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     // for unittests the time begins now
     const genesis_start_time = time(null);
-    foreach (ref conf; main_configs)
+    foreach (ref conf; all_configs)
     {
         conf.node.genesis_block = gen_block_hex;
         conf.node.genesis_start_time = genesis_start_time;
@@ -1508,7 +1494,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         test_conf.extra_blocks);
 
     auto net = new APIManager(blocks, test_conf, genesis_start_time);
-    foreach (ref conf; main_configs)
+    foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
 
     return net;
