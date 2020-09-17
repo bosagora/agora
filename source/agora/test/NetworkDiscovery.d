@@ -41,9 +41,9 @@ unittest
     TestConf conf =
     {
         topology : NetworkTopology.MinimallyConnected,
-        validators : 0,
+        validators : 4,
         full_nodes : 4,
-        min_listeners : 3,
+        min_listeners : 7,
     };
     auto network = makeTestNetwork(conf);
 
@@ -55,7 +55,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == 3,
+        assert(addresses.sort.uniq.count == 7,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }

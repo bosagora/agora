@@ -124,9 +124,9 @@ unittest
 
     TestConf conf = {
         timeout : 10.seconds,
-        validators : 3,
+        validators : 4,
         validator_cycle : 10,
-        quorum_threshold : 66
+        quorum_threshold : 51
     };
 
     auto network = makeTestNetwork!CustomAPIManager(conf);
@@ -137,7 +137,7 @@ unittest
     auto nodes = network.clients;
     auto validator = network.clients[0];
 
-    // Make two of three validators disable to respond
+    // Make two of three validators stop responding
     nodes[1].ctrl.sleep(10.seconds, true);
     nodes[2].ctrl.sleep(10.seconds, true);
 
