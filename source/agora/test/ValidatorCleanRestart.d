@@ -149,17 +149,19 @@ unittest
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { validators : 3, full_nodes : 1 , quorum_threshold : 66 };
+    TestConf conf = { validators : 4, full_nodes : 1 , quorum_threshold : 75 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    // The node_1, node_2, node_3 are the validators
+    // The node_1, node_2, node_3, node_4 are the validators
     auto nodes = network.clients;
     auto node_1 = nodes[0];
     auto node_2 = nodes[1];
+    auto node_3 = nodes[2];
+    auto node_4 = nodes[3];
     auto on_nodes = nodes[1 .. $-1];
 
     // Create a block from the Genesis block
@@ -167,7 +169,7 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1), 5.seconds);
 
-    // The node_1 restarts and is disabled to respond
+    // node_1 restarts and becomes unresponsive
     network.restart(node_1);
     node_1.ctrl.sleep(5.seconds);
 

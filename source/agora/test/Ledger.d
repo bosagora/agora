@@ -87,19 +87,19 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    TestConf conf = { validators : 1, full_nodes : 3 };
+    TestConf conf = { validators : 4, full_nodes : 3 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    // node_1 is the validator
+    // node_1 is one of the validators
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
-    nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
+    nodes[4 .. $].each!(node => node.filter!(node.putTransaction));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
@@ -174,8 +174,7 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    TestConf conf = { validators : 2 };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -184,7 +183,7 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
+    auto txs = network.blocks[0].spendable.map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1), 3.seconds);
 
@@ -206,17 +205,13 @@ unittest
     // make sure the transaction is still authentic (signature is correct),
     // even if it's double spending
     const genesis_block = node_1.getBlocksFrom(0, 1)[0];
-    assert(txs[0].isValid((Hash hash, size_t index, out UTXOSetValue value)
+    auto reason = txs[0].isInvalidReason(
+        (Hash hash, size_t index, out UTXOSetValue value)
         {
-            value =
-            UTXOSetValue(
-                0,
-                TxType.Payment,
-                genesis_block.txs[1].outputs[0]
-            );
+            value = UTXOSetValue(0, TxType.Payment, txs[0].outputs[0]);
             return true;
-        }, Height(0)));
-
+        }, Height(0));
+    assert(reason is null, reason);
     txs.each!(tx => node_1.putTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation

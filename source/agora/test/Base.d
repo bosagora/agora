@@ -1347,10 +1347,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager,
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
+    assert(test_conf.validators >= 4, "Must include at least 4 validators");
     const TotalNodes = test_conf.validators + test_conf.full_nodes +
         test_conf.outsider_validators + test_conf.outsider_full_nodes;
-
-    assert(TotalNodes >= 2, "Creating a network require at least 2 nodes");
 
     size_t full_node_idx;
     size_t validator_idx;

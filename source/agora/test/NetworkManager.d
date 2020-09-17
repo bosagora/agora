@@ -133,8 +133,8 @@ unittest
             RemoteAPI!TestAPI api;
             auto time = new shared(time_t)(this.initial_time);
 
-            // the test has 3 nodes:
-            // 1 validator => used for creating blocks
+            // the test has 6 nodes:
+            // 4 validators => used for creating blocks
             // 1 byzantine FullNode => lies about the blockchain
             //   (returns syntactically invalid data)
             // 1 good FullNode => it accepts only the valid blockchain
@@ -146,11 +146,11 @@ unittest
             }
             else
             {
-                if (this.nodes.length == 2)
-                    api = RemoteAPI!TestAPI.spawn!BadNode(conf,
+                if (this.nodes.length == 4)  // 5th good FN, 6th bad FN
+                    api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
                         &this.reg, this.blocks, time, conf.node.timeout);
                 else
-                    api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
+                    api = RemoteAPI!TestAPI.spawn!BadNode(conf,
                         &this.reg, this.blocks, time, conf.node.timeout);
             }
 
@@ -159,7 +159,7 @@ unittest
         }
     }
 
-    TestConf conf = { validators : 1, full_nodes : 2 };
+    TestConf conf = { validators : 4, full_nodes : 2 };
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -167,12 +167,12 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_validator = nodes[0];  // validator, creates blocks
-    auto node_test = nodes[1];  // full node, does not create blocks
-    auto node_bad = nodes[2];  // full node, returns bad blocks in getBlocksFrom()
+    auto node_validators = nodes[0 .. 4];  // validators, create blocks
+    auto node_test = nodes[4];  // full node, does not create blocks
+    auto node_bad = nodes[5];  // full node, returns bad blocks in getBlocksFrom()
 
     // enable filtering first
-    node_validator.filter!(API.getBlocksFrom);
+    node_validators.each!(node => node.filter!(API.getBlocksFrom));
     node_bad.filter!(API.getBlocksFrom);
     node_test.filter!(API.putTransaction);
 
@@ -180,26 +180,26 @@ unittest
 
     // create genesis block
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
-    last_txs.each!(tx => node_validator.putTransaction(tx));
-    network.expectBlock([node_validator], Height(1), 4.seconds);
+    last_txs.each!(tx => node_validators[0].putTransaction(tx));
+    network.expectBlock([node_validators[0]], Height(1), 4.seconds);
 
     // create 1 additional block and enough `tx`es
     auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
     // send it to one node
-    txs.each!(tx => node_validator.putTransaction(tx));
-    network.expectBlock([node_validator], Height(2), 4.seconds);
+    txs.each!(tx => node_validators[0].putTransaction(tx));
+    network.expectBlock([node_validators[0]], Height(2), 4.seconds);
     last_txs = txs;
 
     // the validator node has 2 blocks, but bad node pretends to have 3
-    assert(node_validator.getBlockHeight() == 2, node_validator.getBlockHeight().to!string);
+    assert(node_validators[0].getBlockHeight() == 2, node_validators[0].getBlockHeight().to!string);
     assert(node_bad.getBlockHeight() == 3);
     assert(node_test.getBlockHeight() == 0);  // only genesis
 
     node_bad.clearFilter();
-    node_validator.clearFilter();
+    node_validators.each!(node => node.clearFilter());
 
     // node test will accept its blocks from node_validator,
     // as the blocks in node_bad do not pass validation
     retryFor(node_test.getBlockHeight() == 2, 4.seconds);
-    assert(containSameBlocks([node_test, node_validator], 2));
+    assert(containSameBlocks([node_test, node_validators[0]], 2));
 }
