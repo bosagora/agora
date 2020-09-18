@@ -34,6 +34,7 @@ import std.array;
 import std.format;
 import std.random;
 
+import core.stdc.time;
 import core.time;
 
 mixin AddLogger!();
@@ -181,6 +182,20 @@ class NetworkClient
     public NodeInfo getNodeInfo ()
     {
         return this.attemptRequest!(API.getNodeInfo, Throw.Yes)(this.api);
+    }
+
+    /***************************************************************************
+
+        Get the local time of the node
+
+        Returns:
+            the local time of the node, or 0 if the request failed
+
+    ***************************************************************************/
+
+    public time_t getLocalTime () @trusted nothrow
+    {
+        return this.attemptRequest!(API.getLocalTime, Throw.No)(this.api);
     }
 
     /***************************************************************************

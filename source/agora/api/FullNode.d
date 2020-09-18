@@ -26,6 +26,9 @@ import agora.consensus.data.Transaction;
 import vibe.web.rest;
 import vibe.http.common;
 
+// TODO: time_t is not a fixed-size, need another type for the API
+import core.stdc.time;
+
 /// The network state (completed when sufficient validators are connected to)
 public enum NetworkState : ubyte
 {
@@ -222,4 +225,21 @@ public interface API
     ***************************************************************************/
 
     public void receivePreimage (PreImageInfo preimage);
+
+    /***************************************************************************
+
+        Returns:
+            The local clock time of this node (not network-adjusted)
+
+        API:
+            GET /time
+
+        Warning: this request should be protected via node-to-node encryption,
+        or else be signed with a unique challenge/response. Otherwise a
+        byzantine node can cache a node's older response and feed it to a
+        victim node (replay attack).
+
+    ***************************************************************************/
+
+    public time_t getLocalTime ();
 }
