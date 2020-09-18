@@ -77,7 +77,7 @@ public struct PreImageCache
     public void toString (scope void delegate(scope const(char)[]) @safe sink,
                           PrintMode mode = PrintMode.Bounds) const
     {
-        switch (mode)
+        final switch (mode)
         {
         case PrintMode.Bounds:
             this[0].toString(sink);
@@ -102,9 +102,6 @@ public struct PreImageCache
                     sink(" [STORED]");
             }
             break;
-
-        default:
-            assert(0);
         }
     }
 
