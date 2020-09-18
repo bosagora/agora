@@ -178,7 +178,7 @@ public struct Scalar
     }
 
     /// Return the point corresponding to this scalar multiplied by the generator
-    public Point toPoint () const nothrow @nogc @trusted 
+    public Point toPoint () const nothrow @nogc @trusted
     {
         Point ret = void;
         if (crypto_scalarmult_ed25519_base_noclamp(ret.data[].ptr, this.data[].ptr) != 0)
