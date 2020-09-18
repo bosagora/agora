@@ -49,6 +49,7 @@ import vibe.web.rest;
 import std.algorithm;
 import std.array;
 import std.container : DList;
+import std.datetime.stopwatch;
 import std.exception;
 import std.format;
 import std.random;
@@ -420,6 +421,135 @@ public class NetworkManager
     protected void registerAsListener (NetworkClient client)
     {
         client.registerListener();
+    }
+
+    /***************************************************************************
+
+        Retrieve the clock time of each node in the given quorum set,
+        and return the median time.
+
+        The threshold is taken into account.
+
+        Taking request / response delays into account:
+        ==============================================
+
+        We cannot assume why a getLocalTime() request response was late.
+        Assume N1 and N2 are two nodes and the time is 10:00:00 at both nodes.
+        An 'upstream' delay means a request delay from N1 -> N2,
+        and a 'downstream' response is the delay from N2 -> N1:
+
+        1 second delay:
+
+        10:00:00 N1 -> N2.getLocalTime() (10:00:01)
+        10:00:01 N1 <- 10:00:01
+        A: Received 10:00:01 at 10:00:01 with a 1 second delay
+
+        15-second delay upstream, no delay downstream:
+        10:00:00 N1 -> N2.getLocalTime()  (10:00:15)
+        10:00:15 N1 <- 10:00:15
+        B: Received 10:00:15 at 10:00:15 with a 15 second delay
+
+        No delay upstream, 15-second delay downstream:
+        10:00:00 N1 -> N2.getLocalTime() (10:00:00)
+        10:00:15 N1 <- 10:00:00
+        C: Received 10:00:00 at 10:00:15 with a 15 second delay
+
+        If we were to just take the total request time into account then the
+        calculated time would be:
+
+        A: Received 10:00:01 - 1s delay  => It was 10:00:00 at the start.
+        B: Received 10:00:15 - 15s delay => It was 10:00:00 at the start.
+        C: Received 10:00:00 - 15s delay => It was 10:59:45 at the start.
+
+        The C calculation is wrong. We assumed N2 received the request late,
+        but it was the response to N1 that was delayed.
+
+        To compensate:
+
+        - We set the request timeout to a low value. Limiting it to a small
+          value allows for more accurate drift time calculations.
+
+        - We divide the resulting time drift by 2. This essentially splits the
+          time drift evenly between upstream and downstream and assumes
+          that there is an equal delay between sending a request and receiving a
+          response. Most of the time this will be a correct assumption.
+
+        Examples:
+
+        2-second delay upstream, no delay downstream:
+        10:00:00 N1 -> N2.getLocalTime()  (10:00:02)
+        10:00:02 N1 <- 10:00:02
+        B: Received 10:00:02 at 10:00:02 with a 2 second delay
+
+        No delay upstream, 2-second delay downstream:
+        10:00:00 N1 -> N2.getLocalTime() (10:00:00)
+        10:00:02 N1 <- 10:00:00
+        C: Received 10:00:00 at 10:00:02 with a 2 second delay
+
+        1-second delay upstream, 1-second delay downstream:
+        10:00:00 N1 -> N2.getLocalTime() (10:00:01)
+        10:00:02 N1 <- 10:00:01
+        C: Received 10:00:01 at 10:00:02 with a 2 second delay
+
+        Then the calculation is:
+
+        A: Received 10:00:02 - (2s delay / 2) => It was 10:00:01 at the start.
+        B: Received 10:00:00 - (2s delay / 2) => It was 10:00:01 at the start.
+        C: Received 10:00:01 - (2s delay / 2) => It was 10:00:00 at the start.
+
+        The actual times then only drift by up to `timeout / 2`, and in most
+        cases where there is roughly equal delay upstream and downstream this
+        time offset will be correct.
+
+        Params:
+            time_offest = will contain the offset that should be applied to the
+                          clock's local time to get the median clock time of the
+                          node's quorum nodes (zero if return value is false)
+
+        Returns:
+            true if at least `threshold` nodes in our quorum set have
+            sent us their clock time information
+
+    ***************************************************************************/
+
+    public bool getNetTimeOffset (uint threshold, out long time_offset)
+        @safe nothrow
+    {
+        static time_t[] offsets;
+        offsets.length = 0;
+        () @trusted { assumeSafeAppend(offsets); }();
+        offsets ~= 0;  // must include our own assumed clock drift (zero)
+
+        foreach (node; this.validators[])
+        {
+            // todo: cache getPublicKey()
+            PublicKey pk;
+            if (collectException(node.getPublicKey(), pk))
+                continue;  // request failed
+
+            if (pk !in this.quorum_set_keys)
+                continue;
+
+            const req_start = this.clock.time();
+            const node_time = node.getLocalTime();
+            if (node_time == 0)
+                continue;  // request failed
+
+            const req_delay = this.clock.time() - req_start;
+            const dist_delay = req_delay / 2;  // divide evently
+            offsets ~= (node_time - dist_delay) - req_start;
+        }
+
+        // we heard from at least one quorum slice
+        if (offsets.length >= threshold)
+        {
+            offsets.sort();
+            time_offset = offsets[$ / 2];  // pick median
+            return true;
+        }
+
+        // not enough time data
+        return false;
     }
 
     /// Discover the network, connect to all required peers
