@@ -75,7 +75,7 @@ public struct PreImageCache
     ***************************************************************************/
 
     public void toString (scope void delegate(scope const(char)[]) @safe sink,
-                          PrintMode mode = PrintMode.Bounds) const
+                          PrintMode mode = PrintMode.Bounds) const @safe
     {
         final switch (mode)
         {
