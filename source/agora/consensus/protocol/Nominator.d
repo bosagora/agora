@@ -489,26 +489,11 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
+        const cur_time = this.clock.time();
+        const exp_time = this.getExpectedBlockTime(Height(slot_idx));
+
         try
         {
-            const cur_time = this.clock.time();
-            const nom_time = this.getExpectedBlockTime(Height(slot_idx));
-            if (cur_time < nom_time)
-            {
-                log.info(
-                    "validateValue(): Received nomination too early (-{}s). " ~
-                    "Height: {}. Time: {}. Expected time: {}",
-                    nom_time - cur_time, Height(slot_idx), cur_time, nom_time);
-
-                // we don't return `kInvalidValue` because it might just be our
-                // own clock that has drifted too much. In this case we let
-                // SCP reach consensus: If the Quorum agrees that the nomination
-                // was not too early then this value may be accepted.
-                // Note that returning `kInvalidValue` means this value
-                // can *never* be valid - such as failed signature checks.
-                return ValidationLevel.kMaybeValidValue;
-            }
-
             auto data = deserializeFull!ConsensusData(value[]);
             if (auto fail_reason = this.ledger.validateConsensusData(data))
             {
@@ -522,6 +507,25 @@ extern(D):
             log.error("validateValue(): Received un-deserializable tx set. " ~
                 "Error: {}", ex.msg);
             return ValidationLevel.kInvalidValue;
+        }
+
+        // after validation, check the time
+        if (cur_time < exp_time)
+        {
+            log.info(
+                "validateValue(): Received {} too early (-{}s). " ~
+                "Height: {}. Time: {}. Expected time: {}",
+                nomination ? "nomination" : "ballot",
+                exp_time - cur_time, Height(slot_idx), cur_time, exp_time);
+
+            // In the Nominating phase `kMaybeValidValue` is equal to
+            // `kInvalidValue` and the node will not echo these nominations.
+            // In the Balloting phase `kMaybeValidValue` is a value which
+            // is valid (UTXO set, signatures..) but the node considers
+            // the ballot to arrive too early. A quorum slice might still accept
+            // this ballot, in which case the node will be forced to accept
+            // it too.
+            return ValidationLevel.kMaybeValidValue;
         }
 
         return ValidationLevel.kFullyValidatedValue;
