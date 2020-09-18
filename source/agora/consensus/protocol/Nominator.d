@@ -481,7 +481,8 @@ extern(D):
         Params:
             slot_idx = the slot index we're currently reaching consensus for
             value = the transaction set to validate
-            nomination = unused, seems to be stellar-specific
+            nomination = whether we're validating values for the nomination
+                         protocol, or ballot protocol
 
     ***************************************************************************/
 
