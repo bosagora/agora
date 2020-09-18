@@ -142,7 +142,7 @@ unittest
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
                     conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
-                    time, conf.node.timeout);
+                    time);
             }
             else
             {
@@ -151,7 +151,7 @@ unittest
                         &this.reg, this.blocks, time, conf.node.timeout);
                 else
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, time, conf.node.timeout);
+                        &this.reg, this.blocks, time);
             }
 
             this.reg.register(conf.node.address, api.tid());

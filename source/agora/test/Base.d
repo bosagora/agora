@@ -642,13 +642,12 @@ public class TestAPIManager
         if (conf.node.is_validator)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, this.test_conf.txs_to_nominate, time,
-                conf.node.timeout, file, line);
+                this.blocks, this.test_conf.txs_to_nominate, time);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, time, conf.node.timeout, file, line);
+                this.blocks, time);
         }
 
         this.reg.register(conf.node.address, api.tid());
