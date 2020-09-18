@@ -492,7 +492,7 @@ public class TestAPIManager
     public immutable(Block)[] blocks;
 
     /// Genesis block start time
-    protected time_t genesis_start_time;
+    public const time_t genesis_start_time;
 
     /// The initial clock time of every spawned node. Note that if there were
     /// any extra blocks loaded (`blocks` in the ctor) then the initial time
