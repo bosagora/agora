@@ -579,7 +579,7 @@ template<> struct xdr_traits<::stellar::SCPStatement>
 
 struct SCPEnvelope {
   SCPStatement statement{};
-  Signature signature{};
+  xdr::opaque_array<32> signature{};
 
   SCPEnvelope() = default;
   template<typename _statement_T,

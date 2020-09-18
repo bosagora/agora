@@ -264,10 +264,10 @@ static assert(Signature.sizeof == 64);
 
 struct SCPEnvelope {
   SCPStatement statement;
-  Signature signature;
+  opaque_array!32 signature;
 }
 
-static assert(SCPEnvelope.sizeof == 264);
+static assert(SCPEnvelope.sizeof == 232);
 
 struct SCPQuorumSet {
     import agora.common.Hash;
@@ -339,4 +339,3 @@ static assert(SCPQuorumSet.sizeof == 56);
 
 /// From SCPDriver, here for convenience
 public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
-

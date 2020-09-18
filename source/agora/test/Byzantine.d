@@ -21,6 +21,7 @@ import agora.common.Config;
 import agora.common.Task;
 import agora.common.Types;
 import agora.common.crypto.Key;
+import agora.common.crypto.ECC;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
 import agora.consensus.EnrollmentManager;
@@ -37,7 +38,9 @@ import agora.utils.SCPPrettyPrinter;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
+import scpd.types.XDRBase;
 
+import geod24.bitblob;
 import geod24.Registry;
 
 import std.algorithm;
@@ -86,10 +89,9 @@ private extern(C++) class ByzantineNominator : TestNominator
         final switch (reason)
         {
             case ByzantineReason.BadSigningEnvelope:
-                envelope.signature = sign(this.schnorr_pair,
-                    Hash.fromString(
-                        "0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f" ~
-                        "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986"));
+                static immutable validScalarInvalidSignature =
+                    "0x0eadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+                envelope.signature = opaque_array!32(BitBlob!256(validScalarInvalidSignature));
                 break;
             case ByzantineReason.NotSigningEnvelope, ByzantineReason.None:
                 // Do nothing

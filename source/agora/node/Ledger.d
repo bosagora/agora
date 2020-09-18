@@ -620,7 +620,8 @@ version (unittest)
         ConsensusData data;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
         assert(data.tx_set.length == Block.TxsInTestBlock);
-        assert(ledger.onExternalized(data));
+        auto block = makeNewBlock(ledger.last_block, data.tx_set, data.enrolls);
+        assert(ledger.acceptBlock(block)); // TODO: add multisig
     }
 
     /// A `Ledger` with sensible defaults for `unittest` blocks

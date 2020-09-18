@@ -72,7 +72,7 @@ public struct Scalar
     /// Internal state
     package BitBlob!(crypto_core_ed25519_SCALARBYTES * 8) data;
 
-    private this (typeof(this.data) data) @safe
+    private this (typeof(this.data) data) @safe inout
     {
         this.data = data;
     }
@@ -225,7 +225,7 @@ public struct Scalar
     {
         Point ret = void;
         if (crypto_scalarmult_ed25519_base_noclamp(ret.data[].ptr, this.data[].ptr) != 0)
-            assert(0, "Provided Scalar is not valid");
+            assert(0, "Provided Scalar is not valid.");
         if (!ret.isValid)
             assert(0, "libsodium generated invalid Point from valid Scalar!");
         return ret;
@@ -244,6 +244,20 @@ public struct Scalar
     {
         dg(this.data[]);
     }
+
+    /// Convenience overload to allow this to be converted to an `opaque_array`,
+    /// as used in the `confirm_t` statement signature in SCP
+    public const(ubyte)[] opSlice () const @safe pure nothrow @nogc
+    {
+        return this.data[];
+    }
+}
+
+// Test Scalar toPoint function
+@safe unittest
+{
+    static immutable string s = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    assert(Scalar.fromString(s).toPoint().isValid());
 }
 
 // Test Scalar fromString / toString functions
