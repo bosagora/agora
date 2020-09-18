@@ -56,6 +56,8 @@ import std.file;
 import std.path : buildPath;
 import std.range;
 
+import core.stdc.time;
+
 mixin AddLogger!();
 
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
@@ -520,6 +522,12 @@ public class FullNode : API
     public override PreImageInfo getPreimage (Hash enroll_key)
     {
         return this.enroll_man.getValidatorPreimage(enroll_key);
+    }
+
+    /// GET /local_time
+    public override time_t getLocalTime () @safe nothrow
+    {
+        return this.clock.time();
     }
 
     /***************************************************************************
