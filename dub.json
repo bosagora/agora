@@ -14,7 +14,7 @@
     "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/quorum/QuorumIntersectionTests.d" ],
     "preGenerateCommands": [
         "$DUB source/agora/cli/version/main.d",
-        "$DUB source/scpp/build.d || sleep 5s || $DUB source/scpp/build.d"
+        "$DUB --root source/scpp/ --compiler=$DC --single source/scpp/build.d"
     ],
     "sourceFiles-posix": [
         "source/scpp/build/BallotProtocol.o",
