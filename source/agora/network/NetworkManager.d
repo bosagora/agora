@@ -36,6 +36,7 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Transaction;
+import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.node.Ledger;
 import agora.utils.Log;
@@ -357,20 +358,23 @@ public class NetworkManager
     ///
     private Metadata metadata;
 
+    /// Clock instance
+    protected Clock clock;
+
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
     /// Ctor
     public this (in NodeConfig node_config, in BanManager.Config banman_conf,
         in string[] seed_peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman)
+        TaskManager taskman, Clock clock)
     {
         this.taskman = taskman;
         this.node_config = node_config;
         this.metadata = metadata;
         this.banman = this.getBanManager(banman_conf, node_config.data_dir);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
-
+        this.clock = clock;
         this.banman.load();
 
         assert(this.metadata !is null, "Metadata is null");
