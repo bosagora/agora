@@ -170,7 +170,7 @@ public struct Scalar
     }
 
     /// Scalar should be greater than zero and less than L:2^252 + 27742317777372353535851937790883648493
-    public bool isValid() () nothrow @nogc @safe
+    public bool isValid () nothrow @nogc @safe const
     {
         const auto ED25519_L =  BitBlob!256("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed");
         const auto ZERO =       BitBlob!256("0x0000000000000000000000000000000000000000000000000000000000000000");
