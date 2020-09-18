@@ -164,7 +164,8 @@ public class FullNode : API
         this.taskman = this.getTaskManager();
         this.clock = this.getClock();
         this.network = this.getNetworkManager(config.node, config.banman,
-            config.network, config.dns_seeds, this.metadata, this.taskman);
+            config.network, config.dns_seeds, this.metadata, this.taskman,
+            this.clock);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
@@ -323,6 +324,7 @@ public class FullNode : API
             dns_seeds = the DNS seeds to retrieve peers from
             metadata = metadata containing known peers and other meta info
             taskman = task manager
+            clock = clock instance
 
         Returns:
             an instance of a NetworkManager
@@ -331,10 +333,11 @@ public class FullNode : API
 
     protected NetworkManager getNetworkManager (in NodeConfig node_config,
         in BanManager.Config banman_conf, in string[] peers,
-        in string[] dns_seeds, Metadata metadata, TaskManager taskman)
+        in string[] dns_seeds, Metadata metadata, TaskManager taskman,
+        Clock clock)
     {
         return new NetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata, taskman);
+            dns_seeds, metadata, taskman, clock);
     }
 
     /***************************************************************************

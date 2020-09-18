@@ -842,10 +842,10 @@ public class TestNetworkManager : NetworkManager
     /// Constructor
     public this (NodeConfig config, BanManager.Config ban_conf,
         in string[] peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman, Registry* reg)
+        TaskManager taskman, Clock clock, Registry* reg)
     {
         this.registry = reg;
-        super(config, ban_conf, peers, dns_seeds, metadata, taskman);
+        super(config, ban_conf, peers, dns_seeds, metadata, taskman, clock);
     }
 
     /// No "http://" in unittests, we just use the string as-is
@@ -1063,11 +1063,11 @@ private mixin template TestNodeMixin ()
     protected override NetworkManager getNetworkManager (
         in NodeConfig node_config, in BanManager.Config banman_conf,
         in string[] peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman)
+        TaskManager taskman, Clock clock)
     {
         assert(taskman !is null);
         return new TestNetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata, taskman, this.registry);
+            dns_seeds, metadata, taskman, clock, this.registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
