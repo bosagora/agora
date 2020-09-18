@@ -48,7 +48,7 @@ public struct PreImageCache
     /// Describe print modes for `toString`
     public enum PrintMode
     {
-        /// Default value, just print the two extreme values
+        /// Print the two extreme values
         Bounds,
         /// Print all stored intermediate value and the last bound
         Stride,
@@ -60,12 +60,12 @@ public struct PreImageCache
 
         Print the content of a cache
 
-        By default, this functoin prints the bounds of the cache (the value at
+        By default, this function prints the bounds of the cache (the value at
         index 0, and the last value, as returned by `reset`).
         Changing the mode makes it print either the internal content, or the
         full range that is covered, in a newline-separated list.
-        Those two later mode are intended for debugging. Additionally, no
-        parameterless `toString` is provided for this reason.
+        Those two later mode are intended for debugging. The parameterless
+        `toString` overload is not implemented for this reason.
 
         Params:
           sink = The sink to write the piecemeal string data to
@@ -134,7 +134,7 @@ public struct PreImageCache
         Construct an instance and allocate memory
 
         This takes a `count` of pre-image and a sample size, or distance.
-        For example, if one wish to represent a range of 1000 pre-images with
+        For example, if one wishes to represent a range of 1000 pre-images with
         this cache, and perform no more than 5 hash operations each time,
         the `sample_size` should be `5` and the `count` should be `200`
         (1000 / 5).
@@ -162,7 +162,7 @@ public struct PreImageCache
                  first value of the array.
           length = The number of entries to populate.
                    This can be used when large sample size are used,
-                   and one wish to stop initialization past a certain threshold.
+                   and one wishes to stop initialization past a certain threshold.
 
     ***************************************************************************/
 
@@ -271,7 +271,7 @@ unittest
     }
 }
 
-/// This struct hold all the cycle data together for better readability
+/// This struct holds all the cycle data together for better readability
 public struct PreImageCycle
 {
     /// Make sure we get initialized by disabling the default ctor
