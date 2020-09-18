@@ -122,7 +122,7 @@ public Point extractNonce (Signature sig) @safe @nogc nothrow pure
 
 *******************************************************************************/
 
-package struct Sig
+public struct Sig
 {
     /// Commitment
     public Point R;
@@ -174,12 +174,12 @@ public struct Pair
     /// v.G
     public Point V;
 
-    /// Construct a Pair from a Scalar 
-    public static Pair fromScalar(const Scalar v) nothrow @nogc @safe 
+    /// Construct a Pair from a Scalar
+    public static Pair fromScalar(const Scalar v) nothrow @nogc @safe
     {
         return Pair(v, v.toPoint());
-    }    
-    
+    }
+
     /// Generate a random value `v` and a point on the curve `V` where `V = v.G`
     public static Pair random () nothrow @nogc @safe
     {

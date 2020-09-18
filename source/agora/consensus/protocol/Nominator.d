@@ -333,6 +333,43 @@ extern(D):
             assert(0);
     }
 
+    private bool verifyEnvelopeSignature (scope ref const(SCPEnvelope) envelope)
+    {
+        const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
+
+        const sig = Sig.fromBlob(envelope.signature).s;
+        if (!sig.isValid())
+            return false;
+
+        PublicKey key = PublicKey(envelope.statement.nodeID);
+        Point K = Point(key[]);
+        const Point RC = this.enroll_man.getCommitmentNonce(key);
+        if (RC == Point.init)
+        {
+            log.error("Could not find committed R for {}", K);
+            return false;
+        }
+
+        auto preimage = this.enroll_man.getValidatorPreimageAt(key,
+            Height(envelope.statement.slotIndex - 1));
+        if (preimage == PreImageInfo.init)
+        {
+            log.error("Validator has not revealed their preimage for this block height: {}",
+                envelope.statement.slotIndex);
+            return false;
+        }
+
+        const Point R = RC + Scalar(preimage.hash).toPoint() + challenge.toPoint;
+        if (sig.toPoint() != R + (K * challenge))
+        {
+            log.error("Validated envelope has an invalid block header " ~
+                "signature: {}", sig);
+            return false;
+        }
+
+        return true;
+    }
+
     /***************************************************************************
 
         Called when a new SCP Envelope is received from the network.
@@ -347,14 +384,9 @@ extern(D):
 
     public void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
     {
-        const challenge = SCPStatementHash(&envelope.statement).hashFull();
-        PublicKey key = PublicKey(envelope.statement.nodeID);
-        Point K = Point(key[]);
-
-        if (envelope.signature == typeof(envelope.signature).init ||  // workaround for #1177
-            !verify(K, envelope.signature, challenge))
+        if (!this.verifyEnvelopeSignature(envelope))
         {
-            log.trace("Envelope signature is invalid for {}: {}", key, envelope);
+            log.info("Rejected envelope with invalid signature: {}", envelope);
             return;
         }
 
@@ -370,6 +402,9 @@ extern(D):
         // 2. catching nodes which try to sign two incompatible ballots
         //    -> if they use the same R which they must as they have committed
         //       to it, then they will reveal their private key
+
+        PublicKey key = PublicKey(envelope.statement.nodeID);
+        Point K = Point(key[]);
         if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM
             && !this.collectBallotSignature(K, envelope))
             return;
@@ -399,10 +434,21 @@ extern(D):
             this.signConfirmBallot(envelope);
 
         // sign the envelope itself
-        const challenge = SCPStatementHash(&envelope.statement).hashFull();
-        const R = Pair.random();
-        const sig = sign(this.key_pair.v, this.key_pair.V, R.V, R.v, challenge);
-        envelope.signature = sig;
+        const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
+
+        // calculate r2 = rc + x1 for little r
+        // rc = r used in signing the commitment
+        // x1 = preimage in the previous block (can't use x2 because its not
+        //      recorded in the block yet)
+        PublicKey key = PublicKey(envelope.statement.nodeID);
+        auto rc = this.enroll_man.getCommitmentNonceScalar();
+        auto preimage = this.enroll_man.getValidatorPreimageAt(key,
+            Height(envelope.statement.slotIndex - 1));
+        auto r = rc + challenge + Scalar(preimage.hash);
+        const R = r.toPoint();
+
+        const Scalar sig = r + (this.key_pair.v * challenge);
+        envelope.signature = Sig(R, sig).toBlob();
     }
 
     /***************************************************************************
