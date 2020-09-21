@@ -7,7 +7,6 @@
     "libs-windows": [ "libsodium" ],
     "versions": 
     [
-        "EventcoreEpollDriver",
         "Have_base32",
         "Have_bitblob",
         "Have_d2sqlite3",
@@ -35,6 +34,9 @@
         "Have_vibe_d_utils",
         "Have_vibe_d_web"
     ],
+    "versions-linux": [ "EventcoreEpollDriver" ],
+    "versions-osx":   [ "EventcoreCFRunLoopDriver" ],
+    "lflags-osx":     [ "-framework", "CoreFoundation",  "-framework", "CoreServices" ],
     "importPaths": 
     [
         "../../source",
