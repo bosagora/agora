@@ -57,6 +57,13 @@ enum ByzantineReason
     BadSigningEnvelope,
 }
 
+struct EnvelopeTypeCounts {
+    size_t nominate_count;
+    size_t prepare_count;
+    size_t confirm_count;
+    size_t externalize_count;
+}
+
 private extern(C++) class ByzantineNominator : TestNominator
 {
     private ByzantineReason reason;
@@ -109,22 +116,15 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 
 private class SpyNominator : TestNominator
 {
-    private shared(size_t)* nominate_count;
-    private shared(size_t)* prepare_count;
-    private shared(size_t)* confirm_count;
-    private shared(size_t)* externalize_count;
+    private shared(EnvelopeTypeCounts)* envelope_type_counts;
 
     /// Ctor
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
         TaskManager taskman, ulong txs_to_nominate, shared(time_t)* curr_time,
-        shared(size_t)* nominate_count, shared(size_t)* prepare_count,
-        shared(size_t)* confirm_count, shared(size_t)* externalize_count)
+        shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
-        this.nominate_count = nominate_count;
-        this.prepare_count = prepare_count;
-        this.confirm_count = confirm_count;
-        this.externalize_count = externalize_count;
+        this.envelope_type_counts = envelope_type_counts;
         super(params, clock, network, key_pair, ledger, taskman, txs_to_nominate);
     }
 
@@ -132,16 +132,16 @@ private class SpyNominator : TestNominator
     {
         final switch (envelope.statement.pledges.type_) {
             case SCPStatementType.SCP_ST_NOMINATE:
-                atomicOp!("+=")(*this.nominate_count, 1);
+                atomicOp!("+=")(this.envelope_type_counts.nominate_count, 1);
                 break;
             case SCPStatementType.SCP_ST_PREPARE:
-                atomicOp!("+=")(*this.prepare_count, 1);
+                atomicOp!("+=")(this.envelope_type_counts.prepare_count, 1);
                 break;
             case SCPStatementType.SCP_ST_CONFIRM:
-                atomicOp!("+=")(*this.confirm_count, 1);
+                atomicOp!("+=")(this.envelope_type_counts.confirm_count, 1);
                 break;
             case SCPStatementType.SCP_ST_EXTERNALIZE:
-                atomicOp!("+=")(*this.externalize_count, 1);
+                atomicOp!("+=")(this.envelope_type_counts.externalize_count, 1);
                 break;
         }
     }
@@ -149,21 +149,14 @@ private class SpyNominator : TestNominator
 
 private class SpyingValidator : TestValidatorNode
 {
-    shared(size_t)* prepare_count;
-    shared(size_t)* nominate_count;
-    shared(size_t)* confirm_count;
-    shared(size_t)* externalize_count;
+    shared(EnvelopeTypeCounts)* envelope_type_counts;
 
     /// Ctor
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
                     ulong txs_to_nominate, shared(time_t)* cur_time,
-                    shared(size_t)* nominate_count, shared(size_t)* prepare_count,
-                    shared(size_t)* confirm_count, shared(size_t)* externalize_count)
+                    shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
-        this.nominate_count = nominate_count;
-        this.prepare_count = prepare_count;
-        this.confirm_count = confirm_count;
-        this.externalize_count = externalize_count;
+        this.envelope_type_counts = envelope_type_counts;
         super(config, reg, blocks, txs_to_nominate, cur_time);
     }
 
@@ -175,7 +168,7 @@ private class SpyingValidator : TestValidatorNode
     {
         return new SpyNominator(
             params, clock, network, key_pair, ledger, taskman, this.txs_to_nominate, this.cur_time,
-            this.nominate_count, this.prepare_count, this.confirm_count, this.externalize_count);
+            this.envelope_type_counts);
     }
 }
 
@@ -184,10 +177,7 @@ private class ByzantineManager (bool addSpyValidator = false,
     size_t byzantine_not_signing_count = 0,
     size_t byzantine_bad_signing_count = 0) : TestAPIManager
 {
-    shared size_t nominate_count;
-    shared size_t prepare_count;
-    shared size_t confirm_count;
-    shared size_t externalize_count;
+    shared(EnvelopeTypeCounts) envelope_type_counts;
 
     ///
     public this (immutable(Block)[] blocks, TestConf test_conf, time_t genesis_start_time)
@@ -222,7 +212,7 @@ private class ByzantineManager (bool addSpyValidator = false,
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!SpyingValidator(
                     conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
-                    time, &nominate_count, &prepare_count, &confirm_count, &externalize_count);
+                    time, &envelope_type_counts);
                 this.reg.register(conf.node.address, node.ctrl.tid());
                 this.nodes ~= NodePair(conf.node.address, node, time);
             }
@@ -260,10 +250,10 @@ unittest
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
 
-    waitForCount(conf.validators - 1, &network.nominate_count, "nominate");
-    waitForCount(conf.validators - 1, &network.prepare_count, "prepare");
-    waitForCount(conf.validators - 1, &network.confirm_count, "confirm");
-    waitForCount(conf.validators - 1, &network.externalize_count, "externalize");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.prepare_count, "prepare");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.confirm_count, "confirm");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.externalize_count, "externalize");
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other not signing node)
@@ -282,10 +272,10 @@ unittest
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
 
-    waitForCount(conf.validators - 1, &network.nominate_count, "nominate");
-    waitForCount(conf.validators - 1, &network.prepare_count, "prepare");
-    waitForCount(conf.validators - 1, &network.confirm_count, "confirm");
-    waitForCount(conf.validators - 1, &network.externalize_count, "externalize");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.prepare_count, "prepare");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.confirm_count, "confirm");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.externalize_count, "externalize");
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other with invalid signature)
@@ -304,10 +294,10 @@ unittest
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
 
-    waitForCount(conf.validators - 1, &network.nominate_count, "nominate");
-    waitForCount(conf.validators - 1, &network.prepare_count, "prepare");
-    waitForCount(conf.validators - 1, &network.confirm_count, "confirm");
-    waitForCount(conf.validators - 1, &network.externalize_count, "externalize");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.prepare_count, "prepare");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.confirm_count, "confirm");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.externalize_count, "externalize");
 }
 
 /// Too many byzantine nodes will prevent block from being externalized
@@ -326,7 +316,7 @@ unittest
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
 
-    waitForCount(conf.validators - 1, &network.nominate_count, "nominate");
-    assert(network.confirm_count == 0, "The block should not have been confirmed!");
-    assert(network.externalize_count == 0, "The block should not have been externalized!");
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    assert(network.envelope_type_counts.confirm_count == 0, "The block should not have been confirmed!");
+    assert(network.envelope_type_counts.externalize_count == 0, "The block should not have been externalized!");
 }
