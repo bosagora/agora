@@ -35,6 +35,7 @@ import agora.test.Base;
 import agora.utils.SCPPrettyPrinter;
 
 import scpd.types.Stellar_SCP;
+import scpd.types.Stellar_types : NodeID;
 
 import geod24.Registry;
 
@@ -57,7 +58,8 @@ enum ByzantineReason
     BadSigningEnvelope,
 }
 
-struct EnvelopeTypeCounts {
+struct EnvelopeTypeCounts
+{
     size_t nominate_count;
     size_t prepare_count;
     size_t confirm_count;
@@ -118,6 +120,8 @@ private class SpyNominator : TestNominator
 {
     private shared(EnvelopeTypeCounts)* envelope_type_counts;
 
+    private NodeID[][SCPStatementType.max + 1] nodes_received;
+
     /// Ctor
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
@@ -130,6 +134,9 @@ private class SpyNominator : TestNominator
 
     public override void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
     {
+        // Make sure we don't count for same node more than once
+        if (nodes_received[envelope.statement.pledges.type_].count(envelope.statement.nodeID) > 0) return;
+        nodes_received[envelope.statement.pledges.type_] ~= envelope.statement.nodeID;
         final switch (envelope.statement.pledges.type_) {
             case SCPStatementType.SCP_ST_NOMINATE:
                 atomicOp!("+=")(this.envelope_type_counts.nominate_count, 1);
@@ -249,11 +256,7 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.prepare_count, "prepare");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.confirm_count, "confirm");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.externalize_count, "externalize");
+    network.expectBlock(Height(1), 3.seconds);
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other not signing node)
@@ -271,11 +274,7 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.prepare_count, "prepare");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.confirm_count, "confirm");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.externalize_count, "externalize");
+    network.expectBlock(Height(1), 3.seconds);
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other with invalid signature)
@@ -293,30 +292,51 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.prepare_count, "prepare");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.confirm_count, "confirm");
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.externalize_count, "externalize");
+    network.expectBlock(Height(1), 3.seconds);
 }
 
-/// Too many byzantine nodes will prevent block from being externalized
+
+// This delay is unfortunately needed before checking the number of confirmed envelopes
+private enum Duration sufficient_time_for_first_envelope = 500.msecs;
+
+/// Half nodes not signing correctly WILL NOT prevent block from being externalized if we require 3 out of 6
 unittest
 {
-    TestConf conf = { validators : 10, quorum_threshold : 66 };
+    TestConf conf = { validators : 6, quorum_threshold : 50 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
-
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
+    assert(node_1.getQuorumConfig().threshold == 3); // We should need 3 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-
     waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    Thread.sleep(sufficient_time_for_first_envelope);
+    assert(network.envelope_type_counts.confirm_count > 0, "The block should have been confirmed! Perhaps the delay needs to be increased");
+    assert(network.envelope_type_counts.externalize_count > 0, "The block should have been externalized!");
+}
+
+/// Half nodes not signing correctly WILL prevent block from being externalized if we require 4 out of 6
+unittest
+{
+    TestConf conf = { validators : 6, quorum_threshold : 51 };
+    auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+    auto nodes = network.clients;
+    auto node_1 = nodes[$ - 1];
+    assert(node_1.getQuorumConfig().threshold == 4); // We should need 4 nodes
+    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
+    txes.each!(tx => node_1.putTransaction(tx));
+    network.setTimeFor(Height(1));  // trigger consensus
+    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    Thread.sleep(sufficient_time_for_first_envelope);
     assert(network.envelope_type_counts.confirm_count == 0, "The block should not have been confirmed!");
     assert(network.envelope_type_counts.externalize_count == 0, "The block should not have been externalized!");
 }
