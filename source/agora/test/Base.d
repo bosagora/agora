@@ -55,6 +55,7 @@ import agora.node.Ledger;
 import agora.node.Validator;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
+public import agora.utils.Utility : retryFor;
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Validator : ValidatorAPI = API;
 
