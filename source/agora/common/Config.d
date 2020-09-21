@@ -280,38 +280,39 @@ network:
     }
 }
 
+///
+private const(string)[] parseSequence (string section, ref const CommandLine cmdln, Node root, bool optional = false)
+{
+    if (auto val = section in cmdln.overrides)
+        return *val;
+
+    if (auto node = section in root)
+        enforce(root[section].type == NodeType.sequence,
+            format("`%s` section must be a sequence", section));
+    else if (optional)
+        return null;
+    else
+        throw new Exception(
+            format("The '%s' section is mandatory and must " ~
+                "specify at least one item", section));
+
+    string[] result;
+    foreach (string item; root[section])
+        result ~= item;
+
+    return result;
+}
+
 /// ditto
 private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
 {
-    const(string)[] parseSequence (string section, bool optional = false)
-    {
-        if (auto val = section in cmdln.overrides)
-            return *val;
-
-        if (auto node = section in root)
-            enforce(root[section].type == NodeType.sequence,
-                format("`%s` section must be a sequence", section));
-        else if (optional)
-            return null;
-        else
-            throw new Exception(
-                format("The '%s' section is mandatory and must " ~
-                    "specify at least one item", section));
-
-        string[] result;
-        foreach (string item; root[section])
-            result ~= item;
-
-        return result;
-    }
-
     Config conf =
     {
         banman : parseBanManagerConfig("banman" in root, cmdln),
         node : parseNodeConfig("node" in root, cmdln),
         validator : parseValidatorConfig("validator" in root, cmdln),
-        network : assumeUnique(parseSequence("network")),
-        dns_seeds : assumeUnique(parseSequence("dns", true)),
+        network : assumeUnique(parseSequence("network", cmdln, root)),
+        dns_seeds : assumeUnique(parseSequence("dns", cmdln, root, true)),
         logging: parseLoggingSection("logging" in root, cmdln),
         event_handlers: parserEventHandlers("event_handlers" in root, cmdln),
     };
