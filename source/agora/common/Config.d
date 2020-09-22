@@ -169,6 +169,12 @@ public struct ValidatorConfig
 
     /// The seed to use for the keypair of this node
     public immutable KeyPair key_pair;
+
+    // Network addresses that will be registered with the public key (Validator only)
+    public immutable string[] addresses_to_register;
+
+    // Registry address
+    public string registry_address;
 }
 
 /// Admin API config
@@ -281,7 +287,8 @@ network:
 }
 
 ///
-private const(string)[] parseSequence (string section, ref const CommandLine cmdln, Node root, bool optional = false)
+private const(string)[] parseSequence (string section, ref const CommandLine cmdln,
+        Node root, bool optional = false)
 {
     if (auto val = section in cmdln.overrides)
         return *val;
@@ -421,10 +428,13 @@ private ValidatorConfig parseValidatorConfig (Node* node, const ref CommandLine 
     if (!enabled)
         return ValidatorConfig(false);
 
+    auto registry_address = get!(string, "validator", "registry_address")(cmdln, node);
     ValidatorConfig result = {
         enabled: true,
         key_pair:
             KeyPair.fromSeed(Seed.fromString(get!(string, "validator", "seed")(cmdln, node))),
+        registry_address: registry_address,
+        addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
     };
     return result;
 }
@@ -440,6 +450,7 @@ unittest
 validator:
   enabled: true
   seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  registry_address: http://127.0.0.1:3003
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseValidatorConfig("validator" in node, cmdln);

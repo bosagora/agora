@@ -35,6 +35,7 @@ import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
+import agora.registry.NameRegistryAPI;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
@@ -211,6 +212,7 @@ public class Validator : FullNode, API
     public override void start ()
     {
         this.started = true;
+        this.network.startPeriodicNameRegistration();
         this.startPeriodicDiscovery();
         this.clock.startSyncing();
         this.taskman.setTimer(this.config.node.preimage_reveal_interval,

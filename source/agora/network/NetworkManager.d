@@ -39,7 +39,10 @@ import agora.consensus.data.Transaction;
 import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.node.Ledger;
+import agora.registry.NameRegistryAPI;
+import agora.utils.InetUtils;
 import agora.utils.Log;
+import agora.utils.Utility;
 
 import scpd.types.Stellar_SCP;
 
@@ -318,6 +321,9 @@ public class NetworkManager
     /// Config instance
     protected const NodeConfig node_config = NodeConfig.init;
 
+    /// Validator instance
+    protected const ValidatorConfig validator_config = ValidatorConfig.init;
+
     /// Task manager
     private TaskManager taskman;
 
@@ -362,18 +368,20 @@ public class NetworkManager
     /// Clock instance
     protected Clock clock;
 
+    /// Registry client
+    private NameRegistryAPI registry_client;
+
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
     /// Ctor
-    public this (in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] seed_peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman, Clock clock)
+    public this (in Config config, Metadata metadata, TaskManager taskman, Clock clock)
     {
         this.taskman = taskman;
-        this.node_config = node_config;
+        this.node_config = config.node;
+        this.validator_config = config.validator;
         this.metadata = metadata;
-        this.banman = this.getBanManager(banman_conf, clock,
+        this.banman = this.getBanManager(config.banman, clock,
             node_config.data_dir);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
@@ -390,11 +398,11 @@ public class NetworkManager
         else
         {
             // add the IP seeds
-            this.addAddresses(Set!Address.from(seed_peers));
+            this.addAddresses(Set!Address.from(config.network));
 
             // add the DNS seeds
-            if (dns_seeds.length > 0)
-                this.addAddresses(resolveDNSSeeds(dns_seeds));
+            if (config.dns_seeds.length > 0)
+                this.addAddresses(resolveDNSSeeds(config.dns_seeds));
         }
     }
 
@@ -553,6 +561,20 @@ public class NetworkManager
         return false;
     }
 
+    /// Periodically registers network addresses
+    public void startPeriodicNameRegistration ()
+    {
+        this.registry_client = this.getNameRegistryClient(
+            validator_config.registry_address, 2.seconds);
+        if (this.registry_client is null)
+            return;
+        this.onRegisterName();  // avoid delay
+        // we re-register in every 2 minutes, in order to cope with the situation below
+        // 1. network registry server is restarted
+        // 2. client running agora node acquired some new IPs
+        this.taskman.setTimer(2.minutes, &this.onRegisterName, Periodic.Yes);
+    }
+
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
@@ -564,6 +586,25 @@ public class NetworkManager
         this.required_peer_keys = Set!PublicKey.from(
             required_peer_keys.byKey()
             .filter!(key => key !in this.connected_validator_keys));
+
+        if (registry_client !is null)
+            foreach (key; this.required_peer_keys)
+                taskman.runTask
+                ({
+                    retry!
+                    ({
+                        auto registryPayload = registry_client.getValidator(key);
+                        if (!registryPayload.verifySignature(key))
+                        {
+                            log.warn("RegistryPayload signature is incorrect for {}", key);
+                            return false;
+                        }
+                        foreach (addr; registryPayload.data.addresses)
+                            this.addAddress(addr);
+                        return true;
+                    },
+                    )(taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
+                });
 
         // actually just runs it once, but we need the scheduler to run first
         // and it doesn't run in the constructor yet (LocalRest)
@@ -723,6 +764,36 @@ public class NetworkManager
         return new BanManager(banman_conf, clock, data_dir);
     }
 
+    /// register network addresses into the name registry
+    private void onRegisterName ()
+    {
+        const(Address)[] addresses = this.validator_config.addresses_to_register;
+        if (!addresses.length)
+            addresses = InetUtils.getPublicIPs();
+
+        RegistryPayload payload =
+        {
+            data:
+            {
+                public_key : this.validator_config.key_pair.address,
+                addresses : addresses,
+                seq : time(null)
+            }
+        };
+
+        payload.signPayload(this.validator_config.key_pair.secret);
+
+        try
+        {
+            this.registry_client.putValidator(payload);
+        }
+        catch (Exception ex)
+        {
+            log.info("Couldn't register our address: {}. Trying again later..",
+                ex);
+        }
+    }
+
     /***************************************************************************
 
         Retrieve blocks starting from block_height up to the highest block
@@ -856,6 +927,38 @@ public class NetworkManager
         settings.httpClientSettings.readTimeout = timeout;
 
         return new RestInterfaceClient!API(settings);
+    }
+
+    /***************************************************************************
+
+        Instantiates a client object implementing `NameRegistryAPI`
+
+        This function simply returns a name registry object implementing
+        `NameRegistryAPI`. In the default implementation, this returns a
+        `RestInterfaceClient`. However, it can be overriden in test code to
+        return an in-memory client.
+
+        Params:
+          address = The address of the name registry server
+          timeout = the timeout duration to use for requests
+
+        Returns:
+          An object to communicate with the name registry server
+
+    ***************************************************************************/
+
+    public NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
+    {
+        import vibe.http.client;
+        if (address=="disabled")
+            return null;
+        auto settings = new RestInterfaceSettings();
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings();
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!NameRegistryAPI(settings);
     }
 
     /***************************************************************************

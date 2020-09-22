@@ -24,6 +24,8 @@ validator:
   # When validating, the `seed` of an eligible account is required
   # An eligible account has at least 40k coins frozen in it
   enabled: false
+  # Address of the name registry
+  registry_address: disabled
 
 ################################################################################
 ##                         Ban manager configuration                          ##

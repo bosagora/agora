@@ -53,6 +53,8 @@ import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.node.Validator;
+import agora.registry.NameRegistryAPI;
+import agora.registry.NameRegistryImpl;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
@@ -513,6 +515,9 @@ public class TestAPIManager
     /// Registry holding the nodes
     protected Registry reg;
 
+    /// Name registry
+    private RemoteAPI!NameRegistryAPI name_registry;
+
     ///
     public this (immutable(Block)[] blocks, TestConf test_conf,
         time_t genesis_start_time)
@@ -522,6 +527,7 @@ public class TestAPIManager
         this.genesis_start_time = genesis_start_time;
         this.initial_time = this.getBlockTime(blocks[$ - 1].header.height);
         this.reg.initialize();
+        this.createNameRegistry();
     }
 
     /***************************************************************************
@@ -681,6 +687,18 @@ public class TestAPIManager
 
     /***************************************************************************
 
+        Create a new name registry
+
+    ***************************************************************************/
+
+    public void createNameRegistry ()
+    {
+        this.name_registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistryImpl();
+        this.reg.register("name.registry", this.name_registry.tid());
+    }
+
+    /***************************************************************************
+
         Start each of the nodes
 
         Params:
@@ -734,6 +752,9 @@ public class TestAPIManager
         }
 
         this.nodes = null;
+
+        enforce(this.reg.unregister("name.registry"));
+        name_registry.ctrl.shutdown();
     }
 
     /***************************************************************************
@@ -787,11 +808,10 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void waitForDiscovery (string file = __FILE__, size_t line = __LINE__)
+    public void waitForDiscovery (Duration timeout = 5.seconds, string file = __FILE__, size_t line = __LINE__)
     {
         try
         {
-            const timeout = 5.seconds;
             this.nodes.each!(node =>
                 retryFor(node.client.getNodeInfo().ifThrown(NodeInfo.init)
                     .state == NetworkState.Complete,
@@ -864,12 +884,11 @@ public class TestNetworkManager : NetworkManager
     public Registry* registry;
 
     /// Constructor
-    public this (NodeConfig config, BanManager.Config ban_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata,
+    public this (Config config, Metadata metadata,
         TaskManager taskman, Clock clock, Registry* reg)
     {
         this.registry = reg;
-        super(config, ban_conf, peers, dns_seeds, metadata, taskman, clock);
+        super(config, metadata, taskman, clock);
     }
 
     /// No "http://" in unittests, we just use the string as-is
@@ -886,6 +905,16 @@ public class TestNetworkManager : NetworkManager
         if (tid != typeof(tid).init)
             return new RemoteAPI!TestAPI(tid, timeout);
         assert(0, "Trying to access node at address '" ~ address ~
+               "' without first creating it");
+    }
+
+    ///
+    public override RemoteAPI!NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
+    {
+        auto tid = this.registry.locate("name.registry");
+        if (tid != typeof(tid).init)
+            return new RemoteAPI!NameRegistryAPI(tid, timeout);
+        assert(0, "Trying to access name registry at address '" ~ address ~
                "' without first creating it");
     }
 
@@ -1105,13 +1134,10 @@ private mixin template TestNodeMixin ()
 
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
-        in NodeConfig node_config, in BanManager.Config banman_conf,
-        in string[] peers, in string[] dns_seeds, Metadata metadata,
-        TaskManager taskman, Clock clock)
+        in Config config, Metadata metadata, TaskManager taskman, Clock clock)
     {
         assert(taskman !is null);
-        return new TestNetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata, taskman, clock, this.registry);
+        return new TestNetworkManager(config, metadata, taskman, clock, this.registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1388,6 +1414,9 @@ public struct TestConf
     /// max listener nodes. If set to 0, set to this.nodes - 1
     size_t max_listeners;
 
+    /// registry address
+    string registry_address = "name.registry";
+
     /// Number of transactions nominated for each nomination slot.
     /// This is only used for the TestNominator - it's not part of Consensus rules.
     /// Many existing tests have been originally written with the assumption that
@@ -1487,7 +1516,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : makeNodeConfig(self_address),
-            validator : ValidatorConfig(true, key_pair),
+            validator : ValidatorConfig(true, key_pair, [self_address]),
             network : makeNetworkConfig(idx, addresses),
         };
 
@@ -1582,6 +1611,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     return net;
 }
+
 
 /// Returns: the entire ledger from the provided node
 public const(Block)[] getAllBlocks (TestAPI node)
