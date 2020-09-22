@@ -52,6 +52,13 @@ validator:
   # Private seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
   # Public address:  GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
   seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  # Address of the name registry
+  registry_address: http://127.0.0.1:3003
+  # Network addresses that will be registered with the public key (Validator only)
+  # If left empty, all public network addresses of the node will be registered
+  addresses_to_register:
+    - 88.88.88.88
+    - best.validator.io
 
 ################################################################################
 ##                         Ban manager configuration                          ##

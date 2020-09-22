@@ -33,6 +33,8 @@ validator:
   seed: SASRTOMKYVBXMW5CGN4UCNQDVAEWDVCVCYDC25YCCACSN2T7EEV5QNA3
   # The cycle length for a validator
   validator_cycle: 20
+  # Address of the name registry
+  registry_address: disabled
 
 ################################################################################
 ##                         Ban manager configuration                          ##

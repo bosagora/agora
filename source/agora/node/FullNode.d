@@ -170,9 +170,7 @@ public class FullNode : API
         this.config = config;
         this.taskman = this.getTaskManager();
         this.clock = this.getClock(this.taskman);
-        this.network = this.getNetworkManager(config.node, config.banman,
-            config.network, config.dns_seeds, this.metadata, this.taskman,
-            this.clock);
+        this.network = this.getNetworkManager(config, this.metadata, this.taskman, this.clock);
         this.storage = this.getBlockStorage(config.node.data_dir);
         this.pool = this.getPool(config.node.data_dir);
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
@@ -319,7 +317,7 @@ public class FullNode : API
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
 
-    /***************************************************************************
+ /***************************************************************************
 
         Returns an instance of a NetworkManager
 
@@ -327,9 +325,6 @@ public class FullNode : API
 
         Params:
             node_config = the node config
-            banman_conf = the ban manager config
-            peers = the peers to connect to
-            dns_seeds = the DNS seeds to retrieve peers from
             metadata = metadata containing known peers and other meta info
             taskman = task manager
             clock = clock instance
@@ -339,13 +334,10 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected NetworkManager getNetworkManager (in NodeConfig node_config,
-        in BanManager.Config banman_conf, in string[] peers,
-        in string[] dns_seeds, Metadata metadata, TaskManager taskman,
-        Clock clock)
+    protected NetworkManager getNetworkManager (in Config config,
+        Metadata metadata, TaskManager taskman, Clock clock)
     {
-        return new NetworkManager(node_config, banman_conf, peers,
-            dns_seeds, metadata, taskman, clock);
+        return new NetworkManager(config, metadata, taskman, clock);
     }
 
     /***************************************************************************
