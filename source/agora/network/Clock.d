@@ -48,7 +48,6 @@
 
 module agora.network.Clock;
 
-import agora.api.Validator;
 import agora.common.Task;
 import agora.utils.Log;
 
