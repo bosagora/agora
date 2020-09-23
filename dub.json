@@ -101,7 +101,6 @@
                 "source/agora/network/NetworkClient.d",
                 "source/agora/network/NetworkManager.d",
                 "source/agora/node/*",
-                "source/agora/utils/PrettyPrinter.d",
                 "source/agora/utils/SCPPrettyPrinter.d",
                 "source/scpp/*",
                 "source/scpd/*",
