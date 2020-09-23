@@ -373,7 +373,8 @@ public class NetworkManager
         this.taskman = taskman;
         this.node_config = node_config;
         this.metadata = metadata;
-        this.banman = this.getBanManager(banman_conf, node_config.data_dir);
+        this.banman = this.getBanManager(banman_conf, clock,
+            node_config.data_dir);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
         this.banman.load();
@@ -708,6 +709,7 @@ public class NetworkManager
 
         Params:
             banman_conf = ban manager config
+            clock = clock instance
             data_dir = path to the data directory
 
         Returns:
@@ -716,9 +718,9 @@ public class NetworkManager
     ***************************************************************************/
 
     protected BanManager getBanManager (in BanManager.Config banman_conf,
-        cstring data_dir)
+        Clock clock, cstring data_dir)
     {
-        return new BanManager(banman_conf, data_dir);
+        return new BanManager(banman_conf, clock, data_dir);
     }
 
     /***************************************************************************
