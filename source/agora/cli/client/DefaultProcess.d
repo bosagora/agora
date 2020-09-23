@@ -50,6 +50,8 @@ public void printDefaultHelp (ref string[] outputs)
     outputs ~= "";
     outputs ~= "These are commands:";
     outputs ~= "   sendtx      Send a transaction to node";
+    outputs ~= "   gentx       Generate transactions and";
+    outputs ~= "               send to node";
     outputs ~= "";
 }
 

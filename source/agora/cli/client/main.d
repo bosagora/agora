@@ -16,6 +16,7 @@ module agora.client.main;
 import agora.api.FullNode;
 import agora.client.Result;
 import agora.client.DefaultProcess;
+import agora.client.GenTxProcess;
 import agora.client.SendTxProcess;
 
 import vibe.core.core;
@@ -53,6 +54,10 @@ int runProcess (string[] args, ref string[] outputs)
     {
         case "sendtx":
             return sendTxProcess(args, outputs, (address) {
+                return new RestInterfaceClient!API(address);
+            });
+        case "gentx":
+            return genTxProcess(args, outputs, (address) {
                 return new RestInterfaceClient!API(address);
             });
         default :
