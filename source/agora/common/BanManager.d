@@ -16,6 +16,7 @@ module agora.common.BanManager;
 
 import agora.common.Serializer;
 import agora.common.Types;
+import agora.network.Clock;
 import agora.utils.Log;
 
 import std.file;
@@ -99,6 +100,8 @@ public class BanManager
     /// Path to the ban file on disk
     private const string banfile_path;
 
+    /// Clock instance
+    private Clock clock;
 
     /***************************************************************************
 
@@ -106,13 +109,15 @@ public class BanManager
 
         Params:
             config = the configuration
+            clock = clock instance
             data_dir = path to the data directory
 
     ***************************************************************************/
 
-    public this (Config config, cstring data_dir) @safe nothrow pure
+    public this (Config config, Clock clock, cstring data_dir) @safe nothrow pure
     {
         this.config = config;
+        this.clock = clock;
         this.banfile_path = buildPath(data_dir, "banned.dat");
     }
 
@@ -274,7 +279,7 @@ public class BanManager
 
     protected time_t getCurTime () @safe nothrow @nogc
     {
-        return time(null);
+        return this.clock.localTime();
     }
 
     /***************************************************************************
@@ -306,7 +311,7 @@ unittest
     class UnitBanMan : BanManager
     {
         time_t time;
-        this () { super(Config(10, 86400), null); }
+        this () { super(Config(10, 86400), null, null); }
         protected override time_t getCurTime () const { return this.time; }
         public override void dump () { }
         public override void load () { }

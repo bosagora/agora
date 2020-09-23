@@ -392,7 +392,7 @@ public class FakeClockBanManager : BanManager
     /// Ctor
     public this (Config conf)
     {
-        super(conf, null);
+        super(conf, null, null);
     }
 
     /// Return the fake time
@@ -910,6 +910,7 @@ public class TestNetworkManager : NetworkManager
 
         Params:
             conf = ban manager config
+            clock = clock instance
 
         Returns:
             an instance of a BanManager with a fake clock
@@ -917,7 +918,7 @@ public class TestNetworkManager : NetworkManager
     ***************************************************************************/
 
     protected override BanManager getBanManager (in BanManager.Config conf,
-        cstring _data_dir)
+        Clock clock, cstring _data_dir)
     {
         return new FakeClockBanManager(conf);
     }
