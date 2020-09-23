@@ -76,4 +76,32 @@ public struct Height
 
     /// Provides implicit conversion to `ulong`
     public alias value this;
+
+    /// Support for Vibe.d serialization to JSON
+    public string toString () const @safe
+    {
+        import std.conv : to;
+        return this.value.to!string;
+    }
+
+    /// Support for Vibe.d deserialization
+    public static Height fromString (scope const(char)[] str) pure @safe
+    {
+        import std.conv : to;
+        immutable ul = str.to!ulong;
+        return Height(ul);
+    }
+}
+
+///
+unittest
+{
+    import vibe.data.json;
+
+    const h = Height(1000);
+    const(char)[] str_h = "1000";
+
+    assert(h.toString() == str_h);
+    assert(h.fromString(str_h) == h);
+    assert(h.serializeToJsonString() == "\"1000\"");
 }
