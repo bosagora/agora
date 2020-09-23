@@ -230,19 +230,6 @@ private class ByzantineManager (bool addSpyValidator = false,
     }
 }
 
-private void waitForCount(size_t target_count, shared(size_t)* counter, string name)
-{
-    size_t loopCount;
-    while (atomicLoad(*counter) < target_count)
-    {
-        // That's at least 5 seconds
-        assert(loopCount < 500, format("Only received %d of %d, expected %s envelopes!",
-                   atomicLoad(*counter), target_count, name));
-        loopCount++;
-        Thread.sleep(10.msecs);
-    }
-}
-
 /// Block should be added if we have all 3 validators signing (our SpyValidator does not sign)
 unittest
 {
@@ -257,7 +244,6 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.setTimeFor(Height(1));  // trigger consensus
     network.expectBlock(Height(1), 3.seconds);
 }
 
@@ -275,7 +261,6 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.setTimeFor(Height(1));  // trigger consensus
     network.expectBlock(Height(1), 3.seconds);
 }
 
@@ -293,10 +278,22 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.setTimeFor(Height(1));  // trigger consensus
     network.expectBlock(Height(1), 3.seconds);
 }
 
+
+private void waitForCount(size_t target_count, shared(size_t)* counter, string name)
+{
+    size_t loopCount;
+    while (atomicLoad(*counter) < target_count)
+    {
+        // That's at least 5 seconds
+        assert(loopCount < 500, format("Only received %d of %d, expected %s envelopes!",
+                   atomicLoad(*counter), target_count, name));
+        loopCount++;
+        Thread.sleep(10.msecs);
+    }
+}
 
 // This delay is unfortunately needed before checking the number of confirmed envelopes
 private enum Duration sufficient_time_for_first_envelope = 500.msecs;
