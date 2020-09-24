@@ -102,6 +102,10 @@ public struct NodeConfig
     static assert(!hasUnsharedAliasing!(typeof(this)),
         "Type must be shareable accross threads");
 
+    /// If set, a commons budget address to use
+    /// in place of the built-in commons budget address as defined by CoinNet
+    public PublicKey commons_budget_address;
+
     /// If set, a hexdump serialized representation of the genesis block to use
     /// in place of the built-in genesis block as defined by CoinNet
     public string genesis_block;
@@ -330,6 +334,12 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
     auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
     auto address = get!(string, "node", "address")(cmdln, node);
+    auto commons_budget = opt!(string, "node", "commons_budget_address")(cmdln, node);
+
+    auto commons_budget_address = (commons_budget.length > 0)
+        ? PublicKey.fromString(commons_budget)
+        : PublicKey.init;
+
     auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
     auto genesis_start_time = get!(time_t, "node", "genesis_start_time",
         str => SysTime(DateTime.fromISOString(str)).toUnixTime)(cmdln, node);
@@ -356,6 +366,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
     NodeConfig result = {
             min_listeners : min_listeners,
             max_listeners : max_listeners,
+            commons_budget_address : commons_budget_address,
             genesis_block : genesis_block,
             genesis_start_time : genesis_start_time,
             block_interval_sec : block_interval_sec,
@@ -389,6 +400,7 @@ node:
   data_dir: .cache
   quorum_shuffle_interval: 10
   preimage_reveal_interval: 5
+  commons_budget_address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
@@ -397,6 +409,7 @@ node:
         assert(config.data_dir == ".cache");
         assert(config.quorum_shuffle_interval == 10);
         assert(config.preimage_reveal_interval == 5.seconds);
+        assert(config.commons_budget_address.toString() == "GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ");
     }
 }
 
