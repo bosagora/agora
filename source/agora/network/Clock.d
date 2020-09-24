@@ -118,7 +118,7 @@ public class Clock
 
     ***************************************************************************/
 
-    public time_t localTime () @safe nothrow
+    public time_t localTime () @safe nothrow @nogc
     {
         return .time(null);
     }
