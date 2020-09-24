@@ -281,14 +281,15 @@ public class FullNode : API
 
     public override void putTransaction (Transaction tx) @safe
     {
-        log.trace("Received Transaction: {}", prettify(tx));
-
         auto tx_hash = hashFull(tx);
         if (this.pool.hasTransactionHash(tx_hash))
             return;
 
         if (this.ledger.acceptTransaction(tx))
+        {
+            log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
             this.network.gossipTransaction(tx);
+        }
     }
 
     /// GET: /has_transaction_hash
