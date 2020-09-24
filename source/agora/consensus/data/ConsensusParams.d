@@ -19,6 +19,7 @@
 
 module agora.consensus.data.ConsensusParams;
 
+import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 
 import core.stdc.time;
@@ -50,6 +51,9 @@ public immutable class ConsensusParams
     /// How often blocks should be created
     public uint BlockIntervalSeconds;
 
+    /// The address of commons budget
+    public PublicKey CommonsBudgetAddress;
+
     /***************************************************************************
 
         Constructor
@@ -63,13 +67,16 @@ public immutable class ConsensusParams
 
     ***************************************************************************/
 
-    public this (immutable(Block) genesis, uint validator_cycle = 1008,
+    public this (immutable(Block) genesis,
+                 in PublicKey commons_budget_address,
+                 uint validator_cycle = 1008,
                  uint max_quorum_nodes = 7, uint quorum_threshold = 80,
                  uint quorum_shuffle_interval = 30,
                  time_t genesis_start_time = 1596179709,
                  uint block_interval_sec = 1)
     {
         this.Genesis = genesis;
+        this.CommonsBudgetAddress = commons_budget_address,
         this.ValidatorCycle = validator_cycle;
         this.MaxQuorumNodes = max_quorum_nodes;
         this.QuorumThreshold = quorum_threshold;
@@ -84,6 +91,7 @@ public immutable class ConsensusParams
         uint quorum_threshold = 80)
     {
         import agora.consensus.data.genesis.Test : GenesisBlock;
-        this(GenesisBlock, validator_cycle, max_quorum_nodes, quorum_threshold);
+        import agora.utils.WellKnownKeys;
+        this(GenesisBlock, CommonsBudget.address, validator_cycle, max_quorum_nodes, quorum_threshold);
     }
 }

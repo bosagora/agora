@@ -1436,6 +1436,29 @@ static immutable Genesis = KeyPair(
 
 /*******************************************************************************
 
+    Commons Budget KeyPair used in unittests
+
+    In unittests, we need the commons budget key pair to be known for us to be
+    able to write tests.
+    In the real network, there are different values.
+
+    Note that while this is a well-known keys, it is not part of the
+    range returned by `byRange`, nor can it be indexed by `size_t`,
+    to avoid it being mistakenly used.
+
+    Seed:    SCNRULE3Q7NBNX7UIJVVI6HI5DQKP3MNDEHJA66FJZXDEGGH4SRRDSDR
+    Address: GCOMMONBGUXXP4RFCYGEF74JDJVPUW2GUENGTKKJECDNO6AGO32CUWGU
+
+*******************************************************************************/
+
+static immutable CommonsBudget = KeyPair(
+    PublicKey([156, 198, 57, 161, 53, 47, 119, 242, 37, 22, 12, 66, 255, 137, 26, 106, 250, 91, 70, 161, 26, 105, 169, 73, 32, 134, 215, 120, 6, 118, 244, 42]),
+    SecretKey([155, 26, 44, 155, 135, 218, 22, 223, 244, 66, 107, 84, 120, 232, 232, 224, 167, 237, 141, 25, 14, 144, 123, 197, 78, 110, 50, 24, 199, 228, 163, 17, 156, 198, 57, 161, 53, 47, 119, 242, 37, 22, 12, 66, 255, 137, 26, 106, 250, 91, 70, 161, 26, 105, 169, 73, 32, 134, 215, 120, 6, 118, 244, 42]),
+    Seed([155, 26, 44, 155, 135, 218, 22, 223, 244, 66, 107, 84, 120, 232, 232, 224, 167, 237, 141, 25, 14, 144, 123, 197, 78, 110, 50, 24, 199, 228, 163, 17]));
+
+
+/*******************************************************************************
+
     Key pairs used for Enrollments in the genesis block
 
     Note that despite mining for a few days, NODE0, NODE1, NODE8, NODE9 were

@@ -544,7 +544,7 @@ version (unittest)
                 ? params_
                 : (blocks.length > 0
                    // Use the provided Genesis block
-                   ? new immutable(ConsensusParams)(cast(immutable)blocks[0])
+                   ? new immutable(ConsensusParams)(cast(immutable)blocks[0], WK.Keys.CommonsBudget.address)
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
 
@@ -1232,7 +1232,7 @@ unittest
         assert(ex.msg == "Genesis block loaded from disk is different from the one in the config file");
     }
 
-    immutable good_params = new immutable(ConsensusParams)(new_gen_block);
+    immutable good_params = new immutable(ConsensusParams)(new_gen_block, WK.Keys.CommonsBudget.address);
     // will not fail
     scope ledger = new TestLedger(WK.Keys.A, [new_gen_block], good_params);
     // Neither will the default
