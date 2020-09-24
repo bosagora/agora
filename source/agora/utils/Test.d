@@ -192,6 +192,9 @@ public struct WK
             if (pubkey == Genesis.address)
                 return Genesis;
 
+            if (pubkey == CommonsBudget.address)
+                return CommonsBudget;
+
             if (pubkey == NODE2.address)
                 return NODE2;
             if (pubkey == NODE3.address)

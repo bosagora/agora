@@ -129,6 +129,10 @@ public class FullNode : API
     {
         import CNG = agora.consensus.data.genesis.Coinnet;
 
+        auto commons_budget =
+            config.node.commons_budget_address != PublicKey.init ?
+            config.node.commons_budget_address : CNG.CommonsBudgetAddress;
+
         // custom genesis block provided
         if (config.node.genesis_block.length > 0)
         {
@@ -141,6 +145,7 @@ public class FullNode : API
             auto genesis_block = block_bytes.deserializeFull!(immutable(Block));
             this.params = new immutable(ConsensusParams)(
                 genesis_block,
+                commons_budget,
                 config.node.validator_cycle,
                 config.node.max_quorum_nodes,
                 config.node.quorum_threshold,
@@ -151,6 +156,7 @@ public class FullNode : API
         else
             this.params = new immutable(ConsensusParams)(
                 CNG.GenesisBlock,
+                commons_budget,
                 config.node.validator_cycle,
                 config.node.max_quorum_nodes,
                 config.node.quorum_threshold,
