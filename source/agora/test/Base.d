@@ -902,6 +902,7 @@ public class TestNetworkManager : NetworkManager
         Params:
             conf = ban manager config
             clock = clock instance
+            data_dir = path to the data directory
 
         Returns:
             an instance of a TestBanManager
@@ -909,9 +910,9 @@ public class TestNetworkManager : NetworkManager
     ***************************************************************************/
 
     protected override TestBanManager getBanManager (in BanManager.Config conf,
-        Clock clock, cstring _data_dir)
+        Clock clock, cstring data_dir)
     {
-        return new TestBanManager(conf, clock, _data_dir);
+        return new TestBanManager(conf, clock, data_dir);
     }
 
     ///
