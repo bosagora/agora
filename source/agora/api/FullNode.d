@@ -232,7 +232,7 @@ public interface API
             The local clock time of this node (not network-adjusted)
 
         API:
-            GET /time
+            GET /local_time
 
         Warning: this request should be protected via node-to-node encryption,
         or else be signed with a unique challenge/response. Otherwise a
