@@ -110,7 +110,7 @@ unittest
     // clear the filter
     nodes[0 .. 4].each!(node => node.clearFilter());
 
-    FakeClockBanManager.time += 500;  // full node should be unbanned now
+    network.setTimeFor(Height(6));  // full node should be unbanned now
 
     auto new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
