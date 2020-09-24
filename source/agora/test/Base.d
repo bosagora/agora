@@ -383,22 +383,13 @@ private final class LocalRestTimer : ITimer
     }
 }
 
-/// A ban manager with a fake clock for reliable unittesting
-public class FakeClockBanManager : BanManager
+/// A ban manager not loading and dumping
+public class TestBanManager : BanManager
 {
-    /// the fake current time
-    public __gshared time_t time;
-
     /// Ctor
-    public this (Config conf)
+    public this (Config conf, Clock clock, cstring data_dir)
     {
-        super(conf, null, null);
-    }
-
-    /// Return the fake time
-    protected override time_t getCurTime () const @trusted
-    {
-        return time;
+        super(conf, clock, data_dir);
     }
 
     /// no-op
@@ -913,14 +904,14 @@ public class TestNetworkManager : NetworkManager
             clock = clock instance
 
         Returns:
-            an instance of a BanManager with a fake clock
+            an instance of a TestBanManager
 
     ***************************************************************************/
 
-    protected override BanManager getBanManager (in BanManager.Config conf,
+    protected override TestBanManager getBanManager (in BanManager.Config conf,
         Clock clock, cstring _data_dir)
     {
-        return new FakeClockBanManager(conf);
+        return new TestBanManager(conf, clock, _data_dir);
     }
 
     ///
