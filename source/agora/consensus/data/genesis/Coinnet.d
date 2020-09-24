@@ -83,6 +83,24 @@ unittest
            == `GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ`);
 }
 
+/// GCOMMONBGUXXP4RFCYGEF74JDJVPUW2GUENGTKKJECDNO6AGO32CUWGU
+public immutable PublicKey CommonsBudgetAddress = CommonsBudgetUbyte;
+
+///
+private immutable ubyte[] CommonsBudgetUbyte =
+    [
+        0x9c, 0xc6, 0x39, 0xa1, 0x35, 0x2f, 0x77, 0xf2,
+        0x25, 0x16, 0x0c, 0x42, 0xff, 0x89, 0x1a, 0x6a,
+        0xfa, 0x5b, 0x46, 0xa1, 0x1a, 0x69, 0xa9, 0x49,
+        0x20, 0x86, 0xd7, 0x78, 0x06, 0x76, 0xf4, 0x2a,
+    ];
+
+unittest
+{
+    assert(CommonsBudgetAddress.toString()
+           == `GCOMMONBGUXXP4RFCYGEF74JDJVPUW2GUENGTKKJECDNO6AGO32CUWGU`);
+}
+
 unittest
 {
     import agora.common.Serializer;
