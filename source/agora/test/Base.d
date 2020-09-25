@@ -1164,7 +1164,9 @@ public class TestClock : Clock
     public this (TaskManager taskman, GetNetTimeOffset getNetTimeOffset,
         shared(time_t)* cur_time)
     {
-        super(taskman, getNetTimeOffset);
+        super(getNetTimeOffset,
+            (Duration duration, void delegate() cb) nothrow @trusted
+                { taskman.setTimer(duration, cb, Periodic.Yes); });
         this.cur_time = cur_time;
     }
 

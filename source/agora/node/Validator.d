@@ -306,8 +306,7 @@ public class Validator : FullNode, API
 
     protected override Clock getClock (TaskManager taskman)
     {
-        return new Clock(this.taskman,
-            (out long time_offset)
+        return new Clock((out long time_offset)
             {
                 // not enrolled - no need to synchronize clocks
                 if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
@@ -315,7 +314,9 @@ public class Validator : FullNode, API
 
                 return this.network.getNetTimeOffset(this.qc.threshold,
                     time_offset);
-            });
+            },
+            (Duration duration, void delegate() cb) nothrow @trusted
+                { this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************

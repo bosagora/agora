@@ -57,6 +57,7 @@ import std.path : buildPath;
 import std.range;
 
 import core.stdc.time;
+import core.time;
 
 mixin AddLogger!();
 
@@ -380,7 +381,10 @@ public class FullNode : API
     protected Clock getClock (TaskManager taskman)
     {
         // non-synchronizing clock (for now)
-        return new Clock(taskman, (out long time_offset) { return true; });
+        return new Clock(
+            (out long time_offset) { return true; },
+            (Duration duration, void delegate() cb) nothrow @trusted
+                { this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************
