@@ -48,7 +48,6 @@
 
 module agora.network.Clock;
 
-import agora.common.Task;
 import agora.utils.Log;
 
 import core.stdc.time;
@@ -59,12 +58,13 @@ mixin AddLogger!();
 /// Delegate used to calculate the time offset to apply in `networkTime`
 public alias GetNetTimeOffset = bool delegate (out long) @safe nothrow;
 
+/// Delegate used to set timer for synchronizing the clock with the network
+public alias SetPeriodicTimer = void delegate (Duration, void delegate())
+        @trusted nothrow;
+
 /// Ditto
 public class Clock
 {
-    /// for timers
-    private TaskManager taskman;
-
     /// used to retrieve the quorum median clock time
     private GetNetTimeOffset getNetTimeOffset;
 
@@ -74,6 +74,9 @@ public class Clock
     /// how often the clock should be synchronized with the network
     public const Duration ClockSyncInterval = 1.minutes;
 
+    /// used to set timer for syncing
+    private SetPeriodicTimer setPeriodicTimerDg;
+
     /***************************************************************************
 
         Instantiate the clock.
@@ -82,17 +85,18 @@ public class Clock
         ready to set up timers.
 
         Params:
-            taskman = the task manager
             getNetTimeOffset = delegate to call to calculate a net time offset
                                which will be used in the call to `networkTime`
+            setPeriodicTimerDg = delegate to set timer for synchronizing
+                                the clock with the network
 
     ***************************************************************************/
 
-    public this (TaskManager taskman, GetNetTimeOffset getNetTimeOffset)
-        @safe @nogc nothrow pure
+    public this (GetNetTimeOffset getNetTimeOffset,
+        SetPeriodicTimer setPeriodicTimerDg) @safe @nogc nothrow pure
     {
-        this.taskman = taskman;
         this.getNetTimeOffset = getNetTimeOffset;
+        this.setPeriodicTimerDg = setPeriodicTimerDg;
     }
 
     /***************************************************************************
@@ -135,10 +139,7 @@ public class Clock
     public void startSyncing () @safe nothrow
     {
         this.synchronize();
-        () @trusted {
-            this.taskman.setTimer(ClockSyncInterval, &this.synchronize,
-                Periodic.Yes);
-        }();
+        this.setPeriodicTimerDg(ClockSyncInterval, &this.synchronize);
     }
 
     /***************************************************************************
