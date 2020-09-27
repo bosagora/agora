@@ -540,8 +540,11 @@ public struct TxBuilder
 
     /***************************************************************************
 
-        Takes a block object and filters the spendable outputs
-        into a `TxBuilder` object.
+        Takes a block object and filters the payment outputs
+        into a range of `TxBuilder` objects.
+
+        Note that the outputs may not be spendable anymore if other
+        blocks have been externalized after this block.
 
         Params:
             block = a `Block` object
