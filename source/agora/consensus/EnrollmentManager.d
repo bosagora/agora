@@ -777,7 +777,7 @@ public class EnrollmentManager
 
         assert(height >= enrolled);
         auto curr = cast(uint)(height - enrolled);
-        auto next = min(PreimageRevealPeriod * ((curr / PreimageRevealPeriod) + 1),
+        auto next = min(curr + PreimageRevealPeriod,
             this.params.ValidatorCycle - 1);
         this.setNextRevealDistance(next);
     }
