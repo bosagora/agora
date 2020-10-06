@@ -87,6 +87,7 @@ private int main (string[] args)
             {
                 banman : config.banman,
                 node : config.node,
+                validator : config.validator,
                 network : assumeUnique(converted_network),
                 dns_seeds : config.dns_seeds,
                 logging: config.logging,
