@@ -51,6 +51,7 @@ import core.stdc.stdlib : abort;
 import core.stdc.time;
 
 import std.conv;
+import std.format;
 import std.path : buildPath;
 import core.time : msecs, seconds;
 
@@ -673,28 +674,34 @@ extern(D):
     public override Value combineCandidates (uint64_t slot_idx,
         ref const(set!Value) candidates)
     {
-        scope (failure) assert(0);
-
-        foreach (ref const(Value) candidate; candidates)
+        try
         {
-            auto data = deserializeFull!ConsensusData(candidate[]);
-
-            if (auto msg = this.ledger.validateConsensusData(data))
+            foreach (ref const(Value) candidate; candidates)
             {
-                log.error("combineCandidates(): Invalid consensus data: {}", msg);
-                continue;
-            }
-            else
-            {
-                log.info("combineCandidates: {}", slot_idx);
-            }
+                auto data = deserializeFull!ConsensusData(candidate[]);
 
-            // todo: currently we just pick the first of the candidate values,
-            // but we should ideally pick tx's out of the combined set
-            return duplicate_value(&candidate);
+                if (auto msg = this.ledger.validateConsensusData(data))
+                {
+                    log.error("combineCandidates(): Invalid consensus data: {}", msg);
+                    continue;
+                }
+                else
+                {
+                    log.info("combineCandidates: {}", slot_idx);
+                }
+
+                // todo: currently we just pick the first of the candidate values,
+                // but we should ideally pick tx's out of the combined set
+                return duplicate_value(&candidate);
+            }
+        } catch (Exception ex)
+        {
+            assert(0, format!"[%s]:[%s] combineCandidates: slot %u. Exception:%s"(
+                __FILE__, __LINE__, slot_idx, ex.to!string));
         }
-
-        assert(0);  // should not reach here
+        // should not reach here
+        assert(0, format!"[%s]:[%s] combineCandidates: no valid candidate for slot %u."(
+            __FILE__, __LINE__, slot_idx));
     }
 
     /***************************************************************************
