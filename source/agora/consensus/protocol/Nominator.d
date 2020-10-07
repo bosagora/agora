@@ -651,7 +651,6 @@ extern(D):
         }
         catch (Exception ex)
         {
-            import std.conv;
             assert(0, ex.to!string);
         }
     }
