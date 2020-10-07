@@ -695,7 +695,7 @@ extern(D):
             }
         } catch (Exception ex)
         {
-            assert(0, format!"[%s]:[%s] combineCandidates: slot %u. Exception:%s"(
+            assert(0, format!"[%s:%s] combineCandidates: slot %u. Exception: %s"(
                 __FILE__, __LINE__, slot_idx, ex.to!string));
         }
         // should not reach here
