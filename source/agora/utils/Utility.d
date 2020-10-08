@@ -15,9 +15,13 @@ module agora.utils.Utility;
 
 import agora.utils.Log;
 
+import std.algorithm : map;
+import std.array : join, split;
+import std.conv;
 import std.format;
 import std.typecons;
 import std.traits;
+import std.uni : asCapitalized;
 
 import core.exception;
 import core.time;
@@ -118,6 +122,32 @@ public struct ThreadWaiter
         import core.thread;
         Thread.sleep(duration);
     }
+}
+
+/*******************************************************************************
+
+    Converts a string with underscore separator to upper camel case, for example
+    converts "this_is_me" to "ThisIsMe"
+
+    Params:
+        original = string that we want to convert to upper camel case
+
+*******************************************************************************/
+
+string underscoreSeparatedToUpperCamelCase(string original)
+{
+    return to!string(original.split("_").map!(part => part.asCapitalized).join(""));
+}
+
+///
+unittest
+{
+    // base case
+    assert(underscoreSeparatedToUpperCamelCase("this_is_me") == "ThisIsMe");
+    // extra underscore in the middle
+    assert(underscoreSeparatedToUpperCamelCase("this__is_me") == "ThisIsMe");
+    // unnecessary underscores in the beginning and at the end
+    assert(underscoreSeparatedToUpperCamelCase("_this_is_me_") == "ThisIsMe");
 }
 
 ///
