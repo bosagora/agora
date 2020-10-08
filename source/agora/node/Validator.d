@@ -214,6 +214,7 @@ public class Validator : FullNode, API
         this.started = true;
         this.network.startPeriodicNameRegistration();
         this.startPeriodicDiscovery();
+        this.startStatsServer();
         this.clock.startSyncing();
         this.taskman.setTimer(this.config.node.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
@@ -241,8 +242,9 @@ public class Validator : FullNode, API
     }
 
     /// GET /public_key
-    public override PublicKey getPublicKey () pure nothrow @safe @nogc
+    public override PublicKey getPublicKey () pure nothrow @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "public_key", "http");
         return this.config.validator.key_pair.address;
     }
 
@@ -260,6 +262,7 @@ public class Validator : FullNode, API
 
     public override void receiveEnvelope (SCPEnvelope envelope) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_envelope", "http");
         this.nominator.receiveEnvelope(envelope);
     }
 

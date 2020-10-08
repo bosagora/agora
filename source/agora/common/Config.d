@@ -159,6 +159,11 @@ public struct NodeConfig
 
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
+
+    /// The local address where the stats server (currently Prometheus)
+    /// is going to connect to, for example: http://0.0.0.0:8008
+    /// It can also be set to -1 do disable listening
+    public int stats_listening_port = -1;
 }
 
 /// Validator config
@@ -370,6 +375,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
         cmdln, node);
     auto preimage_reveal_interval = get!(Duration, "node", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
+    const stats_listening_port = get!(int, "node", "stats_listening_port")(cmdln, node);
 
     NodeConfig result = {
             min_listeners : min_listeners,
@@ -389,6 +395,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
             quorum_threshold : quorum_threshold,
             quorum_shuffle_interval : quorum_shuffle_interval,
             preimage_reveal_interval : preimage_reveal_interval,
+            stats_listening_port : stats_listening_port
     };
     return result;
 }

@@ -62,6 +62,8 @@ import agora.consensus.EnrollmentPool;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.consensus.ValidatorSet;
+import agora.stats.Utils;
+import agora.stats.Validator;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
@@ -113,6 +115,12 @@ public class EnrollmentManager
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
 
+    /// Validator count stats
+    private ValidatorCountStats validator_count_stats;
+
+    /// Validator preimages stats
+    private ValidatorPreimagesStats validator_preimages_stats;
+
     /***************************************************************************
 
         Constructor
@@ -159,6 +167,8 @@ public class EnrollmentManager
         const uint populate_count = this.getCycleIndex();
         foreach (_; 0 .. populate_count)
             this.cycle.populate(this.key_pair.v, true);
+
+        Utils.getCollectorRegistry().addCollector(&collectValidatorStats);
     }
 
     /***************************************************************************
@@ -709,6 +719,25 @@ public class EnrollmentManager
         {
             log.error("ManagedDatabase operation error {}", ex);
         }
+    }
+
+    ///
+    private void collectValidatorStats (Collector collector)
+    {
+        auto validator_count = validator_set.count();
+        if (!validator_count)
+            validator_count_stats.setMetricTo!"agora_validators_gauge"(validator_count);
+        Hash[] keys;
+        if (getEnrolledUTXOs(keys))
+            foreach (const ref key; keys)
+                validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
+                    validator_set.getPreimage(key).distance, key.toString());
+
+        foreach (stat; validator_count_stats.getStats())
+            collector.collect(stat.value);
+
+        foreach (stat; validator_preimages_stats.getStats())
+            collector.collect(stat.value, stat.label);
     }
 
     /***************************************************************************

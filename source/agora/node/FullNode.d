@@ -41,6 +41,10 @@ import agora.node.BlockStorage;
 import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
+import agora.utils.Utility;
+import agora.stats.EndpointReq;
+import agora.stats.Server;
+import agora.stats.Utils;
 
 import scpd.types.Utils;
 
@@ -51,6 +55,7 @@ import vibe.http.server;
 import vibe.web.rest;
 
 import std.algorithm;
+import std.conv : to;
 import std.exception;
 import std.file;
 import std.path : buildPath;
@@ -90,6 +95,9 @@ public class FullNode : API
     /// Clock instance
     protected Clock clock;
 
+    /// Stats server
+    protected StatsServer stats_server;
+
     /// Network of connected nodes
     protected NetworkManager network;
 
@@ -116,6 +124,8 @@ public class FullNode : API
 
     /// PreImage Received Handler list
     protected PreImageReceivedHandler[Address] preimage_handlers;
+
+    protected EndpointRequestStats endpoint_request_stats;
 
     /***************************************************************************
 
@@ -197,7 +207,11 @@ public class FullNode : API
         // Block externalized handler is set and push for Genesis block.
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
             this.pushBlock(this.params.Genesis);
+
+        Utils.getCollectorRegistry().addCollector(&collectStats);
     }
+
+    mixin DefineCollectorForStats!("endpoint_request_stats", "collectStats");
 
     /***************************************************************************
 
@@ -209,6 +223,7 @@ public class FullNode : API
     {
         this.startPeriodicDiscovery();
         this.network.startPeriodicCatchup(this.ledger);
+        this.startStatsServer();
     }
 
     /***************************************************************************
@@ -245,6 +260,7 @@ public class FullNode : API
         log.info("Shutting down..");
         this.taskman.logStats();
         this.network.dumpMetadata();
+        this.stopStatsServer();
         this.pool = null;
         this.utxo_set = null;
         this.enroll_man = null;
@@ -269,6 +285,7 @@ public class FullNode : API
     /// GET: /node_info
     public override NodeInfo getNodeInfo () pure nothrow @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "node_info", "http");
         return this.network.getNetworkInfo();
     }
 
@@ -286,6 +303,7 @@ public class FullNode : API
 
     public override void putTransaction (Transaction tx) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "transaction", "http");
         auto tx_hash = hashFull(tx);
         if (this.pool.hasTransactionHash(tx_hash))
             return;
@@ -300,12 +318,14 @@ public class FullNode : API
     /// GET: /has_transaction_hash
     public override bool hasTransactionHash (Hash tx) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "has_transaction_hash", "http");
         return this.pool.hasTransactionHash(tx);
     }
 
     /// GET: /block_height
     public override ulong getBlockHeight ()
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "block_height", "http");
         return this.ledger.getBlockHeight();
     }
 
@@ -313,6 +333,7 @@ public class FullNode : API
     public override const(Block)[] getBlocksFrom (ulong block_height,
         uint max_blocks)  @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks_from", "http");
         return this.ledger.getBlocksFrom(Height(block_height))
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
@@ -333,6 +354,25 @@ public class FullNode : API
             an instance of a NetworkManager
 
     ***************************************************************************/
+
+    /// Start the StatsServer
+    public void startStatsServer()
+    {
+        stats_server = getStatsServer();
+    }
+
+    /// Stop the StatsServer
+    public void stopStatsServer()
+    {
+        assert (stats_server !is null, "Stats server is stopped without being started");
+        stats_server.shutdown();
+    }
+
+    /// Returns a newly constructed StatsServer
+    protected StatsServer getStatsServer()
+    {
+        return new StatsServer(config.node.stats_listening_port);
+    }
 
     protected NetworkManager getNetworkManager (in Config config,
         Metadata metadata, TaskManager taskman, Clock clock)
@@ -494,12 +534,16 @@ public class FullNode : API
     /// GET: /merkle_path
     public override Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "merkle_path", "http");
         return this.ledger.getMerklePath(Height(block_height), hash);
     }
 
     /// PUT: /enroll_validator
     public override void enrollValidator (Enrollment enroll) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "enroll_validator", "http");
+        log.trace("Received Enrollment: {}", prettify(enroll));
+
         if (this.enroll_man.addEnrollment(enroll, this.ledger.getBlockHeight(),
             this.utxo_set.getUTXOFinder()))
         {
@@ -511,12 +555,16 @@ public class FullNode : API
     /// GET: /enrollment
     public override Enrollment getEnrollment (Hash enroll_hash) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "enrollment", "http");
         return this.enroll_man.getEnrollment(enroll_hash);
     }
 
     /// PUT: /receive_preimage
     public override void receivePreimage (PreImageInfo preimage) @safe
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_preimage", "http");
+        log.trace("Received Preimage: {}", prettify(preimage));
+
         if (this.enroll_man.addPreimage(preimage))
         {
             log.info("Accepted preimage: {}", prettify(preimage));
@@ -528,12 +576,14 @@ public class FullNode : API
     /// GET: /preimage
     public override PreImageInfo getPreimage (Hash enroll_key)
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "preimage", "http");
         return this.enroll_man.getValidatorPreimage(enroll_key);
     }
 
     /// GET /local_time
     public override time_t getLocalTime () @safe nothrow
     {
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "local_time", "http");
         return this.clock.localTime();
     }
 
