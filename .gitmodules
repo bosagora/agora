@@ -46,3 +46,6 @@
 [submodule "ocean"]
 	path = submodules/ocean
 	url = https://github.com/bpfkorea/ocean.git
+[submodule "barcode"]
+	path = submodules/barcode
+	url = https://github.com/deviator/barcode.git

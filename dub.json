@@ -176,6 +176,7 @@
     ],
 
     "dependencies": {
+        "barcode":          { "version": "*" },
         "base32":           { "version": "*" },
         "bitblob":          { "version": "*" },
         "d2sqlite3":        { "version": "*" },
