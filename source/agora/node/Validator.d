@@ -32,6 +32,7 @@ import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
 import agora.network.Clock;
 import agora.network.NetworkManager;
+import agora.node.admin.AdminInterface;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
@@ -79,6 +80,9 @@ public class Validator : FullNode, API
     /// but LocalScheduler is not instantiated yet.
     private bool started;
 
+    /// admin interface
+    protected AdminInterface admin_interface;
+
     /// Ctor
     public this (const Config config)
     {
@@ -94,6 +98,9 @@ public class Validator : FullNode, API
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
         this.regenerateQuorums(Height(0));
+
+        this.admin_interface = new AdminInterface(config,
+            this.config.validator.key_pair, this.clock);
     }
 
     /***************************************************************************
@@ -222,6 +229,17 @@ public class Validator : FullNode, API
 
         if (this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
             this.nominator.startNominatingTimer();
+    }
+
+    /***************************************************************************
+
+        Begins asynchronous tasks for admin interface.
+
+    ***************************************************************************/
+
+    public void admin_start ()
+    {
+        this.admin_interface.start();
     }
 
     /***************************************************************************
@@ -410,5 +428,7 @@ public class Validator : FullNode, API
     {
         super.shutdown();
         this.nominator.storeLatestState();
+        if (this.config.admin.enabled)
+            this.admin_interface.stop();
     }
 }
