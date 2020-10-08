@@ -40,10 +40,14 @@ import agora.consensus.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
+import agora.stats.Block;
+import agora.stats.Tx;
+import agora.stats.Utils;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import std.algorithm;
+import std.conv : to;
 import std.exception;
 import std.range;
 
@@ -79,6 +83,12 @@ public class Ledger
 
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
+
+    /// Transaction stats
+    private TxStats tx_stats;
+
+    /// Block stats
+    private BlockStats block_stats;
 
     /***************************************************************************
 
@@ -185,6 +195,9 @@ public class Ledger
                     block, this.utxo_set.getUTXOFinder(), utxos);
             }
         }
+
+        Utils.getCollectorRegistry().addCollector(&collectTxStats);
+        Utils.getCollectorRegistry().addCollector(&collectBlockStats);
     }
 
     /***************************************************************************
@@ -231,6 +244,9 @@ public class Ledger
         }
 
         this.addValidatedBlock(block);
+        block_stats.increaseMetricBy!"agora_block_txs_amount_total"(get_tx_amount(block.txs));
+        block_stats.increaseMetricBy!"agora_block_txs_total"(block.txs.length);
+        block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
         return true;
     }
 
@@ -254,6 +270,7 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
+        tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = Height(this.getBlockHeight() + 1);
         auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
             expected_height);
@@ -262,9 +279,11 @@ public class Ledger
         {
             log.info("Rejected tx. Reason: {}. Tx: {}",
                 reason !is null ? reason : "double-spend", tx);
+            tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return false;
         }
 
+        tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         return true;
     }
 
@@ -294,6 +313,7 @@ public class Ledger
         this.updateValidatorSet(block);
         ManagedDatabase.commitBatch();
 
+        block_stats.setMetricTo!"agora_block_enrollments_gauge"(this.enroll_man.validatorCount());
         // there was a change in the active validator set
         bool validators_changed = block.header.enrollments.length > 0
             || this.enroll_man.validatorCount() != old_count;
@@ -305,6 +325,27 @@ public class Ledger
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
     }
+
+    mixin DefineCollectorForStats!("block_stats", "collectBlockStats");
+
+    ///
+    private void collectTxStats (Collector collector)
+    {
+        tx_stats.setMetricTo!"agora_transactions_poolsize_gauge"(pool.length());
+        tx_stats.setMetricTo!"agora_transactions_amount_gauge"(get_tx_amount(pool));
+        foreach(stat; tx_stats.getStats())
+            collector.collect(stat.value);
+    }
+
+    ///
+    private ulong get_tx_amount (T)(ref T transactions)
+    {
+        Amount tx_amount;
+        foreach (const ref Transaction tx; transactions)
+            getSumOutput(tx, tx_amount);
+        return to!ulong(tx_amount.toString());
+    }
+
 
     /***************************************************************************
 

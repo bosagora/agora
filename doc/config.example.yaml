@@ -33,6 +33,10 @@ node:
   timeout: 2500
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
+  # The local address where the stats server (currently Prometheus)
+  # is going to connect to, for example: http://0.0.0.0:8008
+  # It can also be set to -1 do disable listening
+  stats_listening_port: 9110
 
 ################################################################################
 ##                             Validator configuration                        ##
