@@ -26,33 +26,41 @@ mixin AddLogger!();
 
 /***************************************************************************
 
-        Retry executing a given delegate at most X times and wait between
-        the retries. As soon as the delegate is executed successfully,
-        the function immediately returns.
+    Retry executing a given delegate at most X times and wait between
+    the retries. As soon as the delegate is executed successfully,
+    the function immediately returns.
 
-        Params:
-            dg = the delegate we want to execute X times
-            max_retry = maximum number of times the delegate is executed
-            duration = the time between retrying to execute the delegate
+    Params:
+        dg = the delegate we want to execute X times
+        waiter = object implementing the wait() primitive
+        max_retries = maximum number of times the delegate is executed
+        duration = the time between retrying to execute the delegate
+        error_msg = optional error message
 
-        Returns:
-            returns Nullable() in case the delegate cannot be executed after X
-            retries, otherwise it returns the original return value of
-            the delegate wrapped into a Nullable object
+    Returns:
+        returns Nullable() in case the delegate cannot be executed after X
+        retries or when the delegate returns false,
+        otherwise it returns the original return value of
+        the delegate wrapped into a Nullable object
 
 ***************************************************************************/
 
-Nullable!(ReturnType!dg) retry (alias dg, T) (T waiter, long max_retry, Duration duration, string error_msg = "Operation timed out: ")
+Nullable!(ReturnType!dg) retry (alias dg, T)(T waiter, long max_retries,
+    Duration duration, string error_msg = "Operation timed out: ")
 {
-    alias RetType = Nullable!(ReturnType!dg);
-    foreach (i; 0 .. max_retry)
+    alias RetType = typeof(return);
+    foreach (_; 0 .. max_retries)
+    {
         try
+        {
             if (auto res = dg())
                 return RetType(res);
             else
                 waiter.wait(duration);
+        }
         catch (Exception ex)
             log.error("{}{}", error_msg, ex.msg);
+    }
 
     return RetType();
 }
@@ -90,7 +98,7 @@ public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
     const TotalAttempts = attempts;
 
     ThreadWaiter thread_waiter;
-    if(!retry!(() => check)(thread_waiter, attempts, SleepTime.msecs).isNull)
+    if (!retry!check(thread_waiter, attempts, SleepTime.msecs).isNull)
         return;
 
     auto message = format("Check condition failed after timeout of %s " ~
