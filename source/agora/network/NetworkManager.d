@@ -565,9 +565,10 @@ public class NetworkManager
     public void startPeriodicNameRegistration ()
     {
         this.registry_client = this.getNameRegistryClient(
-            validator_config.registry_address, 2.seconds);
+            this.validator_config.registry_address, 2.seconds);
         if (this.registry_client is null)
             return;
+
         this.onRegisterName();  // avoid delay
         // we re-register in every 2 minutes, in order to cope with the situation below
         // 1. network registry server is restarted
@@ -587,24 +588,26 @@ public class NetworkManager
             required_peer_keys.byKey()
             .filter!(key => key !in this.connected_validator_keys));
 
-        if (registry_client !is null)
+        if (this.registry_client !is null)
+        {
             foreach (key; this.required_peer_keys)
                 taskman.runTask
                 ({
                     retry!
                     ({
-                        auto registryPayload = registry_client.getValidator(key);
-                        if (!registryPayload.verifySignature(key))
+                        auto payload = this.registry_client.getValidator(key);
+                        if (!payload.verifySignature(key))
                         {
                             log.warn("RegistryPayload signature is incorrect for {}", key);
                             return false;
                         }
-                        foreach (addr; registryPayload.data.addresses)
+                        foreach (addr; payload.data.addresses)
                             this.addAddress(addr);
                         return true;
                     },
                     )(taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
                 });
+        }
 
         // actually just runs it once, but we need the scheduler to run first
         // and it doesn't run in the constructor yet (LocalRest)
@@ -950,7 +953,7 @@ public class NetworkManager
     public NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
     {
         import vibe.http.client;
-        if (address=="disabled")
+        if (address == "disabled")
             return null;
         auto settings = new RestInterfaceSettings();
         settings.baseURL = URL(address);
