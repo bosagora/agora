@@ -52,7 +52,7 @@ Nullable!(ReturnType!dg) retry (alias dg, T) (T waiter, long max_retry, Duration
             else
                 waiter.wait(duration);
         catch (Exception ex)
-            log.error("{}{}", error_msg, ex);
+            log.error("{}{}", error_msg, ex.msg);
 
     return RetType();
 }
