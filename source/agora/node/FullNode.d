@@ -500,11 +500,10 @@ public class FullNode : API
     /// PUT: /enroll_validator
     public override void enrollValidator (Enrollment enroll) @safe
     {
-        log.trace("Received Enrollment: {}", prettify(enroll));
-
         if (this.enroll_man.addEnrollment(enroll, this.ledger.getBlockHeight(),
             this.utxo_set.getUTXOFinder()))
         {
+            log.info("Accepted enrollment: {}", prettify(enroll));
             this.network.sendEnrollment(enroll);
         }
     }
@@ -518,10 +517,9 @@ public class FullNode : API
     /// PUT: /receive_preimage
     public override void receivePreimage (PreImageInfo preimage) @safe
     {
-        log.trace("Received Preimage: {}", prettify(preimage));
-
         if (this.enroll_man.addPreimage(preimage))
         {
+            log.info("Accepted preimage: {}", prettify(preimage));
             this.network.sendPreimage(preimage);
             this.pushPreImage(preimage);
         }
