@@ -596,6 +596,12 @@ public class NetworkManager
                     retry!
                     ({
                         auto payload = this.registry_client.getValidator(key);
+                        if (payload == RegistryPayload.init)
+                        {
+                            log.warn("Could not find mapping in registry for key {}", key);
+                            return false;
+                        }
+
                         if (!payload.verifySignature(key))
                         {
                             log.warn("RegistryPayload signature is incorrect for {}", key);
