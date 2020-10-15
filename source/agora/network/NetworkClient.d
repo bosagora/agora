@@ -239,7 +239,8 @@ class NetworkClient
 
     public void sendEnvelope (SCPEnvelope envelope) nothrow
     {
-        this.taskman.runTask(
+        // simulates schedule() under the hood
+        this.taskman.setTimer(0.seconds,
         {
             this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
                 envelope);
