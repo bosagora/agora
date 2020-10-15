@@ -695,12 +695,12 @@ extern(D):
             }
         } catch (Exception ex)
         {
-            assert(0, format!"[%s:%s] combineCandidates: slot %u. Exception: %s"(
-                __FILE__, __LINE__, slot_idx, ex.to!string));
+            assert(0, format!"combineCandidates: slot %u. Exception: %s"(
+                slot_idx, ex.to!string));
         }
         // should not reach here
-        assert(0, format!"[%s]:[%s] combineCandidates: no valid candidate for slot %u."(
-            __FILE__, __LINE__, slot_idx));
+        assert(0, format!"combineCandidates: no valid candidate for slot %u."(
+            slot_idx));
     }
 
     /***************************************************************************
