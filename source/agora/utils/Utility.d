@@ -134,7 +134,7 @@ public struct ThreadWaiter
 
 *******************************************************************************/
 
-string underscoreSeparatedToUpperCamelCase(string original)
+public string snakeCaseToUpperCamelCase (string original)
 {
     return to!string(original.split("_").map!(part => part.asCapitalized).join(""));
 }
@@ -143,11 +143,11 @@ string underscoreSeparatedToUpperCamelCase(string original)
 unittest
 {
     // base case
-    assert(underscoreSeparatedToUpperCamelCase("this_is_me") == "ThisIsMe");
+    assert(snakeCaseToUpperCamelCase("this_is_me") == "ThisIsMe");
     // extra underscore in the middle
-    assert(underscoreSeparatedToUpperCamelCase("this__is_me") == "ThisIsMe");
+    assert(snakeCaseToUpperCamelCase("this__is_me") == "ThisIsMe");
     // unnecessary underscores in the beginning and at the end
-    assert(underscoreSeparatedToUpperCamelCase("_this_is_me_") == "ThisIsMe");
+    assert(snakeCaseToUpperCamelCase("_this_is_me_") == "ThisIsMe");
 }
 
 ///

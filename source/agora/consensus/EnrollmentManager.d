@@ -168,7 +168,7 @@ public class EnrollmentManager
         foreach (_; 0 .. populate_count)
             this.cycle.populate(this.key_pair.v, true);
 
-        Utils.getCollectorRegistry().addCollector(&collectValidatorStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
 
     /***************************************************************************
@@ -721,12 +721,21 @@ public class EnrollmentManager
         }
     }
 
-    ///
+    /***************************************************************************
+
+        Collect all validator & preimage stats into the collector
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
     private void collectValidatorStats (Collector collector)
     {
         auto validator_count = validator_set.count();
         if (!validator_count)
-            validator_count_stats.setMetricTo!"agora_validators_gauge"(validator_count);
+            validator_count_stats.setMetricTo!"agora_validators_gauge"(
+                validator_count);
         Hash[] keys;
         if (getEnrolledUTXOs(keys))
             foreach (const ref key; keys)

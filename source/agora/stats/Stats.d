@@ -3,7 +3,7 @@
     Base stats class that helps define other stats classes
 
     Copyright:
-        Copyright (c) 2019-2020 BOS Platform Foundation Korea
+        Copyright (c) 2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -13,30 +13,43 @@
 
 module agora.stats.Stats;
 
-import agora.utils.Utility : underscoreSeparatedToUpperCamelCase;
+import agora.utils.Utility : snakeCaseToUpperCamelCase;
 
 import std.array : join, split, byPair;
 import std.typecons : Tuple, tuple;
 
-/***************************************************************************
+/*******************************************************************************
 
-        Base stats class that helps define other stats classes.class
-        Usage is Stats!(ConcreateStatsValue, ConcreateStatsLabel) concreate_stats;
+    Base stats class that helps define other stats classes.class
+    Usage is Stats!(ConcreateStatsValue, ConcreateStatsLabel) concreate_stats;
 
-        Params:
-            ValueType = fields of this struct will correspond to metric names
-            LabelType = fields of this struct will correspond to label names
+    Params:
+        ValueType = fields of this struct will correspond to metric names
+        LabelType = fields of this struct will correspond to label names
 
-***************************************************************************/
+*******************************************************************************/
 
 public struct Stats (ValueType, LabelType)
 {
-
+    ///
     public alias ValueType ValueTypeT;
+
+    ///
     public alias LabelType LabelTypeT;
-    public alias StatValueLabelTup = Tuple!(const ValueType, "value", const LabelType, "label");
+
+    ///
+    public struct StatValueLabel
+    {
+        ///
+        const ValueType value;
+        ///
+        const LabelType label;
+    }
+
+    /// Contains the stats
     private ValueType[string] stats_maps;
 
+    /// Separator used by Prometheus
     private static immutable SEPARATOR = "|SEPARATORSYM|";
 
     /***************************************************************************
@@ -46,26 +59,25 @@ public struct Stats (ValueType, LabelType)
         Params:
             metricName = name of the metric we want to change
             LabelTs... = types of the labels
-            number = metric will be increased by this amount
+            amount = metric will be increased by this amount
             labels_packed = labels that will be attached to the metric
 
     ***************************************************************************/
 
-    public void increaseMetricBy (string metricName, LabelTs...)(ulong number, LabelTs labels_packed) pure nothrow @safe
+    public void increaseMetricBy (string metricName, LabelTs...)(ulong amount,
+        LabelTs labels_packed) pure nothrow @safe
     {
         static assert(labels_packed.length == LabelType.tupleof.length);
 
-        string[] labels;
-        foreach (label; labels_packed)
-            labels ~= label;
+        string[] labels = [labels_packed];
         auto key = labels.join(SEPARATOR);
 
-        if (auto metrics = key in stats_maps)
-            __traits(getMember, *metrics, metricName) += number;
+        if (auto metrics = key in this.stats_maps)
+            __traits(getMember, *metrics, metricName) += amount;
         else
         {
-            stats_maps[key] = ValueType.init;
-            __traits(getMember, stats_maps[key], metricName) = number;
+            this.stats_maps[key] = ValueType.init;
+            __traits(getMember, this.stats_maps[key], metricName) = amount;
         }
     }
 
@@ -76,24 +88,21 @@ public struct Stats (ValueType, LabelType)
         Params:
             metricName = name of the metric we want to change
             LabelTs... = types of the labels
-            number = metric will be increased by this amount
+            amount = metric will be increased by this amount
             labels_packed = labels that will be attached to the metric
 
     ***************************************************************************/
 
-    public void setMetricTo (string metricName, LabelTs...)(ulong number, LabelTs labels_packed)
+    public void setMetricTo (string metricName, LabelTs...)(ulong amount,
+        LabelTs labels_packed)
     {
         static assert(labels_packed.length == LabelType.tupleof.length);
 
-        string[] labels;
-        foreach (label; labels_packed)
-            labels ~= label;
+        string[] labels = [labels_packed];
         auto key = labels.join(SEPARATOR);
 
-        ValueType* metrics;
-        if ((metrics = key in stats_maps) is null)
-            metrics = &(stats_maps[key] = ValueType.init);
-        __traits(getMember, *metrics, metricName) = number;
+        __traits(getMember, this.stats_maps.require(key, ValueType.init),
+            metricName) = amount;
     }
 
     /***************************************************************************
@@ -106,16 +115,16 @@ public struct Stats (ValueType, LabelType)
 
     ***************************************************************************/
 
-    public StatValueLabelTup[] getStats () const pure nothrow @safe
+    public StatValueLabel[] getStats () const pure nothrow @safe
     {
-        StatValueLabelTup[] res;
+        StatValueLabel[] res;
         foreach (pair; stats_maps.byPair)
         {
             LabelType label;
             immutable field_value = pair.key.split(SEPARATOR);
             foreach (i, ref field; label.tupleof)
                 field = field_value[i];
-            res ~= tuple!("value", "label")(pair.value, cast(const LabelType) label);
+            res ~= StatValueLabel(pair.value, label);
         }
         return res;
     }

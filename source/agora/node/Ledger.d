@@ -196,8 +196,8 @@ public class Ledger
             }
         }
 
-        Utils.getCollectorRegistry().addCollector(&collectTxStats);
-        Utils.getCollectorRegistry().addCollector(&collectBlockStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectTxStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
     }
 
     /***************************************************************************
@@ -244,9 +244,11 @@ public class Ledger
         }
 
         this.addValidatedBlock(block);
-        block_stats.increaseMetricBy!"agora_block_txs_amount_total"(get_tx_amount(block.txs));
-        block_stats.increaseMetricBy!"agora_block_txs_total"(block.txs.length);
-        block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
+        this.block_stats.increaseMetricBy!"agora_block_txs_amount_total"(
+            getUnspentAmount(block.txs));
+        this.block_stats.increaseMetricBy!"agora_block_txs_total"(
+            block.txs.length);
+        this.block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
         return true;
     }
 
@@ -270,7 +272,7 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
+        this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = Height(this.getBlockHeight() + 1);
         auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
             expected_height);
@@ -279,11 +281,11 @@ public class Ledger
         {
             log.info("Rejected tx. Reason: {}. Tx: {}",
                 reason !is null ? reason : "double-spend", tx);
-            tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
+            this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return false;
         }
 
-        tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
+        this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         return true;
     }
 
@@ -313,7 +315,8 @@ public class Ledger
         this.updateValidatorSet(block);
         ManagedDatabase.commitBatch();
 
-        block_stats.setMetricTo!"agora_block_enrollments_gauge"(this.enroll_man.validatorCount());
+        this.block_stats.setMetricTo!"agora_block_enrollments_gauge"(
+            this.enroll_man.validatorCount());
         // there was a change in the active validator set
         bool validators_changed = block.header.enrollments.length > 0
             || this.enroll_man.validatorCount() != old_count;
@@ -328,24 +331,33 @@ public class Ledger
 
     mixin DefineCollectorForStats!("block_stats", "collectBlockStats");
 
-    ///
+    /***************************************************************************
+
+        Collect all ledger & mempool stats into the collector
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
     private void collectTxStats (Collector collector)
     {
-        tx_stats.setMetricTo!"agora_transactions_poolsize_gauge"(pool.length());
-        tx_stats.setMetricTo!"agora_transactions_amount_gauge"(get_tx_amount(pool));
-        foreach(stat; tx_stats.getStats())
+        this.tx_stats.setMetricTo!"agora_transactions_poolsize_gauge"(
+            this.pool.length());
+        this.tx_stats.setMetricTo!"agora_transactions_amount_gauge"(
+            getUnspentAmount(this.pool));
+        foreach (stat; this.tx_stats.getStats())
             collector.collect(stat.value);
     }
 
-    ///
-    private ulong get_tx_amount (T)(ref T transactions)
+    /// Stats helper: return the total unspent amount
+    private ulong getUnspentAmount (TxRange)(ref TxRange transactions)
     {
         Amount tx_amount;
         foreach (const ref Transaction tx; transactions)
             getSumOutput(tx, tx_amount);
         return to!ulong(tx_amount.toString());
     }
-
 
     /***************************************************************************
 

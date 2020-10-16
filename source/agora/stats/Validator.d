@@ -3,7 +3,7 @@
     Stats corresponding to validators
 
     Copyright:
-        Copyright (c) 2019-2020 BOS Platform Foundation Korea
+        Copyright (c) 2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -23,7 +23,7 @@ public struct ValidatorCountStatsLabel
 ///
 public struct ValidatorCountStatsValue
 {
-    public  ulong agora_validators_gauge;
+    public ulong agora_validators_gauge;
 }
 
 ///
