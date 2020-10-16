@@ -732,10 +732,7 @@ public class EnrollmentManager
 
     private void collectValidatorStats (Collector collector)
     {
-        auto validator_count = validator_set.count();
-        if (!validator_count)
-            validator_count_stats.setMetricTo!"agora_validators_gauge"(
-                validator_count);
+        validator_count_stats.setMetricTo!"agora_validators_gauge"(validator_set.count());
         Hash[] keys;
         if (getEnrolledUTXOs(keys))
             foreach (const ref key; keys)
