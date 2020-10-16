@@ -4,7 +4,7 @@
 
     This genesis block is used in multiple places:
     - Most unittests;
-    - Most network unittests (TODO);
+    - Most network unittests;
     - The system unit tests;
     - The system integration tests;
 

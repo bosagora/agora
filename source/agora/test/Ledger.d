@@ -87,27 +87,27 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    TestConf conf = { validators : 4, full_nodes : 3 };
+    TestConf conf = { full_nodes : 3 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.completeTestSetup();
 
     // node_1 is one of the validators
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
-    nodes[4 .. $].each!(node => node.filter!(node.putTransaction));
+    nodes[conf.validators .. $].each!(node => node.filter!(node.putTransaction));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 8.seconds);
+    network.expectBlock(Height(1));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(2), 8.seconds);
+    network.expectBlock(Height(2));
 }
 
 /// Merkle Proof
@@ -145,7 +145,7 @@ unittest
     const Hash expected_root = hashMulti(habcd, hefgh);
 
     // wait for transaction propagation
-    network.expectBlock(Height(1), 4.seconds);
+    network.expectBlock(Height(1));
 
     Hash[] merkle_path;
     foreach (node; nodes)
@@ -189,11 +189,11 @@ unittest
     // wait for preimages to be revealed before making blocks
     network.waitForPreimages(network.blocks[0].header.enrollments, 6, 5.seconds);
 
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(2), 3.seconds);
+    network.expectBlock(Height(2));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
 
@@ -219,8 +219,8 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation
-    network.expectBlock(Height(2), 3.seconds);  // no new block yet (1 rejected tx)
+    network.expectBlock(Height(2));  // no new block yet (1 rejected tx)
 
     node_1.putTransaction(backup_tx);
-    network.expectBlock(Height(3), 3.seconds);  // new block finally created
+    network.expectBlock(Height(3));  // new block finally created
 }

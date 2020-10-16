@@ -36,7 +36,8 @@ import core.stdc.time;
 /// test behavior when getBlockHeight() call fails
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    auto conf = TestConf.init;
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -45,15 +46,15 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    // first two nodes will fail, second two should work
-    nodes[0].filter!(API.getBlockHeight);
-    nodes[1].filter!(API.getBlockHeight);
+    // last two nodes will fail, others should work
+    nodes[conf.validators - 2].filter!(API.getBlockHeight);
+    nodes[conf.validators - 1].filter!(API.getBlockHeight);
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
 
-    nodes[0].clearFilter();
-    nodes[1].clearFilter();
+    nodes[conf.validators - 2].clearFilter();
+    nodes[conf.validators - 1].clearFilter();
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
     network.expectBlock(Height(1), b0.header, 2.seconds);
 }
@@ -134,8 +135,8 @@ unittest
             RemoteAPI!TestAPI api;
             auto time = new shared(time_t)(this.initial_time);
 
-            // the test has 6 nodes:
-            // 4 validators => used for creating blocks
+            // the test has 8 nodes:
+            // 6 validators => used for creating blocks
             // 1 byzantine FullNode => lies about the blockchain
             //   (returns syntactically invalid data)
             // 1 good FullNode => it accepts only the valid blockchain
@@ -147,7 +148,7 @@ unittest
             }
             else
             {
-                if (this.nodes.length == 4)  // 5th good FN, 6th bad FN
+                if (this.nodes.length == 6)  // 7th good FN, 8th bad FN
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
                         &this.reg, this.blocks, time, conf.node.timeout);
                 else
@@ -160,7 +161,7 @@ unittest
         }
     }
 
-    TestConf conf = { validators : 4, full_nodes : 2 };
+    TestConf conf = { full_nodes : 2 };
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -168,22 +169,22 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_validators = nodes[0 .. 4];  // validators, create blocks
-    auto node_test = nodes[4];  // full node, does not create blocks
-    auto node_bad = nodes[5];  // full node, returns bad blocks in getBlocksFrom()
+    auto node_validators = nodes[0 .. conf.validators];  // validators, create blocks
+    auto node_test = nodes[conf.validators];  // full node, does not create blocks
+    auto node_bad = nodes[conf.validators + 1];  // full node, returns bad blocks in getBlocksFrom()
 
     // wait for preimages to be revealed before making blocks
     network.waitForPreimages(network.blocks[0].header.enrollments, 6,
         5.seconds);
 
     // enable filtering first
-    node_validators.each!(node => node.filter!(API.getBlocksFrom));
+    nodes[1 .. conf.validators - 1].each!(node => node.filter!(API.getBlocksFrom));
     node_bad.filter!(API.getBlocksFrom);
     node_test.filter!(API.putTransaction);
 
     Transaction[] last_txs;
 
-    // create genesis block
+    // create next block after Genesis
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
     last_txs.each!(tx => node_validators[0].putTransaction(tx));
     network.expectBlock([node_validators[0]], Height(1), 4.seconds);

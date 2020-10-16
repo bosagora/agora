@@ -35,48 +35,36 @@ import core.time;
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
-    // generate 9 blocks, 1 short of the enrollments expiring.
-    immutable validator_cycle = 10;
-    TestConf conf = {
-        validator_cycle : validator_cycle,
-        extra_blocks : validator_cycle - 1,
-    };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.completeTestSetup();
+
+    // generate blocks until 1 short of the enrollments expiring.
+    network.generateBlocks(Height(network.validator_cycle - 1));
+
+    // wait for preimages to be revealed before making new block with new enrollments
+    network.waitForPreimages(network.blocks[0].header.enrollments, cast(ushort)(network.validator_cycle - 1), 5.seconds);
 
     auto nodes = network.clients;
-    network.expectBlock(Height(validator_cycle - 1), 2.seconds);
-
-    // wait for preimages to be revealed before making block 10
-    network.waitForPreimages(network.blocks[0].header.enrollments, 9, 5.seconds);
-
     // create enrollment data
+    Enrollment[] enrolls = iota(0, 6).map!(n => nodes[n].createEnrollmentData()).array;
+
     // send a request to enroll as a Validator
-    Enrollment[] enrolls;
-    enrolls ~= nodes[0].createEnrollmentData();
-    enrolls ~= nodes[1].createEnrollmentData();
-    enrolls ~= nodes[2].createEnrollmentData();
-    enrolls ~= nodes[3].createEnrollmentData();
-    nodes[0].enrollValidator(enrolls[0]);
-    nodes[1].enrollValidator(enrolls[1]);
-    nodes[2].enrollValidator(enrolls[2]);
-    nodes[3].enrollValidator(enrolls[3]);
+    iota(0, 6).each!(n => nodes[n].enrollValidator(enrolls[n]));
 
     // wait until new enrollments are propagated to the pools
-    nodes.each!(node =>
-        retryFor(node.getEnrollment(enrolls[0].utxo_key) == enrolls[0] &&
-                 node.getEnrollment(enrolls[1].utxo_key) == enrolls[1] &&
-                 node.getEnrollment(enrolls[2].utxo_key) == enrolls[2] &&
-                 node.getEnrollment(enrolls[3].utxo_key) == enrolls[3],
+    iota(0, 6).each!(n =>
+        retryFor(
+            nodes[n].getEnrollment(enrolls[n].utxo_key) == enrolls[n],
             5.seconds));
 
     // re-enroll every validator
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle), 2.seconds);
+    network.expectBlock(Height(network.validator_cycle));
 
     // wait until preimages are revealed before creating a new block
     network.waitForPreimages(enrolls, 1, 5.seconds);
@@ -84,23 +72,26 @@ unittest
     // verify that consensus can still be reached
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle + 1), 2.seconds);
+    network.expectBlock(Height(network.validator_cycle + 1));
+
+    // verify that consensus can still be reached
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(Height(network.validator_cycle + 2));
 }
 
 // Test for re-enroll before the validator cycle ends
 unittest
 {
-    immutable validator_cycle = 20;
-    immutable current_height = validator_cycle - 5;
-    TestConf conf = {
-        validator_cycle : validator_cycle,
-        extra_blocks : current_height,
-    };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
-    network.waitForDiscovery();
+    network.completeTestSetup();
+
+    // generate blocks until 5 short of the enrollments expiring.
+    network.generateBlocks(Height(network.validator_cycle - 5));
 
     // Check if the genesis block has enrollments
     auto nodes = network.clients;
@@ -112,18 +103,10 @@ unittest
     nodes[0].enrollValidator(enroll);
 
     // Make 5 blocks in order to finish the validator cycle
-    const(Transaction)[] prev_txs = network.blocks[$ - 1].txs;
-    foreach (height; current_height .. validator_cycle)
-    {
-        auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
-        txs.each!(tx => nodes[0].putTransaction(tx));
-        network.waitForPreimages(b0.header.enrollments, cast(ushort)height, 5.seconds);
-        network.expectBlock(Height(height + 1), 2.seconds);
-        prev_txs = txs;
-    }
+    network.generateBlocks(Height(network.validator_cycle));
 
     // Check if the enrollment has been added to the last block
-    const b20 = nodes[0].getBlocksFrom(validator_cycle, 2)[0];
+    const b20 = nodes[0].getBlocksFrom(network.validator_cycle, 2)[0];
     assert(b20.header.enrollments.length == 1);
     assert(b20.header.enrollments[0] == enroll);
 }
@@ -135,16 +118,13 @@ unittest
 ///     reveals its pre-images periodically.
 unittest
 {
-    // Boilerplate
-    const validator_cycle = 20;
-    TestConf conf = {
-        validator_cycle : validator_cycle,
-    };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
-    network.waitForDiscovery();
+    network.completeTestSetup();
+
     auto nodes = network.clients;
 
     // Sanity check: Check if genesis block has enrollments
@@ -175,7 +155,7 @@ unittest
         .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
-    network.expectBlock(nodes.take(1), Height(validator_cycle), b0.header, 3.seconds);
+    network.expectBlock(nodes.take(1), Height(network.validator_cycle), b0.header);
     retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
         2.seconds);
 
@@ -199,7 +179,7 @@ unittest
         10.seconds);
 
     // Check if a new pre-image has been revealed from the restarted node
-    assert(preimage_2.isValid(org_preimage, validator_cycle));
+    assert(preimage_2.isValid(org_preimage, network.validator_cycle));
 }
 
 // Situation: A pre-image already known by all nodes is sent on the network
@@ -209,7 +189,7 @@ unittest
     import agora.common.Config;
     import geod24.Registry;
 
-    /// A node that will assert if it gets more than 400 calls to
+    /// A node that will assert if it gets more than 100 calls to
     /// `receivePreimage`.
     static final class TestNode : TestValidatorNode
     {
@@ -424,9 +404,7 @@ unittest
 ///     pre-images are shared in the network
 unittest
 {
-    TestConf conf = {
-        validator_cycle : 20,
-    };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

@@ -230,10 +230,10 @@ private class ByzantineManager (bool addSpyValidator = false,
     }
 }
 
-/// Block should be added if we have all 3 validators signing (our SpyValidator does not sign)
+/// Block should be added if we have all 6 validators signing (our SpyValidator does not sign)
 unittest
 {
-    TestConf conf = { validators : 4, quorum_threshold : 66 };
+    TestConf conf = { quorum_threshold : 66 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -244,13 +244,13 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other not signing node)
 unittest
 {
-    TestConf conf = { validators : 6, quorum_threshold : 66 };
+    TestConf conf = { quorum_threshold : 66 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -261,13 +261,13 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other with invalid signature)
 unittest
 {
-    TestConf conf = { validators : 6, quorum_threshold : 66 };
+    TestConf conf = { quorum_threshold : 66 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -278,7 +278,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 }
 
 
@@ -301,7 +301,7 @@ private enum Duration sufficient_time_for_first_envelope = 500.msecs;
 /// Half nodes not signing correctly WILL NOT prevent block from being externalized if we require 3 out of 6
 unittest
 {
-    TestConf conf = { validators : 6, quorum_threshold : 50 };
+    TestConf conf = { quorum_threshold : 50 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -322,7 +322,7 @@ unittest
 /// Half nodes not signing correctly WILL prevent block from being externalized if we require 4 out of 6
 unittest
 {
-    TestConf conf = { validators : 6, quorum_threshold : 51 };
+    TestConf conf = { quorum_threshold : 51 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();

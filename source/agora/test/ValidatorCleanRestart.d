@@ -34,85 +34,50 @@ unittest
 {
     TestConf conf = {
         timeout : 10.seconds,
-        validators : 4,
-        outsider_validators : 4,
-        extra_blocks : 7,
-        validator_cycle : 10 };
+        outsider_validators : 4 };
 
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.completeTestSetup();
 
     auto nodes = network.clients;
-    auto set_a = network.clients[0 .. 4];
-    auto set_b = network.clients[4 .. $];
-    network.expectBlock(Height(7), network.blocks[0].header, 5.seconds);
+    auto set_a = nodes.take(genesis_validators);
+    auto set_b = nodes.drop(genesis_validators).take(conf.outsider_validators);
 
-    auto spendable = network.blocks[$ - 1].spendable().array;
+    // Get to height 18
+    network.generateBlocks(Height(18));
 
-    // Discarded UTXOs (just to trigger block creation)
-    auto txs = spendable[0 .. 5]
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
-        .array;
+    // Block 19 we add the freeze utxos for set_b validators
+    genesisSpendable().drop(1).takeExactly(1)
+        .map!(txb => txb
+            .split(WK.Keys.byRange.take(conf.outsider_validators).map!(k => k.address)).sign(TxType.Freeze))
+        .each!(tx => set_a[0].putTransaction(tx));
+    network.generateBlocks(Height(19));
 
-    // 8 utxos for freezing, 16 utxos for creating a block later
-    txs ~= spendable[5].split(WK.Keys.byRange.take(8).map!(k => k.address)).sign();
-    txs ~= spendable[6].split(WK.Keys.Z.address.repeat(8)).sign();
-    txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
-
-    // Block 8
-    txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(8), network.blocks[0].header, 5.seconds);
-
-    // Freeze builders
-    auto freezable = txs[$ - 3]
-        .outputs.length.iota
-        .takeExactly(8)
-        .map!(idx => TxBuilder(txs[$ - 3], cast(uint)idx))
-        .array;
-
-    // Create 8 freeze TXs
-    auto freeze_txs = freezable
-        .enumerate
-        .map!(pair => pair.value.refund(WK.Keys[pair.index].address)
-            .sign(TxType.Freeze))
-        .array;
-    assert(freeze_txs.length == 8);
-
-    // Block 9
-    freeze_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(9), network.blocks[0].header, 5.seconds);
+    // wait for other nodes to get to same block height
+    set_b.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 19, 2.seconds,
+            format!"[%s:%s] Expected block height %s but Outsider node %s has height %s."
+                (__FILE__, __LINE__, 19, idx, node.getBlockHeight())));
 
     // Now we enroll four new validators. After this, the already enrolled
     // validators will be expired.
-    foreach (ref node; set_b)
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        node.enrollValidator(enroll);
+    iota(genesis_validators, genesis_validators + conf.outsider_validators)
+        .each!(idx => network.enroll(idx));
 
-        // Check enrollment
-        set_b.each!(node =>
-            retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
-
-    // Block 10
-    auto new_txs = txs[$ - 2]
-        .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
-        .takeExactly(8)
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
-    new_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(10), network.blocks[0].header, 5.seconds);
+    // Block 20
+    network.generateBlocks(Height(20));
 
     // Sanity check
-    auto b10 = set_a[0].getBlocksFrom(10, 2)[0];
-    assert(b10.header.enrollments.length == 4);
+    auto b20 = set_a[0].getBlocksFrom(20, 2)[0];
+    assert(b20.header.enrollments.length == 4);
 
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
     set_b.each!(node => network.restart(node));
-    network.expectBlock(Height(10), 5.seconds);
+    network.expectBlock(Height(20));
 
     // Sanity check
     nodes.enumerate.each!((idx, node) =>
@@ -133,13 +98,8 @@ unittest
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.sleep(6.seconds, true));
 
-    // Block 11 with the new validators in the set B
-    new_txs = txs[$ - 1]
-        .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
-        .takeExactly(8)
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
-    new_txs.each!(tx => set_b[0].putTransaction(tx));
-    network.expectBlock(set_b, Height(11), b10.header, 5.seconds);
+    // Block 21 with the new validators in the set B
+    network.generateBlocks(set_b, Height(21), Height(20));
 }
 
 /// Situation: A validator is stopped and wiped clean after the block height
@@ -149,56 +109,51 @@ unittest
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { validators : 4, full_nodes : 1 , quorum_threshold : 75 };
+    TestConf conf = { full_nodes : 1 , quorum_threshold : 75 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    // The node_1, node_2, node_3, node_4 are the validators
+    // There are 6 validators and 1 full node
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    auto node_2 = nodes[1];
-    auto node_3 = nodes[2];
-    auto node_4 = nodes[3];
-    auto on_nodes = nodes[1 .. $-1];
 
     // Create a block from the Genesis block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 5.seconds);
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(Height(1));
 
-    // node_1 restarts and becomes unresponsive
-    network.restart(node_1);
-    node_1.ctrl.sleep(5.seconds);
+    // node #5 restarts and becomes unresponsive
+    network.restart(nodes[5]);
+    nodes[5].ctrl.sleep(5.seconds);
 
     // Make 2 blocks
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_2.putTransaction(tx));
-    network.expectBlock(on_nodes, Height(2), 5.seconds);
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(nodes.take(5), Height(2));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_2.putTransaction(tx));
-    network.expectBlock(on_nodes, Height(3), 5.seconds);
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(nodes.take(5), Height(3));
 
     // Wait for node_1 to wake up
-    node_1.ctrl.withTimeout(10.seconds,
+    nodes[1].ctrl.withTimeout(10.seconds,
         (scope TestAPI api) {
             api.getPublicKey();
         }
     );
 
-    network.expectBlock(Height(3), 5.seconds);
+    network.expectBlock(Height(3));
 
-    // The node_2 restart and is disabled to respond, which means that
+    // The node #2 restart and is disabled to respond, which means that
     // the node_2 will be slashed soon.
-    network.restart(node_2);
-    node_2.ctrl.sleep(5.seconds);
+    network.restart(nodes[2]);
+    nodes[2].ctrl.sleep(5.seconds);
 
     // A new block is in the middle of a consensus.
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => nodes[1].putTransaction(tx));
 
     // The new block has been inserted to the ledger with the approval
     // of the node_1, although node_2 was shutdown.

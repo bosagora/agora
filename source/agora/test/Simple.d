@@ -32,12 +32,12 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.completeTestSetup();
 
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 2.seconds);
+    network.expectBlock(Height(1));
 }

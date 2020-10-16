@@ -95,6 +95,9 @@ public import std.range;
 // To print messages to the screen while debugging a test
 public import std.stdio;
 
+
+mixin AddLogger!();
+
 shared static this()
 {
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
@@ -458,7 +461,7 @@ extern(D):
         // if 0 take all txs, otherwise nominate exactly this many txs
         this.ledger.prepareNominatingSet(data,
             this.txs_to_nominate ? this.txs_to_nominate : ulong.max);
-        if (data.tx_set.length < this.txs_to_nominate)
+        if (data.tx_set.length < max(1, this.txs_to_nominate))
             return false;  // not enough txs
 
         // defensive coding, same as base class
@@ -511,6 +514,10 @@ public struct NodePair
     }
 }
 
+/// Number of validator nodes that are enrolled in test `GenesisBlock`
+const size_t genesis_validators = 6;
+const uint genesis_enrollment_cycle = 20;
+
 /*******************************************************************************
 
     Used by unittests to send messages to individual nodes.
@@ -520,15 +527,19 @@ public struct NodePair
 
 public class TestAPIManager
 {
+
     /// Test configuration
     protected TestConf test_conf;
+
+    // The enrollment block cycle
+    const uint validator_cycle = genesis_enrollment_cycle;
 
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
     public NodePair[] nodes;
 
-    /// Contains the initial blockchain state of all nodes
+    /// Contains the blockchain state of all nodes
     public immutable(Block)[] blocks;
 
     /// Genesis block start time
@@ -579,7 +590,7 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void expectBlock (Height height, Duration timeout,
+    public void expectBlock (Height height, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
         this.expectBlock(this.clients, height, timeout, file, line);
@@ -587,15 +598,19 @@ public class TestAPIManager
 
     /// Ditto
     public void expectBlock (Clients)(Clients clients, Height height,
-        Duration timeout, string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Clients);
-
+        log.trace("[{}:{}] Wait for expected block height {} for {} clients",
+            file, line, height, clients.count());
         this.setTimeFor(height);
-        clients.enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == height, timeout,
-                format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), height), file, line));
+        clients.enumerate.each!((idx, client) =>
+            retryFor(client.getBlockHeight() == height, timeout,
+                format!"[%s:%s] Expected block height %s but clients[%s] has height %s."
+                    (file, line, height, idx, client.getBlockHeight())));
+        blocks = cast(immutable(Block[]))clients[0].getAllBlocks();
+        log.trace("[{}:{}] all nodes have expected block height {}:\n=====\n{}\n=====",
+            file, line, height, prettify(blocks[$ - 1]));
     }
 
     /***************************************************************************
@@ -616,24 +631,36 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void expectBlock (Height height, const(BlockHeader) enroll_header,
-        Duration timeout, string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
     {
-        this.expectBlock(this.clients, height, enroll_header, timeout, file,
+        log.trace("[{}:{}] Expecting block {}", file, line, height);
+        expectBlock(this.clients, height, enroll_header, timeout, file,
             line);
     }
 
     /// Ditto
     public void expectBlock (Clients)(Clients clients, Height height,
-        const(BlockHeader) enroll_header, Duration timeout,
+        const(BlockHeader) enroll_header, Duration timeout = 5.seconds,
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Clients);
-
-        assert(height > enroll_header.height);
+        log.trace("[{}:{}] Expecting block {} for {} clients", file, line, height, clients.count());
+        assert(height > enroll_header.height, "Target height should be greater than enrolled height");
         auto distance = cast(ushort)(height - enroll_header.height - 1);
-        waitForPreimages(clients, enroll_header.enrollments, distance,
-            timeout);
-        this.expectBlock(clients, height, timeout, file, line);
+        waitForPreimages(clients, enroll_header.enrollments, distance, timeout);
+        expectBlock(clients, height, timeout, file, line);
+    }
+
+    /// Ditto
+    public void expectBlock (Clients)(Clients clients, Height height,
+        const(Enrollment)[] enrollments, ushort distance, Duration timeout = 10.seconds,
+        string file = __FILE__, int line = __LINE__)
+    {
+        assert(isInputRange!Clients, "Clients parameter must be an input range!");
+        log.trace("[{}:{}] Expecting preimage distance {} and then block {} for {} clients",
+            file, line, distance, height, clients.count());
+        waitForPreimages(clients, enrollments, distance, timeout);
+        expectBlock(clients, height, timeout, file, line);
     }
 
     /***************************************************************************
@@ -664,10 +691,16 @@ public class TestAPIManager
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Clients);
+        assert(enrolls.length > 0, "There must be at least 1 enrollment provided");
 
-        clients.each!(node => enrolls.each!(enroll =>
-            retryFor(node.getPreimage(enroll.utxo_key).distance >= distance,
-                timeout)));
+        log.trace("[{}:{}] waitForPreimages distance {} for {} clients",
+            file, line, distance, clients.count());
+        clients.enumerate.each!((idx, node) => enrolls.each!(enroll =>
+            retryFor(node.getPreimage(enroll.utxo_key).distance >= distance, timeout,
+                format!"[%s:%s] Node #%s:Failed to get preimage for utx_key %s at distance %s."
+                (file, line, idx, enroll.utxo_key, distance))));
+        log.trace("[{}:{}] COMPLETED waitForPreimages distance {} for {} clients",
+            file, line, distance, clients.count());
     }
 
     /***************************************************************************
@@ -747,13 +780,13 @@ public class TestAPIManager
         if (conf.validator.enabled)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, this.test_conf.txs_to_nominate, time,
+                blocks, this.test_conf.txs_to_nominate, time,
                 conf.node.timeout, file, line);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, time, conf.node.timeout, file, line);
+                blocks, time, conf.node.timeout, file, line);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -791,6 +824,26 @@ public class TestAPIManager
                 (scope TestAPI api) {
                     api.start();
                 });
+        }
+    }
+
+    /***************************************************************************
+
+        Complete the test setup
+
+    ***************************************************************************/
+
+    public void completeTestSetup ()
+    {
+        this.waitForDiscovery();
+        this.expectBlock(Height(0));
+        if (test_conf.validators > genesis_validators)
+        {
+            auto height = this.enrollNonGenesisValidators();
+            auto expected_height = 21;
+            assert(height == expected_height,
+                format!"Expected %s block height not %s after adding other validators."
+                (expected_height, height));
         }
     }
 
@@ -892,8 +945,8 @@ public class TestAPIManager
                 retryFor(node.client.getNodeInfo().ifThrown(NodeInfo.init)
                     .state == NetworkState.Complete,
                     timeout,
-                    format("Node %s has not completed discovery after %s.",
-                        node.address, timeout)));
+                    format("[%s:%s] Node %s has not completed discovery after %s.",
+                        file, line, node.address, timeout)));
         }
         catch (Error ex)  // better UX
         {
@@ -901,6 +954,153 @@ public class TestAPIManager
             ex.line = line;
             throw ex;
         }
+    }
+
+     /*******************************************************************************
+
+        Add a block
+
+        Params:
+            target_height = the target height after adding blocks.
+            enrolled_height = the height with the active enrollments
+            client_index = the client to use for putting the tx
+
+        Returns:
+            The number of blocks added to reach the target height
+
+    *******************************************************************************/
+    void addBlock (Height target_height, const(Enrollment)[] enrollments,
+        Height enrolled_height = Height(0))
+    {
+        addBlock(this.clients, target_height, enrollments, enrolled_height);
+    }
+
+    /// Ditto
+    void addBlock (Clients)(Clients clients, Height new_height, const(Enrollment)[] enrollments,
+        Height enrolled_height = Height(0))
+    {
+        log.trace("[{}:{}] Generate block at height {} for {} clients",
+            __FILE__, __LINE__, new_height, clients.count());
+        auto current_height = blocks[$ - 1].header.height;
+        assert(current_height == new_height - 1,
+            format!"Expected current block height of %s not %s"
+                (new_height - 1, current_height));
+        blocks[current_height].spendable().takeExactly(1)
+            .map!(txb => txb.sign())
+            .each!(tx => clients[0].putTransaction(tx));
+        ushort distance = cast(ushort) (new_height - enrolled_height - 1);
+        assert(distance <= validator_cycle && distance >= 0,
+            format!"Expected distance between 0 and %s not %s"
+                (validator_cycle, distance));
+        expectBlock(clients, new_height, enrollments, distance);
+    }
+
+    /*******************************************************************************
+
+        Add blocks up to the provided height
+
+        Params:
+            target_height = the target height after adding blocks.
+            enrolled_height = the height with the active enrollments
+
+    *******************************************************************************/
+
+    public void generateBlocks (Height target_height, Height enrolled_height = Height(0))
+    {
+        generateBlocks(clients.take(genesis_validators), target_height, enrolled_height);
+    }
+
+    /// Ditto
+    public void generateBlocks (Clients)(Clients clients, Height target_height,
+        Height enrolled_height = Height(0))
+    {
+        auto current_height = blocks[$ - 1].header.height;
+        assert(current_height == blocks.count() - 1,
+            format!"Block height should be one less than number of blocks");
+        assert(enrolled_height <= current_height,
+            format!"Enrolled height should be no more than current height of %s not %s"
+                (current_height, enrolled_height.value));
+        auto enrollments = blocks[enrolled_height].header.enrollments;
+        log.trace("[{}:{}] Generate blocks from height {} to {} using enrollemnts: {}",
+            __FILE__, __LINE__, current_height + 1, target_height,
+            enrollments.fold!((a, b) => format!"%s\n%s"(a, prettify(b)))(""));
+        iota(current_height + 1, target_height + 1).each!(n =>
+            addBlock(clients, Height(n), enrollments, enrolled_height));
+    }
+
+    /*******************************************************************************
+
+        Enroll validator
+
+        Params:
+            client_idx = the index of the client to enroll
+
+    *******************************************************************************/
+
+    public void enroll (size_t client_idx)
+    {
+        log.trace("[{}:{}] Enroll client #{}", __FILE__, __LINE__, client_idx);
+        Enrollment enroll = clients[client_idx].createEnrollmentData();
+        clients[client_idx].enrollValidator(enroll);
+        retryFor(clients[client_idx].getEnrollment(enroll.utxo_key) == enroll, 5.seconds,
+            format!"Failed to confirm enrollment of client #%s using client #%s"
+            (client_idx, client_idx));
+    }
+
+    /***************************************************************************
+
+        Enroll the rest of the validators for the test setup
+
+        Returns:
+            Block height after they are enrolled and active
+
+    ***************************************************************************/
+
+    public Height enrollNonGenesisValidators ()
+    {
+        // Get to height 18
+        generateBlocks(Height(validator_cycle - 2));
+
+        // Prepare the frozen outputs for the new enrolls
+        genesisSpendable().dropExactly(1).takeExactly(1)
+            .map!(txb => txb
+                .split(WK.Keys.byRange.take(test_conf.validators - genesis_validators)
+                    .map!(k => k.address))
+                .sign(TxType.Freeze))
+            .each!(tx => clients[0].putTransaction(tx));
+
+        // Add block 19 with new freeze utxo
+        generateBlocks(Height(validator_cycle - 1));
+
+        // wait for other nodes to get to same block height
+        clients.dropExactly(genesis_validators)
+            .takeExactly(test_conf.validators - genesis_validators)
+            .enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == validator_cycle - 1, 2.seconds,
+                format!"[%s:%s] Expected block height %s but Node %s has height %s."
+                    (__FILE__, __LINE__, validator_cycle - 1, idx, node.getBlockHeight())));
+
+        // re-enroll genesis validators and enroll others
+        iota(0, test_conf.validators).each!(idx => enroll(idx));
+
+        // Add last block of cycle at height 20 using enrollemnts from genesis block for the last time
+        generateBlocks(Height(validator_cycle));
+
+        // wait for two other nodes to get to same block height
+        clients.dropExactly(genesis_validators)
+            .takeExactly(test_conf.validators - genesis_validators)
+            .enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == validator_cycle, 2.seconds,
+                format!"[%s:%s] Expected block height %s but Node %s has height %s."
+                    (__FILE__, __LINE__, validator_cycle, idx, node.getBlockHeight())));
+
+        retryFor(clients[0].getValidatorCount() == test_conf.validators, 5.seconds,
+            format!"Expected %s validators not %s"(test_conf.validators, clients[0].getValidatorCount()));
+
+        // Add first new block of next cycle at height 21 using enrollemnts from block 20 with all validators
+        generateBlocks(clients.takeExactly(test_conf.validators), Height(validator_cycle + 1), Height(validator_cycle));
+
+        return blocks[$ - 1].header.height;
     }
 }
 
@@ -1181,7 +1381,7 @@ private mixin template TestNodeMixin ()
 
     protected override IBlockStorage getBlockStorage (string data_dir) @system
     {
-        return new MemBlockStorage(this.blocks);
+        return new MemBlockStorage(blocks);
     }
 
     /// Used by the node
@@ -1364,11 +1564,15 @@ public class TestValidatorNode : Validator, TestAPI
         Hash[] utxo_hashes;
         auto pubkey = this.getPublicKey();
         auto utxos = this.utxo_set.getUTXOs(pubkey);
+        assert(utxos.length > 0,
+            format!"Enrollment preparation failed: no UTXOs for public key %s"(pubkey));
+
         foreach (key, utxo; utxos)
         {
             if (utxo.type == TxType.Freeze &&
                 utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
             {
+                log.trace("createEnrollmentData: adding utxo {} to node with public key {}", key, pubkey);
                 utxo_hashes ~= key;
             }
         }
@@ -1442,11 +1646,8 @@ public struct TestConf
     /// Network topology to use
     NetworkTopology topology = NetworkTopology.FullyConnected;
 
-    /// Extra blocks to generate in addition to the genesis block
-    size_t extra_blocks = 0;
-
-    /// Number of validator nodes to instantiate
-    size_t validators = 4;
+    /// Number of validator nodes that are to be enrolled in test setup (Must be at least 6)
+    size_t validators = 6;
 
     /// Number of full nodes to instantiate
     size_t full_nodes = 0;
@@ -1456,9 +1657,6 @@ public struct TestConf
 
     /// Number of extra full nodes which are initially outside the network
     size_t outsider_full_nodes = 0;
-
-    /// The value to give the `ValidatorCycle` of nodes
-    uint validator_cycle = 1008;
 
     /// Maximum number of quorums in the autogenerated quorum sets
     uint max_quorum_nodes = 7;
@@ -1499,7 +1697,7 @@ public struct TestConf
     /// a block contains 8 transactions.
     /// If set to 0 there will be no limits on the number of nominated transactions
     /// (unless Consensus rules dictate otherwise)
-    ulong txs_to_nominate = 8;
+    ulong txs_to_nominate = 0;
 
     /// How often blocks should be created - in seconds
     uint block_interval_sec = 1;
@@ -1535,12 +1733,14 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     import std.digest;
     import std.range;
 
+    log.info(format!"[%s:%s]---------UNIT TEST LOGS--------------"(file, line));
     // We know we're in the main thread
     // Vibe.d messes with the scheduler - reset it
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
-    assert(test_conf.validators >= 4, "Must include at least 4 validators");
+    assert(test_conf.validators >= genesis_validators,
+        format!"Must include at least %s validators"(genesis_validators));
     const TotalNodes = test_conf.validators + test_conf.full_nodes +
         test_conf.outsider_validators + test_conf.outsider_full_nodes;
 
@@ -1552,7 +1752,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             retry_delay : test_conf.retry_delay,
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
-            validator_cycle : test_conf.validator_cycle,
+            validator_cycle : genesis_enrollment_cycle,
             max_quorum_nodes : test_conf.max_quorum_nodes,
             quorum_threshold : test_conf.quorum_threshold,
             quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
@@ -1628,18 +1828,22 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return format("FullNode #%s", idx);
     }
 
-    const num_validators = test_conf.validators + test_conf.outsider_validators;
-    auto validator_keys = WK.Keys.byRange().enumerate().take(num_validators);
+    auto genesis_validator_keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
+        WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7];
+
+    auto validator_keys = genesis_validator_keys ~
+        WK.Keys.byRange().takeExactly(test_conf.validators - genesis_validators + test_conf.outsider_validators).array;
 
     // all enrolled and un-enrolled validators
-    auto validator_addresses = validator_keys
+    auto validator_addresses = validator_keys.enumerate
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     // only enrolled validators
-    auto enrolled_addresses = validator_keys.take(test_conf.validators)
+    auto enrolled_addresses = genesis_validator_keys.enumerate.takeExactly(genesis_validators)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     auto validator_configs = validator_keys
+        .enumerate
         .map!(en => makeValidatorConfig(
             en.index,
             en.value,
@@ -1665,14 +1869,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto all_configs = validator_configs.chain(full_node_configs).array;
 
-    auto gen_block = makeGenesisBlock(
-        validator_configs
-            .take(test_conf.validators)  // only enrolled validators
-            .map!(conf => conf.validator.key_pair)
-            .array,
-        test_conf.validator_cycle);
-
-    immutable string gen_block_hex = gen_block
+    immutable string gen_block_hex = GenesisBlock
         .serializeFull()
         .toHexString();
 
@@ -1684,10 +1881,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.node.genesis_start_time = genesis_start_time;
     }
 
-    immutable(Block)[] blocks = generateBlocks(gen_block,
-        test_conf.extra_blocks);
-
-    auto net = new APIManager(blocks, test_conf, genesis_start_time);
+    auto net = new APIManager([GenesisBlock], test_conf, genesis_start_time);
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
 
@@ -1699,7 +1893,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 public const(Block)[] getAllBlocks (TestAPI node)
 {
     import std.range;
-    const(Block)[] blocks;
+    const(Block)[] all_blocks;
 
     // note: may return less than asked for, hence the loop
     size_t starting_block = 0;
@@ -1713,10 +1907,10 @@ public const(Block)[] getAllBlocks (TestAPI node)
         foreach (block; new_blocks)
             assert(block.header.height == starting_block++);
 
-        blocks ~= new_blocks;
+        all_blocks ~= new_blocks;
     }
 
-    return blocks;
+    return all_blocks;
 }
 
 /// Returns: true if all the nodes contain the same blocks
@@ -1748,104 +1942,4 @@ public void ensureConsistency (Exc : Throwable = AssertError, APIS)(
                  format("Node #%d was at height %d (expected: %d)",
                         idx, node.getBlockHeight(), expected));
     }
-}
-
-
-/*******************************************************************************
-
-    Generate a genesis block.
-
-    For each key pair, a freeze transaction and an Enrollment
-    will be created and added to the generated Genesis block.
-    The first transaction is the unittest's `GenesisTransaction`
-
-    Params:
-        key_pairs = key pairs for signing enrollments with
-        validator_cycle = the consensus-critical `ValidatorCycle` value
-
-    Returns:
-        The genesis block
-
-*******************************************************************************/
-
-private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
-    uint validator_cycle)
-{
-    import agora.common.Serializer;
-
-    // 1 payment tx, the rest are freeze txs
-    Transaction[] txs;
-    // This function is only called from unittests so we assume that
-    // GenesisBlock is `UnitTestGenesisBlock`
-    txs ~= GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
-    Enrollment[] enrolls;
-
-    foreach (key_pair; key_pairs)
-    {
-        Transaction tx =
-        {
-            type : TxType.Freeze,
-            outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
-        };
-
-        txs ~= tx;
-        const utxo = UTXOSetValue.getHash(tx.hashFull(), 0);
-        enrolls ~= EnrollmentManager.makeEnrollment(
-            key_pair, utxo, validator_cycle);
-    }
-
-    enrolls.sort!("a.utxo_key < b.utxo_key");
-
-    txs.sort;
-    Hash[] merkle_tree;
-    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
-
-    immutable(BlockHeader) makeHeader ()
-    {
-        return immutable(BlockHeader)(
-            Hash.init,   // prev
-            Height(0),   // height
-            merkle_root,
-            BitField!uint.init,
-            Signature.init,
-            enrolls.assumeUnique,
-        );
-    }
-    return immutable(Block)(
-        makeHeader(),
-        txs.assumeUnique,
-        merkle_tree.assumeUnique
-    );
-}
-
-/*******************************************************************************
-
-    Generate a set of blocks with spend transactions
-
-    Params:
-        gen_block = the genesis block
-        count = the number of extra blocks to generate. If 0, the return
-                blockchain will only contain the genesis block.
-
-    Returns:
-        The blockchain, including the provided genesis block
-
-*******************************************************************************/
-
-private immutable(Block)[] generateBlocks (
-    ref immutable Block gen_block, size_t count)
-{
-    const(Block)[] blocks = [gen_block];
-    if (count == 0)
-        return blocks.assumeUnique;  // just the genesis block
-
-    foreach (_; 0 .. count)
-    {
-        auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-
-        const NoEnrollments = null;
-        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
-    }
-
-    return blocks.assumeUnique;
 }

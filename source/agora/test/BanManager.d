@@ -21,8 +21,11 @@ import agora.common.Types;
 import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
+import agora.utils.Log;
 import agora.test.Base;
 import core.thread;
+
+mixin AddLogger!();
 
 /// test node banning after putTransaction fails a number of times
 unittest
@@ -30,7 +33,6 @@ unittest
     const txs_to_nominate = 8;
     TestConf conf =
     {
-        validators : 4,
         full_nodes : 1,
         retry_delay : 10.msecs,
         max_retries : 10,
@@ -42,9 +44,9 @@ unittest
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.completeTestSetup();
 
-    // 4 validators and 1 full node
+    // 6 validators and 1 full node
     auto nodes = network.clients.array;
     auto gen_key = WK.Keys.Genesis;
 
@@ -77,25 +79,30 @@ unittest
 
     genBlockTransactions(1).each!(tx => nodes[0].putTransaction(tx));
     // wait until the transactions were gossiped
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 
 
     // full node will be banned if it cannot communicate
     // validators refuse to to send blocks
-    nodes[0 .. 4].each!(node => node.filter!(node.getBlocksFrom));
-    nodes[4].filter!(nodes[4].putTransaction); // full node won't receive transactions
+    nodes[0 .. conf.validators].each!(node => node.filter!(node.getBlocksFrom));
+    auto full_node_idx = conf.validators;
+    nodes[full_node_idx].filter!(nodes[full_node_idx].putTransaction); // full node won't receive transactions
 
     // leftover txs which full node will reject due to its filter
     Transaction[] left_txs;
 
-    foreach (block_idx; 0 .. 4)
+    foreach (height; 2 .. 6)
     {
         auto new_tx = genBlockTransactions(1);
         left_txs ~= new_tx;
         new_tx.each!(tx => nodes[0].putTransaction(tx));
-        network.expectBlock(nodes[0 .. 4], Height(1 + block_idx + 1), 4.seconds);
-        retryFor(nodes[4].getBlockHeight() == 1, 1.seconds,
-            nodes[4].getBlockHeight().to!string);
+        network.setTimeFor(Height(height));
+        network.clients.takeExactly(conf.validators).enumerate.each!((idx, node) =>
+            retryFor(node.getBlockHeight() == height, 2.seconds,
+                format!"[%s:%s] Expected block height %s but Node #%s has height %s."
+                    (__FILE__, __LINE__, height, idx, node.getBlockHeight())));
+        retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds,
+            format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
     }
 
     // wait for full node to be banned and all putTransaction requests to time-out
@@ -103,17 +110,17 @@ unittest
 
     // sanity check: block height should not be updated, full node is not a validator and cannot make new blocks,
     // it may only add to its ledger through the getBlocksFrom() API.
-    nodes[4].clearFilter();
-    left_txs.each!(tx => nodes[4].putTransaction(tx));
-    retryFor(nodes[4].getBlockHeight() == 1, 1.seconds);
+    nodes[full_node_idx].clearFilter();
+    left_txs.each!(tx => nodes[full_node_idx].putTransaction(tx));
+    retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds);
 
     // clear the filter
-    nodes[0 .. 4].each!(node => node.clearFilter());
+    nodes[0 .. conf.validators].each!(node => node.clearFilter());
 
     network.setTimeFor(Height(6));  // full node should be unbanned now
 
     auto new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
     new_tx.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(6), 4.seconds);
+    network.expectBlock(Height(6));
 }

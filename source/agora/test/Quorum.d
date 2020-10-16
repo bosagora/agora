@@ -39,82 +39,60 @@ import core.time;
 unittest
 {
     TestConf conf = {
-        validators : 4,
-        outsider_validators : 2,
-        max_listeners : 5,
-        validator_cycle : 10,
-        extra_blocks: 10 - 2,
-    };
+        outsider_validators : 2 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.completeTestSetup();
 
     auto nodes = network.clients;
-    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.expectBlock(Height(8), b0.header,  5.seconds);
+    auto set_a = nodes.take(genesis_validators);
+    auto set_b = nodes.drop(genesis_validators).take(conf.outsider_validators);
 
-    // create block with 6 payment and 2 freeze tx's
-    auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
+    auto block = 18;
+    // Get to height 18
+    network.generateBlocks(Height(18));
 
-    // rewrite 3rd to last tx to multiple outputs so we can create 8 spend tx's
-    // in next block
-    txs[$ - 3] = TxBuilder(network.blocks[$ - 1].txs[$ - 3])
-        .split(WK.Keys.Genesis.address.repeat(3)).sign();
+    // Block 19 we add the freeze utxos for 2 outsider validators
+    genesisSpendable().drop(1).takeExactly(1)
+        .map!(txb => txb
+            .split(WK.Keys.byRange.take(conf.outsider_validators).map!(k => k.address)).sign(TxType.Freeze))
+        .each!(tx => nodes[0].putTransaction(tx));
+    network.generateBlocks(Height(19));
 
-    // rewrite the last two tx's to be freeze tx's for our outsider validator nodes
-    txs[$ - 2] = TxBuilder(network.blocks[$ - 1].txs[$ - 2])
-        .draw(txs[$ - 2].outputs[0].value,
-            iota(txs[$ - 2].outputs.length).map!(k => nodes[$ - 2].getPublicKey()))
-        .sign(TxType.Freeze);
-    txs[$ - 1] = TxBuilder(network.blocks[$ - 1].txs[$ - 1])
-        .draw(txs[$ - 1].outputs[0].value,
-            iota(txs[$ - 1].outputs.length).map!(k => nodes[$ - 1].getPublicKey()))
-        .sign(TxType.Freeze);
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    // wait for other nodes to get to same block height
+    set_b.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 19, 2.seconds,
+            format!"[%s:%s] Expected block height %s but Outsider node %s has height %s."
+                (__FILE__, __LINE__, 19, idx, node.getBlockHeight())));
 
-    // at block height 9 the freeze tx's are available
-    network.expectBlock(Height(9), b0.header, 5.seconds);
+    // Now we enroll set_b validators. In next cycle set_a will be expired.
+    iota(genesis_validators, genesis_validators + conf.outsider_validators)
+        .each!(idx => network.enroll(idx));
 
-    // now we can create enrollments
-    Enrollment enroll_0 = nodes[$ - 2].createEnrollmentData();
-    Enrollment enroll_1 = nodes[$ - 1].createEnrollmentData();
-    nodes[2].enrollValidator(enroll_0);
-    nodes[3].enrollValidator(enroll_1);
+     // Block 20
+    network.generateBlocks(Height(20));
 
-    // check enrollments
-    nodes.each!(node =>
-        retryFor(node.getEnrollment(enroll_0.utxo_key) == enroll_0 &&
-                 node.getEnrollment(enroll_1.utxo_key) == enroll_1,
-            5.seconds));
+    // wait for other nodes to get to same block height
+    set_b.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == 20, 2.seconds,
+            format!"[%s:%s] Expected block height %s but Outsider node %s has height %s."
+                (__FILE__, __LINE__, 20, idx, node.getBlockHeight())));
 
-    auto new_txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    // the last 3 tx's must refer to the outputs in txs[$ - 3] before
-    new_txs[$ - 3] = TxBuilder(txs[$ - 3], 0)
-        .split(WK.Keys.Genesis.address.only()).sign();
-    new_txs[$ - 2] = TxBuilder(txs[$ - 3], 1)
-        .split(WK.Keys.Genesis.address.only()).sign();
-    new_txs[$ - 1] = TxBuilder(txs[$ - 3], 2)
-        .split(WK.Keys.Genesis.address.only()).sign();
-    new_txs.each!(tx => nodes[0].putTransaction(tx));
+    // Sanity check
+    assert(network.blocks[20].header.enrollments.length == conf.outsider_validators, format!"Enrollments were not added to block 20"());
+    assert(network.blocks[20].txs.length == 1, format!"There should be a transaction in block 20"());
 
-    // at block height 10 the validator set has changed
-    network.expectBlock(Height(10), b0.header, 3.seconds);
+    //// set_a are no longer enrolled now. We make them sleep to show they are not used.
+    set_a.each!(node => node.sleep(10.minutes, true));
 
-    //// these are un-enrolled now
-    nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
-
-    // verify that consensus can still be reached by the leftover validators
-    txs = new_txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => nodes[$ - 2].putTransaction(tx));
-
-    const b10 = nodes[$ - 2].getBlocksFrom(10, 2)[0];
-    network.expectBlock(nodes[$ - 2 .. $], Height(11), b10.header, 3.seconds);
+    // Block 21 with the new validators in set B
+    network.generateBlocks(set_b, Height(21), Height(20));
 
     // force wake up
-    nodes[0 .. $ - 2].each!(node => node.sleep(0.seconds, false));
+    nodes.take(genesis_validators).each!(node => node.sleep(0.seconds, false));
 
     // all nodes should have same block height now
-    network.expectBlock(Height(11), b10.header, 10.seconds);
+    network.expectBlock(Height(21));
 }

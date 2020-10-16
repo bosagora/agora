@@ -50,7 +50,7 @@ unittest
     ));
     // When a block is created, the transaction is deleted from the transaction pool.
     node_1.putTransaction(txs[$-1]);
-    network.expectBlock(Height(1), 2.seconds);
+    network.expectBlock(Height(1));
 
     nodes.each!(node =>
         txs.each!(tx =>
@@ -60,8 +60,8 @@ unittest
 /// test gossiping behavior for an outsider node
 unittest
 {
-    // node #5 is the outsider, so total foreign nodes may be 4
-    TestConf conf = { validators : 4, max_listeners : 4, outsider_full_nodes : 1 };
+    // node #7 is the outsider, so total foreign nodes may be 6
+    TestConf conf = { max_listeners : 6, outsider_full_nodes : 1 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

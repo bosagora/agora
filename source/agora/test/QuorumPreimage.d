@@ -39,12 +39,7 @@ import core.time;
 unittest
 {
     import agora.common.Types;
-    TestConf conf = {
-        validators : 6,
-        outsider_validators : 2,
-        max_listeners : 7,
-        extra_blocks : 8,
-        validator_cycle : 10 };
+    TestConf conf = { validators : 8 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -52,69 +47,67 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.expectBlock(Height(8), b0.header, 10.seconds);
 
     enum quorums_1 = [
         // 0
         QuorumConfig(5, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
-            WK.Keys.B.address,
-            WK.Keys.A.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 1
         QuorumConfig(5, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
-            WK.Keys.B.address,
-            WK.Keys.A.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 2
         QuorumConfig(5, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
-            WK.Keys.B.address,
-            WK.Keys.A.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 3
         QuorumConfig(5, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
-            WK.Keys.B.address,
-            WK.Keys.A.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 4
         QuorumConfig(5, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
-            WK.Keys.B.address,
-            WK.Keys.A.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 5
         QuorumConfig(5, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
-            WK.Keys.B.address,
-            WK.Keys.A.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         QuorumConfig.init,
         QuorumConfig.init,
     ];
 
-    version (none)
+    version (none)  // un-comment to log quorum configs
     foreach (idx, node; nodes.enumerate)
         writefln("Node %s: %s\n", idx, node.getQuorumConfig);
 
@@ -123,151 +116,94 @@ unittest
             format("Node %s has quorum config %s. Expected: %s",
                 idx, node.getQuorumConfig(), quorums_1[idx])));
 
-    auto spendable = network.blocks[$ - 1].txs
-        .filter!(tx => tx.type == TxType.Payment)
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner().array;
-
-    // create block with 5 payment..
-    auto txs = spendable[0 .. 5]
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
-        .array;
-
-    // ..6th payment (split into 3+ outputs so we can have at least 8 UTXOs..)
-    txs ~= spendable[5].split(WK.Keys.Genesis.address.repeat(3)).sign();
-
-    // ..and 2 freeze txs for the two outsider validator nodes
-    txs ~= spendable[6 .. 8]
-        .enumerate
-        .map!(pair => pair.value.refund(nodes[6 + pair.index].getPublicKey())
-            .sign(TxType.Freeze))
-        .array;
-
-    txs.each!(tx => nodes[0].putTransaction(tx));
-
-    // at block height 9 the freeze txs are available
-    network.expectBlock(Height(9), b0.header, 10.seconds);
-
-    // now we re-enroll existing validators (extension),
-    // and enroll 2 new validators.
-    Enrollment[] enrolls;
-    foreach (node; nodes)
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        enrolls ~= enroll;
-        node.enrollValidator(enroll);
-
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
-
-    void makeBlock ()
-    {
-        txs = txs.filter!(tx => tx.type == TxType.Payment)
-            .map!(tx => iota(tx.outputs.length)
-                .map!(idx => TxBuilder(tx, cast(uint)idx)))
-            .joiner().takeExactly(8)  // there might be 9 UTXOs..
-            .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
-        txs.each!(tx => nodes[0].putTransaction(tx));
-    }
-
-    makeBlock();
-
-    // at block height 10 the validator set has changed
-    network.expectBlock(Height(10), b0.header, 3.seconds);
-
-    // check if the needed pre-images are revealed timely
-    enrolls.each!(enroll =>
-        nodes.each!(node =>
-            retryFor(node.getPreimage(enroll.utxo_key).distance >= 6, 5.seconds)));
+    auto block_height = network.enrollNonGenesisValidators();
+    assert(block_height == 21);
 
     enum quorums_2 = [
         // 0
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 1
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 2
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 3
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 4
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE5.address]),
 
         // 5
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 6
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 7
         QuorumConfig(6, [
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
     ];
 
     static assert(quorums_1 != quorums_2);
 
-    version (none)
+    version (none)  // un-comment to log quorum configs
     foreach (idx, node; nodes.enumerate)
         writefln("Node %s: %s\n", idx, node.getQuorumConfig);
 
@@ -276,119 +212,104 @@ unittest
             format("Node %s has quorum config %s. Expected: %s",
                 idx, node.getQuorumConfig(), quorums_2[idx])));
 
-    // create 9 blocks (1 short of all enrollments expiring)
-    const b10 = nodes[0].getBlocksFrom(10, 2)[0];
-    foreach (idx; 0 .. 9)
-    {
-        makeBlock();
+    network.generateBlocks(Height(39), Height(20));
 
-        // at block height 10 the validator set has changed
-        network.expectBlock(Height(10 + idx + 1), b10.header, 3.seconds);
-    }
-
-    // re-enroll all validators before they expire
     foreach (node; nodes)
     {
         Enrollment enroll = node.createEnrollmentData();
-        node.enrollValidator(enroll);
-
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+        nodes[0].enrollValidator(enroll);
+        retryFor(nodes[0].getEnrollment(enroll.utxo_key) == enroll, 5.seconds);
     }
 
-    makeBlock();
-
-    // at block height 20 the validator set has changed
-    network.expectBlock(Height(20), b10.header, 10.seconds);
+    network.generateBlocks(Height(40), Height(20));
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage
     enum quorums_3 = [
         // 0
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE5.address]),
 
         // 1
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 2
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 3
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE5.address]),
 
         // 4
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE7.address]),
 
         // 5
         QuorumConfig(6, [
-            WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 6
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE5.address]),
 
         // 7
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.H.address,
-            WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.NODE7.address]),
     ];
 
     static assert(quorums_2 != quorums_3);
 
-    version (none)
+    version (none)  // un-comment to log quorum configs
     foreach (idx, node; nodes.enumerate)
         writefln("Node %s: %s\n", idx, node.getQuorumConfig);
 
