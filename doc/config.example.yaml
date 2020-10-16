@@ -35,7 +35,7 @@ node:
   data_dir: .cache
   # The local address where the stats server (currently Prometheus)
   # is going to connect to, for example: http://0.0.0.0:8008
-  # It can also be set to -1 do disable listening
+  # It can also be set to -1 do disable listening (default is -1)
   stats_listening_port: 9110
 
 ################################################################################

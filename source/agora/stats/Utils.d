@@ -1,9 +1,9 @@
 /*******************************************************************************
 
-    Stats corresponding to Blocks
+    Utilities for stats support
 
     Copyright:
-        Copyright (c) 2019-2020 BOS Platform Foundation Korea
+        Copyright (c) 2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -19,19 +19,20 @@ import vibe.vibe;
 
 import std.stdio;
 
-/***************************************************************************
+/*******************************************************************************
 
-        Utility method to generate a collector delegate for a particular `Stats`
-        The generated function will have the signature of
-        void <collector_name>(Collector collector)
+    Utility method to generate a collector delegate for a particular `Stats`
+    The generated function will have the signature of
+    void <collector_name>(Collector collector)
 
-        Params:
-            statVar = variable of `Stats` type that we want to collect
-            collector_name = name of the generated function
+    Params:
+        statVar = variable of `Stats` type that we want to collect
+        collector_name = name of the generated function
 
-***************************************************************************/
+*******************************************************************************/
 
-mixin template DefineCollectorForStats (string statVar, string collector_name)
+public mixin template DefineCollectorForStats (string statVar,
+    string collector_name)
 {
     import std.format;
     mixin(
@@ -48,9 +49,8 @@ mixin template DefineCollectorForStats (string statVar, string collector_name)
 }
 
 /// collection of Utility classes for stats collection
-class Utils
+public class Utils
 {
-
     /***************************************************************************
 
             Static function that returns a singleton instance

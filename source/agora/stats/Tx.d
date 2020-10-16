@@ -1,9 +1,9 @@
 /*******************************************************************************
 
-    Stats corresponding to Blocks
+    Stats corresponding to Transactions
 
     Copyright:
-        Copyright (c) 2019-2020 BOS Platform Foundation Korea
+        Copyright (c) 2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
