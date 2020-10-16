@@ -160,6 +160,9 @@ public class EnrollmentManager
         // create Pair object from KeyPair object
         this.key_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
 
+        // load enrollment key
+        this.enroll_key = this.getEnrollmentKey();
+
         // load next height for preimage revelation
         this.next_reveal_distance = this.getNextRevealDistance();
 
@@ -286,7 +289,7 @@ public class EnrollmentManager
 
         if (enroll.utxo_key in self_utxos)
         {
-            this.enroll_key = enroll.utxo_key;
+            this.setEnrollmentKey(enroll.utxo_key);
 
             // set next height for revealing a pre-image
             this.updateRevealDistance(block_height);
@@ -662,6 +665,78 @@ public class EnrollmentManager
         }
 
         return false;
+    }
+
+    /***************************************************************************
+
+        Get the key for the enrollment for this node
+
+        If this node is not enrolled yet, the result will be empty. And if
+        the database operation fails, this displays a log message and also
+        returns `Hash.init`. Database errors mean that this node is not in
+        a normal situation overall.
+
+        Returns:
+            the key for the enrollment
+
+    ***************************************************************************/
+
+    public Hash getEnrollmentKey () @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
+                "WHERE key = ?", "enroll_key");
+
+            if (!results.empty)
+                return results.oneValue!(ubyte[]).deserializeFull!(Hash);
+        }
+        catch (Exception ex)
+        {
+            log.warn("ManagedDatabase operation error: {}", ex.msg);
+        }
+
+        return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Set the key for the enrollment for this node
+
+        If saving an enrollment key fails, this displays a log messages and just
+        returns. The `enroll_key` stores the value anyway and it can be restored
+        from the catch-up process later. If the database or serialization
+        operation fails, it means that node is not in normal situation overall.
+
+        Params:
+            enroll_key = the key for the enrollment
+
+    ***************************************************************************/
+
+    private void setEnrollmentKey (const ref Hash enroll_key) @trusted nothrow
+    {
+        this.enroll_key = enroll_key;
+
+        static ubyte[] buffer;
+        try
+        {
+            serializeToBuffer(this.enroll_key, buffer);
+        }
+        catch (Exception ex)
+        {
+            log.warn("Serialization error of enroll_key {}", ex.msg);
+            return;
+        }
+
+        try
+        {
+            this.db.execute("REPLACE into node_enroll_data " ~
+                "(key, val) VALUES (?, ?)", "enroll_key", buffer);
+        }
+        catch (Exception ex)
+        {
+            log.warn("ManagedDatabase operation error {}", ex.msg);
+        }
     }
 
     /***************************************************************************
@@ -1366,4 +1441,22 @@ unittest
     // pre-images of the current cycle have not changed
     auto preimages_enroll = man.cycle.preimages.byStride().dup;
     assert(preimages_enroll[] == preimages_valid[]);
+}
+
+// Tests for get/set a enrollment key
+unittest
+{
+    import agora.consensus.data.Transaction;
+
+    auto utxo_set = new TestUTXOSet;
+    genesisSpendable()
+        .map!(txb => txb.refund(WK.Keys.A.address).sign(TxType.Freeze))
+        .each!(tx => utxo_set.put(tx));
+    auto man = new EnrollmentManager(":memory:", WK.Keys.A,
+        new immutable(ConsensusParams)(10));
+
+    assert(utxo_set.length == 8);
+    man.setEnrollmentKey(utxo_set.keys[3]);
+    assert(man.getEnrollmentKey()[] == utxo_set.keys[3][]);
+    assert(man.getEnrollmentKey()[] != utxo_set.keys[0][]);
 }
