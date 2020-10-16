@@ -160,11 +160,6 @@ public class EnrollmentManager
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
 
-        // load the count of 'populate' of `PreImageCycle`
-        const uint populate_count = this.getCycleIndex();
-        foreach (_; 0 .. populate_count)
-            this.cycle.populate(this.key_pair.v, true);
-
         Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
 
@@ -286,7 +281,8 @@ public class EnrollmentManager
             this.setEnrollmentKey(enroll.utxo_key);
 
             // consume pre-images
-            this.cycle.populate(this.key_pair.v, true);
+            this.catchupPreImageCycle();
+            this.cycle.populate(this.key_pair.v, enroll.utxo_key, true);
 
             // save the count of 'populate' of `PreImageCycle`
             this.setCycleIndex(
@@ -316,7 +312,8 @@ public class EnrollmentManager
         this.enroll_key = utxo;
 
         // X, final seed data and preimages of hashes
-        const seed = this.cycle.populate(this.key_pair.v, false);
+        this.catchupPreImageCycle();
+        const seed = this.cycle.populate(this.key_pair.v, utxo, false);
         const enroll = makeEnrollment(
             this.key_pair, utxo, this.params.ValidatorCycle,
             seed, this.cycle.index);
@@ -381,7 +378,7 @@ public class EnrollmentManager
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
         assert(offset < cache.length);
-        cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
+        cache.reset(hashMulti(kp.v, utxo, "consensus.preimages", offset));
 
         return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
@@ -804,6 +801,25 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Catch up on the cache of pre-images to the current index
+
+        A node needs to catch up on the cache of pre-images to the current
+        index once after it starts.
+
+    ***************************************************************************/
+
+    public void catchupPreImageCycle () @safe nothrow
+    {
+        auto current_cycle = this.getCycleIndex();
+        // If there is any other case diffrent from the following assertion,
+        // it must be that an abnormal situation happened
+        assert(this.cycle.index == 0 || this.cycle.index == current_cycle);
+        while (this.cycle.index < current_cycle)
+            this.cycle.populate(this.key_pair.v, this.enroll_key, true);
+    }
+
+    /***************************************************************************
+
         Update the distance of the pre-image that will be revealed next time
 
         Params:
@@ -1082,6 +1098,7 @@ unittest
 
     auto secret = Scalar.random();
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
+    auto utxo = hashFull(Scalar.random());
     foreach (uint cycleGroupCount; 0 .. 10)
     {
         foreach (outerIndex; 1 .. PreImageCycle.NumberOfCycles + 1)
@@ -1091,7 +1108,7 @@ unittest
             assert(outerIndex - 1  == cycle.index);
             // Only provide `secret` on the first iteration
             const commitment =
-                cycle.populate(outerIndex == 1 ? secret : fake_secret, true);
+                cycle.populate(outerIndex == 1 ? secret : fake_secret, utxo, true);
             const lastInCycle = outerIndex == PreImageCycle.NumberOfCycles;
             // Sanity check #2
             assert(cycleGroupCount + lastInCycle == cycle.nonce);
@@ -1124,7 +1141,7 @@ unittest
             {
                 const Index = seedIndex % Enrollment.ValidatorCycle;
                 if (Index == (Enrollment.ValidatorCycle - 1))
-                    cycle.populate(seedIndex == cycle.seeds.length ? secret :fake_secret);
+                    cycle.populate(seedIndex == cycle.seeds.length ? secret :fake_secret, utxo);
                 assert(cycle.seeds[seedIndex] == cycle.preimages[Index]);
                 if (seedIndex == 0) break;
                 seedIndex--;
@@ -1213,9 +1230,20 @@ unittest
 {
     // Irrelevant for this test, the seed is only derived from the private key
     // and the offset (which is 0 in both cases)
-    Hash utxo;
-    auto e1 = EnrollmentManager.makeEnrollment(WK.Keys.A, utxo, 10, 0);
-    auto e2 = EnrollmentManager.makeEnrollment(WK.Keys.B, utxo, 10, 0);
+    import agora.consensus.data.Transaction;
+    import std.range;
+
+    Hash[] utxos;
+    genesisSpendable()
+        .enumerate
+        .map!(tup => tup.value
+            .refund(WK.Keys.A.address)
+            .sign(TxType.Freeze))
+        .each!((tx) {
+            utxos ~= UTXOSetValue.getHash(tx.hashFull(), 0);
+        });
+    auto e1 = EnrollmentManager.makeEnrollment(WK.Keys.A, utxos[0], 10, 0);
+    auto e2 = EnrollmentManager.makeEnrollment(WK.Keys.A, utxos[1], 10, 0);
     assert(e1.random_seed != e2.random_seed);
 }
 
@@ -1313,7 +1341,7 @@ unittest
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
             PreImageCache(params.ValidatorCycle, 1));
 
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.populate(pair.v, utxos[idx], true);
         const enroll = EnrollmentManager.makeEnrollment(
             pair, utxos[idx], params.ValidatorCycle,
             seed, cycle.index);
@@ -1321,7 +1349,7 @@ unittest
             storage.storage) is null);
 
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
-        cache.reset(hashMulti(pair.v, "consensus.preimages", 0));
+        cache.reset(hashMulti(pair.v, utxos[idx], "consensus.preimages", 0));
 
         PreImageInfo preimage = { enroll_key : utxos[idx],
             distance : cast(ushort)params.ValidatorCycle,
@@ -1332,15 +1360,15 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0xbc2a03ae4e9f00074ff201425bf5ad330c311dfd5c9ae54d38bfcfe4f2f02dbd99d6a25c975be9228fe4c9833e423bec9cb1039b05f4d0a23ca2c9310b936849`),
+        Hash(`0xa1edea84d85695ecbd22ccdef45058aca538064e5fcdd1965fde8065b029ee5b6150d4267503187c0ea1d4787f5c703f90bd934d49d3a18dfff415627d1f39a4`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(504)) ==
-        Hash(`0xfd2e526f102abb279b21dfaa88ced3eae8bc373fbda3a5b377776bf7b5830c0776370fca30ab978f058a0690e05ae7e795ed65cc3cd069236e78ad486d216b61`),
+        Hash(`0xdfae33fd85bfc3b20180f245da080a5f7b80137cda14783cff13464342204fbc4d3f83489a3e5889b40c104d2e2940b6e8c34795480d974c263b5d9c97e64d8c`),
         man.getRandomSeed(utxos, Height(504)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(1008)) ==
-        Hash(`0xa9eca761735203ad896929790aa83c03a2154d8390137b2b59e92ca90150220c1992a1e3ebe318ad8049cf801b9a8b85119410131fc3c4d784ce430dd780a861`),
+        Hash(`0x49126a9b42dfabc9f9816622f485c4676c0cf49be50debc8316fe6b1d17d369aeda920d4ddf127386cb2f0b9191cf8978ea2f64b72fa094ba4a603543881966d`),
         man.getRandomSeed(utxos, Height(1008)).to!string);
 }
 

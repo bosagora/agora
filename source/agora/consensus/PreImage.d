@@ -342,6 +342,7 @@ public struct PreImageCycle
 
         Params:
           secret = The secret key of the node, used as part of the hash
+          enroll_key = The enrollment key of the node, used as part of the hash
                    to generate the cycle seeds
           consume = If true, calculate the cycle index. Otherwise, just
                    get the random seed which is the first pre-image
@@ -351,14 +352,14 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public Hash populate (scope const ref Scalar secret, bool consume)
-        @safe nothrow
+    public Hash populate (scope const ref Scalar secret,
+        scope const ref Hash enroll_key, bool consume) @safe nothrow
     {
         // Populate the nonce cache if necessary
         if (this.index == 0)
         {
             const cycle_seed = hashMulti(
-                secret, "consensus.preimages", this.nonce);
+                secret, enroll_key, "consensus.preimages", this.nonce);
             this.seeds.reset(cycle_seed);
         }
 
