@@ -48,6 +48,9 @@ public struct CommandLine
     /// check state of config file and exit early
     public bool config_check;
 
+    /// Do not output anything
+    public bool quiet;
+
     /// Overrides for config options
     public string[][string] overrides;
 
@@ -230,6 +233,10 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
         "config-check",
             "Check the state of the config and exit",
             &cmdline.config_check,
+
+        "quiet|q",
+           "Do not output anything (currently only affects `--config-check`)",
+            &cmdline.quiet,
 
         "override|O",
             "Override a config file value\n" ~
