@@ -85,7 +85,7 @@ private int main (string[] args)
         return 0;
     }
 
-    auto file_based_lock = FileBasedLock("agoraNode.lock", config.get().node.data_dir, true); 
+    auto file_based_lock = FileBasedLock("agoraNode.lock", config.get().node.data_dir, true);
     try
         file_based_lock.lockThrow();
     catch (Exception ex)
