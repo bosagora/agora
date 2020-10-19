@@ -81,7 +81,8 @@ private int main (string[] args)
 
     if (cmdln.config_check)
     {
-        writefln("Config file '%s' successfully parsed.", cmdln.config_path);
+        if (!cmdln.quiet)
+            writefln("Config file '%s' successfully parsed.", cmdln.config_path);
         return 0;
     }
 
