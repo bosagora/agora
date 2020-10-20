@@ -307,13 +307,16 @@ public class Ledger
         if (!this.storage.saveBlock(block))
             assert(0);
 
-        ManagedDatabase.beginBatch();
-        scope (failure) ManagedDatabase.rollback();
-
         auto old_count = this.enroll_man.validatorCount();
-        this.updateUTXOSet(block);
-        this.updateValidatorSet(block);
-        ManagedDatabase.commitBatch();
+
+        ManagedDatabase.beginBatch();
+        {
+            // rollback on failure within the scope of the db transactions
+            scope (failure) ManagedDatabase.rollback();
+            this.updateUTXOSet(block);
+            this.updateValidatorSet(block);
+            ManagedDatabase.commitBatch();
+        }
 
         this.block_stats.setMetricTo!"agora_block_enrollments_gauge"(
             this.enroll_man.validatorCount());
