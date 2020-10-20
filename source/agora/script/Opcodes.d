@@ -99,6 +99,10 @@ public enum OP : ubyte
     /// The signature is then validated using Schnorr, if the signature is
     /// valid then `TRUE` is pushed to the stack.
     CHECK_SIG = 0x59,
+
+    /// Ditto, but instead of pushing the result to the stack it will cause the
+    /// script execution to fail if the signature is invalid
+    VERIFY_SIG = 0x5A,
 }
 
 /*******************************************************************************
