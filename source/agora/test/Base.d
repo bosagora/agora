@@ -854,6 +854,7 @@ public class TestAPIManager
     {
         synchronized  // make sure logging output is not interleaved
         {
+            writeln("---------------------------- START OF LOGS ----------------------------");
             writefln("%s(%s): Node logs:\n", file, line);
             foreach (node; this.nodes)
             {
