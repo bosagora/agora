@@ -75,6 +75,7 @@ import core.atomic : atomicLoad, atomicStore;
 import core.exception;
 import core.runtime;
 import core.stdc.time;
+import core.stdc.stdlib : abort;
 
 /* The following imports are frequently needed in tests */
 
@@ -99,6 +100,34 @@ shared static this()
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
 }
 
+void testAssertHandler (string file, ulong line, string msg) nothrow
+{
+    // `std.typecons` test an assert failure, so handle it explicitly
+    static immutable Typecons = "std/typecons.d";
+    if (file.length >= Typecons.length && file[$ - Typecons.length .. $] == Typecons)
+        throw new AssertError(msg, file, line);
+
+    try
+    {
+        scope output = stdout.lockingTextWriter();
+        output.formattedWrite(
+            "================================ ASSERT HANDLER ===============================\n");
+        output.formattedWrite!"[%s:%s] Assertion thrown during test: %s\n"
+            (file, line, msg);
+        CircularAppender!()().print(output);
+    }
+    catch (Exception exc)
+    {
+        scope exc_name = typeid(exc).name;
+        printf("Could not print thread logs because of %.*s (%.*s:%lu): %.*s\n",
+            cast(int) exc_name.length, exc_name.ptr,
+            cast(int) file.length, file.ptr, line, cast(int) msg.length, msg.ptr);
+    }
+    // TODO: Using `abort` here would give use a core dump,
+    // but this gives us a stack trace.
+    throw new AssertError(msg, file, line);
+}
+
 /// Custom unnitest runner as a workaround for multi-threading issue:
 /// Agora unittests spawn threads, which allocate. The Ocean tests
 /// inspect GC stats for memory allocation changes, and potentially fail
@@ -117,6 +146,9 @@ private UnitTestResult customModuleUnitTester ()
     // by default emit only errors during unittests.
     // can be re-set by calling code.
     Log.root.level(Log.root.Level.Error, true);
+
+    // display the thread's log buffer when an assertion fails during a test
+    assertHandler = &testAssertHandler;
 
     //
     const chatty = !!("dchatty" in environment);
