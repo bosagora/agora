@@ -89,7 +89,7 @@ public class EnrollmentPool
         // check if already exists
         if (this.hasEnrollment(enroll.utxo_key, avail_height))
         {
-            log.info("Rejected already existing enrollment, Data was: {}",
+            log.trace("Skipping already existing enrollment, Data was: {}",
                 enroll);
             return false;
         }

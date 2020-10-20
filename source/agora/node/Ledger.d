@@ -49,6 +49,7 @@ import agora.utils.PrettyPrinter;
 import std.algorithm;
 import std.conv : to;
 import std.exception;
+import std.format;
 import std.range;
 
 mixin AddLogger!();
@@ -305,7 +306,7 @@ public class Ledger
     private void addValidatedBlock (const ref Block block) @safe
     {
         if (!this.storage.saveBlock(block))
-            assert(0);
+            assert(0, format!"Failed to save block: %s"(prettify(block)));
 
         ManagedDatabase.beginBatch();
         scope (failure) ManagedDatabase.rollback();
@@ -323,7 +324,7 @@ public class Ledger
 
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
-            assert(0);
+            assert(0, format!"Failed to read last block: %s"(prettify(this.last_block)));
 
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);

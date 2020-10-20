@@ -596,7 +596,7 @@ extern(D):
 
         // enrollment data may be empty, but not transaction set
         if (data.tx_set.length == 0)
-            assert(0, "Transaction set empty");
+            assert(0, format!"Transaction set empty for slot %u"(slot_idx));
 
         log.info("Externalized consensus data set at {}: {}", slot_idx, data);
         try

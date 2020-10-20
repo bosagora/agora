@@ -192,14 +192,17 @@ public class UTXOSet
             utxo_hash = UTXOSetValue.getHash(hash, index);
 
         if (utxo_hash in this.used_utxos)
+        {
+            log.trace("findUTXO: utxo_hash {} found in used_utxos: {}", utxo_hash, used_utxos);
             return false;  // double-spend
+        }
 
         if (this.utxo_db.find(utxo_hash, value))
         {
             this.used_utxos.put(utxo_hash);
             return true;
         }
-
+        log.trace("findUTXO: utxo_hash {} not found", utxo_hash);
         return false;
     }
 }
