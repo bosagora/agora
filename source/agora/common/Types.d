@@ -91,6 +91,12 @@ public struct Height
         immutable ul = str.to!ulong;
         return Height(ul);
     }
+
+    //Prevent needing to cast when using unary post plus operator
+    Height opUnary (string op) () if (op == "++")
+    {
+        return Height(this.value++);
+    }
 }
 
 ///
@@ -104,4 +110,7 @@ unittest
     assert(h.toString() == str_h);
     assert(h.fromString(str_h) == h);
     assert(h.serializeToJsonString() == "\"1000\"");
+    auto x = Height(10);
+    assert(x++ == 10);
+    assert(x == 11);
 }
