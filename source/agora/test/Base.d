@@ -588,8 +588,9 @@ public class TestAPIManager
     /// Ditto
     public void expectBlock (Clients)(Clients clients, Height height,
         Duration timeout, string file = __FILE__, int line = __LINE__)
-        if (isInputRange!Clients)
     {
+        static assert (isInputRange!Clients);
+
         this.setTimeFor(height);
         clients.enumerate.each!((idx, node) =>
             retryFor(node.getBlockHeight() == height, timeout,
@@ -624,8 +625,10 @@ public class TestAPIManager
     /// Ditto
     public void expectBlock (Clients)(Clients clients, Height height,
         const(BlockHeader) enroll_header, Duration timeout,
-        string file = __FILE__, int line = __LINE__) if (isInputRange!Clients)
+        string file = __FILE__, int line = __LINE__)
     {
+        static assert (isInputRange!Clients);
+
         assert(height > enroll_header.height);
         auto distance = cast(ushort)(height - enroll_header.height - 1);
         waitForPreimages(clients, enroll_header.enrollments, distance,
@@ -658,8 +661,10 @@ public class TestAPIManager
     /// Ditto
     public void waitForPreimages (Clients)(Clients clients,
         const(Enrollment)[] enrolls, ushort distance, Duration timeout,
-        string file = __FILE__, int line = __LINE__) if (isInputRange!Clients)
+        string file = __FILE__, int line = __LINE__)
     {
+        static assert (isInputRange!Clients);
+
         clients.each!(node => enrolls.each!(enroll =>
             retryFor(node.getPreimage(enroll.utxo_key).distance >= distance,
                 timeout)));
@@ -686,8 +691,9 @@ public class TestAPIManager
 
     /// Ditto
     public void setTimeFor (Pairs)(Pairs pairs, Height height)
-        if (isInputRange!Pairs)
     {
+        static assert (isInputRange!Pairs);
+
         const exp_time = this.getBlockTime(height);
         foreach (pair; pairs)
             pair.time = exp_time;
@@ -1733,8 +1739,9 @@ public bool containSameBlocks (APIS)(APIS nodes, size_t height)
 /// Asserts that all nodes in the range are at height `expected`
 public void ensureConsistency (Exc : Throwable = AssertError, APIS)(
     APIS nodes, ulong expected, Duration timeout = 2.seconds)
-    if (isInputRange!APIS)
 {
+    static assert (isInputRange!APIS);
+
     foreach (idx, node; nodes.enumerate())
     {
         retryFor!Exc(node.getBlockHeight() == expected, timeout,

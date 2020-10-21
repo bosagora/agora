@@ -474,8 +474,10 @@ public struct TxBuilder
 
     public ref typeof(this) draw (KeyRange) (Amount amount, scope KeyRange toward)
         return
-        if (isInputRange!KeyRange && is(ElementType!KeyRange : PublicKey))
     {
+        static assert (isInputRange!KeyRange);
+        static assert (is(ElementType!KeyRange : PublicKey));
+
         assert(!toward.empty, "No beneficiary in `draw` transaction");
         assert(amount > Amount(0), "Cannot have outputs of value `0`");
 
@@ -507,10 +509,11 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) split (KeyRange) (scope KeyRange toward)
-        return
-        if (isInputRange!KeyRange && is(ElementType!KeyRange : PublicKey))
+    public ref typeof(this) split (KeyRange) (scope KeyRange toward) return
     {
+        static assert (isInputRange!KeyRange);
+        static assert (is(ElementType!KeyRange : PublicKey));
+
         assert(!toward.empty, "No beneficiary in `split` transaction");
 
         // Cannot reuse `draw` because we might have an input range only

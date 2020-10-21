@@ -440,8 +440,9 @@ unittest
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
     Transactions txs, Enrollment[] enrollments) @safe nothrow
-    if (isInputRange!Transactions)
 {
+    static assert (isInputRange!Transactions);
+
     Block block;
 
     block.header.prev_block = prev_block.header.hashFull();
@@ -462,7 +463,6 @@ version (unittest)
 {
     public Block makeNewBlock (Transactions)(const ref Block prev_block,
         Transactions txs) @safe nothrow
-        if (isInputRange!Transactions)
     {
         return makeNewBlock(prev_block, txs, null);
     }
