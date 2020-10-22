@@ -51,7 +51,7 @@ unittest
     network.expectBlock(Height(validator_cycle - 1));
 
     // wait for preimages to be revealed before making block 10
-    network.waitForPreimages(network.blocks[0].header.enrollments, 9, 5.seconds);
+    network.waitForPreimages(network.blocks[0].header.enrollments, 9);
 
     // create enrollment data
     // send a request to enroll as a Validator
@@ -79,7 +79,7 @@ unittest
     network.expectBlock(Height(validator_cycle));
 
     // wait until preimages are revealed before creating a new block
-    network.waitForPreimages(enrolls, 1, 5.seconds);
+    network.waitForPreimages(enrolls, 1);
 
     // verify that consensus can still be reached
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
@@ -117,7 +117,7 @@ unittest
     {
         auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
         txs.each!(tx => nodes[0].putTransaction(tx));
-        network.waitForPreimages(b0.header.enrollments, cast(ushort)height, 5.seconds);
+        network.waitForPreimages(b0.header.enrollments, cast(ushort)height);
         network.expectBlock(Height(height + 1));
         prev_txs = txs;
     }

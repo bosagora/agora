@@ -216,7 +216,7 @@ unittest
 
         // check enrollment
         nodes.each!(n =>
-             retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     }
 
     // at block height 13 the validator set changes

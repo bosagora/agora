@@ -123,7 +123,7 @@ unittest
     }
 
     TestConf conf = {
-        timeout : 10.seconds,
+        timeout : 5.seconds,
         validators : 4,
         validator_cycle : 10,
         quorum_threshold : 51
@@ -146,7 +146,7 @@ unittest
     txs.each!(tx => validator.putTransaction(tx));
 
     network.expectBlock(Height(1), conf.timeout + 5.seconds);
-    assert(CustomNominator.round_number >= 3,
-        format("The validator's round number: %s. Expected: above %s",
-            CustomNominator.round_number, 3));
+    assert(CustomNominator.round_number >= 2,
+        format("The validator's round number is %s. Expected: above %s",
+            CustomNominator.round_number, 2));
 }
