@@ -94,7 +94,7 @@ unittest
 
         // Check enrollment
         set_b.each!(node =>
-             retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+            retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     }
 
     // Block 10
@@ -128,7 +128,7 @@ unittest
     // current validators and previous validators except themselves.
     set_b.each!(node =>
         retryFor(node.getNodeInfo().addresses.length ==
-                     conf.validators + conf.outsider_validators - 1 , 5.seconds));
+                    conf.validators + conf.outsider_validators - 1 , 5.seconds));
 
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.sleep(6.seconds, true));

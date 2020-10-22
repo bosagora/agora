@@ -173,8 +173,7 @@ unittest
     auto node_bad = nodes[5];  // full node, returns bad blocks in getBlocksFrom()
 
     // wait for preimages to be revealed before making blocks
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6,
-        5.seconds);
+    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
 
     // enable filtering first
     node_validators.each!(node => node.filter!(API.getBlocksFrom));
