@@ -187,7 +187,7 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
 
     // wait for preimages to be revealed before making blocks
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6, 5.seconds);
+    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
 
     network.expectBlock(Height(1));
 
