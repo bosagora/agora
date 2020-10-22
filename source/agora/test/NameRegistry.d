@@ -33,5 +33,5 @@ unittest
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 2.seconds);
+    network.expectBlock(Height(1));
 }

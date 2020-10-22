@@ -48,7 +48,7 @@ unittest
     auto nodes = network.clients;
     auto set_a = network.clients[0 .. 4];
     auto set_b = network.clients[4 .. $];
-    network.expectBlock(Height(7), network.blocks[0].header, 5.seconds);
+    network.expectBlock(Height(7), network.blocks[0].header);
 
     auto spendable = network.blocks[$ - 1].spendable().array;
 
@@ -64,7 +64,7 @@ unittest
 
     // Block 8
     txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(8), network.blocks[0].header, 5.seconds);
+    network.expectBlock(Height(8), network.blocks[0].header);
 
     // Freeze builders
     auto freezable = txs[$ - 3]
@@ -83,7 +83,7 @@ unittest
 
     // Block 9
     freeze_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(9), network.blocks[0].header, 5.seconds);
+    network.expectBlock(Height(9), network.blocks[0].header);
 
     // Now we enroll four new validators. After this, the already enrolled
     // validators will be expired.
@@ -94,7 +94,7 @@ unittest
 
         // Check enrollment
         set_b.each!(node =>
-            retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+             retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     }
 
     // Block 10
@@ -103,7 +103,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
     new_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(10), network.blocks[0].header, 5.seconds);
+    network.expectBlock(Height(10), network.blocks[0].header);
 
     // Sanity check
     auto b10 = set_a[0].getBlocksFrom(10, 2)[0];
@@ -112,7 +112,7 @@ unittest
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
     set_b.each!(node => network.restart(node));
-    network.expectBlock(Height(10), 5.seconds);
+    network.expectBlock(Height(10));
 
     // Sanity check
     nodes.enumerate.each!((idx, node) =>
@@ -128,7 +128,7 @@ unittest
     // current validators and previous validators except themselves.
     set_b.each!(node =>
         retryFor(node.getNodeInfo().addresses.length ==
-                    conf.validators + conf.outsider_validators - 1 , 5.seconds));
+                     conf.validators + conf.outsider_validators - 1 , 5.seconds));
 
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.sleep(6.seconds, true));
@@ -139,7 +139,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
     new_txs.each!(tx => set_b[0].putTransaction(tx));
-    network.expectBlock(set_b, Height(11), b10.header, 5.seconds);
+    network.expectBlock(set_b, Height(11), b10.header);
 }
 
 /// Situation: A validator is stopped and wiped clean after the block height
@@ -167,7 +167,7 @@ unittest
     // Create a block from the Genesis block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 5.seconds);
+    network.expectBlock(Height(1));
 
     // node_1 restarts and becomes unresponsive
     network.restart(node_1);
@@ -176,11 +176,11 @@ unittest
     // Make 2 blocks
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_2.putTransaction(tx));
-    network.expectBlock(on_nodes, Height(2), 5.seconds);
+    network.expectBlock(on_nodes, Height(2));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_2.putTransaction(tx));
-    network.expectBlock(on_nodes, Height(3), 5.seconds);
+    network.expectBlock(on_nodes, Height(3));
 
     // Wait for node_1 to wake up
     node_1.ctrl.withTimeout(10.seconds,
@@ -189,7 +189,7 @@ unittest
         }
     );
 
-    network.expectBlock(Height(3), 5.seconds);
+    network.expectBlock(Height(3));
 
     // The node_2 restart and is disabled to respond, which means that
     // the node_2 will be slashed soon.
@@ -202,5 +202,5 @@ unittest
 
     // The new block has been inserted to the ledger with the approval
     // of the node_1, although node_2 was shutdown.
-    network.expectBlock(Height(4), 10.seconds);
+    network.expectBlock(Height(4));
 }

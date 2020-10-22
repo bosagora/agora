@@ -78,7 +78,7 @@ unittest
     {
         blocks[$ - 1].spendable.each!(txb =>
             nodes[0].putTransaction(txb.sign()));
-        network.expectBlock(Height(height), 5.seconds);
+        network.expectBlock(Height(height));
         retryFor((blocks = nodes[0].getBlocksFrom(height, 1)).length == 1, 5.seconds,
                 format("Node 0 getBlocksFrom(%s, 1) failed", height));
     }
