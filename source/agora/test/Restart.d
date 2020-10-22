@@ -33,11 +33,11 @@ unittest
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 2.seconds);
+    network.expectBlock(Height(1));
 
     // Now shut down & restart one node
     auto restartMe = nodes[$-1];
     network.restart(restartMe);
     network.waitForDiscovery();
-    network.expectBlock(Height(1), 5.seconds);
+    network.expectBlock(Height(1));
 }

@@ -48,7 +48,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    network.expectBlock(Height(validator_cycle - 1), 2.seconds);
+    network.expectBlock(Height(validator_cycle - 1));
 
     // wait for preimages to be revealed before making block 10
     network.waitForPreimages(network.blocks[0].header.enrollments, 9, 5.seconds);
@@ -76,7 +76,7 @@ unittest
     // re-enroll every validator
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle), 2.seconds);
+    network.expectBlock(Height(validator_cycle));
 
     // wait until preimages are revealed before creating a new block
     network.waitForPreimages(enrolls, 1, 5.seconds);
@@ -84,7 +84,7 @@ unittest
     // verify that consensus can still be reached
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle + 1), 2.seconds);
+    network.expectBlock(Height(validator_cycle + 1));
 }
 
 // Test for re-enroll before the validator cycle ends
@@ -118,7 +118,7 @@ unittest
         auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
         txs.each!(tx => nodes[0].putTransaction(tx));
         network.waitForPreimages(b0.header.enrollments, cast(ushort)height, 5.seconds);
-        network.expectBlock(Height(height + 1), 2.seconds);
+        network.expectBlock(Height(height + 1));
         prev_txs = txs;
     }
 
@@ -165,7 +165,7 @@ unittest
                 .map!(ptx => TxBuilder(ptx).refund(WK.Keys[count].address).sign())
                 .array();
         txs.each!(tx => nodes[1].putTransaction(tx));
-        network.expectBlock(Height(count + 1), b0.header, 3.seconds);
+        network.expectBlock(Height(count + 1), b0.header);
     }
 
     // Now create an Enrollment for nodes[0], create block #20, and restart nodes[0]
@@ -175,13 +175,13 @@ unittest
         .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
-    network.expectBlock(nodes.take(1), Height(validator_cycle), b0.header, 3.seconds);
+    network.expectBlock(nodes.take(1), Height(validator_cycle), b0.header);
     retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
         2.seconds);
 
     network.restart(nodes[0]);
     network.waitForDiscovery();
-    network.expectBlock(nodes.take(1), Height(20), 10.seconds);
+    network.expectBlock(nodes.take(1), Height(20));
 
     // Now make a new block and make sure only nodes[0] signs it
     txs = txs
@@ -189,7 +189,7 @@ unittest
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
     const b20 = nodes[0].getBlocksFrom(20, 2)[0];
-    network.expectBlock(nodes.take(1), Height(21), b20.header, 3.seconds);
+    network.expectBlock(nodes.take(1), Height(21), b20.header);
 
     PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
 
@@ -401,7 +401,7 @@ unittest
         .map!(en => en.value.refund(WK.Keys.A.address).sign())
         .array();
     txs.each!(tx => validator.putTransaction(tx));
-    network.waitForPreimages(b0.header.enrollments, 1, 2.seconds);
+    network.waitForPreimages(b0.header.enrollments, 1);
     network.setTimeFor(Height(1));  // trigger consensus
 
     // Make sure that the code in validator gets executed

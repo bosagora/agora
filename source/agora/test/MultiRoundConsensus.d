@@ -138,14 +138,14 @@ unittest
     auto validator = network.clients[0];
 
     // Make two of three validators stop responding
-    nodes[1].ctrl.sleep(10.seconds, true);
-    nodes[2].ctrl.sleep(10.seconds, true);
+    nodes[1].ctrl.sleep(conf.timeout, true);
+    nodes[2].ctrl.sleep(conf.timeout, true);
 
     // Block 1 with multiple consensus rounds
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => validator.putTransaction(tx));
 
-    network.expectBlock(Height(1), 15.seconds);
+    network.expectBlock(Height(1), conf.timeout + 5.seconds);
     assert(CustomNominator.round_number >= 3,
         format("The validator's round number: %s. Expected: above %s",
             CustomNominator.round_number, 3));

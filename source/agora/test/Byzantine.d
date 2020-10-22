@@ -244,7 +244,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other not signing node)
@@ -261,7 +261,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 }
 
 /// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other with invalid signature)
@@ -278,7 +278,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), 3.seconds);
+    network.expectBlock(Height(1));
 }
 
 
