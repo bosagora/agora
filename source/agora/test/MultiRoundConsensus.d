@@ -143,7 +143,7 @@ unittest
     genesisSpendable().map!(txb => txb.sign())
         .each!(tx => validator.putTransaction(tx));
 
-    network.expectBlock(Height(1));
+    network.expectBlock(Height(1), conf.timeout + 5.seconds);
     assert(CustomNominator.round_number >= 3,
         format("The validator's round number: %s. Expected: at least %s",
             CustomNominator.round_number, 3));

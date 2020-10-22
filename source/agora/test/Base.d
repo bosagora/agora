@@ -646,7 +646,7 @@ public class TestAPIManager
         static assert (isInputRange!Clients);
         log.trace("[{}:{}] Expecting block {} for {} clients", file, line, height, clients.count());
         assert(height > enroll_header.height, "Target height should be greater than enrolled height");
-        auto distance = cast(ushort)(height - enroll_header.height - 1);
+        auto distance = cast(ushort)(height - enroll_header.height);
         waitForPreimages(clients, enroll_header.enrollments, distance, timeout);
         expectBlock(clients, height, timeout, file, line);
     }
