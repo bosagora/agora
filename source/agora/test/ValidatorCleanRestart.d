@@ -93,7 +93,7 @@ unittest
     // current validators and previous validators except themselves.
     set_b.each!(node =>
         retryFor(node.getNodeInfo().addresses.length ==
-                    conf.validators + conf.outsider_validators - 1 , 5.seconds));
+                     conf.validators + conf.outsider_validators - 1 , 5.seconds));
 
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.sleep(6.seconds, true));
@@ -157,5 +157,5 @@ unittest
 
     // The new block has been inserted to the ledger with the approval
     // of the node_1, although node_2 was shutdown.
-    network.expectBlock(Height(4), 10.seconds);
+    network.expectBlock(Height(4));
 }

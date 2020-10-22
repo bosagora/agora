@@ -54,7 +54,7 @@ unittest
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
-        network.expectBlock(Height(block_idx), blocks[0].header, 5.seconds);
+        network.expectBlock(Height(block_idx), blocks[0].header);
 
         // add next block
          blocks ~= node_1.getBlocksFrom(block_idx, 1);

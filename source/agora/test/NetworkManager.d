@@ -56,7 +56,7 @@ unittest
     nodes[conf.validators - 2].clearFilter();
     nodes[conf.validators - 1].clearFilter();
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.expectBlock(Height(1), b0.header, 2.seconds);
+    network.expectBlock(Height(1), b0.header);
 }
 
 /// test behavior when a node sends bad block data
@@ -174,8 +174,7 @@ unittest
     auto node_bad = nodes[conf.validators + 1];  // full node, returns bad blocks in getBlocksFrom()
 
     // wait for preimages to be revealed before making blocks
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6,
-        5.seconds);
+    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
 
     // enable filtering first
     nodes[1 .. conf.validators - 1].each!(node => node.filter!(API.getBlocksFrom));
@@ -187,13 +186,13 @@ unittest
     // create next block after Genesis
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
     last_txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock([node_validators[0]], Height(1), 4.seconds);
+    network.expectBlock([node_validators[0]], Height(1));
 
     // create 1 additional block and enough `tx`es
     auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
     // send it to one node
     txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock([node_validators[0]], Height(2), 4.seconds);
+    network.expectBlock([node_validators[0]], Height(2));
     last_txs = txs;
 
     // the validator node has 2 blocks, but bad node pretends to have 3

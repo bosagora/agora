@@ -640,7 +640,7 @@ public class TestAPIManager
 
     /// Ditto
     public void expectBlock (Clients)(Clients clients, Height height,
-        const(BlockHeader) enroll_header, Duration timeout = 5.seconds,
+        const(BlockHeader) enroll_header, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Clients);
@@ -679,7 +679,7 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void waitForPreimages (const(Enrollment)[] enrolls, ushort distance,
-        Duration timeout, string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
     {
         this.waitForPreimages(this.clients, enrolls, distance, timeout, file,
             line);
@@ -687,7 +687,7 @@ public class TestAPIManager
 
     /// Ditto
     public void waitForPreimages (Clients)(Clients clients,
-        const(Enrollment)[] enrolls, ushort distance, Duration timeout,
+        const(Enrollment)[] enrolls, ushort distance, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Clients);
