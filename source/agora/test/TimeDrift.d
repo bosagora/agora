@@ -26,7 +26,7 @@ import std.range;
 ///
 unittest
 {
-    TestConf conf = { validators : 5, txs_to_nominate : 2,
+    TestConf conf = { txs_to_nominate : 2,
         block_interval_sec : 1, max_quorum_nodes : 5, quorum_threshold : 100
     };
     auto network = makeTestNetwork(conf);
@@ -40,29 +40,40 @@ unittest
 
     // sanity check for the generated quorum config
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig().threshold == 5 &&
-            node.getQuorumConfig().nodes.length == 5, 5.seconds,
-            format("Node %s has the wrong quorum config. Expecte 3/5. Got: %s",
+        retryFor(node.getQuorumConfig().threshold == conf.max_quorum_nodes &&
+                node.getQuorumConfig().nodes.length == conf.max_quorum_nodes,
+            5.seconds,
+            format("Node #%s has invalid quorum config for test: %s",
                 idx, node.getQuorumConfig())));
 
-    // set the time to `height` * `block_interval_sec` for 4/5 nodes
-    // clock times for nodes:    [ 1,  1,  1,  1,  0] median => 1
-    // calculated clock offset:  [+0, +0, +0, +0, +1]
-    network.setTimeFor(network.nodes.take(4), Height(1));
-    retryFor(nodes[0].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getLocalTime() == 0 + network.genesis_start_time, 5.seconds);
+    // Check the node local time
+    void checkNodeLocalTime (ulong idx, ulong expected_height)
+    {
+        retryFor(nodes[idx].getLocalTime() == expected_height + network.genesis_start_time,
+            5.seconds,
+            format!"Expected node #%s would have time of height %s not %s"
+                (idx, expected_height, nodes[idx].getLocalTime() - network.genesis_start_time));
+    }
+
+    // Check the node network time
+    void checkNodeNetworkTime (ulong idx, ulong expected_height)
+    {
+        retryFor(nodes[idx].getNetworkTime() == expected_height + network.genesis_start_time,
+            5.seconds,
+            format!"Expected node #%s would have time of height %s not %s"
+                (idx, expected_height, nodes[idx].getNetworkTime() - network.genesis_start_time));
+    }
+
+    // clock times for nodes:    [ 1,  1,  1,  1,  1, 0] median => 1
+    // calculated clock offset:  [+0, +0, +0, +0, +0, +1]
+
+    // set the time to `height` * `block_interval_sec` for 5/6 nodes
+    assert(conf.block_interval_sec == 1);
+    network.setTimeFor(network.nodes.take(5), Height(1));
+    [ 1,  1,  1,  1,  1, 0].enumerate.each!((idx, height) => checkNodeLocalTime(idx, height));
 
     network.synchronizeClocks();  // net-sync all clocks
-    retryFor(nodes[0].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds,
-        format("Expected %s. Got %s", 1 + network.genesis_start_time,
-            nodes[4].getNetworkTime()));
+    [ 1,  1,  1,  1,  1, 1].enumerate.each!((idx, height) => checkNodeNetworkTime(idx, height));
 
     // prepare 8 txs: can generate 4 blocks with 2 txs each
     auto spendable = network.blocks[0].txs
@@ -83,28 +94,19 @@ unittest
     ));
     txs.popFrontN(2);
 
-    // 5/5 nodes accepted
+    // 6/6 nodes accepted
     ensureConsistency(nodes, 1, 5.seconds);
 
-    // clock times for nodes:    [ 1,  1,  1,  1,  2] median => 1
-    // calculated clock offset:  [+0, +0, +0, +0, -1]
-    network.setTimeFor(network.nodes[0].only, Height(1));
-    network.setTimeFor(network.nodes[1].only, Height(1));
-    network.setTimeFor(network.nodes[2].only, Height(1));
-    network.setTimeFor(network.nodes[3].only, Height(1));
-    network.setTimeFor(network.nodes[4].only, Height(2));
-    retryFor(nodes[0].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getLocalTime() == 2 + network.genesis_start_time, 5.seconds);
+    // clock times for nodes:    [ 1,  1,  1,  1,  1, 2] median => 1
+    // calculated clock offset:  [+0, +0, +0, +0, +0, -1]
+    [ 1,  1,  1,  1,  1, 2].enumerate.each!((idx, time) =>
+        network.setTimeFor(network.nodes[idx].only, Height(time)));
+
+    [ 1,  1,  1,  1,  1, 2].enumerate.each!((idx, height) => checkNodeLocalTime(idx, height));
 
     network.synchronizeClocks();  // net-sync all clocks
-    retryFor(nodes[0].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
+
+    [ 1,  1,  1,  1,  1, 1].enumerate.each!((idx, height) => checkNodeNetworkTime(idx, height));
 
     txs.take(2).each!(tx => nodes[0].putTransaction(tx));
     // wait for propagation
@@ -117,48 +119,31 @@ unittest
     // calculated net clock is still at height 1 => no blocks created
     assertThrown(ensureConsistency!Exception(nodes, 2, 5.seconds));
 
-    // clock times for nodes:    [ 1,  1,  1,  2,  2] median => 1
-    // calculated clock offset:  [+0, +0, +0, -1, -1]
-    network.setTimeFor(network.nodes[0].only, Height(1));
-    network.setTimeFor(network.nodes[1].only, Height(1));
-    network.setTimeFor(network.nodes[2].only, Height(1));
-    network.setTimeFor(network.nodes[3].only, Height(2));
-    network.setTimeFor(network.nodes[4].only, Height(2));
-    retryFor(nodes[0].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getLocalTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getLocalTime() == 2 + network.genesis_start_time, 5.seconds);
+    // clock times for nodes:    [ 1,  1,  1,  1,  2, 2] median => 1
+    // calculated clock offset:  [+0, +0, +0, +0, -1, -1]
+    [ 1,  1,  1,  1,  2, 2].enumerate.each!((idx, time) =>
+        network.setTimeFor(network.nodes[idx].only, Height(time)));
+
+    [ 1,  1,  1,  1,  2, 2].enumerate.each!((idx, height) => checkNodeLocalTime(idx, height));
 
     network.synchronizeClocks();  // net-sync all clocks
-    retryFor(nodes[0].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getNetworkTime() == 1 + network.genesis_start_time, 5.seconds);
+
+    [ 1,  1,  1,  1,  1, 1].enumerate.each!((idx, height) => checkNodeNetworkTime(idx, height));
 
     // calculated net clock is still at height 1 => no blocks created
     assertThrown(ensureConsistency!Exception(nodes, 2, 5.seconds));
 
-    // clock times for nodes:    [ 1,  1,  2,  2,  2] median => 2
-    // calculated clock offset:  [+1, +1,  0,  0,  0]
-    network.setTimeFor(network.nodes[0].only, Height(1));
-    network.setTimeFor(network.nodes[1].only, Height(1));
-    network.setTimeFor(network.nodes[2].only, Height(2));
-    network.setTimeFor(network.nodes[3].only, Height(2));
-    network.setTimeFor(network.nodes[4].only, Height(2));
-    retryFor(nodes[0].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getLocalTime() == 1 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getLocalTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getLocalTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getLocalTime() == 2 + network.genesis_start_time, 5.seconds);
+    // clock times for nodes:    [ 1,  1,  2,  2,  2, 2] median => 2
+    // calculated clock offset:  [+1, +1,  0,  0,  0, 0]
+
+    [ 1,  1,  2,  2,  2, 2].enumerate.each!((idx, time) =>
+        network.setTimeFor(network.nodes[idx].only, Height(time)));
+
+    [ 1,  1,  2,  2,  2, 2].enumerate.each!((idx, height) => checkNodeLocalTime(idx, height));
 
     network.synchronizeClocks();  // net-sync all clocks
-    retryFor(nodes[0].getNetworkTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[1].getNetworkTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[2].getNetworkTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[3].getNetworkTime() == 2 + network.genesis_start_time, 5.seconds);
-    retryFor(nodes[4].getNetworkTime() == 2 + network.genesis_start_time, 5.seconds);
+
+    [ 2,  2,  2,  2,  2, 2].enumerate.each!((idx, height) => checkNodeNetworkTime(idx, height));
 
     // calculated net clock is at height 2 => create a new block
     ensureConsistency(nodes, 2, 5.seconds);

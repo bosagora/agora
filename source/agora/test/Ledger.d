@@ -34,7 +34,8 @@ import core.thread;
 ///
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = TestConf.init;
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -87,7 +88,7 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    TestConf conf = { validators : 4, full_nodes : 3 };
+    TestConf conf = { full_nodes : 3 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -99,7 +100,7 @@ unittest
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
-    nodes[4 .. $].each!(node => node.filter!(node.putTransaction));
+    nodes[conf.validators .. $].each!(node => node.filter!(node.putTransaction));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
@@ -113,7 +114,8 @@ unittest
 /// Merkle Proof
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = TestConf.init;
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -174,7 +176,8 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = TestConf.init;
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

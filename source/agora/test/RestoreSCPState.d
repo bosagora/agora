@@ -158,7 +158,8 @@ unittest
         }
     }
 
-    auto network = makeTestNetwork!ReAPIManager(TestConf.init);
+    TestConf conf = TestConf.init;
+    auto network = makeTestNetwork!ReAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

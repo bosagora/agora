@@ -39,9 +39,7 @@ import core.time;
 unittest
 {
     TestConf conf = {
-        validators : 4,
         outsider_validators : 2,
-        max_listeners : 5,
         validator_cycle : 10,
         extra_blocks: 10 - 2,
     };
@@ -80,14 +78,17 @@ unittest
     // now we can create enrollments
     Enrollment enroll_0 = nodes[$ - 2].createEnrollmentData();
     Enrollment enroll_1 = nodes[$ - 1].createEnrollmentData();
-    nodes[2].enrollValidator(enroll_0);
-    nodes[3].enrollValidator(enroll_1);
+    nodes[$ - 2].enrollValidator(enroll_0);
+    nodes[$ - 1].enrollValidator(enroll_1);
 
     // check enrollments
-    nodes.each!(node =>
-        retryFor(node.getEnrollment(enroll_0.utxo_key) == enroll_0 &&
-                 node.getEnrollment(enroll_1.utxo_key) == enroll_1,
-            5.seconds));
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getEnrollment(enroll_0.utxo_key) == enroll_0, 5.seconds,
+            format!"Node #%s: failed to getEnrollment for enroll_0"(idx)));
+
+    nodes.enumerate.each!((idx, node) =>
+        retryFor(node.getEnrollment(enroll_1.utxo_key) == enroll_1, 5.seconds,
+            format!"Node #%s: failed to getEnrollment for enroll_1"(idx)));
 
     auto new_txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     // the last 3 tx's must refer to the outputs in txs[$ - 3] before

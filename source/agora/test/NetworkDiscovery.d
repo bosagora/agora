@@ -20,7 +20,7 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = { validators : 4 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -41,9 +41,8 @@ unittest
     TestConf conf =
     {
         topology : NetworkTopology.MinimallyConnected,
-        validators : 4,
         full_nodes : 4,
-        min_listeners : 7,
+        min_listeners : 9,
     };
     auto network = makeTestNetwork(conf);
 
@@ -55,7 +54,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == 7,
+        assert(addresses.sort.uniq.count == 9,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
@@ -66,7 +65,6 @@ unittest
     TestConf conf =
     {
         topology : NetworkTopology.MinimallyConnected,
-        validators : 4,
         min_listeners : 1
     };
     auto network = makeTestNetwork(conf);
@@ -78,7 +76,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == 3,
+        assert(addresses.sort.uniq.count == 5,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }

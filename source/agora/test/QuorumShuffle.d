@@ -28,7 +28,6 @@ unittest
 {
     import agora.common.Types;
     TestConf conf = {
-        validators : 6,
         max_listeners : 7,
         extra_blocks : 2,  // 1 short of shuffle cycle
         validator_cycle : 10,

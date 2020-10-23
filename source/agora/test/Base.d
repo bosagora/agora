@@ -1446,7 +1446,7 @@ public struct TestConf
     size_t extra_blocks = 0;
 
     /// Number of validator nodes to instantiate
-    size_t validators = 4;
+    size_t validators = 6;
 
     /// Number of full nodes to instantiate
     size_t full_nodes = 0;
@@ -1540,7 +1540,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
-    assert(test_conf.validators >= 4, "Must include at least 4 validators");
+    assert(test_conf.validators >= 6, "Must include at least 6 validators");
     const TotalNodes = test_conf.validators + test_conf.full_nodes +
         test_conf.outsider_validators + test_conf.outsider_full_nodes;
 

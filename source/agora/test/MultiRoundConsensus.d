@@ -124,7 +124,6 @@ unittest
 
     TestConf conf = {
         timeout : 5.seconds,
-        validators : 4,
         validator_cycle : 10,
         quorum_threshold : 51
     };
@@ -137,9 +136,8 @@ unittest
     auto nodes = network.clients;
     auto validator = network.clients[0];
 
-    // Make two of three validators stop responding
-    nodes[1].ctrl.sleep(conf.timeout, true);
-    nodes[2].ctrl.sleep(conf.timeout, true);
+    // Make four of six validators stop responding for a while
+    nodes.drop(1).take(4).each!(node => node.ctrl.sleep(conf.timeout, true));
 
     // Block 1 with multiple consensus rounds
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
