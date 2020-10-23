@@ -34,7 +34,6 @@ unittest
 {
     TestConf conf = {
         timeout : 10.seconds,
-        validators : 6,
         outsider_validators : 2,
         extra_blocks : 7,
         validator_cycle : 10 };
@@ -149,7 +148,7 @@ unittest
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { validators : 6, full_nodes : 1 , quorum_threshold : 75 };
+    TestConf conf = { full_nodes : 1 , quorum_threshold : 75 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

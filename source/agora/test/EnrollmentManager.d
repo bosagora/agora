@@ -38,7 +38,6 @@ unittest
     // generate 9 blocks, 1 short of the enrollments expiring.
     immutable validator_cycle = 10;
     TestConf conf = {
-        validators : 6,
         validator_cycle : validator_cycle,
         extra_blocks : validator_cycle - 1,
     };
@@ -94,7 +93,6 @@ unittest
     immutable validator_cycle = 20;
     immutable current_height = validator_cycle - 5;
     TestConf conf = {
-        validators : 6,
         validator_cycle : validator_cycle,
         extra_blocks : current_height,
     };
@@ -140,7 +138,6 @@ unittest
     // Boilerplate
     const validator_cycle = 20;
     TestConf conf = {
-        validators : 6,
         validator_cycle : validator_cycle,
     };
     auto network = makeTestNetwork(conf);
@@ -428,7 +425,6 @@ unittest
 unittest
 {
     TestConf conf = {
-        validators : 6,
         validator_cycle : 20,
     };
     auto network = makeTestNetwork(conf);

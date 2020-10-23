@@ -27,7 +27,7 @@ import core.thread;
 /// test retrying requests after failure
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -58,7 +58,7 @@ unittest
 /// test request timeouts
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

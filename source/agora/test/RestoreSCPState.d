@@ -158,7 +158,7 @@ unittest
         }
     }
 
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork!ReAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

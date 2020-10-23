@@ -20,7 +20,7 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -41,7 +41,6 @@ unittest
     TestConf conf =
     {
         topology : NetworkTopology.MinimallyConnected,
-        validators : 6,
         full_nodes : 4,
         min_listeners : 9,
     };
@@ -66,7 +65,6 @@ unittest
     TestConf conf =
     {
         topology : NetworkTopology.MinimallyConnected,
-        validators : 6,
         min_listeners : 1
     };
     auto network = makeTestNetwork(conf);

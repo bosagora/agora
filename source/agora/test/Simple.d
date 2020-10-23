@@ -28,7 +28,7 @@ import agora.test.Base;
 /// Simple test
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

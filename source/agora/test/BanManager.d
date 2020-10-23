@@ -30,7 +30,6 @@ unittest
     const txs_to_nominate = 8;
     TestConf conf =
     {
-        validators : 6,
         full_nodes : 1,
         retry_delay : 10.msecs,
         max_retries : 10,

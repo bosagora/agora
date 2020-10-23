@@ -34,7 +34,7 @@ import core.thread;
 ///
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -88,7 +88,7 @@ unittest
 /// test catch-up phase after initial booting (periodic catch-up)
 unittest
 {
-    TestConf conf = { validators : 6, full_nodes : 3 };
+    TestConf conf = { full_nodes : 3 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -114,7 +114,7 @@ unittest
 /// Merkle Proof
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -176,7 +176,7 @@ unittest
 /// test behavior of receiving double-spend transactions
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

@@ -33,7 +33,6 @@ unittest
 {
     immutable validator_cycle = 20;
     const TestConf conf = {
-        validators : 6,
         validator_cycle : validator_cycle,
     };
     auto network = makeTestNetwork(conf);

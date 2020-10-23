@@ -26,7 +26,7 @@ import std.range;
 ///
 unittest
 {
-    TestConf conf = { validators : 6, txs_to_nominate : 2,
+    TestConf conf = { txs_to_nominate : 2,
         block_interval_sec : 1, max_quorum_nodes : 5, quorum_threshold : 100
     };
     auto network = makeTestNetwork(conf);

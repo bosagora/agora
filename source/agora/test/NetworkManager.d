@@ -36,7 +36,7 @@ import core.stdc.time;
 /// test behavior when getBlockHeight() call fails
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -160,7 +160,7 @@ unittest
         }
     }
 
-    TestConf conf = { validators : 6, full_nodes : 2 };
+    TestConf conf = { full_nodes : 2 };
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

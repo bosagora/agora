@@ -39,7 +39,6 @@ import core.time;
 unittest
 {
     TestConf conf = {
-        validators : 6,
         outsider_validators : 2,
         validator_cycle : 10,
         extra_blocks: 10 - 2,

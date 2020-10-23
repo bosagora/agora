@@ -40,7 +40,6 @@ import core.time;
 unittest
 {
     TestConf conf = {
-        validators : 6,
         outsider_validators : 10,
         extra_blocks : 7,
         validator_cycle : 11 };
@@ -143,7 +142,6 @@ unittest
 {
     TestConf conf = {
         timeout : 10.seconds,
-        validators : 6,
         outsider_validators : 26,
         extra_blocks : 7,
         validator_cycle : 13 };

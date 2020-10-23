@@ -40,7 +40,6 @@ unittest
 {
     import agora.common.Types;
     TestConf conf = {
-        validators : 6,
         outsider_validators : 2,
         max_listeners : 7,
         extra_blocks : 8,

@@ -22,7 +22,7 @@ import agora.test.Base;
 /// A test that stops and restarts a node
 unittest
 {
-    TestConf conf = { validators : 6 };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
