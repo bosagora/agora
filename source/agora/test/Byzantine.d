@@ -230,10 +230,10 @@ private class ByzantineManager (bool addSpyValidator = false,
     }
 }
 
-/// Block should be added if we have all 3 validators signing (our SpyValidator does not sign)
+/// Block should be added if we have all 6 validators signing (our SpyValidator does not sign)
 unittest
 {
-    TestConf conf = { validators : 4, quorum_threshold : 66 };
+    TestConf conf = { validators : 6, quorum_threshold : 66 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 0))(conf);
     network.start();
     scope(exit) network.shutdown();

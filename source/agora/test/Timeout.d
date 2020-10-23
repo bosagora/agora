@@ -23,6 +23,7 @@ import agora.test.Base;
 unittest
 {
     TestConf conf = { retry_delay : 1.msecs,
+        validators : 6,
         max_retries : 2,
         timeout : 500.msecs,
         max_failed_requests : 1000 };  // never ban

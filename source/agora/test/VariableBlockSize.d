@@ -23,7 +23,8 @@ import agora.test.Base;
 unittest
 {
     const txs_to_nominate = 2;
-    TestConf conf = { txs_to_nominate : txs_to_nominate };
+    TestConf conf = { txs_to_nominate : txs_to_nominate,
+        validators : 6 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

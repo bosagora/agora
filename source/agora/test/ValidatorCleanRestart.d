@@ -34,8 +34,8 @@ unittest
 {
     TestConf conf = {
         timeout : 10.seconds,
-        validators : 4,
-        outsider_validators : 4,
+        validators : 6,
+        outsider_validators : 2,
         extra_blocks : 7,
         validator_cycle : 10 };
 
@@ -46,8 +46,8 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto set_a = network.clients[0 .. 4];
-    auto set_b = network.clients[4 .. $];
+    auto set_a = network.clients[0 .. conf.validators];
+    auto set_b = network.clients[conf.validators .. $];
     network.expectBlock(Height(7), network.blocks[0].header);
 
     auto spendable = network.blocks[$ - 1].spendable().array;
@@ -58,7 +58,7 @@ unittest
         .array;
 
     // 8 utxos for freezing, 16 utxos for creating a block later
-    txs ~= spendable[5].split(WK.Keys.byRange.take(8).map!(k => k.address)).sign();
+    txs ~= spendable[5].split(WK.Keys.byRange.take(conf.validators + conf.outsider_validators).map!(k => k.address)).sign();
     txs ~= spendable[6].split(WK.Keys.Z.address.repeat(8)).sign();
     txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
 
@@ -69,7 +69,7 @@ unittest
     // Freeze builders
     auto freezable = txs[$ - 3]
         .outputs.length.iota
-        .takeExactly(8)
+        .takeExactly(conf.validators + conf.outsider_validators)
         .map!(idx => TxBuilder(txs[$ - 3], cast(uint)idx))
         .array;
 
@@ -107,7 +107,7 @@ unittest
 
     // Sanity check
     auto b10 = set_a[0].getBlocksFrom(10, 2)[0];
-    assert(b10.header.enrollments.length == 4);
+    assert(b10.header.enrollments.length == conf.outsider_validators);
 
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
@@ -116,9 +116,9 @@ unittest
 
     // Sanity check
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount == 4, 3.seconds,
+        retryFor(node.getValidatorCount == conf.outsider_validators, 3.seconds,
             format("Node %s has validator count %s. Expected: %s",
-                idx, node.getValidatorCount(), 4)));
+                idx, node.getValidatorCount(), conf.outsider_validators)));
 
     // Check the connection states are complete for the set B
     set_b.each!(node =>
@@ -149,20 +149,18 @@ unittest
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { validators : 4, full_nodes : 1 , quorum_threshold : 75 };
+    TestConf conf = { validators : 6, full_nodes : 1 , quorum_threshold : 75 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    // The node_1, node_2, node_3, node_4 are the validators
+    // node_1 and node_2 are the validators
     auto nodes = network.clients;
     auto node_1 = nodes[0];
     auto node_2 = nodes[1];
-    auto node_3 = nodes[2];
-    auto node_4 = nodes[3];
-    auto on_nodes = nodes[1 .. $-1];
+    auto on_nodes = nodes[1 .. $-1];    // full node
 
     // Create a block from the Genesis block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();

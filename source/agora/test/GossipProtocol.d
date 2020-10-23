@@ -25,7 +25,8 @@ import agora.test.Base;
 ///
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = { validators : 6 };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -60,8 +61,8 @@ unittest
 /// test gossiping behavior for an outsider node
 unittest
 {
-    // node #5 is the outsider, so total foreign nodes may be 4
-    TestConf conf = { validators : 4, max_listeners : 4, outsider_full_nodes : 1 };
+    // node #7 is the outsider, so total foreign nodes may be 6
+    TestConf conf = { validators : 6, max_listeners : 6, outsider_full_nodes : 1 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
