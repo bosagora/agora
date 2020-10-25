@@ -545,14 +545,12 @@ public class EnrollmentManager
         foreach (const ref key; keys)
         {
             const preimage = this.validator_set.getPreimageAt(key, height);
-            // this should not happen. validators which didn't reveal the
-            // preimage should not be in the active validator set 'keys'.
+            // this might happen because bad validators would not reveal the
+            // preimage intentionally or accidentally.
             if (preimage == PreImageInfo.init)
-            {
-                log.fatal("No preimage at height {} for validator key {}", height.value, key);
-                assert(0, "No preimage at expected height");
-            }
-            rand_seed = hashMulti(rand_seed, preimage);
+                log.warn("No preimage at height {} for validator key {}", height.value, key);
+            else
+                rand_seed = hashMulti(rand_seed, preimage);
         }
 
         return rand_seed;
