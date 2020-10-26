@@ -28,7 +28,7 @@ jobs:
           command: |
             mkdir -p $HOME/dlang && wget https://dlang.org/install.sh -O $HOME/dlang/install.sh
             chmod +x $HOME/dlang/install.sh
-            $HOME/dlang/install.sh install ldc-1.23.0
+            $HOME/dlang/install.sh install ldc-1.24.0
       - run:
           name: Install libsodium
           command: |
@@ -44,13 +44,13 @@ jobs:
       - run:
           name: Check virtual method offset
           command: |
-            source $HOME/dlang/ldc-1.23.0/activate
+            source $HOME/dlang/ldc-1.24.0/activate
             ci/check_vtable_test.d
           no_output_timeout: 10m
       - run:
           name: Build & test docker image
           command: |
-            source $HOME/dlang/ldc-1.23.0/activate
+            source $HOME/dlang/ldc-1.24.0/activate
             ci/system_integration_test.d
             # Work around druntime setting the permissions to 600..
             # Need to iterate on the directory to avoid 'list arguments too long'

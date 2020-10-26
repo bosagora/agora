@@ -22,14 +22,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
-        dc: [ ldc-master, ldc-1.23.0, ldc-1.22.0 ]
+        dc: [ ldc-master, ldc-1.24.0, ldc-1.23.0 ]
         # Define job-specific parameters
         include:
           # By default, don't generate artifacts for push
           - { artifacts: false }
           # Only generate when the latest ldc is used
           # IMPORTANT: Update this when the compiler support is changed!
-          - { dc: ldc-1.23.0, artifacts: true }
+          - { dc: ldc-1.24.0, artifacts: true }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
