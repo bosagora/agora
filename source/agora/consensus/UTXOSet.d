@@ -31,7 +31,7 @@ mixin AddLogger!();
 public class UTXOSet
 {
     /// Utxo cache backed by a database
-    private UTXODB utxo_db;
+    protected UTXODB utxo_db;
 
     /// Keeps track of spent outputs during the validation of a Tx / Block
     private Set!Hash used_utxos;
@@ -216,7 +216,7 @@ public class UTXOSet
 private class UTXODB
 {
     /// SQLite db instance
-    private ManagedDatabase db;
+    public ManagedDatabase db;
 
 
     /***************************************************************************

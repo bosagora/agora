@@ -81,13 +81,19 @@
             "name": "server",
             "targetName": "agora",
             "mainSourceFile": "source/agora/node/main.d",
-            "excludedSourceFiles": ["source/agora/cli/*/*", "source/agora/registry/main.d"]
+            "excludedSourceFiles": ["source/agora/cli/*/*", "source/agora/registry/main.d", "source/agora/tool/main.d"]
+        },
+        {
+            "name": "tool",
+            "targetName": "tool",
+            "mainSourceFile": "source/agora/tool/main.d",
+            "excludedSourceFiles": ["source/agora/cli/*/*", "source/agora/node/main.d", "source/agora/registry/main.d"]
         },
         {
             "name": "name-registry",
             "targetName": "name-registry",
             "mainSourceFile": "source/agora/registry/main.d",
-            "excludedSourceFiles": ["source/agora/cli/*/*", "source/agora/node/main.d"]
+            "excludedSourceFiles": ["source/agora/cli/*/*", "source/agora/node/main.d", "source/agora/tool/main.d"]
         },
         {
             "name": "client",
@@ -109,13 +115,14 @@
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
-                "source/agora/registry/main.d"
+                "source/agora/registry/main.d",
+                "source/agora/tool/main.d"
             ]
         },
         {
             "name": "unittest",
             "targetName": "agora-unittests",
-            "excludedSourceFiles": ["source/agora/cli/*/main.d", "source/agora/registry/main.d"],
+            "excludedSourceFiles": ["source/agora/cli/*/main.d", "source/agora/registry/main.d", "source/agora/tool/main.d"],
             "sourceFiles-posix": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o"
@@ -135,7 +142,8 @@
                 "source/agora/cli/client/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/node/main.d",
-                "source/agora/registry/main.d"
+                "source/agora/registry/main.d",
+                "source/agora/tool/main.d"
             ]
         },
         {

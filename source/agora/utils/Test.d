@@ -234,12 +234,16 @@ public struct OutputRef
     ///
     public Hash hash () const nothrow @safe
     {
+        if (this.hash_ovrld != Hash.init)
+            return this.hash_ovrld;
         return hashFull(this.tx);
     }
 
     ///
     public const(Output) output () const @safe pure nothrow @nogc
     {
+        if (this.output_ovrld != Output.init)
+            return this.output_ovrld;
         return this.tx.outputs[index];
     }
 
@@ -248,6 +252,10 @@ public struct OutputRef
 
     /// The index of the `Output` being referenced
     public uint index;
+
+    /// Blah
+    public Hash hash_ovrld;
+    public Output output_ovrld;
 }
 
 /*******************************************************************************
@@ -374,6 +382,15 @@ public struct TxBuilder
     {
         this.inputs ~= OutputRef(tx, index);
         this.leftover.value.mustAdd(tx.outputs[index].value);
+        return this;
+    }
+
+    /// Ditto
+    public ref typeof(this) attach (const Output tx, Hash utxo_hash)
+        @safe pure nothrow return
+    {
+        this.inputs ~= OutputRef(Transaction.init, 1, utxo_hash, tx);
+        this.leftover.value.mustAdd(tx.value);
         return this;
     }
 
