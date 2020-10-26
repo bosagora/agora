@@ -45,8 +45,8 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto set_a = network.clients[0 .. conf.validators];
-    auto set_b = network.clients[conf.validators .. $];
+    auto set_a = network.clients[0 .. GenesisValidators];
+    auto set_b = network.clients[GenesisValidators .. $];
     network.expectBlock(Height(7), network.blocks[0].header);
 
     auto spendable = network.blocks[$ - 1].spendable().array;
@@ -57,7 +57,7 @@ unittest
         .array;
 
     // 8 utxos for freezing, 16 utxos for creating a block later
-    txs ~= spendable[5].split(WK.Keys.byRange.take(conf.validators + conf.outsider_validators).map!(k => k.address)).sign();
+    txs ~= spendable[5].split(WK.Keys.byRange.take(GenesisValidators + conf.outsider_validators).map!(k => k.address)).sign();
     txs ~= spendable[6].split(WK.Keys.Z.address.repeat(8)).sign();
     txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
 
@@ -68,7 +68,7 @@ unittest
     // Freeze builders
     auto freezable = txs[$ - 3]
         .outputs.length.iota
-        .takeExactly(conf.validators + conf.outsider_validators)
+        .takeExactly(GenesisValidators + conf.outsider_validators)
         .map!(idx => TxBuilder(txs[$ - 3], cast(uint)idx))
         .array;
 
@@ -127,7 +127,7 @@ unittest
     // current validators and previous validators except themselves.
     set_b.each!(node =>
         retryFor(node.getNodeInfo().addresses.length ==
-                    conf.validators + conf.outsider_validators - 1 , 5.seconds));
+                    GenesisValidators + conf.outsider_validators - 1 , 5.seconds));
 
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.sleep(6.seconds, true));

@@ -100,7 +100,7 @@ unittest
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
-    nodes[conf.validators .. $].each!(node => node.filter!(node.putTransaction));
+    nodes[GenesisValidators .. $].each!(node => node.filter!(node.putTransaction));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));

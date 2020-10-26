@@ -95,6 +95,8 @@ public import std.range;
 // To print messages to the screen while debugging a test
 public import std.stdio;
 
+public const size_t GenesisValidators = GenesisBlock.header.enrollments.count();
+
 shared static this()
 {
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
@@ -1445,9 +1447,6 @@ public struct TestConf
     /// Extra blocks to generate in addition to the genesis block
     size_t extra_blocks = 0;
 
-    /// Number of validator nodes to instantiate
-    size_t validators = 6;
-
     /// Number of full nodes to instantiate
     size_t full_nodes = 0;
 
@@ -1540,8 +1539,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
-    assert(test_conf.validators >= 6, "Must include at least 6 validators");
-    const TotalNodes = test_conf.validators + test_conf.full_nodes +
+    const TotalNodes = GenesisValidators + test_conf.full_nodes +
         test_conf.outsider_validators + test_conf.outsider_full_nodes;
 
     NodeConfig makeNodeConfig (Address address)
@@ -1559,7 +1557,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
             block_interval_sec : test_conf.block_interval_sec,
             min_listeners : test_conf.min_listeners == 0
-                ? (test_conf.validators + test_conf.full_nodes) - 1
+                ? (GenesisValidators + test_conf.full_nodes) - 1
                 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
                 ? TotalNodes - 1 : test_conf.max_listeners,
@@ -1628,7 +1626,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return format("FullNode #%s", idx);
     }
 
-    const num_validators = test_conf.validators + test_conf.outsider_validators;
+    const num_validators = GenesisValidators + test_conf.outsider_validators;
     auto validator_keys = WK.Keys.byRange().enumerate().take(num_validators);
 
     // all enrolled and un-enrolled validators
@@ -1636,7 +1634,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     // only enrolled validators
-    auto enrolled_addresses = validator_keys.take(test_conf.validators)
+    auto enrolled_addresses = validator_keys.take(GenesisValidators)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     auto validator_configs = validator_keys
@@ -1667,7 +1665,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto gen_block = makeGenesisBlock(
         validator_configs
-            .take(test_conf.validators)  // only enrolled validators
+            .take(GenesisValidators)  // only enrolled validators
             .map!(conf => conf.validator.key_pair)
             .array,
         test_conf.validator_cycle);

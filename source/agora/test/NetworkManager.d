@@ -47,12 +47,12 @@ unittest
     auto node_1 = nodes[0];
 
     // half nodes will fail
-    nodes.take(conf.validators / 2).each!(node => node.filter!(API.getBlockHeight));
+    nodes.take(GenesisValidators / 2).each!(node => node.filter!(API.getBlockHeight));
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
 
-    nodes.take(conf.validators / 2).each!(node => node.clearFilter());
+    nodes.take(GenesisValidators / 2).each!(node => node.clearFilter());
 
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
     network.expectBlock(Height(1), b0.header);
@@ -168,9 +168,9 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_validators = nodes[0 .. conf.validators];  // validators, create blocks
-    auto node_test = nodes[conf.validators];  // full node, does not create blocks
-    auto node_bad = nodes[conf.validators + 1];  // full node, returns bad blocks in getBlocksFrom()
+    auto node_validators = nodes[0 .. GenesisValidators];  // validators, create blocks
+    auto node_test = nodes[GenesisValidators];  // full node, does not create blocks
+    auto node_bad = nodes[GenesisValidators + 1];  // full node, returns bad blocks in getBlocksFrom()
 
     // wait for preimages to be revealed before making blocks
     network.waitForPreimages(network.blocks[0].header.enrollments, 6);
