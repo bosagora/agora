@@ -42,8 +42,7 @@ unittest
     TestConf conf = {
         outsider_validators : 2,
         max_listeners : 7,
-        extra_blocks : 8,
-        validator_cycle : 10 };
+        extra_blocks : 18 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -52,7 +51,11 @@ unittest
 
     auto nodes = network.clients;
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.expectBlock(Height(8), b0.header);
+
+    Height expected_block = Height(conf.extra_blocks);
+
+    // Expect block 18
+    network.expectBlock(expected_block++, b0.header);
 
     enum quorums_1 = [
         // 0
@@ -145,8 +148,8 @@ unittest
 
     txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // at block height 9 the freeze txs are available
-    network.expectBlock(Height(9), b0.header);
+    // at block height 19 the freeze txs are available
+    network.expectBlock(expected_block++, b0.header);
 
     // now we re-enroll existing validators (extension),
     // and enroll 2 new validators.
@@ -174,8 +177,8 @@ unittest
 
     makeBlock();
 
-    // at block height 10 the validator set has changed
-    network.expectBlock(Height(10), b0.header);
+    // at block height 20 the validator set has changed
+    network.expectBlock(expected_block++, b0.header);
 
     // check if the needed pre-images are revealed timely
     enrolls.each!(enroll =>
@@ -186,7 +189,7 @@ unittest
         // 0
         QuorumConfig(6, [
             WK.Keys.D.address,
-            WK.Keys.F.address,
+            WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
@@ -198,9 +201,9 @@ unittest
             WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
+            WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address,
             WK.Keys.E.address]),
 
         // 2
@@ -225,7 +228,7 @@ unittest
 
         // 4
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
@@ -235,12 +238,12 @@ unittest
 
         // 5
         QuorumConfig(6, [
-            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
+            WK.Keys.C.address,
             WK.Keys.E.address]),
 
         // 6
@@ -275,14 +278,14 @@ unittest
             format("Node %s has quorum config %s. Expected: %s",
                 idx, node.getQuorumConfig(), quorums_2[idx])));
 
-    // create 9 blocks (1 short of all enrollments expiring)
-    const b10 = nodes[0].getBlocksFrom(10, 2)[0];
-    foreach (idx; 0 .. 9)
+    // create 19 blocks (1 short of all enrollments expiring)
+    const b20 = nodes[0].getBlocksFrom(20, 2)[0];
+    foreach (idx; 0 .. 19)
     {
         makeBlock();
 
-        // at block height 10 the validator set has changed
-        network.expectBlock(Height(10 + idx + 1), b10.header);
+        // at block height 20 the validator set has changed
+        network.expectBlock(expected_block++, b20.header);
     }
 
     // re-enroll all validators before they expire
@@ -298,8 +301,8 @@ unittest
 
     makeBlock();
 
-    // at block height 20 the validator set has changed
-    network.expectBlock(Height(20), b10.header);
+    // at block height 40 the validator set has changed
+    network.expectBlock(expected_block++, b20.header);
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage
@@ -312,13 +315,13 @@ unittest
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.E.address]),
+            WK.Keys.C.address]),
 
         // 1
         QuorumConfig(6, [
-            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
+            WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
             WK.Keys.C.address,
@@ -326,7 +329,7 @@ unittest
 
         // 2
         QuorumConfig(6, [
-            WK.Keys.D.address,
+            WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
@@ -346,9 +349,9 @@ unittest
 
         // 4
         QuorumConfig(6, [
-            WK.Keys.D.address,
             WK.Keys.F.address,
             WK.Keys.B.address,
+            WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
             WK.Keys.C.address,
@@ -367,22 +370,22 @@ unittest
         // 6
         QuorumConfig(6, [
             WK.Keys.D.address,
+            WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address,
             WK.Keys.E.address]),
 
         // 7
         QuorumConfig(6, [
             WK.Keys.D.address,
+            WK.Keys.F.address,
             WK.Keys.B.address,
             WK.Keys.A.address,
             WK.Keys.H.address,
             WK.Keys.G.address,
-            WK.Keys.C.address,
-            WK.Keys.E.address]),
+            WK.Keys.C.address]),
     ];
 
     static assert(quorums_2 != quorums_3);

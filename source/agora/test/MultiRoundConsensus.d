@@ -124,7 +124,6 @@ unittest
 
     TestConf conf = {
         timeout : 5.seconds,
-        validator_cycle : 10,
         quorum_threshold : 51
     };
 

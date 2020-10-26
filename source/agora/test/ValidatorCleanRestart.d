@@ -35,8 +35,7 @@ unittest
     TestConf conf = {
         timeout : 10.seconds,
         outsider_validators : 2,
-        extra_blocks : 7,
-        validator_cycle : 10 };
+        extra_blocks : GenesisValidatorCycle - 3 };
 
     auto network = makeTestNetwork(conf);
     network.start();
@@ -47,7 +46,9 @@ unittest
     auto nodes = network.clients;
     auto set_a = network.clients[0 .. GenesisValidators];
     auto set_b = network.clients[GenesisValidators .. $];
-    network.expectBlock(Height(7), network.blocks[0].header);
+
+    Height expected_block = Height(conf.extra_blocks);
+    network.expectBlock(expected_block++, network.blocks[0].header);
 
     auto spendable = network.blocks[$ - 1].spendable().array;
 
@@ -61,9 +62,9 @@ unittest
     txs ~= spendable[6].split(WK.Keys.Z.address.repeat(8)).sign();
     txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
 
-    // Block 8
+    // Block 18
     txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(8), network.blocks[0].header);
+    network.expectBlock(expected_block++, network.blocks[0].header);
 
     // Freeze builders
     auto freezable = txs[$ - 3]
@@ -80,11 +81,11 @@ unittest
         .array;
     assert(freeze_txs.length == 8);
 
-    // Block 9
+    // Block 19
     freeze_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(9), network.blocks[0].header);
+    network.expectBlock(expected_block++, network.blocks[0].header);
 
-    // Now we enroll four new validators. After this, the already enrolled
+    // Now we enroll two new validators. After this, the already enrolled
     // validators will be expired.
     foreach (ref node; set_b)
     {
@@ -96,22 +97,22 @@ unittest
             retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     }
 
-    // Block 10
+    // Block 20
     auto new_txs = txs[$ - 2]
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
     new_txs.each!(tx => set_a[0].putTransaction(tx));
-    network.expectBlock(Height(10), network.blocks[0].header);
+    network.expectBlock(expected_block, network.blocks[0].header);
 
     // Sanity check
-    auto b10 = set_a[0].getBlocksFrom(10, 2)[0];
-    assert(b10.header.enrollments.length == conf.outsider_validators);
+    auto b20 = set_a[0].getBlocksFrom(20, 2)[0];
+    assert(b20.header.enrollments.length == conf.outsider_validators);
 
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
     set_b.each!(node => network.restart(node));
-    network.expectBlock(Height(10));
+    network.expectBlock(expected_block++);
 
     // Sanity check
     nodes.enumerate.each!((idx, node) =>
@@ -132,13 +133,13 @@ unittest
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.sleep(6.seconds, true));
 
-    // Block 11 with the new validators in the set B
+    // Block 21 with the new validators in the set B
     new_txs = txs[$ - 1]
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
     new_txs.each!(tx => set_b[0].putTransaction(tx));
-    network.expectBlock(set_b, Height(11), b10.header);
+    network.expectBlock(set_b, expected_block, b20.header);
 }
 
 /// Situation: A validator is stopped and wiped clean after the block height
@@ -148,7 +149,8 @@ unittest
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { full_nodes : 1 , quorum_threshold : 75 };
+    TestConf conf = { full_nodes : 1 ,
+        quorum_threshold : 75 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
