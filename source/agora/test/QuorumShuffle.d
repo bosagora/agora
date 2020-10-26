@@ -133,7 +133,7 @@ unittest
             format("Node %s has quorum config %s. Expected: %s",
                 idx, node.getQuorumConfig(), quorums_4[idx])));
 
-    checkDistance(1);  // re-enrolled, starts from 1 again
+    checkDistance(0);  // re-enrolled, starts from 0 again
     makeBlock(10);
 
     const quorums_5 = nodes[0].getExpectedQuorums(keys, Height(10));
@@ -146,7 +146,7 @@ unittest
             format("Node %s has quorum config %s. Expected: %s",
                 idx, node.getQuorumConfig(), quorums_5[idx])));
 
-    checkDistance(3);
+    checkDistance(2);
     makeBlock(11);
     makeBlock(12);
 
@@ -160,7 +160,7 @@ unittest
                 idx, node.getQuorumConfig(), quorums_5[idx])));
 
     // now create the block which will shuffle
-    checkDistance(4);
+    checkDistance(3);
     makeBlock(13);
 
     const quorums_6 = nodes[0].getExpectedQuorums(keys, Height(13));
