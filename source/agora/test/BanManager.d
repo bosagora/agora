@@ -81,8 +81,8 @@ unittest
 
     // full node will be banned if it cannot communicate
     // validators refuse to to send blocks
-    nodes[0 .. conf.validators].each!(node => node.filter!(node.getBlocksFrom));
-    auto full_node_idx = conf.validators;
+    nodes[0 .. GenesisValidators].each!(node => node.filter!(node.getBlocksFrom));
+    auto full_node_idx = GenesisValidators;
     nodes[full_node_idx].filter!(nodes[full_node_idx].putTransaction); // full node won't receive transactions
 
     // leftover txs which full node will reject due to its filter
@@ -108,7 +108,7 @@ unittest
     retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds);
 
     // clear the filter
-    nodes[0 .. conf.validators].each!(node => node.clearFilter());
+    nodes[0 .. GenesisValidators].each!(node => node.clearFilter());
 
     network.setTimeFor(Height(6));  // full node should be unbanned now
 

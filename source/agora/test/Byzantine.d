@@ -215,7 +215,7 @@ private class ByzantineManager (bool addSpyValidator = false,
         }
         else
             // Add spying validator as last node
-            if (addSpyValidator && this.nodes.length == test_conf.validators - 1)
+            if (addSpyValidator && this.nodes.length == GenesisValidators - 1)
             {
                 auto time = new shared(time_t)(this.initial_time);
                 assert(conf.validator.enabled);
@@ -313,7 +313,7 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    waitForCount(GenesisValidators - 1, &network.envelope_type_counts.nominate_count, "nominate");
     Thread.sleep(sufficient_time_for_first_envelope);
     assert(network.envelope_type_counts.confirm_count > 0, "The block should have been confirmed! Perhaps the delay needs to be increased");
     assert(network.envelope_type_counts.externalize_count > 0, "The block should have been externalized!");
@@ -334,7 +334,7 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-    waitForCount(conf.validators - 1, &network.envelope_type_counts.nominate_count, "nominate");
+    waitForCount(GenesisValidators - 1, &network.envelope_type_counts.nominate_count, "nominate");
     Thread.sleep(sufficient_time_for_first_envelope);
     assert(network.envelope_type_counts.confirm_count == 0, "The block should not have been confirmed!");
     assert(network.envelope_type_counts.externalize_count == 0, "The block should not have been externalized!");
