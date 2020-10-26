@@ -3,7 +3,7 @@ language: d
 dist: xenial
 
 d:
-  - ldc-1.23.0,dub
+  - ldc-1.24.0,dub
   - ldc-latest-ci # The freshest LDC
 
 os:

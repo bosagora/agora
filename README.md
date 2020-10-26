@@ -55,9 +55,9 @@ and add it to your `.bashrc`, `.zshrc`, etc...
 
 ```console
 # Install the LDC compiler (you might want to use a newer version)
-curl https://dlang.org/install.sh | bash -s ldc-1.20.0
+curl https://dlang.org/install.sh | bash -s ldc-1.24.0
 # Add LDC to the $PATH
-source ~/dlang/ldc-1.20.0/activate
+source ~/dlang/ldc-1.24.0/activate
 # Clone this repository
 git clone https://github.com/bpfkorea/agora.git
 # Use the git root as working directory
