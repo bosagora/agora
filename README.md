@@ -19,7 +19,7 @@ The easiest way to get agora is to run `docker pull bpfk/agora`.
 
 The `Dockerfile` lives at the root of this repository,
 so one can run `docker build -t agora .` to build it.
-Note that you need to initialize submodules (`git submodules update --init`)
+Note that you need to initialize submodules (`git submodule update --init`)
 before you first build agora.
 
 For a test run, try:
