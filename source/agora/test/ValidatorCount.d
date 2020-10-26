@@ -31,10 +31,7 @@ import core.thread;
 /// ditto
 unittest
 {
-    immutable validator_cycle = 20;
-    const TestConf conf = {
-        validator_cycle : validator_cycle,
-    };
+    const TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -50,8 +47,8 @@ unittest
 
     Transaction[] txs;
 
-    // create validator_cycle - 1 blocks
-    foreach (block_idx; 1 .. validator_cycle)
+    // create GenesisValidatorCycle - 1 blocks
+    foreach (block_idx; 1 .. GenesisValidatorCycle)
     {
         // create enough tx's for a single block
         txs = blocks[block_idx - 1].spendable().map!(txb => txb.sign()).array();
@@ -66,16 +63,16 @@ unittest
 
     // Block will not be created because otherwise there would be no active validators
     {
-        txs = blocks[validator_cycle - 1].spendable().map!(txb => txb.sign()).array();
+        txs = blocks[GenesisValidatorCycle - 1].spendable().map!(txb => txb.sign()).array();
         txs.each!(tx => node_1.putTransaction(tx));
 
         // try to add next block
-         blocks ~= node_1.getBlocksFrom(validator_cycle, 1);
+         blocks ~= node_1.getBlocksFrom(GenesisValidatorCycle, 1);
     }
 
-    network.setTimeFor(Height(validator_cycle));  // trigger consensus round
+    network.setTimeFor(Height(GenesisValidatorCycle));  // trigger consensus round
     Thread.sleep(2.seconds);  // wait for propagation
 
     // New block was not created because all validators would expire
-    containSameBlocks(nodes, validator_cycle - 1).retryFor(5.seconds);
+    containSameBlocks(nodes, GenesisValidatorCycle - 1).retryFor(5.seconds);
 }

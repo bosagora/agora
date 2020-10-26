@@ -20,19 +20,20 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
+import agora.utils.Log;
+import agora.utils.PrettyPrinter;
 
-/// With a validator cycle of 10 and shuffle cycle of 3 we should expect
+mixin AddLogger!();
+/// With a validator cycle of 20 and shuffle cycle of 6 we should expect
 /// quorums being shuffled at these block heights:
-/// 3, 6, 9, 10 (enrollment change), 13 (next shuffle cycle)
+/// 6, 12, 18, 20 (enrollment change), 26 (next shuffle cycle)
 unittest
 {
     import agora.common.Types;
     TestConf conf = {
         max_listeners : 7,
-        extra_blocks : 2,  // 1 short of shuffle cycle
-        validator_cycle : 10,
         max_quorum_nodes : 4,  // makes it easier to test shuffle cycling
-        quorum_shuffle_interval : 3
+        quorum_shuffle_interval : 6
     };
     auto network = makeTestNetwork(conf);
     network.start();
@@ -42,140 +43,82 @@ unittest
 
     auto nodes = network.clients;
 
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == 2, 5.seconds,
-            format("Node %s has block height %s. Expected: %s",
-                idx, node.getBlockHeight(), 2)));
+    Height block_height = Height(0);
 
     const keys = WK.Keys.byRange.map!(kp => kp.address).take(6).array;
-
-    // 0 because the shuffle occured at genesis, not at block height 2
-    const quorums_1 = nodes[0].getExpectedQuorums(keys, Height(0));
-    // writeln(quorums_1);  // uncomment to check
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_1[idx])));
 
     // check that the preimages were revealed before we trigger block creation
     // note: this is a workaround. A block should not be accepted if there
     // are no preimages for this height - however currently block signatures
     // are not implemented yet (#365)
-    const enrollments = network.blocks[0].header.enrollments;
-    void checkDistance (uint distance)
+    void checkDistance (Height height)
     {
-        nodes.each!(node =>
+        auto enrolled_height = Height(GenesisValidatorCycle * ((height.value - 1) / GenesisValidatorCycle));
+        auto required_distance = (height - enrolled_height - 1) % GenesisValidatorCycle;
+        log.trace("check distance is {} for generating block at height {} with enrollments at height {}", required_distance, height, enrolled_height);
+        auto enrollments = nodes[0].getBlocksFrom(enrolled_height, 1)[0].header.enrollments;
+        nodes.enumerate.each!((idx, node) =>
             enrollments.each!(enr =>
-                retryFor(node.getPreimage(enr.utxo_key).distance >= distance,
-                    5.seconds)));
+                retryFor(node.getPreimage(enr.utxo_key).distance >= required_distance, 5.seconds,
+                    format!"node #%s has preimage distance %s not %s as expected"
+                        (idx, node.getPreimage(enr.utxo_key).distance, required_distance))));
     }
 
-    checkDistance(3);
-
-    const(Block)[] blocks = [network.blocks[$ - 1]];
-    void makeBlock (ulong height)
+    void makeBlock ()
     {
-        blocks[$ - 1].spendable.each!(txb =>
+        nodes[0].getBlocksFrom(block_height++, 1)[0].spendable.takeExactly(8).each!(txb =>
             nodes[0].putTransaction(txb.sign()));
-        network.expectBlock(Height(height));
-        retryFor((blocks = nodes[0].getBlocksFrom(height, 1)).length == 1, 5.seconds,
-                format("Node 0 getBlocksFrom(%s, 1) failed", height));
+        log.trace("make block {}", block_height);
+        checkDistance(block_height);
+        log.trace("expect block {}", block_height);
+        network.expectBlock(block_height);
+        log.trace("Block {}:\n{}\n", block_height, prettify(nodes[0].getBlocksFrom(block_height, 1)[0]));
     }
 
-    // at block height 3 a shuffle should occur
-    makeBlock(3);
-    const quorums_2 = nodes[0].getExpectedQuorums(keys, Height(3));
-    // writeln(quorums_2);  // uncomment to check
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_2[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_2[idx])));
-
-    checkDistance(6);  // make sure we can create the next 3 blocks
-
-    makeBlock(4);
-    makeBlock(5);
-    makeBlock(6);
-
-    const quorums_3 = nodes[0].getExpectedQuorums(keys, Height(6));
-    // writeln(quorums_3);  // uncomment to check
-    // at block height 6 a shuffle occured
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_3[idx])));
-
-    checkDistance(9);  // make sure we can create the next 3 blocks
-    makeBlock(7);
-    makeBlock(8);
-
-    // at block height 10 the enrollments expire so we must re-enroll first.
-    // note that this will not have any effect on the quorum shuffle at height 9,
-    // it will still happen with the preimages at distance 9 and not these new
+    // at block height 20 the enrollments expire so we must re-enroll first.
+    // note that this will not have any effect on the quorum shuffle at height 18,
+    // it will still happen with the preimages at distance 19 and not these new
     // enrollments.
-    foreach (node; nodes)
+    void reEnrollNodes ()
     {
-        Enrollment enroll = node.createEnrollmentData();
-        node.enrollValidator(enroll);
+        foreach (node; nodes)
+        {
+            Enrollment enroll = node.createEnrollmentData();
+            node.enrollValidator(enroll);
 
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+            // check enrollment
+            nodes.each!(n =>
+                retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+        }
     }
 
-    makeBlock(9);
+    QuorumConfig[] checkQuorum (Height height) {
+        if (height > 0) // if not Genesis block
+        {
+            log.trace(format!"generateBlocks to height %s"(height));
+            if (height % GenesisValidatorCycle == 0) { // As cycle is 20 we need to re-enroll every 20 blocks
+                iota(height - block_height - 1).each!(_ => makeBlock());
+                reEnrollNodes();
+                makeBlock();
+            }
+            else
+            {
+                iota(height - block_height).each!(_ => makeBlock());
+            }
+        }
+        log.trace(format!"checkQuorum for height %s"(height));
+        QuorumConfig[] quorums = nodes[0].getExpectedQuorums(keys, height);
+        log.trace(quorums.fold!((a, b) => format!"%s\n%s"(a, b))(""));
+        nodes.enumerate.each!((idx, client) =>
+            retryFor(client.getQuorumConfig() == quorums[idx], 5.seconds,
+                format!"Node %s has quorum config %s. Expected: %s"
+                    (idx, client.getQuorumConfig(), quorums[idx])));
+        return quorums;
+    }
 
-    const quorums_4 = nodes[0].getExpectedQuorums(keys, Height(9));
-    // writeln(quorums_4);  // uncomment to check
-    // at block height 9 a shuffle occured
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_4[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_4[idx])));
-
-    checkDistance(0);  // re-enrolled, starts from 0 again
-    makeBlock(10);
-
-    const quorums_5 = nodes[0].getExpectedQuorums(keys, Height(10));
-    // writeln(quorums_5);  // uncomment to check
-    // at block height 10 the quorums shuffled because the validator set changed.
-    // note: even though the same set of validators re-enrolled, the commitment
-    // will be different and therefore the quorums must be shuffled.
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_5[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_5[idx])));
-
-    checkDistance(2);
-    makeBlock(11);
-    makeBlock(12);
-
-    // before the re-enrollment the shuffle was to occur on block heights:
-    // 3, 6, 9, 12
-    // however the re-enrollment at 9 means the cycle reset and starts from 10,
-    // so height 12 will have the same quorum set and height 13 will reshuffle.
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_5[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_5[idx])));
-
-    // now create the block which will shuffle
-    checkDistance(3);
-    makeBlock(13);
-
-    const quorums_6 = nodes[0].getExpectedQuorums(keys, Height(13));
-    // writeln(quorums_6);  // uncomment to check
-    // shuffle occured on height 13
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_6[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected: %s",
-                idx, node.getQuorumConfig(), quorums_6[idx])));
-
-    // all unique quorums
-    assert(quorums_2 != quorums_1);
-    assert(quorums_3 != quorums_2);
-    assert(quorums_4 != quorums_3);
-    assert(quorums_5 != quorums_4);
-    assert(quorums_6 != quorums_5);
-    assert(quorums_1 != quorums_6);
+    // We check at each expected shuffle
+    auto quorums = [0, 6, 12, 18, 20, 26].map!(height => checkQuorum(Height(height))).array;
+    assert(quorums.sort.uniq().count() == quorums.count(),
+        format!"The quorums should be unique not %s"
+            (quorums.fold!((a, b) => format!"%s\n%s"(a, b))("")));
 }

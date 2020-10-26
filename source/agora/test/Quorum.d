@@ -40,9 +40,7 @@ unittest
 {
     TestConf conf = {
         outsider_validators : 2,
-        validator_cycle : 10,
-        extra_blocks: 10 - 2,
-    };
+        extra_blocks: GenesisValidatorCycle - 2 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -51,7 +49,9 @@ unittest
 
     auto nodes = network.clients;
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.expectBlock(Height(8), b0.header);
+
+    Height expected_block = Height(conf.extra_blocks);
+    network.expectBlock(expected_block++, b0.header);
 
     // create block with 6 payment and 2 freeze tx's
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
@@ -72,8 +72,8 @@ unittest
         .sign(TxType.Freeze);
     txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // at block height 9 the freeze tx's are available
-    network.expectBlock(Height(9), b0.header);
+    // at block height 19 the freeze tx's are available
+    network.expectBlock(expected_block++, b0.header);
 
     // now we can create enrollments
     Enrollment enroll_0 = nodes[$ - 2].createEnrollmentData();
@@ -100,8 +100,8 @@ unittest
         .split(WK.Keys.Genesis.address.only()).sign();
     new_txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // at block height 10 the validator set has changed
-    network.expectBlock(Height(10), b0.header);
+    // at block height 20 the validator set has changed
+    network.expectBlock(expected_block++, b0.header);
 
     //// these are un-enrolled now
     nodes[0 .. $ - 2].each!(node => node.sleep(10.minutes, true));
@@ -111,11 +111,11 @@ unittest
     txs.each!(tx => nodes[$ - 2].putTransaction(tx));
 
     const b10 = nodes[$ - 2].getBlocksFrom(10, 2)[0];
-    network.expectBlock(nodes[$ - 2 .. $], Height(11), b10.header);
+    network.expectBlock(nodes[$ - 2 .. $], expected_block, b10.header);
 
     // force wake up
     nodes[0 .. $ - 2].each!(node => node.sleep(0.seconds, false));
 
     // all nodes should have same block height now
-    network.expectBlock(Height(11), b10.header);
+    network.expectBlock(expected_block, b10.header);
 }

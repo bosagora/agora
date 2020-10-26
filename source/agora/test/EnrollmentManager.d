@@ -35,11 +35,9 @@ import core.time;
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
-    // generate 9 blocks, 1 short of the enrollments expiring.
-    immutable validator_cycle = 10;
+    // generate 19 blocks, 1 short of the enrollments expiring.
     TestConf conf = {
-        validator_cycle : validator_cycle,
-        extra_blocks : validator_cycle - 1,
+        extra_blocks : GenesisValidatorCycle - 1,
     };
     auto network = makeTestNetwork(conf);
     network.start();
@@ -48,7 +46,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    network.expectBlock(Height(validator_cycle - 1));
+    network.expectBlock(Height(GenesisValidatorCycle - 1));
 
     // wait for preimages to be revealed before making block 10
     network.waitForPreimages(network.blocks[0].header.enrollments, 9);
@@ -76,7 +74,7 @@ unittest
     // re-enroll every validator
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle));
+    network.expectBlock(Height(GenesisValidatorCycle));
 
     // wait until preimages are revealed before creating a new block
     network.waitForPreimages(enrolls, 1);
@@ -84,16 +82,14 @@ unittest
     // verify that consensus can still be reached
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(validator_cycle + 1));
+    network.expectBlock(Height(GenesisValidatorCycle + 1));
 }
 
 // Test for re-enroll before the validator cycle ends
 unittest
 {
-    immutable validator_cycle = 20;
-    immutable current_height = validator_cycle - 5;
+    immutable current_height = GenesisValidatorCycle - 5;
     TestConf conf = {
-        validator_cycle : validator_cycle,
         extra_blocks : current_height,
     };
     auto network = makeTestNetwork(conf);
@@ -113,7 +109,7 @@ unittest
 
     // Make 5 blocks in order to finish the validator cycle
     const(Transaction)[] prev_txs = network.blocks[$ - 1].txs;
-    foreach (height; current_height .. validator_cycle)
+    foreach (height; current_height .. GenesisValidatorCycle)
     {
         auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
         txs.each!(tx => nodes[0].putTransaction(tx));
@@ -123,7 +119,7 @@ unittest
     }
 
     // Check if the enrollment has been added to the last block
-    const b20 = nodes[0].getBlocksFrom(validator_cycle, 2)[0];
+    const b20 = nodes[0].getBlocksFrom(GenesisValidatorCycle, 2)[0];
     assert(b20.header.enrollments.length == 1);
     assert(b20.header.enrollments[0] == enroll);
 }
@@ -136,10 +132,7 @@ unittest
 unittest
 {
     // Boilerplate
-    const validator_cycle = 20;
-    TestConf conf = {
-        validator_cycle : validator_cycle,
-    };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -175,7 +168,8 @@ unittest
         .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
-    network.expectBlock(nodes.take(1), Height(validator_cycle), b0.header);
+    network.expectBlock(nodes.take(1), Height(GenesisValidatorCycle),
+        b0.header);
     retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
         2.seconds);
 
@@ -199,7 +193,7 @@ unittest
         10.seconds);
 
     // Check if a new pre-image has been revealed from the restarted node
-    assert(preimage_2.isValid(org_preimage, validator_cycle));
+    assert(preimage_2.isValid(org_preimage, GenesisValidatorCycle));
 }
 
 // Situation: A pre-image already known by all nodes is sent on the network
@@ -424,9 +418,7 @@ unittest
 ///     pre-images are shared in the network
 unittest
 {
-    TestConf conf = {
-        validator_cycle : 20,
-    };
+    TestConf conf = TestConf.init;
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
