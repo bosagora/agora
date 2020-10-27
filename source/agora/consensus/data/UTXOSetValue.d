@@ -21,7 +21,7 @@ import agora.common.Types;
 import agora.consensus.data.Transaction;
 
 /// Delegate to find an unspent UTXO
-public alias UTXOFinder = scope bool delegate (Hash hash, size_t index,
+public alias UTXOFinder = bool delegate (Hash hash, size_t index,
     out UTXOSetValue) @safe nothrow;
 
 /// The structure of spendable transaction output
