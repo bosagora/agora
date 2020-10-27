@@ -95,9 +95,6 @@ public class EnrollmentManager
     /// Key used for enrollment which is actually an UTXO hash
     private Hash enroll_key;
 
-    /// Distance of the preimage being revealed next time
-    private uint next_reveal_distance;
-
     /// The period for revealing a preimage
     /// It is an hour interval if a block is made in every 10 minutes
     public static immutable uint PreimageRevealPeriod = 6;
@@ -162,9 +159,6 @@ public class EnrollmentManager
 
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
-
-        // load next height for preimage revelation
-        this.next_reveal_distance = this.getNextRevealDistance();
 
         // load the count of 'populate' of `PreImageCycle`
         const uint populate_count = this.getCycleIndex();
@@ -290,9 +284,6 @@ public class EnrollmentManager
         if (enroll.utxo_key in self_utxos)
         {
             this.setEnrollmentKey(enroll.utxo_key);
-
-            // set next height for revealing a pre-image
-            this.updateRevealDistance(block_height);
 
             // consume pre-images
             this.cycle.populate(this.key_pair.v, true);
@@ -489,24 +480,22 @@ public class EnrollmentManager
 
         Params:
             preimage = will contain the PreImageInfo if exists
+            height = current block height
 
         Returns:
             true if the pre-image exists
 
     ***************************************************************************/
 
-    public bool getNextPreimage (out PreImageInfo preimage) @safe
+    public bool getNextPreimage (out PreImageInfo preimage, Height height) @safe
     {
-        const enrolled = this.getEnrolledHeight(this.enroll_key);
-        if (enrolled == ulong.max)
-            return false;
-
-        if (this.next_reveal_distance >= this.params.ValidatorCycle)
+        uint next_dist = getRevealDistance(height);
+        if (next_dist >= this.params.ValidatorCycle)
             return false;
 
         preimage.enroll_key = this.enroll_key;
-        preimage.distance = cast(ushort)this.next_reveal_distance;
-        preimage.hash = this.cycle.preimages[$ - this.next_reveal_distance - 1];
+        preimage.distance = cast(ushort)next_dist;
+        preimage.hash = this.cycle.preimages[$ - next_dist - 1];
         return true;
     }
 
@@ -741,67 +730,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the distance of the pre-image that will be revealed next time
-
-        Returns:
-            Get the distance of the pre-image that will be revealed next time,
-            or 0 if there's no preimage to reveal
-
-    ***************************************************************************/
-
-    private uint getNextRevealDistance () @safe nothrow
-    {
-        try
-        {
-            return () @trusted {
-                auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                    "WHERE key = ?", "next_reveal_distance");
-                if (!results.empty)
-                    return results.oneValue!(uint);
-                return 0;
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error {}", ex);
-        }
-        return 0;
-    }
-
-    /***************************************************************************
-
-        Set the distance of the pre-image that will be revealed next time
-
-        Params:
-            distance = the distance to reveal a pre-image
-
-    ***************************************************************************/
-
-    private void setNextRevealDistance (uint distance) @safe nothrow
-    {
-        this.next_reveal_distance = distance;
-        try
-        {
-            () @trusted {
-                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                    "node_enroll_data WHERE key = ?)", "next_reveal_distance");
-                if (results.oneValue!(bool))
-                    this.db.execute("UPDATE node_enroll_data SET val = ? " ~
-                        "WHERE key = ?", distance, "next_reveal_distance");
-                else
-                    this.db.execute("INSERT INTO node_enroll_data (key, val)" ~
-                        " VALUES (?, ?)", "next_reveal_distance", distance);
-
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error {}", ex);
-        }
-    }
-
-    /***************************************************************************
-
         Collect all validator & preimage stats into the collector
 
         Params:
@@ -881,19 +809,22 @@ public class EnrollmentManager
         Params:
             height = block height to check
 
+        Returns:
+            the distance, or unit.max if this node is not enrolled.
+
     ***************************************************************************/
 
-    public void updateRevealDistance (Height height) @safe nothrow
+    private uint getRevealDistance (Height height) @safe nothrow
     {
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
         if (enrolled == ulong.max)
-            return;
+            return uint.max;
 
         assert(height >= enrolled);
-        auto curr = cast(uint)(height - enrolled);
-        auto next = min(curr + PreimageRevealPeriod,
+        auto diff = cast(uint)(height - enrolled);
+        auto dist = min(diff + PreimageRevealPeriod,
             this.params.ValidatorCycle - 1);
-        this.setNextRevealDistance(next);
+        return dist;
     }
 
     /***************************************************************************
@@ -905,7 +836,6 @@ public class EnrollmentManager
     private void resetNodeEnrollment () @safe nothrow
     {
         this.enroll_key = Hash.init;
-        this.setNextRevealDistance(0);
     }
 
     /***************************************************************************
@@ -1077,10 +1007,9 @@ unittest
     PreImageInfo preimage;
     enroll = man.createEnrollment(utxo_hash);
     assert(man.addValidator(enroll, Height(10), &utxo_set.findUTXO, utxos) is null);
-    assert(man.getNextPreimage(preimage));
-    man.updateRevealDistance(Height(10 + man.params.ValidatorCycle));
-    assert(man.getNextPreimage(preimage));
-    assert(preimage.hash == man.cycle.preimages[0]);
+    assert(man.getNextPreimage(preimage, Height(10)));
+    assert(preimage.hash ==
+        man.cycle.preimages[$ - 1 - man.PreimageRevealPeriod]);
 
     // test for getting validators' UTXO keys
     Hash[] keys;
