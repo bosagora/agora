@@ -256,6 +256,9 @@ public class EnrollmentManager
         This also gets and stores the information about this node's enrollment
         information which could be lost in abnormal situations.
 
+        Note: When a new Enrollment is encountered that is to start before
+        the existing one runs out, this just warns the situation.
+
         Params:
             enroll = Enrollment structure to add to the validator set
             block_height = enrolled blockheight
@@ -278,6 +281,15 @@ public class EnrollmentManager
 
         if (enroll.utxo_key in self_utxos)
         {
+            if (this.enroll_key != Hash.init)
+            {
+                auto enrolled =
+                    this.validator_set.getEnrolledHeight(this.enroll_key);
+                log.warn("Since enrollment for a validator with the same key " ~
+                    "at block #{}! New enrollment: {}, current one: {} (since #{})",
+                    block_height, enroll.utxo_key, this.enroll_key, enrolled);
+            }
+
             this.setEnrollmentKey(enroll.utxo_key);
 
             // consume pre-images
@@ -308,9 +320,6 @@ public class EnrollmentManager
 
     public Enrollment createEnrollment (Hash utxo) @safe nothrow
     {
-        // K, frozen UTXO hash
-        this.enroll_key = utxo;
-
         // X, final seed data and preimages of hashes
         this.catchupPreImageCycle();
         const seed = this.cycle.populate(this.key_pair.v, utxo, false);
@@ -1027,30 +1036,11 @@ unittest
     assert(preimage.hash ==
         man.cycle.preimages[$ - 1 - man.PreimageRevealPeriod]);
 
+    // check the cycle count for enrollment
+    assert(man.getCycleIndex() == 2);
+
     // test for getting validators' UTXO keys
     Hash[] keys;
-
-    // validator A with the `utxo_hash` and the enrolled height of 10.
-    // validator B with the 'utxo_hash2' and the enrolled height of 11.
-    // validator C with the 'utxo_hash3' and no enrolled height.
-    assert(man.addValidator(enroll2, Height(11), &utxo_set.findUTXO, utxos) is null);
-    man.clearExpiredValidators(Height(11));
-    assert(man.validatorCount() == 2);
-    assert(man.getEnrolledUTXOs(keys));
-    assert(keys.length == 2);
-
-    // set an enrolled height for validator C
-    // set the block height to 1019, which means validator B is expired.
-    // there is only one validator in the middle of 1020th block being made.
-    assert(man.addValidator(enroll3, Height(1019), &utxo_set.findUTXO, utxos) is null);
-    man.clearExpiredValidators(Height(1019));
-    assert(man.validatorCount() == 1);
-    assert(man.getEnrolledUTXOs(keys));
-    assert(keys.length == 1);
-    assert(keys[0] == enroll3.utxo_key);
-
-    // check the cycle count for enrollment
-    assert(man.getCycleIndex() == 4);
 }
 
 /// Test for adding and getting pre-images
