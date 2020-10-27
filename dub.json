@@ -127,6 +127,10 @@
             "dflags-ldc": [ "--link-defaultlib-debug" ],
         },
         {
+            "name": "libconsensus",
+            "targetType": "none"
+        },
+        {
             "name": "multi",
             "targetName": "agora-multi",
             "mainSourceFile": "source/agora/cli/multi/main.d",
