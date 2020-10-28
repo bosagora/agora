@@ -23,6 +23,7 @@ import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.data.TransactionData;
 
 import std.algorithm;
 import std.math;
@@ -32,6 +33,7 @@ public enum TxType : ubyte
 {
     Payment,
     Freeze,
+    Data
 }
 
 /*******************************************************************************
@@ -54,6 +56,9 @@ public struct Transaction
     /// The list of newly created outputs to put in the UTXO
     public Output[] outputs;
 
+    /// The data to store
+    public TransactionData data;
+
     /***************************************************************************
 
         Transactions Serialization
@@ -74,6 +79,8 @@ public struct Transaction
         serializePart(this.outputs.length, dg);
         foreach (const ref output; this.outputs)
             serializePart(output, dg);
+
+        serializePart(data, dg);
     }
 
     /// Support for sorting transactions
@@ -189,6 +196,14 @@ unittest
         [Output.init]
     );
     testSymmetry(freeze_tx);
+
+    Transaction data_tx = Transaction(
+        TxType.Data,
+        [Input(Hash.init, 0)],
+        [Output.init],
+        TransactionData([1,2,3])
+    );
+    testSymmetry(data_tx);
 }
 
 unittest
@@ -224,6 +239,18 @@ unittest
         `54e15f950e0fd3d88460309d3e0ef3fbd57b8f5af998f8bacbe391ddb9aea328`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
+
+    Transaction data_tx = Transaction(
+        TxType.Data,
+        [Input(Hash.init, 0)],
+        [Output.init]
+    );
+
+    const tx_data_hash = Hash(
+        `0x06ab2fa4c8ec521d7dbc70286b93ae38ee77a33e67b075c5cd80a690c142d7c5` ~
+        `b1039745f82bada8272c5ac4c9c37040b77b3cbbac4a48c7da1c655559699e9e`);
+    const expected3 = data_tx.hashFull();
+    assert(expected3 == tx_data_hash, expected3.toString());
 }
 
 /*******************************************************************************
@@ -248,6 +275,23 @@ public bool getSumOutput (const Transaction tx, ref Amount acc)
             return false;
     return true;
 }
+
+unittest
+{
+    import vibe.data.json;
+    Transaction old_tx = Transaction(
+        TxType.Data,
+        [Input(Hash.init, 0)],
+        [Output.init],
+        TransactionData([1,2,3])
+    );
+    auto json_str = old_tx.serializeToJsonString();
+
+    Transaction new_tx = deserializeJson!Transaction(json_str);
+    assert(new_tx.data.length == old_tx.data.length);
+    assert(new_tx.data == old_tx.data);
+}
+
 
 /*******************************************************************************
 
