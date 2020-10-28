@@ -1687,6 +1687,9 @@ public struct TestConf
 
     /// How often blocks should be created - in seconds
     uint block_interval_sec = 1;
+
+    /// If the enrollments will be renewed or not at the end of the cycle
+    bool recurring_enrollment = true;
 }
 
 /*******************************************************************************
@@ -1775,7 +1778,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : makeNodeConfig(self_address),
-            validator : ValidatorConfig(true, key_pair, [self_address]),
+            validator : ValidatorConfig(true, key_pair, [self_address], "", test_conf.recurring_enrollment),
             network : makeNetworkConfig(idx, addresses),
         };
 

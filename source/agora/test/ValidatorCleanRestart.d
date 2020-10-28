@@ -35,7 +35,9 @@ unittest
     TestConf conf = {
         timeout : 10.seconds,
         outsider_validators : 2,
-        txs_to_nominate : 0 }; // zero allows any number of txs for nomination
+        txs_to_nominate : 0, // zero allows any number of txs for nomination
+        recurring_enrollment : false,
+    };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

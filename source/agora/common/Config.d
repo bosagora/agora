@@ -183,6 +183,9 @@ public struct ValidatorConfig
 
     // Registry address
     public string registry_address;
+
+    // If the enrollments will be renewed or not at the end of the cycle
+    public bool recurring_enrollment = true;
 }
 
 /// Admin API config
@@ -443,12 +446,14 @@ private ValidatorConfig parseValidatorConfig (Node* node, const ref CommandLine 
         return ValidatorConfig(false);
 
     auto registry_address = get!(string, "validator", "registry_address")(cmdln, node);
+    const recurring_enrollment = get!(bool, "validator", "recurring_enrollment")(cmdln, node);
     ValidatorConfig result = {
         enabled: true,
         key_pair:
             KeyPair.fromSeed(Seed.fromString(get!(string, "validator", "seed")(cmdln, node))),
         registry_address: registry_address,
         addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
+        recurring_enrollment : recurring_enrollment
     };
     return result;
 }
@@ -465,12 +470,14 @@ validator:
   enabled: true
   seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
   registry_address: http://127.0.0.1:3003
+  recurring_enrollment : false
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseValidatorConfig("validator" in node, cmdln);
         assert(config.enabled);
         assert(config.key_pair == KeyPair.fromSeed(
             Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
+        assert(!config.recurring_enrollment);
     }
     {
     immutable conf_example = `

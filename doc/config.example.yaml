@@ -63,6 +63,9 @@ validator:
   addresses_to_register:
     - 88.88.88.88
     - best.validator.io
+  # Whether or not the Validator will enroll automatically at the startup or
+  # at the end of Validator cycle
+  recurring_enrollment: true
 
 ################################################################################
 ##                         Ban manager configuration                          ##

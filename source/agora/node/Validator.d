@@ -14,6 +14,7 @@
 module agora.node.Validator;
 
 import agora.api.Validator;
+import agora.common.Amount;
 import agora.common.Config;
 import agora.common.Hash;
 import agora.common.crypto.Key;
@@ -363,6 +364,10 @@ public class Validator : FullNode, API
         // regenerate the quorums
         if (validators_changed || need_shuffle)
             this.regenerateQuorums(block.header.height);
+
+        // Re-enroll if our enrollment is about to expire
+        if (this.config.validator.recurring_enrollment)
+            this.checkAndEnroll(block.header.height);
     }
 
     /***************************************************************************
@@ -422,5 +427,51 @@ public class Validator : FullNode, API
         this.nominator.storeLatestState();
         if (this.config.admin.enabled)
             this.admin_interface.stop();
+    }
+
+    /***************************************************************************
+
+        Check if the current enrollment is about to expire or validator is not
+        enrolled. Enroll when necessary.
+
+        Params:
+            block_height = Current block height
+
+    ***************************************************************************/
+
+    private void checkAndEnroll (Height block_height) @safe
+    {
+        Hash enroll_key = this.enroll_man.getEnrolledUTXO(this.utxo_set.getUTXOFinder());
+
+        if (enroll_key == Hash.init && (enroll_key = this.getFrozenUTXO()) == Hash.init)
+            return; // Not enrolled and no frozen UTXO
+
+        const enrolled = this.enroll_man.getEnrolledHeight(enroll_key);
+
+        // This validators enrollment will expire next cycle or not enrolled at all
+        if (enrolled == ulong.max || block_height + 1 >= enrolled + this.params.ValidatorCycle)
+            this.network.sendEnrollment(this.enroll_man.createEnrollment(enroll_key));
+    }
+
+    /***************************************************************************
+
+        Get a frozen UTXO owned by the Validator
+
+        Return:
+            Returns hash of a UTXO eligible for staking
+
+    ***************************************************************************/
+
+    private Hash getFrozenUTXO () @safe
+    {
+        const pub_key = this.getPublicKey();
+        foreach (key, utxo; this.utxo_set.getUTXOs(pub_key))
+        {
+            if (utxo.type == TxType.Freeze &&
+                utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
+                return key;
+        }
+
+        return Hash.init;
     }
 }

@@ -637,7 +637,13 @@ public class EnrollmentManager
     }
 
     /// Returns: true if this validator is currently enrolled
-    public bool isEnrolled (UTXOFinder finder) nothrow @safe
+    public bool isEnrolled (scope UTXOFinder finder) nothrow @safe
+    {
+        return this.getEnrolledUTXO(finder) != Hash.init;
+    }
+
+    /// Returns: The UTXO hash that this Validator is enrolled with or Hash.init if not enrolled
+    public Hash getEnrolledUTXO (scope UTXOFinder finder) nothrow @safe
     {
         Hash[] utxo_keys;
         assert(this.validator_set.getEnrolledUTXOs(utxo_keys));
@@ -650,10 +656,10 @@ public class EnrollmentManager
                 assert(0, "UTXO for validator not found!");  // should never happen
 
             if (value.output.address == key)
-                return true;
+                return utxo_key;
         }
 
-        return false;
+        return Hash.init;
     }
 
     /***************************************************************************
