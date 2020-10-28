@@ -35,7 +35,10 @@ import core.time;
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = {
+        recurring_enrollment : false,
+    };
+    auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -65,8 +68,10 @@ unittest
 unittest
 {
     import agora.consensus.data.genesis.Test;
-
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = {
+        recurring_enrollment : false,
+    };
+    auto network = makeTestNetwork(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
@@ -97,7 +102,8 @@ unittest
 ///     reveals its pre-images periodically.
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    TestConf conf = { recurring_enrollment : false };
+    auto network = makeTestNetwork(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();

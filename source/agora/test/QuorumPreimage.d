@@ -41,6 +41,7 @@ unittest
 {
     import agora.common.Types;
     TestConf conf = {
+        recurring_enrollment : false,
         outsider_validators : 2,
         max_listeners : 7,
         txs_to_nominate : 0 };
