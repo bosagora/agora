@@ -296,7 +296,7 @@ private void waitForCount(size_t target_count, shared(size_t)* counter, string n
 }
 
 // This delay is unfortunately needed before checking the number of confirmed envelopes
-private enum Duration sufficient_time_for_first_envelope = 500.msecs;
+private enum Duration sufficient_time_for_first_envelope = 1.seconds;
 
 /// Half nodes not signing correctly WILL NOT prevent block from being externalized if we require 3 out of 6
 unittest
