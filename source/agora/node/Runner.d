@@ -16,6 +16,7 @@ module agora.node.Runner;
 import agora.api.FullNode;
 import agora.api.Validator;
 import agora.common.Config;
+import agora.common.Task : Periodic;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;
@@ -93,7 +94,7 @@ public NodeListenerTuple runNode (Config config)
             res.writeVoidBody();
         });
 
-    setTimer(0.seconds, &node.start, false);  // asynchronous
+    setTimer(0.seconds, &node.start, Periodic.No);  // asynchronous
 
     log.info("About to listen to HTTP: {}", settings.port);
     return tuple!("node","http_listener")(node, listenHTTP(settings, router));
