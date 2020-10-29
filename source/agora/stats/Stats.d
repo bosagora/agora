@@ -130,16 +130,15 @@ public struct Stats (ValueType, LabelType)
     }
 }
 
+/// Convenience struct for easier stats definition
+public struct NoLabel {}
+
 version (unittest)
 {
     import agora.stats.Utils;
 
     import ocean.util.prometheus.collector.CollectorRegistry;
     import ocean.util.prometheus.collector.Collector;
-
-    public struct TestStatsWithoutLabelT
-    {
-    }
 
     public struct TestStatsWithLabelT
     {
@@ -152,7 +151,7 @@ version (unittest)
     }
 
     Stats!(TestStatsValueT, TestStatsWithLabelT) test_stats_with_label;
-    Stats!(TestStatsValueT, TestStatsWithoutLabelT) test_stats_without_label;
+    Stats!(TestStatsValueT, NoLabel) test_stats_without_label;
 
     mixin DefineCollectorForStats!("test_stats_with_label", "collectTestStatWithLabel");
     mixin DefineCollectorForStats!("test_stats_without_label", "collectTestStatWithoutLabel");
