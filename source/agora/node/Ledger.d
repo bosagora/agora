@@ -160,7 +160,8 @@ public class Ledger
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
-                        active_enrollments))
+                        active_enrollments,
+                        this.params))
                         throw new Exception(
                             "A block loaded from disk is invalid: " ~
                             fail_reason);
@@ -275,7 +276,7 @@ public class Ledger
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = Height(this.getBlockHeight() + 1);
         auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
-            expected_height);
+            expected_height, this.params);
 
         if (reason !is null || !this.pool.add(tx))
         {
@@ -433,7 +434,7 @@ public class Ledger
             Height(this.getBlockHeight()));
         foreach (ref Transaction tx; this.pool)
         {
-            if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
+            if (auto reason = tx.isInvalidReason(utxo_finder, next_height, this.params))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
                 data.tx_set ~= tx;
@@ -465,7 +466,7 @@ public class Ledger
 
         foreach (const ref tx; data.tx_set)
         {
-            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height))
+            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, this.params))
                 return fail_reason;
         }
 
@@ -504,7 +505,8 @@ public class Ledger
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
-            active_enrollments);
+            active_enrollments,
+            this.params);
     }
 
     /***************************************************************************
