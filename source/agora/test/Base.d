@@ -57,7 +57,6 @@ import agora.registry.NameRegistryAPI;
 import agora.registry.NameRegistryImpl;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
-import agora.stats.Server;
 public import agora.utils.Utility : retryFor;
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Validator : ValidatorAPI = API;
@@ -1503,11 +1502,6 @@ public struct TestConf
 
     /// How often blocks should be created - in seconds
     uint block_interval_sec = 1;
-
-    // The local address where the stats server (currently Prometheus)
-    // is going to connect to, for example: http://0.0.0.0:8008
-    // It can also be set to 0 do disable listening
-    int stats_listening_port = -1;
 }
 
 /*******************************************************************************
@@ -1562,7 +1556,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
                 ? TotalNodes - 1 : test_conf.max_listeners,
-            stats_listening_port: test_conf.stats_listening_port
         };
 
         return conf;

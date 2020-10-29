@@ -165,8 +165,8 @@ public struct NodeConfig
 
     /// The local address where the stats server (currently Prometheus)
     /// is going to connect to, for example: http://0.0.0.0:8008
-    /// It can also be set to -1 do disable listening
-    public int stats_listening_port = -1;
+    /// It can also be set to 0 do disable listening
+    public ushort stats_listening_port;
 }
 
 /// Validator config
@@ -382,7 +382,7 @@ private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
         cmdln, node);
     auto preimage_reveal_interval = get!(Duration, "node", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
-    const stats_listening_port = get!(int, "node", "stats_listening_port")(cmdln, node);
+    const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
 
     NodeConfig result = {
             min_listeners : min_listeners,
