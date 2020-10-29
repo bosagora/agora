@@ -19,45 +19,40 @@ import ocean.util.prometheus.collector.CollectorRegistry;
 import vibe.http.server;
 import vibe.http.router;
 
-class StatsServer
+public class StatsServer
 {
     private HTTPListener http_listener;
 
     /***************************************************************************
 
-            Constructs a StatsServer instance
+        Constructs a StatsServer instance
 
-            Params
-                port = port on which the server will listen on,
-                -1 to disable listening
+        Params:
+            port = port on which the server will listen on
 
     ***************************************************************************/
 
-    public this (int port)
+    public this (ushort port)
     {
-        if (port == -1)
-            return;
-
-        assert(port > 0 && port < 65536, "port number for stats server has to be between 1 and 65535");
-
         auto router = new URLRouter;
         router.get("/metrics", &handle_metrics);
 
         auto settings = new HTTPServerSettings;
-        settings.port = cast(ushort) port;
-        http_listener = listenHTTP(settings, router);
+        settings.port = port;
+        this.http_listener = listenHTTP(settings, router);
     }
 
     ///
     public void shutdown ()
     {
-        if (http_listener !is HTTPListener.init)
-            http_listener.stopListening();
+        this.http_listener.stopListening();
     }
 
     ///
-    private void handle_metrics (HTTPServerRequest req, HTTPServerResponse res)
+    private void handle_metrics (
+        scope HTTPServerRequest req, scope HTTPServerResponse res)
     {
-        res.writeBody(cast(const(ubyte[])) Utils.getCollectorRegistry().collect(),"text/plain");
+        res.writeBody(cast(const(ubyte[])) Utils.getCollectorRegistry().collect(),
+                      "text/plain");
     }
 }

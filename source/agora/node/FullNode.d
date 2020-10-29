@@ -348,15 +348,15 @@ public class FullNode : API
     /// Start the StatsServer
     public void startStatsServer ()
     {
-        this.stats_server = getStatsServer();
+        if (config.node.stats_listening_port != 0)
+            this.stats_server = getStatsServer();
     }
 
     /// Stop the StatsServer
     public void stopStatsServer ()
     {
-        assert(this.stats_server !is null,
-            "Stats server is stopped without being started");
-        this.stats_server.shutdown();
+        if (this.stats_server !is null)
+            this.stats_server.shutdown();
     }
 
     /// Returns a newly constructed StatsServer

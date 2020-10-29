@@ -48,16 +48,17 @@ public mixin template DefineCollectorForStats (string statVar,
     }.format(statVar, collector_name));
 }
 
-/// collection of Utility classes for stats collection
+/// Provides a namespace for stats utilities
 public class Utils
 {
     /***************************************************************************
 
-            Static function that returns a singleton instance
-            of type `CollectorRegistry`
+        Static function that returns a singleton instance
+        of type `CollectorRegistry`
 
-            Returns:
-                a singleton instance of type `CollectorRegistry`
+        Returns:
+            a singleton instance of type `CollectorRegistry`
+
     ***************************************************************************/
 
     public static CollectorRegistry getCollectorRegistry ()
