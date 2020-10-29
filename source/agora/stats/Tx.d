@@ -16,10 +16,6 @@ module agora.stats.Tx;
 import agora.stats.Stats;
 
 ///
-public struct TxStatsLabel
-{
-}
-
 ///
 public struct TxStatsValue
 {
@@ -31,4 +27,4 @@ public struct TxStatsValue
 }
 
 ///
-public alias TxStats = Stats!(TxStatsValue, TxStatsLabel);
+public alias TxStats = Stats!(TxStatsValue, NoLabel);

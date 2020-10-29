@@ -16,10 +16,6 @@ module agora.stats.Validator;
 import agora.stats.Stats;
 
 ///
-public struct ValidatorCountStatsLabel
-{
-}
-
 ///
 public struct ValidatorCountStatsValue
 {
@@ -39,7 +35,7 @@ public struct ValidatorPreimagesStatsValue
 }
 
 ///
-public alias ValidatorCountStats = Stats!(ValidatorCountStatsValue, ValidatorCountStatsLabel);
+public alias ValidatorCountStats = Stats!(ValidatorCountStatsValue, NoLabel);
 
 ///
 public alias ValidatorPreimagesStats = Stats!(ValidatorPreimagesStatsValue, ValidatorPreimagesStatsLabel);

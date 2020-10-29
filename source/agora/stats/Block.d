@@ -16,10 +16,6 @@ module agora.stats.Block;
 import agora.stats.Stats;
 
 ///
-public struct BlockStatsLabel
-{
-}
-
 ///
 public struct BlockStatsValue
 {
@@ -30,4 +26,4 @@ public struct BlockStatsValue
 }
 
 ///
-public alias BlockStats = Stats!(BlockStatsValue, BlockStatsLabel);
+public alias BlockStats = Stats!(BlockStatsValue, NoLabel);
