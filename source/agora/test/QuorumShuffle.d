@@ -54,8 +54,9 @@ unittest
     void checkDistance (Height height)
     {
         auto enrolled_height = Height(GenesisValidatorCycle * ((height.value - 1) / GenesisValidatorCycle));
-        auto required_distance = (height - enrolled_height - 1) % GenesisValidatorCycle;
-        log.trace("check distance is {} for generating block at height {} with enrollments at height {}", required_distance, height, enrolled_height);
+        auto required_distance = (height - enrolled_height) % GenesisValidatorCycle;
+        log.trace("check distance is {} for generating block at height {} with enrollments at height {}",
+            required_distance, height, enrolled_height);
         auto enrollments = nodes[0].getBlocksFrom(enrolled_height, 1)[0].header.enrollments;
         nodes.enumerate.each!((idx, node) =>
             enrollments.each!(enr =>
