@@ -54,6 +54,12 @@ public immutable class ConsensusParams
     /// The address of commons budget
     public PublicKey CommonsBudgetAddress;
 
+    /// The maximum size of transaction data
+    public uint MaxSizeTransactionData;
+
+    /// The factor to calculate for the fee of transaction data to store
+    public uint DataFeeFactor;
+
     /***************************************************************************
 
         Constructor
@@ -73,7 +79,9 @@ public immutable class ConsensusParams
                  uint max_quorum_nodes = 7, uint quorum_threshold = 80,
                  uint quorum_shuffle_interval = 30,
                  time_t genesis_start_time = 1596179709,
-                 uint block_interval_sec = 1)
+                 uint block_interval_sec = 1,
+                 uint max_transaction_data = 1024,
+                 uint data_fee_factor = 200)
     {
         this.Genesis = genesis;
         this.CommonsBudgetAddress = commons_budget_address,
@@ -83,6 +91,8 @@ public immutable class ConsensusParams
         this.QuorumShuffleInterval = quorum_shuffle_interval;
         this.GenesisStartTime = genesis_start_time;
         this.BlockIntervalSeconds = block_interval_sec;
+        this.MaxSizeTransactionData = max_transaction_data;
+        this.DataFeeFactor = data_fee_factor;
     }
 
     /// Default for unittest, uses the test genesis block
