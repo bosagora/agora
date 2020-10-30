@@ -25,6 +25,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 
 import std.algorithm;
+import std.math;
 
 /// Type of the transaction: defines the content that follows and the semantic of it
 public enum TxType : ubyte
@@ -246,4 +247,45 @@ public bool getSumOutput (const Transaction tx, ref Amount acc)
         if (!acc.add(o.value))
             return false;
     return true;
+}
+
+/*******************************************************************************
+
+    Caculates the fee of transaction data to store
+
+    Params:
+        data_size = The size of the data
+        factor = The factor to calculate for the fee of transaction data
+
+    Return:
+        A fee payable to data storage
+
+*******************************************************************************/
+
+public Amount clculateDataFee(ulong data_size, uint factor) @safe nothrow
+{
+    const double decimal = 100.0;
+    ulong fee = cast(ulong)(
+        (
+            round(
+                (
+                    exp((cast(double)data_size / cast(double)factor)) -
+                    1.0
+                ) *
+                decimal
+            ) /
+            decimal
+        ) *
+        10_000_000L
+    );
+    return Amount(fee);
+}
+
+unittest
+{
+    // When the size of a data is 0 bytes the fee is 0 BOA
+    assert(clculateDataFee(0, 200) == Amount(0L));
+
+    // When the size of a data is 320 bytes the fee is 3.95 BOA
+    assert(clculateDataFee(320, 200) == Amount(39_500_000L));
 }
