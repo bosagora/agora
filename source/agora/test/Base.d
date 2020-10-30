@@ -265,6 +265,8 @@ private UnitTestResult customModuleUnitTester ()
 
         while (parallel_tests.length)
         {
+            import core.memory;
+
             auto test = parallel_tests.front;
             parallel_tests.popFront();
 
@@ -272,6 +274,7 @@ private UnitTestResult customModuleUnitTester ()
             available_cores.wait();
 
             (new WorkThread(test)).start();
+            core.memory.GC.collect();
         }
     }
 
