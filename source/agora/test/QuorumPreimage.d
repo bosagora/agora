@@ -40,9 +40,9 @@ unittest
 {
     import agora.common.Types;
     TestConf conf = {
+        txs_to_nominate : 8,
         outsider_validators : 2,
-        max_listeners : 7,
-        extra_blocks : 18 };
+        max_listeners : 7 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -52,10 +52,9 @@ unittest
     auto nodes = network.clients;
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
 
-    Height expected_block = Height(conf.extra_blocks);
+    Height expected_block = Height(GenesisValidatorCycle - 2);
 
-    // Expect block 18
-    network.expectBlock(expected_block++, b0.header);
+    network.generateBlocks(Height(expected_block++));
 
     enum quorums_1 = [
         // 0
@@ -125,7 +124,8 @@ unittest
             format("Node %s has quorum config %s. Expected: %s",
                 idx, node.getQuorumConfig(), quorums_1[idx])));
 
-    auto spendable = network.blocks[$ - 1].txs
+    const last_block = nodes[0].getAllBlocks()[$ - 1];
+    auto spendable = last_block.txs
         .filter!(tx => tx.type == TxType.Payment)
         .map!(tx => iota(tx.outputs.length)
             .map!(idx => TxBuilder(tx, cast(uint)idx)))

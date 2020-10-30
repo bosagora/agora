@@ -100,6 +100,7 @@ public const size_t GenesisValidators = GenesisBlock.header.enrollments.count();
 public const uint GenesisValidatorCycle = GenesisBlock
     .header.enrollments[0].cycle_length;
 
+mixin AddLogger!();
 shared static this()
 {
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
@@ -463,7 +464,7 @@ extern(D):
         // if 0 take all txs, otherwise nominate exactly this many txs
         this.ledger.prepareNominatingSet(data,
             this.txs_to_nominate ? this.txs_to_nominate : ulong.max);
-        if (data.tx_set.length < this.txs_to_nominate)
+        if (data.tx_set.length < max(1, this.txs_to_nominate))
             return false;  // not enough txs
 
         // defensive coding, same as base class
@@ -634,7 +635,9 @@ public class TestAPIManager
     {
         static assert (isInputRange!Clients);
 
-        assert(height > enroll_header.height);
+        assert(height > enroll_header.height,
+            format!"height of %s and enroll height of %s are invalid"
+                (height, enroll_header.height));
         auto distance = cast(ushort)(height - enroll_header.height - 1);
         waitForPreimages(clients, enroll_header.enrollments, distance,
             timeout);
@@ -672,7 +675,7 @@ public class TestAPIManager
 
         clients.each!(node => enrolls.each!(enroll =>
             retryFor(node.getPreimage(enroll.utxo_key).distance >= distance,
-                timeout)));
+                timeout, format!"Failed to get preimage for distance %s"(distance))));
     }
 
     /***************************************************************************
@@ -907,7 +910,105 @@ public class TestAPIManager
             ex.line = line;
             throw ex;
         }
+        retryFor(nodes[0].client.getBlocksFrom(0, 1).length > 0, 2.seconds);
     }
+
+    /*******************************************************************************
+
+        Add blocks up to the provided height
+
+        Params:
+            target_height = the target height after adding blocks.
+            enrolled_height = the height with the active enrollments
+
+    *******************************************************************************/
+
+    public void generateBlocks (Height target_height, Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        generateBlocks(clients.take(GenesisValidators), target_height, enrolled_height,
+            file, line);
+    }
+
+    /// Ditto
+    public void generateBlocks (Clients)(Clients clients,
+        Height target_height, Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        assert(target_height >= enrolled_height,
+            format!"%s:%s] Target height %s is not at least enroll height %s"
+                (file, line, target_height, enrolled_height));
+        iota(target_height - clients[0].getAllBlocks()[$ -1].header.height)
+            .each!(_ => addBlock(clients, enrolled_height, file, line));
+    }
+
+     /*******************************************************************************
+
+        Add a block
+
+        Params:
+            target_height = the target height after adding blocks.
+            enrolled_height = the height with the active enrollments
+            client_index = the client to use for putting the tx
+
+        Returns:
+            The number of blocks added to reach the target height
+
+    *******************************************************************************/
+    void addBlock (Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        addBlock(this.clients, enrolled_height, file, line);
+    }
+
+    /// Ditto
+    void addBlock (Clients)(Clients clients,
+        Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        auto all_blocks = clients[0].getAllBlocks();
+        Height target_height = Height(all_blocks[$ - 1].header.height + 1);
+        log.trace("[{}:{}] Generate block at height {} for {} clients",
+            file, line, target_height, clients.count());
+        all_blocks[$ - 1].spendable()
+            .takeExactly(max(1, this.test_conf.txs_to_nominate))
+            .map!(txb => txb.sign())
+            .each!(tx => clients[0].putTransaction(tx));
+        ushort distance = cast(ushort) (target_height - enrolled_height -1);
+        assert(distance < GenesisValidatorCycle && distance >= 0,
+            format!"%s:%s] Expected distance between 0 and %s not %s"
+                (file, line, GenesisValidatorCycle - 1, distance));
+        expectBlock(clients, target_height, all_blocks[enrolled_height].header);
+    }
+
+    /*******************************************************************************
+
+        Enroll validator
+
+        Params:
+            client_idx = the index of the client to enroll
+
+    *******************************************************************************/
+
+    public void enroll (size_t client_idx,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        enroll(this.clients, client_idx, file, line);
+    }
+
+    /// Ditto
+    public void enroll (Clients)(Clients clients, size_t client_idx,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        log.trace("[{}:{}] Enroll client #{}", file, line, client_idx);
+        Enrollment enroll = clients[client_idx].createEnrollmentData();
+        clients[client_idx].enrollValidator(enroll);
+        clients.enumerate.each!((idx, node) =>
+            retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds,
+                format!"%s:%s] Client #%s enrollment not in pool of client #%s"
+                (file, line, client_idx, client_idx)));
+    }
+
 }
 
 /*******************************************************************************
@@ -1448,9 +1549,6 @@ public struct TestConf
     /// Network topology to use
     NetworkTopology topology = NetworkTopology.FullyConnected;
 
-    /// Extra blocks to generate in addition to the genesis block
-    size_t extra_blocks = 0;
-
     /// Number of full nodes to instantiate
     size_t full_nodes = 0;
 
@@ -1499,7 +1597,7 @@ public struct TestConf
     /// a block contains 8 transactions.
     /// If set to 0 there will be no limits on the number of nominated transactions
     /// (unless Consensus rules dictate otherwise)
-    ulong txs_to_nominate = 8;
+    ulong txs_to_nominate = 0;
 
     /// How often blocks should be created - in seconds
     uint block_interval_sec = 1;
@@ -1683,8 +1781,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.node.genesis_start_time = genesis_start_time;
     }
 
-    immutable(Block)[] blocks = generateBlocks(gen_block,
-        test_conf.extra_blocks);
+    immutable(Block)[] blocks = generateBlocks(gen_block);
 
     auto net = new APIManager(blocks, test_conf, genesis_start_time);
     foreach (ref conf; all_configs)
@@ -1832,19 +1929,8 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
 *******************************************************************************/
 
 private immutable(Block)[] generateBlocks (
-    ref immutable Block gen_block, size_t count)
+    ref immutable Block gen_block)
 {
     const(Block)[] blocks = [gen_block];
-    if (count == 0)
-        return blocks.assumeUnique;  // just the genesis block
-
-    foreach (_; 0 .. count)
-    {
-        auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-
-        const NoEnrollments = null;
-        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
-    }
-
-    return blocks.assumeUnique;
+    return blocks.assumeUnique;  // just the genesis block
 }
