@@ -96,10 +96,6 @@ public NodeListenerTuple runNode (Config config)
 
     setTimer(0.seconds, &node.start, Periodic.No);  // asynchronous
 
-    if (config.validator.enabled && config.admin.enabled)
-        // schedule
-        setTimer(0.seconds, &((cast(Validator)node).admin_start), Periodic.No);
-
     log.info("About to listen to HTTP: {}", settings.port);
     return tuple!("node","http_listener")(node, listenHTTP(settings, router));
 }

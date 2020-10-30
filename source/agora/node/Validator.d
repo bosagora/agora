@@ -227,19 +227,11 @@ public class Validator : FullNode, API
             &this.checkRevealPreimage, Periodic.Yes);
         this.network.startPeriodicCatchup(this.ledger);
 
+        if (this.config.admin.enabled)
+            this.admin_interface.start();
+
         if (this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
             this.nominator.startNominatingTimer();
-    }
-
-    /***************************************************************************
-
-        Begins asynchronous tasks for admin interface.
-
-    ***************************************************************************/
-
-    public void admin_start ()
-    {
-        this.admin_interface.start();
     }
 
     /***************************************************************************
