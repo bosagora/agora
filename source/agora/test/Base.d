@@ -1763,7 +1763,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.node.genesis_start_time = genesis_start_time;
     }
 
-    immutable(Block)[] blocks = generateBlocks(gen_block);
+    immutable(Block)[] blocks = [gen_block];
 
     auto net = new APIManager(blocks, test_conf, genesis_start_time);
     foreach (ref conf; all_configs)
@@ -1894,25 +1894,4 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
         txs.assumeUnique,
         merkle_tree.assumeUnique
     );
-}
-
-/*******************************************************************************
-
-    Generate a set of blocks with spend transactions
-
-    Params:
-        gen_block = the genesis block
-        count = the number of extra blocks to generate. If 0, the return
-                blockchain will only contain the genesis block.
-
-    Returns:
-        The blockchain, including the provided genesis block
-
-*******************************************************************************/
-
-private immutable(Block)[] generateBlocks (
-    ref immutable Block gen_block)
-{
-    const(Block)[] blocks = [gen_block];
-    return blocks.assumeUnique;  // just the genesis block
 }
