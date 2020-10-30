@@ -125,9 +125,6 @@ public class AdminInterface
 
     public void stop ()
     {
-        if (!this.config.admin.enabled)
-            assert(0, "Admin interface is not enabled");
-
         log.trace("Stopping admin interface ...");
         this.listener.stopListening();
     }
