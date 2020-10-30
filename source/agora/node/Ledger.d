@@ -846,7 +846,7 @@ unittest
             txs.all!(
                 tx => iota(tx.outputs.length).all!(
                     (idx) {
-                        return findUTXO(tx.hashFull(), idx, utxo) &&
+                        return findUTXO(UTXOSetValue.getHash(tx.hashFull(), idx), utxo) &&
                             utxo.output == tx.outputs[idx];
                     }
                 )

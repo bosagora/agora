@@ -654,7 +654,7 @@ public class EnrollmentManager
         foreach (utxo_key; utxo_keys)
         {
             UTXOSetValue value;
-            if (!finder(utxo_key, size_t.max, value))
+            if (!finder(utxo_key, value))
                 assert(0, "UTXO for validator not found!");  // should never happen
 
             if (value.output.address == key)

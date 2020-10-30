@@ -119,11 +119,11 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             extraSet.put(tx);
         scope extraFinder = extraSet.getUTXOFinder();
         scope UTXOFinder enrollmentsUTXOFinder =
-            (Hash hash, size_t index, out UTXOSetValue val)
+            (Hash utxo, out UTXOSetValue val)
             {
-                if (findUTXO(hash, index, val))
+                if (findUTXO(utxo, val))
                     return true;
-                return extraFinder(hash, index, val);
+                return extraFinder(utxo, val);
             };
     }
 
@@ -225,16 +225,15 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
             ~ "ascending order by the utxo_key";
 
     Set!Hash used_utxos;
-    bool findUTXO (Hash utxo_hash, size_t index, out UTXOSetValue value)
-        nothrow @safe
+    bool findUTXO (Hash utxo, out UTXOSetValue value) nothrow @safe
     {
-        if (utxo_hash in used_utxos)
+        if (utxo in used_utxos)
             return false;  // double-spend
 
-        if (auto ptr = utxo_hash in utxo_set)
+        if (auto ptr = utxo in utxo_set)
         {
             value = *ptr;
-            used_utxos.put(utxo_hash);
+            used_utxos.put(utxo);
             return true;
         }
         return false;
@@ -527,10 +526,8 @@ unittest
 
     // contains the used set of UTXOs during validation (to prevent double-spend)
     Output[Hash] used_set;
-    UTXOFinder findNonSpent = (Hash hash, size_t index, out UTXOSetValue value)
+    scope UTXOFinder findNonSpent = (Hash utxo_hash, out UTXOSetValue value)
     {
-        auto utxo_hash = hashMulti(hash, index);
-
         if (utxo_hash in used_set)
             return false;  // double-spend
 

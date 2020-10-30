@@ -459,8 +459,7 @@ private NodeStake[] buildStakesDescending (const ref PublicKey filter,
     foreach (utxo_key; utxo_keys)
     {
         UTXOSetValue value;
-        assert(finder(utxo_key, size_t.max, value),
-            "UTXO for validator not found!");
+        assert(finder(utxo_key, value), "UTXO for validator not found!");
 
         if (value.output.address != filter)
             stakes ~= NodeStake(value.output.address, value.output.value);

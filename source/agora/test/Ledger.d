@@ -213,7 +213,7 @@ unittest
     // even if it's double spending
     const genesis_block = node_1.getBlocksFrom(0, 1)[0];
     auto reason = txs[0].isInvalidReason(
-        (Hash hash, size_t index, out UTXOSetValue value)
+        (Hash utxo, out UTXOSetValue value)
         {
             value = UTXOSetValue(0, TxType.Payment, txs[0].outputs[0]);
             return true;

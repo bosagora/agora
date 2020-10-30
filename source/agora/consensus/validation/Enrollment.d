@@ -52,7 +52,7 @@ public string isInvalidReason (const ref Enrollment enrollment,
     UTXOFinder findUTXO) nothrow @safe
 {
     UTXOSetValue utxo_set_value;
-    if (!findUTXO(enrollment.utxo_key, size_t.max, utxo_set_value))
+    if (!findUTXO(enrollment.utxo_key, utxo_set_value))
         return "Enrollment: UTXO not found";
 
     if (utxo_set_value.type != typeof(utxo_set_value.type).Freeze)
