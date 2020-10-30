@@ -171,9 +171,7 @@ public class UTXOSet
         Find an UTXOSetValue in the UTXO set.
 
         Params:
-            hash = the hash of the transaction introducing the `Output`
-            index = the index of the output
-                If size_t.max, find the hash parameter by UTXO Hash.
+            hash = the hash of the UTXO (`hashFull(tx_hash, index)`)
             output = will contain the UTXOSetValue if found
 
         Return:
@@ -181,28 +179,21 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    private bool findUTXO (Hash hash, size_t index, out UTXOSetValue value)
+    private bool findUTXO (Hash utxo, out UTXOSetValue value)
         nothrow @safe
     {
-        Hash utxo_hash;
-
-        if (index == size_t.max)
-            utxo_hash = hash;
-        else
-            utxo_hash = UTXOSetValue.getHash(hash, index);
-
-        if (utxo_hash in this.used_utxos)
+        if (utxo in this.used_utxos)
         {
-            log.trace("findUTXO: utxo_hash {} found in used_utxos: {}", utxo_hash, used_utxos);
+            log.trace("findUTXO: utxo_hash {} found in used_utxos: {}", utxo, used_utxos);
             return false;  // double-spend
         }
 
-        if (this.utxo_db.find(utxo_hash, value))
+        if (this.utxo_db.find(utxo, value))
         {
-            this.used_utxos.put(utxo_hash);
+            this.used_utxos.put(utxo);
             return true;
         }
-        log.trace("findUTXO: utxo_hash {} not found", utxo_hash);
+        log.trace("findUTXO: utxo_hash {} not found", utxo);
         return false;
     }
 }

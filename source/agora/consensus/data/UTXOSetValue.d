@@ -21,8 +21,8 @@ import agora.common.Types;
 import agora.consensus.data.Transaction;
 
 /// Delegate to find an unspent UTXO
-public alias UTXOFinder = bool delegate (Hash hash, size_t index,
-    out UTXOSetValue) @safe nothrow;
+public alias UTXOFinder = bool delegate (Hash utxo, out UTXOSetValue)
+    @safe nothrow;
 
 /// The structure of spendable transaction output
 public struct UTXOSetValue
@@ -92,13 +92,11 @@ public class TestUTXOSet
     public alias findUTXO = peekUTXO;
 
     /// Get an UTXO, no double-spend protection
-    public bool peekUTXO (Hash hash, size_t index, out UTXOSetValue value)
+    public bool peekUTXO (Hash utxo, out UTXOSetValue value)
         nothrow @safe
     {
         // Note: Keep this in sync with `findUTXO`
-        Hash utxo_hash = (index == size_t.max) ?
-            hash : UTXOSetValue.getHash(hash, index);
-        if (auto ptr = utxo_hash in this.storage)
+        if (auto ptr = utxo in this.storage)
         {
             value = *ptr;
             return true;
@@ -128,19 +126,17 @@ public class TestUTXOSet
     }
 
     /// Get an UTXO, does not return double spend
-    private bool findUTXO_ (Hash hash, size_t index, out UTXOSetValue value)
+    private bool findUTXO_ (Hash utxo, out UTXOSetValue value)
         nothrow @safe
     {
         // Note: Keep this in sync with the real `findUTXO`
-        Hash utxo_hash = (index == size_t.max) ?
-            hash : UTXOSetValue.getHash(hash, index);
         // double-spend
-        if (utxo_hash in this.used_utxos)
+        if (utxo in this.used_utxos)
             return false;
-        if (auto ptr = utxo_hash in this.storage)
+        if (auto ptr = utxo in this.storage)
         {
             value = *ptr;
-            this.used_utxos.put(utxo_hash);
+            this.used_utxos.put(utxo);
             return true;
         }
         return false;
