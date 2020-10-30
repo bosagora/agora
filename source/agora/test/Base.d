@@ -907,6 +907,96 @@ public class TestAPIManager
             throw ex;
         }
     }
+
+    /*******************************************************************************
+
+        Add blocks up to the provided height
+
+        This is a helper function to enable some common steps to getting blocks
+            externalized during the Network Unit tests
+        Params:
+            block_height = the desired block height
+            enrolled_height = the block height of the enrollments
+                for the participating validators
+            client_idxs = client indices for the participating validators
+
+    *******************************************************************************/
+
+    public void generateBlocks (Height block_height,
+        Height enrolled_height = Height(0),
+        ulong[] client_idxs = iota(0, GenesisValidators).array,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        auto first_client = this.clients[client_idxs[0]];
+        assert(block_height >= enrolled_height,
+            format!"[%s:%s] Desired height %s is not at least enroll height %s"
+                (file, line, block_height, enrolled_height));
+        iota(block_height - first_client.getAllBlocks()[$ -1].header.height)
+            .each!(_ => this.addBlock(enrolled_height, client_idxs, file, line));
+    }
+
+     /*******************************************************************************
+
+        Add a block
+
+        This is a helper function to perform the steps required to get a block
+            externalized during the Network Unit tests
+        Params:
+            enrolled_height = the height with enrollments of participating validators
+            client_idxs = client indices for the participating validators
+
+    *******************************************************************************/
+
+    void addBlock (Height enrolled_height = Height(0),
+        ulong[] client_idxs = iota(0, GenesisValidators).array,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        auto first_client = this.clients[client_idxs[0]];
+        auto all_blocks = first_client.getAllBlocks();
+        Height target_height = Height(all_blocks[$ - 1].header.height + 1);
+        assert(all_blocks.length > 0,
+            format!"[%s:%s] No blocks in first client!"(file, line));
+        auto spendables = all_blocks[$ - 1].spendable().array;
+        auto tx_count = max(1, this.test_conf.txs_to_nominate);
+        assert(spendables.length >= tx_count,
+            format!"[%s:%s] Less than %s spendables in block:\n%s"
+                (file, line, tx_count, prettify(all_blocks[$ - 1])));
+        spendables.takeExactly(tx_count)
+            .map!(txb => txb.sign())
+            .each!(tx => first_client.putTransaction(tx));
+        ushort distance = cast(ushort) (target_height - enrolled_height -1);
+        assert(distance < GenesisValidatorCycle && distance >= 0,
+            format!"[%s:%s] Expected distance between 0 and %s not %s"
+                (file, line, GenesisValidatorCycle - 1, distance));
+        expectBlock(client_idxs.map!(i => this.clients[i]),
+            target_height, all_blocks[enrolled_height].header);
+    }
+
+    /*******************************************************************************
+
+        Enroll validator
+
+        This is a helper function to enroll a validator and wait till
+            other validators have the enroll on their pool
+
+        Params:
+            client_idx = the index of the client to enroll
+            client_idxs = client indices for the participating validators
+
+    *******************************************************************************/
+
+    void enroll (size_t client_idx,
+        ulong[] client_idxs = iota(0, GenesisValidators).array,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        Enrollment enroll = this.clients[client_idx].createEnrollmentData();
+        clients[client_idx].enrollValidator(enroll);
+        client_idxs.each!(idx =>
+            retryFor(this.clients[idx].getEnrollment(enroll.utxo_key) == enroll,
+                5.seconds,
+                format!"[%s:%s] Client #%s enrollment not in pool of client #%s"
+                (file, line, client_idx, idx)));
+    }
 }
 
 /*******************************************************************************
@@ -1447,9 +1537,6 @@ public struct TestConf
     /// Network topology to use
     NetworkTopology topology = NetworkTopology.FullyConnected;
 
-    /// Extra blocks to generate in addition to the genesis block
-    size_t extra_blocks = 0;
-
     /// Number of full nodes to instantiate
     size_t full_nodes = 0;
 
@@ -1676,8 +1763,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.node.genesis_start_time = genesis_start_time;
     }
 
-    immutable(Block)[] blocks = generateBlocks(gen_block,
-        test_conf.extra_blocks);
+    immutable(Block)[] blocks = generateBlocks(gen_block);
 
     auto net = new APIManager(blocks, test_conf, genesis_start_time);
     foreach (ref conf; all_configs)
@@ -1825,19 +1911,8 @@ private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
 *******************************************************************************/
 
 private immutable(Block)[] generateBlocks (
-    ref immutable Block gen_block, size_t count)
+    ref immutable Block gen_block)
 {
     const(Block)[] blocks = [gen_block];
-    if (count == 0)
-        return blocks.assumeUnique;  // just the genesis block
-
-    foreach (_; 0 .. count)
-    {
-        auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-
-        const NoEnrollments = null;
-        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
-    }
-
-    return blocks.assumeUnique;
+    return blocks.assumeUnique;  // just the genesis block
 }

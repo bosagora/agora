@@ -13,8 +13,6 @@
 
 module agora.test.QuorumShuffle;
 
-version (unittest):
-
 import agora.common.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -31,7 +29,7 @@ unittest
 {
     import agora.common.Types;
     TestConf conf = {
-        max_listeners : 7,
+        txs_to_nominate : 8,
         max_quorum_nodes : 4,  // makes it easier to test shuffle cycling
         quorum_shuffle_interval : 6
     };
@@ -45,7 +43,7 @@ unittest
 
     Height block_height = Height(0);
 
-    const keys = WK.Keys.byRange.map!(kp => kp.address).take(6).array;
+    const keys = WK.Keys.byRange.map!(kp => kp.address).take(GenesisValidators).array;
 
     // check that the preimages were revealed before we trigger block creation
     // note: this is a workaround. A block should not be accepted if there

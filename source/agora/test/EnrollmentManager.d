@@ -35,44 +35,37 @@ import core.time;
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
-    // generate 19 blocks, 1 short of the enrollments expiring.
-    TestConf conf = {
-        extra_blocks : GenesisValidatorCycle - 1,
-    };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    network.expectBlock(Height(GenesisValidatorCycle - 1));
 
-    // wait for preimages to be revealed before making block 10
-    network.waitForPreimages(network.blocks[0].header.enrollments, 9);
+    // generate 19 blocks, 1 short of the enrollments expiring.
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
+
+    // wait for preimages to be revealed before making block 20
+    network.waitForPreimages(network.blocks[0].header.enrollments,
+        GenesisValidatorCycle - 1);
 
     // create enrollment data
+    Enrollment[] enrolls = iota(0, 6).map!(n =>
+        nodes[n].createEnrollmentData()).array;
+
     // send a request to enroll as a Validator
-    Enrollment[] enrolls;
-    enrolls ~= nodes[0].createEnrollmentData();
-    enrolls ~= nodes[1].createEnrollmentData();
-    enrolls ~= nodes[2].createEnrollmentData();
-    enrolls ~= nodes[3].createEnrollmentData();
-    nodes[0].enrollValidator(enrolls[0]);
-    nodes[1].enrollValidator(enrolls[1]);
-    nodes[2].enrollValidator(enrolls[2]);
-    nodes[3].enrollValidator(enrolls[3]);
+    iota(0, GenesisValidators).each!(n => nodes[n].enrollValidator(enrolls[n]));
 
     // wait until new enrollments are propagated to the pools
-    nodes.each!(node =>
-        retryFor(node.getEnrollment(enrolls[0].utxo_key) == enrolls[0] &&
-                 node.getEnrollment(enrolls[1].utxo_key) == enrolls[1] &&
-                 node.getEnrollment(enrolls[2].utxo_key) == enrolls[2] &&
-                 node.getEnrollment(enrolls[3].utxo_key) == enrolls[3],
+    iota(0, GenesisValidators).each!(n =>
+        retryFor(
+            nodes[n].getEnrollment(enrolls[n].utxo_key) == enrolls[n],
             5.seconds));
 
-    // re-enroll every validator
-    auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
+    auto blocks = nodes[0].getAllBlocks();
+
+    auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(GenesisValidatorCycle));
 
@@ -82,21 +75,21 @@ unittest
     // verify that consensus can still be reached
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
+
     network.expectBlock(Height(GenesisValidatorCycle + 1));
 }
 
 // Test for re-enroll before the validator cycle ends
 unittest
 {
-    immutable current_height = GenesisValidatorCycle - 5;
-    TestConf conf = {
-        extra_blocks : current_height,
-    };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork(TestConf.init);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
     network.waitForDiscovery();
+
+    // generate 15 blocks, 5 short of the enrollments expiring.
+    network.generateBlocks(Height(GenesisValidatorCycle - 5));
 
     // Check if the genesis block has enrollments
     auto nodes = network.clients;
@@ -107,9 +100,11 @@ unittest
     Enrollment enroll = nodes[0].createEnrollmentData();
     nodes[0].enrollValidator(enroll);
 
+    auto blocks = nodes[0].getAllBlocks();
+
     // Make 5 blocks in order to finish the validator cycle
-    const(Transaction)[] prev_txs = network.blocks[$ - 1].txs;
-    foreach (height; current_height .. GenesisValidatorCycle)
+    const(Transaction)[] prev_txs = blocks[$ - 1].txs;
+    foreach (height; GenesisValidatorCycle - 5 .. GenesisValidatorCycle)
     {
         auto txs = prev_txs.map!(tx => TxBuilder(tx).sign()).array();
         txs.each!(tx => nodes[0].putTransaction(tx));
@@ -131,9 +126,7 @@ unittest
 ///     reveals its pre-images periodically.
 unittest
 {
-    // Boilerplate
-    TestConf conf = TestConf.init;
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork(TestConf.init);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
@@ -272,7 +265,7 @@ unittest
     Thread.sleep(50.msecs);
 
     assert(network.clients().each!(
-               client => client.getPreimage(enroll.utxo_key).distance == 0));
+        client => client.getPreimage(enroll.utxo_key).distance == 0));
 }
 
 /// Situation: One misbehaving node sends an Enrollment for an
@@ -387,7 +380,7 @@ unittest
     auto validator = network.clients[1];
 
     // Sanity check: Check if genesis block has enrollments
-    const b0 = validator.getBlocksFrom(0, 2)[0];
+    const b0 = validator.getBlocksFrom(0, 1)[0];
     assert(b0.header.enrollments.length >= 1);
 
     // Make a block using Genesis
@@ -427,7 +420,7 @@ unittest
 
     // Check if the genesis block has enrollments
     auto nodes = network.clients;
-    const b0 = nodes[0].getBlocksFrom(0, 2)[0];
+    const b0 = nodes[0].getBlocksFrom(0, 1)[0];
     assert(b0.header.enrollments.length >= 1);
     const e0 = b0.header.enrollments[0];
 

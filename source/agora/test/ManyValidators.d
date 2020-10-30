@@ -39,9 +39,7 @@ import core.time;
 /// 16 nodes
 unittest
 {
-    TestConf conf = {
-        outsider_validators : 10,
-        extra_blocks : GenesisValidatorCycle - 4 };
+    TestConf conf = { outsider_validators : 10 };
 
     auto network = makeTestNetwork(conf);
     network.start();
@@ -50,104 +48,54 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    Height expected_block = Height(conf.extra_blocks);
-    network.expectBlock(expected_block++);
 
-    auto spendable = network.blocks[$ - 1].txs
-        .filter!(tx => tx.type == TxType.Payment)
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner().array;
+    // generate 18 blocks, 2 short of the enrollments expiring.
+    network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    // discarded UTXOs (just to trigger block creation)
-    auto txs = spendable[0 .. 6]
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
+    const keys = network.nodes.map!(node => node.client.getPublicKey())
+        .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
-    // 16 utxos for freezing, 8 utxos for creating a block later
-    txs ~= spendable[6].split(WK.Keys.byRange
-        .take(conf.outsider_validators + GenesisValidators).map!(k => k.address))
-        .sign();
-    txs ~= spendable[7].split(WK.Keys.Genesis.address.repeat(8)).sign();
-    txs.each!(tx => nodes[0].putTransaction(tx));
-    // block 17
-    network.expectBlock(expected_block++);
-
-    // freeze builders
-    auto freezable = txs[$ - 2]  // contains 16 payment UTXOs
-        .outputs.length.iota
-        .takeExactly(conf.outsider_validators + GenesisValidators)  // there might be more UTXOs
-        .map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
-        .array;
-
-    // create 16 freeze TXs
-    auto freeze_txs = freezable
-        .enumerate
-        .map!(pair => pair.value.refund(WK.Keys[pair.index].address)
-            .sign(TxType.Freeze))
-        .array;
-
-    // block 18
-    freeze_txs[0 .. 8].each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(expected_block++);
+    // prepare frozen outputs for outsider validators to enroll
+    blocks[$ - 1].spendable()
+        .map!(txb => txb.split(keys).sign(TxType.Freeze))
+        .each!(tx => nodes[0].putTransaction(tx));
 
     // block 19
-    freeze_txs[8 .. 16].each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(expected_block++);
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
-    // now we re-enroll existing validators (extension),
-    // and enroll 10 new validators.
-    foreach (node; nodes)
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        node.enrollValidator(enroll);
+    // wait for other nodes to get to same block height
+    nodes.drop(GenesisValidators).enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == GenesisValidatorCycle - 1, 2.seconds,
+            format!"Expected block height %s but outsider %s has height %s."
+                (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
 
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
+    auto validators = GenesisValidators + conf.outsider_validators;
 
-    // at block height 20 the validator set changes
-    txs = txs[$ - 1]  // take those 8 UTXOs from #L184
-            .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
-            .takeExactly(8)  // there might be more than 8
-            .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
-        txs.each!(tx => nodes[0].putTransaction(tx));
+    // Now we enroll new validators and re-enroll the original validators
+    iota(0, validators).each!(idx => network.enroll(idx));
 
-    // Block 20
-    network.expectBlock(expected_block++);
+    network.generateBlocks(nodes, Height(GenesisValidatorCycle));
 
-    // sanity check
+    // check 16 validators are enrolled
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount() == 16, 3.seconds,
+        retryFor(node.getValidatorCount() == validators, 5.seconds,
             format("Node %s has validator count %s. Expected: %s",
-                idx, node.getValidatorCount(), 16)));
+                idx, node.getValidatorCount(), validators)));
 
     // first validated block using 16 nodes
-    txs = txs
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner()
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
-        .takeExactly(8)
-        .array;
-    txs.each!(tx => nodes[0].putTransaction(tx));
-
-    // consensus check
-    network.expectBlock(expected_block);
+    network.generateBlocks(nodes, Height(GenesisValidatorCycle + 1),
+        Height(GenesisValidatorCycle));
 }
 
 /// 32 nodes
 /// Disabled due to significant network overhead,
 /// Block creation fails for 32 nodes.
+// temporarily disabled until failures are resolved
 version (none)
 unittest
 {
-    TestConf conf = {
-        timeout : 10.seconds,
-        outsider_validators : 26,
-        extra_blocks : 7,
-        validator_cycle : 13 };
+    TestConf conf = { outsider_validators : 26 };
 
     auto network = makeTestNetwork(conf);
     network.start();
@@ -156,95 +104,42 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    network.expectBlock(Height(7));
 
-    auto spendable = network.blocks[$ - 1].txs
-        .filter!(tx => tx.type == TxType.Payment)
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner().array;
+    // generate 18 blocks, 2 short of the enrollments expiring.
+    network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    // discarded UTXOs (just to trigger block creation)
-    auto txs = spendable[0 .. 6]
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
+    const keys = network.nodes.map!(node => node.client.getPublicKey())
+        .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
-    // 32 utxos for freezing, 8 utxos for creating a block later
-    txs ~= spendable[6].split(WK.Keys.byRange.take(32).map!(k => k.address)).sign();
-    txs ~= spendable[7].split(WK.Keys.Genesis.address.repeat(8)).sign();
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    // prepare frozen outputs for outsider validators to enroll
+    blocks[$ - 1].spendable()
+        .map!(txb => txb.split(keys).sign(TxType.Freeze))
+        .each!(tx => nodes[0].putTransaction(tx));
 
-    // block 8
-    network.expectBlock(Height(8));
+    // block 19
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
-    // freeze builders
-    auto freezable = txs[$ - 2]  // contains 32 payment UTXOs
-        .outputs.length.iota
-        .takeExactly(32)  // there might be more UTXOs
-        .map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
-        .array;
+    // wait for other nodes to get to same block height
+    nodes.drop(GenesisValidators).enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == GenesisValidatorCycle - 1, 2.seconds,
+            format!"Expected block height %s but outsider %s has height %s."
+                (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
 
-    // create 32 freeze TXs
-    auto freeze_txs = freezable
-        .enumerate
-        .map!(pair => pair.value.refund(WK.Keys[pair.index].address)
-            .sign(TxType.Freeze))
-        .array;
-    assert(freeze_txs.length == 32);
+    auto validators = GenesisValidators + conf.outsider_validators;
 
-    // block 9
-    freeze_txs[0 .. 8].each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(9));
+    // Now we enroll new validators and re-enroll the original validators
+    iota(0, validators).each!(idx => network.enroll(idx));
 
-    // block 10
-    freeze_txs[8 .. 16].each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(10));
+    network.generateBlocks(nodes, Height(GenesisValidatorCycle));
 
-    // block 11
-    freeze_txs[16 .. 24].each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(11));
-
-    // block 12
-    freeze_txs[24 .. 32].each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(12));
-
-    // now we re-enroll existing validators (extension),
-    // and enroll 10 new validators.
-    foreach (node; nodes)
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        node.enrollValidator(enroll);
-
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
-
-    // at block height 13 the validator set changes
-    txs = txs[$ - 1]  // take those 8 UTXOs from #L184
-            .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
-            .takeExactly(8)  // there might be more than 8
-            .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
-        txs.each!(tx => nodes[0].putTransaction(tx));
-
-    network.expectBlock(Height(13));
-
-    // sanity check
+    // check 16 validators are enrolled
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount() == 32, 8.seconds,
+        retryFor(node.getValidatorCount() == validators, 5.seconds,
             format("Node %s has validator count %s. Expected: %s",
-                idx, node.getValidatorCount(), 32)));
+                idx, node.getValidatorCount(), validators)));
 
     // first validated block using 32 nodes
-    txs = txs
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner()
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
-        .takeExactly(8)
-        .array;
-    txs.each!(tx => nodes[0].putTransaction(tx));
-
-    // consensus check
-    network.expectBlock(Height(14));
+    network.generateBlocks(nodes, Height(GenesisValidatorCycle + 1),
+        Height(GenesisValidatorCycle));
 }
