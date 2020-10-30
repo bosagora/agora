@@ -39,6 +39,7 @@ import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
+import agora.stats.App;
 import agora.stats.EndpointReq;
 import agora.stats.Server;
 import agora.stats.Utils;
@@ -128,6 +129,9 @@ public class FullNode : API
     /// Endpoint request stats
     protected EndpointRequestStats endpoint_request_stats;
 
+    /// Application-wide stats
+    protected ApplicationStats app_stats;
+
     /***************************************************************************
 
         Constructor
@@ -209,9 +213,18 @@ public class FullNode : API
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
             this.pushBlock(this.params.Genesis);
 
+        Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
+        this.app_stats.setMetricTo!"agora_application_info"(
+            1, // Unused, see article linked in the struct's documentationx
+            "HEAD", // TODO: FIXME
+            __TIMESTAMP__, __VERSION__.to!string,
+            config.validator.enabled
+                ? config.validator.key_pair.address.toString() : null,
+        );
     }
 
+    mixin DefineCollectorForStats!("app_stats", "collectAppStats");
     mixin DefineCollectorForStats!("endpoint_request_stats", "collectStats");
 
     /***************************************************************************
