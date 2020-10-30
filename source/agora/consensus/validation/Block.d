@@ -180,6 +180,8 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
     UTXO[Hash] utxo_set;
     foreach (const ref tx; block.txs)
     {
+        // Data storage type(TxType.Data) is currently not required for Genesis Block,
+        // so it is omitted under conditions.
         if (!(tx.type == TxType.Payment || tx.type == TxType.Freeze))
             return "GenesisBlock: Invalid enum value for type field";
 

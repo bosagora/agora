@@ -18,6 +18,7 @@ import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.TransactionData;
 import agora.consensus.state.UTXOSet;
 
 version (unittest)
@@ -90,14 +91,14 @@ public string isInvalidReason (
             if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
                 return fail_reason;
 
-            if (utxo_value.type != TxType.Payment)
-                return "Transaction: Can only freeze a Payment transaction";
+            if ((utxo_value.type != TxType.Payment) && (utxo_value.type != TxType.Data))
+                return "Transaction: Can only freeze a Payment or Data transaction";
         }
 
         if (sum_unspent.integral() < Amount.MinFreezeAmount.integral())
             return "Transaction: available when the amount is at least 40,000 BOA";
     }
-    else if (tx.type == TxType.Payment)
+    else if ((tx.type == TxType.Payment) || (tx.type == TxType.Data))
     {
         uint count_freeze = 0;
         foreach (input; tx.inputs)
@@ -120,9 +121,38 @@ public string isInvalidReason (
             }
         }
 
-        // current limitation: if any UTXO is frozen, they all must be frozen
-        if ((count_freeze > 0) && (count_freeze != tx.inputs.length))
-            return "Transaction: Rejected combined inputs (freeze & payment)";
+        if (tx.type == TxType.Payment)
+        {
+            // current limitation: if any UTXO is frozen, they all must be frozen
+            if ((count_freeze > 0) && (count_freeze != tx.inputs.length))
+                return "Transaction: Rejected combined inputs (freeze & payment)";
+        }
+        else
+        {
+            if (count_freeze > 0)
+                return "Transaction: Frozen UTXO cannot be used for data storage";
+
+            if (tx.data.length > params.MaxSizeTransactionData)
+                return "Transaction: Data is too large";
+
+            uint count_commons_budge = 0;
+            Amount sum_fee;
+            foreach (output; tx.outputs)
+            {
+                if (output.address == params.CommonsBudgetAddress)
+                {
+                    count_commons_budge++;
+                    sum_fee.add(output.value);
+                }
+            }
+
+            if (count_commons_budge == 0)
+                return "Transaction: Output does not exist to pay the transaction fee";
+
+            Amount required_fee = clculateDataFee(tx.data.length, params.DataFeeFactor);
+            if (sum_fee < required_fee)
+                return "Transaction: There is not enough fee for saving data.";
+        }
     }
     else
         return "Transaction: Invalid transaction type";
@@ -797,4 +827,141 @@ unittest
     // test for output overflow in Payment transaction
     assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), params),
         format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
+}
+
+/// test for transaction to store data
+unittest
+{
+    import std.format;
+    scope storage = new TestUTXOSet;
+    KeyPair key_pair = KeyPair.random;
+
+    const params = new immutable(ConsensusParams)();
+
+    // create the payment transaction.
+    Transaction paymentTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init)],
+        [Output(Amount(10_000L * 10_000_000L), key_pair.address)]
+    );
+    storage.put(paymentTx);
+    Hash payment_utxo = UTXO.getHash(paymentTx.hashFull(), 0);
+
+    // create the frozen transaction.
+    Transaction frozenTx = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init)],
+        [Output(Amount(10_000L * 10_000_000L), key_pair.address)]
+    );
+    storage.put(frozenTx);
+    Hash frozen_utxo = UTXO.getHash(frozenTx.hashFull(), 0);
+
+    // create data with nomal size
+    ubyte[] normal_data;
+    normal_data.length = params.MaxSizeTransactionData;
+    foreach (idx; 0 .. normal_data.length)
+        normal_data[idx] = cast(ubyte)(idx % 256);
+
+    // create data with large size
+    ubyte[] large_data;
+    large_data ~= normal_data;
+    large_data ~= cast(ubyte)(0);
+
+    // calculate fee
+    Amount normal_data_fee = clculateDataFee(normal_data.length, params.DataFeeFactor);
+    Amount large_data_fee = clculateDataFee(large_data.length, params.DataFeeFactor);
+
+    Transaction dataTx;
+    Hash dataHash;
+
+    // Test 1. Using frozen input
+    // create the data transaction.
+    dataTx = Transaction(
+        TxType.Data,
+        [Input(frozen_utxo)],
+        [
+            Output(normal_data_fee, params.CommonsBudgetAddress),
+            Output(Amount(1_000L * 10_000_000L), key_pair.address)
+        ],
+        TransactionData(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for data storage using frozen input
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), params),
+        format("When storing data, tx with frozen input should not pass validation. tx: %s", dataTx));
+
+
+    // Test 2. Too large data
+    // create a transaction with large data
+    dataTx = Transaction(
+        TxType.Data,
+        [Input(payment_utxo)],
+        [
+            Output(large_data_fee, params.CommonsBudgetAddress),
+            Output(Amount(1_000L * 10_000_000L), key_pair.address)
+        ],
+        TransactionData(large_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for the transaction with large data
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), params),
+        format("When storing data, tx with large data should not pass validation. tx: %s", dataTx));
+
+
+    // Test 3. Without commons budget
+    // create a transaction without commons budget
+    dataTx = Transaction(
+        TxType.Data,
+        [Input(payment_utxo)],
+        [Output(Amount(1_000L * 10_000_000L), key_pair.address)],
+        TransactionData(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for transaction without commons budget
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), params),
+        format("When storing data, tx without commons budget output should not pass validation. tx: %s", dataTx));
+
+
+    // Test 4. With not enough fee
+    // create a transaction with not enough fee
+    dataTx = Transaction(
+        TxType.Data,
+        [Input(payment_utxo)],
+        [
+            Output(Amount(1L), params.CommonsBudgetAddress),
+            Output(Amount(1_000L * 10_000_000L), key_pair.address)
+        ],
+        TransactionData(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for the transaction with not enough fee
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), params),
+        format("When storing data, tx with not enough fee should not pass validation. tx: %s", dataTx));
+
+
+    // Test 5. Nomal
+    // create a transaction with enough fee
+    dataTx = Transaction(
+        TxType.Data,
+        [Input(payment_utxo)],
+        [
+            Output(normal_data_fee, params.CommonsBudgetAddress),
+            Output(Amount(1_000L * 10_000_000L), key_pair.address)
+        ],
+        TransactionData(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for the transaction with enough fee
+    assert(dataTx.isValid(&storage.peekUTXO, Height(0), params),
+        format("When storing data, Transaction data is not validated. tx: %s", dataTx));
 }

@@ -71,6 +71,11 @@ abstract class UTXOCache
             unlock_height = Height(height + 2016);
         }
 
+        // A comment with the introduction of a new transaction type (TxType.Data)
+        // If a transaction type is `TxType.Data`, and the input is `TxType.Freeze`,
+        // the transaction is already excluded at `validation`.
+        // No conditions have been added for `TxType.Data` here.
+
         foreach (const ref input; tx.inputs)
         {
             this.remove(input.utxo);

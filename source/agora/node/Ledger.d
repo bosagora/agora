@@ -1321,3 +1321,60 @@ unittest
     // Neither will the default
     scope other_ledger = new TestLedger(WK.Keys.A, [new_gen_block]);
 }
+
+unittest
+{
+    scope ledger = new TestLedger(WK.Keys.NODE2);
+
+    // Generate payment transactions to the first 8 well-known keypairs
+    auto txs = genesisSpendable().enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 1);
+
+    // Create data with nomal size
+    ubyte[] data;
+    data.length = 64;
+    foreach (idx; 0 .. data.length)
+        data[idx] = cast(ubyte)(idx % 256);
+
+    // Calculate fee
+    Amount data_fee = clculateDataFee(data.length, ledger.params.DataFeeFactor);
+
+    // Generate a block with data stored transactions
+    txs = txs.enumerate()
+        .map!(en => TxBuilder(en.value)
+              .draw(data_fee, [ledger.params.CommonsBudgetAddress])
+              .sign(TxType.Data, data))
+              .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 2);
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
+    assert(blocks.length == 3);
+    assert(blocks[2].header.height == 2);
+
+    foreach (ref tx; blocks[2].txs)
+    {
+        assert(tx.type == TxType.Data);
+        assert(tx.outputs.length > 0);
+        assert(tx.outputs[0].value == data_fee);
+        assert(tx.outputs[0].address == ledger.params.CommonsBudgetAddress);
+        assert(tx.data.data == data);
+    }
+
+    // Generate a block to reuse transactions used for data storage
+    txs = txs.enumerate()
+        .map!(en => TxBuilder(en.value, 1)
+              .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
+              .sign())
+              .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 3);
+    blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
+    assert(blocks.length == 4);
+    assert(blocks[3].header.height == 3);
+}
