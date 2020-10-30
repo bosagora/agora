@@ -686,24 +686,8 @@ unittest
 unittest
 {
     import std.format;
-    Transaction[Hash] storage;
+    scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
-
-    // delegate for finding `UTXOSetValue`
-    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
-    {
-        if (auto tx = hash in storage)
-        {
-            if (index < tx.outputs.length)
-            {
-                value.unlock_height = 0;
-                value.type = tx.type;
-                value.output = tx.outputs[index];
-                return true;
-            }
-        }
-        return false;
-    };
 
     // create the first transaction
     auto firstTx = Transaction(
@@ -711,8 +695,8 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount.MaxUnitSupply, key_pairs[0].address)]
     );
-    auto firstHash = hashFull(firstTx);
-    storage[firstHash] = firstTx;
+    storage.put(firstTx);
+    const firstHash = UTXOSetValue.getHash(firstTx.hashFull(), 0);
 
     // create the second transaction
     auto secondTx = Transaction(
@@ -720,8 +704,8 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
-    auto secondHash = hashFull(secondTx);
-    storage[secondHash] = secondTx;
+    storage.put(secondTx);
+    const secondHash = UTXOSetValue.getHash(secondTx.hashFull(), 0);
 
     // create the third transaction
     auto thirdTx = Transaction(
@@ -729,13 +713,13 @@ unittest
         [Input(firstHash, 0), Input(secondHash, 0)],
         [Output(Amount(100), key_pairs[1].address)]
     );
+    storage.put(thirdTx);
     auto thirdHash = hashFull(thirdTx);
-    storage[thirdHash] = thirdTx;
     thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for input overflow in Payment transaction
-    assert(!thirdTx.isValid(findUTXO, Height(0)),
+    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0)),
         format("Tx having input overflow should not pass validation. tx: %s", thirdTx));
 
     // create the fourth transaction
@@ -744,13 +728,13 @@ unittest
         [Input(firstHash, 0), Input(secondHash, 0)],
         [Output(Amount(100), key_pairs[1].address)]
     );
+    storage.put(fourthTx);
     auto fourthHash = hashFull(fourthTx);
-    storage[fourthHash] = fourthTx;
     fourthTx.inputs[0].signature = key_pairs[0].secret.sign(fourthHash[]);
     fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
 
     // test for input overflow in Freeze transaction
-    assert(!fourthTx.isValid(findUTXO, Height(0)),
+    assert(!fourthTx.isValid(&storage.peekUTXO, Height(0)),
         format("Tx having input overflow should not pass validation. tx: %s", fourthTx));
 }
 
@@ -758,24 +742,8 @@ unittest
 unittest
 {
     import std.format;
-    Transaction[Hash] storage;
+    scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
-
-    // delegate for finding `UTXOSetValue`
-    scope findUTXO = (Hash hash, size_t index, out UTXOSetValue value)
-    {
-        if (auto tx = hash in storage)
-        {
-            if (index < tx.outputs.length)
-            {
-                value.unlock_height = 0;
-                value.type = tx.type;
-                value.output = tx.outputs[index];
-                return true;
-            }
-        }
-        return false;
-    };
 
     // create the first transaction
     auto firstTx = Transaction(
@@ -783,8 +751,8 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
-    auto firstHash = hashFull(firstTx);
-    storage[firstHash] = firstTx;
+    storage.put(firstTx);
+    const firstHash = UTXOSetValue.getHash(firstTx.hashFull(), 0);
 
     // create the second transaction
     auto secondTx = Transaction(
@@ -792,8 +760,8 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
-    auto secondHash = hashFull(secondTx);
-    storage[secondHash] = secondTx;
+    storage.put(secondTx);
+    const secondHash = UTXOSetValue.getHash(secondTx.hashFull(), 0);
 
     // create the third transaction
     auto thirdTx = Transaction(
@@ -802,12 +770,12 @@ unittest
         [Output(Amount.MaxUnitSupply, key_pairs[1].address),
             Output(Amount(100), key_pairs[1].address)]
     );
+    storage.put(thirdTx);
     auto thirdHash = hashFull(thirdTx);
-    storage[thirdHash] = thirdTx;
     thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for output overflow in Payment transaction
-    assert(!thirdTx.isValid(findUTXO, Height(0)),
+    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0)),
         format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
 }
