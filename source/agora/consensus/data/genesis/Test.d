@@ -105,7 +105,7 @@ public immutable Block GenesisBlock = {
                 Signature(`0x052ee1d975c49f19fd26b077740dcac399f174f40b5df1aba5f09ebea11faac` ~
                           `fd79a36ace4d3097869dc009b8939fc83bdf940c8822c6931d5c09326aa746b31`)
             ),
-            
+
             // Node 3
             Enrollment(
                 Hash(`0xdb3931bd87d2cea097533d82be0a5e36c54fec8e5570790c3369bd8300c65a0` ~
