@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.UTXOSet;
+module agora.consensus.state.UTXOSet;
 
 import agora.common.crypto.Key;
 import agora.common.Hash;

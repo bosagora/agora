@@ -13,7 +13,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.ValidatorSet;
+module agora.consensus.state.ValidatorSet;
 
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;

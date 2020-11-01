@@ -61,7 +61,7 @@ import agora.consensus.data.UTXOSetValue;
 import agora.consensus.EnrollmentPool;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
-import agora.consensus.ValidatorSet;
+import agora.consensus.state.ValidatorSet;
 import agora.stats.Utils;
 import agora.stats.Validator;
 import agora.utils.Log;
