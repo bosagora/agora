@@ -23,7 +23,7 @@ import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
-import agora.consensus.data.ConsensusParams;
+import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;

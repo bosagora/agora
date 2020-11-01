@@ -331,7 +331,7 @@ private Enrollment createEnrollment(const ref Hash utxo_key,
 /// test for function of EnrollmentPool
 unittest
 {
-    import agora.consensus.data.ConsensusParams;
+    import agora.consensus.data.Params;
     import agora.consensus.data.Transaction;
     import std.algorithm;
 

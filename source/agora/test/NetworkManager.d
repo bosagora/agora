@@ -23,7 +23,7 @@ import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Types;
 import agora.consensus.data.Block;
-import agora.consensus.data.ConsensusParams;
+import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
 

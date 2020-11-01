@@ -20,7 +20,7 @@ version (none):
 import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.Config;
-import agora.consensus.data.ConsensusParams;
+import agora.consensus.data.Params;
 import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.consensus.data.Block;
