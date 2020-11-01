@@ -35,7 +35,7 @@ import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.validation;
@@ -184,7 +184,7 @@ public class Ledger
                 ? Height(block_count - this.params.ValidatorCycle) : Height(0);
 
             PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
-            UTXOSetValue[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
+            UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
 
             // restore validator set from the blockchain.
             // using block_count, as the range is inclusive
@@ -400,7 +400,7 @@ public class Ledger
             this.enroll_man.removeEnrollment(enrollment.utxo_key);
 
             PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
-            UTXOSetValue[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
+            UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
             if (auto r = this.enroll_man.addValidator(enrollment,
                 block.header.height, this.utxo_set.getUTXOFinder(), utxos))
             {
@@ -841,12 +841,12 @@ unittest
     // Ensure that all previously-generated outputs are in the UTXO set
     {
         auto findUTXO = ledger.utxo_set.getUTXOFinder();
-        UTXOSetValue utxo;
+        UTXO utxo;
         assert(
             txs.all!(
                 tx => iota(tx.outputs.length).all!(
                     (idx) {
-                        return findUTXO(UTXOSetValue.getHash(tx.hashFull(), idx), utxo) &&
+                        return findUTXO(UTXO.getHash(tx.hashFull(), idx), utxo) &&
                             utxo.output == tx.outputs[idx];
                     }
                 )
@@ -1071,9 +1071,9 @@ unittest
                 enroll_key_pair ~= key_pair;
 
     const utxo_hashes = [
-        UTXOSetValue.getHash(hashFull(blocks[3].txs[0]), 0),
-        UTXOSetValue.getHash(hashFull(blocks[3].txs[1]), 0),
-        UTXOSetValue.getHash(hashFull(blocks[3].txs[2]), 0),
+        UTXO.getHash(hashFull(blocks[3].txs[0]), 0),
+        UTXO.getHash(hashFull(blocks[3].txs[1]), 0),
+        UTXO.getHash(hashFull(blocks[3].txs[2]), 0),
     ];
 
     Enrollment[] enrollments ;

@@ -26,7 +26,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
@@ -202,7 +202,7 @@ public class Validator : FullNode, API
         auto finder = this.utxo_set.getUTXOFinder();
         foreach (utxo; utxos)
         {
-            UTXOSetValue value;
+            UTXO value;
             assert(finder(utxo, value));
             keys ~= value.output.address;
         }

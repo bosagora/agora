@@ -20,7 +20,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 
@@ -119,7 +119,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             extraSet.put(tx);
         scope extraFinder = extraSet.getUTXOFinder();
         scope UTXOFinder enrollmentsUTXOFinder =
-            (Hash utxo, out UTXOSetValue val)
+            (Hash utxo, out UTXO val)
             {
                 if (findUTXO(utxo, val))
                     return true;
@@ -176,7 +176,7 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
     if (!block.txs.isSorted())
         return "GenesisBlock: Transactions are not sorted";
 
-    UTXOSetValue[Hash] utxo_set;
+    UTXO[Hash] utxo_set;
     foreach (const ref tx; block.txs)
     {
         if (!(tx.type == TxType.Payment || tx.type == TxType.Freeze))
@@ -201,12 +201,12 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
                 return "GenesisBlock: Value of output is 0"
                     ~ "in the transaction";
 
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: 0,
                 type: tx.type,
                 output: output
             };
-            utxo_set[UTXOSetValue.getHash(tx_hash, idx)] = utxo_value;
+            utxo_set[UTXO.getHash(tx_hash, idx)] = utxo_value;
         }
     }
 
@@ -225,7 +225,7 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
             ~ "ascending order by the utxo_key";
 
     Set!Hash used_utxos;
-    bool findUTXO (Hash utxo, out UTXOSetValue value) nothrow @safe
+    bool findUTXO (Hash utxo, out UTXO value) nothrow @safe
     {
         if (utxo in used_utxos)
             return false;  // double-spend
@@ -505,7 +505,7 @@ unittest
     foreach (tx; prev_txs)
     {
         // one utxo missing from the set => fail
-        utxos.storage.remove(UTXOSetValue.getHash(tx.hashFull(), 0));
+        utxos.storage.remove(UTXO.getHash(tx.hashFull(), 0));
         assert(!block.isValid(prev_block.header.height, prev_block.header.hashFull(),
             findUTXO, Enrollment.MinValidatorCount));
 
@@ -526,7 +526,7 @@ unittest
 
     // contains the used set of UTXOs during validation (to prevent double-spend)
     Output[Hash] used_set;
-    scope UTXOFinder findNonSpent = (Hash utxo_hash, out UTXOSetValue value)
+    scope UTXOFinder findNonSpent = (Hash utxo_hash, out UTXO value)
     {
         if (utxo_hash in used_set)
             return false;  // double-spend
@@ -682,7 +682,7 @@ unittest
     Pair signature_noise = Pair.random;
     Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
 
-    auto utxo_hash1 = UTXOSetValue.getHash(hashFull(txs_2[0]), 0);
+    auto utxo_hash1 = UTXO.getHash(hashFull(txs_2[0]), 0);
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
     enroll1.random_seed = hashFull(Scalar.random());
@@ -690,7 +690,7 @@ unittest
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
 
-    auto utxo_hash2 = UTXOSetValue.getHash(hashFull(txs_2[1]), 0);
+    auto utxo_hash2 = UTXO.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.random_seed = hashFull(Scalar.random());
@@ -818,7 +818,7 @@ unittest
         Pair signature_noise = Pair.random;
         Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
 
-        auto utxo_hash1 = UTXOSetValue.getHash(hashFull(txs_2[1]), 0);
+        auto utxo_hash1 = UTXO.getHash(hashFull(txs_2[1]), 0);
         Enrollment enroll1;
         enroll1.utxo_key = utxo_hash1;
         enroll1.random_seed = hashFull(Scalar.random());
