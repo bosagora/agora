@@ -150,7 +150,7 @@ public struct Input
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
         hashPart(this.previous, dg);
-        hashPart(this.index, dg);
+        hashPart(ulong(this.index), dg);
     }
 }
 
@@ -230,8 +230,8 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-    "0x9a87d86f702cd0f519efba81cf379f2a06907f34df6546f93c8619af113d0d774" ~
-    "041b8e45f7975890b98890c7f5b0c062f6dae88ac1ec8d2c25dcf88b9aa01c9");
+        `0x1e69620e3f5cdb18952b98148d91f945383492ed6be65ec3b4ea4447e8e5ac35c` ~
+        `06d9f0734c5e558722044d68a3e9374da119025edb1a60cee18e05526256315`);
     assert(hashFull(payment_tx) == tx_payment_hash);
 
     Transaction freeze_tx = Transaction(
@@ -241,8 +241,8 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-    "0x7c8f238f70318aae788487e57eb6f4793e3b0e48fbe017c1829ec269d07a76661" ~
-    "5173e9a33739e916b1d40248a48add0296b2a8e51d0f8e1a87bf7acc7c4f136");
+        `0x2b080fbc36fee98c69578932148d77bd41680d54ba592f40c3b023e1dbaaa214` ~
+        `a8b5eec7bb19927d877dd18c567814cfea81189bd1e9236db9e91c52a6512170`);
     assert(hashFull(freeze_tx) == tx_freeze_hash);
 }
 
