@@ -20,7 +20,7 @@ import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import agora.utils.Log;
 
 import std.file;
@@ -86,7 +86,7 @@ public class UTXOSet
             && tx.inputs.any!(input =>
                 (
                     (input.previous != Hash.init) &&
-                    (this.getUTXOSetValue(input.previous, input.index).type == TxType.Freeze)
+                    (this.getUTXO(input.previous, input.index).type == TxType.Freeze)
                 )
             )
         )
@@ -96,38 +96,38 @@ public class UTXOSet
 
         foreach (const ref input; tx.inputs)
         {
-            auto utxo_hash = UTXOSetValue.getHash(input.previous, input.index);
+            auto utxo_hash = UTXO.getHash(input.previous, input.index);
             this.utxo_db.remove(utxo_hash);
         }
 
         Hash tx_hash = tx.hashFull();
         foreach (idx, output; tx.outputs)
         {
-            auto utxo_hash = UTXOSetValue.getHash(tx_hash, idx);
-            auto utxo_value = UTXOSetValue(unlock_height, tx.type, output);
+            auto utxo_hash = UTXO.getHash(tx_hash, idx);
+            auto utxo_value = UTXO(unlock_height, tx.type, output);
             this.utxo_db[utxo_hash] = utxo_value;
         }
     }
 
     /***************************************************************************
 
-        get an UTXOSetValue in the UTXO set.
+        get an UTXO in the UTXO set.
 
         Params:
             hash = the hash of the transaction introducing the `Output`
             index = the index of the output
 
         Return:
-            Return UTXOSetValue
+            Return UTXO
 
     ***************************************************************************/
 
-    private UTXOSetValue getUTXOSetValue (Hash hash, size_t index)
+    private UTXO getUTXO (Hash hash, size_t index)
         nothrow @safe
     {
-        auto utxo_hash = UTXOSetValue.getHash(hash, index);
+        auto utxo_hash = UTXO.getHash(hash, index);
 
-        UTXOSetValue value;
+        UTXO value;
         if (!this.utxo_db.find(utxo_hash, value))
             assert(0);
         return value;
@@ -161,25 +161,25 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    public UTXOSetValue[Hash] getUTXOs (const ref PublicKey pubkey) @safe nothrow
+    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) @safe nothrow
     {
         return this.utxo_db.getUTXOs(pubkey);
     }
 
     /***************************************************************************
 
-        Find an UTXOSetValue in the UTXO set.
+        Find an UTXO in the UTXO set.
 
         Params:
             hash = the hash of the UTXO (`hashFull(tx_hash, index)`)
-            output = will contain the UTXOSetValue if found
+            output = will contain the UTXO if found
 
         Return:
             Return true if the UTXO was found
 
     ***************************************************************************/
 
-    private bool findUTXO (Hash utxo, out UTXOSetValue value)
+    private bool findUTXO (Hash utxo, out UTXO value)
         nothrow @safe
     {
         if (utxo in this.used_utxos)
@@ -255,18 +255,18 @@ private class UTXODB
 
     /***************************************************************************
 
-        Look up the UTXOSetValue in the map, and store it to 'output' if found
+        Look up the UTXO in the map, and store it to 'output' if found
 
         Params:
             key = the key to find
-            value = will contain the UTXOSetValue if found
+            value = will contain the UTXO if found
 
         Returns:
             true if the value was found
 
     ***************************************************************************/
 
-    public bool find (Hash key, out UTXOSetValue value) nothrow @trusted
+    public bool find (Hash key, out UTXO value) nothrow @trusted
     {
         scope (failure) assert(0);
         auto results = db.execute("SELECT val FROM utxo_map WHERE key = ?",
@@ -274,7 +274,7 @@ private class UTXODB
 
         foreach (row; results)
         {
-            value = deserializeFull!UTXOSetValue(row.peek!(ubyte[])(0));
+            value = deserializeFull!UTXO(row.peek!(ubyte[])(0));
             return true;
         }
 
@@ -293,18 +293,18 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public UTXOSetValue[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @trusted
+    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @trusted
     {
         scope (failure) assert(0);
 
-        UTXOSetValue[Hash] utxos;
+        UTXO[Hash] utxos;
         auto results = db.execute("SELECT key, val FROM utxo_map WHERE pubkey_hash = ?",
             pubkey[]);
 
         foreach (row; results)
         {
             auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
-            auto value = deserializeFull!UTXOSetValue(row.peek!(ubyte[])(1));
+            auto value = deserializeFull!UTXO(row.peek!(ubyte[])(1));
             utxos[hash] = value;
         }
 
@@ -313,15 +313,15 @@ private class UTXODB
 
     /***************************************************************************
 
-        Add an UTXOSetValue to the map
+        Add an UTXO to the map
 
         Params:
-            value = the UTXOSetValue to add
+            value = the UTXO to add
             key = the key to use
 
     ***************************************************************************/
 
-    public void opIndexAssign (const ref UTXOSetValue value, Hash key) @safe
+    public void opIndexAssign (const ref UTXO value, Hash key) @safe
     {
         static ubyte[] buffer;
         serializeToBuffer(value, buffer);
@@ -354,7 +354,7 @@ unittest
 {
     import agora.common.Amount;
     import agora.consensus.data.Transaction;
-    import agora.consensus.data.UTXOSetValue;
+    import agora.consensus.data.UTXO;
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -368,7 +368,7 @@ unittest
     );
     utxo_set.updateUTXOCache(tx1, Height(0));
     Hash hash1 = hashFull(tx1);
-    auto utxo_hash = UTXOSetValue.getHash(hash1, 0);
+    auto utxo_hash = UTXO.getHash(hash1, 0);
 
     // test for getting UTXOs
     auto utxos = utxo_set.getUTXOs(key_pairs[0].address);

@@ -17,7 +17,7 @@ import agora.common.Amount;
 import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 
 version (unittest)
 {
@@ -64,10 +64,10 @@ public string isInvalidReason (
 
     const tx_hash = hashFull(tx);
 
-    string isInvalidInput (const ref Input input, ref UTXOSetValue utxo_value,
+    string isInvalidInput (const ref Input input, ref UTXO utxo_value,
         ref Amount sum_unspent)
     {
-        if (!findUTXO(UTXOSetValue.getHash(input.previous, input.index), utxo_value))
+        if (!findUTXO(UTXO.getHash(input.previous, input.index), utxo_value))
             return "Transaction: Input ref not in UTXO";
 
         if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
@@ -85,7 +85,7 @@ public string isInvalidReason (
     {
         foreach (input; tx.inputs)
         {
-            UTXOSetValue utxo_value;
+            UTXO utxo_value;
             if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
                 return fail_reason;
 
@@ -101,7 +101,7 @@ public string isInvalidReason (
         uint count_freeze = 0;
         foreach (input; tx.inputs)
         {
-            UTXOSetValue utxo_value;
+            UTXO utxo_value;
             if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
                 return fail_reason;
 
@@ -303,7 +303,7 @@ unittest
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: 0,
                 type: TxType.Payment,
                 output: output
@@ -333,7 +333,7 @@ unittest
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: 0,
                 type: TxType.Freeze,
                 output: output
@@ -363,7 +363,7 @@ unittest
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: 0,
                 type: TxType.Payment,
                 output: output
@@ -392,7 +392,7 @@ unittest
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: 0,
                 type: TxType.Payment,
                 output: output
@@ -457,7 +457,7 @@ unittest
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: block_height+1,
                 type: TxType.Payment,
                 output: output
@@ -488,7 +488,7 @@ unittest
         foreach (idx, output; secondTx.outputs)
         {
             const Hash utxo_hash = hashMulti(secondHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: block_height+1,
                 type: TxType.Freeze,
                 output: output
@@ -519,7 +519,7 @@ unittest
         foreach (idx, output; thirdTx.outputs)
         {
             const Hash utxo_hash = hashMulti(thirdHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: block_height+2016,
                 type: TxType.Payment,
                 output: output
@@ -568,7 +568,7 @@ unittest
         foreach (idx, output; fifthTx.outputs)
         {
             const Hash utxo_hash = hashMulti(fifthHash, idx);
-            const UTXOSetValue utxo_value = {
+            const UTXO utxo_value = {
                 unlock_height: block_height+1,
                 type: TxType.Payment,
                 output: output
@@ -696,7 +696,7 @@ unittest
         [Output(Amount.MaxUnitSupply, key_pairs[0].address)]
     );
     storage.put(firstTx);
-    const firstHash = UTXOSetValue.getHash(firstTx.hashFull(), 0);
+    const firstHash = UTXO.getHash(firstTx.hashFull(), 0);
 
     // create the second transaction
     auto secondTx = Transaction(
@@ -705,7 +705,7 @@ unittest
         [Output(Amount(100), key_pairs[0].address)]
     );
     storage.put(secondTx);
-    const secondHash = UTXOSetValue.getHash(secondTx.hashFull(), 0);
+    const secondHash = UTXO.getHash(secondTx.hashFull(), 0);
 
     // create the third transaction
     auto thirdTx = Transaction(
@@ -752,7 +752,7 @@ unittest
         [Output(Amount(100), key_pairs[0].address)]
     );
     storage.put(firstTx);
-    const firstHash = UTXOSetValue.getHash(firstTx.hashFull(), 0);
+    const firstHash = UTXO.getHash(firstTx.hashFull(), 0);
 
     // create the second transaction
     auto secondTx = Transaction(
@@ -761,7 +761,7 @@ unittest
         [Output(Amount(100), key_pairs[0].address)]
     );
     storage.put(secondTx);
-    const secondHash = UTXOSetValue.getHash(secondTx.hashFull(), 0);
+    const secondHash = UTXO.getHash(secondTx.hashFull(), 0);
 
     // create the third transaction
     auto thirdTx = Transaction(

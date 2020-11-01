@@ -22,7 +22,7 @@ import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import agora.consensus.EnrollmentManager;
 
 import scpd.Cpp;
@@ -458,7 +458,7 @@ private NodeStake[] buildStakesDescending (const ref PublicKey filter,
 
     foreach (utxo_key; utxo_keys)
     {
-        UTXOSetValue value;
+        UTXO value;
         assert(finder(utxo_key, value), "UTXO for validator not found!");
 
         if (value.output.address != filter)

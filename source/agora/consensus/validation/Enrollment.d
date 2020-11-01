@@ -19,7 +19,7 @@ import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Enrollment;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 
 import std.conv;
 
@@ -51,7 +51,7 @@ version (unittest)
 public string isInvalidReason (const ref Enrollment enrollment,
     UTXOFinder findUTXO) nothrow @safe
 {
-    UTXOSetValue utxo_set_value;
+    UTXO utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
         return "Enrollment: UTXO not found";
 
@@ -129,10 +129,10 @@ unittest
         [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
     );
 
-    auto utxo_hash1 = UTXOSetValue.getHash(hashFull(tx1), 0);
-    auto utxo_hash2 = UTXOSetValue.getHash(hashFull(tx2), 0);
-    auto utxo_hash3 = UTXOSetValue.getHash(hashFull(tx3), 0);
-    auto utxo_hash4 = UTXOSetValue.getHash(hashFull(tx4), 0);
+    auto utxo_hash1 = UTXO.getHash(hashFull(tx1), 0);
+    auto utxo_hash2 = UTXO.getHash(hashFull(tx2), 0);
+    auto utxo_hash3 = UTXO.getHash(hashFull(tx3), 0);
+    auto utxo_hash4 = UTXO.getHash(hashFull(tx4), 0);
 
     Pair signature_noise = Pair.random;
 

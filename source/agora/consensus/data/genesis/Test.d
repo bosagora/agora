@@ -154,7 +154,7 @@ unittest
     import agora.consensus.PreImage;
     import agora.common.crypto.ECC;
     import agora.common.crypto.Schnorr;
-    import agora.consensus.data.UTXOSetValue;
+    import agora.consensus.data.UTXO;
 
     version (none)
     {
@@ -179,7 +179,7 @@ unittest
         Enrollment[] enrolls = txs[0].outputs.enumerate()
             .map!(tup => EnrollmentManager.makeEnrollment(
                       WK.Keys[tup.value.address],
-                      UTXOSetValue.getHash(txhash, tup.index),
+                      UTXO.getHash(txhash, tup.index),
                       ValidatorCycle))
             .array();
 

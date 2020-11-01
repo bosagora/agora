@@ -57,7 +57,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import agora.consensus.EnrollmentPool;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
@@ -274,7 +274,7 @@ public class EnrollmentManager
 
     public string addValidator (const ref Enrollment enroll,
         Height block_height, scope UTXOFinder finder,
-        const UTXOSetValue[Hash] self_utxos) @safe nothrow
+        const UTXO[Hash] self_utxos) @safe nothrow
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
@@ -608,7 +608,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public void restoreValidators (Height last_height, const ref Block block,
-        scope UTXOFinder finder, const ref UTXOSetValue[Hash] self_utxos)
+        scope UTXOFinder finder, const ref UTXO[Hash] self_utxos)
         @safe nothrow
     {
         assert(last_height >= block.header.height);
@@ -645,7 +645,7 @@ public class EnrollmentManager
         const PublicKey key = this.getEnrollmentPublicKey();
         foreach (utxo_key; utxo_keys)
         {
-            UTXOSetValue value;
+            UTXO value;
             if (!finder(utxo_key, value))
                 assert(0, "UTXO for validator not found!");  // should never happen
 
@@ -1047,7 +1047,7 @@ unittest
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
         .each!(tx => utxo_set.put(tx));
-    UTXOSetValue[Hash] utxos = utxo_set.storage;
+    UTXO[Hash] utxos = utxo_set.storage;
 
     auto man = new EnrollmentManager(":memory:", key_pair,
         new immutable(ConsensusParams)());
@@ -1144,7 +1144,7 @@ unittest
 
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
         .each!(tx => utxo_set.put(tx));
-    UTXOSetValue[Hash] utxos = utxo_set.storage;
+    UTXO[Hash] utxos = utxo_set.storage;
 
     // create an EnrollmentManager object
     auto man = new EnrollmentManager(":memory:", key_pair,
@@ -1298,7 +1298,7 @@ unittest
             .sign(TxType.Freeze))
         .each!((tx) {
             storage.put(tx);
-            utxos ~= UTXOSetValue.getHash(tx.hashFull(), 0);
+            utxos ~= UTXO.getHash(tx.hashFull(), 0);
         });
 
     auto params = new immutable(ConsensusParams);

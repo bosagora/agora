@@ -26,7 +26,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
-import agora.consensus.data.UTXOSetValue;
+import agora.consensus.data.UTXO;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.utils.Log;
@@ -564,7 +564,7 @@ unittest
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign(TxType.Freeze))
         .each!((tx) {
             storage.put(tx);
-            utxos ~= UTXOSetValue.getHash(tx.hashFull(), 0);
+            utxos ~= UTXO.getHash(tx.hashFull(), 0);
         });
 
     // add enrollments

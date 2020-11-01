@@ -12,7 +12,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.data.UTXOSetValue;
+module agora.consensus.data.UTXO;
 
 import agora.common.Hash;
 import agora.common.Serializer;
@@ -21,11 +21,11 @@ import agora.common.Types;
 import agora.consensus.data.Transaction;
 
 /// Delegate to find an unspent UTXO
-public alias UTXOFinder = bool delegate (Hash utxo, out UTXOSetValue)
+public alias UTXOFinder = bool delegate (Hash utxo, out UTXO)
     @safe nothrow;
 
 /// The structure of spendable transaction output
-public struct UTXOSetValue
+public struct UTXO
 {
     /// Height of the block to be unlock
     ulong unlock_height;
@@ -72,7 +72,7 @@ public struct UTXOSetValue
 public class TestUTXOSet
 {
     ///
-    public UTXOSetValue[Hash] storage;
+    public UTXO[Hash] storage;
 
     /// Keeps track of spent outputs
     private Set!Hash used_utxos;
@@ -92,7 +92,7 @@ public class TestUTXOSet
     public alias findUTXO = peekUTXO;
 
     /// Get an UTXO, no double-spend protection
-    public bool peekUTXO (Hash utxo, out UTXOSetValue value)
+    public bool peekUTXO (Hash utxo, out UTXO value)
         nothrow @safe
     {
         // Note: Keep this in sync with `findUTXO`
@@ -110,8 +110,8 @@ public class TestUTXOSet
         Hash txhash = hashFull(tx);
         foreach (size_t idx, ref output_; tx.outputs)
         {
-            Hash h = UTXOSetValue.getHash(txhash, idx);
-            UTXOSetValue v = {
+            Hash h = UTXO.getHash(txhash, idx);
+            UTXO v = {
                 type: tx.type,
                 output: output_
             };
@@ -126,7 +126,7 @@ public class TestUTXOSet
     }
 
     /// Get an UTXO, does not return double spend
-    private bool findUTXO_ (Hash utxo, out UTXOSetValue value)
+    private bool findUTXO_ (Hash utxo, out UTXO value)
         nothrow @safe
     {
         // Note: Keep this in sync with the real `findUTXO`
@@ -145,5 +145,5 @@ public class TestUTXOSet
 
 unittest
 {
-    testSymmetry!UTXOSetValue();
+    testSymmetry!UTXO();
 }
