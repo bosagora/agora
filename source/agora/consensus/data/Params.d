@@ -17,7 +17,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.data.ConsensusParams;
+module agora.consensus.data.Params;
 
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;

@@ -22,7 +22,7 @@ import agora.api.Validator;
 import agora.common.Config;
 import agora.common.Task;
 import agora.consensus.data.Block;
-import agora.consensus.data.ConsensusParams;
+import agora.consensus.data.Params;
 import agora.consensus.protocol.Nominator;
 import agora.common.crypto.Key;
 import agora.common.Hash;

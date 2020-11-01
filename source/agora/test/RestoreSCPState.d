@@ -22,7 +22,7 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.data.Block;
-import agora.consensus.data.ConsensusParams;
+import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.SCPEnvelopeStore;
 import agora.node.Ledger;
