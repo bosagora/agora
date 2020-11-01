@@ -31,7 +31,7 @@ import agora.common.Set;
 import agora.common.TransactionPool;
 import agora.common.Types;
 import agora.consensus.data.Block;
-import agora.consensus.data.ConsensusData;
+import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Transaction;

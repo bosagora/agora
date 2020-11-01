@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.data.ConsensusData;
+module agora.consensus.protocol.Data;
 
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
