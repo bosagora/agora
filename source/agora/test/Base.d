@@ -40,7 +40,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXOSetValue;
-import agora.consensus.UTXOSet;
+import agora.consensus.state.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.SCPEnvelopeStore;
