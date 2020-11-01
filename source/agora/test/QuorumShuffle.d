@@ -45,7 +45,7 @@ unittest
 
     Height block_height = Height(0);
 
-    const keys = WK.Keys.byRange.map!(kp => kp.address).take(6).array;
+    const keys = network.nodes.map!(node => node.client.getPublicKey()).array;
 
     // check that the preimages were revealed before we trigger block creation
     // note: this is a workaround. A block should not be accepted if there
