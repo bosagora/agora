@@ -1369,6 +1369,7 @@ public class TestValidatorNode : Validator, TestAPI
         Hash[] utxo_hashes;
         auto pubkey = this.getPublicKey();
         auto utxos = this.utxo_set.getUTXOs(pubkey);
+        assert(utxos.length > 0, format!"No utxo for public key %s"(pubkey));
         foreach (key, utxo; utxos)
         {
             if (utxo.type == TxType.Freeze &&
@@ -1377,7 +1378,7 @@ public class TestValidatorNode : Validator, TestAPI
                 utxo_hashes ~= key;
             }
         }
-
+        assert(utxo_hashes.length > 0, format!"No frozen utxo for %s"(pubkey));
         return this.enroll_man.createEnrollment(utxo_hashes[0]);
     }
 
@@ -1620,18 +1621,24 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return format("FullNode #%s", idx);
     }
 
-    const num_validators = GenesisValidators + test_conf.outsider_validators;
-    auto validator_keys = WK.Keys.byRange().enumerate().take(num_validators);
+    auto genesis_validator_keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
+        WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7];
+
+    auto outsider_validators_keys = WK.Keys.byRange()
+        .takeExactly(test_conf.outsider_validators);
+
+    auto validator_keys = genesis_validator_keys ~ outsider_validators_keys.array;
 
     // all enrolled and un-enrolled validators
-    auto validator_addresses = validator_keys
+    auto validator_addresses = validator_keys.enumerate
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     // only enrolled validators
-    auto enrolled_addresses = validator_keys.take(GenesisValidators)
+    auto enrolled_addresses = genesis_validator_keys.enumerate
+        .takeExactly(GenesisValidators)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
-    auto validator_configs = validator_keys
+    auto validator_configs = validator_keys.enumerate
         .map!(en => makeValidatorConfig(
             en.index,
             en.value,
@@ -1657,14 +1664,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto all_configs = validator_configs.chain(full_node_configs).array;
 
-    auto gen_block = makeGenesisBlock(
-        validator_configs
-            .take(GenesisValidators)  // only enrolled validators
-            .map!(conf => conf.validator.key_pair)
-            .array,
-        GenesisValidatorCycle);
-
-    immutable string gen_block_hex = gen_block
+    immutable string gen_block_hex = GenesisBlock
         .serializeFull()
         .toHexString();
 
@@ -1676,7 +1676,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.node.genesis_start_time = genesis_start_time;
     }
 
-    immutable(Block)[] blocks = generateBlocks(gen_block,
+    immutable(Block)[] blocks = generateBlocks(GenesisBlock,
         test_conf.extra_blocks);
 
     auto net = new APIManager(blocks, test_conf, genesis_start_time);
@@ -1740,74 +1740,6 @@ public void ensureConsistency (Exc : Throwable = AssertError, APIS)(
                  format("Node #%d was at height %d (expected: %d)",
                         idx, node.getBlockHeight(), expected));
     }
-}
-
-
-/*******************************************************************************
-
-    Generate a genesis block.
-
-    For each key pair, a freeze transaction and an Enrollment
-    will be created and added to the generated Genesis block.
-    The first transaction is the unittest's `GenesisTransaction`
-
-    Params:
-        key_pairs = key pairs for signing enrollments with
-        validator_cycle = the consensus-critical `ValidatorCycle` value
-
-    Returns:
-        The genesis block
-
-*******************************************************************************/
-
-private immutable(Block) makeGenesisBlock (in KeyPair[] key_pairs,
-    uint validator_cycle)
-{
-    import agora.common.Serializer;
-
-    // 1 payment tx, the rest are freeze txs
-    Transaction[] txs;
-    // This function is only called from unittests so we assume that
-    // GenesisBlock is `UnitTestGenesisBlock`
-    txs ~= GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
-    Enrollment[] enrolls;
-
-    foreach (key_pair; key_pairs)
-    {
-        Transaction tx =
-        {
-            type : TxType.Freeze,
-            outputs : [Output(Amount.MinFreezeAmount, key_pair.address)]
-        };
-
-        txs ~= tx;
-        const utxo = UTXOSetValue.getHash(tx.hashFull(), 0);
-        enrolls ~= EnrollmentManager.makeEnrollment(
-            key_pair, utxo, validator_cycle);
-    }
-
-    enrolls.sort!("a.utxo_key < b.utxo_key");
-
-    txs.sort;
-    Hash[] merkle_tree;
-    auto merkle_root = Block.buildMerkleTree(txs, merkle_tree);
-
-    immutable(BlockHeader) makeHeader ()
-    {
-        return immutable(BlockHeader)(
-            Hash.init,   // prev
-            Height(0),   // height
-            merkle_root,
-            BitField!uint.init,
-            Signature.init,
-            enrolls.assumeUnique,
-        );
-    }
-    return immutable(Block)(
-        makeHeader(),
-        txs.assumeUnique,
-        merkle_tree.assumeUnique
-    );
 }
 
 /*******************************************************************************
