@@ -284,7 +284,7 @@ unittest
     import agora.common.Task;
     import agora.common.crypto.Key;
     import agora.consensus.protocol.Nominator;
-    import agora.consensus.data.ConsensusData;
+    import agora.consensus.protocol.Data;
     import agora.consensus.data.genesis.Test;
     import agora.node.Ledger;
     import agora.node.Validator;

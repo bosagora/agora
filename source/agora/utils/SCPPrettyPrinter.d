@@ -23,7 +23,7 @@ import agora.common.Serializer;
 import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
-import agora.consensus.data.ConsensusData;
+import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.utils.PrettyPrinter;

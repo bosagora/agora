@@ -104,7 +104,7 @@
                 "source/agora/utils/SCPPrettyPrinter.d",
                 "source/scpp/*",
                 "source/scpd/*",
-                "source/agora/consensus/protocol/*",
+                "source/agora/consensus/protocol/Nominator.d",
                 "source/agora/consensus/SCPEnvelopeStore.d",
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",

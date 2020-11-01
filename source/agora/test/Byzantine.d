@@ -25,7 +25,7 @@ import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
 import agora.consensus.data.ConsensusParams;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.ConsensusData;
+import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.network.Clock;
 import agora.network.NetworkClient;
