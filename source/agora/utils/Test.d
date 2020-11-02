@@ -234,7 +234,7 @@ public struct OutputRef
     ///
     public Hash hash () const nothrow @safe
     {
-        return hashFull(this.tx);
+        return hashMulti(hashFull(this.tx), ulong(this.index));
     }
 
     ///
@@ -399,7 +399,7 @@ public struct TxBuilder
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash(), in_.index);
+            this.data.inputs ~= Input(in_.hash());
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))

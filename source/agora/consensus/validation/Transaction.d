@@ -67,7 +67,7 @@ public string isInvalidReason (
     string isInvalidInput (const ref Input input, ref UTXO utxo_value,
         ref Amount sum_unspent)
     {
-        if (!findUTXO(UTXO.getHash(input.previous, input.index), utxo_value))
+        if (!findUTXO(input.utxo, utxo_value))
             return "Transaction: Input ref not in UTXO";
 
         if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
