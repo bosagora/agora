@@ -109,7 +109,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
         return "Block: The enrollments are not sorted in ascending order";
 
     if (block.header.enrollments.length + active_enrollments < Enrollment.MinValidatorCount)
-            return "Enrollment: Insufficient number of active validators";
+        return "Enrollment: Insufficient number of active validators";
 
     /// FIXME: Use a proper type and sensible memory allocation pattern
     version (all)
