@@ -210,9 +210,8 @@ private struct InputFmt
     {
         try
         {
-            formattedWrite(sink, "%s[%d]:%s",
-                HashFmt(this.value.previous), this.value.index,
-                HashFmt(this.value.signature));
+            formattedWrite(sink, "%s:%s",
+                HashFmt(this.value.utxo), HashFmt(this.value.signature));
         }
         catch (Exception ex)
         {
@@ -224,7 +223,7 @@ private struct InputFmt
 @safe unittest
 {
     Input input;
-    assert(format("%s", InputFmt(input)) == "0x0000...0000[0]:0x0000...0000");
+    assert(format("%s", InputFmt(input)) == "0x0000...0000:0x0000...0000");
 }
 
 /// Formatting struct for `Output`

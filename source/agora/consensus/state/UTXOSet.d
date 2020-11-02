@@ -85,8 +85,7 @@ public class UTXOSet
         if ((tx.type == TxType.Payment)
             && tx.inputs.any!(input =>
                 (
-                    (input.previous != Hash.init) &&
-                    (this.getUTXO(input.previous, input.index).type == TxType.Freeze)
+                    (this.getUTXO(input.utxo).type == TxType.Freeze)
                 )
             )
         )
@@ -96,8 +95,7 @@ public class UTXOSet
 
         foreach (const ref input; tx.inputs)
         {
-            auto utxo_hash = UTXO.getHash(input.previous, input.index);
-            this.utxo_db.remove(utxo_hash);
+            this.utxo_db.remove(input.utxo);
         }
 
         Hash tx_hash = tx.hashFull();
@@ -111,24 +109,20 @@ public class UTXOSet
 
     /***************************************************************************
 
-        get an UTXO in the UTXO set.
+        Get an UTXO from the UTXO set.
 
         Params:
-            hash = the hash of the transaction introducing the `Output`
-            index = the index of the output
+            utxo = the hash of the UTXO to get
 
         Return:
             Return UTXO
 
     ***************************************************************************/
 
-    private UTXO getUTXO (Hash hash, size_t index)
-        nothrow @safe
+    private UTXO getUTXO (Hash utxo) nothrow @safe
     {
-        auto utxo_hash = UTXO.getHash(hash, index);
-
         UTXO value;
-        if (!this.utxo_db.find(utxo_hash, value))
+        if (!this.utxo_db.find(utxo, value))
             assert(0);
         return value;
     }

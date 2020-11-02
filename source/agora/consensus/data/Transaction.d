@@ -129,14 +129,25 @@ public struct Output
 /// The input of the transaction, which spends a previously received `Output`
 public struct Input
 {
-    /// The hash of a previous transaction containing the `Output` to spend
-    public Hash previous;
-
-    /// Index of the `Output` in the `previous` `Transaction`
-    public uint index;
+    /// The hash of the UTXO to be spent
+    public Hash utxo;
 
     /// A signature that should be verified using the `previous[index].address` public key
     public Signature signature;
+
+    /// Simple ctor
+    public this (in Hash utxo_, in Signature sig = Signature.init)
+        inout pure nothrow @nogc @safe
+    {
+        this.utxo = utxo_;
+        this.signature = sig;
+    }
+
+    /// Ctor which does hashing based on index
+    public this (Hash txhash, ulong index) nothrow @safe
+    {
+        this.utxo = hashMulti(txhash, index);
+    }
 
     /***************************************************************************
 
@@ -149,8 +160,7 @@ public struct Input
 
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
-        hashPart(this.previous, dg);
-        hashPart(ulong(this.index), dg);
+        dg(this.utxo[]);
     }
 }
 
@@ -191,8 +201,8 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0x1e69620e3f5cdb18952b98148d91f945383492ed6be65ec3b4ea4447e8e5ac35c` ~
-        `06d9f0734c5e558722044d68a3e9374da119025edb1a60cee18e05526256315`);
+        `0x35927f79ab7f2c8273f5dc24bb1efa5ebe3ac050fd4fd84d014b51124d0322ed` ~
+        `709225b92ba28b3ee6b70144d4acafb9a5289fc48ecb4a4f273b537837c78cb0`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -203,8 +213,8 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0x2b080fbc36fee98c69578932148d77bd41680d54ba592f40c3b023e1dbaaa214` ~
-        `a8b5eec7bb19927d877dd18c567814cfea81189bd1e9236db9e91c52a6512170`);
+        `0x0277044f0628605485a8f8a999f9a2519231e8c59c1568ef2dac2f241ce569d8` ~
+        `54e15f950e0fd3d88460309d3e0ef3fbd57b8f5af998f8bacbe391ddb9aea328`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }
