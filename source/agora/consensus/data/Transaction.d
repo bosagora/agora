@@ -30,7 +30,7 @@ import std.algorithm;
 public enum TxType : ubyte
 {
     Payment,
-    Freeze
+    Freeze,
 }
 
 /*******************************************************************************
