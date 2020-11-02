@@ -517,13 +517,13 @@ public struct DeserializerOptions
 
     Default upper bound for `deserializeLength` and friends
 
-    The value is 0x09D0, which is a bit less than a the smaller page size  on
-    most systems, and allows to have allocations taking a full page,
+    The value is set to a bit less than eight full pages on most systems,
+    and allows to have allocations taking a full page,
     as the GC puts some metadata on each page.
 
 *******************************************************************************/
 
-public enum DefaultMaxLength = 0x39D0;
+public enum DefaultMaxLength = 0x79D0;
 
 /*******************************************************************************
 
