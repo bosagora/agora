@@ -34,6 +34,8 @@ import agora.common.Serializer;
 import agora.common.Types;
 
 import std.algorithm;
+import std.array : array, join, split;
+import std.conv : to;
 import std.math;
 import std.traits;
 
@@ -76,8 +78,8 @@ public struct BitField (T = uint)
     ///
     private enum BitsPerT = (T.sizeof * 8);
 
-    /// Backing store: Should be private but Vibe.d cannot serialize it...
-    public T[] _storage;
+    /// Backing store
+    private T[] _storage;
 
     /***************************************************************************
 
@@ -176,12 +178,45 @@ public struct BitField (T = uint)
         }
     }
 
+    /// Overrides default vibe.d serialization
+    public string toString () const pure @safe
+    {
+        return this._storage.to!string;
+    }
+
+    /// Ditto
+    public static BitField fromString (scope const(char)[] str) @safe
+    {
+        return BitField!T(str.to!(T[]));
+    }
+
     /// Gets a bit mask which only include a given index within a `T`
     pragma(inline, true)
     private static T mask (size_t index) pure nothrow @safe @nogc
     {
         return (1 << (BitsPerT - 1 - (index % BitsPerT)));
     }
+}
+
+// serialization/de-serialization tests
+unittest
+{
+    import vibe.data.json;
+
+    auto bf1 = BitField!ubyte(9);
+    bf1[1] = true;
+    bf1[8] = true;
+
+    // serialization
+    auto serialized = bf1.serializeToJsonString();
+    assert(serialized == "\"[64, 128]\"");
+
+    // de-serialization
+    auto res = deserializeJson!(BitField!ubyte)(parseJsonString(serialized));
+    assert(res[1] == true);
+    assert(res[7] == false);
+    assert(res[8] == true);
+    assert(res[9] == false);
 }
 
 // opEquals tests
