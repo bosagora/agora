@@ -154,45 +154,6 @@ public struct Input
     }
 }
 
-/*******************************************************************************
-
-    Checks whether the transaction is coinbase
-
-    Params:
-        tx = Type of `Transaction`
-
-    Return:
-        Return true if this transaction is a coinbase
-
-*******************************************************************************/
-
-public bool isCoinbaseTx (Transaction tx) nothrow pure @safe @nogc
-{
-    return tx.inputs.length == 1 && tx.inputs[0] == Input.init;
-}
-
-/*******************************************************************************
-
-    Creates a new coinbase transaction
-
-    Params:
-        address = The public key that can redeem this output
-        value = The initial value
-
-    Return:
-        Return coinbase transaction
-
-*******************************************************************************/
-
-public Transaction newCoinbaseTX (PublicKey address, Amount value = Amount(0))
-{
-    return Transaction(
-        TxType.Payment,
-        [Input(Hash.init, 0)],
-        [Output(value, address)]
-    );
-}
-
 /// Transaction type serialize & deserialize for unittest
 unittest
 {

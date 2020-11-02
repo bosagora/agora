@@ -151,7 +151,7 @@ unittest
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     // Creates the first transaction.
-    Transaction previousTx = newCoinbaseTX(key_pairs[0].address, Amount(100));
+    Transaction previousTx = { outputs: [ Output(Amount(100), key_pairs[0].address) ] };
 
     // Save
     Hash previousHash = hashFull(previousTx);
@@ -193,7 +193,7 @@ unittest
 unittest
 {
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
-    Transaction tx_1 = newCoinbaseTX(key_pairs[0].address, Amount(1000));
+    Transaction tx_1 = { outputs: [ Output(Amount(1000), key_pairs[0].address) ] };
     Hash tx_1_hash = hashFull(tx_1);
 
     scope storage = new TestUTXOSet;
@@ -240,10 +240,9 @@ unittest
     key_pairs ~= KeyPair.random();
 
     // Create the first transaction.
-    Transaction genesisTx = newCoinbaseTX(key_pairs[0].address, Amount(100_000));
+    Transaction genesisTx = { outputs: [ Output(Amount(100_000), key_pairs[0].address) ] };
     Hash genesisHash = hashFull(genesisTx);
     storage.put(genesisTx);
-    genesisTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(genesisTx)[]);
 
     // Create the second transaction.
     Transaction tx1 = Transaction(
@@ -289,7 +288,6 @@ unittest
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    Transaction previousTx;
     Transaction secondTx;
     Hash previousHash;
 
@@ -298,7 +296,8 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.MinFreezeAmount);
+        Transaction previousTx =
+            { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -328,7 +327,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.MinFreezeAmount);
+        Transaction previousTx = { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -358,7 +357,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(100_000_000_000L));
+        Transaction previousTx = { outputs: [ Output(Amount(100_000_000_000L), key_pairs[0].address) ] };
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -387,7 +386,7 @@ unittest
     // Second transaction is valid.
     {
         // Create the previous transaction with type `TxType.Payment`
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount(500_000_000_000L));
+        Transaction previousTx = { outputs: [ Output(Amount(500_000_000_000L), key_pairs[0].address) ] };
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -434,7 +433,6 @@ unittest
 
     Height block_height;
 
-    Transaction previousTx;
     Transaction secondTx;
     Transaction thirdTx;
     Transaction fourthTx;
@@ -450,7 +448,8 @@ unittest
     // Expected Status : melted
     {
         block_height = 0;
-        previousTx = newCoinbaseTX(key_pairs[0].address, Amount.MinFreezeAmount);
+        Transaction previousTx =
+            { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
 
         // Save to UTXOSet
         previousHash = hashFull(previousTx);
@@ -601,10 +600,9 @@ unittest
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
-    Transaction firstTx = newCoinbaseTX(key_pair.address, Amount(100_1000));
+    Transaction firstTx = { outputs: [ Output(Amount(100_1000), key_pair.address) ] };
     Hash firstHash = hashFull(firstTx);
     storage.put(firstTx);
-    firstTx.inputs[0].signature = key_pair.secret.sign(firstHash[]);
 
     // create a transaction having no output
     Transaction secondTx = Transaction(
