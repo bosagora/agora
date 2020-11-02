@@ -347,7 +347,6 @@ private class UTXODB
 unittest
 {
     import agora.common.Amount;
-    import agora.consensus.data.Transaction;
     import agora.consensus.data.UTXO;
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];

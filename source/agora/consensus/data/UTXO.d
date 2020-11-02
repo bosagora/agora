@@ -141,6 +141,70 @@ public class TestUTXOSet
         }
         return false;
     }
+
+    private UTXO getUTXO (Hash utxo) nothrow @safe
+    {
+        UTXO value;
+        if (!this.findUTXO_(utxo, value))
+            assert(0);
+        return value;
+    }
+
+    public void updateUTXOStorage (const ref Transaction tx, Height height) @safe
+    {
+        import std.algorithm : any;
+
+        // defaults to next block
+        Height unlock_height = Height(height + 1);
+
+        // for payments of frozen transactions, it will melt after 2016 blocks
+        if ((tx.type == TxType.Payment) && tx.inputs.any!(input =>
+                (
+                    (this.getUTXO(input.utxo).type == TxType.Freeze)
+                )
+            )
+        )
+        {
+            unlock_height = Height(height + 2016);
+        }
+
+        foreach (const ref input; tx.inputs)
+        {
+            if (height > 0)
+                assert(input.utxo in this.storage);
+            this.storage.remove(input.utxo);
+        }
+
+        Hash tx_hash = tx.hashFull();
+        foreach (idx, output; tx.outputs)
+        {
+            auto utxo_hash = UTXO.getHash(tx_hash, idx);
+            auto utxo_value = UTXO(unlock_height, tx.type, output);
+            this.storage[utxo_hash] = utxo_value;
+        }
+    }
+}
+
+unittest
+{
+    import agora.common.Amount;
+    import agora.common.crypto.Key;
+
+    KeyPair key_pair = KeyPair.random;
+    auto utxo_set = new TestUTXOSet();
+
+    // create the first transaction
+    Transaction tx1 = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init, 0)],
+        [Output(Amount.MinFreezeAmount, key_pair.address)]
+    );
+
+    utxo_set.updateUTXOStorage(tx1, Height(0));
+    Hash hash1 = hashFull(tx1);
+    auto utxo_hash = UTXO.getHash(hash1, 0);
+
+    assert(utxo_set.storage[utxo_hash].output.address == key_pair.address);
 }
 
 unittest
