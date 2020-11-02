@@ -116,14 +116,16 @@ unittest
         QuorumConfig.init,
     ];
 
-    version (none)
-    foreach (idx, node; nodes.enumerate)
-        writefln("Node %s: %s\n", idx, node.getQuorumConfig);
+    {
+        scope (failure)
+            foreach (idx, node; nodes.enumerate)
+                writefln("Node %s: %s\n", idx, node.getQuorumConfig);
 
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected quorums_1: %s",
-                idx, node.getQuorumConfig(), quorums_1[idx])));
+        nodes.enumerate.each!((idx, node) =>
+            retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
+                format("Node %s has quorum config %s. Expected quorums_1: %s",
+                    idx, node.getQuorumConfig(), quorums_1[idx])));
+    }
 
     auto spendable = network.blocks[$ - 1].txs
         .filter!(tx => tx.type == TxType.Payment)
@@ -269,14 +271,16 @@ unittest
 
     static assert(quorums_1 != quorums_2);
 
-    version (none)
-    foreach (idx, node; nodes.enumerate)
-        writefln("Node %s: %s\n", idx, node.getQuorumConfig);
+    {
+        scope (failure)
+            foreach (idx, node; nodes.enumerate)
+                writefln("Node %s: %s\n", idx, node.getQuorumConfig);
 
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_2[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected quorums_2: %s",
-                idx, node.getQuorumConfig(), quorums_2[idx])));
+        nodes.enumerate.each!((idx, node) =>
+            retryFor(node.getQuorumConfig() == quorums_2[idx], 5.seconds,
+                format("Node %s has quorum config %s. Expected quorums_2: %s",
+                    idx, node.getQuorumConfig(), quorums_2[idx])));
+    }
 
     // create 19 blocks (1 short of all enrollments expiring)
     const b20 = nodes[0].getBlocksFrom(20, 2)[0];
@@ -390,12 +394,14 @@ unittest
 
     static assert(quorums_2 != quorums_3);
 
-    version (none)
-    foreach (idx, node; nodes.enumerate)
-        writefln("Node %s: %s\n", idx, node.getQuorumConfig);
+    {
+        scope (failure)
+            foreach (idx, node; nodes.enumerate)
+                writefln("Node %s: %s\n", idx, node.getQuorumConfig);
 
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
-            format("Node %s has quorum config %s. Expected quorums_3: %s",
-                idx, node.getQuorumConfig(), quorums_3[idx])));
+        nodes.enumerate.each!((idx, node) =>
+            retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
+                format("Node %s has quorum config %s. Expected quorums_3: %s",
+                    idx, node.getQuorumConfig(), quorums_3[idx])));
+    }
 }
