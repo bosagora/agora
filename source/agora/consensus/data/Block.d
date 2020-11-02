@@ -117,9 +117,7 @@ unittest
         BlockHeader header = { merkle_root : tx.hashFull() };
 
         auto hash = hashFull(header);
-        auto exp_hash = Hash("0xc04f3226bdc07c6d3141e3ac14888cd3b4199d84877" ~
-            "e591927063af65e5f56b14f9236e764bacb980aed5acefb98981b221e5c99e" ~
-            "aaaf1100c87c250cec2f32c");
+        auto exp_hash = Hash("0x1d3211c2ccc3bccf1fc5861bd401c13c1b5b476ab170be05d0ec1827575c4eff0b3e9386a4d6d0cd764c195affd0a2ce3ef75205e8a87373c10428624932ed67");
         assert(hash == exp_hash);
     }();
 }

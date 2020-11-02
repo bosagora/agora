@@ -173,13 +173,13 @@ unittest
         hashFull(1), QuorumParams.init);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys), [8, 5, 6, 7, 7, 8, 7, 8]);
+    test!"=="(countNodeInclusions(quorums_1, keys), [7, 7, 8, 6, 7, 8, 8, 5]);
 
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
         hashFull(2), QuorumParams.init);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys), [8, 6, 8, 6, 6, 7, 7, 8]);
+    test!"=="(countNodeInclusions(quorums_2, keys), [6, 7, 8, 7, 6, 7, 8, 7]);
 }
 
 // 16 nodes with equal stakes
@@ -191,14 +191,14 @@ unittest
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
     test!"=="(countNodeInclusions(quorums_1, keys),
-        [9, 6, 5, 8, 7, 9, 6, 7, 6, 5, 6, 6, 8, 5, 8, 11]);
+        [8, 5, 7, 7, 7, 9, 3, 7, 8, 8, 7, 4, 6, 8, 7, 11]);
 
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
         hashFull(2), QuorumParams.init);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
     test!"=="(countNodeInclusions(quorums_2, keys),
-        [5, 6, 8, 8, 6, 9, 8, 5, 9, 6, 8, 9, 7, 7, 5, 6]);
+        [9, 8, 4, 9, 6, 9, 5, 7, 7, 9, 10, 8, 6, 5, 5, 5]);
 }
 
 // 16 nodes with linearly ascending stakes
@@ -233,14 +233,14 @@ unittest
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
     test!"=="(countNodeInclusions(quorums_1, keys),
-        [16, 6, 3, 8, 5, 6, 5, 11, 5, 5, 4, 7, 4, 4, 7, 16]);
+        [16, 7, 4, 4, 5, 5, 4, 6, 6, 5, 8, 4, 6, 5, 11, 16]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
     test!"=="(countNodeInclusions(quorums_2, keys),
-        [16, 7, 5, 1, 4, 8, 3, 5, 6, 9, 7, 8, 6, 3, 8, 16]);
+        [16, 6, 7, 6, 4, 7, 3, 7, 3, 7, 8, 4, 3, 10, 5, 16]);
 }
 
 // 32 nodes where two nodes own 66% of the stake
@@ -256,8 +256,8 @@ unittest
     // non-max threshold (~20 seconds)
     //verifyQuorumsIntersect(quorums_1);
     test!"=="(countNodeInclusions(quorums_1, keys),
-        [32, 5, 5, 6, 4, 5, 6, 8, 5, 6, 7, 2, 4, 5, 3, 10, 4, 7, 6, 5, 6, 3, 8,
-        6, 3, 6, 5, 5, 3, 6, 6, 32]);
+        [32, 7, 5, 4, 5, 3, 5, 4, 4, 4, 6, 6, 5, 7, 7, 7, 9, 5, 6, 7, 3, 5, 6,
+        3, 6, 4, 6, 3, 5, 6, 7, 32]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init);
@@ -266,8 +266,8 @@ unittest
     // non-max threshold (~20 seconds)
     //verifyQuorumsIntersect(quorums_2);
     test!"=="(countNodeInclusions(quorums_2, keys),
-        [31, 2, 8, 3, 5, 8, 1, 5, 7, 5, 5, 7, 6, 6, 9, 5, 3, 5, 3, 9, 7, 2, 3,
-        6, 5, 8, 3, 7, 8, 3, 8, 31]);
+        [31, 6, 6, 8, 6, 6, 7, 5, 11, 4, 6, 3, 5, 3, 4, 2, 5, 4, 8, 5, 9, 1, 5,
+        4, 7, 2, 7, 7, 7, 5, 4, 31]);
 }
 
 // 64 nodes where two nodes own 66% of the stake
@@ -283,9 +283,9 @@ unittest
     // non-max threshold (~20 minutes)
     //verifyQuorumsIntersect(quorums_1);
     test!"=="(countNodeInclusions(quorums_1, keys),
-        [64, 6, 3, 3, 5, 5, 5, 9, 4, 3, 4, 9, 6, 5, 7, 4, 7, 4, 4, 6, 7, 6, 3,
-        6, 12, 6, 9, 4, 4, 9, 2, 4, 3, 5, 5, 5, 7, 4, 4, 6, 5, 5, 6, 6, 7, 6, 4,
-        4, 7, 5, 8, 3, 3, 4, 7, 5, 2, 4, 5, 5, 2, 4, 5, 62]);
+        [63, 3, 5, 5, 6, 6, 6, 5, 6, 4, 8, 3, 3, 6, 4, 4, 9, 4, 4, 4, 7, 4, 4,
+        7, 3, 6, 4, 2, 9, 4, 5, 5, 4, 9, 2, 3, 6, 5, 4, 3, 4, 7, 4, 8, 4, 6, 4,
+        7, 3, 11, 5, 7, 6, 4, 8, 3, 8, 5, 5, 11, 4, 3, 4, 63]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init);
@@ -294,9 +294,9 @@ unittest
     // non-max threshold (~20 minutes)
     //verifyQuorumsIntersect(quorums_2);
     test!"=="(countNodeInclusions(quorums_2, keys),
-        [61, 6, 4, 5, 5, 6, 5, 4, 1, 4, 6, 5, 5, 7, 3, 6, 3, 5, 6, 6, 3, 3, 3,
-        6, 7, 4, 3, 3, 6, 8, 6, 8, 7, 4, 2, 6, 5, 1, 5, 8, 4, 7, 9, 6, 4, 4, 4,
-        8, 4, 2, 5, 6, 8, 6, 2, 5, 10, 5, 4, 8, 8, 8, 8, 62]);
+        [62, 7, 6, 3, 7, 6, 7, 5, 7, 1, 7, 6, 4, 8, 5, 5, 5, 4, 4, 2, 4, 8, 9,
+        8, 5, 8, 8, 7, 4, 8, 3, 7, 4, 5, 7, 3, 5, 3, 7, 5, 6, 5, 6, 4, 3, 3, 8,
+        4, 5, 3, 4, 7, 2, 6, 5, 5, 3, 3, 5, 6, 6, 6, 3, 61]);
 }
 
 // 128 nodes where two nodes own 66% of the stake
@@ -311,12 +311,12 @@ unittest
     // not verified to work.
     //verifyQuorumsIntersect(quorums_1);
     test!"=="(countNodeInclusions(quorums_1, keys),
-        [124, 4, 8, 6, 4, 4, 2, 4, 4, 7, 5, 9, 4, 6, 3, 5, 3, 8, 6, 8, 3, 4, 8,
-        4, 4, 3, 6, 4, 3, 4, 5, 2, 6, 3, 6, 6, 6, 5, 3, 5, 9, 9, 4, 3, 4, 6, 3,
-        7, 3, 6, 6, 6, 4, 5, 7, 5, 8, 4, 3, 5, 3, 5, 6, 6, 5, 5, 7, 5, 6, 5, 6,
-        9, 9, 6, 10, 6, 6, 6, 7, 3, 8, 5, 3, 3, 2, 6, 5, 5, 3, 4, 5, 7, 3, 5, 5,
-        6, 5, 7, 2, 4, 7, 2, 6, 6, 5, 3, 5, 4, 5, 4, 4, 5, 6, 4, 5, 8, 5, 3, 4,
-        9, 6, 3, 6, 6, 5, 5, 6, 124]);
+        [124, 3, 4, 8, 3, 6, 6, 6, 6, 8, 4, 4, 5, 2, 10, 3, 9, 5, 6, 7, 5, 4, 8,
+        5, 7, 9, 4, 4, 6, 3, 6, 2, 2, 5, 4, 3, 2, 5, 4, 4, 5, 5, 8, 5, 5, 7, 5,
+        6, 7, 5, 5, 6, 6, 9, 3, 5, 4, 7, 4, 7, 5, 5, 6, 5, 4, 3, 6, 3, 6, 3, 2,
+        5, 9, 7, 5, 6, 4, 9, 1, 7, 6, 9, 5, 5, 6, 4, 6, 5, 4, 5, 3, 7, 5, 4, 4,
+        5, 5, 4, 4, 8, 7, 5, 5, 5, 6, 6, 4, 5, 7, 6, 8, 3, 6, 6, 5, 4, 1, 4, 4,
+        3, 5, 7, 4, 4, 5, 5, 2, 124]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init);
@@ -324,12 +324,12 @@ unittest
     // not verified to work.
     //verifyQuorumsIntersect(quorums_2);
     test!"=="(countNodeInclusions(quorums_2, keys),
-        [124, 3, 3, 8, 10, 3, 6, 9, 6, 7, 8, 10, 3, 3, 1, 3, 7, 2, 8, 6, 4, 4,
-        6, 2, 10, 7, 6, 4, 6, 7, 6, 3, 6, 3, 3, 9, 3, 7, 9, 7, 5, 6, 5, 4, 8, 3,
-        2, 5, 8, 8, 6, 2, 7, 2, 5, 5, 5, 5, 2, 5, 6, 3, 4, 5, 7, 3, 8, 4, 4, 5,
-        3, 6, 8, 3, 4, 3, 7, 7, 7, 3, 3, 4, 5, 4, 3, 4, 9, 6, 5, 6, 5, 5, 3, 5,
-        3, 6, 4, 10, 6, 8, 6, 3, 6, 3, 12, 3, 4, 3, 6, 9, 2, 7, 4, 1, 5, 2, 3,
-        5, 5, 5, 3, 5, 4, 8, 5, 2, 7, 124]);
+        [124, 6, 5, 4, 3, 2, 4, 5, 5, 5, 8, 6, 6, 3, 6, 5, 2, 11, 7, 6, 8, 6,
+        3, 7, 7, 7, 10, 7, 5, 1, 6, 8, 6, 6, 3, 6, 6, 4, 2, 4, 6, 9, 6, 4, 8,
+        5, 4, 4, 6, 7, 8, 5, 7, 7, 9, 3, 5, 3, 3, 6, 3, 1, 7, 6, 5, 6, 4, 6, 9,
+        1, 5, 2, 7, 4, 9, 3, 5, 6, 5, 4, 5, 4, 6, 8, 7, 3, 3, 3, 8, 3, 5, 5, 12,
+        5, 4, 5, 8, 4, 3, 4, 5, 4, 3, 5, 3, 4, 4, 2, 6, 5, 4, 6, 4, 3, 7, 4, 4,
+        8, 6, 3, 4, 2, 3, 7, 2, 8, 3, 124]);
 }
 
 // using various different quorum parameter configurations
@@ -344,7 +344,7 @@ unittest
     quorums_1.byValue.each!(qc => test!"<="(qc.nodes.length, 4));
     quorums_1.byValue.each!(qc => test!"=="(qc.threshold, 4));
     test!"=="(countNodeInclusions(quorums_1, keys),
-        [3, 3, 2, 4, 4, 3, 3, 8, 6, 4]);
+        [4, 4, 7, 4, 4, 2, 3, 4, 5, 3]);
 
     QuorumParams qp_2 = { MaxQuorumNodes : 8, QuorumThreshold : 80 };
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
@@ -354,7 +354,7 @@ unittest
     quorums_2.byValue.each!(qc => test!"<="(qc.nodes.length, 8));
     quorums_2.byValue.each!(qc => test!"=="(qc.threshold, 7));
     test!"=="(countNodeInclusions(quorums_2, keys),
-        [8, 7, 3, 9, 8, 10, 8, 10, 10, 7]);
+        [8, 10, 10, 8, 8, 6, 8, 7, 8, 7]);
 
     QuorumParams qp_3 = { MaxQuorumNodes : 8, QuorumThreshold : 60 };
     auto quorums_3 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
@@ -364,7 +364,7 @@ unittest
     quorums_3.byValue.each!(qc => test!"<="(qc.nodes.length, 8));
     quorums_3.byValue.each!(qc => test!"=="(qc.threshold, 5));
     test!"=="(countNodeInclusions(quorums_3, keys),
-        [8, 7, 3, 9, 8, 10, 8, 10, 10, 7]);
+        [8, 10, 10, 8, 8, 6, 8, 7, 8, 7]);
 }
 
 version (unittest)
