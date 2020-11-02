@@ -93,7 +93,7 @@ unittest
         auto new_tx = genBlockTransactions(1);
         left_txs ~= new_tx;
         new_tx.each!(tx => nodes[0].putTransaction(tx));
-        network.expectBlock(nodes[0 .. 4], Height(1 + block_idx + 1));
+        network.expectBlock(iota(0, 4), Height(1 + block_idx + 1));
         retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds,
             format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
     }

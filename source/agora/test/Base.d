@@ -573,8 +573,8 @@ public class TestAPIManager
         the given height, and verifies that the nodes have generated a block
         at the given block height.
 
-        The overload allows passing a subset of nodes to verify the block
-        heights for only these nodes. Note that the clock time is adjusted
+        The overload allows passing a subset of nodes indices to verify the
+        block heights for only these nodes. Note that the clock time is adjusted
         for all nodes (this is what most tests expect).
 
         Params:
@@ -586,20 +586,22 @@ public class TestAPIManager
     public void expectBlock (Height height, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        this.expectBlock(this.clients, height, timeout, file, line);
+        this.expectBlock(iota(this.clients.length), height, timeout,
+            file, line);
     }
 
     /// Ditto
-    public void expectBlock (Clients)(Clients clients, Height height,
-        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
+    public void expectBlock (Idxs)(Idxs clients_idxs, Height height,
+        Duration timeout = 10.seconds,
+        string file = __FILE__, int line = __LINE__)
     {
-        static assert (isInputRange!Clients);
+        static assert (isInputRange!Idxs);
 
         this.setTimeFor(height);
-        clients.enumerate.each!((idx, node) =>
-            retryFor(node.getBlockHeight() == height, timeout,
+        clients_idxs.each!(idx =>
+            retryFor(clients[idx].getBlockHeight() == height, timeout,
                 format("Node %s has block height %s. Expected: %s",
-                    idx, node.getBlockHeight(), height), file, line));
+                    idx, clients[idx].getBlockHeight(), height), file, line));
     }
 
     /***************************************************************************
@@ -608,7 +610,7 @@ public class TestAPIManager
         expected clock time to produce a block at the given height, and verifies
         that the nodes have generated a block at the given block height.
 
-        The overload allows passing a subset of nodes to verify the block
+        The overload allows passing a subset of node indices to verify the block
         heights for only these nodes. Note that the clock time is adjusted
         for all nodes (this is what most tests expect).
 
@@ -620,24 +622,25 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void expectBlock (Height height, const(BlockHeader) enroll_header,
-        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds,
+        string file = __FILE__, int line = __LINE__)
     {
-        this.expectBlock(this.clients, height, enroll_header, timeout, file,
-            line);
+        this.expectBlock(iota(GenesisValidators), height, enroll_header,
+            timeout, file, line);
     }
 
     /// Ditto
-    public void expectBlock (Clients)(Clients clients, Height height,
+    public void expectBlock (Idxs)(Idxs clients_idxs, Height height,
         const(BlockHeader) enroll_header, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        static assert (isInputRange!Clients);
+        static assert (isInputRange!Idxs);
 
         assert(height > enroll_header.height);
         auto distance = cast(ushort)(height - enroll_header.height - 1);
-        waitForPreimages(clients, enroll_header.enrollments, distance,
-            timeout);
-        this.expectBlock(clients, height, timeout, file, line);
+        waitForPreimages(clients_idxs, enroll_header.enrollments,
+            distance, timeout);
+        this.expectBlock(clients_idxs, height, timeout, file, line);
     }
 
     /***************************************************************************
@@ -656,22 +659,25 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void waitForPreimages (const(Enrollment)[] enrolls, ushort distance,
-        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds,
+        string file = __FILE__, int line = __LINE__)
     {
-        this.waitForPreimages(this.clients, enrolls, distance, timeout, file,
-            line);
+        this.waitForPreimages(iota(GenesisValidators), enrolls, distance,
+            timeout, file, line);
     }
 
     /// Ditto
-    public void waitForPreimages (Clients)(Clients clients,
-        const(Enrollment)[] enrolls, ushort distance, Duration timeout = 10.seconds,
+    public void waitForPreimages (Idxs)(Idxs clients_idxs,
+        const(Enrollment)[] enrolls, ushort distance,
+        Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        static assert (isInputRange!Clients);
+        static assert (isInputRange!Idxs);
 
-        clients.each!(node => enrolls.each!(enroll =>
-            retryFor(node.getPreimage(enroll.utxo_key).distance >= distance,
-                timeout)));
+        clients_idxs.each!(idx =>
+            enrolls.each!(enroll =>
+                retryFor(this.clients[idx].getPreimage(enroll.utxo_key)
+                    .distance >= distance, timeout)));
     }
 
     /***************************************************************************
@@ -906,6 +912,184 @@ public class TestAPIManager
             ex.line = line;
             throw ex;
         }
+    }
+
+    /***************************************************************************
+
+        Add blocks up to the provided height
+
+        This is a helper function to enable some common steps to getting blocks
+            externalized during the Network Unit tests
+
+        Params:
+            block_height = the desired block height
+            enrolled_height = the block height of the enrollments
+                for the participating validators
+            client_idxs = client indices for the participating validators
+
+    ***************************************************************************/
+
+    public void generateBlocks (Height block_height,
+        Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        generateBlocks(iota(GenesisValidators), block_height,
+            enrolled_height, file, line);
+    }
+
+    /// Ditto
+    public void generateBlocks (Idxs)(Idxs client_idxs, Height block_height,
+        Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        static assert (isInputRange!Idxs);
+
+        // Get the last block from the first client
+        auto lastBlock = this.clients[client_idxs.front].getAllBlocks()[$ -1];
+        assert(block_height > enrolled_height,
+            format!"[%s:%s] Desired height %s is not at least enroll height %s"
+                (file, line, block_height, enrolled_height));
+
+        // Call addBlock for each block to be externalised for these clients
+        iota(block_height - lastBlock.header.height)
+            .each!(_ => this.addBlock(client_idxs, enrolled_height,
+                file, line));
+    }
+
+     /**************************************************************************
+
+        Add a block
+
+        This is a helper function to perform the steps required to get a block
+            externalized during the Network Unit tests
+
+        Params:
+            enrolled_height = the height with enrollments of participating
+                validators
+            client_idxs = client indices for the participating validators
+
+    ***************************************************************************/
+
+    void addBlock (Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        addBlock(iota(0, GenesisValidators), enrolled_height, file, line);
+    }
+
+    /// Ditto
+    void addBlock (Idxs)(Idxs client_idxs, Height enrolled_height = Height(0),
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        static assert (isInputRange!Idxs);
+
+        auto first_client = this.clients[client_idxs.front];
+        auto all_blocks = first_client.getAllBlocks();
+
+        // traget height will be one more than previous block
+        Height target_height = Height(all_blocks[$ - 1].header.height + 1);
+
+        assert(all_blocks.length > 0,
+            format!"[%s:%s] No blocks in first client!"(file, line));
+
+        // Get spendables from last block
+        auto spendables = all_blocks[$ - 1].spendable().array;
+
+        // Ensure at least one tx will be taken
+        auto tx_count = max(1, this.test_conf.txs_to_nominate);
+
+        // Show the last block if not enough spendables
+        assert(spendables.length >= tx_count,
+            format!"[%s:%s] Less than %s spendables in block:\n%s"
+                (file, line, tx_count, prettify(all_blocks[$ - 1])));
+
+        // Send transactions to the first client
+        spendables.takeExactly(tx_count)
+            .map!(txb => txb.sign())
+            .each!(tx => first_client.putTransaction(tx));
+
+        // Get preimage distance from enrollment to this next block
+        ushort distance = cast(ushort) (target_height - enrolled_height -1);
+        assert(distance < GenesisValidatorCycle && distance >= 0,
+            format!"[%s:%s] Expected distance between 0 and %s not %s"
+                (file, line, GenesisValidatorCycle - 1, distance));
+
+        // Check block is at target height for the participating clients
+        expectBlock(client_idxs, target_height,
+            all_blocks[enrolled_height].header);
+    }
+
+    /***************************************************************************
+
+        Enroll validator
+
+        This is a helper function to enroll a validator and wait till
+            other validators have the enroll on their pool
+
+        Params:
+            client_idx = the index of the client to enroll
+            client_idxs = client indices for the participating validators
+
+    ***************************************************************************/
+
+    void enroll (size_t client_idx)
+    {
+        enroll(iota(GenesisValidators), client_idx);
+    }
+
+    /// Ditto
+    void enroll (Idxs)(Idxs client_idxs, size_t client_idx,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        static assert (isInputRange!Idxs);
+
+        Enrollment enroll = this.clients[client_idx].createEnrollmentData();
+        clients[client_idx].enrollValidator(enroll);
+        client_idxs.each!(idx =>
+            retryFor(this.clients[idx].getEnrollment(enroll.utxo_key) == enroll,
+                5.seconds,
+                format!"[%s:%s] Client #%s enrollment not in pool of client #%s"
+                    (file, line, client_idx, idx)));
+    }
+
+    /***************************************************************************
+
+        Assert all the nodes contain the same blocks
+
+        This is a helper function to confirm all nodes have the same blocks
+
+        Params:
+            client_idxs = client indices for the nodes to be checked
+            height = expected block height of the nodes
+
+    ***************************************************************************/
+
+    void assertSameBlocks (Height height,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        assertSameBlocks(iota(GenesisValidators), height);
+    }
+
+    /// Ditto
+    void assertSameBlocks (Idxs)(Idxs client_idxs, Height height,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        static assert (isInputRange!Idxs);
+
+        client_idxs.each!(idx =>
+            retryFor(Height(this.clients[idx].getBlockHeight()) == height,
+                5.seconds,
+                format!"[%s:%s] Expected height %s for client #%s not %s"
+                    (file, line, height, idx,
+                        this.clients[idx].getBlockHeight())));
+
+
+        auto first_blocks = this.clients[client_idxs.front].getAllBlocks();
+
+        client_idxs.drop(1).each!(idx =>
+            retryFor(this.clients[idx].getAllBlocks() == first_blocks,
+            5.seconds,
+            format!"[%s:%s] Client #%s blocks are not same as client #1"
+                (file, line, idx)));
     }
 }
 
@@ -1709,37 +1893,6 @@ public const(Block)[] getAllBlocks (TestAPI node)
     }
 
     return blocks;
-}
-
-/// Returns: true if all the nodes contain the same blocks
-public bool containSameBlocks (APIS)(APIS nodes, size_t height)
-{
-    auto first_blocks = nodes[0].getAllBlocks();
-
-    foreach (node; nodes)
-    {
-        if (node.getBlockHeight() != height)
-            return false;
-
-        if (node.getAllBlocks() != first_blocks)
-            return false;
-    }
-
-    return true;
-}
-
-/// Asserts that all nodes in the range are at height `expected`
-public void ensureConsistency (Exc : Throwable = AssertError, APIS)(
-    APIS nodes, ulong expected, Duration timeout = 2.seconds)
-{
-    static assert (isInputRange!APIS);
-
-    foreach (idx, node; nodes.enumerate())
-    {
-        retryFor!Exc(node.getBlockHeight() == expected, timeout,
-                 format("Node #%d was at height %d (expected: %d)",
-                        idx, node.getBlockHeight(), expected));
-    }
 }
 
 /*******************************************************************************

@@ -185,17 +185,18 @@ unittest
     // create genesis block
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
     last_txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock([node_validators[0]], Height(1));
+    network.expectBlock(iota(1), Height(1));
 
     // create 1 additional block and enough `tx`es
     auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
     // send it to one node
     txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock([node_validators[0]], Height(2));
+    network.expectBlock(iota(1), Height(2));
     last_txs = txs;
 
     // the validator node has 2 blocks, but bad node pretends to have 3
-    assert(node_validators[0].getBlockHeight() == 2, node_validators[0].getBlockHeight().to!string);
+    assert(node_validators[0].getBlockHeight() == 2,
+        node_validators[0].getBlockHeight().to!string);
     assert(node_bad.getBlockHeight() == 3);
     assert(node_test.getBlockHeight() == 0);  // only genesis
 
@@ -204,6 +205,5 @@ unittest
 
     // node test will accept its blocks from node_validator,
     // as the blocks in node_bad do not pass validation
-    retryFor(node_test.getBlockHeight() == 2, 4.seconds);
-    assert(containSameBlocks([node_test, node_validators[0]], 2));
+    network.assertSameBlocks(iota(GenesisValidators + 1), Height(2));
 }

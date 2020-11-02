@@ -30,9 +30,6 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-
     auto spendable = network.blocks[0].txs
         .filter!(tx => tx.type == TxType.Payment)
         .map!(tx => iota(tx.outputs.length)
@@ -45,11 +42,11 @@ unittest
 
     foreach (block_idx, block_txs; txs.chunks(txs_to_nominate).enumerate)
     {
-        block_txs.each!(tx => nodes[0].putTransaction(tx));
+        block_txs.each!(tx => network.clients[0].putTransaction(tx));
         network.expectBlock(Height(block_idx + 1), network.blocks[0].header,
             5.seconds);
     }
 
     // 8 txs will create 4 blocks if we nominate 2 per block
-    ensureConsistency(nodes, 4);
+    network.assertSameBlocks(Height(4));
 }

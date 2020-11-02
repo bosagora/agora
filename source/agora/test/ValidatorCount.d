@@ -63,8 +63,9 @@ unittest
 
     // Block will not be created because otherwise there would be no active validators
     {
-        txs = blocks[GenesisValidatorCycle - 1].spendable().map!(txb => txb.sign()).array();
-        txs.each!(tx => node_1.putTransaction(tx));
+        blocks[GenesisValidatorCycle - 1].spendable()
+            .map!(txb => txb.sign())
+            .each!(tx => node_1.putTransaction(tx));
 
         // try to add next block
          blocks ~= node_1.getBlocksFrom(GenesisValidatorCycle, 1);
@@ -74,5 +75,6 @@ unittest
     Thread.sleep(2.seconds);  // wait for propagation
 
     // New block was not created because all validators would expire
-    containSameBlocks(nodes, GenesisValidatorCycle - 1).retryFor(5.seconds);
+    network.assertSameBlocks(iota(network.nodes.length),
+        Height(GenesisValidatorCycle - 1));
 }
