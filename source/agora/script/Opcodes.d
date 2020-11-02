@@ -93,16 +93,21 @@ public enum OP : ubyte
     /// execution to fail if the two items are not equal to each other.
     VERIFY_EQUAL = 0x58,
 
+    /// Verify the height lock of a spending Transaction. Expects an 8-byte
+    /// unsigned integer as the height on the stack, and verifies that the
+    /// Transaction's `lock_height` is greater than or equal to this value.
+    VERIFY_LOCK_HEIGHT = 0x59,
+
     /// Pops two items from the stack. The two items must be a Point (Schnorr),
     /// and a Signature. If the items cannot be deserialized as a Point and
     /// Signature, the script validation fails.
     /// The signature is then validated using Schnorr, if the signature is
     /// valid then `TRUE` is pushed to the stack.
-    CHECK_SIG = 0x59,
+    CHECK_SIG = 0x5A,
 
     /// Ditto, but instead of pushing the result to the stack it will cause the
     /// script execution to fail if the signature is invalid
-    VERIFY_SIG = 0x5A,
+    VERIFY_SIG = 0x5B,
 }
 
 /*******************************************************************************
