@@ -193,7 +193,8 @@ unittest
     const tx_payment_hash = Hash(
         `0x1e69620e3f5cdb18952b98148d91f945383492ed6be65ec3b4ea4447e8e5ac35c` ~
         `06d9f0734c5e558722044d68a3e9374da119025edb1a60cee18e05526256315`);
-    assert(hashFull(payment_tx) == tx_payment_hash);
+    const expected1 = payment_tx.hashFull();
+    assert(expected1 == tx_payment_hash, expected1.toString());
 
     Transaction freeze_tx = Transaction(
         TxType.Freeze,
@@ -204,7 +205,8 @@ unittest
     const tx_freeze_hash = Hash(
         `0x2b080fbc36fee98c69578932148d77bd41680d54ba592f40c3b023e1dbaaa214` ~
         `a8b5eec7bb19927d877dd18c567814cfea81189bd1e9236db9e91c52a6512170`);
-    assert(hashFull(freeze_tx) == tx_freeze_hash);
+    const expected2 = freeze_tx.hashFull();
+    assert(expected2 == tx_freeze_hash, expected2.toString());
 }
 
 /*******************************************************************************
