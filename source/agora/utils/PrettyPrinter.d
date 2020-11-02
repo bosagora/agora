@@ -345,13 +345,13 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
-{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
-{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
-{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
-{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
-{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
-{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]`;
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x7358...0131, Enrollments: [
+{ utxo: 0x23f3...afbf, seed: 0x0a82...4328, cycles: 20, sig: 0x09ac...7422 }
+{ utxo: 0x3761...2000, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0x3a91...a330, seed: 0xa050...2cb4, cycles: 20, sig: 0x0afc...6b31 }
+{ utxo: 0x8037...a3a1, seed: 0xd034...97c1, cycles: 20, sig: 0x0ebf...5c01 }
+{ utxo: 0xb954...724b, seed: 0xaf43...fceb, cycles: 20, sig: 0x0481...1304 }
+{ utxo: 0xcb11...5d50, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0723...4fe2 }]`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual, actual);
 }
@@ -384,13 +384,13 @@ private struct BlockFmt
 
 @safe unittest
 {
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
-{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
-{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
-{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
-{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
-{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
-{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }],
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x7358...0131, Enrollments: [
+{ utxo: 0x23f3...afbf, seed: 0x0a82...4328, cycles: 20, sig: 0x09ac...7422 }
+{ utxo: 0x3761...2000, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0x3a91...a330, seed: 0xa050...2cb4, cycles: 20, sig: 0x0afc...6b31 }
+{ utxo: 0x8037...a3a1, seed: 0xd034...97c1, cycles: 20, sig: 0x0ebf...5c01 }
+{ utxo: 0xb954...724b, seed: 0xaf43...fceb, cycles: 20, sig: 0x0481...1304 }
+{ utxo: 0xcb11...5d50, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0723...4fe2 }],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
@@ -436,13 +436,13 @@ private struct RangeFmt (R)
 {
     static immutable ResultStr = `
 ===============================================================================
-Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
-{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
-{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
-{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
-{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
-{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
-{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }],
+Height: 0, Prev: 0x0000...0000, Root: 0x7358...0131, Enrollments: [
+{ utxo: 0x23f3...afbf, seed: 0x0a82...4328, cycles: 20, sig: 0x09ac...7422 }
+{ utxo: 0x3761...2000, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0x3a91...a330, seed: 0xa050...2cb4, cycles: 20, sig: 0x0afc...6b31 }
+{ utxo: 0x8037...a3a1, seed: 0xd034...97c1, cycles: 20, sig: 0x0ebf...5c01 }
+{ utxo: 0xb954...724b, seed: 0xaf43...fceb, cycles: 20, sig: 0x0481...1304 }
+{ utxo: 0xcb11...5d50, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0723...4fe2 }],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
@@ -454,11 +454,11 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================
-Height: 1, Prev: 0x72e6...3b7d, Root: 0x07a8...acf4, Enrollments: [],
+Height: 1, Prev: 0xa4b7...9e21, Root: 0x6c02...2e3a, Enrollments: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0xc378...d314:0x0fbf...ba74
+Type : Payment, Inputs (1): 0x7f87...1a84:0x01b2...18e4
 Outputs (1): GCOQ...LRIJ(61,000,000)
-Type : Payment, Inputs (1): 0xfca9...baf8:0x02da...95d1
+Type : Payment, Inputs (1): 0x82dd...11c3:0x09da...4e5b
 Outputs (1): GCOQ...LRIJ(61,000,000)`;
     import agora.utils.Test : genesisSpendable;
     const Block secondBlock = makeNewBlock(GenesisBlock,
