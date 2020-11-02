@@ -109,19 +109,14 @@ unittest
     auto address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
     PublicKey pubkey = PublicKey.fromString(address);
 
-    // above parts not @safe/@nogc yet
-    () @safe @nogc nothrow
-    {
-        Output[1] outputs = [ Output(Amount(100), pubkey) ];
-        Transaction tx = { outputs: outputs[] };
-        BlockHeader header = { merkle_root : tx.hashFull() };
+    import std.conv;
+    Output[1] outputs = [ Output(Amount(100), pubkey) ];
+    Transaction tx = { outputs: outputs[] };
+    BlockHeader header = { merkle_root : tx.hashFull() };
 
-        auto hash = hashFull(header);
-        auto exp_hash = Hash("0xc04f3226bdc07c6d3141e3ac14888cd3b4199d84877" ~
-            "e591927063af65e5f56b14f9236e764bacb980aed5acefb98981b221e5c99e" ~
-            "aaaf1100c87c250cec2f32c");
-        assert(hash == exp_hash);
-    }();
+    auto hash = hashFull(header);
+    auto exp_hash = Hash("0x7aa86e99fc817341bcf1b92e11089f57e82a850d2db4e1d157261b8ee22a98cb3ae8911fe0b0d705cbf713dae8ba2655cd82531eb283f3205f6eecbc3b1a5bd9");
+    assert(hash == exp_hash, hash.to!string);
 }
 
 /*******************************************************************************
