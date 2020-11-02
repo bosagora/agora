@@ -97,22 +97,18 @@ public struct BlockHeader
 /// hashing test
 unittest
 {
+    import std.conv : to;
     import agora.common.crypto.Key;
     auto address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
     PublicKey pubkey = PublicKey.fromString(address);
 
-    // above parts not @safe/@nogc yet
-    () @safe @nogc nothrow
-    {
-        Output[1] outputs = [ Output(Amount(100), pubkey) ];
-        Transaction tx = { outputs: outputs[] };
-        BlockHeader header = { merkle_root : tx.hashFull() };
+    Output[1] outputs = [ Output(Amount(100), pubkey) ];
+    Transaction tx = { outputs: outputs[] };
+    BlockHeader header = { merkle_root : tx.hashFull() };
 
-        auto hash = hashFull(header);
-        auto exp_hash = Hash("0x110c703c994b2a4ef39819acbf4ea4df99f71b0a99a7cf873e4be60087baff20370eeed" ~
-                             "c3121e67379ccedea082f2c263d9aa576d3806cdcf42b260e4ee20423");
-        assert(hash == exp_hash);
-    }();
+    auto hash = hashFull(header);
+    auto exp_hash = Hash("0x2ee9f52b2072e7f6f980d337ea1d7646a9eb51dd4a8f964a4188ea7de316165f07a3cf1ad209fd8712bb0ef9d0d76c5bde8148bdf7c7704406b7bc7f1e0d7291");
+    assert(hash == exp_hash, hash.to!string);
 }
 
 /*******************************************************************************
