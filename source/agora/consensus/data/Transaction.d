@@ -149,6 +149,12 @@ public struct Input
         this.utxo = hashMulti(txhash, index);
     }
 
+    /// Ctor which does hashing based on the `Transaction` and index
+    public this (in Transaction tx, ulong index) nothrow @safe
+    {
+        this.utxo = hashMulti(tx.hashFull(), index);
+    }
+
     /***************************************************************************
 
         Implements hashing support
