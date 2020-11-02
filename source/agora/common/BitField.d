@@ -70,8 +70,6 @@ unittest
 /// See module documentation
 public struct BitField (T = uint)
 {
-    @safe pure nothrow:
-
     static assert (isUnsigned!T,
                    "BitField only accepts unsigned integer types, not: " ~ T.stringof);
 
@@ -105,12 +103,10 @@ public struct BitField (T = uint)
 
     ***************************************************************************/
 
-    public this (size_t min_num_bits) inout
+    public this (size_t min_num_bits) inout pure nothrow @safe
     {
         this._storage = new inout(T)[(min_num_bits + BitsPerT - 1) / BitsPerT];
     }
-
-    @nogc:
 
     /***************************************************************************
 
@@ -121,19 +117,19 @@ public struct BitField (T = uint)
 
     ***************************************************************************/
 
-    public this (inout(T)[] storage) inout
+    public this (inout(T)[] storage) inout pure nothrow @safe @nogc
     {
         this._storage = storage;
     }
 
     /// Returns the number of bits in the bitfield
-    public size_t length () const
+    public size_t length () const pure nothrow @safe @nogc
     {
         return this._storage.length * BitsPerT;
     }
 
     /// Supports setting a single bit to a value
-    public bool opIndexAssign (bool value, size_t index)
+    public bool opIndexAssign (bool value, size_t index) pure nothrow @safe @nogc
     {
         if (index >= this.length())
             assert(0);
@@ -148,7 +144,7 @@ public struct BitField (T = uint)
     }
 
     /// Gets a single bit's value
-    public bool opIndex (size_t index) const
+    public bool opIndex (size_t index) const pure nothrow @safe @nogc
     {
         if (index >= this.length())
             assert(0);
@@ -156,7 +152,7 @@ public struct BitField (T = uint)
     }
 
     /// Compare BitField of same length
-    public bool opEquals (OtherT) (const auto ref BitField!OtherT other) const
+    public bool opEquals (OtherT) (const auto ref BitField!OtherT other) const pure nothrow @safe @nogc
     {
         // Always do the comparison from the PoV of the BitField with
         // the largest data type
@@ -182,7 +178,7 @@ public struct BitField (T = uint)
 
     /// Gets a bit mask which only include a given index within a `T`
     pragma(inline, true)
-    private static T mask (size_t index)
+    private static T mask (size_t index) pure nothrow @safe @nogc
     {
         return (1 << (BitsPerT - 1 - (index % BitsPerT)));
     }
