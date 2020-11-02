@@ -224,30 +224,18 @@ unittest
     A reference to an `Output` within a `Transaction`
 
     In order to reference an `Output` in an UTXO, one need to know the hash
-    of the transaction, as well as the index. This structure holds both index
-    and `Transaction` for convenience.
+    (derived from the transaction and the index).
+    This structure holds both the hash and the `Output` for further reference.
 
 *******************************************************************************/
 
 public struct OutputRef
 {
-    ///
-    public Hash hash () const nothrow @safe
-    {
-        return hashMulti(hashFull(this.tx), ulong(this.index));
-    }
+    /// The `Output` being referenced
+    public const Output output;
 
-    ///
-    public const(Output) output () const @safe pure nothrow @nogc
-    {
-        return this.tx.outputs[index];
-    }
-
-    /// The `Transaction` with the `Output` being referenced
-    public const(Transaction) tx;
-
-    /// The index of the `Output` being referenced
-    public uint index;
+    /// The hash of the Output, to build the transaction
+    public const Hash hash;
 }
 
 /*******************************************************************************
@@ -332,14 +320,14 @@ public struct TxBuilder
     }
 
     /// Ditto
-    public this (const Transaction tx) @safe pure nothrow
+    public this (const Transaction tx) @safe nothrow
     {
         this(tx.outputs[0].address);
         this.attach(tx);
     }
 
     /// Ditto
-    public this (const Transaction tx, uint index) @safe pure nothrow
+    public this (const Transaction tx, uint index) @safe nothrow
     {
         this(tx.outputs[index].address);
         this.attach(tx, index);
@@ -360,20 +348,40 @@ public struct TxBuilder
     ***************************************************************************/
 
     public ref typeof(this) attach (const Transaction tx)
-        @safe pure nothrow return
+        @safe nothrow return
     {
         this.inputs ~= iota(tx.outputs.length)
-            .map!(index => OutputRef(tx, cast(uint) index)).array;
+            .map!(index => OutputRef(tx.outputs[index], Input(tx, index).utxo))
+            .array;
         tx.outputs.each!(outp => this.leftover.value.mustAdd(outp.value));
         return this;
     }
 
     /// Ditto
     public ref typeof(this) attach (const Transaction tx, uint index)
+        @safe nothrow return
+    {
+        return this.attach(tx.outputs[index], Input(tx, index).utxo);
+    }
+
+    /***************************************************************************
+
+        Attaches to an `Output` according to a hash
+
+        Params:
+            utxo = The `Output` to attach to
+            hash = The hash that correspond to UTXO (`hashMulti(txhash, index)`)
+
+        Returns:
+            A reference to `this` to allow for chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) attach (in Output utxo, in Hash hash)
         @safe pure nothrow return
     {
-        this.inputs ~= OutputRef(tx, index);
-        this.leftover.value.mustAdd(tx.outputs[index].value);
+        this.inputs ~= OutputRef(utxo, hash);
+        this.leftover.value.mustAdd(utxo.value);
         return this;
     }
 
@@ -399,7 +407,7 @@ public struct TxBuilder
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash());
+            this.data.inputs ~= Input(in_.hash);
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
