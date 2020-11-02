@@ -346,6 +346,42 @@ nothrow @nogc @safe unittest
     assert(stolen_key != kp.v);
 }
 
+// rogue-key attack
+// see: https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#key-cancellation-attack
+// see: https://blockstream.com/2018/01/23/en-musig-key-aggregation-schnorr-signatures/#:~:text=not%20secure.
+@safe unittest
+{
+    static immutable string message = "BOSAGORA for the win";
+
+    // alice
+    const Pair kp1 = Pair.random(); // key-pair
+    const Pair R1 = Pair.random();  // (R, r), the public and private nonce
+
+    // bob
+    const Pair kp2 = Pair.random(); // ditto
+    const Pair R2 = Pair.random();  // ditto
+
+    auto R = R1.V + R2.V;
+    auto X = kp1.V + kp2.V;
+    Scalar c = hashMulti(X, R, message);  // challenge
+
+    Scalar s1 = R1.v + (kp1.v * c);
+    Scalar s2 = R2.v + (kp2.v * c);
+    Scalar multi_sig = s1 + s2;
+    assert(multi_sig.toPoint() == R + (X * c));
+
+    // now assume that bob lied about his V and R during the co-operative phase.
+    auto bobV = kp2.V - kp1.V;
+    auto bobR = R2.V - R1.V;
+    X = kp1.V + bobV;
+    R = R1.V + bobR;
+    c = Scalar(hashMulti(X, R, message));
+
+    // bob signed the message alone, without co-operation from alice. it passes!
+    Scalar bob_sig = R2.v + (kp2.v * c);
+    assert(bob_sig.toPoint() == R + (X * c));
+}
+
 // ditto, but using multi-sig
 /*@nogc*/ @safe unittest
 {
