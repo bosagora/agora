@@ -58,6 +58,10 @@ public struct Transaction
     /// The data to store
     public DataPayload payload;
 
+    /// This transaction may only be included in a block with `height >= lock_height`.
+    /// Note that another tx with a lower lock time could double-spend this tx.
+    public Height lock_height = Height(0);
+
     /***************************************************************************
 
         Transactions Serialization
@@ -80,6 +84,8 @@ public struct Transaction
             serializePart(output, dg);
 
         serializePart(payload, dg);
+
+        serializePart(this.lock_height, dg);
     }
 
     /// Support for sorting transactions
@@ -225,8 +231,7 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0x35927f79ab7f2c8273f5dc24bb1efa5ebe3ac050fd4fd84d014b51124d0322ed` ~
-        `709225b92ba28b3ee6b70144d4acafb9a5289fc48ecb4a4f273b537837c78cb0`);
+        `0x79a7bb3cae7e4d46a45674fefd3708557574890ce7a554c09c7d486346a31feb82005aa593620db332c1ae32c5ab44f0977c8834969883a1928e8db0d1b3ccac`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -237,8 +242,7 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0x0277044f0628605485a8f8a999f9a2519231e8c59c1568ef2dac2f241ce569d8` ~
-        `54e15f950e0fd3d88460309d3e0ef3fbd57b8f5af998f8bacbe391ddb9aea328`);
+        `0x7b8f848dcc4deab1c2161aa4e91401b6d9e57f2ac8126493f0343efbc23a89217871e7b1c2ef8f1a40736cd4b331e26de43b48f593097fe97941a92673635895`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }
