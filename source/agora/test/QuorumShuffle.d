@@ -33,7 +33,8 @@ unittest
     TestConf conf = {
         max_listeners : 7,
         max_quorum_nodes : 4,  // makes it easier to test shuffle cycling
-        quorum_shuffle_interval : 6
+        quorum_shuffle_interval : 6,
+        txs_to_nominate : 0
     };
     auto network = makeTestNetwork(conf);
     network.start();
@@ -43,71 +44,36 @@ unittest
 
     auto nodes = network.clients;
 
-    Height block_height = Height(0);
-
     const keys = network.nodes.map!(node => node.client.getPublicKey()).array;
 
-    // check that the preimages were revealed before we trigger block creation
-    // note: this is a workaround. A block should not be accepted if there
-    // are no preimages for this height - however currently block signatures
-    // are not implemented yet (#365)
-    void checkDistance (Height height)
+    Height enrolledHeight (ulong height)
     {
-        auto enrolled_height = Height(GenesisValidatorCycle * ((height.value - 1) / GenesisValidatorCycle));
-        auto required_distance = (height - enrolled_height) % GenesisValidatorCycle;
-        log.trace("check distance is {} for generating block at height {} with enrollments at height {}",
-            required_distance, height, enrolled_height);
-        auto enrollments = nodes[0].getBlocksFrom(enrolled_height, 1)[0].header.enrollments;
-        nodes.enumerate.each!((idx, node) =>
-            enrollments.each!(enr =>
-                retryFor(node.getPreimage(enr.utxo_key).distance >= required_distance, 5.seconds,
-                    format!"node #%s has preimage distance %s not %s as expected"
-                        (idx, node.getPreimage(enr.utxo_key).distance, required_distance))));
-    }
-
-    void makeBlock ()
-    {
-        nodes[0].getBlocksFrom(block_height++, 1)[0].spendable.takeExactly(8).each!(txb =>
-            nodes[0].putTransaction(txb.sign()));
-        log.trace("make block {}", block_height);
-        checkDistance(block_height);
-        log.trace("expect block {}", block_height);
-        network.expectBlock(block_height);
-        log.trace("Block {}:\n{}\n", block_height, prettify(nodes[0].getBlocksFrom(block_height, 1)[0]));
-    }
-
-    // at block height 20 the enrollments expire so we must re-enroll first.
-    // note that this will not have any effect on the quorum shuffle at height 18,
-    // it will still happen with the preimages at distance 19 and not these new
-    // enrollments.
-    void reEnrollNodes ()
-    {
-        foreach (node; nodes)
-        {
-            Enrollment enroll = node.createEnrollmentData();
-            node.enrollValidator(enroll);
-
-            // check enrollment
-            nodes.each!(n =>
-                retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-        }
+        Height enrolledHeight = Height(((height - 1) / GenesisValidatorCycle)
+            * GenesisValidatorCycle);
+        log.trace("enrolledHeight = {}", enrolledHeight);
+        return enrolledHeight;
     }
 
     QuorumConfig[] checkQuorum (Height height) {
         if (height > 0) // if not Genesis block
         {
-            log.trace(format!"generateBlocks to height %s"(height));
-            if (height % GenesisValidatorCycle == 0) { // As cycle is 20 we need to re-enroll every 20 blocks
-                iota(height - block_height - 1).each!(_ => makeBlock());
-                reEnrollNodes();
-                makeBlock();
+            if (height % GenesisValidatorCycle == 0) {
+                log.trace("generateBlocks to height {}, enrollments from {}",
+                    height - 1, enrolledHeight(height - 1));
+                network.generateBlocks(Height(height - 1),
+                    enrolledHeight(Height(height - 1)));
+                log.trace("re-enrolling at height {}", height);
+                iota(0, GenesisValidators).each!(idx => network.enroll(idx));
+                log.trace("generateBlocks to height {}", height);
+                network.generateBlocks(Height(height), enrolledHeight(height));
             }
             else
             {
-                iota(height - block_height).each!(_ => makeBlock());
+                log.trace("generateBlocks to height {}", height);
+                network.generateBlocks(Height(height), enrolledHeight(height));
             }
         }
-        log.trace(format!"checkQuorum for height %s"(height));
+        log.trace("checkQuorum for height {}", height);
         QuorumConfig[] quorums = nodes[0].getExpectedQuorums(keys, height);
         log.trace(quorums.fold!((a, b) => format!"%s\n%s"(a, b))(""));
         nodes.enumerate.each!((idx, client) =>
@@ -118,7 +84,8 @@ unittest
     }
 
     // We check at each expected shuffle
-    auto quorums = [0, 6, 12, 18, 20, 26].map!(height => checkQuorum(Height(height))).array;
+    auto quorums = [0, 6, 12, 18, 20, 26].map!(height =>
+        checkQuorum(Height(height))).array;
     assert(quorums.sort.uniq().count() == quorums.count(),
         format!"The quorums should be unique not %s"
             (quorums.fold!((a, b) => format!"%s\n%s"(a, b))("")));

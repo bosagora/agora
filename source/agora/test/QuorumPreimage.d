@@ -43,7 +43,7 @@ unittest
     TestConf conf = {
         outsider_validators : 2,
         max_listeners : 7,
-        extra_blocks : 18 };
+        txs_to_nominate : 0 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -52,10 +52,10 @@ unittest
 
     auto nodes = network.clients;
 
-    Height expected_block = Height(conf.extra_blocks);
+    auto validators = GenesisValidators + conf.outsider_validators;
 
-    // Expect block 18
-    network.expectBlock(expected_block++, GenesisBlock.header);
+    // generate 18 blocks, 2 short of the enrollments expiring.
+    network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
     enum quorums_1 = [
         // 0
@@ -127,65 +127,32 @@ unittest
                     idx, node.getQuorumConfig(), quorums_1[idx])));
     }
 
-    auto spendable = network.blocks[$ - 1].txs
-        .filter!(tx => tx.type == TxType.Payment)
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner().array;
-
-    // create block with 5 payment..
-    auto txs = spendable[0 .. 5]
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
+    const keys = network.nodes.map!(node => node.client.getPublicKey())
+        .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
-    // ..6th payment (split into 3+ outputs so we can have at least 8 UTXOs..)
-    txs ~= spendable[5].split(WK.Keys.Genesis.address.repeat(3)).sign();
+    // prepare frozen outputs for outsider validators to enroll
+    genesisSpendable().dropExactly(1).takeExactly(1)
+        .map!(txb => txb.split(keys).sign(TxType.Freeze))
+        .each!(tx => network.clients[0].putTransaction(tx));
 
-    // ..and 2 freeze txs for the two outsider validator nodes
-    txs ~= spendable[6 .. 8]
-        .enumerate
-        .map!(pair => pair.value.refund(nodes[GenesisValidators + pair.index].getPublicKey())
-            .sign(TxType.Freeze))
-        .array;
+    // block 19
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    // make sure outsiders are up to date
+    network.expectBlock(iota(GenesisValidators, validators),
+        Height(GenesisValidatorCycle - 1));
 
-    // at block height 19 the freeze txs are available
-    network.expectBlock(expected_block++, GenesisBlock.header);
+    // Now we enroll new validators and re-enroll the original validators
+    iota(validators).each!(idx => network.enroll(idx));
 
-    // now we re-enroll existing validators (extension),
-    // and enroll 2 new validators.
-    Enrollment[] enrolls;
-    foreach (node; nodes)
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        enrolls ~= enroll;
-        node.enrollValidator(enroll);
+     // Generate the last block of cycle with Genesis validators
+    network.generateBlocks(iota(GenesisValidators),
+        Height(GenesisValidatorCycle), Height(0));
 
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
-
-    void makeBlock ()
-    {
-        txs = txs.filter!(tx => tx.type == TxType.Payment)
-            .map!(tx => iota(tx.outputs.length)
-                .map!(idx => TxBuilder(tx, cast(uint)idx)))
-            .joiner().takeExactly(8)  // there might be 9 UTXOs..
-            .map!(txb => txb.refund(WK.Keys.Genesis.address).sign()).array;
-        txs.each!(tx => nodes[0].putTransaction(tx));
-    }
-
-    makeBlock();
-
-    // at block height 20 the validator set has changed
-    network.expectBlock(expected_block++, GenesisBlock.header);
-
-    // check if the needed pre-images are revealed timely
-    enrolls.each!(enroll =>
-        nodes.each!(node =>
-            retryFor(node.getPreimage(enroll.utxo_key).distance >= 6, 5.seconds)));
+    // make sure outsiders are up to date
+    network.expectBlock(iota(GenesisValidators, validators),
+        Height(GenesisValidatorCycle));
 
     enum quorums_2 = [
         // 0
@@ -194,14 +161,14 @@ unittest
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 1
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
-            WK.Keys.NODE6.address,
+            WK.Keys.NODE4.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
@@ -220,8 +187,8 @@ unittest
 
         // 3
         QuorumConfig(6, [
-            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
@@ -230,20 +197,20 @@ unittest
 
         // 4
         QuorumConfig(6, [
-            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
+            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 5
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
@@ -251,21 +218,21 @@ unittest
         // 6
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
-            WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
-            WK.Keys.B.address,
-            WK.Keys.NODE3.address,
-            WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
-
-        // 7
-        QuorumConfig(6, [
-            WK.Keys.NODE2.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
+
+        // 7
+        QuorumConfig(6, [
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.B.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
             WK.Keys.NODE5.address]),
     ];
 
@@ -282,31 +249,16 @@ unittest
                     idx, node.getQuorumConfig(), quorums_2[idx])));
     }
 
-    // create 19 blocks (1 short of all enrollments expiring)
-    const b20 = nodes[0].getBlocksFrom(20, 2)[0];
-    foreach (idx; 0 .. 19)
-    {
-        makeBlock();
+    // create 19 blocks with all validators (1 short of end of 2nd cycle)
+    network.generateBlocks(iota(validators),
+        Height((2 * GenesisValidatorCycle) - 1), Height(GenesisValidatorCycle));
 
-        // at block height 20 the validator set has changed
-        network.expectBlock(expected_block++, b20.header);
-    }
+    // Re-enroll
+    iota(validators).each!(idx => network.enroll(idx));
 
-    // re-enroll all validators before they expire
-    foreach (node; nodes)
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        node.enrollValidator(enroll);
-
-        // check enrollment
-        nodes.each!(n =>
-            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
-
-    makeBlock();
-
-    // at block height 40 the validator set has changed
-    network.expectBlock(expected_block++, b20.header);
+    // Generate the last block of cycle with Genesis validators
+    network.generateBlocks(iota(validators),
+        Height(2 * GenesisValidatorCycle), Height(GenesisValidatorCycle));
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage
@@ -315,13 +267,23 @@ unittest
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.B.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE5.address]),
+
+        // 1
+        QuorumConfig(6, [
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
-        // 1
+        // 2
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
@@ -329,24 +291,14 @@ unittest
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
-
-        // 2
-        QuorumConfig(6, [
-            WK.Keys.NODE2.address,
-            WK.Keys.NODE4.address,
-            WK.Keys.B.address,
-            WK.Keys.NODE3.address,
-            WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address,]),
 
         // 3
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
@@ -375,20 +327,20 @@ unittest
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
-            WK.Keys.NODE5.address]),
+            WK.Keys.NODE7.address]),
 
         // 7
         QuorumConfig(6, [
+            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
     ];
 

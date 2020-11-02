@@ -54,19 +54,15 @@ unittest
 
     // time updated, block height 1
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.setTimeFor(Height(1));
-    network.waitForPreimages(b0.header.enrollments, 1);
-    ensureConsistency(nodes, 1);
 
-    network.setTimeFor(Height(2));
-    network.waitForPreimages(b0.header.enrollments, 2);
-    ensureConsistency(nodes, 2);
+    void checkHeight(Height height)
+    {
+        network.waitForPreimages(b0.header.enrollments,
+            cast(ushort) (height - 1));
+        network.setTimeFor(height);
+        network.assertSameBlocks(height);
+    }
 
-    network.setTimeFor(Height(3));
-    network.waitForPreimages(b0.header.enrollments, 3);
-    ensureConsistency(nodes, 3);
-
-    network.setTimeFor(Height(4));
-    network.waitForPreimages(b0.header.enrollments, 4);
-    ensureConsistency(nodes, 4);
+    // Check for adding blocks 1 to 4
+    [1, 2, 3, 4].each!(h => checkHeight(Height(h)));
 }
