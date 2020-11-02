@@ -352,7 +352,7 @@ nothrow @nogc @safe unittest
     assert(stolen_key == kp.v);
 }
 
-// possibly secure signature scheme
+// possibly secure signature scheme (requires proving ownership of private key)
 /*@nogc*/ @safe unittest
 {
     static immutable string message = "BOSAGORA for the win";
