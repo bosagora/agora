@@ -54,7 +54,7 @@ unittest
 
     Height expected_block = Height(conf.extra_blocks);
 
- // Expect block 18
+    // Expect block 18
     network.expectBlock(expected_block++, GenesisBlock.header);
 
     enum quorums_1 = [
