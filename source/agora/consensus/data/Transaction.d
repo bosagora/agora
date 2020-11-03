@@ -23,6 +23,7 @@ import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.script.Lock;
 
 import std.algorithm;
 
@@ -125,6 +126,25 @@ public struct Output
     /// The public key that can redeem this output (A = pubkey)
     /// Note that in Bitcoin, this is an address (the double hash of a pubkey)
     public PublicKey address;
+
+    /// The lock condition for this Output (will replace `address` above later)
+    public Lock lock;
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.value, dg);
+        hashPart(this.address, dg);
+        hashPart(this.lock, dg);
+    }
 }
 
 /// The input of the transaction, which spends a previously received `Output`
