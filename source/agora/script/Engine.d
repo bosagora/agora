@@ -509,6 +509,21 @@ public class Engine
 
                 break;
 
+            case OP.VERIFY_UNLOCK_AGE:
+                if (stack.count() < 1)
+                    return "VERIFY_UNLOCK_AGE opcode requires an unlock age on the stack";
+
+                const age_bytes = stack.pop();
+                if (age_bytes.length != uint.sizeof)
+                    return "VERIFY_UNLOCK_AGE unlock age must be a 4-byte number";
+
+                const uint unlock_age = littleEndianToNative!uint(
+                    age_bytes[0 .. uint.sizeof]);
+                if (unlock_age > input.unlock_age)
+                    return "VERIFY_UNLOCK_AGE unlock age of input is too low";
+
+                break;
+
             case OP.INVALID:
                 return "Script panic while executing OP.INVALID opcode";
 
@@ -975,6 +990,54 @@ unittest
             [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_10, Input.init),
         "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack");
+}
+
+// OP.VERIFY_UNLOCK_AGE
+unittest
+{
+    const age_9 = nativeToLittleEndian(uint(9));
+    const age_10 = nativeToLittleEndian(uint(10));
+    const age_11 = nativeToLittleEndian(uint(11));
+    const age_overflow = nativeToLittleEndian(ulong.max);
+
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    const Input input_10 = Input(Hash.init, 0, 10 /* unlock_age */);
+    const Input input_11 = Input(Hash.init, 0, 11 /* unlock_age */);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(age_9)
+            ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
+        Unlock.init, Transaction.init, input_10),
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(age_10)
+            ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
+        Unlock.init, Transaction.init, input_10),  // input with matching unlock age
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(age_11)
+            ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
+        Unlock.init, Transaction.init, input_10),
+        "VERIFY_UNLOCK_AGE unlock age of input is too low");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(age_11)
+            ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
+        Unlock.init, Transaction.init, input_11),  // input with matching unlock age
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(age_overflow)
+            ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
+        Unlock.init, Transaction.init, input_10),
+        "VERIFY_UNLOCK_AGE unlock age must be a 4-byte number");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
+        Unlock.init, Transaction.init, input_10),
+        "VERIFY_UNLOCK_AGE opcode requires an unlock age on the stack");
 }
 
 // LockType.Key (Native P2PK - Pay to Public Key), consumes 33 bytes
