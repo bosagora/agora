@@ -161,24 +161,31 @@ public struct Input
     /// block height at which the spending transaction wants to be included.
     public uint unlock_age = 0;
 
+    /// Segwit-style unlock script
+    public Unlock unlock;
+
     /// Simple ctor
-    public this (in Hash utxo_, in Signature sig = Signature.init, uint unlock_age = 0)
-        inout pure nothrow @nogc @safe
+    public this (in Hash utxo_, in Signature sig = Signature.init,
+        uint unlock_age = 0, Unlock unlock = Unlock.init)
+        inout pure nothrow @nogc @trusted
     {
         this.utxo = utxo_;
         this.signature = sig;
         this.unlock_age = unlock_age;
+        this.unlock = cast(inout(Unlock))unlock; // bizarre error
     }
 
     /// Ctor which does hashing based on index
-    public this (Hash txhash, ulong index, uint unlock_age = 0) nothrow @safe
+    public this (Hash txhash, ulong index,
+        uint unlock_age = 0, Unlock unlock = Unlock.init) nothrow @safe
     {
         this.utxo = hashMulti(txhash, index);
         this.unlock_age = unlock_age;
     }
 
     /// Ctor which does hashing based on the `Transaction` and index
-    public this (in Transaction tx, ulong index, uint unlock_age = 0) nothrow @safe
+    public this (in Transaction tx, ulong index,
+        uint unlock_age = 0, Unlock unlock = Unlock.init) nothrow @safe
     {
         this.utxo = hashMulti(tx.hashFull(), index);
         this.unlock_age = unlock_age;
