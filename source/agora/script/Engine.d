@@ -28,6 +28,7 @@ import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.ScopeCondition;
 import agora.script.Script;
+import agora.script.Signature;
 import agora.script.Stack;
 
 import std.bitmanip;
@@ -38,7 +39,7 @@ import std.traits;
 version (unittest)
 {
     import agora.common.crypto.ECC;
-    import agora.common.crypto.Schnorr;
+    import agora.common.crypto.Schnorr : Pair;
     import agora.common.Hash;
     import agora.utils.Test;
     import ocean.core.Test;
@@ -112,7 +113,7 @@ public class Engine
         {
         case LockType.Key:
         case LockType.KeyHash:
-            if (auto error = this.handleBasicPayment(lock, unlock, tx))
+            if (auto error = this.handleBasicPayment(lock, unlock, tx, input))
                 return error;
             break;
 
@@ -143,6 +144,7 @@ public class Engine
             lock = must contain a `pubkey` or a `hash`
             unlock = must contain a `signature` or `signature, key` tuple
             tx = the spending transaction
+            input = the input which contained the unlock
 
         Returns:
             null if there were no errors,
@@ -151,7 +153,7 @@ public class Engine
     ***************************************************************************/
 
     private string handleBasicPayment (in Lock lock, in Unlock unlock,
-        in Transaction tx) nothrow @safe
+        in Transaction tx, in Input input) nothrow @safe
     {
         // assumed sizes
         static assert(Point.sizeof == 32);
@@ -166,10 +168,15 @@ public class Engine
             if (!key.isValid())
                 return "LockType.Key 32-byte public key in lock script is invalid";
 
-            if (unlock.bytes.length != Signature.sizeof)
-                return "LockType.Key requires a 64-byte signature in the unlock script";
-            const sig = Signature(unlock.bytes);
-            if (!Schnorr.verify(key, sig, tx))
+            if (unlock.bytes.length != SigPair.sizeof)
+                return "LockType.Key requires a 65-byte encoded signature in the unlock script";
+
+            SigPair sig_pair;
+            if (auto reason = decodeSignature(unlock.bytes, sig_pair))
+                return "LockType.Key " ~ reason;
+
+            if (!this.isValidSignature(key, sig_pair.sig_hash,
+                sig_pair.signature, tx, input))
                 return "LockType.Key signature in unlock script failed validation";
 
             break;
@@ -180,11 +187,15 @@ public class Engine
             const Hash key_hash = Hash(lock.bytes);
 
             const(ubyte)[] bytes = unlock.bytes;
-            if (bytes.length != Signature.sizeof + Point.sizeof)
-                return "LockType.KeyHash requires a 64-byte signature "
+            if (bytes.length != SigPair.sizeof + Point.sizeof)
+                return "LockType.KeyHash requires a 65-byte encoded signature "
                      ~ "and a 32-byte key in the unlock script";
-            const sig = Signature(bytes[0 .. Signature.sizeof]);
-            bytes.popFrontN(Signature.sizeof);
+
+            SigPair sig_pair;
+            if (auto reason = decodeSignature(
+                bytes[0 .. SigPair.sizeof], sig_pair))
+                return "LockType.KeyHash " ~ reason;
+            bytes.popFrontN(SigPair.sizeof);
 
             const Point key = Point(bytes);
             if (!key.isValid())
@@ -193,7 +204,8 @@ public class Engine
             if (hashFull(key) != key_hash)
                 return "LockType.KeyHash hash of key does not match key hash set in lock script";
 
-            if (!Schnorr.verify(key, sig, tx))
+            if (!this.isValidSignature(key, sig_pair.sig_hash, sig_pair.signature,
+                tx, input))
                 return "LockType.KeyHash signature in unlock script failed validation";
 
             break;
@@ -476,7 +488,7 @@ public class Engine
             case OP.CHECK_SIG:
                 bool is_valid;
                 if (auto error = this.verifySignature!(OP.CHECK_SIG)(
-                    stack, tx, is_valid))
+                    stack, tx, input, is_valid))
                     return error;
 
                 // canPush() check unnecessary
@@ -486,7 +498,7 @@ public class Engine
             case OP.VERIFY_SIG:
                 bool is_valid;
                 if (auto error = this.verifySignature!(OP.VERIFY_SIG)(
-                    stack, tx, is_valid))
+                    stack, tx, input, is_valid))
                     return error;
 
                 if (!is_valid)
@@ -681,6 +693,8 @@ public class Engine
             OP = the opcode
             stack = should contain the Signature and Public Key
             tx = the transaction that should have been signed
+            input = the Input which contained the unlock script
+            sig_valid = will contain the validation result
 
         Returns:
             an error string if the Signature and Public key are missing or
@@ -688,18 +702,21 @@ public class Engine
 
     ***************************************************************************/
 
-    private string verifySignature (OP op)(ref Stack stack, in Transaction tx,
-        out bool sig_valid) nothrow @safe //@nogc  // stack.pop() is not @nogc
+    private string verifySignature (OP op)(ref Stack stack,
+        in Transaction tx, in Input input, out bool sig_valid)
+        nothrow @safe //@nogc  // stack.pop() is not @nogc
     {
         static assert(op == OP.CHECK_SIG || op == OP.VERIFY_SIG);
 
         // if changed, check assumptions
         static assert(Point.sizeof == 32);
         static assert(Signature.sizeof == 64);
+        static assert(SigPair.sizeof == 65);
 
+        static immutable opcode = op.to!string;
         if (stack.count() < 2)
         {
-            static immutable err1 = op.to!string
+            static immutable err1 = opcode
                 ~ " opcode requires two items on the stack";
             return err1;
         }
@@ -707,7 +724,7 @@ public class Engine
         const key_bytes = stack.pop();
         if (key_bytes.length != Point.sizeof)
         {
-            static immutable err2 = op.to!string
+            static immutable err2 = opcode
                 ~ " opcode requires 32-byte public key on the stack";
             return err2;
         }
@@ -715,22 +732,59 @@ public class Engine
         const point = Point(key_bytes);
         if (!point.isValid())
         {
-            static immutable err3 = op.to!string
+            static immutable err3 = opcode
                 ~ " 32-byte public key on the stack is invalid";
             return err3;
         }
 
         const sig_bytes = stack.pop();
-        if (sig_bytes.length != Signature.sizeof)
+        if (sig_bytes.length != SigPair.sizeof)
         {
-            static immutable err4 = op.to!string
-                ~ " opcode requires 64-byte signature on the stack";
+            static immutable err4 = opcode
+                ~ " opcode requires 65-byte encoded signature on the stack";
             return err4;
         }
 
-        const sig = Signature(sig_bytes);
-        sig_valid = Schnorr.verify(point, sig, tx);
+        SigPair sig_pair;
+        if (auto reason = decodeSignature(sig_bytes, sig_pair))
+            return opcode ~ " " ~ reason;
+
+        sig_valid = this.isValidSignature(point, sig_pair.sig_hash,
+            sig_pair.signature, tx, input);
         return null;
+    }
+
+    /***************************************************************************
+
+        Checks whether the given signature is valid for the provided key,
+        SigHash type, transaction, and the input which contained the
+        signature.
+
+        Params:
+            key = the key to validate the signature with
+            sig_hash = selects the behavior of the signature validation
+                       algorithm, potentially blanking out parts of the tx
+                       before hashing the tx & validating the signature
+            sig = the signature itself
+            tx = the spending transaction
+            input = the Input which contained the signature
+
+        Returns:
+            true if the signature is valid for the given set of parameters
+
+    ***************************************************************************/
+
+    private bool isValidSignature (in Point key, in SigHash sig_hash,
+        in Signature sig, in Transaction tx, in Input input)
+        nothrow @safe // @nogc  // serializing allocates
+    {
+        // workaround: input index not explicitly passed in
+        import std.algorithm : countUntil;
+        const long input_idx = tx.inputs.countUntil(input);
+        assert(input_idx != -1, "Input does not belong to this transaction");
+
+        const challenge = getChallenge(tx, sig_hash, input_idx);
+        return Schnorr.verify(key, sig, challenge);
     }
 }
 
@@ -798,6 +852,17 @@ version (unittest)
     private const TestStackMaxItemSize = 512;
 }
 
+/// Helper routine to sign a whole msg (SigHash.All)
+version (unittest)
+public SigPair signTx (in Pair kp, in Transaction tx) nothrow @safe /*@nogc*/
+{
+    SigPair pair;
+    pair.sig_hash = SigHash.All;
+    const challenge = getChallenge(tx, SigHash.All, 0);
+    pair.signature = Schnorr.sign(kp, challenge);
+    return pair;
+}
+
 // OP.INVALID
 unittest
 {
@@ -852,7 +917,7 @@ unittest
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
     test!("==")(engine.execute(
         Lock(LockType.Script, [OP.CHECK_EQUAL]), Unlock.init, tx, Input.init),
         "CHECK_EQUAL opcode requires two items on the stack");
@@ -876,7 +941,7 @@ unittest
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
     test!("==")(engine.execute(
         Lock(LockType.Script, [OP.VERIFY_EQUAL]), Unlock.init, tx, Input.init),
         "VERIFY_EQUAL opcode requires two items on the stack");
@@ -900,7 +965,7 @@ unittest
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
     test!("==")(engine.execute(
         Lock(LockType.Script, [OP.CHECK_SIG]), Unlock.init, tx, Input.init),
         "CHECK_SIG opcode requires two items on the stack");
@@ -928,18 +993,18 @@ unittest
         Lock(LockType.Script, [ubyte(1), ubyte(1)]
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
-        "CHECK_SIG opcode requires 64-byte signature on the stack");
+        "CHECK_SIG opcode requires 65-byte encoded signature on the stack");
 
-    Signature invalid_sig;
+    SigPair invalid_sig;
     test!("==")(engine.execute(
-        Lock(LockType.Script, [ubyte(64)] ~ invalid_sig[]
+        Lock(LockType.Script, [ubyte(65)] ~ invalid_sig[]
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
         "Script failed");
     const Pair kp = Pair.random();
-    const sig = sign(kp, tx);
+    const sig = signTx(kp, tx);
     test!("==")(engine.execute(
-        Lock(LockType.Script, [ubyte(64)] ~ sig[]
+        Lock(LockType.Script, [ubyte(65)] ~ sig[]
             ~ [ubyte(32)] ~ kp.V[]
             ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
         null);
@@ -949,7 +1014,7 @@ unittest
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
     test!("==")(engine.execute(
         Lock(LockType.Script, [OP.VERIFY_SIG]), Unlock.init, tx, Input.init),
         "VERIFY_SIG opcode requires two items on the stack");
@@ -977,23 +1042,23 @@ unittest
         Lock(LockType.Script, [ubyte(OP.PUSH_BYTES_1), ubyte(1)]
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
-        "VERIFY_SIG opcode requires 64-byte signature on the stack");
+        "VERIFY_SIG opcode requires 65-byte encoded signature on the stack");
 
-    Signature invalid_sig;
+    SigPair invalid_sig;
     test!("==")(engine.execute(
-        Lock(LockType.Script, [ubyte(64)] ~ invalid_sig[]
+        Lock(LockType.Script, [ubyte(65)] ~ invalid_sig[]
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
         "VERIFY_SIG signature failed validation");
     const Pair kp = Pair.random();
-    const sig = sign(kp, tx);
+    const sig = signTx(kp, tx);
     test!("==")(engine.execute(
-        Lock(LockType.Script, [ubyte(64)] ~ sig[]
+        Lock(LockType.Script, [ubyte(65)] ~ sig[]
             ~ [ubyte(32)] ~ kp.V[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
         "Script failed");  // VERIFY_SIG does not push TRUE to the stack
     test!("==")(engine.execute(
-        Lock(LockType.Script, [ubyte(64)] ~ sig[]
+        Lock(LockType.Script, [ubyte(65)] ~ sig[]
             ~ [ubyte(32)] ~ kp.V[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init),
         null);
@@ -1008,8 +1073,8 @@ unittest
     const height_overflow = nativeToLittleEndian(ulong.max);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx_10 = { unlock_height : 10 };
-    const Transaction tx_11 = { unlock_height : 11 };
+    const Transaction tx_10 = { unlock_height : 10, inputs: [Input.init] };
+    const Transaction tx_11 = { unlock_height : 11, inputs: [Input.init] };
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_9)
@@ -1099,14 +1164,15 @@ unittest
 unittest
 {
     const Pair kp = Pair.random();
-    const Transaction tx;
-    const sig = sign(kp, tx);
+    const Transaction tx = { inputs: [Input.init] };
+    const sig = signTx(kp, tx);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     test!("==")(engine.execute(
         Lock(LockType.Key, kp.V[]), Unlock(sig[]), tx, Input.init),
         null);
-    const bad_sig = sign(kp, "foobar");
+    const Transaction tx2 = { inputs: [Input(hashFull(42))] };
+    const bad_sig = signTx(kp, tx2);
     test!("==")(engine.execute(
         Lock(LockType.Key, kp.V[]), Unlock(bad_sig[]), tx, Input.init),
         "LockType.Key signature in unlock script failed validation");
@@ -1125,11 +1191,11 @@ unittest
     test!("==")(engine.execute(
         Lock(LockType.Key, kp.V[]),
         Unlock(ubyte(42).repeat(32).array), tx, Input.init),
-        "LockType.Key requires a 64-byte signature in the unlock script");
+        "LockType.Key requires a 65-byte encoded signature in the unlock script");
     test!("==")(engine.execute(
         Lock(LockType.Key, kp.V[]),
-        Unlock(ubyte(42).repeat(65).array), tx, Input.init),
-        "LockType.Key requires a 64-byte signature in the unlock script");
+        Unlock(ubyte(42).repeat(66).array), tx, Input.init),
+        "LockType.Key requires a 65-byte encoded signature in the unlock script");
 }
 
 // LockType.KeyHash (Native P2PKH - Pay to Public Key Hash), consumes 65 bytes
@@ -1137,16 +1203,17 @@ unittest
 {
     const Pair kp = Pair.random();
     const key_hash = hashFull(kp.V);
-    const Transaction tx;
-    const sig = sign(kp, tx);
+    const Transaction tx = { inputs: [Input.init] };
+    const sig = signTx(kp, tx);
     const Pair kp2 = Pair.random();
-    const sig2 = sign(kp2, tx);  // valid sig, but for a different key-pair
+    const sig2 = signTx(kp2, tx);  // valid sig, but for a different key-pair
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     test!("==")(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig[] ~ kp.V[]), tx, Input.init),
         null);
-    const bad_sig = sign(kp, "foo")[];
+    const Transaction tx2 = { inputs: [Input(hashFull(42))] };
+    const bad_sig = signTx(kp, tx2)[];
     test!("==")(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(bad_sig[] ~ kp.V[]), tx, Input.init),
         "LockType.KeyHash signature in unlock script failed validation");
@@ -1167,14 +1234,14 @@ unittest
         "LockType.KeyHash requires a 64-byte key hash argument in the lock script");
     test!("==")(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig[]), tx, Input.init),
-        "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
+        "LockType.KeyHash requires a 65-byte encoded signature and a 32-byte key in the unlock script");
     test!("==")(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(kp.V[]), tx, Input.init),
-        "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
+        "LockType.KeyHash requires a 65-byte encoded signature and a 32-byte key in the unlock script");
     test!("==")(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig[] ~ kp.V[] ~ [ubyte(0)]),
         tx, Input.init),
-        "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
+        "LockType.KeyHash requires a 65-byte encoded signature and a 32-byte key in the unlock script");
     test!("==")(engine.execute(
         Lock(LockType.KeyHash, key_hash[]),
         Unlock(sig[] ~ ubyte(0).repeat(32).array), tx, Input.init),
@@ -1185,12 +1252,12 @@ unittest
 unittest
 {
     const Pair kp = Pair.random();
-    const Transaction tx;
-    const sig = sign(kp, tx);
+    const Transaction tx = { inputs: [Input.init] };
+    const sig = signTx(kp, tx);
     const key_hash = hashFull(kp.V);
     // emulating bitcoin-style P2PKH
     const Script lock = createLockP2PKH(key_hash);
-    const Script unlock = createUnlockP2PKH(sig, kp.V);
+    const Script unlock = createUnlockP2PKH(sig.signature, sig.sig_hash, kp.V);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     test!("==")(engine.execute(
@@ -1205,7 +1272,8 @@ unittest
         Unlock(unlock[]), tx, Input.init),
         null);
 
-    Script bad_key_unlock = createUnlockP2PKH(sig, Pair.random.V);
+    Script bad_key_unlock = createUnlockP2PKH(sig.signature, sig.sig_hash,
+        Pair.random.V);
     test!("==")(engine.execute(
         Lock(LockType.Script, lock[]), Unlock(bad_key_unlock[]), tx, Input.init),
         "VERIFY_EQUAL operation failed");
@@ -1226,11 +1294,11 @@ unittest
 unittest
 {
     const Pair kp = Pair.random();
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
     const Script redeem = makeScript(
         [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]);
     const redeem_hash = hashFull(redeem);
-    const sig = sign(kp, tx);
+    const sig = signTx(kp, tx);
 
     // lock is: <redeem hash>
     // unlock is: <push(sig)> <redeem>
@@ -1238,17 +1306,17 @@ unittest
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     test!("==")(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
-        Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(redeem[])),
+        Unlock([ubyte(65)] ~ sig[] ~ toPushOpcode(redeem[])),
         tx, Input.init),
         null);
     test!("==")(engine.execute(
         Lock(LockType.Redeem, ubyte(42).repeat(32).array),
-        Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(redeem[])),
+        Unlock([ubyte(65)] ~ sig[] ~ toPushOpcode(redeem[])),
         tx, Input.init),
         "LockType.Redeem requires 64-byte script hash in the lock script");
     test!("==")(engine.execute(
         Lock(LockType.Redeem, ubyte(42).repeat(65).array),
-        Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(redeem[])),
+        Unlock([ubyte(65)] ~ sig[] ~ toPushOpcode(redeem[])),
         tx, Input.init),
         "LockType.Redeem requires 64-byte script hash in the lock script");
     test!("==")(engine.execute(
@@ -1274,14 +1342,15 @@ unittest
         ~ [ubyte(OP.CHECK_SIG)]);
     test!("==")(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
-        Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(wrong_redeem[])),
+        Unlock([ubyte(65)] ~ sig[] ~ toPushOpcode(wrong_redeem[])),
         tx, Input.init),
         "LockType.Redeem unlock script pushed a redeem script which does "
         ~ "not match the redeem hash in the lock script");
-    auto wrong_sig = sign(kp, "bad");
+    const Transaction tx2 = { inputs: [Input(hashFull(42))] };
+    auto wrong_sig = signTx(kp, tx2);
     test!("==")(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
-        Unlock([ubyte(64)] ~ wrong_sig[] ~ toPushOpcode(redeem[])),
+        Unlock([ubyte(65)] ~ wrong_sig[] ~ toPushOpcode(redeem[])),
         tx, Input.init),
         "Script failed");
 
@@ -1312,12 +1381,12 @@ unittest
 unittest
 {
     Pair kp = Pair.random();
-    Transaction tx;
-    const sig = sign(kp, tx);
+    const Transaction tx = { inputs: [Input.init] };
+    const sig = signTx(kp, tx);
 
     const key_hash = hashFull(kp.V);
     Script lock = createLockP2PKH(key_hash);
-    Script unlock = createUnlockP2PKH(sig, kp.V);
+    Script unlock = createUnlockP2PKH(sig.signature, sig.sig_hash, kp.V);
 
     const invalid_script = makeScript([255]);
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
@@ -1341,7 +1410,7 @@ unittest
 {
     import std.algorithm;
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
     const StackMaxItemSize = 512;
     test!("==")(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(42)] ~ [ubyte(OP.TRUE)]),
@@ -1454,7 +1523,7 @@ unittest
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx;
+    const Transaction tx = { inputs: [Input.init] };
 
     // IF true => execute if branch
     test!("==")(engine.execute(
