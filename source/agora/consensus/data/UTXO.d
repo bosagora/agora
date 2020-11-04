@@ -57,7 +57,7 @@ public struct UTXO
 
     This is a simple UTXOSet, used when the AA behavior is desired
 
-    Most unittestsdo not need a full-fledged UTXOSet with all the DB and
+    Most unittests do not need a fully-fledged UTXOSet with all the DB and
     serialization that comes with it, instead relying on an associative array
     and a delegate.
 

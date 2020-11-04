@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains an SQLite-backed UTXO transaction set class
+    Contains the base class for a UTXO set and an AA-backed UTXO set.
 
     Copyright:
         Copyright (c) 2019 BOS Platform Foundation Korea
@@ -30,7 +30,7 @@ mixin AddLogger!();
 /// ditto
 public class UTXOSet
 {
-    /// Utxo cache backed by a database
+    /// UTXO cache backed by a database
     private UTXODB utxo_db;
 
     /// Keeps track of spent outputs during the validation of a Tx / Block
@@ -70,7 +70,7 @@ public class UTXOSet
 
         Params:
             tx = the transaction
-            height = Height of the block where UTXO will be unlocked
+            height = local height of the block
 
     ***************************************************************************/
 
@@ -148,7 +148,7 @@ public class UTXOSet
         Get UTXOs from the UTXO set
 
         Params:
-            pubkey = the key by which the UTXO set search UTXOs
+            pubkey = the key by which to search UTXOs in UTXOSet
 
         Returns:
             the associative array for UTXOs
@@ -165,7 +165,7 @@ public class UTXOSet
         Find an UTXO in the UTXO set.
 
         Params:
-            hash = the hash of the UTXO (`hashFull(tx_hash, index)`)
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
             output = will contain the UTXO if found
 
         Return:
