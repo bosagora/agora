@@ -20,7 +20,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXO;
+import agora.consensus.state.UTXOSet;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 

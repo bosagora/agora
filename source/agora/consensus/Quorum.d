@@ -22,8 +22,8 @@ import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXO;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.state.UTXOSet;
 
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;

@@ -17,7 +17,7 @@ import agora.common.Amount;
 import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXO;
+import agora.consensus.state.UTXOSet;
 
 version (unittest)
 {
