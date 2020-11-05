@@ -503,7 +503,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
     foreach (idx, _; amounts.enumerate)
     {
         quorums[keys[idx]] = buildQuorumConfig(
-            keys[idx], utxos, &storage.findUTXO, rand_seed, params);
+            keys[idx], utxos, &storage.peekUTXO, rand_seed, params);
     }
 
     return quorums;

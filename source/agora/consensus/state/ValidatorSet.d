@@ -572,21 +572,21 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     auto enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll) is null);
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxos[0]));
-    assert(set.add(Height(1), &storage.findUTXO, enroll) !is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll) !is null);
 
     seed_sources[utxos[1]] = Scalar.random();
     auto enroll2 = createEnrollment(utxos[1], WK.Keys[1], seed_sources[utxos[1]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.findUTXO, enroll2) is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll2) is null);
     assert(set.count() == 2);
 
     seed_sources[utxos[2]] = Scalar.random();
     auto enroll3 = createEnrollment(utxos[2], WK.Keys[2], seed_sources[utxos[2]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(9), &storage.findUTXO, enroll3) is null);
+    assert(set.add(Height(9), &storage.peekUTXO, enroll3) is null);
     assert(set.count() == 3);
 
     // check if enrolled heights are not set
@@ -615,7 +615,7 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(set.add(Height(1), &storage.findUTXO, ordered_enroll) is null);
+        assert(set.add(Height(1), storage.getUTXOFinder(), ordered_enroll) is null);
     set.getEnrolledUTXOs(keys);
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
@@ -643,7 +643,7 @@ unittest
     seed_sources[utxos[3]] = Scalar.random();
     enroll = createEnrollment(utxos[3], WK.Keys[3], seed_sources[utxos[3]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(9), &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(9), &storage.peekUTXO, enroll) is null);
     set.clearExpiredValidators(Height(1016));
     keys.length = 0;
     assert(set.getEnrolledUTXOs(keys));
@@ -657,7 +657,7 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(0), &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(0), &storage.peekUTXO, enroll) is null);
 
     // not cleared yet at height 1007
     set.clearExpiredValidators(Height(1007));
@@ -677,7 +677,7 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.findUTXO, enroll) is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll) is null);
 
     // not cleared yet at height 1008
     set.clearExpiredValidators(Height(1008));

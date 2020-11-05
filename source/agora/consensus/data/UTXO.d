@@ -84,12 +84,8 @@ public class TestUTXOSet
     public UTXOFinder getUTXOFinder () @trusted nothrow
     {
         this.used_utxos.clear();
-        return &this.findUTXO_;
+        return &this.findUTXO;
     }
-
-    /// FIXME: Remove and make UTXO-sensible tests use either `peekUTXO`
-    /// or `getUTXOFinder`
-    public alias findUTXO = peekUTXO;
 
     /// Get an UTXO, no double-spend protection
     public bool peekUTXO (Hash utxo, out UTXO value)
@@ -126,7 +122,7 @@ public class TestUTXOSet
     }
 
     /// Get an UTXO, does not return double spend
-    private bool findUTXO_ (Hash utxo, out UTXO value)
+    public bool findUTXO (Hash utxo, out UTXO value)
         nothrow @safe
     {
         // Note: Keep this in sync with the real `findUTXO`
