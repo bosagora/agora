@@ -78,6 +78,39 @@ import std.string;
 
 mixin AddLogger!();
 
+version (none)
+unittest
+{
+    import agora.consensus.data.genesis.Coinnet;
+    import std.stdio;
+    import std.range;
+    import agora.consensus.EnrollmentManager;
+
+    const txs = GenesisBlock.txs;
+
+    if (!txs.isStrictlyMonotonic())
+    {
+        writeln("WARN: Genesis block transactions are unsorted!");
+        txs.enumerate.each!((idx, tx) => writefln("[%d]: %s", idx, tx));
+    }
+
+    Hash[] merkle_tree;
+    writeln("Merkle root: ", Block.buildMerkleTree(txs, merkle_tree));
+    writeln("\tMerkle tree: ", merkle_tree);
+
+    const ValidatorCycle = 20;
+    const txhash = txs[0].hashFull();
+    Enrollment[] enrolls = txs[0].outputs.enumerate()
+        .map!(tup => EnrollmentManager.makeEnrollment(
+                  WK.Keys[tup.value.address],
+                  UTXO.getHash(txhash, tup.index),
+                  ValidatorCycle))
+        .array();
+
+    enrolls.sort!((a, b) => a.utxo_key < b.utxo_key);
+    writeln("Enrollments: ", enrolls);
+}
+
 /*******************************************************************************
 
     Handle enrollment data and manage the validators set
@@ -1338,15 +1371,15 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0x1289bf8f03855922d808ac66b58bd498d44f88c3939c2eaf07dd4507b057e395f2a7941d0605cc6176fc629dd16b33ee3ea1564da54bda4ed6097ebb13218676`),
+        Hash(`0x28e5f0ed454f96852478a7b83f1b20378bc5d8a978add52ff30ace0f255e552afb3bd08dd2141291259f1f9794d4417c3c12187df52d20ade28ec74d305aeb94`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(504)) ==
-        Hash(`0x5777b0e9d9620d81a888a034cf70b8597d9be4a5f8ae685a401897a8eb417aff6220a0bfd714bac1cccf58d825321204759432c30b4bf0b3485d331f5af63b27`),
+        Hash(`0x9038006d68ed7e5d42311887075e62e0d5ac98b7133dd9895f85bbe170564f2ddac7d11396ec426a5dd0a35efdc9aaae991098e907c6ce76024dbf3f93582464`),
         man.getRandomSeed(utxos, Height(504)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(1008)) ==
-        Hash(`0x5d55401d7e83cabab4ece9bf8e54a4f62bbc7735bcc17cb755bc9b7e0bd7dcf62a3aeaeaa24c0faf37d4af62b8048e0f734c6cc2f653a3d5e87a3c09791d7134`),
+        Hash(`0x5748c01b54639413b41e57c6e82c3c2da53ba2b6966596cdaea3d77b378a252bd20b727bb3cdb52d255288f00cc3decb14aa99cf1156512ac51aa31413357e74`),
         man.getRandomSeed(utxos, Height(1008)).to!string);
 }
 

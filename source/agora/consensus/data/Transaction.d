@@ -58,6 +58,10 @@ public struct Transaction
     /// Using `uint` as `Height` is 8-bytes and overkill.
     public uint unlock_height = 0;
 
+    /// The sequence ID of this transaction. Used primarily for the Flash layer,
+    /// and is not validated by the protocol itself, only by the lock scripts.
+    public uint seq_id;
+
     /***************************************************************************
 
         Transactions Serialization
@@ -80,6 +84,7 @@ public struct Transaction
             serializePart(output, dg);
 
         serializePart(this.unlock_height, dg);
+        serializePart(this.seq_id, dg);
     }
 
     /// Support for sorting transactions
@@ -212,7 +217,7 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0x79a7bb3cae7e4d46a45674fefd3708557574890ce7a554c09c7d486346a31feb82005aa593620db332c1ae32c5ab44f0977c8834969883a1928e8db0d1b3ccac`);
+        `0x428d691addd27708b719a5e47cbac932618f0f843681dc0a46c97971ff8c419c817c65d90f3b74394db46801843b79537a583903bec5da57de70155276d2aa46`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -223,7 +228,7 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0x7b8f848dcc4deab1c2161aa4e91401b6d9e57f2ac8126493f0343efbc23a89217871e7b1c2ef8f1a40736cd4b331e26de43b48f593097fe97941a92673635895`);
+        `0x6ce6bdeac41ffa444e6c2250ec09e04652597c3ec92f54f69029cc16ae4fc84faa5372b56e24c4c8667d00a8d1c0a7bc550999e4cdcd039548361a15e72fa081`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }

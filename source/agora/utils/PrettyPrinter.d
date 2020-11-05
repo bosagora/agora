@@ -339,13 +339,13 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x5a62...cbaf, Enrollments: [
-{ utxo: 0x0b3e...2300, seed: 0xa050...2cb4, cycles: 20, sig: 0x0cff...6b31 }
-{ utxo: 0x2007...922b, seed: 0xd034...97c1, cycles: 20, sig: 0x0696...5c01 }
-{ utxo: 0x3f0b...b60b, seed: 0x0a82...4328, cycles: 20, sig: 0x02a5...7422 }
-{ utxo: 0x6638...3e8a, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d3c...4fe2 }
-{ utxo: 0xbda2...a287, seed: 0xaf43...fceb, cycles: 20, sig: 0x0a25...1304 }
-{ utxo: 0xe46e...b0fe, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e73...6634 }]`;
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x7358...0131, Enrollments: [
+{ utxo: 0x23f3...afbf, seed: 0x0a82...4328, cycles: 20, sig: 0x09ac...7422 }
+{ utxo: 0x3761...2000, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0x3a91...a330, seed: 0xa050...2cb4, cycles: 20, sig: 0x0afc...6b31 }
+{ utxo: 0x8037...a3a1, seed: 0xd034...97c1, cycles: 20, sig: 0x0ebf...5c01 }
+{ utxo: 0xb954...724b, seed: 0xaf43...fceb, cycles: 20, sig: 0x0481...1304 }
+{ utxo: 0xcb11...5d50, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0723...4fe2 }]`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual, actual);
 }
@@ -378,13 +378,13 @@ private struct BlockFmt
 
 @safe unittest
 {
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x5a62...cbaf, Enrollments: [
-{ utxo: 0x0b3e...2300, seed: 0xa050...2cb4, cycles: 20, sig: 0x0cff...6b31 }
-{ utxo: 0x2007...922b, seed: 0xd034...97c1, cycles: 20, sig: 0x0696...5c01 }
-{ utxo: 0x3f0b...b60b, seed: 0x0a82...4328, cycles: 20, sig: 0x02a5...7422 }
-{ utxo: 0x6638...3e8a, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d3c...4fe2 }
-{ utxo: 0xbda2...a287, seed: 0xaf43...fceb, cycles: 20, sig: 0x0a25...1304 }
-{ utxo: 0xe46e...b0fe, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e73...6634 }],
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x7358...0131, Enrollments: [
+{ utxo: 0x23f3...afbf, seed: 0x0a82...4328, cycles: 20, sig: 0x09ac...7422 }
+{ utxo: 0x3761...2000, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0x3a91...a330, seed: 0xa050...2cb4, cycles: 20, sig: 0x0afc...6b31 }
+{ utxo: 0x8037...a3a1, seed: 0xd034...97c1, cycles: 20, sig: 0x0ebf...5c01 }
+{ utxo: 0xb954...724b, seed: 0xaf43...fceb, cycles: 20, sig: 0x0481...1304 }
+{ utxo: 0xcb11...5d50, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0723...4fe2 }],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),

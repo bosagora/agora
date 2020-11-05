@@ -201,11 +201,11 @@ unittest
     };
 
     test!"=="(getChallenge(tx, SigHash.All, 0),
-        Hash.fromString("0xda16b36873065bc4e950901f9d2e6b2b3ec2baf33358f4dc61d83dca576a2b3d0a6c29b2453e2c0002374c16141c29b0786b99b222404c581fd0bf1ecb60dabf"));
+        Hash.fromString("0xd91466230a20515577511421063e12619df0bbdcd01677a7430cf28332ccaea882e7f0618785746117e031af1242c6967e46b08ac0fc4a792623e92cdf45f026"));
     test!"=="(getChallenge(tx, SigHash.All, 1),
-        Hash.fromString("0xda16b36873065bc4e950901f9d2e6b2b3ec2baf33358f4dc61d83dca576a2b3d0a6c29b2453e2c0002374c16141c29b0786b99b222404c581fd0bf1ecb60dabf"));  // same hash
+        Hash.fromString("0xd91466230a20515577511421063e12619df0bbdcd01677a7430cf28332ccaea882e7f0618785746117e031af1242c6967e46b08ac0fc4a792623e92cdf45f026"));  // same hash
     test!"=="(getChallenge(tx, SigHash.NoInput, 0),
-        Hash.fromString("0x3ec440c50875ad42e69d81d9436fa6b8a7744f37a09ac3dff2080d9f8fc2ecdf7117febc25a820fdc902994d00b07b3be6c73058d5d20ec768cae751a910868b"));
+        Hash.fromString("0xccb5bf220dc0a078865c8271f8609b6a1f4113ceba204dad707e552014130cd029aa3812a6a76b722a7706772ed01962df62d14a6ebb5d7a95fee14b4e58b03d"));
     test!"=="(getChallenge(tx, SigHash.NoInput, 1),
-        Hash.fromString("0xb5025a919a4bca86ab7c498f9d83fd73940f210289e7218a605a90b38a02eca393cf3f6893cc541803bdf9f15e5e4ed0666c98adb31cf4ec6aac12e43a826fc1"));
+        Hash.fromString("0x5ee3aeafa1a868dd6893527a83a1d7d7df7065cdbdc66f0facf1c3e1ac8b634cbf6101967b22e7c25d3fa5ad702f187056936a9082405a5c2bd470ac74e101db"));
 }
