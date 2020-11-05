@@ -427,7 +427,7 @@ unittest
     import std.range;
 
     scope utxos = new TestUTXOSet();
-    scope findUTXO = &utxos.findUTXO;
+    scope findUTXO = &utxos.peekUTXO;
 
     auto gen_key = WK.Keys.Genesis;
     assert(GenesisBlock.isGenesisBlockValid());
