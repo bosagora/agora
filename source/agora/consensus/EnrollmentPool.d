@@ -26,7 +26,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
-import agora.consensus.data.UTXO;
+import agora.consensus.state.UTXOSet;
 import agora.consensus.validation;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;

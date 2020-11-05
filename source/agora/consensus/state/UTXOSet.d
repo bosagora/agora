@@ -15,53 +15,31 @@ module agora.consensus.state.UTXOSet;
 
 import agora.common.crypto.Key;
 import agora.common.Hash;
-import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.UTXO;
+public import agora.consensus.data.UTXO;
 import agora.utils.Log;
 
 import std.file;
 
 mixin AddLogger!();
 
-/// ditto
-public class UTXOSet
-{
-    /// UTXO cache backed by a database
-    private UTXODB utxo_db;
+/// Delegate to find an unspent UTXO
+public alias UTXOFinder = bool delegate (Hash utxo, out UTXO) nothrow @safe;
 
+/*******************************************************************************
+
+    UTXOCache is the the base class of a UTXO storage.
+    It is inherited by UTXOSet and TestUTXOSet.
+
+*******************************************************************************/
+
+abstract class UTXOCache
+{
     /// Keeps track of spent outputs during the validation of a Tx / Block
     private Set!Hash used_utxos;
-
-
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            utxo_db_path = path to the UTXO database
-
-    ***************************************************************************/
-
-    public this (in string utxo_db_path)
-    {
-        this.utxo_db = new UTXODB(utxo_db_path);
-    }
-
-    /***************************************************************************
-
-        Returns:
-            the number of elements in the UTXO set
-
-    ***************************************************************************/
-
-    public size_t length () @safe
-    {
-        return this.utxo_db.length();
-    }
 
     /***************************************************************************
 
@@ -95,7 +73,7 @@ public class UTXOSet
 
         foreach (const ref input; tx.inputs)
         {
-            this.utxo_db.remove(input.utxo);
+            this.remove(input.utxo);
         }
 
         Hash tx_hash = tx.hashFull();
@@ -103,7 +81,7 @@ public class UTXOSet
         {
             auto utxo_hash = UTXO.getHash(tx_hash, idx);
             auto utxo_value = UTXO(unlock_height, tx.type, output);
-            this.utxo_db[utxo_hash] = utxo_value;
+            this.add(utxo_hash, utxo_value);
         }
     }
 
@@ -119,10 +97,10 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    private UTXO getUTXO (Hash utxo) nothrow @safe
+    protected UTXO getUTXO (Hash utxo) nothrow @safe
     {
         UTXO value;
-        if (!this.utxo_db.find(utxo, value))
+        if (!this.peekUTXO(utxo, value))
             assert(0);
         return value;
     }
@@ -137,7 +115,7 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    public UTXOFinder getUTXOFinder () @trusted nothrow
+    public UTXOFinder getUTXOFinder () nothrow @trusted
     {
         this.used_utxos.clear();
         return &this.findUTXO;
@@ -145,24 +123,7 @@ public class UTXOSet
 
     /***************************************************************************
 
-        Get UTXOs from the UTXO set
-
-        Params:
-            pubkey = the key by which to search UTXOs in UTXOSet
-
-        Returns:
-            the associative array for UTXOs
-
-    ***************************************************************************/
-
-    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) @safe nothrow
-    {
-        return this.utxo_db.getUTXOs(pubkey);
-    }
-
-    /***************************************************************************
-
-        Find an UTXO in the UTXO set.
+        Get an UTXO, does not return double spend.
 
         Params:
             hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
@@ -173,8 +134,7 @@ public class UTXOSet
 
     ***************************************************************************/
 
-    private bool findUTXO (Hash utxo, out UTXO value)
-        nothrow @safe
+    public bool findUTXO (Hash utxo, out UTXO value) nothrow @safe
     {
         if (utxo in this.used_utxos)
         {
@@ -182,7 +142,7 @@ public class UTXOSet
             return false;  // double-spend
         }
 
-        if (this.utxo_db.find(utxo, value))
+        if (this.peekUTXO(utxo, value))
         {
             this.used_utxos.put(utxo);
             return true;
@@ -190,205 +150,109 @@ public class UTXOSet
         log.trace("findUTXO: utxo_hash {} not found", utxo);
         return false;
     }
+
+    /***************************************************************************
+
+        Get an UTXO, no double-spend protection.
+
+        Params:
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
+            value = the UTXO
+
+    ***************************************************************************/
+
+    public abstract bool peekUTXO (Hash utxo, out UTXO value) nothrow @safe;
+
+    /***************************************************************************
+
+        Helper function to remove an UTXO in the UTXO set.
+
+        Params:
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
+
+    ***************************************************************************/
+
+    protected abstract void remove (Hash utxo) @safe;
+
+    /***************************************************************************
+
+        Helper function to add an UTXO in the UTXO set.
+
+        Params:
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
+            value = the UTXO
+
+    ***************************************************************************/
+
+    protected abstract void add (Hash utxo, UTXO value) @safe;
 }
 
 /*******************************************************************************
 
-    ManagedDatabase of UTXOs using SQLite as the backing store
+    This is a simple UTXOSet, used when the AA behavior is desired
+
+    Most unittests do not need a fully-fledged UTXOSet with all the DB and
+    serialization that comes with it, instead relying on an associative array
+    and a delegate.
+
+    Since this pattern is so common, this class is offered as a mean to achieve
+    this without code duplication. See issue #501 for history.
+
+    Note that this should *NOT* be used to replace the above UTXOSet,
+    when for example doing integration tests with LocalRest.
 
 *******************************************************************************/
 
-private class UTXODB
+public class TestUTXOSet : UTXOCache
 {
-    /// SQLite db instance
-    private ManagedDatabase db;
+    /// UTXO cache backed by an AA
+    public UTXO[Hash] storage;
 
+    ///
+    alias storage this;
 
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            utxo_db_path = path to the UTXO database file
-
-    ***************************************************************************/
-
-    public this (string utxo_db_path)
+    /// Short hand to add a transaction
+    public void put (const Transaction tx) nothrow @safe
     {
-        const db_exists = utxo_db_path.exists;
-        if (db_exists)
-            log.info("Loading UTXO database from: {}", utxo_db_path);
-
-        // todo: can fail. we would have to recover by either:
-        // A) reconstructing it from our blockchain storage
-        // B) requesting the UTXO set from our peers
-        this.db = new ManagedDatabase(utxo_db_path);
-
-        if (db_exists)
-            log.info("Loaded database from: {}", utxo_db_path);
-
-        // create the table if it doesn't exist yet
-        this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~
-            "(key BLOB PRIMARY KEY, val BLOB NOT NULL, pubkey_hash BLOB NOT NULL)");
-    }
-
-    /***************************************************************************
-
-        Returns:
-            the number of elements in the UTXO set
-
-    ***************************************************************************/
-
-    public size_t length () @safe
-    {
-        return () @trusted {
-            return this.db.execute("SELECT count(*) FROM utxo_map")
-                .oneValue!size_t;
-        }();
-    }
-
-    /***************************************************************************
-
-        Look up the UTXO in the map, and store it to 'output' if found
-
-        Params:
-            key = the key to find
-            value = will contain the UTXO if found
-
-        Returns:
-            true if the value was found
-
-    ***************************************************************************/
-
-    public bool find (Hash key, out UTXO value) nothrow @trusted
-    {
-        scope (failure) assert(0);
-        auto results = db.execute("SELECT val FROM utxo_map WHERE key = ?",
-            key[]);
-
-        foreach (row; results)
+        Hash txhash = hashFull(tx);
+        foreach (size_t idx, ref output_; tx.outputs)
         {
-            value = deserializeFull!UTXO(row.peek!(ubyte[])(0));
+            Hash h = UTXO.getHash(txhash, idx);
+            UTXO v = {
+                type: tx.type,
+                output: output_
+            };
+            this.storage[h] = v;
+        }
+    }
+
+    /// Workaround 20559...
+    public void clear ()
+    {
+        this.storage.clear();
+    }
+
+    ///
+    public override bool peekUTXO (Hash utxo, out UTXO value) nothrow @safe
+    {
+        // Note: Keep this in sync with `findUTXO`
+        if (auto ptr = utxo in this.storage)
+        {
+            value = *ptr;
             return true;
         }
-
         return false;
     }
 
-    /***************************************************************************
-
-        Get UTXOs from the UTXO set
-
-        Params:
-            pubkey = the key by which the UTXO set search UTXOs
-
-        Returns:
-            the associative array for UTXOs
-
-    ***************************************************************************/
-
-    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @trusted
+    ///
+    protected override void remove (Hash utxo) @safe
     {
-        scope (failure) assert(0);
-
-        UTXO[Hash] utxos;
-        auto results = db.execute("SELECT key, val FROM utxo_map WHERE pubkey_hash = ?",
-            pubkey[]);
-
-        foreach (row; results)
-        {
-            auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
-            auto value = deserializeFull!UTXO(row.peek!(ubyte[])(1));
-            utxos[hash] = value;
-        }
-
-        return utxos;
+        this.storage.remove(utxo);
     }
 
-    /***************************************************************************
-
-        Add an UTXO to the map
-
-        Params:
-            value = the UTXO to add
-            key = the key to use
-
-    ***************************************************************************/
-
-    public void opIndexAssign (const ref UTXO value, Hash key) @safe
+    ///
+    protected override void add (Hash utxo, UTXO value) @safe
     {
-        static ubyte[] buffer;
-        serializeToBuffer(value, buffer);
-
-        scope (failure) assert(0);
-        () @trusted {
-            db.execute("INSERT INTO utxo_map (key, val, pubkey_hash) VALUES (?, ?, ?)",
-                key[], buffer, value.output.address[]); }();
+        this.storage[utxo] = value;
     }
-
-    /***************************************************************************
-
-        Remove an Output from the map
-
-        Params:
-            key = the key to remove
-
-    ***************************************************************************/
-
-    public void remove (Hash key) nothrow @safe
-    {
-        scope (failure) assert(0);
-        () @trusted {
-            db.execute("DELETE FROM utxo_map WHERE key = ?", key[]); }();
-    }
-}
-
-/// test for get UTXOs with a node's public key
-unittest
-{
-    import agora.common.Amount;
-    import agora.consensus.data.Transaction;
-    import agora.consensus.data.UTXO;
-
-    KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
-
-    auto utxo_set = new UTXOSet(":memory:");
-
-    // create the first transaction
-    Transaction tx1 = Transaction(
-        TxType.Freeze,
-        [Input(Hash.init, 0)],
-        [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
-    );
-    utxo_set.updateUTXOCache(tx1, Height(0));
-    Hash hash1 = hashFull(tx1);
-    auto utxo_hash = UTXO.getHash(hash1, 0);
-
-    // test for getting UTXOs
-    auto utxos = utxo_set.getUTXOs(key_pairs[0].address);
-    assert(utxos[utxo_hash].output.address == key_pairs[0].address);
-
-    // create the second transaction
-    Transaction tx2 = Transaction(
-        TxType.Freeze,
-        [Input(Hash.init, 0)],
-        [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address)]
-    );
-    utxo_set.updateUTXOCache(tx2, Height(0));
-
-    // create the third transaction
-    Transaction tx3 = Transaction(
-        TxType.Freeze,
-        [Input(Hash.init, 0)],
-        [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
-    );
-    utxo_set.updateUTXOCache(tx3, Height(0));
-
-    // test for getting UTXOs for the first KeyPair
-    utxos = utxo_set.getUTXOs(key_pairs[0].address);
-    assert(utxos.length == 2);
-
-    // test for getting UTXOs for the second KeyPair
-    utxos = utxo_set.getUTXOs(key_pairs[1].address);
-    assert(utxos.length == 1);
 }
