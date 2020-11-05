@@ -45,8 +45,7 @@ unittest
 
 ///
 private immutable Hash GenesisMerkleRoot =
-    Hash(`0x5b602c13e7ab3419c0f2441ceef96c2a41817df87cb33d2061aae0a6f44a384` ~
-        `bdcdcb9c550a453e7ee9244a28f7c20061ea2cd96ce594a63bea87a7ac0d67f43`);
+    Hash(`0xa31cf9a3256400486916c2ab9617dfa1fc084fac64ea6b77e02c5524343940ad44ba717d5a77e4241ab4fb7a9ae0fb5834d9d7d6e27a8200569fbce00f060761`);
 
 /// The single transaction that are part of the genesis block
 private immutable Transaction GenesisTransaction =

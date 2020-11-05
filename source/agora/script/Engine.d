@@ -533,6 +533,20 @@ public class Engine
 
                 break;
 
+            case OP.VERIFY_TX_SEQ:
+                if (stack.count() < 1)
+                    return "VERIFY_TX_SEQ opcode requires a sequence ID on the stack";
+
+                const height_bytes = stack.pop();
+                uint seq_id;
+                if (!readUnsignedInteger!uint(height_bytes, seq_id))
+                    return "VERIFY_TX_SEQ sequence ID must be between 0 .. uint.max";
+
+                if (seq_id > tx.seq_id)
+                    return "VERIFY_TX_SEQ sequence ID of transaction is too low";
+
+                break;
+
             case OP.INVALID:
                 return "Script panic while executing OP.INVALID opcode";
 
@@ -1207,6 +1221,63 @@ unittest
             [ubyte(OP.VERIFY_INPUT_LOCK), ubyte(OP.TRUE)]),
         Unlock.init, Transaction.init, input_10),
         "VERIFY_INPUT_LOCK opcode requires an unlock age on the stack");
+}
+
+// OP.VERIFY_TX_SEQ
+unittest
+{
+    const Transaction tx_0   = { inputs: [Input.init], seq_id : 0 };
+    const Transaction tx_1   = { inputs: [Input.init], seq_id : 1 };
+    const Transaction tx_max = { inputs: [Input.init], seq_id : uint.max };
+
+    const seq_0 = nativeToLittleEndian(uint(0));
+    const seq_1 = nativeToLittleEndian(uint(1));
+    const seq_2 = nativeToLittleEndian(uint(2));
+    const seq_max = nativeToLittleEndian(uint.max);
+    const seq_overflow = nativeToLittleEndian(ulong.max);
+
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(seq_0)
+            ~ [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_0, tx_0.inputs[0]),
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(seq_1)
+            ~ [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_0, tx_0.inputs[0]),
+        "VERIFY_TX_SEQ sequence ID of transaction is too low");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(seq_1)
+            ~ [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_1, tx_1.inputs[0]),
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(seq_2)
+            ~ [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_1, tx_1.inputs[0]),
+        "VERIFY_TX_SEQ sequence ID of transaction is too low");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(seq_max)
+            ~ [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_max, tx_max.inputs[0]),
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            toPushOpcode(seq_overflow)
+            ~ [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_0, tx_0.inputs[0]),
+        "VERIFY_TX_SEQ sequence ID must be between 0 .. uint.max");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            [ubyte(OP.VERIFY_TX_SEQ), ubyte(OP.TRUE)]),
+        Unlock.init, tx_0, tx_0.inputs[0]),
+        "VERIFY_TX_SEQ opcode requires a sequence ID on the stack");
 }
 
 // LockType.Key (Native P2PK - Pay to Public Key), consumes 33 bytes

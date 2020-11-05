@@ -99,16 +99,19 @@ public enum OP : ubyte
     /// Verify the time lock of the associated spending Input
     VERIFY_INPUT_LOCK = 0x5A,
 
+    /// Verify the `sequence_id` is >= the sequence ID encoded in the opcode
+    VERIFY_TX_SEQ = 0x5B,
+
     /// Pops two items from the stack. The two items must be a Point (Schnorr),
     /// and a Signature. If the items cannot be deserialized as a Point and
     /// Signature, the script validation fails.
     /// The signature is then validated using Schnorr, if the signature is
     /// valid then `TRUE` is pushed to the stack.
-    CHECK_SIG = 0x5B,
+    CHECK_SIG = 0x5C,
 
     /// Ditto, but instead of pushing the result to the stack it will cause the
     /// script execution to fail if the signature is invalid
-    VERIFY_SIG = 0x5C,
+    VERIFY_SIG = 0x5D,
 }
 
 /*******************************************************************************
