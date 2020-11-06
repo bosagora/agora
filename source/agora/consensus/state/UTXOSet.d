@@ -226,12 +226,6 @@ public class TestUTXOSet : UTXOCache
         }
     }
 
-    /// Workaround 20559...
-    public void clear ()
-    {
-        this.storage.clear();
-    }
-
     ///
     public override bool peekUTXO (Hash utxo, out UTXO value) nothrow @safe
     {
