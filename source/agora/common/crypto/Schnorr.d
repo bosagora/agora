@@ -242,10 +242,17 @@ public bool verify (T) (const ref Point X, const ref Signature sig, auto ref T d
     nothrow @nogc @trusted
 {
     Sig s = Sig.fromBlob(sig);
+    // First check if Scalar from signature is valid
     if (!s.s.isValid())
         return false;
     /// Compute `s.G`
     auto S = s.s.toPoint();
+    // Now check that provided Point X is valid
+    if (!X.isValid())
+        return false;
+    // Also check the Point R from the Signature
+    if (!s.R.isValid())
+        return false;
     // Compute the challenge and reduce the hash to a scalar
     Scalar c = hashFull(Message!T(X, s.R, data));
     // Compute `R + c*X`
@@ -300,6 +307,27 @@ nothrow @nogc @safe unittest
     assert(!verify(kp1.V, sig2, secret));
     assert(verify(kp2.V, sig2, secret));
     assert(!verify(kp2.V, sig1, secret));
+}
+
+// invalid signing test with invalid Public Key Point X
+nothrow @nogc @safe unittest
+{
+    Pair kp = Pair.fromScalar(Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`));
+    static immutable string message = "Bosagora:-)";
+    auto signature = sign(kp, message);
+    auto invalid = Point("0xab4f6f6e85b8d0d38f5d5798a4bdc4dd444c8909c8a5389d3bb209a18610511c");
+    assert(!verify(invalid, signature, message));
+}
+
+// invalid signing test with invalid Point R in Signature
+nothrow @nogc @safe unittest
+{
+    Pair kp = Pair.fromScalar(Scalar(`0x074360d5eab8e888df07d862c4fc845ebd10b6a6c530919d66221219bba50216`));
+    static immutable string message = "Bosagora:-)";
+    auto signature = sign(kp, message);
+    Signature invalid_sig = Sig(Point("0xab4f6f6e85b8d0d38f5d5798a4bdc4dd444c8909c8a5389d3bb209a18610511c"),
+        Sig.fromBlob(signature).s).toBlob();
+    assert(!verify(kp.V, invalid_sig, message));
 }
 
 // example of extracting the private key from an insecure signature scheme

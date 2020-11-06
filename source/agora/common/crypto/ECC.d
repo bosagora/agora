@@ -225,9 +225,9 @@ public struct Scalar
     {
         Point ret = void;
         if (crypto_scalarmult_ed25519_base_noclamp(ret.data[].ptr, this.data[].ptr) != 0)
-            assert(0, "Scalar is not valid");
-        if (crypto_core_ed25519_is_valid_point(ret.data[].ptr) != 1)
-            assert(0, "Point is not valid");
+            assert(0, "Provided Scalar is not valid");
+        if (!ret.isValid)
+            assert(0, "libsodium generated invalid Point from valid Scalar!");
         return ret;
     }
 
@@ -299,8 +299,7 @@ public struct Point
     }
 
     /// Construct a point from its string representation or a `ubyte[]`
-    public this (T) (T param)
-        nothrow @nogc
+    public this (T) (T param) nothrow @nogc
         if (is(typeof(this.data = typeof(this.data)(param))))
     {
         this.data = typeof(this.data)(param);
@@ -389,6 +388,12 @@ public struct Point
         return this.data.opCmp(s.data);
     }
 
+    // Validation that it is a valid point using libsodium
+    public bool isValid () nothrow @nogc @trusted const
+    {
+        return (crypto_core_ed25519_is_valid_point(this.data[].ptr) == 1);
+    }
+
     /***************************************************************************
 
         Serialization
@@ -424,4 +429,19 @@ unittest
     points.sort;
     assert(points[0] == Point.fromString(
             "0x37e8a197247dd01cc27c178dc0465ce826b4f6e312f3ee4c1df0623ef38c51c5"));
+}
+
+// Test validation
+unittest
+{
+    auto valid = Point.fromString("0xab4f6f6e85b8d0d38f5d5798a4bdc4dd444c8909c8a5389d3bb209a18610511b");
+    assert(valid.isValid());
+
+    // Add 1 to last byte of valid serialized Point to make it invalid
+    auto invalid = Point.fromString("0xab4f6f6e85b8d0d38f5d5798a4bdc4dd444c8909c8a5389d3bb209a18610511c");
+    assert(!invalid.isValid());
+
+    // Test initialized with no data is invalid
+    auto invalid2 = Point.init;
+    assert(!invalid2.isValid());
 }
