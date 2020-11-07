@@ -77,7 +77,7 @@ public class BanManager
 
         /// Deserialization hook
         public static QT fromBinary (QT) (
-            scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+            scope DeserializeDg dg, in DeserializerOptions opts) @safe
         {
             BannedList ret;
             size_t length = deserializeLength(dg, opts.maxLength);
