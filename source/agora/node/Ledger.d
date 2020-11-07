@@ -560,7 +560,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (Height block_height, Hash hash) @safe nothrow
+    public Hash[] getMerklePath (Height block_height, in Hash hash) @safe nothrow
     {
         if (this.getBlockHeight() < block_height)
             return null;

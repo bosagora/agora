@@ -119,7 +119,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             extraSet.put(tx);
         scope extraFinder = extraSet.getUTXOFinder();
         scope UTXOFinder enrollmentsUTXOFinder =
-            (Hash utxo, out UTXO val)
+            (in Hash utxo, out UTXO val)
             {
                 if (findUTXO(utxo, val))
                     return true;
@@ -225,7 +225,7 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
             ~ "ascending order by the utxo_key";
 
     Set!Hash used_utxos;
-    bool findUTXO (Hash utxo, out UTXO value) nothrow @safe
+    bool findUTXO (in Hash utxo, out UTXO value) nothrow @safe
     {
         if (utxo in used_utxos)
             return false;  // double-spend
@@ -526,7 +526,7 @@ unittest
 
     // contains the used set of UTXOs during validation (to prevent double-spend)
     Output[Hash] used_set;
-    scope UTXOFinder findNonSpent = (Hash utxo_hash, out UTXO value)
+    scope UTXOFinder findNonSpent = (in Hash utxo_hash, out UTXO value)
     {
         if (utxo_hash in used_set)
             return false;  // double-spend

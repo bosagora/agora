@@ -27,7 +27,7 @@ import std.file;
 mixin AddLogger!();
 
 /// Delegate to find an unspent UTXO
-public alias UTXOFinder = bool delegate (Hash utxo, out UTXO) nothrow @safe;
+public alias UTXOFinder = bool delegate (in Hash utxo, out UTXO) nothrow @safe;
 
 /*******************************************************************************
 
@@ -97,7 +97,7 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    protected UTXO getUTXO (Hash utxo) nothrow @safe
+    protected UTXO getUTXO (in Hash utxo) nothrow @safe
     {
         UTXO value;
         if (!this.peekUTXO(utxo, value))
@@ -134,7 +134,7 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    public bool findUTXO (Hash utxo, out UTXO value) nothrow @safe
+    public bool findUTXO (in Hash utxo, out UTXO value) nothrow @safe
     {
         if (utxo in this.used_utxos)
         {
@@ -161,7 +161,7 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    public abstract bool peekUTXO (Hash utxo, out UTXO value) nothrow @safe;
+    public abstract bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe;
 
     /***************************************************************************
 
@@ -172,7 +172,7 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    protected abstract void remove (Hash utxo) @safe;
+    protected abstract void remove (in Hash utxo) @safe;
 
     /***************************************************************************
 
@@ -184,7 +184,7 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    protected abstract void add (Hash utxo, UTXO value) @safe;
+    protected abstract void add (in Hash utxo, UTXO value) @safe;
 }
 
 /*******************************************************************************
@@ -227,7 +227,7 @@ public class TestUTXOSet : UTXOCache
     }
 
     ///
-    public override bool peekUTXO (Hash utxo, out UTXO value) nothrow @safe
+    public override bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
     {
         // Note: Keep this in sync with `findUTXO`
         if (auto ptr = utxo in this.storage)
@@ -239,13 +239,13 @@ public class TestUTXOSet : UTXOCache
     }
 
     ///
-    protected override void remove (Hash utxo) @safe
+    protected override void remove (in Hash utxo) @safe
     {
         this.storage.remove(utxo);
     }
 
     ///
-    protected override void add (Hash utxo, UTXO value) @safe
+    protected override void add (in Hash utxo, in UTXO value) @safe
     {
         this.storage[utxo] = value;
     }

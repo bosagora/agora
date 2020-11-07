@@ -245,7 +245,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public bool hasTransactionHash (const ref Hash tx) @trusted
+    public bool hasTransactionHash (in Hash tx) @trusted
     {
         return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
             "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);

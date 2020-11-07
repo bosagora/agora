@@ -122,7 +122,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool tryReadBlock (ref Block block, Hash hash) nothrow;
+    public bool tryReadBlock (ref Block block, in Hash hash) nothrow;
 
     /***************************************************************************
 
@@ -156,7 +156,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public final void readBlock (ref Block block, Hash hash)
+    public final void readBlock (ref Block block, in Hash hash)
     {
         if (!this.tryReadBlock(block, hash))
             throw new Exception(format("Reading block failed. Hash: %s", hash));
@@ -516,7 +516,8 @@ public class BlockStorage : IBlockStorage
     }
 
     /// See `BlockStorage.tryReadBlock(ref Block, Hash)`
-    public override bool tryReadBlock (ref Block block, Hash hash) @safe nothrow
+    public override bool tryReadBlock (ref Block block, in Hash hash)
+        @safe nothrow
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
@@ -1042,7 +1043,7 @@ public class MemBlockStorage : IBlockStorage
     }
 
     /// See `IBlockStorage.tryReadBlock(ref Block, hash)`
-    public bool tryReadBlock (ref Block block, Hash hash) @safe nothrow
+    public bool tryReadBlock (ref Block block, in Hash hash) @safe nothrow
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 

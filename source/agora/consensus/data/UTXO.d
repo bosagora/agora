@@ -43,7 +43,7 @@ public struct UTXO
 
     ***************************************************************************/
 
-    public static Hash getHash (Hash hash, ulong index) @safe nothrow
+    public static Hash getHash (in Hash hash, ulong index) @safe nothrow
     {
         return hashMulti(hash, index);
     }

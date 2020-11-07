@@ -147,7 +147,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public void remove (const ref Hash enroll_hash) @trusted nothrow
+    public void remove (in Hash enroll_hash) @trusted nothrow
     {
         try
         {
@@ -190,7 +190,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public Height getEnrolledHeight (const ref Hash enroll_hash) @trusted nothrow
+    public Height getEnrolledHeight (in Hash enroll_hash) @trusted nothrow
     {
         try
         {
@@ -221,7 +221,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool hasEnrollment (const ref Hash enroll_hash) @trusted nothrow
+    public bool hasEnrollment (in Hash enroll_hash) @trusted nothrow
     {
         try
         {
@@ -356,7 +356,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool hasPreimage (const ref Hash enroll_key, ushort distance) @safe
+    public bool hasPreimage (in Hash enroll_key, ushort distance) @safe
         nothrow
     {
         try
@@ -390,7 +390,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public PreImageInfo getPreimage (const ref Hash enroll_key) @trusted nothrow
+    public PreImageInfo getPreimage (in Hash enroll_key) @trusted nothrow
     {
         try
         {
@@ -433,8 +433,8 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public PreImageInfo getPreimageAt (const ref Hash enroll_key,
-        in Height height) @trusted nothrow
+    public PreImageInfo getPreimageAt (in Hash enroll_key, in Height height)
+        @trusted nothrow
     {
         try
         {
@@ -527,7 +527,7 @@ public class ValidatorSet
 }
 
 version (unittest)
-private Enrollment createEnrollment(const ref Hash utxo_key,
+private Enrollment createEnrollment(in Hash utxo_key,
     const KeyPair key_pair, ref Scalar random_seed_src,
     uint validator_cycle)
 {
