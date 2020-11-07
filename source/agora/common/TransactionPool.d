@@ -201,7 +201,8 @@ public class TransactionPool
         if (is(DGT : int delegate(Transaction)) ||
             is(DGT : int delegate(ref Transaction)) ||
             is(DGT : int delegate(const Transaction)) ||
-            is(DGT : int delegate(const ref Transaction)))
+            is(DGT : int delegate(const ref Transaction)) ||
+            is(DGT : int delegate(in Transaction)))
     {
         () @trusted
         {
