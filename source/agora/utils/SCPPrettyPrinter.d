@@ -46,8 +46,8 @@ import std.range;
 
 *******************************************************************************/
 
-public SCPEnvelopeFmt scpPrettify (in SCPEnvelope* env,
-    in GetQSetDg get_qset = null) nothrow @trusted @nogc
+public SCPEnvelopeFmt scpPrettify (const SCPEnvelope* env,
+    const GetQSetDg get_qset = null) nothrow @trusted @nogc
 {
     return SCPEnvelopeFmt(env, get_qset);
 }
