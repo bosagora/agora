@@ -154,7 +154,7 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public void remove (const ref Hash enroll_hash) @trusted nothrow
+    public void remove (in Hash enroll_hash) @trusted nothrow
     {
         try
         {
@@ -180,7 +180,7 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public bool hasEnrollment (const ref Hash enroll_hash, Height avail_height)
+    public bool hasEnrollment (in Hash enroll_hash, Height avail_height)
         @trusted nothrow
     {
         try
@@ -211,7 +211,7 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public Enrollment getEnrollment (const ref Hash enroll_hash)
+    public Enrollment getEnrollment (in Hash enroll_hash)
         @trusted nothrow
     {
         try
@@ -246,7 +246,7 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public Height getAvailableHeight (const ref Hash enroll_hash)
+    public Height getAvailableHeight (in Hash enroll_hash)
         @trusted nothrow
     {
         try
@@ -304,7 +304,7 @@ public class EnrollmentPool
 }
 
 version (unittest)
-private Enrollment createEnrollment(const ref Hash utxo_key,
+private Enrollment createEnrollment(in Hash utxo_key,
     const ref KeyPair key_pair, ref Scalar random_seed_src,
     uint validator_cycle)
 {

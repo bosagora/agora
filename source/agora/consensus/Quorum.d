@@ -76,9 +76,9 @@ public struct QuorumParams
 
 *******************************************************************************/
 
-public QuorumConfig buildQuorumConfig ( const ref PublicKey key,
-    in Hash[] utxo_keys, scope UTXOFinder finder, const ref Hash rand_seed,
-    const ref QuorumParams params )
+public QuorumConfig buildQuorumConfig (in PublicKey key,
+    in Hash[] utxo_keys, scope UTXOFinder finder, in Hash rand_seed,
+    const ref QuorumParams params)
     @safe nothrow
 {
     // special-case: only 1 validator is active
@@ -374,7 +374,7 @@ private const(PublicKey)[] getKeys (size_t count)
 }
 
 /// Create a shorthash from a 64-byte blob for RNG initialization
-private ulong toShortHash (const ref Hash hash) @trusted nothrow
+private ulong toShortHash (in Hash hash) @trusted nothrow
 {
     import libsodium.crypto_shorthash;
     import std.bitmanip;
@@ -416,7 +416,7 @@ unittest
 
 *******************************************************************************/
 
-private auto getGenerator (const ref PublicKey key, const ref Hash rand_seed)
+private auto getGenerator (const ref PublicKey key, in Hash rand_seed)
     @safe nothrow
 {
     Mt19937_64 gen;

@@ -180,7 +180,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Height getEnrolledHeight (const ref Hash enroll_hash)
+    public Height getEnrolledHeight (in Hash enroll_hash)
         @trusted nothrow
     {
         return this.validator_set.getEnrolledHeight(enroll_hash);
@@ -310,7 +310,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Enrollment createEnrollment (Hash utxo) @safe nothrow
+    public Enrollment createEnrollment (in Hash utxo) @safe nothrow
     {
         // K, frozen UTXO hash
         this.enroll_key = utxo;
@@ -353,7 +353,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public static Enrollment makeEnrollment (
-        Pair key, const ref Hash utxo, uint cycle_length, Hash seed, ulong offset)
+        Pair key, in Hash utxo, uint cycle_length, in Hash seed, ulong offset)
         @safe nothrow @nogc
     {
         Enrollment result = {
@@ -372,7 +372,7 @@ public class EnrollmentManager
 
     /// Ditto
     version (unittest) public static Enrollment makeEnrollment (
-        KeyPair key, const Hash utxo, uint cycle_length, uint offset = 0)
+        KeyPair key, in Hash utxo, uint cycle_length, uint offset = 0)
         @trusted nothrow
     {
         // Convert stellar-type keypair to curve scalars
@@ -513,7 +513,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool hasPreimage (const ref Hash enroll_key, ushort distance) @safe
+    public bool hasPreimage (in Hash enroll_key, ushort distance) @safe
         nothrow
     {
         return this.validator_set.hasPreimage(enroll_key, distance);
@@ -572,7 +572,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public PreImageInfo getValidatorPreimage (const ref Hash enroll_key)
+    public PreImageInfo getValidatorPreimage (in Hash enroll_key)
         @trusted nothrow
     {
         return this.validator_set.getPreimage(enroll_key);
@@ -708,7 +708,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private void setEnrollmentKey (const ref Hash enroll_key) @trusted nothrow
+    private void setEnrollmentKey (in Hash enroll_key) @trusted nothrow
     {
         this.enroll_key = enroll_key;
 
@@ -880,7 +880,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Enrollment getEnrollment (const ref Hash enroll_hash) @trusted
+    public Enrollment getEnrollment (in Hash enroll_hash) @trusted
     {
         return this.enroll_pool.getEnrollment(enroll_hash);
     }
@@ -894,7 +894,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void removeEnrollment (const ref Hash enroll_hash) @trusted
+    public void removeEnrollment (in Hash enroll_hash) @trusted
     {
         this.enroll_pool.remove(enroll_hash);
     }

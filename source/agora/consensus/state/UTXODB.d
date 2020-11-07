@@ -77,19 +77,19 @@ public class UTXOSet : UTXOCache
     }
 
     ///
-    public override bool peekUTXO (Hash utxo, out UTXO value) nothrow @safe
+    public override bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
     {
         return this.utxo_db.find(utxo, value);
     }
 
     ///
-    protected override void remove (Hash utxo) @safe
+    protected override void remove (in Hash utxo) @safe
     {
         this.utxo_db.remove(utxo);
     }
 
     ///
-    protected override void add (Hash utxo, UTXO value) @safe
+    protected override void add (in Hash utxo, UTXO value) @safe
     {
         this.utxo_db[utxo] = value;
     }
@@ -162,7 +162,7 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public bool find (Hash key, out UTXO value) nothrow @trusted
+    public bool find (in Hash key, out UTXO value) nothrow @trusted
     {
         scope (failure) assert(0);
         auto results = db.execute("SELECT val FROM utxo_map WHERE key = ?",
@@ -217,7 +217,7 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public void opIndexAssign (const ref UTXO value, Hash key) @safe
+    public void opIndexAssign (const ref UTXO value, in Hash key) @safe
     {
         static ubyte[] buffer;
         serializeToBuffer(value, buffer);
@@ -237,7 +237,7 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public void remove (Hash key) nothrow @safe
+    public void remove (in Hash key) nothrow @safe
     {
         scope (failure) assert(0);
         () @trusted {
