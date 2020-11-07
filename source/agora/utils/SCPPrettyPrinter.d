@@ -214,7 +214,8 @@ private struct SCPNominationFmt
     private const(SCPNomination) nominate;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (in char[]) @safe sink)
+        scope @trusted nothrow
     {
         try
         {
