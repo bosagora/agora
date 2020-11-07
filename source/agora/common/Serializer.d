@@ -33,7 +33,7 @@
     struct Foo
     {
         static T fromBinary (T) (scope DeserializeDg data,
-            scope const ref DeserializerOptions) @safe;
+            in DeserializerOptions) @safe;
     }
     ---
     The deserializer might request an instance of a `const` or `immutable`
@@ -156,7 +156,7 @@ unittest
         }
 
         static QT fromBinary (QT) (
-            scope DeserializeDg dg, const ref DeserializerOptions opts)
+            scope DeserializeDg dg, in DeserializerOptions opts)
             @safe
         {
             // One need to use temporary values for this,
@@ -218,7 +218,7 @@ unittest
         ubyte[] data;
 
         public static QT fromBinary (QT) (
-            scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+            scope DeserializeDg dg, in DeserializerOptions opts) @safe
         {
             // The following is incorrect because it doesn't account for
             // type constructors (e.g. `immutable`).
@@ -593,7 +593,7 @@ public T deserializeFull (T) (scope const(ubyte)[] data) @safe
 
 /// Ditto
 public T deserializeFull (T) (scope DeserializeDg dg,
-    const ref DeserializerOptions opts = DeserializerOptions.Default) @safe
+    in DeserializerOptions opts = DeserializerOptions.Default) @safe
 {
     // Custom deserialization trumps everything
     static if (hasFromBinaryFunction!T)
