@@ -264,7 +264,7 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 
 *******************************************************************************/
 
-public Config parseConfigFile (ref const CommandLine cmdln)
+public Config parseConfigFile (in CommandLine cmdln)
 {
     Node root = Loader.fromFile(cmdln.config_path).load();
     return parseConfigImpl(cmdln, root);
@@ -302,7 +302,7 @@ network:
 }
 
 ///
-private const(string)[] parseSequence (string section, ref const CommandLine cmdln,
+private const(string)[] parseSequence (string section, in CommandLine cmdln,
         Node root, bool optional = false)
 {
     if (auto val = section in cmdln.overrides)
@@ -326,7 +326,7 @@ private const(string)[] parseSequence (string section, ref const CommandLine cmd
 }
 
 /// ditto
-private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
+private Config parseConfigImpl (in CommandLine cmdln, Node root)
 {
     Config conf =
     {
@@ -352,7 +352,7 @@ private Config parseConfigImpl (ref const CommandLine cmdln, Node root)
 }
 
 /// Parse the node config section
-private NodeConfig parseNodeConfig (Node* node, const ref CommandLine cmdln)
+private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
 {
     auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
     auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
@@ -439,7 +439,7 @@ node:
 }
 
 /// Parse the validator config section
-private ValidatorConfig parseValidatorConfig (Node* node, const ref CommandLine cmdln)
+private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
 {
     const enabled = get!(bool, "validator", "enabled")(cmdln, node);
     if (!enabled)
@@ -490,7 +490,7 @@ validator:
 }
 
 /// Parse the banman config section
-private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLine cmdln)
+private BanManager.Config parseBanManagerConfig (Node* node, in CommandLine cmdln)
 {
     BanManager.Config conf;
     conf.max_failed_requests = get!(size_t, "banman", "max_failed_requests")(cmdln, node);
@@ -511,7 +511,7 @@ private BanManager.Config parseBanManagerConfig (Node* node, const ref CommandLi
 
 *******************************************************************************/
 
-private LoggingConfig parseLoggingSection (Node* ptr, const ref CommandLine c)
+private LoggingConfig parseLoggingSection (Node* ptr, in CommandLine c)
 {
     LoggingConfig ret;
     ret.level = get!(LogLevel, "logging", "level")(c, ptr);
@@ -558,7 +558,7 @@ logging:
 
 /// Optionally get a value
 private T opt (T, string section, string name) (
-    const ref CommandLine cmdln, Node* node, lazy T def = T.init)
+    in CommandLine cmdln, Node* node, lazy T def = T.init)
 {
     try
         return get!(T, section, name)(cmdln, node);
@@ -567,15 +567,14 @@ private T opt (T, string section, string name) (
 }
 
 /// Helper function to get a config parameter
-private T get (T, string section, string name) (
-    const ref CommandLine cmdln, Node* node)
+private T get (T, string section, string name) (in CommandLine cmdln, Node* node)
 {
     return get!(T, section, name, (string val) => val.to!T)(cmdln, node);
 }
 
 /// Helper function to get a config parameter with a conversion routine
 private T get (T, string section, string name, alias conv)
-    (const ref CommandLine cmdl, Node* node)
+    (in CommandLine cmdl, Node* node)
 {
     static immutable QualifiedName = (section ~ "." ~ name);
 
@@ -602,7 +601,7 @@ private T get (T, string section, string name, alias conv)
 
 /// Helper function to get a config parameter with a converter
 private auto get (string section, string name, Converter) (
-    const ref CommandLine cmdl, Node* node, scope Converter converter)
+    in CommandLine cmdl, Node* node, scope Converter converter)
 {
     return converter(get!(ParameterType!convert, section, name)(cmdl, node));
 }
@@ -710,7 +709,7 @@ unittest
 
 *******************************************************************************/
 
-private EventHandlerConfig parserEventHandlers (Node* node, const ref CommandLine c)
+private EventHandlerConfig parserEventHandlers (Node* node, in CommandLine c)
 {
     if (node is null)
         return EventHandlerConfig.init;
