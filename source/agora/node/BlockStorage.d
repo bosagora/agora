@@ -65,7 +65,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public void load (const ref Block genesis);
+    public void load (in Block genesis);
 
     /***************************************************************************
 
@@ -93,7 +93,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public void saveBlock (const ref Block block);
+    public void saveBlock (in Block block);
 
     /***************************************************************************
 
@@ -263,7 +263,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public override void load (const ref Block genesis) @safe
+    public override void load (in Block genesis) @safe
     {
         if (!this.root_path.exists)
             mkdirRecurse(this.root_path);
@@ -376,7 +376,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public override void saveBlock (const ref Block block) @safe
+    public override void saveBlock (in Block block) @safe
     {
         if ((this.height_idx.length > 0) &&
             (this.height_idx.back.height >= block.header.height))
@@ -675,9 +675,9 @@ public class BlockStorage : IBlockStorage
     ***************************************************************************/
 
     private bool saveIndex (
-        Height height,
-        ubyte[Hash.sizeof] hash,
-        size_t pos) @safe nothrow
+        in Height height,
+        in ubyte[Hash.sizeof] hash,
+        in size_t pos) @safe nothrow
     {
         try
         {
@@ -780,7 +780,7 @@ public class BlockStorage : IBlockStorage
 
     *******************************************************************************/
 
-    private static ubyte[4] makeChecksum (const ubyte[] data) @safe nothrow
+    private static ubyte[4] makeChecksum (in ubyte[] data) @safe nothrow
     out(result)
     {
         assert(result.length + DataSize <= MapSize,
@@ -875,7 +875,7 @@ public class MemBlockStorage : IBlockStorage
     }
 
     /// No-op: MemBlockStorage does no I/O
-    public override void load (const ref Block genesis) @safe
+    public override void load (in Block genesis) @safe
     {
         // Allow `load` to be called multiple times
         // This is useful when wanting to simulate persistence
@@ -922,7 +922,7 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public void saveBlock (const ref Block block) @safe
+    public void saveBlock (in Block block) @safe
     {
         if (this.blocks.length != block.header.height)
             throw new Exception("BlockStorage: Expected blocks in serial order");

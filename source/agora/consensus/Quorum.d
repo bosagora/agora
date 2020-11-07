@@ -78,7 +78,7 @@ public struct QuorumParams
 
 public QuorumConfig buildQuorumConfig (in PublicKey key,
     in Hash[] utxo_keys, scope UTXOFinder finder, in Hash rand_seed,
-    const ref QuorumParams params)
+    in QuorumParams params)
     @safe nothrow
 {
     // special-case: only 1 validator is active
@@ -416,7 +416,7 @@ unittest
 
 *******************************************************************************/
 
-private auto getGenerator (const ref PublicKey key, in Hash rand_seed)
+private auto getGenerator (in PublicKey key, in Hash rand_seed)
     @safe nothrow
 {
     Mt19937_64 gen;
@@ -449,7 +449,7 @@ private struct NodeStake
 
 *******************************************************************************/
 
-private NodeStake[] buildStakesDescending (const ref PublicKey filter,
+private NodeStake[] buildStakesDescending (in PublicKey filter,
     in Hash[] utxo_keys, scope UTXOFinder finder) @safe nothrow
 {
     static NodeStake[] stakes;

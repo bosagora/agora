@@ -157,7 +157,7 @@ unittest
 }
 
 /// Returns: The index of a given pattern
-private size_t nameIndex (scope const(char)[] name) pure nothrow @nogc @safe
+private size_t nameIndex (in char[] name) pure nothrow @nogc @safe
 {
     assert(name.length <= Name.length, name);
     size_t result;

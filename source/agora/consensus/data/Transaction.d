@@ -139,7 +139,7 @@ public struct Output
     public this (Amount value, PublicKey key) inout pure nothrow @trusted
     {
         this.value = value;
-        this.lock = genKeyLock(key);
+        this.lock = Lock(LockType.Key, key[].dup);
     }
 
     /***************************************************************************

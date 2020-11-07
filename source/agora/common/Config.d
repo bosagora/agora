@@ -790,7 +790,7 @@ public SCPQuorumSet toSCPQuorumSet ( in QuorumConfig quorum_conf ) @safe nothrow
 
 *******************************************************************************/
 
-public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
+public QuorumConfig toQuorumConfig (in SCPQuorumSet scp_quorum)
     @safe nothrow
 {
     import std.conv;

@@ -275,7 +275,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override bool acceptBlock(const ref Block block) @trusted
+    protected override bool acceptBlock(in Block block) @trusted
     {
         import agora.common.BitField;
         import agora.crypto.Schnorr;
@@ -434,7 +434,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected final override void onAcceptedBlock (const ref Block block,
+    protected final override void onAcceptedBlock (in Block block,
         bool validators_changed) @safe
     {
         assert(block.header.height >= this.last_shuffle_height);

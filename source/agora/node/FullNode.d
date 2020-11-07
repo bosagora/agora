@@ -351,7 +351,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected bool acceptBlock(const ref Block block) @trusted
+    protected bool acceptBlock (in Block block) @trusted
     {
         // Attempt to add block to the ledger (it may be there by other means)
         this.ledger.acceptBlock(block);
@@ -747,8 +747,8 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void onAcceptedBlock (const ref Block block,
-        bool validators_changed) @safe
+    protected void onAcceptedBlock (in Block block, bool validators_changed)
+        @safe
     {
         this.pushBlock(block);
     }
@@ -765,7 +765,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    private void pushBlock (const Block block) @trusted
+    private void pushBlock (in Block block) @safe
     {
         foreach (address, handler; this.block_handlers)
         {
@@ -796,7 +796,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void pushPreImage (const PreImageInfo pre_image) @trusted
+    protected void pushPreImage (in PreImageInfo pre_image) @safe
     {
         foreach (address, handler; this.preimage_handlers)
         {
@@ -855,7 +855,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public Transaction[] getTransactions (Set!Hash tx_hashes) @safe
+    public Transaction[] getTransactions (in Set!Hash tx_hashes) @safe
     {
         Transaction[] found_txs;
         foreach (hash; tx_hashes)

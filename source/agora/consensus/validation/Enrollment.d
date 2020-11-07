@@ -55,8 +55,8 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (const ref Enrollment enrollment,
-    scope UTXOFinder findUTXO, Height height,
+public string isInvalidReason (in Enrollment enrollment,
+    scope UTXOFinder findUTXO, in Height height,
     scope EnrollmentFinder findEnrollment) nothrow @safe
 {
     UTXO utxo_set_value;
@@ -96,8 +96,8 @@ public string isInvalidReason (const ref Enrollment enrollment,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValid (const ref Enrollment enrollment,
-    scope UTXOFinder findUTXO, Height height,
+public bool isValid (in Enrollment enrollment,
+    scope UTXOFinder findUTXO, in Height height,
     scope EnrollmentFinder findEnrollment) nothrow @safe
 {
     return isInvalidReason(enrollment, findUTXO, height, findEnrollment) is null;

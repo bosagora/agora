@@ -118,8 +118,8 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public string add (Height block_height, scope UTXOFinder finder,
-        const ref Enrollment enroll, PublicKey pubkey) @safe nothrow
+    public string add (in Height block_height, scope UTXOFinder finder,
+        in Enrollment enroll, PublicKey pubkey) @safe nothrow
     {
         import agora.consensus.validation.Enrollment : isInvalidReason;
 
@@ -517,7 +517,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public Point getCommitmentNonce (const ref PublicKey key, in Height height) @trusted nothrow
+    public Point getCommitmentNonce (in PublicKey key, in Height height) @trusted nothrow
     {
         try
         {
@@ -691,7 +691,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool addPreimage (const ref PreImageInfo preimage) @trusted nothrow
+    public bool addPreimage (in PreImageInfo preimage) @trusted nothrow
     {
         import agora.consensus.validation.PreImage : isInvalidReason;
 
@@ -838,7 +838,7 @@ public class ValidatorSet
     ***************************************************************************/
 
     public UTXO[] getValidatorStakes (UTXOFinder peekUTXO, ref UTXO[] utxos,
-        const ref uint[] missing_validators) @trusted nothrow
+        in uint[] missing_validators) @trusted nothrow
     {
         import std.algorithm;
         import std.range;
@@ -865,9 +865,8 @@ public class ValidatorSet
 }
 
 version (unittest)
-private Enrollment createEnrollment(in Hash utxo_key,
-    const KeyPair key_pair, ref Scalar random_seed_src,
-    uint validator_cycle)
+private Enrollment createEnrollment(in Hash utxo_key, in KeyPair key_pair,
+    in Scalar random_seed_src, uint validator_cycle)
 {
     import std.algorithm;
 

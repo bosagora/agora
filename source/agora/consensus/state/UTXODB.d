@@ -71,7 +71,7 @@ public class UTXOSet : UTXOCache
 
     ***************************************************************************/
 
-    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @safe
+    public UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @safe
     {
         return this.utxo_db.getUTXOs(pubkey);
     }
@@ -89,7 +89,7 @@ public class UTXOSet : UTXOCache
     }
 
     ///
-    protected override void add (in Hash utxo, UTXO value) @safe
+    protected override void add (in Hash utxo, in UTXO value) @safe
     {
         this.utxo_db[utxo] = value;
     }
@@ -189,7 +189,7 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @trusted
+    public UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @trusted
     {
         scope (failure) assert(0);
 
@@ -217,7 +217,7 @@ private class UTXODB
 
     ***************************************************************************/
 
-    public void opIndexAssign (const ref UTXO value, in Hash key) @safe
+    public void opIndexAssign (in UTXO value, in Hash key) @safe
     {
         static ubyte[] buffer;
         serializeToBuffer(value, buffer);

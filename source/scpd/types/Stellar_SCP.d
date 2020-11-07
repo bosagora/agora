@@ -179,7 +179,7 @@ struct SCPStatement {
 
         ///
         extern(D) public static QT fromBinary (QT) (scope DeserializeDg dg,
-            scope const ref DeserializerOptions opts) @safe
+            in DeserializerOptions opts) @safe
         {
             auto type = deserializeFull!(typeof(QT.type_))(dg, opts);
             final switch (type)
@@ -215,7 +215,7 @@ struct SCPStatement {
         ***********************************************************************/
 
         extern(D) private static QT enableNRVO (QT, SCPStatementType type) (
-            scope DeserializeDg dg, scope const ref DeserializerOptions opts) @safe
+            scope DeserializeDg dg, in DeserializerOptions opts) @safe
         {
             static if (type == SCPStatementType.SCP_ST_PREPARE)
             {

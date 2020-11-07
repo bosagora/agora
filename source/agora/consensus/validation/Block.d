@@ -98,16 +98,17 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (const ref Block block, Height prev_height,
-    in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
-    scope EnrollmentFinder findEnrollment, size_t active_enrollments,
-    size_t enrolled_validators, in Hash random_seed,
-    Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
-    Point delegate (const ref Point, const Height) nothrow @safe getCommitmentNonce,
-    ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
-    Transaction[] delegate (const ref Transaction[] tx_set, const ref uint[]
-    missing_validators) nothrow @safe getCoinbaseTX,
-    string file = __FILE__, size_t line = __LINE__) nothrow @safe
+public string isInvalidReason (
+    in Block block, in Height prev_height, in Hash prev_hash,
+    scope UTXOFinder findUTXO, scope FeeChecker checkFee,
+    scope EnrollmentFinder findEnrollment, in size_t active_enrollments,
+    in size_t enrolled_validators, in Hash random_seed,
+    Point delegate (in Height, in ulong) nothrow @safe getValidatorAtIndex,
+    Point delegate (in Point,  in Height) nothrow @safe getCommitmentNonce,
+    in ulong prev_timestamp, in ulong curr_timestamp, in Duration block_timestamp_tolerance_dur,
+    Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
+                               nothrow @safe getCoinbaseTX,
+    in string file = __FILE__, in size_t line = __LINE__) nothrow @safe
 {
     import std.algorithm;
     import std.string;
@@ -325,7 +326,7 @@ public string validateBlockTimestamp (ulong prev_block_ts, ulong new_block_ts, u
 
 *******************************************************************************/
 
-public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
+public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
 {
     if (block.header.height != 0)
         return "GenesisBlock: The height of the block is not 0";
@@ -462,7 +463,7 @@ unittest
     Transaction[] txs =
         GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
 
-    void checkValidity (const ref Block block)
+    void checkValidity (in Block block)
     {
         auto reason = block.isGenesisBlockInvalidReason();
         assert(reason is null, reason);
@@ -632,7 +633,7 @@ unittest
 /// Ditto but returns `bool`, only usable in unittests
 /// Only the genesis block Validation
 version (unittest)
-public bool isGenesisBlockValid (const ref Block genesis_block)
+public bool isGenesisBlockValid (in Block genesis_block)
     nothrow @safe
 {
     return isGenesisBlockInvalidReason(genesis_block) is null;
@@ -647,8 +648,8 @@ version (unittest)
             .find!(key => key.address == PublicKey(point[]))[0].secret;
     }
 
-    public string isValidcheck (const ref Block block, Height prev_height,
-        Hash prev_hash, scope UTXOFinder findUTXO,
+    public string isValidcheck (in Block block, in Height prev_height,
+        in Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
         ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,

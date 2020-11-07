@@ -298,8 +298,7 @@ private enum hasFromBinaryFunction (T) = is(T == struct)
 
 *******************************************************************************/
 
-public ubyte[] serializeToBuffer (T) (scope const auto ref T record,
-                                      scope return ref ubyte[] buffer)
+public ubyte[] serializeToBuffer (T) (in T record, scope return ref ubyte[] buffer)
     @safe
 {
     buffer.length = 0;
@@ -360,8 +359,7 @@ unittest
 
 *******************************************************************************/
 
-public ubyte[] serializeFull (T) (scope const auto ref T record)
-    @safe
+public ubyte[] serializeFull (T) (in T record) @safe
 {
     ubyte[] buffer;
     return serializeToBuffer(record, buffer);
@@ -403,7 +401,7 @@ unittest
 }
 
 /// Ditto
-public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg,
+public void serializePart (T) (in T record, scope SerializeDg dg,
                                CompactMode compact = CompactMode.Yes)
     @safe
 {
@@ -1029,7 +1027,7 @@ public void testSymmetry (T) (auto ref T value = T.init)
 }
 
 /// Ditto
-private void testSymmetryImpl (T) (const auto ref T value, string typename)
+private void testSymmetryImpl (T) (in T value, string typename)
 {
     import std.stdio;
 

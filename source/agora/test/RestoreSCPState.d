@@ -48,7 +48,7 @@ public class TestSCPEnvelopeStore : SCPEnvelopeStore
         super(":memory:");
     }
 
-    public override bool add (const ref SCPEnvelope envelope) @trusted nothrow
+    public override bool add (in SCPEnvelope envelope) @trusted nothrow
     {
         store ~= envelope;
         return true;
@@ -59,7 +59,7 @@ public class TestSCPEnvelopeStore : SCPEnvelopeStore
         // no-op
     }
 
-    public override int opApply (scope int delegate(const ref SCPEnvelope) dg) @trusted
+    public override int opApply (scope int delegate(in SCPEnvelope) dg) @trusted
     {
         foreach (ref env; store)
         {

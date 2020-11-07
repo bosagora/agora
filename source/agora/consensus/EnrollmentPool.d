@@ -77,7 +77,7 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public bool add (const ref Enrollment enroll, Height avail_height,
+    public bool add (in Enrollment enroll, in Height avail_height,
         scope UTXOFinder finder, scope EnrollmentFinder findEnrollment) @safe nothrow
     {
         // check validity of the enrollment data
@@ -307,7 +307,7 @@ public class EnrollmentPool
 
 version (unittest)
 private Enrollment createEnrollment(in Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar random_seed_src,
+    in KeyPair key_pair, ref Scalar random_seed_src,
     uint validator_cycle)
 {
     import std.algorithm;

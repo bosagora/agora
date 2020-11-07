@@ -152,7 +152,8 @@ public struct BitField (T = uint)
     }
 
     /// Compare BitField of same length
-    public bool opEquals (OtherT) (const auto ref BitField!OtherT other) const pure nothrow @safe @nogc
+    public bool opEquals (OtherT) (in BitField!OtherT other) const
+        pure nothrow @safe @nogc
     {
         // Always do the comparison from the PoV of the BitField with
         // the largest data type

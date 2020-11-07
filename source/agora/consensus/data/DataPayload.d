@@ -41,7 +41,7 @@ public struct DataPayload
     }
 
     /// Print `DataPayload`
-    public void toString (scope void delegate(const(char)[]) @safe sink) const @safe
+    public void toString (scope void delegate(in char[]) @safe sink) const @safe
     {
         if (this.data.length == 0)
             return;
@@ -72,7 +72,7 @@ public struct DataPayload
         size_t idx;
         char[] buffer;
         buffer.length = this.data.length * 2 + 2;
-        scope sink = (const(char)[] v) {
+        scope sink = (in char[] v) {
             buffer[idx .. idx + v.length] = v;
             idx += v.length;
         };
@@ -81,7 +81,7 @@ public struct DataPayload
     }
 
     /// Support for Vibe.d deserialization
-    public static DataPayload fromString (scope const(char)[] str) @safe
+    public static DataPayload fromString (in char[] str) @safe
     {
         if (str.length >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
             str = str[2 .. $];
@@ -133,7 +133,7 @@ public struct DataPayload
     ***************************************************************************/
 
     public static DataPayloadT fromBinary (DataPayloadT = DataPayload) (
-        scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
     {
         return DataPayload(deserializeFull!(ubyte[])(dg, opts));
     }

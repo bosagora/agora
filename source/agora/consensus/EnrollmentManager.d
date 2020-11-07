@@ -300,8 +300,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool addEnrollment (const ref Enrollment enroll,
-        const ref PublicKey pubkey, Height block_height, scope UTXOFinder finder)
+    public bool addEnrollment (in Enrollment enroll, in PublicKey pubkey,
+        in Height block_height, scope UTXOFinder finder)
         @safe nothrow
     {
         auto enrolled_height = this.getEnrolledHeight(enroll.utxo_key);
@@ -380,8 +380,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public string addValidator (const ref Enrollment enroll, PublicKey pubkey,
-        Height block_height, scope UTXOFinder finder,
+    public string addValidator (in Enrollment enroll, in PublicKey pubkey,
+        in Height block_height, scope UTXOFinder finder,
         in UTXO[Hash] self_utxos) @safe nothrow
     {
         this.enroll_pool.remove(enroll.utxo_key);
@@ -591,8 +591,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public string isInvalidCandidateReason (const ref Enrollment enroll,
-        PublicKey pubkey, Height height, scope UTXOFinder findUTXO)
+    public string isInvalidCandidateReason (in Enrollment enroll,
+        in PublicKey pubkey, in Height height, scope UTXOFinder findUTXO)
         @safe nothrow
     {
         // if an enrollment having a different UTXO which is belonging to
@@ -626,7 +626,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public void clearExpiredValidators (Height block_height) @safe nothrow
+    public void clearExpiredValidators (in Height block_height) @safe nothrow
     {
         // clear up the enrollment of a node if the validator cycle of the node
         // ends at the `block_height`
@@ -650,7 +650,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool getNextPreimage (out PreImageInfo preimage, Height height) @safe
+    public bool getNextPreimage (out PreImageInfo preimage, in Height height) @safe
     {
         uint next_dist = getRevealDistance(height);
         if (next_dist >= this.params.ValidatorCycle)
@@ -775,7 +775,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool addPreimage (const ref PreImageInfo preimage) @safe nothrow
+    public bool addPreimage (in PreImageInfo preimage) @safe nothrow
     {
         return this.validator_set.addPreimage(preimage);
     }
@@ -1035,8 +1035,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private bool isPublicKeyEnrolled (const ref Hash utxo_key,
-        const ref PublicKey pubkey) @safe nothrow
+    private bool isPublicKeyEnrolled (in Hash utxo_key, in PublicKey pubkey)
+        @safe nothrow
     {
         return !this.validator_set.hasEnrollment(utxo_key) &&
             this.validator_set.hasPublicKey(pubkey);
@@ -1079,7 +1079,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private uint getRevealDistance (Height height) @safe nothrow
+    private uint getRevealDistance (in Height height) @safe nothrow
     {
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
         if (enrolled == ulong.max)
@@ -1121,7 +1121,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (Height block_height) @safe nothrow
+    public ulong getValidatorCount (in Height block_height) @safe nothrow
     {
         return this.validator_set.getValidatorCount(block_height);
     }
@@ -1194,7 +1194,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public ExpiringValidator[] getExpiringValidators (Height height,
+    public ExpiringValidator[] getExpiringValidators (in Height height,
         ref ExpiringValidator[] ex_validators)
         @trusted nothrow
     {
@@ -1214,8 +1214,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public UTXO[] getValidatorStakes (UTXOFinder peekUTXO, ref UTXO[] utxos,
-        const ref uint[] missing_validators) @trusted nothrow
+    public UTXO[] getValidatorStakes (scope UTXOFinder peekUTXO, ref UTXO[] utxos,
+        in uint[] missing_validators) @trusted nothrow
     {
         return this.validator_set.getValidatorStakes(peekUTXO, utxos,
             missing_validators);

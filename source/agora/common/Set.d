@@ -110,7 +110,7 @@ public struct Set (T)
     ***************************************************************************/
 
     public static SetT fromBinary (SetT) (
-        scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
     {
         size_t length = deserializeLength(dg, opts.maxLength);
         return SetT.from!(SetT)(

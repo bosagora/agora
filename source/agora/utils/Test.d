@@ -644,7 +644,7 @@ public struct TxBuilder
 
 ***************************************************************************/
 
-public auto spendable (const ref Block block) @safe pure nothrow
+public auto spendable (in Block block) @safe pure nothrow
 {
     return block.txs
         .filter!(tx => tx.type == TxType.Payment)

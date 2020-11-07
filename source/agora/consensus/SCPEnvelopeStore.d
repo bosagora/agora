@@ -73,7 +73,7 @@ public class SCPEnvelopeStore
 
     ***************************************************************************/
 
-    public bool add (const ref SCPEnvelope envelope) @safe nothrow
+    public bool add (in SCPEnvelope envelope) @safe nothrow
     {
         static ubyte[] envelope_bytes;
 
@@ -134,7 +134,7 @@ public class SCPEnvelopeStore
 
     ***************************************************************************/
 
-    public int opApply (scope int delegate(const ref SCPEnvelope) dg)
+    public int opApply (scope int delegate(in SCPEnvelope) dg)
     {
         () @trusted
         {

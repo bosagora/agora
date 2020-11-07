@@ -396,7 +396,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public size_t findHashIndex (Hash hash) const @safe nothrow
+    public size_t findHashIndex (in Hash hash) const @safe nothrow
     {
         immutable pow2_size = getPow2Aligned(this.txs.length);
         assert(this.merkle_tree.length == (pow2_size * 2) - 1,
@@ -494,9 +494,9 @@ unittest
 
 *******************************************************************************/
 
-public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, ulong timestamp, Hash random_seed,
-    Enrollment[] enrollments = null, uint[] missing_validators = null)
+public Block makeNewBlock (Transactions)(in Block prev_block,
+    in Transactions txs, in ulong timestamp, in Hash random_seed,
+    in Enrollment[] enrollments = null, in uint[] missing_validators = null)
     @safe nothrow
 {
     static assert (isInputRange!Transactions);
@@ -543,10 +543,10 @@ version (unittest)
         return 0;
     }
 
-    public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
-        Transactions txs, Hash random_seed = Hash.init,
-        Enrollment[] enrollments = null, uint[] missing_validators = null,
-        KeyPair[] keys = genesis_validator_keys,
+    public Block makeNewTestBlock (Transactions)(in Block prev_block,
+        in Transactions txs, in Hash random_seed = Hash.init,
+        in Enrollment[] enrollments = null, in uint[] missing_validators = null,
+        in KeyPair[] keys = genesis_validator_keys,
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
         ulong timestamp = ulong.max) @safe nothrow
     {

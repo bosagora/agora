@@ -54,8 +54,8 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    public void updateUTXOCache (const ref Transaction tx, Height height,
-        immutable PublicKey commons_budget) @safe
+    public void updateUTXOCache (in Transaction tx, in Height height,
+        in PublicKey commons_budget) @safe
     {
         import std.algorithm : any;
 
@@ -199,7 +199,7 @@ abstract class UTXOCache
 
     ***************************************************************************/
 
-    protected abstract void add (in Hash utxo, UTXO value) @safe;
+    protected abstract void add (in Hash utxo, in UTXO value) @safe;
 }
 
 /*******************************************************************************
@@ -227,7 +227,7 @@ public class TestUTXOSet : UTXOCache
     alias storage this;
 
     /// Short hand to add a transaction
-    public void put (const Transaction tx) nothrow @safe
+    public void put (in Transaction tx) nothrow @safe
     {
         Hash txhash = hashFull(tx);
         foreach (size_t idx, ref output_; tx.outputs)

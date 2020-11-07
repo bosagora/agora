@@ -312,7 +312,8 @@ public struct Serializer
 {
     import agora.common.Serializer;
 
-    static immutable(ubyte)[] serialize (T) (auto ref T value)
+
+    static immutable(ubyte)[] serialize (T) (in T value)
     {
         // `serializeFull` should be `@safe`, but `assumeUnique` is not
         return ((arr) @trusted => assumeUnique(arr))(serializeFull(value));

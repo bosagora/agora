@@ -291,7 +291,7 @@ public interface API
 
     ***************************************************************************/
 
-    public Transaction[] getTransactions (Set!Hash tx_hashes);
+    public Transaction[] getTransactions (in Set!Hash tx_hashes);
 
     /***************************************************************************
 

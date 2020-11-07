@@ -128,8 +128,8 @@ public extern (C++) class Nominator : SCPDriver
     public EnrollmentManager enroll_man;
 
     /// Delegate called when node's own nomination is invalid
-    extern (D) public void delegate(const ref ConsensusData data, const ref
-        string msg) @safe onInvalidNomination = null;
+    extern (D) public void delegate(in ConsensusData data, in string msg) @safe
+        onInvalidNomination = null;
 
 extern(D):
 
@@ -182,8 +182,8 @@ extern(D):
 
     ***************************************************************************/
 
-    public void setQuorumConfig (const ref QuorumConfig quorum,
-        const(QuorumConfig)[] other_quorums) nothrow @safe
+    public void setQuorumConfig (in QuorumConfig quorum,
+        in QuorumConfig[] other_quorums) nothrow @safe
     {
         assert(!this.is_nominating);
         () @trusted { this.known_quorums.clear(); }();
@@ -259,7 +259,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public void stopNominationRound (Height height) @safe nothrow
+    public void stopNominationRound (in Height height) @safe nothrow
     {
         this.is_nominating = false;
         () @trusted { this.scp.stopNomination(height); }();
@@ -394,7 +394,7 @@ extern(D):
 
     ***************************************************************************/
 
-    private static SCPQuorumSet buildSCPConfig (ref const QuorumConfig config)
+    private static SCPQuorumSet buildSCPConfig (in QuorumConfig config)
         @safe nothrow
     {
         import scpd.scp.QuorumSetUtils;
@@ -1208,8 +1208,7 @@ private struct SCPStatementHash
 
     ***************************************************************************/
 
-    public static void computeHash (
-        const ref SCPStatement._pledges_t._prepare_t prep,
+    public static void computeHash (in SCPStatement._pledges_t._prepare_t prep,
         scope HashDg dg) nothrow @safe @nogc
     {
         hashPart(prep.quorumSetHash[], dg);
@@ -1237,8 +1236,7 @@ private struct SCPStatementHash
 
     ***************************************************************************/
 
-    public static void computeHash (
-        const ref SCPStatement._pledges_t._confirm_t conf,
+    public static void computeHash (in SCPStatement._pledges_t._confirm_t conf,
         scope HashDg dg) nothrow @safe @nogc
     {
         hashPart(conf.ballot, dg);
@@ -1259,7 +1257,7 @@ private struct SCPStatementHash
     ***************************************************************************/
 
     public static void computeHash (
-        const ref SCPStatement._pledges_t._externalize_t ext, scope HashDg dg)
+        in SCPStatement._pledges_t._externalize_t ext, scope HashDg dg)
         nothrow @safe @nogc
     {
         hashPart(ext.commit, dg);
@@ -1277,7 +1275,7 @@ private struct SCPStatementHash
 
     ***************************************************************************/
 
-    public static void computeHash (const ref SCPNomination nom, scope HashDg dg)
+    public static void computeHash (in SCPNomination nom, scope HashDg dg)
         nothrow @safe @nogc
     {
         hashPart(nom.quorumSetHash[], dg);
