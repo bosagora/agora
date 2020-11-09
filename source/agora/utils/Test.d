@@ -427,6 +427,7 @@ public struct TxBuilder
         Params:
             type = type of `Transaction`
             height_lock = the transaction-level height lock
+            unlock_age = the unlock age for each input in the transaction
 
         Returns:
             The finalized & signed `Transaction`.
@@ -434,7 +435,7 @@ public struct TxBuilder
     ***************************************************************************/
 
     public Transaction sign (TxType type = TxType.Payment,
-        Height height_lock = Height(0)) @safe nothrow
+        Height height_lock = Height(0), uint unlock_age = 0) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
@@ -445,7 +446,7 @@ public struct TxBuilder
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash);
+            this.data.inputs ~= Input(in_.hash, Signature.init, unlock_age);
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
