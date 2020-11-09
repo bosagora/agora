@@ -58,6 +58,19 @@ unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
+    void printQuorums (uint line = __LINE__)
+    {
+        foreach (idx, node; nodes.enumerate)
+        {
+            import std.string;
+            const quorum = node.getQuorumConfig();
+            writefln("L%s: Node %s: Threshold: %s Nodes: %s", line, idx,
+                quorum.threshold, quorum.nodes.map!(e =>
+                    e.to!string.chompPrefix("GD")
+                    .chompPrefix("NODE")[0 .. 1]));
+        }
+    }
+
     enum quorums_1 = [
         // 0
         QuorumConfig(5, [
@@ -118,10 +131,7 @@ unittest
     ];
 
     {
-        scope (failure)
-            foreach (idx, node; nodes.enumerate)
-                writefln("Node %s: %s\n", idx, node.getQuorumConfig);
-
+        scope (failure) printQuorums();
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_1: %s",
@@ -240,10 +250,7 @@ unittest
     static assert(quorums_1 != quorums_2);
 
     {
-        scope (failure)
-            foreach (idx, node; nodes.enumerate)
-                writefln("Node %s: %s\n", idx, node.getQuorumConfig);
-
+        scope (failure) printQuorums();
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_2[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_2: %s",
@@ -348,10 +355,7 @@ unittest
     static assert(quorums_2 != quorums_3);
 
     {
-        scope (failure)
-            foreach (idx, node; nodes.enumerate)
-                writefln("Node %s: %s\n", idx, node.getQuorumConfig);
-
+        scope (failure) printQuorums();
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_3: %s",
