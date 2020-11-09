@@ -37,6 +37,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
 import agora.stats.Block;
@@ -77,6 +78,9 @@ public class Ledger
     /// Enrollment manager
     private EnrollmentManager enroll_man;
 
+    /// Slashing policy manager
+    private SlashPolicy slash_man;
+
     /// If not null call this delegate
     /// A block was externalized
     private void delegate (const ref Block, bool) @safe onAcceptedBlock;
@@ -114,6 +118,7 @@ public class Ledger
         this.utxo_set = utxo_set;
         this.storage = storage;
         this.enroll_man = enroll_man;
+        this.slash_man = new SlashPolicy(this.enroll_man);
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
         if (!this.storage.load(params.Genesis))
@@ -431,6 +436,16 @@ public class Ledger
 
         this.enroll_man.getEnrollments(data.enrolls,
             Height(this.getBlockHeight()));
+
+        PublicKey[] slash_candidates = this.slash_man.getSlashCandidates(
+            Height(this.getBlockHeight()), this.utxo_set.getUTXOFinder);
+
+        if (slash_candidates.length > 0)
+        {
+            log.warn("There are some validators that have not revealed " ~
+                "pre-images timely. {} will be slashed", slash_candidates);
+        }
+
         foreach (ref Transaction tx; this.pool)
         {
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
