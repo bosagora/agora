@@ -88,17 +88,6 @@ public struct Transaction
     }
 }
 
-///
-nothrow @safe @nogc unittest
-{
-    Transaction tx;
-    auto hash = hashFull(tx);
-    auto exp_hash = Hash("0x4b6e507a0519827d48792e6f27f3a0f5b4bc284c69c83a2a" ~
-        "ebe35f11443e96364c90f780d4448320440efe68808fe4b6c7c4745d2e7c7e16956" ~
-        "987df86f6a32f");
-    assert(hash == exp_hash);
-}
-
 unittest
 {
     import std.algorithm.sorting : isStrictlyMonotonic;
