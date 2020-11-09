@@ -174,7 +174,7 @@ unittest
         writeln("Merkle root: ", Block.buildMerkleTree(txs, merkle_tree));
         writeln("\tMerkle tree: ", merkle_tree);
 
-        const ValidatorCycle = 1008;
+        const ValidatorCycle = 20;
         const txhash = txs[0].hashFull();
         Enrollment[] enrolls = txs[0].outputs.enumerate()
             .map!(tup => EnrollmentManager.makeEnrollment(
