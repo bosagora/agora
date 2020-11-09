@@ -428,19 +428,22 @@ public struct TxBuilder
         Params:
             type = type of `Transaction`
             data = data payload of `Transaction`
+            height_lock = the transaction-level height lock
 
         Returns:
             The finalized & signed `Transaction`.
 
     ***************************************************************************/
 
-    public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = []) @safe nothrow
+    public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = [],
+        Height height_lock = Height(0)) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
                "Output-less transactions are not valid");
 
         this.data.type = type;
+        this.data.height_lock = height_lock;
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
