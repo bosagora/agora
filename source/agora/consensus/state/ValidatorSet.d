@@ -416,6 +416,39 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Get pre-images of all the validators
+
+        Returns:
+            All the pre-images of validators
+
+    ***************************************************************************/
+
+    public PreImageInfo[] getAllPreimages () @trusted nothrow
+    {
+        PreImageInfo[] preimages;
+        try
+        {
+            auto results = this.db.execute("SELECT key, preimage, distance " ~
+                "FROM validator_set");
+
+            foreach (row; results)
+            {
+                Hash utxo = Hash(row.peek!(char[])(0));
+                Hash preimage = Hash(row.peek!(char[])(1));
+                ushort distance = row.peek!(ushort)(2);
+                preimages ~= PreImageInfo(utxo, preimage, distance);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on getAllPreimages(): {}", ex.msg);
+        }
+
+        return preimages;
+    }
+
+    /***************************************************************************
+
         Get validator's pre-image for the given block height from the
         validator set
 
@@ -619,6 +652,15 @@ unittest
     set.getEnrolledUTXOs(keys);
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
+
+    // Get all pre-images
+    PreImageInfo[] preimages = set.getAllPreimages();
+    assert(preimages.length == 3);
+    foreach (preimage; preimages)
+    {
+        auto temp = set.getPreimage(preimage.enroll_key);
+        assert(temp == preimage);
+    }
 
     // test for adding and getting preimage
     assert(!set.hasPreimage(utxos[0], 10));

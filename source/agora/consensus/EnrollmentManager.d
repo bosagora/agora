@@ -521,6 +521,20 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get pre-images of all the validators
+
+        Returns:
+            All the pre-images of validators
+
+    ***************************************************************************/
+
+    public PreImageInfo[] getAllPreimages () @safe nothrow
+    {
+        return this.validator_set.getAllPreimages();
+    }
+
+    /***************************************************************************
+
         Generate the random seed reduced from the preimages for the provided
         block height.
 
