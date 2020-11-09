@@ -51,6 +51,9 @@ public string isInvalidReason (
     if (tx.outputs.length == 0)
         return "Transaction: No output";
 
+    if (tx.height_lock > height)
+        return "Transaction: Not unlocked for this height";
+
     foreach (output; tx.outputs)
     {
         // disallow negative amounts
@@ -776,4 +779,36 @@ unittest
     // test for output overflow in Payment transaction
     assert(!thirdTx.isValid(&storage.peekUTXO, Height(0)),
         format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
+}
+
+/// transaction-level absolute time lock
+unittest
+{
+    import ocean.core.Test;
+    scope storage = new TestUTXOSet;
+    KeyPair kp = KeyPair.random();
+
+    Transaction prev_tx = { outputs: [Output(Amount(100), kp.address)] };
+    storage.put(prev_tx);
+
+    Transaction tx = Transaction(
+        TxType.Payment, [Input(hashFull(prev_tx), 0)],
+        [Output(Amount(50), kp.address)]);
+
+    // effectively disabled lock
+    tx.height_lock = Height(0);
+    tx.inputs[0].signature = kp.secret.sign(hashFull(tx)[]);
+    test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(0)), null);
+    test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(1024)), null);
+
+    tx.height_lock = Height(10);
+    tx.inputs[0].signature = kp.secret.sign(hashFull(tx)[]);
+    test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(0)),
+        "Transaction: Not unlocked for this height");
+    test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(9)),
+        "Transaction: Not unlocked for this height");
+    test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(10)),
+        null);
+    test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(1024)),
+        null);
 }
