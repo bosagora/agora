@@ -387,6 +387,41 @@ public struct TxBuilder
 
     /***************************************************************************
 
+        Attaches to a range of tuples.
+
+        The tuple should have an `Output` and a `Hash` as its first and
+        second element, respectively.
+
+        Params:
+            rng = the range of tuple
+
+        Returns:
+            A reference to `this` to allow for chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) attach (RNG) (scope RNG rng)
+        @safe pure nothrow return
+    {
+        alias ET = ElementType!RNG;
+
+        static assert(isInputRange!RNG);
+        static assert(ET.length == 2, "Parameter must be a range of tuple with
+            2 elements");
+        static assert(is(typeof(ET[0]) : const Output),
+            "Tuple's first element should be convertible to `Output`, not: `" ~
+            typeof(ET[0]).stringof ~ "`");
+        static assert(is(typeof(ET[1]) : const Hash),
+            "Tuple's second element should be convertible to `Hash`, not: `" ~
+            typeof(ET[1]).stringof ~ "`");
+
+        rng.each!(tup => this.attach(tup[0], tup[1]));
+
+        return this;
+    }
+
+    /***************************************************************************
+
         Finalize the transaction, signing the input, and reset the builder
 
         Params:
@@ -696,4 +731,22 @@ unittest
 
     assert(equal!((in Output outp, in KeyPair b) => outp.address == b.address)(
                result.outputs, [ WK.Keys.A, WK.Keys.B, WK.Keys.C, WK.Keys.Z ]));
+}
+
+/// Test with a range of tuples
+unittest
+{
+    Output[4] outs = [
+        Output(Amount(100), WK.Keys.A.address),
+        Output(Amount(200), WK.Keys.B.address),
+        Output(Amount(300), WK.Keys.C.address),
+        Output(Amount(400), WK.Keys.D.address),
+    ];
+
+    auto tup_rng = outs[].zip(iota(outs.length).map!(_ => Hash.init));
+    auto result = TxBuilder(WK.Keys.E.address).attach(tup_rng).sign();
+
+    assert(result.inputs.length == 4);
+    assert(result.outputs.length == 1);
+    assert(result.outputs[0].value == Amount(1000));
 }
