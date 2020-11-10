@@ -25,6 +25,9 @@ public enum SigHash : ubyte
 {
     /// default, signs the entire transaction
     All = 1 << 0,
+
+    /// blanks out the associated Input, for use with Eltoo floating txs
+    NoInput = 1 << 1,
 }
 
 /// Contains the Signature and its associated SigHash
@@ -105,7 +108,9 @@ private bool isValidSigHash (in SigHash sig_hash) pure nothrow @safe @nogc
 {
     switch (sig_hash)
     {
+    // individual ok, combination not ok
     case SigHash.All:
+    case SigHash.NoInput:
         break;
 
     default:
@@ -120,6 +125,9 @@ unittest
 {
     assert(!isValidSigHash(cast(SigHash)0));
     assert(isValidSigHash(SigHash.All));
+    assert(isValidSigHash(SigHash.NoInput));
+    // this combo is unrecognized
+    assert(!isValidSigHash(cast(SigHash)(SigHash.All | SigHash.NoInput)));
 }
 
 /*******************************************************************************
@@ -143,10 +151,17 @@ unittest
 public Hash getChallenge (in Transaction tx, in SigHash sig_hash = SigHash.All,
     in ulong input_idx = 0) nothrow @safe
 {
-    assert(input_idx < tx.inputs.length, "Input index is out of range");
-
     final switch (sig_hash)
     {
+    case SigHash.NoInput:  // eltoo support
+        assert(input_idx < tx.inputs.length, "Input index is out of range");
+        Transaction dup;
+        // it's ok, we'll dupe the array before modification
+        () @trusted { dup = *cast(Transaction*)&tx; }();
+        dup.inputs = dup.inputs.dup;
+        dup.inputs[input_idx] = Input.init;  // blank out matching input
+        return hashMulti(dup, sig_hash);
+
     case SigHash.All:
         return hashMulti(tx, sig_hash);
     }
@@ -161,4 +176,5 @@ unittest
     const tx = Transaction([Input(hashFull(1)), Input(hashFull(2))], [], Height(10));
     assert(getChallenge(tx, SigHash.All, 0) == getChallenge(tx, SigHash.All, 1));
     assert(getChallenge(tx, SigHash.All, 0) != tx.hashFull());
+    assert(getChallenge(tx, SigHash.NoInput, 0) != getChallenge(tx, SigHash.NoInput, 1));
 }
