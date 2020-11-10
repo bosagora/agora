@@ -23,6 +23,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.script.Lock;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
@@ -592,7 +593,8 @@ unittest
     {
         tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
-        tx.inputs[0].signature = key_pairs[idx].secret.sign(last_hash[]);
+        tx.inputs[0].unlock = genKeyUnlock(
+            key_pairs[idx].secret.sign(last_hash[]));
         txs ~= tx;
     }
 

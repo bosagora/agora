@@ -630,7 +630,8 @@ public class FullNode : API
 
         UTXO utxo;
         this.utxo_set.peekUTXO(enroll.utxo_key, utxo);
-        if (this.enroll_man.addEnrollment(enroll, utxo.output.address,
+        const utxo_address = utxo.output.address;
+        if (this.enroll_man.addEnrollment(enroll, utxo_address,
             this.ledger.getBlockHeight(), this.utxo_set.getUTXOFinder()))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
