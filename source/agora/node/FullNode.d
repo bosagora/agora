@@ -51,6 +51,7 @@ import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
 import agora.node.TransactionPool;
+import agora.script.Engine;
 import agora.stats.App;
 import agora.stats.EndpointReq;
 import agora.stats.Server;
@@ -122,6 +123,9 @@ public class FullNode : API
 
     ///
     protected Ledger ledger;
+
+    /// Script execution engine
+    protected Engine engine;
 
     /// Blockstorage
     protected IBlockStorage storage;
@@ -202,11 +206,11 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet();
         this.enroll_man = this.getEnrollmentManager();
         this.fee_man = this.getFeeManager();
-
-        // Only instantiate a Ledger when we're not validating, as a transitional
-        // measure towards a more fine-grained Ledger.
+        const ulong StackMaxTotalSize = 16_384;
+        const ulong StackMaxItemSize = 512;
+        this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
         if (!config.validator.enabled)
-            this.ledger = new Ledger(params, this.utxo_set,
+            this.ledger = new Ledger(params, this.engine, this.utxo_set,
                 this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
                 config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
 

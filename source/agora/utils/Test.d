@@ -431,6 +431,22 @@ public struct TxBuilder
         return this;
     }
 
+    // Uses a random nonce when signing (non-determenistic signature),
+    // and defaults to LockType.Key
+    private Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow
+    {
+        auto ownerKP = WK.Keys[out_ref.output.address];
+        assert(ownerKP !is KeyPair.init,
+                "Address not found in Well-Known keypairs: "
+                ~ out_ref.output.address.toString());
+
+        import Schnorr = agora.crypto.Schnorr;
+        Pair pair = Pair(ownerKP.secret, ownerKP.secret.toPoint());
+        auto sig = Schnorr.sign(pair, tx);
+        return genKeyUnlock(sig);
+    }
+
     /***************************************************************************
 
         Finalize the transaction, signing the input, and reset the builder
@@ -441,6 +457,9 @@ public struct TxBuilder
             lookupDg = delegate to look up the `KeyPair`
 			lock_height = the transaction-level height lock
             unlock_age = the unlock age for each input in the transaction
+            unlocker = optional delegate to generate the unlock script.
+                If one is not provided then a LockType.Key unlock script
+                is automatically generated.
 
         Returns:
             The finalized & signed `Transaction`.
@@ -448,13 +467,16 @@ public struct TxBuilder
     ***************************************************************************/
 
     public Transaction sign (in TxType type = TxType.Payment, const(ubyte)[] data = [],
-        scope KeyPair delegate(PublicKey pubkey) @safe nothrow lookupDg = toDelegate(&WK.Keys.opIndex),
-        in Height lock_height = Height(0), uint unlock_age = 0) @safe nothrow
+        Height lock_height = Height(0), uint unlock_age = 0,
+        Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
+        unlocker = null) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
                "Output-less transactions are not valid");
 
+        if (unlocker is null)
+            unlocker = &this.keyUnlocker;
         this.data.type = type;
         this.data.lock_height = lock_height;
 
@@ -472,14 +494,7 @@ public struct TxBuilder
         const txHash = this.data.hashFull();
         // Sign all inputs using WK keys
         foreach (idx, ref in_; this.inputs)
-        {
-            auto ownerKP = lookupDg(in_.output.address);
-            assert(ownerKP !is KeyPair.init,
-                    "Address not found in Well-Known keypairs: "
-                    ~ in_.output.address.toString());
-            this.data.inputs[idx].unlock = () @trusted
-                { return genKeyUnlock(ownerKP.secret.sign(txHash[])); }();
-        }
+            this.data.inputs[idx].unlock = unlocker(this.data, in_);
 
         // Return the result and reset this
         this.inputs = null;
