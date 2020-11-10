@@ -94,9 +94,10 @@ public class Validator : FullNode, API
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
-        auto vledger = new ValidatingLedger(this.params, this.utxo_set,
-                this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
-                config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
+        auto vledger = new ValidatingLedger(this.params, this.engine,
+            this.utxo_set, this.storage, this.enroll_man, this.pool,
+            this.fee_man, this.clock, config.node.block_time_offset_tolerance,
+            &this.onAcceptedBlock);
         this.ledger = vledger;
 
         this.nominator = this.getNominator(

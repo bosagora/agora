@@ -26,11 +26,12 @@ import agora.consensus.data.UTXO;
 import agora.consensus.Fee;
 import agora.consensus.validation;
 import agora.crypto.Hash;
+import agora.crypto.Schnorr;
+import agora.script.Engine;
 import agora.script.Lock;
 import agora.test.Base;
 
 import core.thread;
-
 
 ///
 unittest
@@ -207,7 +208,8 @@ unittest
     // create a double-spend tx
     txs[0].inputs[0] = txs[1].inputs[0];
     txs[0].outputs[0].value = Amount(100);
-    auto signature = WK.Keys.Genesis.secret.sign(hashFull(txs[0])[]);
+    auto kp = Pair(WK.Keys.Genesis.secret, WK.Keys.Genesis.secret.toPoint());
+    auto signature = sign(kp, txs[0]);
     txs[0].inputs[0].unlock = genKeyUnlock(signature);
 
     scope payload_checker = new FeeManager();
@@ -216,7 +218,7 @@ unittest
     // make sure the transaction is still authentic (signature is correct),
     // even if it's double spending
     const genesis_block = node_1.getBlocksFrom(0, 1)[0];
-    auto reason = txs[0].isInvalidReason(
+    auto reason = txs[0].isInvalidReason(new Engine(16_384, 512),
         (in Hash utxo, out UTXO value)
         {
             value = UTXO(0, TxType.Payment, txs[0].outputs[0]);
