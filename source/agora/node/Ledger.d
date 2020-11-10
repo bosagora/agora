@@ -40,6 +40,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
 import agora.node.Fee;
+import agora.script.Engine;
 import agora.script.Lock;
 import agora.stats.Block;
 import agora.stats.Tx;
@@ -64,6 +65,9 @@ version (unittest)
 /// Ditto
 public class Ledger
 {
+    /// Script execution engine
+    private Engine engine;
+
     /// data storage for all the blocks
     private IBlockStorage storage;
 
@@ -101,6 +105,7 @@ public class Ledger
 
         Params:
             params = the consensus-critical constants
+            engine = script execution engine
             utxo_set = the set of unspent outputs
             storage = the block storage
             enroll_man = the enrollmentManager
@@ -112,12 +117,13 @@ public class Ledger
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params,
-        UTXOSet utxo_set, IBlockStorage storage,
+        Engine engine, UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         DataPayloadChecker payload_checker,
         void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
     {
         this.params = params;
+        this.engine = engine;
         this.utxo_set = utxo_set;
         this.storage = storage;
         this.enroll_man = enroll_man;
@@ -167,6 +173,7 @@ public class Ledger
                         block.header.height);
 
                     if (auto fail_reason = block.isInvalidReason(
+                        this.engine,
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
@@ -281,8 +288,9 @@ public class Ledger
     {
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = Height(this.getBlockHeight() + 1);
-        auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
-            expected_height, &this.payload_checker.check);
+        auto reason = tx.isInvalidReason(this.engine, 
+            this.utxo_set.getUTXOFinder(), expected_height, 
+            &this.payload_checker.check);
 
         if (reason !is null || !this.pool.add(tx))
         {
@@ -442,7 +450,8 @@ public class Ledger
             Height(this.getBlockHeight()));
         foreach (ref Transaction tx; this.pool)
         {
-            if (auto reason = tx.isInvalidReason(utxo_finder, next_height, &this.payload_checker.check))
+            if (auto reason = tx.isInvalidReason(this.engine, utxo_finder, 
+                next_height, &this.payload_checker.check))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
                 data.tx_set ~= tx;
@@ -474,7 +483,8 @@ public class Ledger
 
         foreach (const ref tx; data.tx_set)
         {
-            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, &this.payload_checker.check))
+            if (auto fail_reason = tx.isInvalidReason(this.engine, utxo_finder, 
+                expect_height, &this.payload_checker.check))
                 return fail_reason;
         }
 
@@ -512,7 +522,7 @@ public class Ledger
         size_t active_enrollments = enroll_man.getValidatorCount(
                 block.header.height);
 
-        return block.isInvalidReason(this.last_block.header.height,
+        return block.isInvalidReason(this.engine, this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
             active_enrollments,
@@ -641,13 +651,21 @@ version (unittest)
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
 
-            super(params, new UTXOSet(":memory:"),
+            super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
+                new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"),
                 new DataPayloadChecker());
         }
     }
+}
+
+version (unittest)
+{
+    // sensible defaults
+    private const TestStackMaxTotalSize = 16_384;
+    private const TestStackMaxItemSize = 512;
 }
 
 ///
@@ -875,6 +893,7 @@ private Transaction[] makeTransactionForFreezing (
     Transaction[] prev_txs,
     const Transaction default_tx)
 {
+    import agora.common.crypto.Schnorr;
     import std.conv;
 
     assert(in_key_pair.length == Block.TxsInTestBlock);
@@ -903,7 +922,10 @@ private Transaction[] makeTransactionForFreezing (
             [Output(AmountPerTx, out_key_pair[idx % Block.TxsInTestBlock].address)]  // send to the same address
         };
 
-        auto signature = in_key_pair[idx % Block.TxsInTestBlock].secret.sign(hashFull(tx)[]);
+        const key = in_key_pair[idx % Block.TxsInTestBlock].secret
+            .secretKeyToCurveScalar();
+        const kp = Pair(key, key.toPoint());
+        auto signature = sign(kp, tx);
         tx.inputs[0].unlock = genKeyUnlock(signature);
         transactions ~= tx;
 
@@ -1190,7 +1212,8 @@ unittest
 
         public this (KeyPair kp, const(Block)[] blocks, immutable(ConsensusParams) params)
         {
-            super(params, new UTXOSet(":memory:"),
+            super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
+                new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", kp, params),
                 new TransactionPool(":memory:"),

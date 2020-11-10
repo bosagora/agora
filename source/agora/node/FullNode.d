@@ -40,6 +40,7 @@ import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.Fee;
 import agora.node.Ledger;
+import agora.script.Engine;
 import agora.stats.App;
 import agora.stats.EndpointReq;
 import agora.stats.Server;
@@ -115,6 +116,9 @@ public class FullNode : API
     ///
     protected Ledger ledger;
 
+    /// Script execution engine
+    protected Engine engine;
+
     /// Blockstorage
     protected IBlockStorage storage;
 
@@ -178,8 +182,12 @@ public class FullNode : API
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.validator, params);
         this.payload_checker = getDataPayloadChecker(this.params);
-        this.ledger = new Ledger(params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, this.payload_checker, &this.onAcceptedBlock);
+        const ulong StackMaxTotalSize = 16_384;
+        const ulong StackMaxItemSize = 512;
+        this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
+        this.ledger = new Ledger(params, this.engine, this.utxo_set,
+            this.storage, this.enroll_man, this.pool, this.payload_checker,
+            &this.onAcceptedBlock);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 

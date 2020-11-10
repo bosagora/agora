@@ -459,15 +459,25 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
 Height: 1, Prev: 0x0456...8f1d, Root: 0xd437...e2c9, Enrollments: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0x533f...5e2e:0xac4d...b604
+Type : Payment, Inputs (1): 0x533f...5e2e:0xcee2...6a78
 Outputs (1): GCOQ...LRIJ(61,000,000)
-Type : Payment, Inputs (1): 0x915d...fde1:0x4b11...5f86
+Type : Payment, Inputs (1): 0x915d...fde1:0xcee2...6a78
 Outputs (1): GCOQ...LRIJ(61,000,000)
 ====================================================
 `;
+
+    // need reproducible unlocks for test (signing generates unique nonces)
+    import agora.script.Lock;
+    import agora.utils.Test;
+    Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
+    {
+        return Unlock.init;
+    }
+
     import agora.utils.Test : genesisSpendable;
     const Block secondBlock = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign()));
+        genesisSpendable().take(2).map!(txb => txb.sign(TxType.Payment,
+            null, Height(0), 0, &unlocker)));
     const(Block)[] blocks = [GenesisBlock, secondBlock];
     const actual = format("%s", prettify(blocks));
     assert(ResultStr == actual, actual);
