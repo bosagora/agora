@@ -24,7 +24,7 @@ import agora.crypto.Hash;
 import agora.node.Ledger;
 import agora.test.Base;
 import agora.utils.Log;
-
+import agora.script.Engine;
 import geod24.Registry;
 import core.thread;
 
@@ -111,7 +111,7 @@ unittest
         public this (Parameters!(typeof(super).__ctor) args)
         {
             super(args);
-            this.ledger = new PickyLedger(params, this.utxo_set, this.storage,
+            this.ledger = new PickyLedger(params, this.engine, this.utxo_set, this.storage,
                 this.enroll_man, this.pool, this.fee_man, this.clock,
                 this.config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
         }
