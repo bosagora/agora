@@ -1065,7 +1065,7 @@ public class TestAPIManager
     void assertSameBlocks (Height height,
         string file = __FILE__, size_t line = __LINE__)
     {
-        assertSameBlocks(iota(GenesisValidators), height);
+        assertSameBlocks(iota(GenesisValidators), height, file, line);
     }
 
     /// Ditto
@@ -1081,14 +1081,13 @@ public class TestAPIManager
                     (file, line, height, idx,
                         this.clients[idx].getBlockHeight())));
 
-
-        auto first_blocks = this.clients[client_idxs.front].getAllBlocks();
-
-        client_idxs.drop(1).each!(idx =>
-            retryFor(this.clients[idx].getAllBlocks() == first_blocks,
+        retryFor(client_idxs.map!(idx =>
+            this.clients[idx].getAllBlocks()).uniq().count() == 1,
             5.seconds,
-            format!"[%s:%s] Client #%s blocks are not same as client #1"
-                (file, line, idx)));
+            format!"[%s:%s] Clients %s blocks are not all the same: %s"
+                (file, line, client_idxs, client_idxs.fold!((s, i) =>
+                    s ~ format!"\n========== Client #%s ==========\n%s"
+                        (i, prettify(this.clients[i].getAllBlocks())))("")));
     }
 }
 
