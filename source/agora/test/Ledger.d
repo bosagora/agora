@@ -28,6 +28,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.Fee;
 import agora.consensus.validation;
+import agora.script.Lock;
 import agora.test.Base;
 
 import core.thread;
@@ -209,7 +210,7 @@ unittest
     txs[0].inputs[0] = txs[1].inputs[0];
     txs[0].outputs[0].value = Amount(100);
     auto signature = WK.Keys.Genesis.secret.sign(hashFull(txs[0])[]);
-    txs[0].inputs[0].signature = signature;
+    txs[0].inputs[0].unlock = genKeyUnlock(signature);
 
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
