@@ -96,7 +96,7 @@ nothrow @nogc @safe unittest
 
 *******************************************************************************/
 
-package struct Sig
+public struct Sig
 {
     /// Commitment
     public Point R;
