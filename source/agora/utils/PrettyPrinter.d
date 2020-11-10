@@ -64,6 +64,8 @@ public auto prettify (T) (const auto ref T input) nothrow
         return TransactionFmt(input);
     else static if (is(T : const Block))
         return BlockFmt(input);
+    else static if (isInputRange!T)
+        return RangeFmt!T(input);
     else static if (is(T : const Enrollment))
         return EnrollmentFmt(input);
     else static if (is(T : const ConsensusData))
@@ -400,6 +402,69 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
+    assert(ResultStr == actual, actual);
+}
+
+/// Format inputRange (e.g. range of blocks)
+private struct RangeFmt (R)
+{
+    private const(R) value;
+
+    public this (ref const R r) @safe nothrow
+    {
+        this.value = r;
+    }
+
+    public void toString (scope void delegate (in char[]) @safe sink)
+        @safe nothrow
+    {
+        try
+        {
+            formattedWrite(sink, "\n==================================" ~
+                "=============================================\n");
+            formattedWrite(sink, "%(%s\n====================\n%)",
+                this.value.map!(b => prettify(b)));
+        }
+        catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
+    }
+}
+
+@safe unittest
+{
+    static immutable ResultStr = `
+===============================================================================
+Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
+{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
+{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
+{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
+{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }],
+Transactions: 2
+Type : Freeze, Inputs: None
+Outputs (6):
+GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)
+Type : Payment, Inputs: None
+Outputs (8):
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
+====================
+Height: 1, Prev: 0x72e6...3b7d, Root: 0x07a8...acf4, Enrollments: [],
+Transactions: 2
+Type : Payment, Inputs (1): 0xc378...d314:0x0fbf...ba74
+Outputs (1): GCOQ...LRIJ(61,000,000)
+Type : Payment, Inputs (1): 0xfca9...baf8:0x02da...95d1
+Outputs (1): GCOQ...LRIJ(61,000,000)`;
+    import agora.utils.Test : genesisSpendable;
+    const Block secondBlock = makeNewBlock(GenesisBlock,
+        genesisSpendable().take(2).map!(txb => txb.sign()));
+    const(Block)[] blocks = [GenesisBlock, secondBlock];
+    const actual = format("%s", prettify(blocks));
     assert(ResultStr == actual, actual);
 }
 
