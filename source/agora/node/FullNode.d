@@ -51,6 +51,7 @@ import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
+import agora.script.Engine;
 import agora.stats.App;
 import agora.stats.EndpointReq;
 import agora.stats.Server;
@@ -125,6 +126,9 @@ public class FullNode : API
 
     ///
     protected Ledger ledger;
+
+    /// Script execution engine
+    protected Engine engine;
 
     /// Blockstorage
     protected IBlockStorage storage;
@@ -202,7 +206,10 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet();
         this.enroll_man = this.getEnrollmentManager();
         this.fee_man = this.getFeeManager();
-        this.ledger = new Ledger(params, this.utxo_set,
+        const ulong StackMaxTotalSize = 16_384;
+        const ulong StackMaxItemSize = 512;
+        this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
+        this.ledger = new Ledger(params, this.engine, this.utxo_set,
             this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
             config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
         this.exception = new RestException(

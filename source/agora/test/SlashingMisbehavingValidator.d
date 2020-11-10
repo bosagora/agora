@@ -17,6 +17,7 @@ module agora.test.SlashingMisbehavingValidator;
 version (unittest):
 
 import agora.common.crypto.Key;
+import agora.common.crypto.Schnorr;
 import agora.common.Config;
 import agora.common.Hash;
 import agora.consensus.data.Block;
