@@ -24,6 +24,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.state.UTXODB;
+import agora.crypto.Schnorr;
 import agora.network.NetworkManager;
 import agora.utils.Test;
 import agora.test.Base;
