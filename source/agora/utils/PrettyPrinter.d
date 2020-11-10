@@ -480,17 +480,26 @@ Validators: [64],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0x533f...5e2e:0xac4d...b604
+Type : Payment, Inputs (1): 0x533f...5e2e:0xcee2...6a78
 Outputs (1): GCOQ...LRIJ(61,000,000)
-Type : Payment, Inputs (1): 0x915d...fde1:0x4b11...5f86
+Type : Payment, Inputs (1): 0x915d...fde1:0xcee2...6a78
 Outputs (1): GCOQ...LRIJ(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
     import agora.consensus.data.Block;
 
+    // need reproducible unlocks for test (signing generates unique nonces)
+    import agora.script.Lock;
+    import agora.utils.Test;
+    Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
+    {
+        return Unlock.init;
+    }
+
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign()), 0);
+        genesisSpendable().take(2).map!(txb => txb.sign(TxType.Payment,
+            null, Height(0), 0, &unlocker)), 0);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;
