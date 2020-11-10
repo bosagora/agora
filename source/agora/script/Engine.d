@@ -1064,6 +1064,55 @@ unittest
         null);
 }
 
+// SigHash.NoInput / SigHash.All
+unittest
+{
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    const input_1 = Input(hashFull(1));
+    const input_2 = Input(hashFull(2));
+    const Transaction tx_1 = { inputs: [input_1] };
+    const Transaction tx_2 = { inputs: [input_2] };
+    const Pair kp = Pair.random();
+
+    SigPair sigpair_noinput;
+    sigpair_noinput.sig_hash = SigHash.NoInput;
+    const challenge_noinput = getChallenge(tx_1, SigHash.NoInput, 0);
+    sigpair_noinput.signature = Schnorr.sign(kp, challenge_noinput);
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_noinput[]),
+        tx_1,
+        tx_1.inputs[0]),
+        null);
+    // SigHash.NoInput can bind to a different input with the same keypair
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_noinput[]),
+        tx_2,
+        tx_2.inputs[0]),
+        null);
+
+    SigPair sigpair_all;
+    sigpair_all.sig_hash = SigHash.All;
+    const challenge_all = getChallenge(tx_1, SigHash.All, 0);
+    sigpair_all.signature = Schnorr.sign(kp, challenge_all);
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_all[]),
+        tx_1,
+        tx_1.inputs[0]),
+        null);
+    // SigHash.All cannot bind to a different Input
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.VERIFY_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_all[]),
+        tx_2,
+        tx_2.inputs[0]),
+        "VERIFY_SIG signature failed validation");
+}
+
 // OP.VERIFY_TX_LOCK
 unittest
 {

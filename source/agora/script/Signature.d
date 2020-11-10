@@ -24,6 +24,9 @@ public enum SigHash : ubyte
 {
     /// default, signs the entire transaction
     All = 1 << 0,
+
+    /// blanks out the associated Input, for use with Eltoo floating txs
+    NoInput = 1 << 1,
 }
 
 /// Contains the Signature and its associated SigHash
@@ -122,7 +125,9 @@ private bool isValidSigHash (in SigHash sig_hash) pure nothrow @safe @nogc
 {
     switch (sig_hash)
     {
+    // individual ok, combination not ok
     case SigHash.All:
+    case SigHash.NoInput:
         break;
 
     default:
@@ -137,6 +142,9 @@ unittest
 {
     assert(!isValidSigHash(cast(SigHash)0));
     assert(isValidSigHash(SigHash.All));
+    assert(isValidSigHash(SigHash.NoInput));
+    // this combo is unrecognized
+    assert(!isValidSigHash(cast(SigHash)(SigHash.All | SigHash.NoInput)));
 }
 
 /*******************************************************************************
@@ -164,6 +172,14 @@ public Hash getChallenge (in Transaction tx, in SigHash sig_hash,
 
     switch (sig_hash)
     {
+    case SigHash.NoInput:  // eltoo support
+        Transaction dup;
+        // it's ok, we'll dupe the array before modification
+        () @trusted { dup = *cast(Transaction*)&tx; }();
+        dup.inputs = dup.inputs.dup;
+        dup.inputs[input_idx] = Input.init;  // blank out matching input
+        return hashMulti(dup, sig_hash);
+
     case SigHash.All:
         return hashMulti(tx, sig_hash);
 
@@ -188,4 +204,8 @@ unittest
         Hash.fromString("0xda16b36873065bc4e950901f9d2e6b2b3ec2baf33358f4dc61d83dca576a2b3d0a6c29b2453e2c0002374c16141c29b0786b99b222404c581fd0bf1ecb60dabf"));
     test!"=="(getChallenge(tx, SigHash.All, 1),
         Hash.fromString("0xda16b36873065bc4e950901f9d2e6b2b3ec2baf33358f4dc61d83dca576a2b3d0a6c29b2453e2c0002374c16141c29b0786b99b222404c581fd0bf1ecb60dabf"));  // same hash
+    test!"=="(getChallenge(tx, SigHash.NoInput, 0),
+        Hash.fromString("0x3ec440c50875ad42e69d81d9436fa6b8a7744f37a09ac3dff2080d9f8fc2ecdf7117febc25a820fdc902994d00b07b3be6c73058d5d20ec768cae751a910868b"));
+    test!"=="(getChallenge(tx, SigHash.NoInput, 1),
+        Hash.fromString("0xb5025a919a4bca86ab7c498f9d83fd73940f210289e7218a605a90b38a02eca393cf3f6893cc541803bdf9f15e5e4ed0666c98adb31cf4ec6aac12e43a826fc1"));
 }
