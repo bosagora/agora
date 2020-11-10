@@ -1135,13 +1135,7 @@ public Hash getSequenceChallenge (in Transaction tx, in ulong sequence,
     in ulong input_idx) nothrow @safe
 {
     assert(input_idx < tx.inputs.length, "Input index is out of range");
-
-    Transaction cloned;
-    // it's ok, we'll dupe the array before modification
-    () @trusted { cloned = *cast(Transaction*)&tx; }();
-    cloned.inputs = cloned.inputs.dup;
-    cloned.inputs[input_idx] = Input.init;  // blank out matching input
-    return hashMulti(cloned.getChallenge(), sequence);
+    return hashMulti(tx.getChallenge(SigHash.NoInput, input_idx), sequence);
 }
 
 version (unittest)
@@ -2391,4 +2385,53 @@ unittest
         Lock(LockType.Script, [OP.TRUE, OP.IF]),
         Unlock.init, tx, Input.init) ==
         "IF / NOT_IF requires a closing END_IF");
+}
+
+// SigHash.NoInput / SigHash.All
+unittest
+{
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    const input_1 = Input(hashFull(1));
+    const input_2 = Input(hashFull(2));
+    auto tx_1 = Transaction([input_1], [], Height(0));
+    auto tx_2 = Transaction([input_2], [], Height(0));
+    const kp = KeyPair.random();
+
+    SigPair sigpair_noinput;
+    sigpair_noinput.sig_hash = SigHash.NoInput;
+    const challenge_noinput = getChallenge(tx_1, SigHash.NoInput, 0);
+    sigpair_noinput.signature = kp.sign(challenge_noinput);
+
+    assert(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.address[] ~ [ubyte(OP.CHECK_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_noinput[]),
+        tx_1,
+        tx_1.inputs[0]) ==
+        null);
+    // SigHash.NoInput can bind to a different input with the same keypair
+    assert(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.address[] ~ [ubyte(OP.CHECK_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_noinput[]),
+        tx_2,
+        tx_2.inputs[0]) ==
+        null);
+
+    SigPair sigpair_all;
+    sigpair_all.sig_hash = SigHash.All;
+    const challenge_all = getChallenge(tx_1, SigHash.All, 0);
+    sigpair_all.signature = kp.sign(challenge_all);
+
+    assert(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.address[] ~ [ubyte(OP.CHECK_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_all[]),
+        tx_1,
+        tx_1.inputs[0]) ==
+        null);
+    // SigHash.All cannot bind to a different Input
+    assert(engine.execute(
+        Lock(LockType.Script, [ubyte(32)] ~ kp.address[] ~ [ubyte(OP.VERIFY_SIG)]),
+        Unlock([ubyte(65)] ~ sigpair_all[]),
+        tx_2,
+        tx_2.inputs[0]) ==
+        "VERIFY_SIG signature failed validation");
 }
