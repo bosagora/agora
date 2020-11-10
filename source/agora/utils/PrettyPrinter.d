@@ -478,25 +478,32 @@ GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000
 GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
 GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0x3412...06c3, Root: 0xef5d...6bac, Enrollments: []
+Height: 1, Prev: 0x3412...06c3, Root: 0x96a9...f1f7, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],
 Slashed validators: [],
-Transactions: 1
-Type : Payment, Inputs (1): 0xab0a...0412:0x4b6e...a32f
-Outputs (1): GAAAAAAA...AWHF(0)
+Transactions: 2
+Type : Payment, Inputs (1): 0x4edb...e530:0x4b6e...a32f
+Outputs (1): GCOQEOHA...LRIJ(61,000,000)
+Type : Payment, Inputs (1): 0xc8e8...3add:0x4b6e...a32f
+Outputs (1): GCOQEOHA...LRIJ(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
     import agora.consensus.data.Block;
 
-    auto tx = Transaction(
-        TxType.Payment,
-        [Input(Hash.init, 0)],
-        [Output.init]
-    );
-    const Block second_block = makeNewBlock(GenesisBlock, [ tx ], 0, Hash.init);
+    // need reproducible unlocks for test (signing generates unique nonces)
+    import agora.script.Lock;
+    import agora.utils.Test;
+    Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
+    {
+        return Unlock.init;
+    }
+
+    const Block second_block = makeNewBlock(GenesisBlock,
+        genesisSpendable().take(2).map!(txb => txb.sign(TxType.Payment,
+            null, Height(0), 0, &unlocker)), 0, Hash.init);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;
