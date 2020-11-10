@@ -25,6 +25,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
+import agora.script.Lock;
 import agora.test.Base;
 
 import geod24.Registry;
@@ -101,9 +102,9 @@ unittest
                 foreach (idx1, txs1; block1.txs)
                 {
                     foreach (idx2, txs2; block1.txs[idx1].outputs)
-                        block1.txs[idx1].outputs[idx2].address = prev_key.address;
+                        block1.txs[idx1].outputs[idx2].lock = genKeyLock(prev_key.address);
                     foreach (idx3, txs3; block1.txs[idx1].inputs)
-                        block1.txs[idx1].inputs[idx3].signature = signTx(block1.txs[idx1]);
+                        block1.txs[idx1].inputs[idx3].unlock = genKeyUnlock(signTx(block1.txs[idx1]));
                 }
                 block1.header.merkle_root = block1.buildMerkleTree();
             }
