@@ -1175,7 +1175,7 @@ public class TestNetworkManager : NetworkManager
     ///
     public override RemoteAPI!NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
     {
-        auto tid = this.registry.locate("name.registry");
+        auto tid = this.registry.locate(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!NameRegistryAPI(tid, timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
@@ -1773,11 +1773,19 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     Config makeValidatorConfig (size_t idx, KeyPair key_pair,
         Address self_address, Address[] addresses)
     {
+        const ValidatorConfig validator = {
+            enabled : true,
+            key_pair : key_pair,
+            addresses_to_register : [self_address],
+            registry_address : test_conf.registry_address,
+            recurring_enrollment : test_conf.recurring_enrollment
+        };
+
         Config conf =
         {
             banman : ban_conf,
             node : makeNodeConfig(self_address),
-            validator : ValidatorConfig(true, key_pair, [self_address], "", test_conf.recurring_enrollment),
+            validator : validator,
             network : makeNetworkConfig(idx, addresses),
         };
 
