@@ -2,13 +2,14 @@
 
     Defines the data structure of a transaction
 
-    The current design is heavily influenced by Bitcoin: as we have a UTXO,
-    starting with a simple input/output approach seems to make the most sense.
-    Script is not implemented: instead, we currently only have a simple signature
-    verification step.
+    A Transaction's Output contains the lock script, whereas the Input contains
+    the unlock script.
+
+    In case of simple payment transactions, the lock & unlock pairs are simple
+    byte arrays containing the key and the signature.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2020 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -24,6 +25,7 @@ import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.DataPayload;
+import agora.script.Lock;
 
 import std.algorithm;
 
@@ -122,9 +124,48 @@ public struct Output
     /// The monetary value of this output, in 1/10^7
     public Amount value;
 
-    /// The public key that can redeem this output (A = pubkey)
-    /// Note that in Bitcoin, this is an address (the double hash of a pubkey)
-    public PublicKey address;
+    /// The lock condition for this Output
+    public Lock lock;
+
+    /// Ctor
+    public this (Amount value, inout(Lock) lock) inout pure nothrow @trusted
+    {
+        this.value = value;
+        this.lock = lock;
+    }
+
+    /// Kept here for backwards-compatibility
+    public this (Amount value, PublicKey key) inout pure nothrow @trusted
+    {
+        this.value = value;
+        this.lock = genKeyLock(key);
+    }
+
+    /***************************************************************************
+
+        Kept here for backwards compatibility with tests which do not expect
+        lock scripts.
+
+        Returns:
+            the public key out of the output if the lock is a `LockType.Key`,
+            else returns PublicKey.init
+
+    ***************************************************************************/
+
+    @property public PublicKey address () const pure nothrow @safe @nogc
+    {
+        import agora.common.crypto.ECC;
+
+        if (this.lock.type != LockType.Key)
+            return PublicKey.init;
+
+        if (this.lock.bytes.length != Point.sizeof)
+            return PublicKey.init;
+
+        Point point = Point(this.lock.bytes);
+        PublicKey key = PublicKey(point[]);
+        return key;
+    }
 }
 
 /// The input of the transaction, which spends a previously received `Output`
@@ -133,8 +174,9 @@ public struct Input
     /// The hash of the UTXO to be spent
     public Hash utxo;
 
-    /// A signature that should be verified using the `previous[index].address` public key
-    public Signature signature;
+    /// The unlock script, which will be ran together with the matching Input's
+    /// lock script in the execution engine
+    public Unlock unlock;
 
     /// The UTXO this `Input` references must be at least `unlock_age` older
     /// than the block height at which the spending transaction wants to be
@@ -142,11 +184,11 @@ public struct Input
     public uint unlock_age = 0;
 
     /// Simple ctor
-    public this (in Hash utxo_, in Signature sig = Signature.init, uint unlock_age = 0)
-        inout pure nothrow @nogc @safe
+    public this (in Hash utxo_, Unlock unlock = Unlock.init, uint unlock_age = 0)
+        inout pure nothrow @nogc @trusted
     {
         this.utxo = utxo_;
-        this.signature = sig;
+        this.unlock = cast(inout(Unlock))unlock; // cast: workaround for inout
         this.unlock_age = unlock_age;
     }
 
@@ -225,7 +267,7 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0x428d691addd27708b719a5e47cbac932618f0f843681dc0a46c97971ff8c419c817c65d90f3b74394db46801843b79537a583903bec5da57de70155276d2aa46`);
+        `0x6dbcc8c36bd1f95986d8b06a6bad320b0719e14bb1afe2cf824618c3311a23b5ac9c35f474dc67182cf17bb609f46e4049f793b996321f6fad88a2925badf198`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -236,7 +278,7 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0x6ce6bdeac41ffa444e6c2250ec09e04652597c3ec92f54f69029cc16ae4fc84faa5372b56e24c4c8667d00a8d1c0a7bc550999e4cdcd039548361a15e72fa081`);
+        `0xf028cecf9498bc615e3ac4ff18efa98c6428b8af1f26a2cfa73518d039a4f2ef4f600f28cd25403ad588f0d42e3987863bbd26cdd28b136fee4b80b7f0cc061a`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }

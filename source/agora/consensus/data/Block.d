@@ -23,6 +23,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.script.Lock;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
@@ -115,7 +116,7 @@ unittest
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
-    auto exp_hash = Hash("0x7aa86e99fc817341bcf1b92e11089f57e82a850d2db4e1d157261b8ee22a98cb3ae8911fe0b0d705cbf713dae8ba2655cd82531eb283f3205f6eecbc3b1a5bd9");
+    auto exp_hash = Hash("0xea4cd0d99f61f3c7069178b321a84d30be167454f2ffa8030d9e586a7aa2c4c204ccf46d27aab1e1c4208b8f98c13b574ac1dc7516522984fa0ba78833bd6ede");
     assert(hash == exp_hash, hash.to!string);
 }
 
@@ -518,7 +519,8 @@ unittest
     {
         tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
-        tx.inputs[0].signature = key_pairs[idx].secret.sign(last_hash[]);
+        tx.inputs[0].unlock = genKeyUnlock(
+            key_pairs[idx].secret.sign(last_hash[]));
         txs ~= tx;
     }
 

@@ -40,6 +40,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
 import agora.node.Fee;
+import agora.script.Lock;
 import agora.stats.Block;
 import agora.stats.Tx;
 import agora.stats.Utils;
@@ -746,7 +747,7 @@ unittest
         foreach (ref output; tx.outputs)
             output.value = Amount(0);
         foreach (ref input; tx.inputs)
-            input.signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
+            input.unlock = genKeyUnlock(WK.Keys.Genesis.secret.sign(hashFull(tx)[]));
     }
 
     txs.each!(tx => assert(!ledger.acceptTransaction(tx)));
@@ -901,7 +902,7 @@ private Transaction[] makeTransactionForFreezing (
         };
 
         auto signature = in_key_pair[idx % Block.TxsInTestBlock].secret.sign(hashFull(tx)[]);
-        tx.inputs[0].signature = signature;
+        tx.inputs[0].unlock = genKeyUnlock(signature);
         transactions ~= tx;
 
         // new transactions will refer to the just created transactions

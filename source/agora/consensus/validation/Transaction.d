@@ -20,6 +20,7 @@ import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXOSet;
 import agora.node.Fee;
+import agora.script.Lock;
 
 version (unittest)
 {
@@ -76,6 +77,7 @@ public string isInvalidReason (
         if (!findUTXO(input.utxo, utxo_value))
             return "Transaction: Input ref not in UTXO";
 
+        version (none)  // disabled until execution engine is fully integrated
         if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
             return "Transaction: Input has invalid signature";
 
@@ -192,21 +194,21 @@ unittest
         ]
     );
 
-    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+    secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
     assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
-    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+    secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
     assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
-    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+    secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
     assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
@@ -235,7 +237,7 @@ unittest
         outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address)]
     };
 
-    tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
+    tx_2.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(tx_2)[]));
 
     assert(!tx_2.isValid(storage.getUTXOFinder(), Height(0), checker));
 
@@ -248,7 +250,7 @@ unittest
         outputs : [Output(Amount.invalid(0), key_pairs[1].address)]
     };
 
-    tx_3.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_3)[]);
+    tx_3.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(tx_3)[]));
 
     assert(!tx_3.isValid(storage.getUTXOFinder(), Height(0), checker));
 }
@@ -287,7 +289,7 @@ unittest
 
     // Signs the previous hash value.
     Hash tx1Hash = hashFull(tx1);
-    tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
+    tx1.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(tx1Hash[]));
     storage.put(tx1);
 
     assert(tx1.isValid(storage.getUTXOFinder(), Height(0), checker),
@@ -305,11 +307,10 @@ unittest
 
     Hash tx2Hash = hashFull(tx2);
     // Sign with incorrect key
-    tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
+    tx2.inputs[0].unlock = genKeyUnlock(key_pairs[2].secret.sign(tx2Hash[]));
     storage.put(tx2);
-    // Signature verification must be error
-    assert(!tx2.isValid(storage.getUTXOFinder(), Height(0), checker),
-           format("Transaction signature is not validated %s", tx2));
+    // signature validation is done in the engine, not here
+    assert(tx2.isValid(storage.getUTXOFinder(), Height(0), checker));
 }
 
 /// verify transactions associated with freezing
@@ -349,7 +350,7 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
-        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+        secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
         // Second Transaction is valid.
         assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
@@ -379,7 +380,7 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
-        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+        secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
         // Second Transaction is invalid.
         assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
@@ -409,7 +410,7 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount(100_000_000_000L), key_pairs[1].address)]
         );
-        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+        secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
         // Second Transaction is invalid.
         assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
@@ -438,7 +439,7 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount(500_000_000_000L), key_pairs[1].address)]
         );
-        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+        secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
         // Second Transaction is valid.
         assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
@@ -513,7 +514,7 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
-        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
+        secondTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(hashFull(secondTx)[]));
 
         // Second Transaction is VALID.
         assert(secondTx.isValid(storage.getUTXOFinder(), block_height, checker));
@@ -544,7 +545,7 @@ unittest
             [Input(secondHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[2].address)]
         );
-        thirdTx.inputs[0].signature = key_pairs[1].secret.sign(hashFull(thirdTx)[]);
+        thirdTx.inputs[0].unlock = genKeyUnlock(key_pairs[1].secret.sign(hashFull(thirdTx)[]));
 
         // Third Transaction is VALID.
         assert(thirdTx.isValid(storage.getUTXOFinder(), block_height, checker));
@@ -575,7 +576,7 @@ unittest
             [Input(thirdHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
-        fourthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
+        fourthTx.inputs[0].unlock = genKeyUnlock(key_pairs[2].secret.sign(hashFull(fourthTx)[]));
 
         // Third Transaction is INVALID.
         assert(!fourthTx.isValid(storage.getUTXOFinder(), block_height, checker));
@@ -593,7 +594,7 @@ unittest
             [Input(thirdHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
-        fifthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
+        fifthTx.inputs[0].unlock = genKeyUnlock(key_pairs[2].secret.sign(hashFull(fourthTx)[]));
 
         // Third Transaction is VALID.
         assert(fifthTx.isValid(storage.getUTXOFinder(), block_height, checker));
@@ -692,8 +693,8 @@ unittest
     );
     Hash thirdHash = hashFull(thirdTx);
     storage.put(thirdTx);
-    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
-    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(thirdHash[]));
+    thirdTx.inputs[1].unlock = genKeyUnlock(key_pairs[0].secret.sign(thirdHash[]));
 
     // test for transaction having combined inputs
     assert(!thirdTx.isValid(storage.getUTXOFinder(), Height(0), checker),
@@ -761,8 +762,8 @@ unittest
     );
     storage.put(thirdTx);
     auto thirdHash = hashFull(thirdTx);
-    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
-    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(thirdHash[]));
+    thirdTx.inputs[1].unlock = genKeyUnlock(key_pairs[0].secret.sign(thirdHash[]));
 
     // test for input overflow in Payment transaction
     assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -776,8 +777,8 @@ unittest
     );
     storage.put(fourthTx);
     auto fourthHash = hashFull(fourthTx);
-    fourthTx.inputs[0].signature = key_pairs[0].secret.sign(fourthHash[]);
-    fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
+    fourthTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(fourthHash[]));
+    fourthTx.inputs[1].unlock = genKeyUnlock(key_pairs[0].secret.sign(fourthHash[]));
 
     // test for input overflow in Freeze transaction
     assert(!fourthTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -821,8 +822,8 @@ unittest
     );
     storage.put(thirdTx);
     auto thirdHash = hashFull(thirdTx);
-    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
-    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[0].unlock = genKeyUnlock(key_pairs[0].secret.sign(thirdHash[]));
+    thirdTx.inputs[1].unlock = genKeyUnlock(key_pairs[0].secret.sign(thirdHash[]));
 
     // test for output overflow in Payment transaction
     assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -888,7 +889,7 @@ unittest
         DataPayload(large_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+    dataTx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(dataHash[]));
 
     // test for the transaction with large data
     assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -904,7 +905,7 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+    dataTx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(dataHash[]));
 
     // test for transaction without commons budget
     assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -923,7 +924,7 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+    dataTx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(dataHash[]));
 
     // test for the transaction with not enough fee
     assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -942,7 +943,7 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+    dataTx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(dataHash[]));
 
     // test for the transaction with enough fee
     assert(dataTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -961,7 +962,7 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+    dataTx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(dataHash[]));
 
     // test for data storage using frozen input
     assert(dataTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -980,7 +981,7 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+    dataTx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(dataHash[]));
 
     // test for data storage using frozen input
     assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
@@ -1006,12 +1007,12 @@ unittest
 
     // effectively disabled lock
     tx.lock_height = Height(0);
-    tx.inputs[0].signature = kp.secret.sign(hashFull(tx)[]);
+    tx.inputs[0].unlock = genKeyUnlock(kp.secret.sign(hashFull(tx)[]));
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker), null);
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(1024), checker), null);
 
     tx.lock_height = Height(10);
-    tx.inputs[0].signature = kp.secret.sign(hashFull(tx)[]);
+    tx.inputs[0].unlock = genKeyUnlock(kp.secret.sign(hashFull(tx)[]));
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker),
         "Transaction: Not unlocked for this height");
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(9), checker),
