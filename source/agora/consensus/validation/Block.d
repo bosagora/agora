@@ -28,6 +28,7 @@ import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
                                             EnrollmentStatus;
+import agora.script.Lock;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.utils.Log;
@@ -952,7 +953,7 @@ unittest
             {
                 Output output;
                 output.value = Amount(100);
-                output.address = keypair.address;
+                output.lock = genKeyLock(keypair.address);
                 tx.outputs ~= output;
             }
         }
@@ -960,11 +961,11 @@ unittest
         {
             Output output;
             output.value = Amount.MinFreezeAmount;
-            output.address = keypair.address;
+            output.lock = genKeyLock(keypair.address);
             tx.outputs ~= output;
         }
 
-        tx.inputs[0].signature = gen_key.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].unlock = genKeyUnlock(gen_key.secret.sign(hashFull(tx)[]));
         txs_2 ~= tx;
     }
 
@@ -986,7 +987,7 @@ unittest
             [input],
             [Output(Amount(1), keypair2.address)]
         };
-        tx.inputs[0].signature = keypair.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].unlock = genKeyUnlock(keypair.secret.sign(hashFull(tx)[]));
         txs_3 ~= tx;
     }
 
@@ -1085,7 +1086,7 @@ unittest
                 tx.outputs ~= Output(Amount(100), keypair.address);
         }
 
-        tx.inputs[0].signature = gen_key.secret.sign(hashFull(tx)[]);
+        tx.inputs[0].unlock = genKeyUnlock(gen_key.secret.sign(hashFull(tx)[]));
         txs_2 ~= tx;
     }
 
@@ -1108,7 +1109,7 @@ unittest
                 [Input(hashFull(txs_2[$-4]), idx)],
                 [Output(Amount(1), keypair2.address)]
             };
-            tx.inputs[0].signature = keypair.secret.sign(hashFull(tx)[]);
+            tx.inputs[0].unlock = genKeyUnlock(keypair.secret.sign(hashFull(tx)[]));
             txs_3 ~= tx;
         }
 
@@ -1134,7 +1135,7 @@ unittest
                 [Input(hashFull(txs_2[$-3]), idx)],
                 [Output(Amount(1), keypair2.address)]
             };
-            tx.inputs[0].signature = keypair.secret.sign(hashFull(tx)[]);
+            tx.inputs[0].unlock = genKeyUnlock(keypair.secret.sign(hashFull(tx)[]));
             txs_3 ~= tx;
         }
 
@@ -1178,7 +1179,7 @@ unittest
                 [Input(hashFull(txs_2[$-1]), idx)],
                 [Output(Amount(1), keypair2.address)]
             };
-            tx.inputs[0].signature = keypair.secret.sign(hashFull(tx)[]);
+            tx.inputs[0].unlock = genKeyUnlock(keypair.secret.sign(hashFull(tx)[]));
             txs_3 ~= tx;
         }
 
