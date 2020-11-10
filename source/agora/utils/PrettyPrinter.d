@@ -275,15 +275,17 @@ private struct TransactionFmt
             enum OutputPerLine = 3;
 
             if (this.value.inputs.length)
-                formattedWrite(sink, "Type : %s, Inputs (%d): %(%(%s, %),\n%)\n",
+                formattedWrite(sink, "Type : %s, Inputs (%d):%s%(%(%s, %),\n%)\n",
                     this.value.type,
                     this.value.inputs.length,
+                    this.value.inputs.length > InputPerLine ? "\n" : " ",
                     this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
             else
                 formattedWrite(sink, "Type : %s, Inputs: None\n", this.value.type);
 
-            formattedWrite(sink, "Outputs (%d): %(%(%s, %),\n%)",
+            formattedWrite(sink, "Outputs (%d):%s%(%(%s, %),\n%)",
                 this.value.outputs.length,
+                this.value.outputs.length > OutputPerLine ? "\n" : " ",
                 this.value.outputs.map!(v => OutputFmt(v)).chunks(OutputPerLine));
         }
         catch (Exception ex)
@@ -296,13 +298,15 @@ private struct TransactionFmt
 @safe unittest
 {
     static immutable ResultStr0 = `Type : Freeze, Inputs: None
-Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+Outputs (6):
+GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
 GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)`;
     const actual0 = format("%s", TransactionFmt(GenesisBlock.txs[0]));
     assert(ResultStr0 == actual0, actual0);
 
     static immutable ResultStr1 = `Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+Outputs (8):
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
     const actual1 = format("%s", TransactionFmt(GenesisBlock.txs[1]));
@@ -387,10 +391,12 @@ private struct BlockFmt
 { utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }],
 Transactions: 2
 Type : Freeze, Inputs: None
-Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+Outputs (6):
+GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
 GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)
 Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+Outputs (8):
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
@@ -500,9 +506,11 @@ unittest
     };
 
     static immutable Res1 = `{ tx_set: [Type : Freeze, Inputs: None
-Outputs (6): GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
+Outputs (6):
+GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
 GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000), Type : Payment, Inputs: None
-Outputs (8): GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
+Outputs (8):
+GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
 
