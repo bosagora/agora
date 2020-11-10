@@ -974,7 +974,7 @@ unittest
     out_key_pairs_normal = getRandomKeyPairs();
 
     // generate normal transactions to form a block
-    void genNormalBlockTransactions (size_t count, bool is_valid = true)
+    void genNormalBlockTransactions (size_t count)
     {
         foreach (idx; 0 .. count)
         {
@@ -987,18 +987,15 @@ unittest
 
             txes.each!((tx)
                 {
-                    assert(ledger.acceptTransaction(tx) == is_valid);
+                    assert(ledger.acceptTransaction(tx));
                 });
             ledger.forceCreateBlock();
 
-            if (is_valid)
-            {
-                // keep track of last tx's to chain them to
-                last_txs_normal = txes[$ - Block.TxsInTestBlock .. $];
+            // keep track of last tx's to chain them to
+            last_txs_normal = txes[$ - Block.TxsInTestBlock .. $];
 
-                in_key_pairs_normal = out_key_pairs_normal;
-                out_key_pairs_normal = getRandomKeyPairs();
-            }
+            in_key_pairs_normal = out_key_pairs_normal;
+            out_key_pairs_normal = getRandomKeyPairs();
         }
     }
 
@@ -1009,7 +1006,7 @@ unittest
     out_key_pairs_freeze = getRandomKeyPairs();
 
     // generate freezing transactions to form a block
-    void genBlockTransactionsFreeze (size_t count, TxType tx_type, bool is_valid = true)
+    void genBlockTransactionsFreeze (size_t count, TxType tx_type)
     {
         foreach (idx; 0 .. count)
         {
@@ -1022,18 +1019,15 @@ unittest
 
             txes.each!((tx)
                 {
-                    assert(ledger.acceptTransaction(tx) == is_valid);
+                    assert(ledger.acceptTransaction(tx));
                 });
             ledger.forceCreateBlock();
 
-            if (is_valid)
-            {
-                // keep track of last tx's to chain them to
-                last_txs_freeze = txes[$ - Block.TxsInTestBlock .. $];
+            // keep track of last tx's to chain them to
+            last_txs_freeze = txes[$ - Block.TxsInTestBlock .. $];
 
-                in_key_pairs_freeze = out_key_pairs_freeze;
-                out_key_pairs_freeze = getRandomKeyPairs();
-            }
+            in_key_pairs_freeze = out_key_pairs_freeze;
+            out_key_pairs_freeze = getRandomKeyPairs();
         }
     }
 
