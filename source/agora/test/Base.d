@@ -869,6 +869,9 @@ public class TestAPIManager
 
     public void printLogs (string file = __FILE__, size_t line = __LINE__)
     {
+        int x;
+        if (!x) return;
+
         synchronized  // make sure logging output is not interleaved
         {
             writeln("---------------------------- START OF LOGS ----------------------------");

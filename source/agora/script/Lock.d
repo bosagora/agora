@@ -31,6 +31,10 @@
 
 module agora.script.Lock;
 
+import agora.common.crypto.ECC;
+import agora.common.crypto.Key;
+import agora.common.Types;
+
 import std.traits : EnumMembers;
 
 /// Contains a tag and either a Hash or set of opcodes
@@ -106,4 +110,47 @@ pure nothrow @safe @nogc unittest
     assert(0x00.toLockType(lt) && lt == LockType.Key);
     assert(0x01.toLockType(lt) && lt == LockType.KeyHash);
     assert(!255.toLockType(lt));
+}
+
+/*******************************************************************************
+
+    Generates a LockType.Key lock script.
+
+    Params:
+        key = the public key which can unlock this lock script
+
+    Returns:
+        the lock script
+
+*******************************************************************************/
+
+public Lock genKeyLock (in Point key) pure nothrow @safe
+{
+    // must create a copy because we're slicing a static array
+    return Lock(LockType.Key, key[].dup);
+}
+
+/// Compatibility (however may only be signed with Schnorr)
+public Lock genKeyLock (in PublicKey key) pure nothrow @safe
+{
+    // must create a copy because we're slicing a static array
+    return Lock(LockType.Key, key[].dup);
+}
+
+/*******************************************************************************
+
+    Generates a LockType.Key unlock script.
+
+    Params:
+        sig = the signature that will be embedded in the script
+
+    Returns:
+        the unlock script
+
+*******************************************************************************/
+
+public Unlock genKeyUnlock (in Signature sig) pure nothrow @safe
+{
+    // must dupe because it's a value on the stack..
+    return Unlock(sig[].dup);
 }
