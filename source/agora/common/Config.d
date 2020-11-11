@@ -109,9 +109,10 @@ public struct NodeConfig
     /// in place of the built-in commons budget address as defined by CoinNet
     public PublicKey commons_budget_address;
 
-    /// If set, a hexdump serialized representation of the genesis block to use
-    /// in place of the built-in genesis block as defined by CoinNet
-    public string genesis_block;
+    /// If set to true will run in testing mode and use different
+    /// genesis block (agora.consensus.data.genesis.Test)
+    /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
+    public bool testing;
 
     /// The Unix timestamp of the Genesis block. Blocks are created at a
     /// regular interval starting from this time.
@@ -363,7 +364,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
         ? PublicKey.fromString(commons_budget)
         : PublicKey.init;
 
-    auto genesis_block = opt!(string, "node", "genesis_block")(cmdln, node);
+    auto testing = opt!(bool, "node", "testing")(cmdln, node);
     auto genesis_start_time = get!(time_t, "node", "genesis_start_time",
         str => SysTime(DateTime.fromISOString(str)).toUnixTime)(cmdln, node);
     uint block_interval_sec = get!(uint, "node", "block_interval_sec")(cmdln, node);
@@ -391,7 +392,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             min_listeners : min_listeners,
             max_listeners : max_listeners,
             commons_budget_address : commons_budget_address,
-            genesis_block : genesis_block,
+            testing : testing,
             genesis_start_time : genesis_start_time,
             block_interval_sec : block_interval_sec,
             address : address,
