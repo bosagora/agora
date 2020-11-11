@@ -311,7 +311,7 @@ public struct Serializer
         }
     }
 
-    static QT deserialize (QT) (scope immutable(ubyte)[] data) @trusted nothrow
+    static QT deserialize (QT) (in ubyte[] data) @trusted nothrow
     {
         try
             return deserializeFull!QT(data);

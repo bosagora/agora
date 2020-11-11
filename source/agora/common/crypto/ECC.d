@@ -107,7 +107,7 @@ public struct Scalar
 
     ***************************************************************************/
 
-    public void toString (scope void delegate(const(char)[]) @safe sink,
+    public void toString (scope void delegate(in char[]) @safe sink,
                           PrintMode mode = PrintMode.Obfuscated) const @safe
     {
         final switch (mode)
@@ -147,7 +147,7 @@ public struct Scalar
     }
 
     /// Vibe.d deserialization
-    public static Scalar fromString (scope const(char)[] str) @safe
+    public static Scalar fromString (in char[] str) @safe
     {
         return Scalar(typeof(this.data).fromString(str));
     }
@@ -306,7 +306,7 @@ public struct Point
     }
 
     /// Expose `toString`
-    public void toString (scope void delegate(const(char)[]) @safe dg)
+    public void toString (scope void delegate(in char[]) @safe dg)
         const @safe
     {
         this.data.toString(dg);
@@ -319,7 +319,7 @@ public struct Point
     }
 
     /// Vibe.d deserialization
-    public static Point fromString (scope const(char)[] str) @safe
+    public static Point fromString (in char[] str) @safe
     {
         return Point(typeof(this.data).fromString(str));
     }

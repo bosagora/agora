@@ -528,7 +528,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
 
 version (unittest)
 private size_t[] countNodeInclusions (QuorumConfig[PublicKey] quorums,
-    const ref PublicKey[] keys)
+    in PublicKey[] keys)
 {
     size_t[const(PublicKey)] counts;
     foreach (_, const ref qc; quorums)
@@ -560,7 +560,7 @@ private size_t[] countNodeInclusions (QuorumConfig[PublicKey] quorums,
 *******************************************************************************/
 
 version (unittest)
-private void verifyQuorumsSanity (const ref QuorumConfig[PublicKey] quorums)
+private void verifyQuorumsSanity (in QuorumConfig[PublicKey] quorums)
 {
     import scpd.scp.QuorumSetUtils;
 
