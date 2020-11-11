@@ -89,7 +89,7 @@ public alias Hash = agora.common.Types.Hash;
 public alias Signature = agora.common.Types.Signature;
 
 /// Type of delegate passed to `hash` function when there's a state
-public alias HashDg = void delegate(scope const(ubyte)[]) /*pure*/ nothrow @safe @nogc;
+public alias HashDg = void delegate(in ubyte[]) /*pure*/ nothrow @safe @nogc;
 
 
 /*******************************************************************************
@@ -161,20 +161,20 @@ public void hashPart (ulong record, scope HashDg state) /*pure*/ nothrow @nogc @
 }
 
 /// Ditto
-public void hashPart (scope const(char)[] record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
+public void hashPart (in char[] record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
 {
     state(cast(const ubyte[])record);
 }
 
 /// Ditto
-public void hashPart (scope const(ubyte)[] record, scope HashDg state)
+public void hashPart (in ubyte[] record, scope HashDg state)
     /*pure*/ nothrow @nogc @safe
 {
     state(record);
 }
 
 /// Ditto
-public void hashPart (T) (scope const auto ref T[] records, scope HashDg state)
+public void hashPart (T) (in T[] records, scope HashDg state)
     /*pure*/ nothrow @nogc @safe
 {
     foreach (ref record; records)

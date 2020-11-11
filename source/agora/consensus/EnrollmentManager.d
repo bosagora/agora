@@ -274,7 +274,7 @@ public class EnrollmentManager
 
     public string addValidator (const ref Enrollment enroll,
         Height block_height, scope UTXOFinder finder,
-        const UTXO[Hash] self_utxos) @safe nothrow
+        in UTXO[Hash] self_utxos) @safe nothrow
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
@@ -608,7 +608,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public void restoreValidators (Height last_height, const ref Block block,
-        scope UTXOFinder finder, const ref UTXO[Hash] self_utxos)
+        scope UTXOFinder finder, in UTXO[Hash] self_utxos)
         @safe nothrow
     {
         assert(last_height >= block.header.height);

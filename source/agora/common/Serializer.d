@@ -256,7 +256,7 @@ unittest
 
 *******************************************************************************/
 
-public alias SerializeDg = void delegate(scope const(ubyte)[]) @safe;
+public alias SerializeDg = void delegate(in ubyte[]) @safe;
 
 /*******************************************************************************
 
@@ -304,7 +304,7 @@ public ubyte[] serializeToBuffer (T) (scope const auto ref T record,
 {
     buffer.length = 0;
     () @trusted { assumeSafeAppend(buffer); }();
-    scope SerializeDg dg = (scope const(ubyte[]) data) @safe
+    scope SerializeDg dg = (in ubyte[] data) @safe
     {
         buffer ~= data;
     };
@@ -485,8 +485,8 @@ unittest
 {
     static struct Record { ulong a; }
     ubyte[][2] stores;
-    serializePart(Record(42), (scope const(ubyte)[] arg) { stores[0] ~= arg; }, CompactMode.No);
-    serializePart(ulong(42),  (scope const(ubyte)[] arg) { stores[1] ~= arg; }, CompactMode.No);
+    serializePart(Record(42), (in ubyte[] arg) { stores[0] ~= arg; }, CompactMode.No);
+    serializePart(ulong(42),  (in ubyte[] arg) { stores[1] ~= arg; }, CompactMode.No);
     assert(stores[0] == stores[1]);
 }
 
@@ -879,7 +879,7 @@ private void toVarInt (T) (const T var, scope SerializeDg dg)
 unittest
 {
     ubyte[] res;
-    scope SerializeDg dg = (scope const(ubyte[]) data)
+    scope SerializeDg dg = (in ubyte[] data)
     {
         res ~= data;
     };
