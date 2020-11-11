@@ -1865,7 +1865,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     const genesis_start_time = time(null);
     foreach (ref conf; all_configs)
     {
-        conf.node.genesis_block = gen_block_hex;
+        conf.node.testing = true;
         conf.node.genesis_start_time = genesis_start_time;
     }
 

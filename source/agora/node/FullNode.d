@@ -143,35 +143,15 @@ public class FullNode : API
 
     public this (const Config config)
     {
-        import CNG = agora.consensus.data.genesis.Coinnet;
+        import TESTNET = agora.consensus.data.genesis.Test;
+        import COINNET = agora.consensus.data.genesis.Coinnet;
 
-        auto commons_budget =
-            config.node.commons_budget_address != PublicKey.init ?
-            config.node.commons_budget_address : CNG.CommonsBudgetAddress;
+        auto commons_budget = config.node.testing ?
+            TESTNET.CommonsBudgetAddress : COINNET.CommonsBudgetAddress;
 
-        // custom genesis block provided
-        if (config.node.genesis_block.length > 0)
-        {
-            import std.array;
-            import std.conv;
-
-            // hex => bin
-            auto block_bytes = config.node.genesis_block.chunks(2).map!(
-                twoDigits => twoDigits.parse!ubyte(16)).array();
-            auto genesis_block = block_bytes.deserializeFull!(immutable(Block));
-            this.params = new immutable(ConsensusParams)(
-                genesis_block,
-                commons_budget,
-                config.node.validator_cycle,
-                config.node.max_quorum_nodes,
-                config.node.quorum_threshold,
-                config.node.quorum_shuffle_interval,
-                config.node.genesis_start_time,
-                config.node.block_interval_sec);
-        }
-        else
-            this.params = new immutable(ConsensusParams)(
-                CNG.GenesisBlock,
+        this.params = new immutable(ConsensusParams)(
+                config.node.testing ?
+                    TESTNET.GenesisBlock : COINNET.GenesisBlock,
                 commons_budget,
                 config.node.validator_cycle,
                 config.node.max_quorum_nodes,
