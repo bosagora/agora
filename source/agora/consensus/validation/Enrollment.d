@@ -1,3 +1,4 @@
+
 /*******************************************************************************
 
     Contains validation routines for enrollments
@@ -49,7 +50,7 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Enrollment enrollment,
-    UTXOFinder findUTXO) nothrow @safe
+    scope UTXOFinder findUTXO) nothrow @safe
 {
     UTXO utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
@@ -85,7 +86,7 @@ public string isInvalidReason (const ref Enrollment enrollment,
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
 public bool isValid (const ref Enrollment enrollment,
-    UTXOFinder findUTXO) nothrow @safe
+    scope UTXOFinder findUTXO) nothrow @safe
 {
     return isInvalidReason(enrollment, findUTXO) is null;
 }
@@ -99,7 +100,7 @@ unittest
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     scope utxo_set = new TestUTXOSet();
-    UTXOFinder utxoFinder = utxo_set.getUTXOFinder();
+    scope UTXOFinder utxoFinder = utxo_set.getUTXOFinder();
 
     // normal frozen transaction
     Transaction tx1 = Transaction(

@@ -40,7 +40,7 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (
-    const Transaction tx, UTXOFinder findUTXO, Height height)
+    const Transaction tx, scope UTXOFinder findUTXO, Height height)
     @safe nothrow
 {
     import std.conv;
@@ -136,7 +136,7 @@ public string isInvalidReason (
 
 /// Ditto but returns a bool, only used in unittests
 version (unittest)
-public bool isValid (const Transaction tx, UTXOFinder findUTXO, Height height)
+public bool isValid (const Transaction tx, scope UTXOFinder findUTXO, Height height)
     @safe nothrow
 {
     return isInvalidReason(tx, findUTXO, height) is null;
