@@ -450,7 +450,7 @@ private struct NodeStake
 *******************************************************************************/
 
 private NodeStake[] buildStakesDescending (const ref PublicKey filter,
-    in Hash[] utxo_keys, UTXOFinder finder) @safe nothrow
+    in Hash[] utxo_keys, scope UTXOFinder finder) @safe nothrow
 {
     static NodeStake[] stakes;
     stakes.length = 0;

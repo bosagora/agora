@@ -76,7 +76,7 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Block block, Height prev_height,
-    in Hash prev_hash, UTXOFinder findUTXO,
+    in Hash prev_hash, scope UTXOFinder findUTXO,
     size_t active_enrollments) nothrow @safe
 {
     import std.algorithm;
@@ -413,7 +413,7 @@ public bool isGenesisBlockValid (const ref Block genesis_block)
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
 public bool isValid (const ref Block block, Height prev_height,
-    Hash prev_hash, UTXOFinder findUTXO,
+    Hash prev_hash, scope UTXOFinder findUTXO,
     size_t active_enrollments) nothrow @safe
 {
     return isInvalidReason(block, prev_height, prev_hash, findUTXO,
