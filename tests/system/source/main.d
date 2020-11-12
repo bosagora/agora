@@ -34,6 +34,9 @@ import std.stdio;
 import core.thread;
 import core.time;
 
+// Lets make it easy to find our log lines
+immutable string PREFIX = ">>CI:";
+
 // keep polling the nodes for a complete network discovery, until a timeout
 private void waitForDiscovery (API[] clients, Duration timeout)
 {
@@ -41,16 +44,16 @@ private void waitForDiscovery (API[] clients, Duration timeout)
         retryFor(api.getNodeInfo().ifThrown(NodeInfo.init)
             .state == NetworkState.Complete,
             timeout,
-            format("Node %s has not completed discovery after %s.",
-                idx, timeout)));
+            format("%s Client #%s has not completed discovery after %s.",
+                PREFIX, idx, timeout)));
 }
 
 int main (string[] args)
 {
     if (args.length < 2)
     {
-        writeln("You must enter addresses of the nodes to connect to.");
-        writeln("   ex) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...");
+        writeln("%s You must enter addresses of the nodes to connect to.", PREFIX);
+        writeln("%s   ex) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...", PREFIX);
         return 1;
     }
 
@@ -67,10 +70,10 @@ int main (string[] args)
 
         foreach (idx, ref client; clients)
         {
-            writefln("[%s] getNodeInfo: %s", idx, client.getNodeInfo());
+            writefln("%s Client #%s node info: %s", PREFIX, idx, client.getNodeInfo());
             const height = client.getBlockHeight();
-            writefln("[%s] getBlockHeight: %s", idx, height);
-            writeln("----------------------------------------");
+            writefln("%s Client #%s has block height %s", PREFIX, idx, height);
+            writefln("%s ----------------------------------------", PREFIX);
             assert(height == 0);
         }
 
@@ -81,19 +84,24 @@ int main (string[] args)
 
         auto kp = WK.Keys.Genesis;
 
+        writefln("%s Put 8 transactions to client[0]", PREFIX);
         iota(8)
             .map!(idx => TxBuilder(TestGenesis.GenesisBlock.txs[1], idx)
                   .refund(kp.address).sign())
             .each!(tx => clients[0].putTransaction(tx));
 
-        checkBlockHeight(addresses, 1);
+        writefln("%s Wait 1 second", PREFIX);
+        Thread.sleep(1.seconds); // Give time for block to be externalized
+
+        writefln("%s Check height is 1", PREFIX);
+        assertBlockHeight(addresses, 1);
     }
 
     return 0;
 }
 
 /// Check block generation
-private void checkBlockHeight (const string[] addresses, ulong height)
+private void assertBlockHeight (const string[] addresses, ulong height)
 {
     // TODO: This is a hack because of issue #312
     // https://github.com/bpfkorea/agora/issues/312
@@ -105,23 +113,33 @@ private void checkBlockHeight (const string[] addresses, ulong height)
     size_t times; // Number of times we slept for 500 msecs
     foreach (idx, ref client; clients)
     {
+        writefln("%s Check block height is %s for Client #%s ", PREFIX, height, idx);
         ulong getHeight;
         do
         {
-            Thread.sleep(500.msecs);
             getHeight = client.getBlockHeight();
+            if (getHeight < height) // Only sleep when we need to
+            {
+                writefln("%s Client #%s not yet correct height: wait 500 ms", PREFIX, idx);
+                Thread.sleep(500.msecs);
+            }
+            else
+            {
+                writefln("%s Client #%s is at block height %s", PREFIX, idx, getHeight);
+                const blocks = client.getBlocksFrom(0, 42);
+                writefln("%s Client #%s has blocks:\n%s", PREFIX, idx, blocks.map!prettify);
+                writefln("%s ----------------------------------------", PREFIX);
+                assert(blocks.length == height + 1);
+                if (idx != 0)
+                    assert(blockHash == hashFull(blocks[height].header));
+                else
+                    blockHash = hashFull(blocks[height].header);
+            }
         }
-        while (getHeight < height && times++ < 100); // Retry if we're too early
-        const blocks = client.getBlocksFrom(0, 42);
-        writefln("[%s] getBlockHeight: %s", idx, getHeight);
-        writefln("[%s] getBlocksFrom: %s", idx, blocks.map!prettify);
-        writeln("----------------------------------------");
-        assert(getHeight == height);
-        assert(blocks.length == height+1);
-        if (idx != 0)
-            assert(blockHash == hashFull(blocks[height].header));
-        else
-            blockHash = hashFull(blocks[height].header);
+        while (getHeight < height && times++ < 50); // Retry if we're too early
+        assert(getHeight == height,
+            format!"%s Client #%s still has block height %s not %s"
+                (PREFIX, idx, getHeight, height));
         times = 0;
     }
 }
