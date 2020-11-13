@@ -257,7 +257,8 @@ public class Validator : FullNode, API
     /// GET /public_key
     public override PublicKey getPublicKey () pure nothrow @safe
     {
-        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "public_key", "http");
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
+            1, "public_key", "http");
         return this.config.validator.key_pair.address;
     }
 
@@ -275,7 +276,8 @@ public class Validator : FullNode, API
 
     public override void receiveEnvelope (SCPEnvelope envelope) @safe
     {
-        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_envelope", "http");
+        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
+            1, "receive_envelope", "http");
         this.nominator.receiveEnvelope(envelope);
     }
 
@@ -443,19 +445,23 @@ public class Validator : FullNode, API
 
     private void checkAndEnroll (Height block_height) @safe
     {
-        Hash enroll_key = this.enroll_man.getEnrolledUTXO(this.utxo_set.getUTXOFinder());
+        Hash enroll_key = this.enroll_man.getEnrolledUTXO(
+            this.utxo_set.getUTXOFinder());
 
-        if (enroll_key == Hash.init && (enroll_key = this.getFrozenUTXO()) == Hash.init)
+        if (enroll_key == Hash.init &&
+            (enroll_key = this.getFrozenUTXO()) == Hash.init)
             return; // Not enrolled and no frozen UTXO
 
         const enrolled = this.enroll_man.getEnrolledHeight(enroll_key);
 
         // This validators enrollment will expire next cycle or not enrolled at all
-        if (enrolled == ulong.max || block_height + 1 >= enrolled + this.params.ValidatorCycle)
+        if (enrolled == ulong.max ||
+            block_height + 1 >= enrolled + this.params.ValidatorCycle)
         {
             log.trace("Sending Enrollment at height {} for {} cycles with {}",
                 block_height, this.params.ValidatorCycle, enroll_key);
-            this.network.sendEnrollment(this.enroll_man.createEnrollment(enroll_key));
+            this.network.sendEnrollment(
+                this.enroll_man.createEnrollment(enroll_key));
         }
     }
 
