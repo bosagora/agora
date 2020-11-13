@@ -352,13 +352,13 @@ public class Validator : FullNode, API
     protected final override void onAcceptedBlock (const ref Block block,
         bool validators_changed) @safe
     {
-        super.onAcceptedBlock(block, validators_changed);
+        assert(block.header.height >= this.last_shuffle_height);
 
         // block received either via externalize or getBlocksFrom(),
-        // we need to cancel any existing nominating rounds
+        // we need to cancel any existing nominating rounds.
+        // note: must be called before any context switch
         this.nominator.stopNominationRound(block.header.height);
-
-        assert(block.header.height >= this.last_shuffle_height);
+        super.onAcceptedBlock(block, validators_changed);
 
         const need_shuffle = block.header.height >=
             (this.last_shuffle_height + this.params.QuorumShuffleInterval);
