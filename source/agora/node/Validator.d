@@ -453,8 +453,8 @@ public class Validator : FullNode, API
         // This validators enrollment will expire next cycle or not enrolled at all
         if (enrolled == ulong.max || block_height + 1 >= enrolled + this.params.ValidatorCycle)
         {
-            log.trace("Sending Enrollment at height {} for {} cycles with {}", block_height,
-                                            this.params.ValidatorCycle , enroll_key);
+            log.trace("Sending Enrollment at height {} for {} cycles with {}",
+                block_height, this.params.ValidatorCycle, enroll_key);
             this.network.sendEnrollment(this.enroll_man.createEnrollment(enroll_key));
         }
     }

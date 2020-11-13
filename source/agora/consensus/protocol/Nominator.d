@@ -192,6 +192,7 @@ extern(D):
             return;
 
         // For unittests we don't want to wait 1 second between checks
+        log.info("Starting nominating timer..");
         version (unittest) enum CheckNominateInterval = 100.msecs;
         else enum CheckNominateInterval = 1.seconds;
         this.nomination_timer = this.taskman.setTimer(CheckNominateInterval,
