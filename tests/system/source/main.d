@@ -50,6 +50,7 @@ private void waitForDiscovery (API[] clients, Duration timeout)
 
 int main (string[] args)
 {
+    writefln("%s START SYSTEM TEST", PREFIX);
     if (args.length < 2)
     {
         writeln("%s You must enter addresses of the nodes to connect to.", PREFIX);
@@ -127,7 +128,7 @@ private void assertBlockHeight (const string[] addresses, ulong height)
             {
                 writefln("%s Client #%s is at block height %s", PREFIX, idx, getHeight);
                 const blocks = client.getBlocksFrom(0, 42);
-                writefln("%s Client #%s has blocks:\n%s", PREFIX, idx, blocks.map!prettify);
+                writefln("%s Client #%s has blocks:\n%s", PREFIX, idx, prettify(blocks));
                 writefln("%s ----------------------------------------", PREFIX);
                 assert(blocks.length == height + 1);
                 if (idx != 0)
