@@ -57,6 +57,11 @@ import core.time : msecs, seconds;
 
 mixin AddLogger!();
 
+// TODO: The block should probably have a size limit rather than a maximum
+//  number of transactions.
+//  But for now set a maximum number of transactions to a thousand
+enum MaxTransactionsPerBlock = 1000;
+
 /// Ditto
 public extern (C++) class Nominator : SCPDriver
 {
@@ -262,8 +267,8 @@ extern(D):
 
     protected bool prepareNominatingSet (out ConsensusData data) @safe
     {
-        this.ledger.prepareNominatingSet(data, 8);
-        if (data.tx_set.length != 8)
+        this.ledger.prepareNominatingSet(data, MaxTransactionsPerBlock);
+        if (data.tx_set.length < 1)
             return false;  // not ready to nominate yet
 
         // check whether the consensus data is valid before nominating it.

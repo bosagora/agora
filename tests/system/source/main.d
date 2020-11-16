@@ -17,6 +17,7 @@ import agora.api.FullNode;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis;
 import TestGenesis = agora.consensus.data.genesis.Test;
+import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.common.crypto.Key;
 import agora.common.Hash;
@@ -85,17 +86,28 @@ int main (string[] args)
 
         auto kp = WK.Keys.Genesis;
 
-        writefln("%s Put 8 transactions to client[0]", PREFIX);
-        iota(8)
-            .map!(idx => TxBuilder(TestGenesis.GenesisBlock.txs[1], idx)
-                  .refund(kp.address).sign())
-            .each!(tx => clients[0].putTransaction(tx));
+        writefln("%s Put 1 transaction to client[0]", PREFIX);
+        genesisSpendable().takeExactly(1)
+            .map!(txb => txb.sign()).each!(tx => clients[0].putTransaction(tx));
 
-        writefln("%s Wait 1 second", PREFIX);
-        Thread.sleep(1.seconds); // Give time for block to be externalized
+        writefln("%s Wait 5 seconds", PREFIX);
+        Thread.sleep(5.seconds); // Give time for block to be externalized
 
         writefln("%s Check height is 1", PREFIX);
         assertBlockHeight(addresses, 1);
+
+        writefln("%s Put 8 transactions to client[0]", PREFIX);
+        genesisSpendable().dropExactly(1).takeExactly(1)
+            .map!(txb =>
+                txb.split(WK.Keys.byRange.map!(k => k.address)
+                    .take(8)).sign())
+            .each!(tx => clients[0].putTransaction(tx));
+
+        writefln("%s Wait 5 seconds", PREFIX);
+        Thread.sleep(5.seconds); // Give time for block to be externalized
+
+        writefln("%s Check height is 2", PREFIX);
+        assertBlockHeight(addresses, 2);
     }
 
     return 0;
