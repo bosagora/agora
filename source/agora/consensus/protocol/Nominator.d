@@ -608,10 +608,11 @@ extern(D):
         auto rc = this.enroll_man.getCommitmentNonceScalar();
         auto preimage = this.enroll_man.getValidatorPreimageAt(key,
             Height(envelope.statement.slotIndex - 1));
-        auto r = rc + challenge + Scalar(preimage.hash);
+        Scalar r = rc + challenge + Scalar(preimage.hash);
+        assert(r.isValid(), "r is an invalid Scalar");
         const R = r.toPoint();
-
         const Scalar sig = r + (this.schnorr_pair.v * challenge);
+        assert(sig.isValid(), "sig is an invalid Scalar");
         envelope.signature = opaque_array!32(BitBlob!256(sig[]));
     }
 
