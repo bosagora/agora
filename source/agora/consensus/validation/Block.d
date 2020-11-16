@@ -147,15 +147,15 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     if (getValidatorAtIndex is null)
         return null;
 
-    if (prev_active_validators > block.header.validators.length())
-        return "Block: Validators bitfield mask is too small for the " ~
+    if (prev_active_validators > block.header.signed_validators.length())
+        return "Block: signed_validators bitfield mask is too small for the " ~
             "active validator set";
 
     Point SumK;
     Point SumR;
     foreach (idx; 0 .. prev_active_validators)
     {
-        if (!block.header.validators[idx])
+        if (!block.header.signed_validators[idx])
             continue;  // this validator hasn't signed
 
         const K = getValidatorAtIndex(block.header.height, idx);

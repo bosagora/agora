@@ -42,9 +42,9 @@ public immutable(Block) makeGenesis (
 
     // Add all enrollments and their signatures
     genesis.header.enrollments ~= enrolls;
-    genesis.header.validators = typeof(BlockHeader.validators)(enrolls.length);
+    genesis.header.signed_validators = typeof(BlockHeader.signed_validators)(enrolls.length);
     foreach (cnt; 0 .. enrolls.length)
-        genesis.header.validators[cnt] = true;
+        genesis.header.signed_validators[cnt] = true;
     genesis.header.signature = sigcb(genesis.header.hashFull());
 
     if (const reason = genesis.isGenesisBlockInvalidReason())

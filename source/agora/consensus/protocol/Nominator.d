@@ -465,7 +465,7 @@ extern(D):
         if (sig.toPoint() != R + (K * challenge))
         {
             log.error("Validated envelope has an invalid block header " ~
-                "signature: {}", sig);
+                "signature: {}", sig.toString(PrintMode.Clear));
             return false;
         }
         return true;
@@ -743,8 +743,14 @@ extern(D):
         const Point R = RC + Scalar(preimage.hash).toPoint();
         if (sig.toPoint() != R + (K * block_challenge))
         {
-            log.error("Validated envelope has an invalid block header " ~
-                "signature: {}", sig);
+            try
+            {
+                log.error("Validated envelope has an invalid block header " ~
+                    "signature: {}", sig.toString(PrintMode.Clear));
+            }
+            catch (Exception e) {
+                log.error("Error whilst logging: {}", e);
+            }
             return false;
         }
 
@@ -883,7 +889,7 @@ extern(D):
             // because we externalize when we reach threshold - but we want
             // to collect as many signatures as possible
             proposed_block.header.signature = multi_sig;
-            proposed_block.header.validators = validator_mask;
+            proposed_block.header.signed_validators = validator_mask;
 
             if (!this.ledger.acceptBlock(proposed_block))
                 assert(0);

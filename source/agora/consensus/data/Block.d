@@ -33,6 +33,8 @@ import std.range;
 
 import core.bitop;
 
+alias SignedBitfield = BitField!uint;
+
 /*******************************************************************************
 
     The block header which contains a link to the previous block header,
@@ -52,7 +54,7 @@ public struct BlockHeader
     public Hash merkle_root;
 
     /// Bitfield containing the validators' key indices which signed the block
-    public BitField!uint validators;
+    public SignedBitfield signed_validators;
 
     /// Schnorr multisig of all validators which signed this block
     public Scalar signature;
@@ -95,7 +97,7 @@ public struct BlockHeader
         dg(this.prev_block[]);
         serializePart(this.height.value, dg);
         dg(this.merkle_root[]);
-        serializePart(this.validators, dg);
+        serializePart(this.signed_validators, dg);
         serializePart(this.signature, dg);
         serializePart(this.enrollments.length, dg);
         foreach (enrollment; this.enrollments)
@@ -399,10 +401,10 @@ unittest
         ],
     };
 
-    auto validators = typeof(BlockHeader.validators)(6);
-    validators[0] = true;
-    validators[2] = true;
-    validators[4] = true;
+    auto signed_validators = typeof(BlockHeader.signed_validators)(6);
+    signed_validators[0] = true;
+    signed_validators[2] = true;
+    signed_validators[4] = true;
 
     Enrollment[] enrollments;
     enrollments ~= Enrollment.init;
@@ -415,7 +417,7 @@ unittest
             prev_block:  Hash.init,
             height:      Height(0),
             merkle_root: merkle,
-            validators:  validators,
+            signed_validators:  signed_validators,
             signature:   Scalar.init,
             enrollments: enrollments,
         },

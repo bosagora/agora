@@ -330,11 +330,15 @@ private struct BlockHeaderFmt
     {
         try
         {
-            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]",
+            formattedWrite(sink,
+                "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSig: %s\nValidators(%d): %s",
                 this.value.height.value, HashFmt(this.value.prev_block),
                 HashFmt(this.value.merkle_root),
                 this.value.enrollments.fold!((a, b) =>
-                    format!"%s\n%s"(a, prettify(b)))(""));
+                    format!"%s\n%s"(a, prettify(b)))(""),
+                this.value.signature.toString(PrintMode.Clear),
+                this.value.signed_validators.length(),
+                prettify(this.value.signed_validators));
         }
         catch (Exception ex)
         {
