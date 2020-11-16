@@ -15,6 +15,7 @@ node:
   data_dir: .cache
 
   validator_cycle: 20
+  block_interval_sec: 5
 
 ################################################################################
 ##                             Validator configuration                        ##
