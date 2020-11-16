@@ -426,7 +426,7 @@ extern(D):
         const cur_height = this.ledger.getBlockHeight();
         if (envelope.statement.slotIndex <= cur_height)
         {
-            log.trace("Rejected envelope with outdated slot #{} (ledger: #{})",
+            log.trace("Ignoring envelope with outdated slot #{} (ledger: #{})",
                 envelope.statement.slotIndex, cur_height);
             return;  // slot was already externalized, ignore outdated message
         }
@@ -442,7 +442,7 @@ extern(D):
         }
 
         if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
-            log.info("Rejected invalid envelope: {}", scpPrettify(&envelope));
+            log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope));
     }
 
     /***************************************************************************
