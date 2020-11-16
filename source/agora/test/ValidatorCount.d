@@ -31,7 +31,8 @@ import core.thread;
 /// ditto
 unittest
 {
-    const TestConf conf = { recurring_enrollment : false };
+    const TestConf conf = { recurring_enrollment : false,
+        txs_to_nominate : 1 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();

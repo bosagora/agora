@@ -28,7 +28,11 @@ import agora.test.Base;
 /// Simple test
 unittest
 {
-    TestConf conf = TestConf.init;
+    TestConf conf = {
+        txs_to_nominate : 1,
+        recurring_enrollment : false,
+        quorum_threshold : 100
+    };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -42,4 +46,5 @@ unittest
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1));
 
+    network.assertSameBlocks(iota(network.nodes.length), Height(1));
 }
