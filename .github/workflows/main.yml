@@ -12,27 +12,8 @@ on: [push, pull_request]
 
 jobs:
   main:
-    name: Run
-    # The configuration matrix: We define all possible combinations here,
-    # then add excludes for things we don't want to test,
-    # and include to specify job-specific data.
-    strategy:
-      # Disable `fail-fast` because we want the whole test suite to run even if one
-      # of the nigthly is broken
-      fail-fast: false
-      matrix:
-        os: [ windows-2019 ]
-        dc: [ ldc-master ]
-        # Define job-specific parameters
-        include:
-          # By default, don't generate artifacts for push
-          - { artifacts: false }
-          # Only generate when the latest ldc is used
-          # IMPORTANT: Update this when the compiler support is changed!
-          - { dc: ldc-1.24.0, artifacts: true }
-
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    runs-on: windows-2019
+    timeout-minutes: 5
     steps:
 
     # Checkout this repository and its submodules
@@ -45,26 +26,11 @@ jobs:
     - name: Prepare compiler
       uses: dlang-community/setup-dlang@v1
       with:
-          compiler: ${{ matrix.dc }}
+          compiler: ldc-1.24.0
 
     # Install os-specific packages
     # Those will show up in the list of steps, but be grayed out,
     # hence the usage of the `[OSX]` tag
-    - name: '[OSX] Install dependencies & setup environment'
-      if: runner.os == 'macOS'
-      run: |
-        brew install coreutils pkg-config
-        ./ci/ci_osx_setup.sh
-        echo "LIBRARY_PATH=${LD_LIBRARY_PATH-}:/usr/local/lib/" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/" >> $GITHUB_ENV
-
-    - name: '[Linux] Install dependencies & setup environment'
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install libsqlite3-dev
-        sudo apt-get install libsodium-dev
-        sudo apt-get install g++-9
 
     - name: '[Windows] Install dependencies & setup environment'
       if: runner.os == 'Windows'
@@ -91,13 +57,6 @@ jobs:
       run: |
         ${DC} --version
         dub --version
-
-    # Build and run the tests
-    - name: '[POSIX] Build & test Agora'
-      if: runner.os != 'Windows'
-      #continue-on-error: matrix.dc == 'ldc-master'
-      run: ./ci/run.sh
-
     - name: '[Windows] Build & test Agora'
       if: runner.os == 'Windows'
       #continue-on-error: matrix.dc == 'ldc-master'
@@ -105,83 +64,3 @@ jobs:
       run: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
-
-    # Finally, upload the artifacts
-    #
-    # For push event, we need to select which compiler to use
-    # This is defined in the build matrix so the condition here
-    # doesn't have to be edited.
-    #
-    # We used to upload artifacts for all pull request events as well,
-    # but it provide to be too flakey and would often lead to spurious
-    # failures. See https://github.com/bpfkorea/agora/issues/882
-    - name: 'Upload build artifacts'
-      if: github.event_name == 'push' && matrix.artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: agora-${{ matrix.os }}
-        path: build/
-
-  # Documentation build: Only runs on Linux
-  # Still need to install dependencies and the compiler because DDOX
-  # does a full build
-  doc:
-    name: Build and upload documentation
-    needs: main
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-
-      # Checkout this repository and its submodules
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      # Install the D compiler
-      - name: Prepare compiler
-        uses: dlang-community/setup-dlang@v1
-        with:
-          compiler: ldc-latest
-
-      - name: 'Install dependencies & setup environment'
-        run: |
-          sudo apt-get update
-          sudo apt-get install libsqlite3-dev
-          sudo apt-get install libsodium-dev
-          sudo apt-get install g++-9
-
-      - name: Build documentation
-        run: |
-          dub build -b ddox
-          # Filter out libraries
-          # `x:ddocFilterArgs` in `dub.json` does not seem to work,
-          # so we do it manually
-          jq '[ .[] | select(.file|startswith("source/")) ]' docs.json > docs.filtered.json
-          # Generate the HTML to docs
-          dub run ddox -- generate-html docs.filtered.json ./docs/
-
-      - name: Upload documentation artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: documentation
-          path: docs/
-
-      - name: Deploy documentation
-        if: github.event_name == 'push'
-        run: |
-          # Remove gh-branch if it already exists, check it out
-          git branch -D gh-pages || true
-          git checkout --orphan gh-pages
-          # Remove all staged files - We only need the docs
-          git rm -rf $(git ls-files)
-          # We can have some leftover files (e.g. build)
-          # So add docs (which is only what we need), then `git mv` it.
-          git add docs/
-          git mv -k docs/* ./
-          # Configure user (because persist-credentials does not persist everything...)
-          git config --global user.name  "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-          # We're done
-          git commit -m "Documentation for commit ${{ github.sha }}"
-          git push -f ${{ github.event.repository.clone_url }} gh-pages:gh-pages
