@@ -15,6 +15,9 @@ node:
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
 
+  tx_payload_max_size: 1024
+  tx_payload_fee_factor: 200
+
 ################################################################################
 ##                             Validator configuration                        ##
 ## The server can operate in two modes: full node and validator node.         ##
