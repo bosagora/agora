@@ -113,6 +113,15 @@ public enum OP : ubyte
     /// Ditto, but instead of pushing the result to the stack it will cause the
     /// script execution to fail if the signature is invalid
     VERIFY_SIG = 0x5C,
+
+    /// Expects a new sequence ID on the stack and an expected sequence ID
+    /// on the stack. Verifies `sequence_id >= expected_id`, and adds
+    /// `sequence_id` to the signature hash. The matching Input is blanked
+    /// to implement floating transactions, as defined in Eltoo.
+    CHECK_SEQ_SIG = 0x5D,
+
+    /// Ditto
+    VERIFY_SEQ_SIG = 0x5E,
 }
 
 /*******************************************************************************
