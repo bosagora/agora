@@ -494,6 +494,26 @@ public class Engine
                     return "VERIFY_SIG signature failed validation";
                 break;
 
+            case OP.CHECK_SEQ_SIG:
+                bool is_valid;
+                if (auto error = this.verifySequenceSignature!(OP.CHECK_SEQ_SIG)(
+                    stack, tx, input, is_valid))
+                    return error;
+
+                // canPush() check unnecessary
+                stack.push(is_valid ? TrueValue : FalseValue);
+                break;
+
+            case OP.VERIFY_SEQ_SIG:
+                bool is_valid;
+                if (auto error = this.verifySequenceSignature!(OP.VERIFY_SEQ_SIG)(
+                    stack, tx, input, is_valid))
+                    return error;
+
+                if (!is_valid)
+                    return "VERIFY_SEQ_SIG signature failed validation";
+                break;
+
             case OP.VERIFY_LOCK_HEIGHT:
                 if (stack.empty())
                     return "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack";
@@ -735,6 +755,144 @@ public class Engine
         sig_valid = Schnorr.verify(point, sig, tx);
         return null;
     }
+
+    /***************************************************************************
+
+        Checks floating-transaction signatures for use with the Flash layer.
+
+        Verifies the sequence signature by blanking the input, reading the
+        minimum sequence, the key, the new sequence, and the signature off
+        the stack and validates the signature.
+
+        If any of the arguments expected on the stack are missing,
+        an error string is returned.
+
+        The `sig_valid` parameter will be set to the validation result
+        of the signature.
+
+        Params:
+            OP = the opcode
+            stack = should contain the Signature and Public Key
+            tx = the transaction that should have been signed
+            input = the associated Input to blank when signing
+            sig_valid = will contain the signature validation result
+
+        Returns:
+            an error string if the needed arguments on the stack are missing,
+            otherwise returns null
+
+    ***************************************************************************/
+
+    private string verifySequenceSignature (OP op)(ref Stack stack,
+        in Transaction tx, in Input input, out bool sig_valid)
+        nothrow @safe //@nogc  // stack.pop() is not @nogc
+    {
+        static assert(op == OP.CHECK_SEQ_SIG || op == OP.VERIFY_SEQ_SIG);
+
+        // if changed, check assumptions
+        static assert(Point.sizeof == 32);
+        static assert(Signature.sizeof == 64);
+
+        // top to bottom: <min_seq> <key> <new_seq> <sig>
+        // lock script typically pushes <min_seq> <key>
+        // while the unlock script pushes <new_seq> <sig>
+        if (stack.count() < 4)
+        {
+            static immutable err1 = op.to!string
+                ~ " opcode requires 4 items on the stack";
+            return err1;
+        }
+
+        const min_seq_bytes = stack.pop();
+        if (min_seq_bytes.length != ulong.sizeof)
+        {
+            static immutable err2 = op.to!string
+                ~ " opcode requires 8-byte minimum sequence on the stack";
+            return err2;
+        }
+
+        const ulong min_sequence = littleEndianToNative!ulong(
+            min_seq_bytes[0 .. ulong.sizeof]);
+
+        const key_bytes = stack.pop();
+        if (key_bytes.length != Point.sizeof)
+        {
+            static immutable err3 = op.to!string
+                ~ " opcode requires 32-byte public key on the stack";
+            return err3;
+        }
+
+        const Point point = Point(key_bytes);
+        if (!point.isValid())
+        {
+            static immutable err4 = op.to!string
+                ~ " 32-byte public key on the stack is invalid";
+            return err4;
+        }
+
+        const seq_bytes = stack.pop();
+        if (seq_bytes.length != ulong.sizeof)
+        {
+            static immutable err5 = op.to!string
+                ~ " opcode requires 8-byte sequence on the stack";
+            return err5;
+        }
+
+        const ulong sequence = littleEndianToNative!ulong(
+            seq_bytes[0 .. ulong.sizeof]);
+        if (sequence < min_sequence)
+        {
+            static immutable err6 = op.to!string
+                ~ " sequence is not equal to or greater than min_sequence";
+            return err6;
+        }
+
+        const sig_bytes = stack.pop();
+        if (sig_bytes.length != Signature.sizeof)
+        {
+            static immutable err7 = op.to!string
+                ~ " opcode requires 64-byte signature on the stack";
+            return err7;
+        }
+
+        const sig = Signature(sig_bytes);
+
+        // workaround: input index not explicitly passed in
+        import std.algorithm : countUntil;
+        const long input_idx = tx.inputs.countUntil(input);
+        assert(input_idx != -1, "Input does not belong to this transaction");
+
+        const Hash challenge = getSequenceChallenge(tx, sequence, input_idx);
+        sig_valid = Schnorr.verify(point, sig, challenge);
+        return null;
+    }
+}
+
+/*******************************************************************************
+
+    Gets the challenge hash for the provided transaction, sequence ID.
+
+    Params:
+        tx = the transaction to sign
+        sequence = the sequence ID to hash
+        input_idx = the associated input index we're signing for
+
+    Returns:
+        the challenge as a hash
+
+*******************************************************************************/
+
+public Hash getSequenceChallenge (in Transaction tx, in ulong sequence,
+    in ulong input_idx) nothrow @safe
+{
+    assert(input_idx < tx.inputs.length, "Input index is out of range");
+
+    Transaction dup;
+    // it's ok, we'll dupe the array before modification
+    () @trusted { dup = *cast(Transaction*)&tx; }();
+    dup.inputs = dup.inputs.dup;
+    dup.inputs[input_idx] = Input.init;  // blank out matching input
+    return hashMulti(dup, sequence);
 }
 
 version (unittest)
@@ -943,6 +1101,175 @@ unittest
             ~ [ubyte(32)] ~ kp.V[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init),
         null);
+}
+
+// OP.CHECK_SEQ_SIG / OP.VERIFY_SEQ_SIG
+unittest
+{
+    // Expected top to bottom on stack: <min_seq> <key> [<new_seq> <sig>]
+    //
+    // Unlock script pushes in order: [<sig>, <new_seq>]
+    // Lock script pushes in order: <key>, <min_seq>
+    //
+    // Stack:
+    //   <min_seq>
+    //   <key>
+    //   <new_seq>
+    //   <sig>
+
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    const Transaction tx = { inputs : [Input.init] };
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [OP.CHECK_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG opcode requires 4 items on the stack");
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [OP.VERIFY_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]),
+        "VERIFY_SEQ_SIG opcode requires 4 items on the stack");
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [1, 42, 1, 42, 1, 42, OP.CHECK_SEQ_SIG]),
+        Unlock.init, tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG opcode requires 4 items on the stack");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            [1, 42, 1, 42, 1, 42, 1, 42, OP.CHECK_SEQ_SIG]),
+        Unlock.init, tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG opcode requires 8-byte minimum sequence on the stack");
+
+    const seq_0 = ulong(0);
+    const seq_1 = ulong(1);
+    const seq_0_bytes = nativeToLittleEndian(seq_0);
+    const seq_1_bytes = nativeToLittleEndian(seq_1);
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(1), ubyte(1)]  // wrong pubkey size
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ Signature.init[]
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG opcode requires 32-byte public key on the stack");
+
+    // invalid key (crypto_core_ed25519_is_valid_point() fails)
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ Point.init[]  // size ok, form is wrong
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ Signature.init[]
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG 32-byte public key on the stack is invalid");
+
+    Point rand_key = Point.fromString(
+        "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ rand_key[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ Signature.init[]
+            // wrong sequence size
+            ~ toPushOpcode(nativeToLittleEndian(ubyte(1)))), tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG opcode requires 8-byte sequence on the stack");
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ rand_key[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ Signature.init[]
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        "Script failed");
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ rand_key[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(1)] ~ [ubyte(1)]  // wrong signature size
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG opcode requires 64-byte signature on the stack");
+
+    const Pair kp = Pair.random();
+    const bad_sig = sign(kp, tx);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ rand_key[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ bad_sig[]
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        "Script failed");  // still fails, signature didn't hash the sequence
+
+    // create the proper signature which blanks the input and encodes the sequence
+    const challenge_0 = getSequenceChallenge(tx, seq_0, 0);
+    const seq_0_sig = Schnorr.sign(kp, challenge_0);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ kp.V[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ seq_0_sig[]
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        null);
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ kp.V[]
+            ~ toPushOpcode(seq_1_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ seq_0_sig[]
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+        "CHECK_SEQ_SIG sequence is not equal to or greater than min_sequence");
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ kp.V[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ seq_0_sig[]
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),
+        "Script failed");
+
+    const challenge_1 = getSequenceChallenge(tx, seq_1, 0);
+    const seq_1_sig = Schnorr.sign(kp, challenge_1);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ kp.V[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.CHECK_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ seq_1_sig[]
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),
+        null);
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ rand_key[]  // key mismatch
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ seq_1_sig[]
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),
+        "VERIFY_SEQ_SIG signature failed validation");
+
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(32)] ~ kp.V[]
+            ~ toPushOpcode(seq_0_bytes)
+            ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
+        Unlock(
+            [ubyte(64)] ~ seq_0_sig[]
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),  // sig mismatch
+        "VERIFY_SEQ_SIG signature failed validation");
 }
 
 // OP.VERIFY_LOCK_HEIGHT
