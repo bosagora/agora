@@ -158,7 +158,9 @@ public class FullNode : API
                 config.node.quorum_threshold,
                 config.node.quorum_shuffle_interval,
                 config.node.genesis_start_time,
-                config.node.block_interval_sec);
+                config.node.block_interval_sec,
+                config.node.tx_payload_max_size,
+                config.node.tx_payload_fee_factor);
 
         this.metadata = this.getMetadata(config.node.data_dir);
 
