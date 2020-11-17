@@ -168,6 +168,12 @@ public struct NodeConfig
     /// is going to connect to, for example: http://0.0.0.0:8008
     /// It can also be set to 0 do disable listening
     public ushort stats_listening_port;
+
+    /// The maximum size of data payload
+    public uint tx_payload_max_size = 1024;
+
+    /// The factor to calculate for the fee of data payload
+    public uint tx_payload_fee_factor = 200;
 }
 
 /// Validator config
@@ -387,6 +393,8 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     auto preimage_reveal_interval = get!(Duration, "node", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
     const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
+    const tx_payload_max_size = opt!(uint, "node", "tx_payload_max_size")(cmdln, node);
+    const tx_payload_fee_factor = opt!(uint, "node", "tx_payload_fee_factor")(cmdln, node);
 
     NodeConfig result = {
             min_listeners : min_listeners,
@@ -406,7 +414,9 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             quorum_threshold : quorum_threshold,
             quorum_shuffle_interval : quorum_shuffle_interval,
             preimage_reveal_interval : preimage_reveal_interval,
-            stats_listening_port : stats_listening_port
+            stats_listening_port : stats_listening_port,
+            tx_payload_max_size : tx_payload_max_size,
+            tx_payload_fee_factor : tx_payload_fee_factor
     };
     return result;
 }
@@ -427,6 +437,8 @@ node:
   quorum_shuffle_interval: 10
   preimage_reveal_interval: 5
   commons_budget_address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
+  tx_payload_max_size: 512
+  tx_payload_fee_factor: 300
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
@@ -436,6 +448,8 @@ node:
         assert(config.quorum_shuffle_interval == 10);
         assert(config.preimage_reveal_interval == 5.seconds);
         assert(config.commons_budget_address.toString() == "GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ");
+        assert(config.tx_payload_max_size == 512);
+        assert(config.tx_payload_fee_factor == 300);
     }
 }
 
