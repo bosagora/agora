@@ -57,6 +57,7 @@ jobs:
       run: |
         ${DC} --version
         dub --version
+        $GITHUB_ENV
     - name: '[Windows] Build & test Agora'
       if: runner.os == 'Windows'
       #continue-on-error: matrix.dc == 'ldc-master'
