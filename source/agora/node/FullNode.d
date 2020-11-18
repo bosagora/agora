@@ -38,6 +38,7 @@ import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
 import agora.node.BlockStorage;
+import agora.node.Fee;
 import agora.node.Ledger;
 import agora.stats.App;
 import agora.stats.EndpointReq;
@@ -132,6 +133,9 @@ public class FullNode : API
     /// Application-wide stats
     protected ApplicationStats app_stats;
 
+    /// The checker of transaction data payload
+    protected DataPayloadChecker payload_checker;
+
     /***************************************************************************
 
         Constructor
@@ -173,8 +177,9 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.validator, params);
+        this.payload_checker = getDataPayloadChecker(this.params);
         this.ledger = new Ledger(params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, &this.onAcceptedBlock);
+            this.storage, this.enroll_man, this.pool, this.payload_checker, &this.onAcceptedBlock);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 
@@ -461,6 +466,28 @@ public class FullNode : API
     protected UTXOSet getUtxoSet (string data_dir)
     {
         return new UTXOSet(buildPath(config.node.data_dir, "utxo_set.dat"));
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a DataPayloadChecker
+
+        Unittests can override this method.
+
+        Params:
+            params = the consensus-critical constants
+
+        Returns:
+            the DataPayloadChecker instance
+
+    ***************************************************************************/
+
+    protected DataPayloadChecker getDataPayloadChecker (immutable(ConsensusParams) params)
+    {
+        return new DataPayloadChecker(
+            params.CommonsBudgetAddress,
+            params.TxPayloadMaxSize,
+            params.TxPayloadFeeFactor);
     }
 
     /***************************************************************************

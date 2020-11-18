@@ -35,7 +35,7 @@ public struct DataPayload
 
     ***************************************************************************/
 
-    public this (const(ubyte)[] bin) pure nothrow @safe
+    public this (inout(ubyte)[] bin) inout pure nothrow @safe
     {
         this.data = bin;
     }

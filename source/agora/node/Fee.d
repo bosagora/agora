@@ -14,8 +14,13 @@
 module agora.node.Fee;
 
 import agora.common.Amount;
+import agora.common.crypto.Key;
+import agora.consensus.data.Transaction;
 
 import std.math;
+
+/// Delegate to check data payload
+public alias PayloadChecker = string delegate (in Transaction tx) nothrow @safe;
 
 /*******************************************************************************
 
@@ -154,4 +159,95 @@ unittest
     assert(calculateDataFee(480, 200) == Amount(10_020_0000L));
     assert(calculateDataFee(490, 200) == Amount(105_900_000L));
     assert(calculateDataFee(500, 200) == Amount(111_800_000L));
+}
+
+/*******************************************************************************
+
+    A class that provides the ability to verify `DataPayload` stored
+    in a `Transaction`.
+
+*******************************************************************************/
+
+public class DataPayloadChecker
+{
+    /// The address of commons budget
+    public PublicKey CommonsBudgetAddress;
+
+    /// The maximum size of data payload
+    public uint TxPayloadMaxSize;
+
+    /// The factor to calculate for the fee of data payload
+    public uint TxPayloadFeeFactor;
+
+    /// Ctor
+    public this (in PublicKey commons_budget_address,
+                 uint tx_payload_max_size,
+                 uint tx_payload_fee_factor)
+    {
+        this.CommonsBudgetAddress = commons_budget_address,
+        this.TxPayloadMaxSize = tx_payload_max_size;
+        this.TxPayloadFeeFactor = tx_payload_fee_factor;
+    }
+
+    /***************************************************************************
+
+        Checks the following in the data payload:
+
+            Checks that the size of the data does not exceed
+            the maximum size allowed.
+            Checks if a commons budget address exists in the output.
+            Checks if the appropriate fee is paid by commons budget address.
+
+        Params:
+            tx = `Transaction`
+
+        Return:
+            `null` if the transaction is valid, a string explaining the reason it
+            is invalid otherwise.
+
+    ***************************************************************************/
+
+    public string check (in Transaction tx) nothrow @safe
+    {
+        if (tx.payload.data.length == 0)
+            return null;
+
+        if (tx.payload.data.length > this.TxPayloadMaxSize)
+            return "Transaction: The size of the data payload is too large";
+
+        uint count_commons_budget = 0;
+        Amount sum_fee;
+        foreach (output; tx.outputs)
+        {
+            if (output.address == this.CommonsBudgetAddress)
+            {
+                count_commons_budget++;
+                sum_fee.add(output.value);
+            }
+        }
+
+        if (count_commons_budget == 0)
+            return "Transaction: Output does not exist to pay the fee for data payload";
+
+        const required_fee = calculateDataFee(tx.payload.data.length, this.TxPayloadFeeFactor);
+        if (sum_fee < required_fee)
+            return "Transaction: There is not enough fee for data payload.";
+
+        return null;
+    }
+
+    /// Calculates the fee of data payloads
+    public Amount getFee(ulong data_size) pure nothrow @safe @nogc
+    {
+        return calculateDataFee(data_size, this.TxPayloadFeeFactor);
+    }
+
+    /// For unittest
+    version (unittest) public this (
+        uint tx_payload_max_size = 1024,
+        uint tx_payload_fee_factor = 200)
+    {
+        import agora.utils.WellKnownKeys;
+        this(CommonsBudget.address, tx_payload_max_size, tx_payload_fee_factor);
+    }
 }
