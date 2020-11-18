@@ -22,10 +22,12 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.Params;
 import agora.consensus.data.genesis;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.validation;
+import agora.node.Fee;
 import agora.test.Base;
 
 import core.thread;
@@ -209,6 +211,9 @@ unittest
     auto signature = WK.Keys.Genesis.secret.sign(hashFull(txs[0])[]);
     txs[0].inputs[0].signature = signature;
 
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
+
     // make sure the transaction is still authentic (signature is correct),
     // even if it's double spending
     const genesis_block = node_1.getBlocksFrom(0, 1)[0];
@@ -217,7 +222,8 @@ unittest
         {
             value = UTXO(0, TxType.Payment, txs[0].outputs[0]);
             return true;
-        }, Height(0));
+        }, Height(0),
+        checker);
     assert(reason is null, reason);
     txs.each!(tx => node_1.putTransaction(tx));
 

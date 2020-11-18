@@ -39,6 +39,7 @@ import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
+import agora.node.Fee;
 import agora.stats.Block;
 import agora.stats.Tx;
 import agora.stats.Utils;
@@ -90,6 +91,9 @@ public class Ledger
     /// Block stats
     private BlockStats block_stats;
 
+    /// The checker of transaction data payload
+    private DataPayloadChecker payload_checker;
+
     /***************************************************************************
 
         Constructor
@@ -100,6 +104,7 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             pool = the transaction pool
+            payload_checker = the checker of data payload
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
@@ -108,6 +113,7 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
+        DataPayloadChecker payload_checker,
         void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
     {
         this.params = params;
@@ -116,6 +122,7 @@ public class Ledger
         this.enroll_man = enroll_man;
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
+        this.payload_checker = payload_checker;
         if (!this.storage.load(params.Genesis))
             assert(0);
 
@@ -160,7 +167,8 @@ public class Ledger
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
-                        active_enrollments))
+                        active_enrollments,
+                        &this.payload_checker.check))
                         throw new Exception(
                             "A block loaded from disk is invalid: " ~
                             fail_reason);
@@ -275,7 +283,7 @@ public class Ledger
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = Height(this.getBlockHeight() + 1);
         auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
-            expected_height);
+            expected_height, &this.payload_checker.check);
 
         if (reason !is null || !this.pool.add(tx))
         {
@@ -433,7 +441,7 @@ public class Ledger
             Height(this.getBlockHeight()));
         foreach (ref Transaction tx; this.pool)
         {
-            if (auto reason = tx.isInvalidReason(utxo_finder, next_height))
+            if (auto reason = tx.isInvalidReason(utxo_finder, next_height, &this.payload_checker.check))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
                 data.tx_set ~= tx;
@@ -465,7 +473,7 @@ public class Ledger
 
         foreach (const ref tx; data.tx_set)
         {
-            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height))
+            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, &this.payload_checker.check))
                 return fail_reason;
         }
 
@@ -504,7 +512,8 @@ public class Ledger
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
-            active_enrollments);
+            active_enrollments,
+            &this.payload_checker.check);
     }
 
     /***************************************************************************
@@ -632,7 +641,8 @@ version (unittest)
             super(params, new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", key_pair, params),
-                new TransactionPool(":memory:"));
+                new TransactionPool(":memory:"),
+                new DataPayloadChecker());
         }
     }
 }
@@ -1179,7 +1189,8 @@ unittest
             super(params, new UTXOSet(":memory:"),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", kp, params),
-                new TransactionPool(":memory:"));
+                new TransactionPool(":memory:"),
+                new DataPayloadChecker());
         }
 
         override void updateUTXOSet (const ref Block block) @safe
@@ -1305,4 +1316,62 @@ unittest
     scope ledger = new TestLedger(WK.Keys.A, [CoinGenesis], good_params);
     // Neither will the default
     scope other_ledger = new TestLedger(WK.Keys.A, [CoinGenesis]);
+}
+
+unittest
+{
+    scope ledger = new TestLedger(WK.Keys.NODE2);
+    scope payload_checker = new DataPayloadChecker();
+
+    // Generate payment transactions to the first 8 well-known keypairs
+    auto txs = genesisSpendable().enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 1);
+
+    // Create data with nomal size
+    ubyte[] data;
+    data.length = 64;
+    foreach (idx; 0 .. data.length)
+        data[idx] = cast(ubyte)(idx % 256);
+
+    // Calculate fee
+    Amount data_fee = payload_checker.getFee(data.length);
+
+    // Generate a block with data stored transactions
+    txs = txs.enumerate()
+        .map!(en => TxBuilder(en.value)
+              .draw(data_fee, [ledger.params.CommonsBudgetAddress])
+              .sign(TxType.Payment, data))
+              .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 2);
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
+    assert(blocks.length == 3);
+    assert(blocks[2].header.height == 2);
+
+    foreach (ref tx; blocks[2].txs)
+    {
+        assert(tx.type == TxType.Payment);
+        assert(tx.outputs.length > 0);
+        assert(tx.outputs[0].value == data_fee);
+        assert(tx.outputs[0].address == ledger.params.CommonsBudgetAddress);
+        assert(tx.payload.data == data);
+    }
+
+    // Generate a block to reuse transactions used for data storage
+    txs = txs.enumerate()
+        .map!(en => TxBuilder(en.value, 1)
+              .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
+              .sign())
+              .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 3);
+    blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
+    assert(blocks.length == 4);
+    assert(blocks[3].header.height == 3);
 }

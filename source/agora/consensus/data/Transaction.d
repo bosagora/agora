@@ -23,6 +23,7 @@ import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Hash;
 import agora.common.Serializer;
+import agora.consensus.data.DataPayload;
 
 import std.algorithm;
 
@@ -53,6 +54,9 @@ public struct Transaction
     /// The list of newly created outputs to put in the UTXO
     public Output[] outputs;
 
+    /// The data to store
+    public DataPayload payload;
+
     /***************************************************************************
 
         Transactions Serialization
@@ -73,6 +77,8 @@ public struct Transaction
         serializePart(this.outputs.length, dg);
         foreach (const ref output; this.outputs)
             serializePart(output, dg);
+
+        serializePart(payload, dg);
     }
 
     /// Support for sorting transactions
@@ -177,6 +183,14 @@ unittest
         [Output.init]
     );
     testSymmetry(freeze_tx);
+
+    Transaction data_tx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output.init],
+        DataPayload([1,2,3])
+    );
+    testSymmetry(data_tx);
 }
 
 unittest
@@ -235,4 +249,20 @@ public bool getSumOutput (const Transaction tx, ref Amount acc)
         if (!acc.add(o.value))
             return false;
     return true;
+}
+
+unittest
+{
+    import vibe.data.json;
+    Transaction old_tx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output.init],
+        DataPayload([1,2,3])
+    );
+    auto json_str = old_tx.serializeToJsonString();
+
+    Transaction new_tx = deserializeJson!Transaction(json_str);
+    assert(new_tx.payload.data.length == old_tx.payload.data.length);
+    assert(new_tx.payload.data == old_tx.payload.data);
 }

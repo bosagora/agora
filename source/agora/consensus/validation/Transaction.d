@@ -16,8 +16,10 @@ module agora.consensus.validation.Transaction;
 import agora.common.Amount;
 import agora.common.Hash;
 import agora.common.Types;
+import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXOSet;
+import agora.node.Fee;
 
 version (unittest)
 {
@@ -32,6 +34,7 @@ version (unittest)
         tx = `Transaction`
         findUTXO = delegate for finding `Output`
         height = height of block
+        checkPayload = delegate for checking data payload
 
     Return:
         `null` if the transaction is valid, a string explaining the reason it
@@ -40,7 +43,7 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (
-    in Transaction tx, scope UTXOFinder findUTXO, in Height height)
+    in Transaction tx, scope UTXOFinder findUTXO, in Height height, scope PayloadChecker checkPayload)
     @safe nothrow
 {
     import std.conv;
@@ -83,6 +86,9 @@ public string isInvalidReason (
 
     if (tx.type == TxType.Freeze)
     {
+        if (tx.payload.data.length != 0)
+            return "Transaction: Freeze cannot have data payload";
+
         foreach (input; tx.inputs)
         {
             UTXO utxo_value;
@@ -122,6 +128,9 @@ public string isInvalidReason (
         // current limitation: if any UTXO is frozen, they all must be frozen
         if ((count_freeze > 0) && (count_freeze != tx.inputs.length))
             return "Transaction: Rejected combined inputs (freeze & payment)";
+
+        auto error = checkPayload(tx);
+        if (error !is null) return error;
     }
     else
         return "Transaction: Invalid transaction type";
@@ -136,10 +145,10 @@ public string isInvalidReason (
 
 /// Ditto but returns a bool, only used in unittests
 version (unittest)
-public bool isValid (in Transaction tx, scope UTXOFinder findUTXO, in Height height)
+public bool isValid (in Transaction tx, scope UTXOFinder findUTXO, in Height height, scope PayloadChecker checkPayload)
     @safe nothrow
 {
-    return isInvalidReason(tx, findUTXO, height) is null;
+    return isInvalidReason(tx, findUTXO, height, checkPayload) is null;
 }
 
 /// verify transaction data
@@ -149,6 +158,9 @@ unittest
 
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     // Creates the first transaction.
     Transaction previousTx = { outputs: [ Output(Amount(100), key_pairs[0].address) ] };
@@ -171,21 +183,21 @@ unittest
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.isValid(storage.getUTXOFinder(), Height(0)),
+    assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.isValid(storage.getUTXOFinder(), Height(0)),
+    assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
     secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0)),
+    assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 }
 
@@ -195,6 +207,9 @@ unittest
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
     Transaction tx_1 = { outputs: [ Output(Amount(1000), key_pairs[0].address) ] };
     Hash tx_1_hash = hashFull(tx_1);
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     scope storage = new TestUTXOSet;
     storage.put(tx_1);
@@ -210,7 +225,7 @@ unittest
 
     tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
-    assert(!tx_2.isValid(storage.getUTXOFinder(), Height(0)));
+    assert(!tx_2.isValid(storage.getUTXOFinder(), Height(0), checker));
 
     // Creates the third transaction.
     // Reject a transaction whose output value is zero
@@ -223,7 +238,7 @@ unittest
 
     tx_3.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_3)[]);
 
-    assert(!tx_3.isValid(storage.getUTXOFinder(), Height(0)));
+    assert(!tx_3.isValid(storage.getUTXOFinder(), Height(0), checker));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -238,6 +253,9 @@ unittest
     key_pairs ~= KeyPair.random();
     key_pairs ~= KeyPair.random();
     key_pairs ~= KeyPair.random();
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     // Create the first transaction.
     Transaction genesisTx = { outputs: [ Output(Amount(100_000), key_pairs[0].address) ] };
@@ -260,7 +278,7 @@ unittest
     tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage.put(tx1);
 
-    assert(tx1.isValid(storage.getUTXOFinder(), Height(0)),
+    assert(tx1.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
@@ -278,7 +296,7 @@ unittest
     tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage.put(tx2);
     // Signature verification must be error
-    assert(!tx2.isValid(storage.getUTXOFinder(), Height(0)),
+    assert(!tx2.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction signature is not validated %s", tx2));
 }
 
@@ -287,6 +305,9 @@ unittest
 {
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     Transaction secondTx;
     Hash previousHash;
@@ -319,7 +340,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is valid.
-        assert(secondTx.isValid(storage.getUTXOFinder(), Height(0)));
+        assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 
     // When the privious transaction type is `Freeze`, second transaction type is `Freeze`.
@@ -349,7 +370,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is invalid.
-        assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0)));
+        assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 
     // When the privious transaction with not enough amount at freezing.
@@ -379,7 +400,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is invalid.
-        assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0)));
+        assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 
     // When the privious transaction with too many amount at freezings.
@@ -408,7 +429,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is valid.
-        assert(secondTx.isValid(storage.getUTXOFinder(), Height(0)));
+        assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 }
 
@@ -430,6 +451,9 @@ unittest
 {
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     Height block_height;
 
@@ -480,7 +504,7 @@ unittest
         secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is VALID.
-        assert(secondTx.isValid(storage.getUTXOFinder(), block_height));
+        assert(secondTx.isValid(storage.getUTXOFinder(), block_height, checker));
 
         // Save to UTXOSet
         secondHash = hashFull(secondTx);
@@ -511,7 +535,7 @@ unittest
         thirdTx.inputs[0].signature = key_pairs[1].secret.sign(hashFull(thirdTx)[]);
 
         // Third Transaction is VALID.
-        assert(thirdTx.isValid(storage.getUTXOFinder(), block_height));
+        assert(thirdTx.isValid(storage.getUTXOFinder(), block_height, checker));
 
         // Save to UTXOSet
         thirdHash = hashFull(thirdTx);
@@ -542,7 +566,7 @@ unittest
         fourthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
         // Third Transaction is INVALID.
-        assert(!fourthTx.isValid(storage.getUTXOFinder(), block_height));
+        assert(!fourthTx.isValid(storage.getUTXOFinder(), block_height, checker));
     }
 
     // Creates the fifth payment transaction
@@ -560,7 +584,7 @@ unittest
         fifthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
         // Third Transaction is VALID.
-        assert(fifthTx.isValid(storage.getUTXOFinder(), block_height));
+        assert(fifthTx.isValid(storage.getUTXOFinder(), block_height, checker));
 
         // Save to UTXOSet
         fifthHash = hashFull(fifthTx);
@@ -587,6 +611,9 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
+
     // create a transaction having no input
     Transaction oneTx = Transaction(
         TxType.Payment,
@@ -596,7 +623,7 @@ unittest
     storage.put(oneTx);
 
     // test for Payment transaction having no input
-    assert(canFind(toLower(oneTx.isInvalidReason(storage.getUTXOFinder(), Height(0))), "no input"),
+    assert(canFind(toLower(oneTx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker)), "no input"),
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
@@ -613,7 +640,7 @@ unittest
     storage.put(secondTx);
 
     // test for Freeze transaction having no output
-    assert(canFind(toLower(secondTx.isInvalidReason(storage.getUTXOFinder(), Height(0))), "no output"),
+    assert(canFind(toLower(secondTx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker)), "no output"),
         format("Tx having no output should not pass validation. tx: %s", secondTx));
 }
 
@@ -623,6 +650,9 @@ unittest
     import std.format;
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     // create the first transaction.
     Transaction firstTx = Transaction(
@@ -654,7 +684,7 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for transaction having combined inputs
-    assert(!thirdTx.isValid(storage.getUTXOFinder(), Height(0)),
+    assert(!thirdTx.isValid(storage.getUTXOFinder(), Height(0), checker),
         format("Tx having combined inputs should not pass validation. tx: %s", thirdTx));
 }
 
@@ -666,6 +696,9 @@ unittest
     TxType unknown_type = cast(TxType)100; // any number is OK for test except 0 and 1
     KeyPair key_pair = KeyPair.random;
 
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
+
     // create a transaction having unknown transaction type
     Transaction firstTx = Transaction(
         unknown_type,
@@ -676,7 +709,7 @@ unittest
     storage[firstHash] = firstTx;
 
     // test for unknown transaction type
-    assert(!firstTx.isValid(null, Height(0)),
+    assert(!firstTx.isValid(null, Height(0), checker),
         format("Tx having unknown type should not pass validation. tx: %s", firstTx));
 }
 
@@ -686,6 +719,9 @@ unittest
     import std.format;
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     // create the first transaction
     auto firstTx = Transaction(
@@ -717,7 +753,7 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for input overflow in Payment transaction
-    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0)),
+    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("Tx having input overflow should not pass validation. tx: %s", thirdTx));
 
     // create the fourth transaction
@@ -732,7 +768,7 @@ unittest
     fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
 
     // test for input overflow in Freeze transaction
-    assert(!fourthTx.isValid(&storage.peekUTXO, Height(0)),
+    assert(!fourthTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("Tx having input overflow should not pass validation. tx: %s", fourthTx));
 }
 
@@ -742,6 +778,9 @@ unittest
     import std.format;
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
+
+    scope payload_checker = new DataPayloadChecker();
+    scope checker = &payload_checker.check;
 
     // create the first transaction
     auto firstTx = Transaction(
@@ -774,6 +813,164 @@ unittest
     thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for output overflow in Payment transaction
-    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0)),
+    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
+}
+
+/// test for transaction to store data
+unittest
+{
+    import std.format;
+    scope storage = new TestUTXOSet;
+    KeyPair key_pair = KeyPair.random;
+
+    scope payload_checker = new DataPayloadChecker(1024, 200);
+    scope checker = &payload_checker.check;
+
+    // create the payment transaction.
+    Transaction paymentTx = Transaction(
+        TxType.Payment,
+        [Input(Hash.init)],
+        [Output(Amount(80_000L * 10_000_000L), key_pair.address)]
+    );
+    storage.put(paymentTx);
+    Hash payment_utxo = UTXO.getHash(paymentTx.hashFull(), 0);
+
+    // create the frozen transaction.
+    Transaction frozenTx = Transaction(
+        TxType.Freeze,
+        [Input(Hash.init)],
+        [Output(Amount(80_000L * 10_000_000L), key_pair.address)]
+    );
+    storage.put(frozenTx);
+    Hash frozen_utxo = UTXO.getHash(frozenTx.hashFull(), 0);
+
+    // create data with nomal size
+    ubyte[] normal_data;
+    normal_data.length = payload_checker.TxPayloadMaxSize;
+    foreach (idx; 0 .. normal_data.length)
+        normal_data[idx] = cast(ubyte)(idx % 256);
+
+    // create data with large size
+    ubyte[] large_data;
+    large_data ~= normal_data;
+    large_data ~= cast(ubyte)(0);
+
+    // calculate fee
+    Amount normal_data_fee = calculateDataFee(normal_data.length, payload_checker.TxPayloadFeeFactor);
+    Amount large_data_fee = calculateDataFee(large_data.length, payload_checker.TxPayloadFeeFactor);
+
+    Transaction dataTx;
+    Hash dataHash;
+
+
+    // Test 1. Too large data
+    // create a transaction with large data
+    dataTx = Transaction(
+        TxType.Payment,
+        [Input(payment_utxo)],
+        [
+            Output(large_data_fee, payload_checker.CommonsBudgetAddress),
+            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+        ],
+        DataPayload(large_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for the transaction with large data
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
+        format("When storing data, tx with large data payload should not pass validation. tx: %s", dataTx));
+
+
+    // Test 2. Without commons budget
+    // create a transaction without commons budget
+    dataTx = Transaction(
+        TxType.Payment,
+        [Input(payment_utxo)],
+        [Output(Amount(40_000L * 10_000_000L), key_pair.address)],
+        DataPayload(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for transaction without commons budget
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
+        format("When storing data, tx without commons budget output should not pass validation. tx: %s", dataTx));
+
+
+    // Test 3. With not enough fee
+    // create a transaction with not enough fee
+    dataTx = Transaction(
+        TxType.Payment,
+        [Input(payment_utxo)],
+        [
+            Output(Amount(1L), payload_checker.CommonsBudgetAddress),
+            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+        ],
+        DataPayload(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for the transaction with not enough fee
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
+        format("When storing data, tx with not enough fee should not pass validation. tx: %s", dataTx));
+
+
+    // Test 4. Nomal
+    // create a transaction with enough fee
+    dataTx = Transaction(
+        TxType.Payment,
+        [Input(payment_utxo)],
+        [
+            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
+            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+        ],
+        DataPayload(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for the transaction with enough fee
+    assert(dataTx.isValid(&storage.peekUTXO, Height(0), checker),
+        format("When storing data, Transaction data is not validated. tx: %s", dataTx));
+
+
+    // Test 5. Using frozen input
+    // create the data transaction.
+    dataTx = Transaction(
+        TxType.Payment,
+        [Input(frozen_utxo)],
+        [
+            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
+            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+        ],
+        DataPayload(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for data storage using frozen input
+    assert(dataTx.isValid(&storage.peekUTXO, Height(0), checker),
+        format("When storing data, tx with frozen input should pass validation. tx: %s", dataTx));
+
+
+    // Test 6. The transaction with the type of Freeze
+    // create the data transaction.
+    dataTx = Transaction(
+        TxType.Freeze,
+        [Input(payment_utxo)],
+        [
+            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
+            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+        ],
+        DataPayload(normal_data)
+    );
+    dataHash = hashFull(dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
+
+    // test for data storage using frozen input
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
+        format("When storing data, tx with type of Freeze should not pass validation. tx: %s", dataTx));
 }

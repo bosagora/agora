@@ -36,6 +36,7 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 public import agora.utils.Utility : retryFor;
@@ -426,13 +427,14 @@ public struct TxBuilder
 
         Params:
             type = type of `Transaction`
+            data = data payload of `Transaction`
 
         Returns:
             The finalized & signed `Transaction`.
 
     ***************************************************************************/
 
-    public Transaction sign (TxType type = TxType.Payment) @safe nothrow
+    public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = []) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
@@ -447,6 +449,8 @@ public struct TxBuilder
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
             this.data.outputs ~= this.leftover;
+
+        this.data.payload = DataPayload(data);
 
         // Get the hash to sign
         const txHash = this.data.hashFull();
