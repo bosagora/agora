@@ -573,8 +573,10 @@ public class FullNode : API
     {
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "enroll_validator", "http");
 
-        if (this.enroll_man.addEnrollment(enroll, this.ledger.getBlockHeight(),
-            this.utxo_set.getUTXOFinder()))
+        UTXO utxo;
+        this.utxo_set.peekUTXO(enroll.utxo_key, utxo);
+        if (this.enroll_man.addEnrollment(enroll, utxo.output.address,
+            this.ledger.getBlockHeight(), this.utxo_set.getUTXOFinder()))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
             this.network.sendEnrollment(enroll);
