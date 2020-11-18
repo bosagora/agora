@@ -162,28 +162,3 @@ jobs:
           jq '[ .[] | select(.file|startswith("source/")) ]' docs.json > docs.filtered.json
           # Generate the HTML to docs
           dub run ddox -- generate-html docs.filtered.json ./docs/
-
-      - name: Upload documentation artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: documentation
-          path: docs/
-
-      - name: Deploy documentation
-        if: github.event_name == 'push'
-        run: |
-          # Remove gh-branch if it already exists, check it out
-          git branch -D gh-pages || true
-          git checkout --orphan gh-pages
-          # Remove all staged files - We only need the docs
-          git rm -rf $(git ls-files)
-          # We can have some leftover files (e.g. build)
-          # So add docs (which is only what we need), then `git mv` it.
-          git add docs/
-          git mv -k docs/* ./
-          # Configure user (because persist-credentials does not persist everything...)
-          git config --global user.name  "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-          # We're done
-          git commit -m "Documentation for commit ${{ github.sha }}"
-          git push -f ${{ github.event.repository.clone_url }} gh-pages:gh-pages
