@@ -58,13 +58,11 @@ jobs:
     - name: '[Windows] Build & test Agora'
       if: runner.os == 'Windows'
       env:
-        LIB_PATH: ${{ github.workspace }}\lib\libsodium\x64\Release\v142\static\;${{ github.workspace }}\submodules\d2sqlite3\lib\win64\;$LIB
-        INCLUDE_PATH: ${{ github.workspace }}\lib\libsodium\include\;$INCLUDE
+        LIB: ${{ github.workspace }}\lib\libsodium\x64\Release\v142\static\;${{ github.workspace }}\submodules\d2sqlite3\lib\win64\;$LIB
+        INCLUDE: ${{ github.workspace }}\lib\libsodium\include\;$INCLUDE
       #continue-on-error: matrix.dc == 'ldc-master'
       shell: cmd
       run: |
-        set INCLUDE = $INCLUDE_PATH
-        set LIB = $LIB_PATH
         env
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
