@@ -50,18 +50,20 @@ jobs:
         Expand-Archive '${{ github.workspace }}\lib\libsodium.zip' -DestinationPath ${{ github.workspace }}\lib\
         echo "LIB=${{ github.workspace }}\lib\libsodium\x64\Release\v142\static\;${{ github.workspace }}\submodules\d2sqlite3\lib\win64\;$LIB" >> $GITHUB_ENV
         echo "INCLUDE=${{ github.workspace }}\lib\libsodium\include\;$INCLUDE" >> $GITHUB_ENV
-
-    # Add whatever debugging information can be useful in the long run here
-    - name: Print system information
-      shell: bash
-      run: |
-        ${DC} --version
-        dub --version
-        $GITHUB_ENV
-    - name: '[Windows] Build & test Agora'
-      if: runner.os == 'Windows'
-      #continue-on-error: matrix.dc == 'ldc-master'
-      shell: cmd
-      run: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
+
+    # # Add whatever debugging information can be useful in the long run here
+    # - name: Print system information
+    #   shell: bash
+    #   run: |
+    #     ${DC} --version
+    #     dub --version
+    #     $GITHUB_ENV
+    # - name: '[Windows] Build & test Agora'
+    #   if: runner.os == 'Windows'
+    #   #continue-on-error: matrix.dc == 'ldc-master'
+    #   shell: cmd
+    #   run: |
+    #     call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+    #     call ci\run.bat
