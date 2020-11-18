@@ -401,8 +401,12 @@ public class Ledger
         UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
         foreach (idx, ref enrollment; block.header.enrollments)
         {
+            UTXO utxo;
+            auto utxo_finder = this.utxo_set.getUTXOFinder();
+            assert(utxo_finder(enrollment.utxo_key, utxo));
+
             this.enroll_man.removeEnrollment(enrollment.utxo_key);
-            if (auto r = this.enroll_man.addValidator(enrollment,
+            if (auto r = this.enroll_man.addValidator(enrollment, utxo.output.address,
                 block.header.height, this.utxo_set.getUTXOFinder(), utxos))
             {
                 log.fatal("Error while adding a new validator: {}", r);
@@ -478,8 +482,10 @@ public class Ledger
 
         foreach (const ref enroll; data.enrolls)
         {
+            UTXO utxo_value;
+            assert(this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value));
             if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
-                enroll, expect_height, utxo_finder))
+                enroll, utxo_value.output.address, expect_height, utxo_finder))
                 return fail_reason;
         }
 
@@ -1079,8 +1085,9 @@ unittest
             enroll_key_pair[index], utxo_hashes[index], params.ValidatorCycle);
 
     auto findUTXO = ledger.utxo_set.getUTXOFinder();
-    foreach (const ref e; enrollments)
-        assert(ledger.enroll_man.addEnrollment(e, Height(3), findUTXO));
+    foreach (index, const ref e; enrollments)
+        assert(ledger.enroll_man.addEnrollment(e, enroll_key_pair[index].address,
+                Height(3), findUTXO));
 
     Enrollment stored_enroll;
     foreach (idx, hash; utxo_hashes)

@@ -64,7 +64,7 @@ public class ValidatorSet
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key TEXT PRIMARY KEY, " ~
+            "(key TEXT PRIMARY KEY, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
             "distance INTEGER, preimage TEXT)");
     }
@@ -77,6 +77,7 @@ public class ValidatorSet
             block_height = the current block height in the ledger
             finder = the delegate to find UTXOs with
             enroll = the enrollment data to add
+            pubkey = the public key of the enrollment
 
         Returns:
             A string describing the error, or `null` on success
@@ -84,7 +85,7 @@ public class ValidatorSet
     ***************************************************************************/
 
     public string add (Height block_height, scope UTXOFinder finder,
-        const ref Enrollment enroll) @safe nothrow
+        const ref Enrollment enroll, PublicKey pubkey) @safe nothrow
     {
         // check validaty of the enrollment data
         if (auto reason = isInvalidReason(enroll, finder))
@@ -94,15 +95,20 @@ public class ValidatorSet
         if (this.hasEnrollment(enroll.utxo_key))
             return "This validator is already enrolled";
 
+        // check if an enrollment of the same public key is already present
+        if (this.hasPublicKey(pubkey))
+            return "An validator with the same public key is already enrolled";
+
         try
         {
             () @trusted {
                 const ZeroDistance = 0;  // initial distance
                 this.db.execute("INSERT INTO validator_set " ~
-                    "(key, cycle_length, enrolled_height, " ~
-                    "distance, preimage) VALUES (?, ?, ?, ?, ?)",
-                    enroll.utxo_key.toString(), enroll.cycle_length,
-                    block_height.value, ZeroDistance,
+                    "(key, public_key, cycle_length, enrolled_height, " ~
+                    "distance, preimage) VALUES (?, ?, ?, ?, ?, ?)",
+                    enroll.utxo_key.toString(),
+                    pubkey.toString(),
+                    enroll.cycle_length, block_height.value, ZeroDistance,
                     enroll.random_seed.toString());
             }();
         }
@@ -233,6 +239,34 @@ public class ValidatorSet
         {
             log.error("Exception occured on hasEnrollment: {}, " ~
                 "Key for enrollment: {}", ex.msg, enroll_hash);
+            return false;
+        }
+    }
+
+    /***************************************************************************
+
+        Check with public key if a enrollment data exists in the validator set
+
+        Params:
+            pubkey = the key by which the validator set searches enrollment
+
+        Returns:
+            true if the validator set has an enrollment for the public key
+
+    ***************************************************************************/
+
+    public bool hasPublicKey (in PublicKey pubkey) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
+                "validator_set WHERE public_key = ?)", pubkey.toString());
+            return results.front().peek!bool(0);
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on hasEnrollment: {}, " ~
+                "PublicKey for enrollment: {}", ex.msg, pubkey);
             return false;
         }
     }
@@ -572,21 +606,21 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     auto enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.peekUTXO, enroll) is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
     assert(set.count() == 1);
     assert(set.hasEnrollment(utxos[0]));
-    assert(set.add(Height(1), &storage.peekUTXO, enroll) !is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) !is null);
 
     seed_sources[utxos[1]] = Scalar.random();
     auto enroll2 = createEnrollment(utxos[1], WK.Keys[1], seed_sources[utxos[1]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.peekUTXO, enroll2) is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
     assert(set.count() == 2);
 
     seed_sources[utxos[2]] = Scalar.random();
     auto enroll3 = createEnrollment(utxos[2], WK.Keys[2], seed_sources[utxos[2]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(9), &storage.peekUTXO, enroll3) is null);
+    assert(set.add(Height(9), &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
     assert(set.count() == 3);
 
     // check if enrolled heights are not set
@@ -614,8 +648,8 @@ unittest
 
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
-    foreach (ordered_enroll; ordered_enrollments)
-        assert(set.add(Height(1), storage.getUTXOFinder(), ordered_enroll) is null);
+    foreach (i, ordered_enroll; ordered_enrollments)
+        assert(set.add(Height(1), storage.getUTXOFinder(), ordered_enroll, WK.Keys[i].address) is null);
     set.getEnrolledUTXOs(keys);
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
@@ -643,7 +677,7 @@ unittest
     seed_sources[utxos[3]] = Scalar.random();
     enroll = createEnrollment(utxos[3], WK.Keys[3], seed_sources[utxos[3]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(9), &storage.peekUTXO, enroll) is null);
+    assert(set.add(Height(9), &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
     set.clearExpiredValidators(Height(1016));
     keys.length = 0;
     assert(set.getEnrolledUTXOs(keys));
@@ -657,7 +691,7 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(0), &storage.peekUTXO, enroll) is null);
+    assert(set.add(Height(0), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // not cleared yet at height 1007
     set.clearExpiredValidators(Height(1007));
@@ -677,7 +711,7 @@ unittest
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.peekUTXO, enroll) is null);
+    assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // not cleared yet at height 1008
     set.clearExpiredValidators(Height(1008));
