@@ -45,6 +45,7 @@ module agora.api.Validator;
 import agora.common.crypto.Key;
 import agora.common.Hash;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.ValidatorBlockSig;
 static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
@@ -97,4 +98,21 @@ public interface API : agora.api.FullNode.API
     ***************************************************************************/
 
     public void receiveEnvelope (SCPEnvelope envelope);
+
+   /***************************************************************************
+
+        Receives a block signature and if it validates adds it to the block
+        multi sig after it has been externalized.
+        The node does not respond with any status code and clients which call
+        this API can & should call it asynchronously.
+
+        Params:
+            block_sig = Signature to be added
+
+        API:
+            PUT /receive_block_signature
+
+    ***************************************************************************/
+
+    public void receiveBlockSignature (ValidatorBlockSig block_sig);
 }

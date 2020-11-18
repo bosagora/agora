@@ -103,6 +103,7 @@ public struct BlockHeader
         foreach (enrollment; this.enrollments)
             serializePart(enrollment, dg);
     }
+
 }
 
 /// hashing test
@@ -372,6 +373,27 @@ public struct Block
             .enumerate.assumeSorted.find!(res => res[1] == hash);
 
         return index.empty ? this.txs.length : index.front[0];
+    }
+
+    /***************************************************************************
+
+        Find the sequence of transactions for the hash.
+
+        Params:
+            hash = `Hash` of `Transaction`
+
+        Returns:
+            Return sequence if found hash, otherwise Retrun the number of
+            transactions.
+
+    ***************************************************************************/
+
+    public Block updateMultiSig (const Scalar signature,
+        SignedBitfield signed_validators) @safe
+    {
+        this.header.signature = signature;
+        this.header.signed_validators = signed_validators;
+        return this;
     }
 }
 

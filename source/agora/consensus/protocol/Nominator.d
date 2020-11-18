@@ -30,6 +30,7 @@ import agora.consensus.protocol.Data;
 import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.SCPEnvelopeStore;
 import agora.network.Clock;
@@ -38,6 +39,7 @@ import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.SCPPrettyPrinter;
+import agora.utils.PrettyPrinter;
 
 import scpd.Cpp;
 import scpd.scp.SCP;
@@ -114,13 +116,13 @@ public extern (C++) class Nominator : SCPDriver
     /// SCPEnvelopeStore instance
     protected SCPEnvelopeStore scp_envelope_store;
 
-    // slot index => Scalar (challenge) => key => signature
+    // Height => Scalar (challenge) => POINT (public key) => SCALAR (signature)
     // the Scalar (challenge) is there because:
     // 1. we need to take into account if an ill-behaved node lies about a
     //    confirmation ballot (we collect sigs before SCP validation)
     // 2. we want to be able to slash nodes. 2 sigs with the same R on a
     //    different challenge will reveal their private key.
-    private Scalar[Point][Scalar][ulong] slot_sigs;
+    private Scalar[Point][Scalar][Height] slot_sigs;
 
     /// Enrollment manager
     private EnrollmentManager enroll_man;
@@ -431,10 +433,10 @@ extern(D):
 
     private bool verifyEnvelopeSignature (scope ref const(SCPEnvelope) envelope)
     {
-        const Scalar challenge = Scalar(SCPStatementHash(&envelope.statement).hashFull());
+        const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         assert(challenge.isValid());
 
-        const sig = Scalar(envelope.signature[]);
+        const Scalar sig = envelope.signature[];
         if (!sig.isValid())
         {
             log.trace("Invalid envelope signature: {}", sig);
@@ -464,8 +466,8 @@ extern(D):
         const Point R = RC + s.toPoint() + challenge.toPoint();
         if (sig.toPoint() != R + (K * challenge))
         {
-            log.error("Validated envelope has an invalid block header " ~
-                "signature: {}", sig.toString(PrintMode.Clear));
+            log.error("[{}:{}] Validated envelope has an invalid block header " ~
+                "signature: {}", __FILE__, __LINE__, sig.toString(PrintMode.Clear));
             return false;
         }
         return true;
@@ -498,15 +500,21 @@ extern(D):
             return;  // slot was already externalized, ignore outdated message
         }
 
-        const challenge = SCPStatementHash(&envelope.statement).hashFull();
-        PublicKey key = PublicKey(envelope.statement.nodeID);
-        Point K = Point(key[]);
-
-        if (!verify(K, envelope.signature, challenge))
+        const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
+        PublicKey public_key = PublicKey(envelope.statement.nodeID);
+        const Point K = Point(public_key[]);
+        if (!K.isValid())
         {
-            log.trace("Envelope signature is invalid for {}: {}", key, scpPrettify(&envelope));
+            log.trace("Invalid point from public_key {}", public_key);
             return;
         }
+        // TODO: Verify envelope sig
+        // if (!verify(K, Scalar(envelope.signature[]), &challenge))
+        // {
+        //     log.trace("Envelope signature is invalid for {}: {}", public_key,
+        //         scpPrettify(&envelope));
+        //     return;
+        // }
 
         // we check confirmed statements before validating with
         // 'scp.receiveEnvelope()'
@@ -520,15 +528,83 @@ extern(D):
         // 2. catching nodes which try to sign two incompatible ballots
         //    -> if they use the same R which they must as they have committed
         //       to it, then they will reveal their private key
-
-        PublicKey key = PublicKey(envelope.statement.nodeID);
-        Point K = Point(key[]);
-        if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM
-            && !this.collectBallotSignature(K, envelope))
-            return;
+        if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
+        {
+            ConsensusData con_data;
+            try
+            {
+                con_data = deserializeFull!ConsensusData(
+                    envelope.statement.pledges.confirm_.ballot.value[]);
+            }
+            catch (Exception ex)
+            {
+                log.error("Validated envelope has an invalid ballot value: {}. {}",
+                    envelope.statement.pledges.confirm_.ballot.value, ex);
+                return;
+            }
+            auto blocks = this.ledger.getBlocksFrom(
+                Height(envelope.statement.slotIndex - 1));
+            if (blocks.empty)
+            {
+                log.error("Validated envelope slot index is too new: {}", envelope);
+                return;
+            }
+            const Block prev_block = blocks.front;
+            const Block proposed_block = makeNewBlock(prev_block, con_data.tx_set,
+                con_data.enrolls);
+            const Scalar signature = Scalar(envelope.statement.pledges.confirm_.value_sig[]);
+            const Height height = Height(envelope.statement.slotIndex);
+            if (!this.AddBlockSignature(public_key, proposed_block, signature, height))
+                return;
+        }
 
         if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
             log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope));
+    }
+
+    /***************************************************************************
+
+        Called when a new Block Signature is received from the network.
+
+        Params:
+            block_sig = the SCP envelope
+
+        Returns:
+            true if the SCP protocol accepted this envelope
+
+    ***************************************************************************/
+
+    public void receiveBlockSignature (scope ref const(ValidatorBlockSig) block_sig) @trusted
+    {
+        const cur_height = this.ledger.getBlockHeight();
+        log.trace("Store signature for slot #{} (ledger is at height #{}) for node {}",
+                block_sig.height, cur_height, block_sig.public_key);
+        const Point K = Point(block_sig.public_key[]);
+        this.slot_sigs[block_sig.height][block_sig.challenge][K] = block_sig.signature;
+
+        auto blocks = this.ledger.getBlocksFrom(Height(block_sig.height));
+        if (!blocks.empty)
+        {
+
+            Block block = cast(Block) blocks.front;
+            if (this.ledger.getBlockHeight() >= block_sig.height)
+            {
+
+                log.trace("Add signature {} for block #{} publicKey {}",
+                block_sig.signature, block_sig.height, block_sig.public_key);
+                if (!updateMultiSignature(block))
+                {
+                    log.trace("Failed to add signature {} for block #{} publicKey {}",
+                        block_sig.signature, block_sig.height, block_sig.public_key);
+                    return;
+                }
+                if (!this.ledger.updateBlockMultiSig(block))
+                {
+                    log.error("Failed to update block with signature {} for block #{} publicKey {}",
+                        block_sig.signature, block_sig.height, block_sig.public_key);
+                }
+            }
+        }
     }
 
     /***************************************************************************
@@ -649,14 +725,15 @@ extern(D):
         const proposed_block = makeNewBlock(prev_block, con_data.tx_set,
             con_data.enrolls);
 
-        const K = PublicKey(this.schnorr_pair.V[]);
+        Height height = proposed_block.header.height;
+        const PublicKey public_key = PublicKey(this.schnorr_pair.V[]);
 
         // calculate r2 = rc + x1 for little r
         // rc = r used in signing the commitment
         // x1 = preimage in the previous block (can't use x2 because its not
         //      recorded in the block yet)
         auto rc = this.enroll_man.getCommitmentNonceScalar();
-        auto preimage = this.enroll_man.getValidatorPreimageAt(K,
+        auto preimage = this.enroll_man.getValidatorPreimageAt(public_key,
             Height(envelope.statement.slotIndex - 1));
         auto r = rc + Scalar(preimage.hash);
 
@@ -665,14 +742,14 @@ extern(D):
         const Scalar sig = r + (this.schnorr_pair.v * challenge);
         envelope.statement.pledges.confirm_.value_sig =
             opaque_array!32(BitBlob!256(sig[]));
-
-        // add our own signature for collecting
-        this.slot_sigs[envelope.statement.slotIndex][challenge][this.schnorr_pair.V] = sig;
+        auto block_sig = ValidatorBlockSig(height, challenge, public_key, sig);
+        this.slot_sigs[block_sig.height][block_sig.challenge][this.schnorr_pair.V] = block_sig.signature;
+        this.network.gossipBlockSignature(block_sig);
     }
 
     /***************************************************************************
 
-        Collect the hash block signature for a confirmed ballot.
+        Add the block signature for a confirmed ballot.
         The passed envelope's signature must already be verified,
         and the envelope statement must be a confirmed ballot.
 
@@ -686,68 +763,42 @@ extern(D):
 
     ***************************************************************************/
 
-    private bool collectBallotSignature (const ref Point K,
-        const ref SCPEnvelope envelope) nothrow
+    private bool AddBlockSignature (const ref PublicKey public_key, const Block block,
+        const Scalar signature, const Height height) nothrow
     {
-        assert(envelope.statement.pledges.type_ ==
-            SCPStatementType.SCP_ST_CONFIRM);
-
-        auto blocks = this.ledger.getBlocksFrom(
-            Height(envelope.statement.slotIndex - 1));
-        if (blocks.empty)
+        const Point K = Point(public_key[]);
+        if (!K.isValid())
         {
-            log.error("Validated envelope slot index is too new: {}",
-                envelope);
+            log.trace("Invalid point from public_key {}", public_key);
             return false;
         }
-
-        const prev_block = blocks.front;
-        ConsensusData con_data;
-
-        try
-        {
-            con_data = deserializeFull!ConsensusData(
-                envelope.statement.pledges.confirm_.ballot.value[]);
-        }
-        catch (Exception ex)
-        {
-            log.error("Validated envelope has an invalid ballot value: {}. {}",
-                envelope.statement.pledges.confirm_.ballot.value, ex);
-            return false;
-        }
-
-        const proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-            con_data.enrolls);
-        const Scalar block_challenge = hashFull(proposed_block);
-
-        auto sig = Scalar(envelope.statement.pledges.confirm_.value_sig[]);
-
-        const PK = PublicKey(K[]);
-        const Point RC = this.enroll_man.getCommitmentNonce(PK);
+        const Scalar block_challenge = hashFull(block);
+        const Point RC = this.enroll_man.getCommitmentNonce(public_key);
         if (RC == Point.init)
         {
-            log.error("Could not find committed R for {}", PK);
+            log.error("Could not find committed R for {}", public_key);
             return false;
         }
 
         // we should always calculate with the commitment, it's easiest
         // as we don't have to carry around old state
-        auto preimage = this.enroll_man.getValidatorPreimageAt(PK,
-            Height(envelope.statement.slotIndex - 1));
+        auto preimage = this.enroll_man.getValidatorPreimageAt(public_key,
+            Height(height - 1));
         if (preimage == PreImageInfo.init)
         {
             log.error("Validator has not revealed their preimage for this block height: {}",
-                envelope.statement.slotIndex);
+                height);
             return false;
         }
 
         const Point R = RC + Scalar(preimage.hash).toPoint();
-        if (sig.toPoint() != R + (K * block_challenge))
+        if (signature.toPoint() != R + (K * block_challenge))
         {
             try
             {
-                log.error("Validated envelope has an invalid block header " ~
-                    "signature: {}", sig.toString(PrintMode.Clear));
+                log.error("[{}:{}] Validated envelope has an invalid block header " ~
+                    "signature: {} at height {}", __FILE__, __LINE__,
+                    signature.toString(PrintMode.Clear), height);
             }
             catch (Exception e) {
                 log.error("Error whilst logging: {}", e);
@@ -756,7 +807,7 @@ extern(D):
         }
 
         // collect the signature
-        this.slot_sigs[envelope.statement.slotIndex][block_challenge][K] = sig;
+        this.slot_sigs[height][block_challenge][K] = signature;
         return true;
     }
 
@@ -832,6 +883,7 @@ extern(D):
     public override void valueExternalized (uint64_t slot_idx,
         ref const(Value) value) nothrow
     {
+        assert(slot_idx > 0, "GenesisBlock should not be externalized again!");
         if (slot_idx <= this.ledger.getBlockHeight())
             return;  // slot was already externalized
 
@@ -848,7 +900,7 @@ extern(D):
         if (data.tx_set.length == 0)
             assert(0, format!"Transaction set empty for slot %u"(slot_idx));
 
-        log.info("Externalized consensus data set at {}: {}", slot_idx, data);
+        log.info("Externalized consensus data set at {}: {}", slot_idx, prettify(data));
         try
         {
             auto blocks = this.ledger.getBlocksFrom(Height(slot_idx - 1));
@@ -857,41 +909,11 @@ extern(D):
 
             auto proposed_block = makeNewBlock(prev_block, data.tx_set,
                 data.enrolls);
-            const Scalar challenge = hashFull(proposed_block);
 
-            auto challenge_sigs = slot_idx in this.slot_sigs;
-            if (challenge_sigs is null)
+            if (!updateMultiSignature(proposed_block))
             {
-                import std.stdio;
-                writeln("Couldnt' find any sigs for externalizing slot");
                 return;
             }
-
-            assert(challenge_sigs !is null);  // there must be at least N/M sigs
-            auto block_sigs = challenge in *challenge_sigs;
-            // there must exist signatures if externalizing
-            assert(block_sigs !is null);
-
-            Scalar multi_sig;
-            auto validator_mask = BitField!uint(block_sigs.length);
-            foreach (K, sig; *block_sigs)
-            {
-                ulong idx = this.enroll_man.getIndexOfValidator(
-                    Height(slot_idx), K);
-                if (idx == ulong.max)
-                    assert(0);  // should not happen, accepted bad signature
-
-                multi_sig = (multi_sig == Scalar.init) ? sig : (multi_sig + sig);
-                validator_mask[idx] = true;
-            }
-
-            // TODO: need to keep updating the block's sig + bitfield
-            // as new confirm messages arrive after valueExternalized()
-            // because we externalize when we reach threshold - but we want
-            // to collect as many signatures as possible
-            proposed_block.header.signature = multi_sig;
-            proposed_block.header.signed_validators = validator_mask;
-
             if (!this.ledger.acceptBlock(proposed_block))
                 assert(0);
         }
@@ -900,6 +922,49 @@ extern(D):
             log.fatal("Externalization of SCP data failed: {}", exc);
             abort();
         }
+    }
+
+    ///
+    private bool updateMultiSignature(ref Block block)
+    {
+        const Scalar challenge = hashFull(block);
+
+        auto challenge_sigs = block.header.height in this.slot_sigs;
+        if (challenge_sigs is null)
+        {
+            log.trace("No challenge signatures for externalizing slot height {}",
+                block.header.height);
+            return false;
+        }
+        auto block_sigs = challenge in *challenge_sigs;
+        // there must exist signatures if externalizing
+        if (block_sigs is null)
+        {
+            log.trace("No block signatures for externalizing slot height {}",
+                block.header.height);
+            return false;
+        }
+
+        Scalar multi_sig;
+        auto validator_mask = BitField!uint(this.enroll_man.validatorCount());
+        auto enrolled_height = this.params.enrollmentHeightForBlock(block.header.height);
+        foreach (K, sig; *block_sigs)
+        {
+            ulong idx = this.enroll_man.getIndexOfValidator(enrolled_height, K);
+            if (idx == ulong.max)
+            {
+                log.error("Unable to determine index of validator {} at height {}",
+                    PublicKey(K[]), block.header.height);
+                continue;
+            }
+            multi_sig = (multi_sig == Scalar.init) ? sig : (multi_sig + sig);
+            validator_mask[idx] = true;
+        }
+        block.header.signature = multi_sig;
+        block.header.signed_validators = validator_mask;
+        log.trace("Updated block signatures for block #{}, mask: {}",
+                block.header.height, validator_mask);
+        return true;
     }
 
     /***************************************************************************

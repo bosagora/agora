@@ -368,7 +368,7 @@ public struct Point
         Point result = void;
         if (crypto_scalarmult_ed25519_noclamp(
                 result.data[].ptr, rhs.data[].ptr, this.data[].ptr))
-            assert(0);
+            assert(0, "crypto_scalarmult_ed25519_noclamp returned non zero");
         return result;
     }
 

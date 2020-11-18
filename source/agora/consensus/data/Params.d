@@ -27,6 +27,8 @@ import core.stdc.time;
 /// Ditto
 public immutable class ConsensusParams
 {
+    import agora.common.Types: Height;
+
     /// The cycle length for a validator
     public uint ValidatorCycle;
 
@@ -103,5 +105,10 @@ public immutable class ConsensusParams
         import agora.consensus.data.genesis.Test : GenesisBlock;
         import agora.utils.WellKnownKeys;
         this(GenesisBlock, CommonsBudget.address, validator_cycle, max_quorum_nodes, quorum_threshold);
+    }
+
+    public Height enrollmentHeightForBlock(const Height height) @safe nothrow
+    {
+        return Height(((height - (height == 0 ? 0 : 1)) / this.ValidatorCycle) * this.ValidatorCycle);
     }
 }

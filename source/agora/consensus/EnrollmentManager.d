@@ -118,21 +118,18 @@ public class EnrollmentManager
     /// Validator preimages stats
     private ValidatorPreimagesStats validator_preimages_stats;
 
-    /// TODO: this should actually be based on block ranges
-    /// For example the height ranges [0 .. 9], [10 .. 19] might have a different
-    /// active validator set for those ranges. But they cannot be predicted in
-    /// advance, so the data structure will need to be flexible (maybe a tree?)
-    /// In order to support collecting signatures *after* a block was externalized,
-    /// we must know the key index for the block header bitmask for the active
-    /// validator set *for that block height*. Once a block is externalized,
-    /// the validator set might change - hence why the bitmask index will be
-    /// wrong for late signatures - unless we keep a range map as suggested above.
+    /// In order to support collecting signatures *after* a block is
+    /// externalized we must know the key index for the block header bitmask
+    /// for the active validator set *for that block height*.
+    /// Once a block is externalized the validator set might change
+    /// - so we store using the height of the enrollment block for both
+    ///   key_to_index and index_to_key
 
     /// used for setting the signature bitmask during signature collection
-    private ulong[Point] key_to_index;
+    private ulong[Point][Height] key_to_index;
 
     /// used for validating the signature
-    private Point[ulong] index_to_key;
+    private Point[ulong][Height] index_to_key;
 
     /***************************************************************************
 
@@ -186,11 +183,11 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Update the validator key index maps
+        Update the validator key index maps of for the enrollment height
 
     ***************************************************************************/
 
-    public void updateValidatorIndexMaps () @safe
+    public void updateValidatorIndexMaps (Height height) @safe
     {
         PublicKey[] keys;
         if (!this.getEnrolledPublicKeys(keys))
@@ -206,17 +203,30 @@ public class EnrollmentManager
             keys_arr ~= k;
         keys_arr.sort();
 
-        () @trusted {
-            this.key_to_index.clear();
-            this.index_to_key.clear();
-        }();
-
         foreach (idx, key; keys_arr)
         {
+            log.trace("Set index {} for key_to_index[{}] for {}", idx, height, PublicKey(key[]));
             const K = Point(key[]);
-            this.key_to_index[K] = idx;
-            this.index_to_key[idx] = K;
+            this.key_to_index[height][K] = idx;
+            log.trace("Set key {} for index_to_key[{}] for {}", PublicKey(key[]), height, idx);
+            this.index_to_key[height][idx] = K;
         }
+    }
+
+    /***************************************************************************
+
+        Params:
+            height = the height at which to look up the mapping for
+            K = the Key for which to find the bitfield index to use
+
+        Returns:
+            the count of validators at this enrollment height
+
+    ***************************************************************************/
+
+    public ulong getCountOfValidators (Height height) nothrow @safe
+    {
+        return this.key_to_index[height].length;
     }
 
     /***************************************************************************
@@ -232,10 +242,8 @@ public class EnrollmentManager
 
     public ulong getIndexOfValidator (Height height, Point K) nothrow @safe
     {
-        if (auto index = K in this.key_to_index)
-            return *index;
-
-        return ulong.max;
+        scope (failure) return ulong.max;
+        return this.key_to_index[height][K];
     }
 
     /***************************************************************************
@@ -251,10 +259,8 @@ public class EnrollmentManager
 
     public Point getValidatorAtIndex (Height height, ulong index) nothrow @safe
     {
-        if (auto K = index in this.index_to_key)
-            return *K;
-
-        return Point.init;
+        scope (failure) return Point.init;
+        return this.index_to_key[height][index];
     }
 
     /***************************************************************************

@@ -63,6 +63,8 @@ version (unittest)
 /// Ditto
 public class Ledger
 {
+    import agora.common.crypto.ECC : Point;
+
     /// data storage for all the blocks
     private IBlockStorage storage;
 
@@ -162,13 +164,26 @@ public class Ledger
                 {
                     const active_enrollments = enroll_man.getValidatorCount(
                         block.header.height);
-
                     if (auto fail_reason = block.isInvalidReason(
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
+                        &this.payload_checker.check,
                         active_enrollments,
-                        &this.payload_checker.check))
+                        this.params.enrollmentHeightForBlock(block.header.height),
+                        &this.enroll_man.getValidatorAtIndex,
+                        (const ref Point key) @safe nothrow
+                        {
+                            // todo: fix up this Point / PublicKey mess
+                            const PK = PublicKey(key[]);
+                            return this.enroll_man.getCommitmentNonce(PK);
+                        },
+                        (const ref Point key, in Height height) @safe nothrow
+                        {
+                            // todo: fix up this Point / PublicKey mess
+                            const PK = PublicKey(key[]);
+                            return this.enroll_man.getValidatorPreimageAt(PK, height);
+                        }))
                         throw new Exception(
                             "A block loaded from disk is invalid: " ~
                             fail_reason);
@@ -226,7 +241,7 @@ public class Ledger
     {
         if (auto fail_reason = this.validateBlock(block))
         {
-            log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
+            log.trace("Rejected block: {}.\nBlock: {}", fail_reason, block.prettify());
             return false;
         }
 
@@ -236,6 +251,32 @@ public class Ledger
         this.block_stats.increaseMetricBy!"agora_block_txs_total"(
             block.txs.length);
         this.block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
+        return true;
+    }
+
+    /***************************************************************************
+
+        Update the Schnorr multi-signature for an externalized block
+        in the Ledger.
+
+        Params:
+            signature = the ne signature
+            height = height of block to be updated
+
+    ***************************************************************************/
+
+    public bool updateBlockMultiSig (const ref Block block) @safe
+    {
+        if (!this.storage.updateBlockMultiSig(block))
+        {
+            log.error("Failed to update block: {}", prettify(block));
+            return false;
+        }
+        if (block.header.height == this.last_block.header.height
+            && !this.storage.readLastBlock(this.last_block))
+        {
+            log.error("Failed to update last_block");
+        }
         return true;
     }
 
@@ -316,8 +357,13 @@ public class Ledger
             assert(0, format!"Failed to read last block: %s"(prettify(this.last_block)));
 
         if (validators_changed)
-            this.enroll_man.updateValidatorIndexMaps();
-
+        {
+            log.trace("validators_changed at height {}. Update validator index maps.",
+                block.header.height);
+            this.enroll_man.updateValidatorIndexMaps(
+                this.enroll_man.getEnrolledHeight(
+                    this.enroll_man.getEnrollmentKey()));
+        }
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
     }
@@ -488,18 +534,13 @@ public class Ledger
 
     public string validateBlock (const ref Block block) nothrow @safe
     {
-        import agora.common.crypto.ECC : Point;
-        size_t prev_active_validators = enroll_man.getValidatorCount(
-                Height(block.header.height - 1));
-        size_t active_enrollments = enroll_man.getValidatorCount(
-                block.header.height);
-
+        Height enrollment =  this.params.enrollmentHeightForBlock(block.header.height);
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
-            active_enrollments,
             &this.payload_checker.check,
-            prev_active_validators,
+            this.enroll_man.getCountOfValidators(enrollment),
+            enrollment,
             &this.enroll_man.getValidatorAtIndex,
             (const ref Point key) @safe nothrow
             {

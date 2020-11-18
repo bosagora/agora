@@ -209,8 +209,7 @@ public class FullNode : API
             config.validator.enabled
                 ? config.validator.key_pair.address.toString() : null,
         );
-
-        this.enroll_man.updateValidatorIndexMaps();
+        this.enroll_man.updateValidatorIndexMaps(Height(0));
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");

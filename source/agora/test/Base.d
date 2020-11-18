@@ -39,6 +39,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
@@ -1502,6 +1503,12 @@ public class TestFullNode : FullNode, TestAPI
 
     /// FullNode does not implement this
     public override void receiveEnvelope (SCPEnvelope envelope) @safe
+    {
+        assert(0);
+    }
+
+    /// FullNode does not implement this
+    public override void receiveBlockSignature (ValidatorBlockSig block_sig) @safe
     {
         assert(0);
     }

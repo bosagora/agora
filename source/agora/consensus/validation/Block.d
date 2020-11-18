@@ -17,6 +17,9 @@ import agora.common.Amount;
 import agora.common.Hash;
 import agora.common.Set;
 import agora.common.Types;
+import agora.common.crypto.ECC;
+import agora.common.crypto.Key;
+import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Enrollment;
@@ -26,14 +29,14 @@ import agora.consensus.state.UTXOSet;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.node.Fee;
+import agora.utils.Log;
 
 import std.algorithm;
 
+mixin AddLogger!();
+
 version (unittest)
 {
-    import agora.common.crypto.ECC;
-    import agora.common.crypto.Key;
-    import agora.common.crypto.Schnorr;
     import agora.consensus.data.genesis.Test;
     import agora.utils.Test;
 }
@@ -72,7 +75,6 @@ version (unittest)
         active_enrollments = the number of enrollments that do not expire
             at the next block height (prev_height + 1).
         checkPayload = delegate for checking data payload
-        prev_active_validators = active validators at prev_height
 
 
     Returns:
@@ -82,22 +84,23 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Block block, Height prev_height,
-    in Hash prev_hash, scope UTXOFinder findUTXO, size_t active_enrollments,
-    scope PayloadChecker checkPayload, size_t prev_active_validators = 0,
+    in Hash prev_hash, scope UTXOFinder findUTXO, scope PayloadChecker checkPayload,
+    size_t active_enrollments, Height enrollment_height,
     Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex = null,
     Point delegate (const ref Point) nothrow @safe getCommitmentNonce = null,
     PreImageInfo delegate (const ref Point key, in Height height) nothrow @safe
-        getValidatorPreimageAt = null) nothrow @safe
+        getValidatorPreimageAt = null,
+    string file = __FILE__, size_t line = __LINE__) nothrow @safe
 {
     import std.algorithm;
+    import std.string;
+    import std.conv;
 
-    if (block.header.height > prev_height + 1)
-        return "Block: Height is above expected height";
-    if (block.header.height < prev_height + 1)
-        return "Block: Height is under expected height";
+    if (block.header.height != prev_height + 1)
+        return "Block: Height is not one more than previous block";
 
     if (block.header.prev_block != prev_hash)
-        return "Block: Header.prev_block does not match previous block";
+        return "Block: Header.prev_block does not match previous block hash";
 
     if (block.txs.length == 0)
         return "Block: Must contain at least one transaction";
@@ -143,39 +146,60 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             return fail_reason;
     }
 
-    // TODO: fix all unittests so they always sign the block
-    if (getValidatorAtIndex is null)
-        return null;
-
-    if (prev_active_validators > block.header.signed_validators.length())
-        return "Block: signed_validators bitfield mask is too small for the " ~
-            "active validator set";
-
-    Point SumK;
-    Point SumR;
-    foreach (idx; 0 .. prev_active_validators)
+    if (active_enrollments > 0)
     {
-        if (!block.header.signed_validators[idx])
-            continue;  // this validator hasn't signed
+        Point SumK;
+        Point SumR;
 
-        const K = getValidatorAtIndex(block.header.height, idx);
-        if (K == Point.init)
-            return "Block: Cannot find a Validator for the given index";
+        foreach (idx; 0 .. active_enrollments)
+        {
+            const K = getValidatorAtIndex(enrollment_height, idx);
+            if (K == Point.init)
+                return "Block: Couldn't find a Validator for the given index";
 
-        const CR = getCommitmentNonce(K);  // commited R
-        if (CR == Point.init)
-            return "Block: Couldn't find commitment for this validator";
+            if (!block.header.signed_validators[idx])
+            {
+                log.trace("[{}:{}] idx #{}: Validator {} has not yet signed block height {}, enroll height {}",
+                    file, line, idx, PublicKey(K[]), block.header.height, enrollment_height);
+                continue;  // this validator hasn't signed yet
+            }
 
-        const preimage = getValidatorPreimageAt(K, prev_height);
-        const R = CR + Scalar(preimage.hash).toPoint();
+            const CR = getCommitmentNonce(K);  // commited R
+            if (CR == Point.init)
+                return "Block: Couldn't find commitment for this validator";
 
-        SumK = SumK == Point.init ? K : (SumK + K);
-        SumR = SumR == Point.init ? R : (SumR + R);
+            const preimage = getValidatorPreimageAt(K, prev_height);
+            if (preimage.hash == Hash.init)
+            {
+                log.info("No preimage for validator {} for height {}",
+                    PublicKey(K[]), prev_height);
+                continue;  // this validator can not be added now
+            }
+            Scalar preimage_scalar = Scalar(preimage.hash);
+            if (!preimage_scalar.isValid())
+            {
+                log.info("Preimage could not be made to valid Scalar for validator {} for height {}",
+                    PublicKey(K[]), prev_height);
+                continue;  // this validator can not be added now
+            }
+            const R = CR + preimage_scalar.toPoint();
+            SumK = SumK == Point.init ? K : (SumK + K);
+            SumR = SumR == Point.init ? R : (SumR + R);
+        }
+        if (SumK == Point.init) // TODO: We need the old preimages
+        {
+            log.error("[{}:{}] Block: Not able to check the multi sig schnorr signature for any of the {} active validators at height {}",
+                file, line, active_enrollments, block.header.height);
+            return "Block: Not enough info to verify schnorr signature.";
+        }
+        Scalar challenge = hashFull(block);
+        if (block.header.signature.toPoint() != SumR + (SumK * challenge))
+        {
+            log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators",
+                file, line, active_enrollments);
+            return "Block: Invalid schnorr signature";
+        }
     }
-
-    Scalar challenge = hashFull(block);
-    if (block.header.signature.toPoint() != SumR + (SumK * challenge))
-        return "Block: Invalid schnorr signature";
 
     return null;
 }
@@ -508,10 +532,11 @@ public bool isGenesisBlockValid (const ref Block genesis_block)
 version (unittest)
 public bool isValid (const ref Block block, Height prev_height,
     Hash prev_hash, scope UTXOFinder findUTXO,
-    size_t active_enrollments, scope PayloadChecker checkPayload) nothrow @safe
+    size_t active_enrollments, scope PayloadChecker checkPayload,
+    Height enrollment_height = Height(0)) nothrow @safe
 {
     return isInvalidReason(block, prev_height, prev_hash, findUTXO,
-        active_enrollments, checkPayload) is null;
+        checkPayload, active_enrollments, enrollment_height) is null;
 }
 
 ///

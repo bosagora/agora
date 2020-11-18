@@ -93,6 +93,21 @@ public interface IBlockStorage
 
     public bool saveBlock (const ref Block block);
 
+    /***************************************************************************
+
+        Update block in the storage with updated signature and bitfield for
+        validator signers.
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool updateBlockMultiSig (const ref Block block);
+
 
     /***************************************************************************
 
@@ -490,22 +505,80 @@ public class BlockStorage : IBlockStorage
         }
     }
 
+    /***************************************************************************
+
+        Update block in the file.
+        This is intended for updating the multi-sig header signature field
+        The block size should be identical and this will not update unless it is
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public override bool updateBlockMultiSig (const ref Block block) @safe nothrow
+    {
+        try
+        {
+            const size_t block_position = findBlockPosition(block.header.height);
+            if (block_position == 0)
+                return false;
+            const Block original_block;
+            if (block.merkle_tree != original_block.merkle_tree)
+                return false;
+
+            ubyte[Hash.sizeof] original_hash_bytes = hashFull(original_block.header)[];
+            ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
+
+            // The block hash does not include the header signature and bitfield
+            // So they should be the same
+            if (original_hash_bytes != hash_bytes)
+                return false;
+
+            const size_t data_position = block_position + size_t.sizeof;
+
+            this.is_saving = true;
+            scope(exit) this.is_saving = false;
+            size_t block_size = 0;
+            scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+            {
+                // write to memory
+                if (!this.write(data_position + block_size, data))
+                    assert(0);
+
+                block_size += data.length;
+            };
+            serializePart(block, dg);
+
+            if (block_size)
+            // write block data size
+            if (!this.writeSizeT(block_position, block_size))
+                return false;
+
+            this.length += size_t.sizeof + block_size;
+
+            if (!this.writeChecksum())
+                assert(0);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.error("BlockStorage.updateBlock: {}", ex);
+            return false;
+        }
+    }
+
     /// See `BlockStorage.tryReadBlock(ref Block, size_t)`
     public override bool tryReadBlock (ref Block block, Height height) @safe nothrow
     {
-        if ((this.height_idx.length == 0) ||
-            (this.height_idx.back.height < height))
-            return false;
-
-        auto finds
-            = this.height_idx[].find!( (a, b) => a.height == b)(height);
-
-        if (finds.empty)
-            return false;
-
         try
         {
-            this.readBlockAtPosition(block, finds.front.position);
+            size_t pos = findBlockPosition(height);
+            this.readBlockAtPosition(block, pos);
             return true;
         }
         catch (Exception ex)
@@ -550,6 +623,22 @@ public class BlockStorage : IBlockStorage
             return res;
         };
         block = deserializeFull!Block(dg);
+    }
+
+    /// Return the position of the block by the given height or return zero
+    private size_t findBlockPosition (Height height) @safe nothrow
+    {
+        if ((this.height_idx.length == 0) ||
+            (this.height_idx.back.height < height))
+            return 0;
+
+        auto finds
+            = this.height_idx[].find!( (a, b) => a.height == b)(height);
+
+        if (finds.empty)
+            return 0;
+        return finds.front.position;
+
     }
 
     /***************************************************************************
@@ -1021,6 +1110,32 @@ public class MemBlockStorage : IBlockStorage
                 block_position
             )
         );
+        return true;
+    }
+
+    /***************************************************************************
+
+        Update block in the array.
+        This is intended for updating the multi-sig header signature field
+        The block size should be identical and this will not update unless it is
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public override bool updateBlockMultiSig (const ref Block block) @safe nothrow
+    {
+        scope (failure) assert(0);
+
+        if (this.blocks.length < block.header.height)
+            return false;
+
+        this.blocks[block.header.height.value] = serializeFull!Block(block);
+
         return true;
     }
 

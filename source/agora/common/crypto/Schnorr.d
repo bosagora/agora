@@ -267,23 +267,41 @@ public Signature sign (T) (
 public bool verify (T) (const ref Point X, const ref Signature sig, auto ref T data)
     nothrow @nogc @trusted
 {
+    import std.stdio;
+    import std.conv;
+
     Sig s = Sig.fromBlob(sig);
     // First check if Scalar from signature is valid
     if (!s.s.isValid())
+    {
+        // debug { import std.stdio : writeln; try { writeln("s is invalid"); } catch (Exception) {} }
         return false;
+    }
     /// Compute `s.G`
     auto S = s.s.toPoint();
     // Now check that provided Point X is valid
     if (!X.isValid())
+    {
+        // debug { import std.stdio : writeln; try { writeln("X is invalid"); } catch (Exception) {} }
         return false;
+    }
     // Also check the Point R from the Signature
     if (!s.R.isValid())
+    {
+        // debug { import std.stdio : writeln; try { writeln("R is invalid"); } catch (Exception) {} }
         return false;
+    }
     // Compute the challenge and reduce the hash to a scalar
     Scalar c = hashFull(Message!T(X, s.R, data));
     // Compute `R + c*X`
     Point RcX = s.R + (c * X);
-    return S == RcX;
+    if (S != RcX)
+    {
+        // debug { import std.stdio : writeln; try { writeln("S != R + c * X: \nS=\n"
+        //     ~ to!string(S) ~ " \nRcX=\n" ~ to!string(RcX)); } catch (Exception) {} }
+        return false;
+    }
+    return true;
 }
 
 // Valid signing test with valid scalar

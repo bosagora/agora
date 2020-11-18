@@ -72,7 +72,7 @@ unittest
             format!"Expected block height %s but outsider %s has height %s."
                 (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
 
-    // Now we enroll four new validators.
+    // Now we enroll two new validators.
     set_b.enumerate.each!((idx, _) => network.enroll(GenesisValidators + idx));
 
     // Block 20, After this the Genesis block enrolled validators will be expired.
