@@ -597,33 +597,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Restore validators' information from block
-
-        Params:
-            last_height = the latest block height
-            block = the block to update the validator set with
-            finder = the delegate to find UTXOs with
-            self_utxos = the UTXOs belonging to this node
-
-    ***************************************************************************/
-
-    public void restoreValidators (Height last_height, const ref Block block,
-        scope UTXOFinder finder, in UTXO[Hash] self_utxos)
-        @safe nothrow
-    {
-        assert(last_height >= block.header.height);
-        if (last_height - block.header.height < this.params.ValidatorCycle)
-        {
-            foreach (const ref enroll; block.header.enrollments)
-            {
-                this.addValidator(enroll, block.header.height, finder,
-                    self_utxos);
-            }
-        }
-    }
-
-    /***************************************************************************
-
         Get the public key of node that is used for a enrollment
 
         Returns:
