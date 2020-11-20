@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.test.HeightLock;
+module agora.test.LockHeight;
 
 version (unittest):
 

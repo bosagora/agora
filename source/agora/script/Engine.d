@@ -514,18 +514,18 @@ public class Engine
                     return "VERIFY_SEQ_SIG signature failed validation";
                 break;
 
-            case OP.VERIFY_HEIGHT_LOCK:
+            case OP.VERIFY_LOCK_HEIGHT:
                 if (stack.empty())
-                    return "VERIFY_HEIGHT_LOCK opcode requires a lock height on the stack";
+                    return "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack";
 
                 const height_bytes = stack.pop();
                 if (height_bytes.length != ulong.sizeof)
-                    return "VERIFY_HEIGHT_LOCK height lock must be an 8-byte number";
+                    return "VERIFY_LOCK_HEIGHT height lock must be an 8-byte number";
 
-                const Height height_lock = Height(littleEndianToNative!ulong(
+                const Height lock_height = Height(littleEndianToNative!ulong(
                     height_bytes[0 .. ulong.sizeof]));
-                if (height_lock > tx.height_lock)
-                    return "VERIFY_HEIGHT_LOCK height lock of transaction is too low";
+                if (lock_height > tx.lock_height)
+                    return "VERIFY_LOCK_HEIGHT height lock of transaction is too low";
 
                 break;
 
@@ -1272,7 +1272,7 @@ unittest
         "VERIFY_SEQ_SIG signature failed validation");
 }
 
-// OP.VERIFY_HEIGHT_LOCK
+// OP.VERIFY_LOCK_HEIGHT
 unittest
 {
     const height_9 = nativeToLittleEndian(ulong(9));
@@ -1280,43 +1280,43 @@ unittest
     const height_11 = nativeToLittleEndian(ulong(11));
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx_10 = { height_lock : Height(10) };
-    const Transaction tx_11 = { height_lock : Height(11) };
+    const Transaction tx_10 = { lock_height : Height(10) };
+    const Transaction tx_11 = { lock_height : Height(11) };
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_9)
-            ~ [ubyte(OP.VERIFY_HEIGHT_LOCK), ubyte(OP.TRUE)]),
+            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_10, Input.init),
         null);
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_10)
-            ~ [ubyte(OP.VERIFY_HEIGHT_LOCK), ubyte(OP.TRUE)]),
+            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_10, Input.init),  // tx with matching unlock height
         null);
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_11)
-            ~ [ubyte(OP.VERIFY_HEIGHT_LOCK), ubyte(OP.TRUE)]),
+            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_10, Input.init),
-        "VERIFY_HEIGHT_LOCK height lock of transaction is too low");
+        "VERIFY_LOCK_HEIGHT height lock of transaction is too low");
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_11)
-            ~ [ubyte(OP.VERIFY_HEIGHT_LOCK), ubyte(OP.TRUE)]),
+            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_11, Input.init),  // tx with matching unlock height
         null);
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(nativeToLittleEndian(ubyte(9)))
-            ~ [ubyte(OP.VERIFY_HEIGHT_LOCK), ubyte(OP.TRUE)]),
+            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_10, Input.init),
-        "VERIFY_HEIGHT_LOCK height lock must be an 8-byte number");
+        "VERIFY_LOCK_HEIGHT height lock must be an 8-byte number");
     test!("==")(engine.execute(
         Lock(LockType.Script,
-            [ubyte(OP.VERIFY_HEIGHT_LOCK), ubyte(OP.TRUE)]),
+            [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
         Unlock.init, tx_10, Input.init),
-        "VERIFY_HEIGHT_LOCK opcode requires a lock height on the stack");
+        "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack");
 }
 
 // OP.VERIFY_UNLOCK_AGE

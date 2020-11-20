@@ -57,9 +57,9 @@ public struct Transaction
     /// The data to store
     public DataPayload payload;
 
-    /// This transaction may only be included in a block with `height >= height_lock`.
+    /// This transaction may only be included in a block with `height >= lock_height`.
     /// Note that another tx with a lower lock time could double-spend this tx.
-    public Height height_lock = Height(0);
+    public Height lock_height = Height(0);
 
     /***************************************************************************
 
@@ -84,7 +84,7 @@ public struct Transaction
 
         serializePart(payload, dg);
 
-        serializePart(this.height_lock, dg);
+        serializePart(this.lock_height, dg);
     }
 
     /// Support for sorting transactions

@@ -95,8 +95,8 @@ public enum OP : ubyte
 
     /// Verify the height lock of a spending Transaction. Expects an 8-byte
     /// unsigned integer as the height on the stack, and verifies that the
-    /// Transaction's `height_lock` is greater than or equal to this value.
-    VERIFY_HEIGHT_LOCK = 0x59,
+    /// Transaction's `lock_height` is greater than or equal to this value.
+    VERIFY_LOCK_HEIGHT = 0x59,
 
     /// Verify the time lock of the associated spending Input. Expects a
     /// 4-byte unsigned integer as the unlock age on the stack, and verifies
