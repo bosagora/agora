@@ -887,12 +887,12 @@ public Hash getSequenceChallenge (in Transaction tx, in ulong sequence,
 {
     assert(input_idx < tx.inputs.length, "Input index is out of range");
 
-    Transaction dup;
+    Transaction cloned;
     // it's ok, we'll dupe the array before modification
-    () @trusted { dup = *cast(Transaction*)&tx; }();
-    dup.inputs = dup.inputs.dup;
-    dup.inputs[input_idx] = Input.init;  // blank out matching input
-    return hashMulti(dup, sequence);
+    () @trusted { cloned = *cast(Transaction*)&tx; }();
+    cloned.inputs = cloned.inputs.dup;
+    cloned.inputs[input_idx] = Input.init;  // blank out matching input
+    return hashMulti(cloned, sequence);
 }
 
 version (unittest)
