@@ -54,7 +54,7 @@ public string isInvalidReason (
     if (tx.outputs.length == 0)
         return "Transaction: No output";
 
-    if (tx.height_lock > height)
+    if (tx.lock_height > height)
         return "Transaction: Not unlocked for this height";
 
     foreach (output; tx.outputs)
@@ -1005,12 +1005,12 @@ unittest
         [Output(Amount(50), kp.address)]);
 
     // effectively disabled lock
-    tx.height_lock = Height(0);
+    tx.lock_height = Height(0);
     tx.inputs[0].signature = kp.secret.sign(hashFull(tx)[]);
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker), null);
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(1024), checker), null);
 
-    tx.height_lock = Height(10);
+    tx.lock_height = Height(10);
     tx.inputs[0].signature = kp.secret.sign(hashFull(tx)[]);
     test!"=="(tx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker),
         "Transaction: Not unlocked for this height");
