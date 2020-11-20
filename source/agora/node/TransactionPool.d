@@ -617,10 +617,8 @@ unittest
 
     auto seed1 = "SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ";
     auto seed2 = "SCTTRCMT7DVZHQS375GWIKYQYHKA3X4IC4EOBNPRGV7DFR3X6OM5VIWL";
-    auto seed3 = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
     auto key_pair1 = KeyPair.fromSeed(Seed.fromString(seed1));
     auto key_pair2 = KeyPair.fromSeed(Seed.fromString(seed2));
-    auto key_pair3 = KeyPair.fromSeed(Seed.fromString(seed3));
 
     // create first transaction pool
     auto pool = new TransactionPool(":memory:");
@@ -630,20 +628,16 @@ unittest
     {
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), key_pair2.address)]
+        [Output(Amount(0), key_pair1.address)]
     };
-    auto signature = key_pair1.secret.sign(hashFull(tx1)[]);
-    tx1.inputs[0].signature = signature;
 
     // create second transaction
     Transaction tx2 =
     {
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), key_pair3.address)]
+        [Output(Amount(0), key_pair2.address)]
     };
-    signature = key_pair1.secret.sign(hashFull(tx2)[]);
-    tx2.inputs[0].signature = signature;
 
     // add txs to the pool
     assert(pool.add(tx1));
