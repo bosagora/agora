@@ -142,6 +142,23 @@ public interface API
 
     public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks);
 
+    /***************************************************************************
+
+        Get the cache of preimages starting from the provided block height.
+
+        API:
+            GET /preimages_from
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+
+        Returns:
+            the array of `preimageInfo`s starting from block_height
+
+    ***************************************************************************/
+
+    public const(PreImageInfo)[] getPreimagesFrom (ulong block_height);
+
 
     /***************************************************************************
 
@@ -226,8 +243,7 @@ public interface API
 
     public void receivePreimage (PreImageInfo preimage);
 
-    /***************************************************************************
-
+    /**********************************************
         Returns:
             The local clock time of this node (not network-adjusted)
 

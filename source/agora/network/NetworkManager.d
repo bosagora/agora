@@ -741,6 +741,10 @@ public class NetworkManager
                 if (this.peers.empty())  // no clients yet (discovery)
                     return;
 
+                this.getPreimagesFrom(
+                    Height(ledger.getBlockHeight() + 1),
+                    // if any blocks fail validation => short-circuit
+                    blocks => blocks.all!(block => ledger.acceptBlock(block)));
                 this.getBlocksFrom(
                     Height(ledger.getBlockHeight() + 1),
                     // if any blocks fail validation => short-circuit

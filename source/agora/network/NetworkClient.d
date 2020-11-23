@@ -311,6 +311,32 @@ class NetworkClient
 
     /***************************************************************************
 
+        Get the cache of preimages starting from the provided block height.
+
+        API:
+            GET /preimages_from
+
+        Params:
+            block_height = the starting block height to begin retrieval from
+
+        Returns:
+            the array of `preimageInfo`s starting from block_height
+
+            If the request failed, returns an empty array
+
+        Throws:
+            Exception if the request failed.
+
+    ***************************************************************************/
+
+    public const(PreImageInfo)[] getPreimagesFrom (ulong block_height)
+    {
+        return this.attemptRequest!(API.getPreimagesFrom, Throw.Yes)(this.api,
+            block_height);
+    }
+
+    /***************************************************************************
+
         Send a enrollment request asynchronously to the node.
         Any errors are reported to the debugging log.
 

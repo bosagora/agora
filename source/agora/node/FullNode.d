@@ -346,6 +346,15 @@ public class FullNode : API
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
 
+    /// GET: /preimages_from
+    public override const(PreImageInfo)[] getPreimagesFrom (ulong block_height)  @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "preimages_from", "http");
+        return this..(Height(block_height))
+            .take(min(max_blocks, MaxBatchBlocksSent)).array;
+    }
+
     /// Start the StatsServer
     public void startStatsServer ()
     {
