@@ -1860,7 +1860,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.node.genesis_start_time = genesis_start_time;
     }
 
-    immutable(Block)[] blocks = generateBlocks(GenesisBlock,
+    immutable(Block)[] blocks = generateExtraBlocks(GenesisBlock,
         test_conf.extra_blocks);
 
     auto net = new APIManager(blocks, test_conf, genesis_start_time);
@@ -1909,7 +1909,7 @@ public const(Block)[] getAllBlocks (TestAPI node)
 
 *******************************************************************************/
 
-private immutable(Block)[] generateBlocks (
+private immutable(Block)[] generateExtraBlocks (
     ref immutable Block gen_block, size_t count)
 {
     const(Block)[] blocks = [gen_block];
