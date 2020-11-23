@@ -88,7 +88,7 @@ unittest
 
     // verify that consensus can still be reached by the leftover validators
     network.generateBlocks(iota(GenesisValidators, nodes.length),
-        Height(GenesisValidatorCycle + 1), Height(GenesisValidatorCycle));
+        Height(GenesisValidatorCycle + 1));
 
     // force wake up
     nodes.takeExactly(GenesisValidators).each!(node =>

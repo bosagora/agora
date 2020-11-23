@@ -110,7 +110,7 @@ unittest
 
     // Block 21 with the new validators in the set B
     network.generateBlocks(iota(GenesisValidators, cast(size_t) nodes.length),
-        Height(GenesisValidatorCycle + 1), Height(GenesisValidatorCycle));
+        Height(GenesisValidatorCycle + 1));
 }
 
 /// Situation: A validator is stopped and wiped clean after the block height

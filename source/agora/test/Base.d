@@ -922,37 +922,28 @@ public class TestAPIManager
 
         Params:
             block_height = the desired block height
-            enrolled_height = the block height of the enrollments
-                for the participating validators
             client_idxs = client indices for the participating validators
 
     ***************************************************************************/
 
     public void generateBlocks (Height block_height,
-        Height enrolled_height = Height(0),
         string file = __FILE__, size_t line = __LINE__)
     {
-        generateBlocks(iota(GenesisValidators), block_height,
-            enrolled_height, file, line);
+        generateBlocks(iota(GenesisValidators), block_height, file, line);
     }
 
     /// Ditto
     public void generateBlocks (Idxs)(Idxs client_idxs, Height block_height,
-        Height enrolled_height = Height(0),
         string file = __FILE__, size_t line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
         // Get the last block from the first client
         auto lastBlock = this.clients[client_idxs.front].getAllBlocks()[$ -1];
-        assert(block_height > enrolled_height,
-            format!"[%s:%s] Desired height %s is not at least enroll height %s"
-                (file, line, block_height, enrolled_height));
 
         // Call addBlock for each block to be externalised for these clients
         iota(block_height - lastBlock.header.height)
-            .each!(_ => this.addBlock(client_idxs, enrolled_height,
-                file, line));
+            .each!(_ => this.addBlock(client_idxs, file, line));
     }
 
      /**************************************************************************
@@ -963,20 +954,17 @@ public class TestAPIManager
             externalized during the Network Unit tests
 
         Params:
-            enrolled_height = the height with enrollments of participating
-                validators
             client_idxs = client indices for the participating validators
 
     ***************************************************************************/
 
-    void addBlock (Height enrolled_height = Height(0),
-        string file = __FILE__, size_t line = __LINE__)
+    void addBlock (string file = __FILE__, size_t line = __LINE__)
     {
-        addBlock(iota(0, GenesisValidators), enrolled_height, file, line);
+        addBlock(iota(0, GenesisValidators), file, line);
     }
 
     /// Ditto
-    void addBlock (Idxs)(Idxs client_idxs, Height enrolled_height = Height(0),
+    void addBlock (Idxs)(Idxs client_idxs,
         string file = __FILE__, size_t line = __LINE__)
     {
         static assert (isInputRange!Idxs);
@@ -1007,11 +995,14 @@ public class TestAPIManager
             .each!(tx => first_client.putTransaction(tx));
 
         // Get preimage distance from enrollment to this next block
-        ushort distance = cast(ushort) (target_height - enrolled_height -1);
+        ushort distance = cast(ushort) (((target_height - 1) % GenesisValidatorCycle));
         assert(distance < GenesisValidatorCycle && distance >= 0,
-            format!"[%s:%s] Expected distance between 0 and %s not %s"
-                (file, line, GenesisValidatorCycle - 1, distance));
-
+            format!"[%s:%s] Expected distance between 0 and %s not %s, target height %s"
+                (file, line, GenesisValidatorCycle - 1, distance, target_height));
+        auto enrolled_height = target_height - distance - 1;
+        assert(enrolled_height % GenesisValidatorCycle == 0,
+            format!"[%s:%s] Invalid enroll height calculated as %s"
+                (file, line, enrolled_height));
         // Check block is at target height for the participating clients
         expectBlock(client_idxs, target_height,
             all_blocks[enrolled_height].header);

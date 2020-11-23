@@ -61,7 +61,7 @@ unittest
 
     // Make 3 more blocks in new cycle
     network.generateBlocks(iota(GenesisValidators),
-        Height(GenesisValidatorCycle + 3), Height(GenesisValidatorCycle));
+        Height(GenesisValidatorCycle + 3));
 }
 
 // Test for re-enroll before the validator cycle ends
