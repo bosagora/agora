@@ -46,31 +46,21 @@ unittest
 
     const keys = network.nodes.map!(node => node.client.getPublicKey()).array;
 
-    Height enrolledHeight (ulong height)
-    {
-        Height enrolledHeight = Height(((height - 1) / GenesisValidatorCycle)
-            * GenesisValidatorCycle);
-        log.trace("enrolledHeight = {}", enrolledHeight);
-        return enrolledHeight;
-    }
-
     QuorumConfig[] checkQuorum (Height height) {
         if (height > 0) // if not Genesis block
         {
             if (height % GenesisValidatorCycle == 0) {
-                log.trace("generateBlocks to height {}, enrollments from {}",
-                    height - 1, enrolledHeight(height - 1));
-                network.generateBlocks(Height(height - 1),
-                    enrolledHeight(Height(height - 1)));
+                log.trace("generateBlocks to height {}", height - 1);
+                network.generateBlocks(Height(height - 1));
                 log.trace("re-enrolling at height {}", height);
                 iota(0, GenesisValidators).each!(idx => network.enroll(idx));
                 log.trace("generateBlocks to height {}", height);
-                network.generateBlocks(Height(height), enrolledHeight(height));
+                network.generateBlocks(Height(height));
             }
             else
             {
                 log.trace("generateBlocks to height {}", height);
-                network.generateBlocks(Height(height), enrolledHeight(height));
+                network.generateBlocks(Height(height));
             }
         }
         log.trace("checkQuorum for height {}", height);

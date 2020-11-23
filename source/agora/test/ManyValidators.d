@@ -60,7 +60,7 @@ void manyValidators (size_t validators)
 
     // Generate the last block of cycle with Genesis validators
     network.generateBlocks(iota(GenesisValidators),
-        Height(GenesisValidatorCycle), Height(0));
+        Height(GenesisValidatorCycle));
 
     // make sure outsiders are up to date
     network.expectBlock(iota(GenesisValidators, validators),
@@ -73,8 +73,7 @@ void manyValidators (size_t validators)
                 idx, node.getValidatorCount(), validators)));
 
     // first validated block using all nodes
-    network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1),
-        Height(GenesisValidatorCycle));
+    network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1));
 }
 
 /// 8 nodes

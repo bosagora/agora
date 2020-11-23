@@ -159,7 +159,7 @@ unittest
 
      // Generate the last block of cycle with Genesis validators
     network.generateBlocks(iota(GenesisValidators),
-        Height(GenesisValidatorCycle), Height(0));
+        Height(GenesisValidatorCycle));
 
     // make sure outsiders are up to date
     network.expectBlock(iota(GenesisValidators, validators),
@@ -259,14 +259,14 @@ unittest
 
     // create 19 blocks with all validators (1 short of end of 2nd cycle)
     network.generateBlocks(iota(validators),
-        Height((2 * GenesisValidatorCycle) - 1), Height(GenesisValidatorCycle));
+        Height((2 * GenesisValidatorCycle) - 1));
 
     // Re-enroll
     iota(validators).each!(idx => network.enroll(idx));
 
     // Generate the last block of cycle with Genesis validators
     network.generateBlocks(iota(validators),
-        Height(2 * GenesisValidatorCycle), Height(GenesisValidatorCycle));
+        Height(2 * GenesisValidatorCycle));
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage
