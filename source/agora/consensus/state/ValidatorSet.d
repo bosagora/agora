@@ -237,9 +237,9 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Exception occured on hasEnrollment: {}, " ~
+            log.fatal("Exception occured on hasEnrollment: {}, " ~
                 "Key for enrollment: {}", ex.msg, enroll_hash);
-            return false;
+            assert(0);
         }
     }
 
@@ -265,9 +265,9 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Exception occured on hasEnrollment: {}, " ~
+            log.fatal("Exception occured on hasEnrollment: {}, " ~
                 "PublicKey for enrollment: {}", ex.msg, pubkey);
-            return false;
+            assert(0);
         }
     }
 
