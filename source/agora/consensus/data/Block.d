@@ -59,6 +59,12 @@ public struct BlockHeader
     /// Enrolled validators
     public Enrollment[] enrollments;
 
+    /// Hash of random seed of the preimages for this this height
+    public Hash random_seed;
+
+    /// List of indices to the validator UTXO set which have not revealed the preimage
+    public uint[] missing_validators;
+
     /***************************************************************************
 
         Implements hashing support
@@ -78,6 +84,9 @@ public struct BlockHeader
         dg(this.merkle_root[]);
         foreach (enrollment; this.enrollments)
             hashPart(enrollment, dg);
+        dg(this.random_seed[]);
+        foreach (validator; this.missing_validators)
+            hashPart(validator, dg);
     }
 
     /***************************************************************************
@@ -99,6 +108,10 @@ public struct BlockHeader
         serializePart(this.enrollments.length, dg);
         foreach (enrollment; this.enrollments)
             serializePart(enrollment, dg);
+        dg(this.random_seed[]);
+        serializePart(this.missing_validators.length, dg);
+        foreach (validator; this.missing_validators)
+            serializePart(validator, dg);
     }
 }
 
@@ -117,9 +130,9 @@ unittest
         BlockHeader header = { merkle_root : tx.hashFull() };
 
         auto hash = hashFull(header);
-        auto exp_hash = Hash("0xc04f3226bdc07c6d3141e3ac14888cd3b4199d84877" ~
-            "e591927063af65e5f56b14f9236e764bacb980aed5acefb98981b221e5c99e" ~
-            "aaaf1100c87c250cec2f32c");
+        auto exp_hash = Hash("0xc49255b83a9e125377df3de687abd883dd57df98aa7" ~
+            "5bd5f26a7e7de89d78e2922fa426524aef0b7651467051736fb4c98e1d4737" ~
+            "b2c91cfa0b866a3fae8bec8");
         assert(hash == exp_hash);
     }();
 }
