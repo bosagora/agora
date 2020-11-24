@@ -24,6 +24,10 @@ public struct ConsensusData
 
     /// The enrollments that are being nominated / voted on
     public Enrollment[] enrolls;
+
+    /// List of indices to the validator UTXO set which have not
+    /// revealed the preimage, aka missing preimage validators, or MPVs
+    public uint[] missing_validators;
 }
 
 /// ConsensusData type testSymmetry check
@@ -55,6 +59,7 @@ unittest
     {
         tx_set:  GenesisBlock.txs,
         enrolls: [ record, record, ],
+        missing_validators : [ 1, 3, 5 ],
     };
 
     testSymmetry(data);
