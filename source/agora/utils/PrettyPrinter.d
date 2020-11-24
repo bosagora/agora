@@ -331,12 +331,15 @@ private struct BlockHeaderFmt
     {
         try
         {
-            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %s",
+            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %s,\nRandom seed: [%s],\nSlashed validators: [%s]",
                 this.value.height.value, HashFmt(this.value.prev_block),
                 HashFmt(this.value.merkle_root),
                 this.value.enrollments.fold!((a, b) =>
                     format!"%s\n%s"(a, prettify(b)))(""),
-                this.value.signature, this.value.validators);
+                this.value.signature, this.value.validators,
+                HashFmt(this.value.random_seed),
+                this.value.missing_validators.fold!((a, b) =>
+                    format!"%s, %s"(a, prettify(b)))(""));
         }
         catch (Exception ex)
         {
@@ -355,7 +358,9 @@ private struct BlockHeaderFmt
 { utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
 { utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
-Validators: [0]`;
+Validators: [0],
+Random seed: [0x0000...0000],
+Slashed validators: []`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual, actual);
 }
@@ -397,6 +402,8 @@ private struct BlockFmt
 { utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
+Random seed: [0x0000...0000],
+Slashed validators: [],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
@@ -450,6 +457,8 @@ Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
 { utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
+Random seed: [0x0000...0000],
+Slashed validators: [],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
@@ -461,9 +470,11 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0x72e6...3b7d, Root: 0x07a8...acf4, Enrollments: []
+Height: 1, Prev: 0xd053...80d8, Root: 0x07a8...acf4, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
+Random seed: [0x0000...0000],
+Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs (1): 0xc378...d314:0x0fbf...ba74
 Outputs (1): GCOQ...LRIJ(61,000,000)
