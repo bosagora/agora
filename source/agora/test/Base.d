@@ -1077,7 +1077,7 @@ public class TestAPIManager
             5.seconds,
             format!"[%s:%s] Clients %s blocks are not all the same: %s"
                 (file, line, client_idxs, client_idxs.fold!((s, i) =>
-                    s ~ format!"\n========== Client #%s ==========\n%s"
+                    s ~ format!"\n\n========== Client #%s ==========%s"
                         (i, prettify(this.clients[i].getAllBlocks())))("")));
     }
 }

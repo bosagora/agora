@@ -420,9 +420,8 @@ private struct RangeFmt (R)
     {
         try
         {
-            formattedWrite(sink, "\n==================================" ~
-                "=============================================\n");
-            formattedWrite(sink, "%(%s\n====================\n%)",
+            formattedWrite(sink, "\n====================================================\n");
+            formattedWrite(sink, "%(%s\n====================================================\n%|%)",
                 this.value.map!(b => prettify(b)));
         }
         catch (Exception ex)
@@ -435,7 +434,7 @@ private struct RangeFmt (R)
 @safe unittest
 {
     static immutable ResultStr = `
-===============================================================================
+====================================================
 Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
 { utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
 { utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
@@ -453,13 +452,15 @@ Outputs (8):
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
-====================
+====================================================
 Height: 1, Prev: 0x72e6...3b7d, Root: 0x07a8...acf4, Enrollments: [],
 Transactions: 2
 Type : Payment, Inputs (1): 0xc378...d314:0x0fbf...ba74
 Outputs (1): GCOQ...LRIJ(61,000,000)
 Type : Payment, Inputs (1): 0xfca9...baf8:0x02da...95d1
-Outputs (1): GCOQ...LRIJ(61,000,000)`;
+Outputs (1): GCOQ...LRIJ(61,000,000)
+====================================================
+`;
     import agora.utils.Test : genesisSpendable;
     const Block secondBlock = makeNewBlock(GenesisBlock,
         genesisSpendable().take(2).map!(txb => txb.sign()));
