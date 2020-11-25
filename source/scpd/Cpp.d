@@ -11,8 +11,6 @@
     The first step in reducing / removing this module would be to import
     exceptions / runtime binding for OSX to Druntime.
 
-    At the moment, we build for Ubuntu 16.04 (Travis) and Mac OSX 14
-
     See_Also:
       https://github.com/dlang-cpp-interop
 
