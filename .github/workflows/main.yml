@@ -106,6 +106,11 @@ jobs:
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
 
+    - name: 'Upload code coverage'
+      uses: codecov/codecov-action@v1
+      with:
+        flags: unittests
+
     # Finally, upload the artifacts
     #
     # For push event, we need to select which compiler to use
