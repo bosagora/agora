@@ -74,6 +74,7 @@ void manyValidators (size_t validators)
 
     // first validated block using all nodes
     network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1));
+    network.assertSameBlocks(Height(GenesisValidatorCycle + 1));
 }
 
 /// 8 nodes
