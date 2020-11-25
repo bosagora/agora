@@ -43,10 +43,13 @@ void manyValidators (size_t validators)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
-    // prepare frozen outputs for outsider validators to enroll
-    genesisSpendable().dropExactly(1).takeExactly(1)
-        .map!(txb => txb.split(keys).sign(TxType.Freeze))
-        .each!(tx => network.clients[0].putTransaction(tx));
+    if (keys.length > 0)
+    {
+        // prepare frozen outputs for outsider validators to enroll
+        genesisSpendable().dropExactly(1).takeExactly(1)
+            .map!(txb => txb.split(keys).sign(TxType.Freeze))
+            .each!(tx => network.clients[0].putTransaction(tx));
+    }
 
     // block 19
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
