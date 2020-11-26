@@ -221,9 +221,8 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
         Block.buildMerkleTree(block.txs, merkle_tree))
         return "GenesisBlock: Merkle root does not match header's";
 
-    // If there are no enrollments, return them here early.
     if (block.header.enrollments.length == 0)
-        return null;
+        return "GenesisBlock: No enrollments in the block";
 
     if (!isStrictlyMonotonic!"a.utxo_key < b.utxo_key"
         (block.header.enrollments))
@@ -282,6 +281,13 @@ unittest
     block.header.prev_block = Hash.init;
     assert(block.isGenesisBlockValid());
 
+    // enrollments length check
+    block.header.enrollments = null;
+    assert(!block.isGenesisBlockValid());
+
+    block = GenesisBlock.serializeFull.deserializeFull!Block;
+    assert(block.isGenesisBlockValid());
+
     Transaction[] txs =
         GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
 
@@ -314,21 +320,21 @@ unittest
     {
         // Txs length check
         block.txs = null;
-        block.header.enrollments = null;
         assert(!block.isGenesisBlockValid());
 
         // at least 1 tx needed (todo: relax this?)
-        block.txs ~= makeNewTx();
+        block.txs ~= txs[0];
         buildMerkleTree(block);
         checkValidity(block);
-        block.txs = null;
 
-        foreach (_; 0 .. 8)
+        block = GenesisBlock.serializeFull.deserializeFull!Block;
+        foreach (_; 0 .. 6)
             block.txs ~= makeNewTx();
         assert(block.txs.length == 8);
         buildMerkleTree(block);
         checkValidity(block);
 
+        block = GenesisBlock.serializeFull.deserializeFull!Block;
         // Txs sorting check
         block.txs.reverse;
         buildMerkleTree(block, false);
@@ -341,8 +347,8 @@ unittest
         // there may be any number of txs, does not need to be power of 2
         block.txs ~= makeNewTx();
         buildMerkleTree(block);
-        assert(block.txs.length == 9);
-        assert(block.isGenesisBlockValid());
+        assert(block.txs.length == 3);
+        checkValidity(block);
 
         block = GenesisBlock.serializeFull.deserializeFull!Block;
 
@@ -389,9 +395,6 @@ unittest
     enrolls ~= Enrollment.init;
     block.header.enrollments = enrolls;
     assert(!block.isGenesisBlockValid());
-
-    block.header.enrollments.length = 0;
-    checkValidity(block);
 
     block = GenesisBlock.serializeFull.deserializeFull!Block;
 
