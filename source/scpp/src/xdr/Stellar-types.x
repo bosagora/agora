@@ -5,7 +5,7 @@
 namespace stellar
 {
 
-typedef opaque Hash[64];
+typedef opaque Hash[64];    // note: Hash was changed to 64-bytes in #737.
 typedef opaque uint256[32];
 typedef opaque uint512[64];
 typedef unsigned int uint32;
