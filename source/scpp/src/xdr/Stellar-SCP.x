@@ -51,7 +51,7 @@ struct SCPStatement
         struct
         {
             SCPBallot ballot;   // b
-            uint256 value_sig;  // Bosagora added to sign ballot (only 32 bytes as Scalar)
+            uint512 value_sig;  // Bosagora added to sign ballot (R, s) 64 bytes
             uint32 nPrepared;   // p.n
             uint32 nCommit;     // c.n
             uint32 nH;          // h.n
