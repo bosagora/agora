@@ -130,7 +130,7 @@ public class Validator : FullNode, API
         this.last_shuffle_height = height;
 
         // we're not enrolled and don't care about quorum sets
-        if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+        if (!this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
         {
             this.nominator.stopNominatingTimer();
             this.qc = QuorumConfig.init;
@@ -231,7 +231,7 @@ public class Validator : FullNode, API
         if (this.config.admin.enabled)
             this.admin_interface.start();
 
-        if (this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+        if (this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
             this.nominator.startNominatingTimer();
         else if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.getBlockHeight());
@@ -329,7 +329,7 @@ public class Validator : FullNode, API
         return new Clock((out long time_offset)
             {
                 // not enrolled - no need to synchronize clocks
-                if (!this.enroll_man.isEnrolled(this.utxo_set.getUTXOFinder()))
+                if (!this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
                     return false;
 
                 return this.network.getNetTimeOffset(this.qc.threshold,
