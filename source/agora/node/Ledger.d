@@ -181,7 +181,7 @@ public class Ledger
             }
             ManagedDatabase.commitBatch();
         }
-        else
+        else if (this.enroll_man.validatorCount() == 0)
         {
             // +1 because the genesis block counts as one
             const ulong block_count = this.last_block.header.height + 1;
