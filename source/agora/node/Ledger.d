@@ -404,12 +404,12 @@ public class Ledger
         foreach (idx, ref enrollment; block.header.enrollments)
         {
             UTXO utxo;
-            auto utxo_finder = this.utxo_set.getUTXOFinder();
-            assert(utxo_finder(enrollment.utxo_key, utxo));
+            if (!this.utxo_set.peekUTXO(enrollment.utxo_key, utxo))
+                assert(0);
 
             this.enroll_man.removeEnrollment(enrollment.utxo_key);
             if (auto r = this.enroll_man.addValidator(enrollment, utxo.output.address,
-                block.header.height, this.utxo_set.getUTXOFinder(), utxos))
+                block.header.height, &this.utxo_set.peekUTXO, utxos))
             {
                 log.fatal("Error while adding a new validator: {}", r);
                 log.fatal("Enrollment #{}: {}", idx, enrollment);
