@@ -334,6 +334,13 @@ public struct TxBuilder
         this.attach(tx, index);
     }
 
+    /// Convenience constructor that calls `this.attach(Output, Hash)`
+    public this (in Output utxo, in Hash hash) @safe nothrow
+    {
+        this(utxo.address);
+        this.attach(utxo, hash);
+    }
+
     /***************************************************************************
 
         Attaches all or one output(s) of a transaction to this builder
