@@ -200,15 +200,11 @@ private class ByzantineManager (bool addSpyValidator = false,
             assert(conf.validator.enabled);
             RemoteAPI!TestAPI node;
             if (this.nodes.length < byzantine_not_signing_count)
-                node = RemoteAPI!TestAPI.spawn!(ByzantineNode!(ByzantineReason.NotSigningEnvelope))(
-                    conf, &this.reg, this.blocks, this.test_conf, time,
-                    conf.node.timeout);
+                this.addNewNode!(ByzantineNode!(ByzantineReason.NotSigningEnvelope))
+                    (conf, file, line);
             else
-                node = RemoteAPI!TestAPI.spawn!(ByzantineNode!(ByzantineReason.BadSigningEnvelope))(
-                    conf, &this.reg, this.blocks, this.test_conf, time,
-                    conf.node.timeout);
-            this.reg.register(conf.node.address, node.ctrl.tid());
-            this.nodes ~= NodePair(conf.node.address, node, time);
+                this.addNewNode!(ByzantineNode!(ByzantineReason.BadSigningEnvelope))
+                    (conf, file, line);
         }
         else
             // Add spying validator as last node

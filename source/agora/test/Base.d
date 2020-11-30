@@ -751,21 +751,24 @@ public class TestAPIManager
 
     public void createNewNode (Config conf, string file = __FILE__, int line = __LINE__)
     {
-        RemoteAPI!TestAPI api;
-        auto time = new shared(time_t)(this.initial_time);
         if (conf.validator.enabled)
-        {
-            api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, this.test_conf, time, conf.node.timeout, file, line);
-        }
+            this.addNewNode!TestValidatorNode(conf, file, line);
         else
-        {
-            api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, this.test_conf, time, conf.node.timeout, file, line);
-        }
+            this.addNewNode!TestFullNode(conf, file, line);
+    }
+
+    /// Convenience templated function to be called from overriding classes
+    public TestAPI addNewNode (NodeType : TestAPI) (
+        Config conf, string file = __FILE__, int line = __LINE__)
+    {
+        auto time = new shared(time_t)(this.initial_time);
+        auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg,
+            this.blocks, this.test_conf, time,
+            conf.node.timeout, file, line);
 
         this.reg.register(conf.node.address, api.tid());
         this.nodes ~= NodePair(conf.node.address, api, time);
+        return api;
     }
 
     /***************************************************************************
