@@ -179,12 +179,7 @@ unittest
     {
         private size_t count;
 
-        ///
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            ulong txs_to_nominate, shared(time_t)* cur_time)
-        {
-            super(config, reg, blocks, txs_to_nominate, cur_time);
-        }
+        mixin ForwardCtor!();
 
         public override void receivePreimage (PreImageInfo preimage)
         {

@@ -1602,6 +1602,17 @@ public class TestValidatorNode : Validator, TestAPI
     }
 }
 
+/// Convenience mixin for deriving classes
+public mixin template ForwardCtor ()
+{
+    ///
+    public this (Config config, Registry* reg, immutable(Block)[] blocks,
+        in ulong txs_to_nominate, shared(time_t)* cur_time)
+    {
+        super(config, reg, blocks, txs_to_nominate, cur_time);
+    }
+}
+
 /// Describes a network topology for testing purpose
 public enum NetworkTopology
 {
