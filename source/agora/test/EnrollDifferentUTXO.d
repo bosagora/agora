@@ -33,9 +33,9 @@ private class SameKeyValidator : TestValidatorNode
 {
     /// Ctor
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-                    ulong txs_to_nominate, shared(time_t)* cur_time)
+        in TestConf test_conf, shared(time_t)* cur_time)
     {
-        super(config, reg, blocks, txs_to_nominate, cur_time);
+        super(config, reg, blocks, test_conf, cur_time);
     }
 
     /// Create an enrollment with new UTXO which is not yet used
@@ -86,7 +86,7 @@ private class SameKeyNodeAPIManager : TestAPIManager
         {
             auto time = new shared(time_t)(this.initial_time);
             auto api = RemoteAPI!TestAPI.spawn!SameKeyValidator(
-                conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                conf, &this.reg, this.blocks, this.test_conf,
                 time, conf.node.timeout);
             this.reg.register(conf.node.address, api.tid());
             this.nodes ~= NodePair(conf.node.address, api, time);
