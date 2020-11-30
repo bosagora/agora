@@ -524,10 +524,21 @@ public class NetworkManager
     public bool getNetTimeOffset (uint threshold, out long time_offset)
         @safe nothrow
     {
-        static time_t[] offsets;
+        // contains a node's clock time and the calculated drift time
+        static struct TimeInfo
+        {
+            PublicKey key;
+            time_t node_time;
+            long req_delay;
+            long offset;
+        }
+
+        static TimeInfo[] offsets;
         offsets.length = 0;
         () @trusted { assumeSafeAppend(offsets); }();
-        offsets ~= 0;  // must include our own assumed clock drift (zero)
+        // must include our own assumed clock drift (zero)
+        offsets ~= TimeInfo(this.validator_config.key_pair.address,
+            this.clock.localTime(), 0, 0);
 
         foreach (node; this.validators[])
         {
@@ -546,14 +557,16 @@ public class NetworkManager
 
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
-            offsets ~= (node_time - dist_delay) - req_start;
+            const offset = (node_time - dist_delay) - req_start;
+            offsets ~= TimeInfo(pk, node_time, req_delay, offset);
         }
 
         // we heard from at least one quorum slice
         if (offsets.length >= threshold)
         {
-            offsets.sort();
-            time_offset = offsets[$ / 2];  // pick median
+            offsets.sort!((a, b) => a.offset < b.offset);
+            log.info("Net time offsets: {}", offsets);
+            time_offset = offsets[$ / 2].offset;  // pick median
             return true;
         }
 
