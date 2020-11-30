@@ -64,12 +64,7 @@ unittest
     /// node which returns bad blocks
     static class BadNode : TestFullNode
     {
-        ///
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            shared(time_t)* cur_time)
-        {
-            super(config, reg, blocks, cur_time);
-        }
+        mixin ForwardCtor!();
 
         /// return phony blocks
         public override const(Block)[] getBlocksFrom (ulong block_height,
@@ -142,17 +137,17 @@ unittest
             if (conf.validator.enabled)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf, &this.reg, this.blocks, this.test_conf,
                     time, conf.node.timeout);
             }
             else
             {
                 if (this.nodes.length == 6)  // 7th good FN, 8th bad FN
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, time, conf.node.timeout);
+                        &this.reg, this.blocks, this.test_conf, time, conf.node.timeout);
                 else
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, this.blocks, time, conf.node.timeout);
+                        &this.reg, this.blocks, this.test_conf, time, conf.node.timeout);
             }
 
             this.reg.register(conf.node.address, api.tid());

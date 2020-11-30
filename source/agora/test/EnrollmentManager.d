@@ -205,7 +205,7 @@ unittest
                 auto time = new shared(time_t)(this.initial_time);
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!TestNode(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf, &this.reg, this.blocks, this.test_conf,
                     time, conf.node.timeout);
                 this.reg.register(conf.node.address, node.ctrl.tid());
                 this.nodes ~= NodePair(conf.node.address, node, time);
@@ -295,11 +295,11 @@ unittest
 
         /// Ctor
         public this (Config config, Registry* reg, immutable(Block)[] blocks,
-                     ulong txs_to_nominate, shared(time_t)* cur_time,
-                     shared(size_t)* countPtr)
+            in TestConf test_conf, shared(time_t)* cur_time,
+            shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            super(config, reg, blocks, txs_to_nominate, cur_time);
+            super(config, reg, blocks, test_conf, cur_time);
         }
 
         ///
@@ -332,7 +332,7 @@ unittest
             {
                 auto time = new shared(time_t)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!MisbehavingValidator(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf, &this.reg, this.blocks, this.test_conf,
                     time, &this.runCount, conf.node.timeout);
                 this.reg.register(conf.node.address, api.tid());
                 this.nodes ~= NodePair(conf.node.address, api, time);

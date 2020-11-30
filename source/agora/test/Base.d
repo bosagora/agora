@@ -756,13 +756,12 @@ public class TestAPIManager
         if (conf.validator.enabled)
         {
             api = RemoteAPI!TestAPI.spawn!TestValidatorNode(conf, &this.reg,
-                this.blocks, this.test_conf.txs_to_nominate, time,
-                conf.node.timeout, file, line);
+                this.blocks, this.test_conf, time, conf.node.timeout, file, line);
         }
         else
         {
             api = RemoteAPI!TestAPI.spawn!TestFullNode(conf, &this.reg,
-                this.blocks, time, conf.node.timeout, file, line);
+                this.blocks, this.test_conf, time, conf.node.timeout, file, line);
         }
 
         this.reg.register(conf.node.address, api.tid());
@@ -1468,7 +1467,7 @@ public class TestFullNode : FullNode, TestAPI
 
     ///
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        shared(time_t)* cur_time)
+        in TestConf test_conf, shared(time_t)* cur_time)
     {
         this.registry = reg;
         this.blocks = blocks;
@@ -1527,11 +1526,11 @@ public class TestValidatorNode : Validator, TestAPI
 
     ///
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        ulong txs_to_nominate, shared(time_t)* cur_time)
+        in TestConf test_conf, shared(time_t)* cur_time)
     {
         this.registry = reg;
         this.blocks = blocks;
-        this.txs_to_nominate = txs_to_nominate;
+        this.txs_to_nominate = test_conf.txs_to_nominate;
         this.cur_time = cur_time;
         super(config);
     }
@@ -1607,9 +1606,9 @@ public mixin template ForwardCtor ()
 {
     ///
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in ulong txs_to_nominate, shared(time_t)* cur_time)
+        in TestConf test_conf, shared(time_t)* cur_time)
     {
-        super(config, reg, blocks, txs_to_nominate, cur_time);
+        super(config, reg, blocks, test_conf, cur_time);
     }
 }
 

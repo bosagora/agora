@@ -107,7 +107,7 @@ unittest
             {
                 auto time = new shared(time_t)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!CustomValidator(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf, &this.reg, this.blocks, this.test_conf,
                     time, conf.node.timeout);
                 this.reg.register(conf.node.address, api.tid());
                 this.nodes ~= NodePair(conf.node.address, api, time);

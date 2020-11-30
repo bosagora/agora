@@ -159,11 +159,11 @@ private class SpyingValidator : TestValidatorNode
 
     /// Ctor
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-                    ulong txs_to_nominate, shared(time_t)* cur_time,
-                    shared(EnvelopeTypeCounts)* envelope_type_counts)
+        in TestConf test_conf, shared(time_t)* cur_time,
+        shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
         this.envelope_type_counts = envelope_type_counts;
-        super(config, reg, blocks, txs_to_nominate, cur_time);
+        super(config, reg, blocks, test_conf, cur_time);
     }
 
     ///
@@ -201,11 +201,11 @@ private class ByzantineManager (bool addSpyValidator = false,
             RemoteAPI!TestAPI node;
             if (this.nodes.length < byzantine_not_signing_count)
                 node = RemoteAPI!TestAPI.spawn!(ByzantineNode!(ByzantineReason.NotSigningEnvelope))(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate, time,
+                    conf, &this.reg, this.blocks, this.test_conf, time,
                     conf.node.timeout);
             else
                 node = RemoteAPI!TestAPI.spawn!(ByzantineNode!(ByzantineReason.BadSigningEnvelope))(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate, time,
+                    conf, &this.reg, this.blocks, this.test_conf, time,
                     conf.node.timeout);
             this.reg.register(conf.node.address, node.ctrl.tid());
             this.nodes ~= NodePair(conf.node.address, node, time);
@@ -217,7 +217,7 @@ private class ByzantineManager (bool addSpyValidator = false,
                 auto time = new shared(time_t)(this.initial_time);
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!SpyingValidator(
-                    conf, &this.reg, this.blocks, this.test_conf.txs_to_nominate,
+                    conf, &this.reg, this.blocks, this.test_conf,
                     time, &envelope_type_counts);
                 this.reg.register(conf.node.address, node.ctrl.tid());
                 this.nodes ~= NodePair(conf.node.address, node, time);
