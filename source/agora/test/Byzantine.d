@@ -101,11 +101,8 @@ private extern(C++) class ByzantineNominator : TestNominator
 class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 {
     ByzantineReason reason;
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        ulong txs_to_nominate, shared(time_t)* cur_time)
-    {
-        super(config, reg, blocks, txs_to_nominate, cur_time);
-    }
+
+    mixin ForwardCtor!();
 
     protected override TestNominator getNominator (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
