@@ -96,6 +96,8 @@ int main (string[] args)
         writefln("%s Check height is 1", PREFIX);
         assertBlockHeight(addresses, 1);
 
+        // wait for distance 1 to be revealed before block 2 is proposed
+        waitForPreimages(addresses, 1, 5.seconds);
         writefln("%s Put 8 transactions to client[0]", PREFIX);
         genesisSpendable().dropExactly(1).takeExactly(1)
             .map!(txb =>
@@ -111,6 +113,22 @@ int main (string[] args)
     }
 
     return 0;
+}
+
+/// wait for preimages for the given distance to be revealed
+private void waitForPreimages (in string[] addresses, in uint distance,
+    Duration timeout)
+{
+    // TODO: This is a hack because of issue #312
+    // https://github.com/bpfkorea/agora/issues/312
+    API[] clients;
+    foreach (const ref addr; addresses)
+        clients ~= new RestInterfaceClient!API(addr);
+
+    clients.each!(client =>
+        TestGenesis.GenesisBlock.header.enrollments.each!(enroll =>
+            retryFor(client.getPreimage(enroll.utxo_key)
+                .distance >= distance, timeout)));
 }
 
 /// Check block generation
