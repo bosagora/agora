@@ -22,8 +22,7 @@ immutable ComposeFile = IntegrationPath.buildPath("docker-compose.yml");
 /// e.g. all dependencies are installed and the binary isn't corrupt.
 immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
                        "-t", "agora", RootPath, ];
-immutable TestContainer = [ "docker", "run", "agora", "--help", ];
-immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", "--abort-on-container-exit", ];
+immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", ];
 immutable DockerComposeDown = [ "docker-compose", "-f", ComposeFile, "down", ];
 immutable DockerComposeLogs = [ "docker-compose", "-f", ComposeFile, "logs", "-t", ];
 immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
@@ -54,9 +53,6 @@ private int main (string[] args)
     // which is the most expensive operation this script performs
     if (args.length < 2 || args[1] != "nobuild")
         runCmd(BuildImg);
-
-    // Simple sanity test
-    runCmd(TestContainer);
 
     // First make sure that there we start from a clean slate,
     // as the docker-compose bind volumes

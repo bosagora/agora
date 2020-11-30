@@ -18,6 +18,11 @@ services:
       - "./node/2/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
 
   node-3:
     image: "agora:latest"
@@ -27,6 +32,11 @@ services:
       - "./node/3/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
 
   node-4:
     image: "agora:latest"
@@ -36,6 +46,11 @@ services:
       - "./node/4/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
 
   node-5:
     image: "agora:latest"
@@ -45,6 +60,11 @@ services:
       - "./node/5/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
 
   node-6:
     image: "agora:latest"
@@ -54,6 +74,11 @@ services:
       - "./node/6/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
 
   node-7:
     image: "agora:latest"
@@ -63,6 +88,11 @@ services:
       - "./node/7/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
 
   # non-validator node
   node-0:
@@ -73,3 +103,8 @@ services:
       - "./node/0/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+    security_opt:
+      - seccomp:unconfined
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
