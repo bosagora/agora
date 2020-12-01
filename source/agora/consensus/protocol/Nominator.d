@@ -686,15 +686,10 @@ extern(D):
                 auto data = deserializeFull!ConsensusData(candidate[]);
 
                 if (auto msg = this.ledger.validateConsensusData(data))
-                {
-                    log.error("combineCandidates(): Invalid consensus data: {}", msg);
-                    continue;
-                }
-                else
-                {
-                    log.info("combineCandidates: {}", slot_idx);
-                }
+                    assert(0, format!"combineCandidates: Invalid consensus data: %s"(
+                        msg));
 
+                log.info("combineCandidates: {}", slot_idx);
                 // todo: currently we just pick the first of the candidate values,
                 // but we should ideally pick tx's out of the combined set
                 return duplicate_value(&candidate);
