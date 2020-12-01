@@ -7,7 +7,7 @@ node:
 
   min_listeners: 7
   max_listeners: 10
-  address: 0.0.0.0
+  address: 127.0.0.1
   port:    3826
   retry_delay: 50
   max_retries: 25
@@ -58,12 +58,12 @@ banman:
 ################################################################################
 network:
   # Supported value: IPv4, IPv6
-  - http://node-0:1826
-  - http://node-2:2826
-  - http://node-4:4826
-  - http://node-5:5826
-  - http://node-6:6826
-  - http://node-7:7826
+  - http://127.0.0.1:1826
+  - http://127.0.0.1:2826
+  - http://127.0.0.1:4826
+  - http://127.0.0.1:5826
+  - http://127.0.0.1:6826
+  - http://127.0.0.1:7826
 
 ################################################################################
 ##                               Logging options                              ##
