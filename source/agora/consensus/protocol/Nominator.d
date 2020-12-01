@@ -694,7 +694,8 @@ extern(D):
                 // but we should ideally pick tx's out of the combined set
                 return duplicate_value(&candidate);
             }
-        } catch (Exception ex)
+        }
+        catch (Exception ex)
         {
             assert(0, format!"combineCandidates: slot %u. Exception: %s"(
                 slot_idx, ex.to!string));
