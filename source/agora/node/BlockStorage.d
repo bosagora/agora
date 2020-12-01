@@ -942,6 +942,12 @@ public class MemBlockStorage : IBlockStorage
     /// No-op: MemBlockStorage does no I/O
     public override bool load (const ref Block genesis)
     {
+        // Allow `load` to be called multiple times
+        // This is useful when wanting to simulate persistence
+        // in a network integration test.
+        if (this.blocks.length)
+            return true;
+
         if (this._to_load.length == 0)
             return this.saveBlock(genesis);
 
