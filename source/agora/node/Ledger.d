@@ -129,6 +129,8 @@ public class Ledger
         // ensure latest checksum can be read
         if (!this.storage.readLastBlock(this.last_block))
             assert(0);
+        log.info("Last known block: #{} ({})", this.last_block.header.height,
+                 this.last_block.header.hashFull());
 
         Block gen_block;
         this.storage.readBlock(gen_block, Height(0));
