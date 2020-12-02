@@ -193,7 +193,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public time_t getLocalTime () @trusted nothrow
+    public LocalTime getLocalTime () @trusted nothrow
     {
         return this.attemptRequest!(API.getLocalTime, Throw.No)(this.api);
     }

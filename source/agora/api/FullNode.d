@@ -46,6 +46,11 @@ public struct NodeInfo
     public Set!string addresses;
 }
 
+struct LocalTime
+{
+    time_t time;
+}
+
 /*******************************************************************************
 
     Define the API a full node exposes to the world
@@ -241,5 +246,5 @@ public interface API
 
     ***************************************************************************/
 
-    public time_t getLocalTime ();
+    public LocalTime getLocalTime ();
 }

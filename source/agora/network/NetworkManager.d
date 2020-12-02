@@ -553,17 +553,17 @@ public class NetworkManager
             const req_start = this.clock.localTime();
             const node_time = node.getLocalTime();
 
-            if (node_time == 0)
+            if (node_time.time == 0)
                 continue;  // request failed
 
             log.info("Node time: {}", node_time);
-            if (node_time < 10)
+            if (node_time.time < 10)
                 assert(0);
 
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
-            const offset = (node_time - dist_delay) - req_start;
-            offsets ~= TimeInfo(pk, node_time, req_delay, offset);
+            const offset = (node_time.time - dist_delay) - req_start;
+            offsets ~= TimeInfo(pk, node_time.time, req_delay, offset);
         }
 
         // we heard from at least one quorum slice

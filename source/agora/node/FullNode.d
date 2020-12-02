@@ -612,10 +612,10 @@ public class FullNode : API
     }
 
     /// GET /local_time
-    public override time_t getLocalTime () @safe nothrow
+    public override LocalTime getLocalTime () @safe nothrow
     {
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "local_time", "http");
-        return this.clock.localTime();
+        return LocalTime(this.clock.localTime());
     }
 
     /***************************************************************************
