@@ -12,7 +12,7 @@
 	url = https://github.com/dlang-community/D-YAML.git
 [submodule "eventcore"]
 	path = submodules/eventcore
-	url = https://github.com/vibe-d/eventcore.git
+	url = https://github.com/bpfkorea/eventcore.git
 [submodule "libsodiumd"]
 	path = submodules/libsodiumd
 	url = https://github.com/Geod24/libsodiumd.git
