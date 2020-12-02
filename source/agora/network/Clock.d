@@ -72,7 +72,7 @@ public class Clock
     private long net_time_offset = 0;
 
     /// how often the clock should be synchronized with the network
-    public const Duration ClockSyncInterval = 1.minutes;
+    public const Duration ClockSyncInterval = 1.seconds;
 
     /// used to set timer for syncing
     private SetPeriodicTimer setPeriodicTimerDg;
