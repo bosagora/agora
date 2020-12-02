@@ -94,10 +94,10 @@ int main (string[] args)
         Thread.sleep(5.seconds); // Give time for block to be externalized
 
         writefln("%s Check height is 1", PREFIX);
-        assertBlockHeight(addresses, 1);
+        assertBlockHeight(clients, addresses, 1);
 
         // wait for distance 1 to be revealed before block 2 is proposed
-        waitForPreimages(addresses, 1, 5.seconds);
+        waitForPreimages(clients, addresses, 1, 5.seconds);
         writefln("%s Put 8 transactions to client[0]", PREFIX);
         genesisSpendable().dropExactly(1).takeExactly(1)
             .map!(txb =>
@@ -109,22 +109,16 @@ int main (string[] args)
         Thread.sleep(5.seconds); // Give time for block to be externalized
 
         writefln("%s Check height is 2", PREFIX);
-        assertBlockHeight(addresses, 2);
+        assertBlockHeight(clients, addresses, 2);
     }
 
     return 0;
 }
 
 /// wait for preimages for the given distance to be revealed
-private void waitForPreimages (in string[] addresses, in uint distance,
+private void waitForPreimages (API[] clients, in string[] addresses, in uint distance,
     Duration timeout)
 {
-    // TODO: This is a hack because of issue #312
-    // https://github.com/bpfkorea/agora/issues/312
-    API[] clients;
-    foreach (const ref addr; addresses)
-        clients ~= new RestInterfaceClient!API(addr);
-
     clients.each!(client =>
         TestGenesis.GenesisBlock.header.enrollments.each!(enroll =>
             retryFor(client.getPreimage(enroll.utxo_key)
@@ -132,14 +126,8 @@ private void waitForPreimages (in string[] addresses, in uint distance,
 }
 
 /// Check block generation
-private void assertBlockHeight (const string[] addresses, ulong height)
+private void assertBlockHeight (API[] clients, const string[] addresses, ulong height)
 {
-    // TODO: This is a hack because of issue #312
-    // https://github.com/bpfkorea/agora/issues/312
-    API[] clients;
-    foreach (const ref addr; addresses)
-        clients ~= new RestInterfaceClient!API(addr);
-
     Hash blockHash;
     size_t times; // Number of times we slept for 500 msecs
     foreach (idx, ref client; clients)
