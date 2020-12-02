@@ -157,9 +157,9 @@ public struct PublicKey
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         const bin = Base32.decode(str);
-        assert(bin.length == 1 + PublicKey.Width + 2);
-        assert(bin[0] == VersionByte.AccountID);
-        assert(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
+        enforce(bin.length == 1 + PublicKey.Width + 2);
+        enforce(bin[0] == VersionByte.AccountID);
+        enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
         return PublicKey(typeof(this.data)(bin[1 .. $ - 2]));
     }
 
@@ -430,9 +430,9 @@ public struct Seed
     public static Seed fromString (scope const(char)[] str)
     {
         const bin = Base32.decode(str);
-        assert(bin.length == 1 + Seed.Width + 2);
-        assert(bin[0] == VersionByte.Seed);
-        assert(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
+        enforce(bin.length == 1 + Seed.Width + 2);
+        enforce(bin[0] == VersionByte.Seed);
+        enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
         return Seed(typeof(this.data)(bin[1 .. $ - 2]));
     }
 }
