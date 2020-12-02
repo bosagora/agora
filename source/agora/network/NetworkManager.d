@@ -552,8 +552,13 @@ public class NetworkManager
 
             const req_start = this.clock.localTime();
             const node_time = node.getLocalTime();
+
             if (node_time == 0)
                 continue;  // request failed
+
+            log.info("Node time: {}", node_time);
+            if (node_time < 10)
+                assert(0);
 
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
@@ -565,7 +570,6 @@ public class NetworkManager
         if (offsets.length >= threshold)
         {
             offsets.sort!((a, b) => a.offset < b.offset);
-            log.info("Net time offsets: {}", offsets);
             time_offset = offsets[$ / 2].offset;  // pick median
             return true;
         }
