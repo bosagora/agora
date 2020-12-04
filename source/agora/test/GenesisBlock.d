@@ -39,4 +39,11 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1));
+
+
+    // Test for getting the consensus params from node
+    import TESTNET = agora.consensus.data.genesis.Test;
+    auto params = node_1.getConsensusParams();
+    assert(params.Genesis == TESTNET.GenesisBlock);
+    assert(params.CommonsBudgetAddress == TESTNET.CommonsBudgetAddress);
 }

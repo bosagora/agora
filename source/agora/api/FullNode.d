@@ -21,6 +21,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.common.Types;
 import agora.common.Set;
 import agora.common.Serializer;
+import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 
 import vibe.web.rest;
@@ -242,4 +243,16 @@ public interface API
     ***************************************************************************/
 
     public time_t getLocalTime ();
+
+    /***************************************************************************
+
+        Returns:
+            The consensus params of this node
+
+        API:
+            GET /consensus_params
+
+    ***************************************************************************/
+
+    public ConsensusParamsInfo getConsensusParams ();
 }

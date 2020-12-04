@@ -618,6 +618,39 @@ public class FullNode : API
         return this.clock.localTime();
     }
 
+    /// GET /consensus_params
+    public override ConsensusParamsInfo getConsensusParams () @safe nothrow
+    {
+        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "consensus_params", "http");
+
+        Block genesis;
+        Exception ex;
+        try
+        {
+            genesis = this.params.Genesis.serializeFull.deserializeFull!(Block);
+        }
+        catch (Exception e)
+        {
+            ex = e;
+        }
+
+        if (ex !is null)
+            log.error("Error extracting the Genesis of consensus params: {}", ex);
+
+        auto params_info = ConsensusParamsInfo(
+            genesis,
+            this.params.CommonsBudgetAddress,
+            this.params.ValidatorCycle,
+            this.params.MaxQuorumNodes,
+            this.params.QuorumThreshold,
+            this.params.QuorumShuffleInterval,
+            this.params.GenesisStartTime,
+            this.params.BlockIntervalSeconds,
+            this.params.TxPayloadMaxSize,
+            this.params.TxPayloadFeeFactor);
+        return params_info;
+    }
+
     /***************************************************************************
 
         Called when a block was externalized.
