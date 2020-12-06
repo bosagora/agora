@@ -184,7 +184,9 @@ public struct Block
                 this.header.merkle_root,
                 validators,
                 signature,
-                this.header.enrollments.dup),
+                this.header.enrollments.dup,
+                this.header.random_seed,
+                this.header.missing_validators.dup),
             // TODO: Optimize this by using dup for txs also
             this.txs.map!(tx =>
                 tx.serializeFull.deserializeFull!Transaction).array,
@@ -479,11 +481,16 @@ unittest
         prev_block = the previous block
         txs = the transactions that will be contained in the new block
         enrollments = the enrollments that will be contained in the new block
+        random_seed = Hash of random seed of the preimages
+        missing_validators = list of indices to the validator UTXO set
+            which have not revealed the preimage
 
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, Enrollment[] enrollments = null) @safe nothrow
+    Transactions txs, Enrollment[] enrollments = null,
+    Hash random_seed = Hash.init, uint[] missing_validators = null)
+    @safe nothrow
 {
     static assert (isInputRange!Transactions);
 
@@ -499,6 +506,13 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
         ("a.utxo_key < b.utxo_key"));  // there cannot be duplicates either
+
+    block.header.random_seed = random_seed;
+    block.header.missing_validators = missing_validators;
+    block.header.missing_validators.sort!((a, b) => a < b);
+    assert(block.header.missing_validators.isStrictlyMonotonic!
+        ("a < b"));  // there cannot be duplicates either
+
     return block;
 }
 
@@ -522,10 +536,12 @@ version (unittest)
 
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
         Transactions txs, Enrollment[] enrollments = null,
+        Hash random_seed = Hash.init, uint[] missing_validators = null,
         KeyPair[] keys = genesis_validator_keys,
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k)) @safe nothrow
     {
-        auto block = makeNewBlock(prev_block, txs, enrollments);
+        auto block = makeNewBlock(prev_block, txs, enrollments, random_seed,
+            missing_validators);
         return multiSigTestBlock(block, cycleForValidator, keys);
     }
 }
@@ -554,9 +570,16 @@ version (unittest)
             "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395987")
     };
 
-    auto block = makeNewBlock(GenesisBlock, [Transaction.init], [enr_1, enr_2]);
+    auto random_seed = Hash("0x47c993d409aa7d77651ecaa5a5d29e47a7aee609c7" ~
+                             "cb376f5f8ff2a868c738233a2df5ba11d635c8576a47" ~
+                             "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
+    uint[] missing_validators = [];
+
+    auto block = makeNewBlock(GenesisBlock, [Transaction.init], [enr_1, enr_2],
+        random_seed, missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ascending
-    block = makeNewBlock(GenesisBlock, [Transaction.init], [enr_2, enr_1]);
+    block = makeNewBlock(GenesisBlock, [Transaction.init], [enr_2, enr_1],
+        random_seed, missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
 }
 

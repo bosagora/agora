@@ -51,7 +51,7 @@ private void main ()
         .array();
     foreach (block_idx; 0 .. BlockCount)
     {
-        auto block = makeNewBlock(blocks[$ - 1], txs, null);
+        auto block = makeNewBlock(blocks[$ - 1], txs, null, Hash.init, null);
         storage.saveBlock(block);
         blocks ~= block;
         // Prepare transactions for the next block

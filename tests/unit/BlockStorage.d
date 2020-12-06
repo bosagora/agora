@@ -62,7 +62,7 @@ private void main ()
         // We can use a random keypair because blocks are not validated
         // Use a key that is not used elsewhere.
         tx.inputs[0].signature = WK.Keys.X.secret.sign(hashFull(tx)[]);
-        blocks ~= makeNewBlock(blocks[$ - 1], [tx], null);
+        blocks ~= makeNewBlock(blocks[$ - 1], [tx], null, Hash.init, null);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
     }
