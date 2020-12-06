@@ -515,8 +515,10 @@ extern(D):
                 return;
             }
             const Block prev_block = blocks.front;
+            Hash random_seed = this.ledger.getExternalizedRandomSeed(
+                this.ledger.getBlockHeight(), con_data.missing_validators);
             const Block proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-                con_data.enrolls);
+                con_data.enrolls, random_seed, con_data.missing_validators);
             const Signature signature = envelope.statement.pledges.confirm_.value_sig;
             const Height height = Height(envelope.statement.slotIndex);
             if (!this.addBlockSignature(public_key, proposed_block, signature, height))
@@ -705,8 +707,10 @@ extern(D):
         assert(!blocks.empty);
 
         const prev_block = blocks.front;
+        Hash random_seed = this.ledger.getExternalizedRandomSeed(
+                this.ledger.getBlockHeight(), con_data.missing_validators);
         const proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-            con_data.enrolls);
+            con_data.enrolls, random_seed, con_data.missing_validators);
 
         Height height = proposed_block.header.height;
         const Signature signature = createBlockSignature(proposed_block);
@@ -866,7 +870,10 @@ extern(D):
             assert(!blocks.empty);  // should not happen
             const prev_block = blocks.front;
 
-            const block = makeNewBlock(prev_block, data.tx_set, data.enrolls);
+            Hash random_seed = this.ledger.getExternalizedRandomSeed(
+                this.ledger.getBlockHeight(), data.missing_validators);
+            const block = makeNewBlock(prev_block, data.tx_set, data.enrolls,
+                random_seed, data.missing_validators);
 
             // If we did not sign yet then add signature
             if (this.schnorr_pair.V !in this.slot_sigs[height])

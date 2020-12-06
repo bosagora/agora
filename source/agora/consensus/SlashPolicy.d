@@ -153,6 +153,47 @@ public class SlashPolicy
 
     /***************************************************************************
 
+        Get the random seed reduced from the preimages of validators
+        except the provided 'missing_validators'.
+
+        Params:
+            height = the desired block height to look up the hash for
+            missing_validators = the validators that did not reveal their
+                preimages for the height
+
+        Returns:
+            the random seed if there are one or more valid preimages,
+            otherwise Hash.init.
+
+    ***************************************************************************/
+
+    public Hash getExternalizedRandomSeed (in Height height,
+        const ref uint[] missing_validators) @safe nothrow
+    {
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        Hash[] valid_keys;
+        foreach (idx, key; keys)
+        {
+            if (missing_validators.find(idx).empty())
+                valid_keys ~= key;
+        }
+
+        // TODO: This should not happen in fact, which situation will be handled
+        // in issue #1444. (https://github.com/bpfkorea/agora/issues/1444)
+        if (valid_keys.length == 0)
+            return Hash.init;
+
+        return this.enroll_man.getRandomSeed(valid_keys, height);
+    }
+
+    /***************************************************************************
+
         Check if a validator has a pre-image for the height
 
         Params:
@@ -330,5 +371,11 @@ unittest
     // get and check random seed
     Hash preimage_root = slash_man.getRandomSeed(Height(2));
     assert(preimage_root ==
+        hashMulti(hashMulti(Hash.init, preimage_1), preimage_2));
+
+    // get and check random seed when a block being externalized
+    Hash externalized_seed = slash_man.getExternalizedRandomSeed(Height(2),
+        missing_validators);
+    assert(externalized_seed ==
         hashMulti(hashMulti(Hash.init, preimage_1), preimage_2));
 }

@@ -929,7 +929,14 @@ unittest
     enrollments ~= enroll1;
     enrollments ~= enroll2;
     enrollments.sort!("a.utxo_key < b.utxo_key");
-    auto block3 = makeNewTestBlock(block2, txs_3, enrollments);
+
+    auto preimage_root = Hash("0x47c993d409aa7d77651ecaa5a5d29e47a7aee609c7" ~
+                              "cb376f5f8ff2a868c738233a2df5ba11d635c8576a47" ~
+                              "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
+    uint[] missing_validators = [];
+
+    auto block3 = makeNewTestBlock(block2, txs_3, enrollments, preimage_root,
+        missing_validators);
     assert(block3.isValid(block2.header.height, hashFull(block2.header), findUTXO,
         Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments));
     enrollments.sort!("a.utxo_key > b.utxo_key");
@@ -1061,7 +1068,14 @@ unittest
         Enrollment[] enrollments;
         enrollments ~= enroll1;
         enrollments.sort!("a.utxo_key < b.utxo_key");
-        auto block3 = makeNewTestBlock(block2, txs_3, enrollments);
+
+        auto preimage_root = Hash("0x47c993d409aa7d77651ecaa5a5d29e47a7aee609c7" ~
+                                  "cb376f5f8ff2a868c738233a2df5ba11d635c8576a47" ~
+                                  "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
+        uint[] missing_validators = [];
+
+        auto block3 = makeNewTestBlock(block2, txs_3, enrollments, preimage_root,
+            missing_validators);
         assert(block3.header.enrollments.length == Enrollment.MinValidatorCount);
         assert(block3.isValid(block2.header.height, hashFull(block2.header),
             findUTXO, 0, genesis_validator_keys.length, checker, findGenesisEnrollments));

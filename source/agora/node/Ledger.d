@@ -241,7 +241,11 @@ public class Ledger
     public bool onExternalized (ConsensusData data)
         @trusted
     {
-        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls);
+        Hash random_seed = this.slash_man.getExternalizedRandomSeed(
+            this.getBlockHeight(), data.missing_validators);
+
+        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls,
+            random_seed, data.missing_validators);
         return this.acceptBlock(block);
     }
 
@@ -258,7 +262,7 @@ public class Ledger
             .map!(K => WK.Keys[K])
             .array();
         const block = makeNewTestBlock(this.last_block, data.tx_set,
-            data.enrolls, public_keys,
+            data.enrolls, Hash.init, data.missing_validators, public_keys,
             (PublicKey pubkey)
             {
                 return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
@@ -713,6 +717,29 @@ public class Ledger
         }
 
         return this.enroll_man.getRandomSeed(keys, height);
+    }
+
+    /***************************************************************************
+
+        Get the random seed reduced from the preimages of validators
+        except the provided 'missing_validators'.
+
+        Params:
+            height = the desired block height to look up the hash for
+            missing_validators = the validators that did not reveal their
+                preimages for the height
+
+        Returns:
+            the random seed if there are one or more valid preimages,
+            otherwise Hash.init.
+
+    ***************************************************************************/
+
+    public Hash getExternalizedRandomSeed (in Height height,
+        const ref uint[] missing_validators) @safe nothrow
+    {
+        return this.slash_man.getExternalizedRandomSeed(height,
+            missing_validators);
     }
 }
 
