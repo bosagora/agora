@@ -358,9 +358,7 @@ public class Validator : FullNode, API
 
         // block received either via externalize or getBlocksFrom(),
         // we need to cancel any existing nominating rounds.
-        // note: must be called before any context switch
         this.nominator.stopNominationRound(block.header.height);
-        super.onAcceptedBlock(block, validators_changed);
 
         const need_shuffle = block.header.height >=
             (this.last_shuffle_height + this.params.QuorumShuffleInterval);
@@ -372,6 +370,10 @@ public class Validator : FullNode, API
         // Re-enroll if our enrollment is about to expire
         if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(block.header.height);
+
+        // note: may context switch, should be called last after quorums
+        // are regenerated above.
+        super.onAcceptedBlock(block, validators_changed);
     }
 
     /***************************************************************************
