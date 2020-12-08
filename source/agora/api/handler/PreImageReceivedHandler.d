@@ -32,7 +32,6 @@ public interface PreImageReceivedHandler
 
     ***************************************************************************/
 
-    @method(HTTPMethod.POST)
     @path("/")
     public void pushPreImage (const PreImageInfo preimage);
 }

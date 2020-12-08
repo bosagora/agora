@@ -32,7 +32,6 @@ public interface BlockExternalizedHandler
 
     ***************************************************************************/
 
-    @method(HTTPMethod.POST)
     @path("/")
     public void pushBlock (const Block block);
 }
