@@ -51,7 +51,7 @@ public struct BlockHeader
     public Hash merkle_root;
 
     /// Bitfield containing the validators' key indices which signed the block
-    public BitField!uint validators;
+    public BitField!ubyte validators;
 
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
