@@ -142,7 +142,6 @@ public interface API
 
     public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks);
 
-
     /***************************************************************************
 
         Get the array of hashes which form the merkle path
@@ -195,7 +194,7 @@ public interface API
 
     /***************************************************************************
 
-        Get validator's pre-image inforamtion
+        Get validator's pre-image information
 
         API:
             GET /preimage

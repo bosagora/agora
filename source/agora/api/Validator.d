@@ -16,10 +16,10 @@
     as users are expected to use only one of them, not both in combination.
     A client either deal with a validator because it needs the validator API
     (only other validators so far), or needs the full node API and don't
-    care about the validators functions, and should not knoe about them as
+    care about the validators functions, and should not know about them as
     they also include many more dependencies.
 
-    `API` are defined as D interfaces, following what is done in Vibe.d.
+    `API`s are defined as D interfaces, following what is done in Vibe.d.
     Those interfaces can be read by a generator to build a client or a server.
     One such generator is Vibe.d's `vibe.web.rest`. `RestInterfaceClient`
     allows to query a REST API, while `registerRestInterface` will route queries
