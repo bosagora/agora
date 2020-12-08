@@ -139,9 +139,7 @@ public struct BitField (T = uint)
         if (value)
             this._storage[index / BitsPerT] |= mask(index);
         else
-            // This line triggers an annoying deprecation which we can't
-            // seem to get rid of. TODO: Report to DMD
-            this._storage[index / BitsPerT] &= ~mask(index);
+            this._storage[index / BitsPerT] &= ~cast(int)mask(index);
         return value;
     }
 
