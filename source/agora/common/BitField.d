@@ -134,7 +134,7 @@ public struct BitField (T = uint)
     public bool opIndexAssign (bool value, size_t index) pure nothrow @safe @nogc
     {
         if (index >= this.length())
-            assert(0);
+            assert(0, "Index beyond length of bitfield");
 
         if (value)
             this._storage[index / BitsPerT] |= mask(index);
@@ -149,7 +149,7 @@ public struct BitField (T = uint)
     public bool opIndex (size_t index) const pure nothrow @safe @nogc
     {
         if (index >= this.length())
-            assert(0);
+            assert(0, "Index beyond length of bitfield");
         return !!(this._storage[index / BitsPerT] & mask(index));
     }
 
