@@ -165,7 +165,7 @@ public interface API
         Enroll as a validator
 
         API:
-            PUT /enroll_validator
+            POST /enroll_validator
 
         Params:
             enroll = the Enrollment object, the information about an validator
@@ -216,7 +216,7 @@ public interface API
         Reveals a pre-image
 
         API:
-            PUT /receive_preimage
+            POST /receive_preimage
 
         Params:
             preimage = a PreImageInfo object which contains a hash and a height

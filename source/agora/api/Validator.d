@@ -92,7 +92,7 @@ public interface API : agora.api.FullNode.API
             envelope = Envelope to process (See Stellar_SCP)
 
         API:
-            PUT /receive_envelope
+            POST /receive_envelope
 
     ***************************************************************************/
 
