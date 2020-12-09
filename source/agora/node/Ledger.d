@@ -949,10 +949,7 @@ private Transaction[] makeTransactionForFreezing (
 version (unittest)
 private KeyPair[] getRandomKeyPairs ()
 {
-    KeyPair[] res;
-    foreach (idx; 0 .. Block.TxsInTestBlock)
-        res ~= KeyPair.random;
-    return res;
+    return WK.Keys.byRange().take(8).array();
 }
 
 /// Situation : Create two blocks, one containing only `Payment` transactions,
