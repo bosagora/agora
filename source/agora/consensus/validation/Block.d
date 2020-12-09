@@ -531,7 +531,7 @@ unittest
     auto gen_hash = GenesisBlock.header.hashFull();
 
     GenesisBlock.txs.each!(tx => utxos.put(tx));
-    auto block = GenesisBlock.makeNewBlock(genesisSpendable().map!(txb => txb.sign()));
+    auto block = GenesisBlock.makeNewTestBlock(genesisSpendable().map!(txb => txb.sign()));
 
     // height check
     assert(block.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
@@ -594,7 +594,7 @@ unittest
     prev_txs.each!(tx => utxos.put(tx));  // these will be spent
 
     auto prev_block = block;
-    block = block.makeNewBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
+    block = block.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
     assert(block.isValid(prev_block.header.height, prev_block.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
 
@@ -641,7 +641,7 @@ unittest
     };
 
     // consumed all utxo => fail
-    block = GenesisBlock.makeNewBlock(genesisSpendable().map!(txb => txb.sign()));
+    block = GenesisBlock.makeNewTestBlock(genesisSpendable().map!(txb => txb.sign()));
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
             findNonSpent, Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
 
@@ -678,7 +678,7 @@ unittest
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
     const last_root = block.header.merkle_root;
 
-    block = GenesisBlock.makeNewBlock(prev_txs.enumerate.map!(en =>
+    block = GenesisBlock.makeNewTestBlock(prev_txs.enumerate.map!(en =>
         TxBuilder(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
 
     assert(block.isValid(GenesisBlock.header.height, GenesisBlock.header.hashFull(),
@@ -715,7 +715,7 @@ unittest
 
     auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
 
-    auto block1 = makeNewBlock(GenesisBlock, txs_1);
+    auto block1 = makeNewTestBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
         Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
 
@@ -758,7 +758,7 @@ unittest
         txs_2 ~= tx;
     }
 
-    auto block2 = makeNewBlock(block1, txs_2);
+    auto block2 = makeNewTestBlock(block1, txs_2);
     assert(block2.isValid(block1.header.height, hashFull(block1.header), findUTXO,
         Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
     foreach (ref tx; txs_2)
@@ -838,7 +838,7 @@ unittest
 
     auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
 
-    auto block1 = makeNewBlock(GenesisBlock, txs_1);
+    auto block1 = makeNewTestBlock(GenesisBlock, txs_1);
     assert(block1.isValid(GenesisBlock.header.height, gen_hash, findUTXO,
         Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
 
@@ -872,7 +872,7 @@ unittest
         txs_2 ~= tx;
     }
 
-    auto block2 = makeNewBlock(block1, txs_2);
+    auto block2 = makeNewTestBlock(block1, txs_2);
     assert(block2.isValid(block1.header.height, hashFull(block1.header), findUTXO,
         Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
     foreach (ref tx; txs_2)
@@ -898,7 +898,7 @@ unittest
         Pair signature_noise = Pair.random;
         Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
 
-        auto block3 = makeNewBlock(block2, txs_3);
+        auto block3 = makeNewTestBlock(block2, txs_3);
         assert(block3.header.enrollments.length == 0);
         assert(!block3.isValid(block2.header.height, hashFull(block2.header),
                                  findUTXO, 0, checker, findGenesisEnrollments));
@@ -958,7 +958,7 @@ unittest
             txs_3 ~= tx;
         }
 
-        auto block3 = makeNewBlock(block2, txs_3);
+        auto block3 = makeNewTestBlock(block2, txs_3);
         assert(block3.header.enrollments.length == 0);
 
         assert(!block3.isValid(block2.header.height, hashFull(block2.header),

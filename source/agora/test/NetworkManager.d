@@ -79,7 +79,7 @@ unittest
             // make 3 blocks which have an invalid previous hash
 
             auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-            auto block = makeNewBlock(last_block, txs);
+            auto block = makeNewTestBlock(last_block, txs);
             blocks ~= block;
             last_tx = txs;
             last_block = block;
@@ -88,7 +88,7 @@ unittest
             {
                 txs = last_tx.map!(tx => TxBuilder(tx).sign()).array();
                 last_tx = txs;
-                block = makeNewBlock(last_block, txs);
+                block = makeNewTestBlock(last_block, txs);
 
                 blocks ~= block;
                 last_block = block;

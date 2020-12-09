@@ -795,8 +795,8 @@ unittest
     assert(!ledger.acceptBlock(invalid_block));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    auto valid_block = makeNewBlock(ledger.params.Genesis, txs);
-    assert(ledger.acceptBlock(valid_block));
+    const block = makeNewTestBlock(ledger.params.Genesis, txs);
+    assert(ledger.acceptBlock(block));
 }
 
 /// Merkle Proof
@@ -865,12 +865,12 @@ unittest
     // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
     const(Block)[] blocks = [ GenesisBlock ];
     auto txs = GenesisBlock.spendable().map!(txb => txb.sign()).array();
-    blocks ~= makeNewBlock(blocks[$ - 1], txs);
+    blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
     // Make 3 more blocks to put in storage
     foreach (idx; 2 .. 5)
     {
         txs = blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
-        blocks ~= makeNewBlock(blocks[$ - 1], txs);
+        blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
     }
 
     // And provide it to the ledger
@@ -1155,7 +1155,8 @@ private immutable(Block)[] genBlocksToIndex (
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
 
         const NoEnrollments = null;
-        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
+        auto cycle = blocks[$ - 1].header.height / params.ValidatorCycle;
+        blocks ~= makeNewTestBlock(blocks[$ - 1], txs, NoEnrollments);
     }
 
     return blocks.assumeUnique;
