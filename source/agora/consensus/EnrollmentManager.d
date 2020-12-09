@@ -95,6 +95,9 @@ public class EnrollmentManager
     /// Key used for enrollment which is actually an UTXO hash
     private Hash enroll_key;
 
+    /// The final hash of the preimages at the beginning of the enrollment cycle
+    private Hash random_seed;
+
     /// The period for revealing a preimage
     /// It is an hour interval if a block is made in every 10 minutes
     public static immutable uint PreimageRevealPeriod = 6;
@@ -288,6 +291,7 @@ public class EnrollmentManager
         if (enroll.utxo_key in self_utxos)
         {
             this.setEnrollmentKey(enroll.utxo_key);
+            this.setEnrollmentRandomSeed(enroll.random_seed);
         }
 
         return null;
@@ -382,6 +386,40 @@ public class EnrollmentManager
         cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
 
         return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
+    }
+
+    /***************************************************************************
+
+        Retrieves the R from the (R, s) of the signature in the commitment
+        for the associated public key
+
+        Params:
+            key = the public key to look up
+
+        Returns:
+            The `R` used in the signature of the Enrollment,
+            or `Point.init` if one is not found
+
+    ***************************************************************************/
+
+    public Point getCommitmentNonce (const ref PublicKey key) @trusted nothrow
+    {
+        return this.validator_set.getCommitmentNonce(key);
+    }
+
+    /***************************************************************************
+
+        Get the r that was used to sign the enrollment of this validator node
+
+        Returns:
+            The initial `r` used when signing the Enrollment
+
+    ***************************************************************************/
+
+    public Scalar getCommitmentNonceScalar (Height height) nothrow
+    {
+        ulong index = ulong((height - 1) / this.cycle.preimages.length());
+        return Scalar(hashMulti(this.key_pair.v, "consensus.signature.noise", index));
     }
 
     /***************************************************************************
@@ -640,6 +678,78 @@ public class EnrollmentManager
         }
 
         return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Get the random seed for the enrollment for this node
+
+        If this node is not enrolled yet, the result will be empty. And if
+        the database operation fails, this displays a log message and also
+        returns `Hash.init`. Database errors mean that this node is not in
+        a normal situation overall.
+
+        Returns:
+            the key for the enrollment
+
+    ***************************************************************************/
+
+    public Hash getEnrollmentRandomSeed () @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
+                "WHERE key = ?", "random_seed");
+
+            if (!results.empty)
+                return results.oneValue!(ubyte[]).deserializeFull!(Hash);
+        }
+        catch (Exception ex)
+        {
+            log.warn("ManagedDatabase operation error: {}", ex.msg);
+        }
+
+        return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Set the random seed for the enrollment for this node
+
+        If saving a random seed fails, this displays a log messages and just
+        returns. The `enroll_key` stores the value anyway and it can be restored
+        from the catch-up process later. If the database or serialization
+        operation fails, it means that node is not in normal situation overall.
+
+        Params:
+            random_seed = the hash for the enrollment
+
+    ***************************************************************************/
+
+    private void setEnrollmentRandomSeed (in Hash random_seed) @trusted nothrow
+    {
+        this.random_seed = random_seed;
+
+        static ubyte[] buffer;
+        try
+        {
+            serializeToBuffer(this.random_seed, buffer);
+        }
+        catch (Exception ex)
+        {
+            log.warn("Serialization error of random_seed {}", ex.msg);
+            return;
+        }
+
+        try
+        {
+            this.db.execute("REPLACE into node_enroll_data " ~
+                "(key, val) VALUES (?, ?)", "random_seed", buffer);
+        }
+        catch (Exception ex)
+        {
+            log.warn("ManagedDatabase operation error {}", ex.msg);
+        }
     }
 
     /***************************************************************************
