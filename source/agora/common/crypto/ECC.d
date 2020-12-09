@@ -44,6 +44,11 @@ nothrow @nogc unittest
 
     const Scalar One = (s3 + (~s3));
     assert(One * One == One);
+
+    // Identity addition for Scalar
+    assert(Zero + One == One);
+    assert(One + Zero == One);
+
     // Get the generator
     const Point G = One.toPoint();
     assert(G + G == (One + One).toPoint());
@@ -57,6 +62,12 @@ nothrow @nogc unittest
     assert(p3 - p2 == p1);
 
     assert(s1 * p2 + s2 * p2 == s3 * p2);
+
+    // Identity addition for Point
+    const Point pZero = Point.init;
+
+    assert(pZero + G == G);
+    assert(G + pZero == G);
 }
 
 /*******************************************************************************
@@ -156,6 +167,11 @@ public struct Scalar
     public Scalar opBinary (string op)(const scope auto ref Scalar rhs)
         const nothrow @nogc @trusted
     {
+        // Point.init is Identity for functional operations
+        if (this == Scalar.init)
+            return rhs;
+        if (rhs == Scalar.init)
+            return this;
         Scalar result = void;
         static if (op == "+")
             crypto_core_ed25519_scalar_add(
@@ -329,6 +345,11 @@ public struct Point
         const nothrow @nogc @trusted
         if (op == "+" || op == "-")
     {
+        // Point.init is Identity for functional operations
+        if (this == Point.init)
+            return rhs;
+        if (rhs == Point.init)
+            return this;
         Point result = void;
         static if (op == "+")
         {
