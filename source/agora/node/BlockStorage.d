@@ -93,6 +93,21 @@ public interface IBlockStorage
 
     public bool saveBlock (const ref Block block);
 
+    /***************************************************************************
+
+        Update block in the storage with updated signature and bitfield for
+        validator signers.
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public bool updateBlockMultiSig (const ref Block block);
+
 
     /***************************************************************************
 
@@ -486,6 +501,75 @@ public class BlockStorage : IBlockStorage
         catch (Exception ex)
         {
             log.error("BlockStorage.saveBlock: {}", ex);
+            return false;
+        }
+    }
+
+    /***************************************************************************
+
+        Update block in the file.
+        This is intended for updating the multi-sig header signature field
+        The block size should be identical and this will not update unless it is
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public override bool updateBlockMultiSig (const ref Block block) @safe nothrow
+    {
+        try
+        {
+            const size_t block_position = findBlockPosition(block.header.height);
+            if (block_position == 0)
+                return false;
+            Block original_block;
+            if (!tryReadBlock(original_block, block.header.height))
+                throw new Exception("original block could not be read from disk!");
+
+            if (block.merkle_tree != original_block.merkle_tree)
+                throw new Exception("block merkle_tree has changed!");
+
+            ubyte[Hash.sizeof] original_hash_bytes = hashFull(original_block.header)[];
+            ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
+
+            // The block hash does not include the header signature and bitfield
+            // So they should be the same
+            if (original_hash_bytes != hash_bytes)
+                throw new Exception("block hash has changed!");
+
+            const size_t data_position = block_position + size_t.sizeof;
+
+            this.is_saving = true;
+            scope(exit) this.is_saving = false;
+            size_t block_size = 0;
+            scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+            {
+                // write to memory
+                if (!this.write(data_position + block_size, data))
+                    assert(0);
+
+                block_size += data.length;
+            };
+            serializePart(block, dg);
+
+            // write block data size
+            if (!this.writeSizeT(block_position, block_size))
+                throw new Exception("failed to write block data size");
+
+            this.length += size_t.sizeof + block_size;
+
+            if (!this.writeChecksum())
+                assert(0);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.error("BlockStorage.updateBlockMultiSig: not updated : {}", ex);
             return false;
         }
     }
@@ -1035,6 +1119,32 @@ public class MemBlockStorage : IBlockStorage
         return true;
     }
 
+    /***************************************************************************
+
+        Update block in the array.
+        This is intended for updating the multi-sig header signature field
+        The block size should be identical and this will not update unless it is
+
+        Params:
+            block = `Block` to save
+
+        Returns:
+            Returns true if success, otherwise returns false.
+
+    ***************************************************************************/
+
+    public override bool updateBlockMultiSig (const ref Block block) @safe nothrow
+    {
+        scope (failure) assert(0, "BlockStorage: Block Signature update failed");
+
+        if (this.blocks.length < block.header.height)
+            return false;
+
+        this.blocks[block.header.height.value] = serializeFull!Block(block);
+
+        return true;
+    }
+
     /// See `IBlockStorage.tryReadBlock(ref Block, size_t)`
     public bool tryReadBlock (ref Block block, Height height) @safe nothrow
     {
@@ -1076,9 +1186,11 @@ unittest
 {
     import agora.common.crypto.Key;
     import agora.consensus.data.genesis.Test;
+    import agora.consensus.data.Enrollment;
     import agora.consensus.data.Transaction;
     import agora.utils.Test;
     import std.algorithm.comparison;
+    import std.range;
 
     const size_t BlockCount = 50;
     MemBlockStorage storage = new MemBlockStorage();
@@ -1099,7 +1211,7 @@ unittest
         if (!last_txs.length)
         {
             txs = genesisSpendable().map!(txb => txb.sign()).array();
-            last_block = makeNewBlock(blocks[$ - 1], txs);
+            last_block = makeNewTestBlock(blocks[$ - 1], txs);
             last_txs = txs;
 
             blocks ~= last_block;
@@ -1112,7 +1224,12 @@ unittest
         while (--count)
         {
             txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
-            last_block = makeNewBlock(blocks[$ - 1], txs);
+            Enrollment[] no_enrollments = null;
+            ulong cycle = 0;
+            KeyPair[] keys_only5 = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
+                WK.Keys.NODE5, WK.Keys.NODE6];
+            last_block = makeNewTestBlock(blocks[$ - 1], txs,
+                no_enrollments, cycle, keys_only5);
             last_txs = txs;
 
             blocks ~= last_block;
@@ -1132,9 +1249,24 @@ unittest
     // compare
     assert(equal(blocks, loaded_blocks));
 
+    Block block;
+
+    // Test updating the signature
+    assert(storage.tryReadBlock(block, Height(BlockCount - 1)));
+    auto prev_signature = block.header.signature;
+    iota(0, 5).each!(i => assert(block.header.validators[i],
+        format!"validator bit %s should be set"(i)));
+    assert(!block.header.validators[5], "validator bit 5 should not be set");
+    Block updated_block = multiSigTestBlock(block, [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
+                WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7]);
+    storage.updateBlockMultiSig(updated_block);
+    assert(storage.tryReadBlock(block, Height(BlockCount - 1)));
+    iota(0, 6).each!(i => assert(block.header.validators[i],
+        format!"validator bit %s should be set after update"(i)));
+    assert(block.header.signature != prev_signature);
+
     // test of random access
     import std.random;
-    import std.range;
 
     auto rnd = rndGen;
 
@@ -1153,10 +1285,9 @@ unittest
 
     // test loading in constructor
     auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
-    auto block_2 = makeNewBlock(GenesisBlock, txs_1);
+    auto block_2 = makeNewTestBlock(GenesisBlock, txs_1);
     const ctor_blocks = [ GenesisBlock, cast(const(Block))block_2 ];
     scope store = new MemBlockStorage(ctor_blocks);
-    Block block;
     assert(!store.tryReadBlock(block, Height(0)));  // nothing loaded yet
     // If `MemBlockStorage` doesn't load the blocks from the constructor,
     // `ctor_blocks[1]` will be used as genesis which will then fail this test

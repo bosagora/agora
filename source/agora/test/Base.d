@@ -1948,10 +1948,8 @@ private immutable(Block)[] generateExtraBlocks (
     foreach (_; 0 .. count)
     {
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-
-        const NoEnrollments = null;
-        blocks ~= makeNewBlock(blocks[$ - 1], txs, NoEnrollments);
+        const block = makeNewTestBlock(blocks[$ - 1], txs);
+        blocks ~= block;
     }
-
     return blocks.assumeUnique;
 }

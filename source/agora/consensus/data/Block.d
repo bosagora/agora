@@ -152,6 +152,34 @@ public struct Block
 
     /***************************************************************************
 
+        Returns:
+            a copy of this block with a different signature and validators bitmask
+
+        Params:
+            signature = new signature
+            validators = mask to indicate who has signed
+
+    ***************************************************************************/
+
+    public Block updateSignature (const Signature signature,
+        BitField!ubyte validators) const @safe
+    {
+        return Block(
+            BlockHeader(
+                this.header.prev_block,
+                this.header.height,
+                this.header.merkle_root,
+                validators,
+                signature,
+                this.header.enrollments.dup),
+            // TODO: Optimize this by using dup for txs also
+            this.txs.map!(tx =>
+                tx.serializeFull.deserializeFull!Transaction).array,
+            this.merkle_tree.dup);
+    }
+
+    /***************************************************************************
+
         Block serialization
 
         Params:
@@ -426,6 +454,8 @@ unittest
     };
     testSymmetry!Block();
     testSymmetry(block);
+    assert(block.header.validators[0]);
+    assert(!block.header.validators[1]);
 }
 
 /*******************************************************************************
@@ -440,7 +470,7 @@ unittest
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, Enrollment[] enrollments) @safe nothrow
+    Transactions txs, Enrollment[] enrollments = null) @safe nothrow
 {
     static assert (isInputRange!Transactions);
 
@@ -459,13 +489,18 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     return block;
 }
 
-/// only used in unittests
+/// only used in unittests with defualt block signing with the genesis validators
 version (unittest)
 {
-    public Block makeNewBlock (Transactions)(const ref Block prev_block,
-        Transactions txs) @safe nothrow
+    import agora.utils.Test : WK;
+
+    public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
+        Transactions txs, Enrollment[] enrollments = null, ulong cycle = 0,
+        KeyPair[] keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
+            WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7]) @safe nothrow
     {
-        return makeNewBlock(prev_block, txs, null);
+        auto block = makeNewBlock(prev_block, txs, enrollments);
+        return multiSigTestBlock(block, keys, cycle);
     }
 }
 
@@ -474,8 +509,8 @@ version (unittest)
 {
     import agora.consensus.data.genesis.Test;
 
-    auto new_block = makeNewBlock(GenesisBlock, [Transaction.init]);
-    auto rng_block = makeNewBlock(GenesisBlock, [Transaction.init].take(1));
+    auto new_block = makeNewTestBlock(GenesisBlock, [Transaction.init]);
+    auto rng_block = makeNewTestBlock(GenesisBlock, [Transaction.init].take(1));
     assert(new_block.header.prev_block == hashFull(GenesisBlock.header));
     assert(new_block == rng_block);
 
@@ -667,4 +702,35 @@ unittest
     assert(merkle_path[2] == hmnop);
     assert(merkle_path[3] == habcdefgh);
     assert(block.header.merkle_root == Block.checkMerklePath(hi, merkle_path, 8));
+}
+
+version (unittest)
+{
+    public Block multiSigTestBlock (Block block, KeyPair[] keys, ulong cycle = 0) @trusted nothrow
+    {
+        import agora.common.crypto.Schnorr;
+        import agora.common.crypto.ECC;
+
+        auto validators = BitField!ubyte(keys.length);
+        Signature[] sigs;
+
+        // challenge = Hash(block) to Scalar
+        const Scalar challenge = hashFull(block);
+
+        void validatorSign (ulong i, KeyPair key)
+        {
+            Scalar v = secretKeyToCurveScalar(key.secret);
+            // rc = r used in signing the commitment
+            const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", cycle));
+            const Scalar r = rc + challenge; // make it unique each challenge
+            const Pair R = Pair.fromScalar(r);
+            const K = Point(key.address[]);
+            sigs ~= multiSigSign(R, v, challenge);
+            validators[i] = true;
+        }
+        keys.enumerate.each!((idx, key) => validatorSign(idx, key));
+        block.header.signature = multiSigCombine(sigs);
+        block.header.validators = validators;
+        return block;
+    }
 }
