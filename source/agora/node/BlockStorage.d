@@ -493,19 +493,9 @@ public class BlockStorage : IBlockStorage
     /// See `BlockStorage.tryReadBlock(ref Block, size_t)`
     public override bool tryReadBlock (ref Block block, Height height) @safe nothrow
     {
-        if ((this.height_idx.length == 0) ||
-            (this.height_idx.back.height < height))
-            return false;
-
-        auto finds
-            = this.height_idx[].find!( (a, b) => a.height == b)(height);
-
-        if (finds.empty)
-            return false;
-
         try
         {
-            this.readBlockAtPosition(block, finds.front.position);
+            this.readBlockAtPosition(block, findBlockPosition(height));
             return true;
         }
         catch (Exception ex)
@@ -513,6 +503,21 @@ public class BlockStorage : IBlockStorage
             log.trace("BlockStorage.readBlock({}): {}", height, ex);
             return false;
         }
+    }
+
+    /// Return the position of the block by the given height or return zero
+    private size_t findBlockPosition (Height height) @safe nothrow
+    {
+        if ((this.height_idx.length == 0) ||
+            (this.height_idx.back.height < height))
+            return 0;
+
+        auto finds
+            = this.height_idx[].find!( (a, b) => a.height == b)(height);
+
+        if (finds.empty)
+            return 0;
+        return finds.front.position;
     }
 
     /// See `BlockStorage.tryReadBlock(ref Block, Hash)`
