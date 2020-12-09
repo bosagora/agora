@@ -23,6 +23,7 @@
 module agora.consensus.data.genesis.Test;
 
 import agora.common.Amount;
+import agora.common.BitField;
 import agora.common.Hash;
 import agora.common.Types;
 import agora.common.crypto.Key;
@@ -50,6 +51,9 @@ public immutable Block GenesisBlock = {
         prev_block:  Hash.init,
         height:      Height(0),
         merkle_root: GenesisMerkleTree[$ - 1],
+        validators:  BitField!ubyte(6),
+        signature:   Signature.init,
+
         enrollments: [
             // Node 4
             Enrollment(
