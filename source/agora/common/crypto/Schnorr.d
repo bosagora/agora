@@ -399,6 +399,66 @@ nothrow @nogc @safe unittest
     assert(stolen_key != kp.v);
 }
 
+/// Single-signer as part of multi-sig
+public Signature multiSigSign (const ref Pair R,
+    const ref Scalar v, const ref Scalar c) nothrow @nogc @safe
+{
+    Scalar s = R.v + (v * c);
+    return Sig(R.V, s).toBlob();
+}
+
+/// multi-sig verify
+public bool multiSigVerify (const ref Signature signature,
+    const ref Point sumV, const ref Scalar c) nothrow @nogc @safe
+{
+    Sig sigRs = Sig.fromBlob(signature);
+    return sigRs.s.toPoint() == sigRs.R + (sumV * c);
+}
+
+/// multi-sig combine
+public Signature multiSigCombine (S)(const S signatures) nothrow @nogc @safe
+{
+    auto sigs = signatures.map!(x => Sig.fromBlob(x));
+    Point sum_R = sigs.map!(x => x.R).sum(Point.init);
+    Scalar sum_s = sigs.map!(x => x.s).sum(Scalar.init);
+    return Sig(sum_R, sum_s).toBlob();
+}
+
+/// testing multiSig for block signing
+/*@nogc*/ @safe unittest
+{
+    static immutable string message = "BOSAGORA for the win";
+
+    const Scalar c = hashFull(message);  // challenge
+
+    const kp1_K = Pair.random();  // key-pair
+    const kp1_R = Pair.random();  // (R, r), the public and private nonce
+
+    // first signer
+    const Signature signature1 = multiSigSign(kp1_R, kp1_K.v, c);
+
+    const kp2_K = Pair.random();  // key-pair
+    const kp2_R = Pair.random();  // (R, r), the public and private nonce
+
+    // second signer
+    const Signature signature2 = multiSigSign(kp2_R, kp2_K.v, c);
+
+    Sig sig1 = Sig.fromBlob(signature1);
+    Sig sig2 = Sig.fromBlob(signature2);
+
+    // verification of individual signatures
+    assert(sig1.s.toPoint() == kp1_R.V + (kp1_K.V * c));
+    assert(sig2.s.toPoint() == kp2_R.V + (kp2_K.V * c));
+
+    const Signature[] sigs = [ signature1, signature2 ];
+    // "multi-sig" - collection of one or more signatures
+    const Signature multiSignature = multiSigCombine(sigs);
+
+    const sumK = kp1_K.V + kp2_K.V;
+    // verification of combined signatures
+    assert(multiSigVerify(multiSignature, sumK, c));
+}
+
 // rogue-key attack
 // see: https://tlu.tarilabs.com/cryptography/digital_signatures/introduction_schnorr_signatures.html#key-cancellation-attack
 // see: https://blockstream.com/2018/01/23/en-musig-key-aggregation-schnorr-signatures/#:~:text=not%20secure.
