@@ -280,6 +280,14 @@ extern(D):
             return false;
         }
 
+        // check whether the slashing related data is valid
+        if (auto msg = this.ledger.validateSlashingData(data))
+        {
+            log.fatal("tryNominate(): Invalid preimage data: {}. Data: {}",
+                    msg, data);
+            return false;
+        }
+
         return true;
     }
 
@@ -543,6 +551,14 @@ extern(D):
                 log.error("validateValue(): Validation failed: {}. Data: {}",
                     fail_reason, data);
                 return ValidationLevel.kInvalidValue;
+            }
+
+            if (auto fail_reason = this.ledger.validateSlashingData(data))
+            {
+                log.info("validateValue(): Preimage Validation failed, but " ~
+                    "return kMaybeValidValue. Reason: {}, Data: {}",
+                    fail_reason, data);
+                return ValidationLevel.kMaybeValidValue;
             }
         }
         catch (Exception ex)
