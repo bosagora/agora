@@ -80,10 +80,10 @@ void manyValidators (size_t validators)
     network.assertSameBlocks(Height(GenesisValidatorCycle + 1));
 }
 
-/// 8 nodes
+/// 10 nodes
 unittest
 {
-    manyValidators(8);
+    manyValidators(10);
 }
 
 // temporarily disabled until failures are resolved
