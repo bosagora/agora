@@ -28,7 +28,6 @@ import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.PreImage;
 import agora.consensus.state.UTXOSet;
-import agora.consensus.validation;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
@@ -115,6 +114,8 @@ public class ValidatorSet
     public string add (Height block_height, scope UTXOFinder finder,
         const ref Enrollment enroll, PublicKey pubkey) @safe nothrow
     {
+        import agora.consensus.validation.Enrollment : isInvalidReason;
+
         // check validaty of the enrollment data
         if (auto reason = isInvalidReason(enroll, finder,
                                     block_height, &this.findRecentEnrollment))
@@ -624,6 +625,8 @@ public class ValidatorSet
 
     public bool addPreimage (const ref PreImageInfo preimage) @trusted nothrow
     {
+        import agora.consensus.validation.PreImage : isInvalidReason;
+
         const prev_preimage = this.getPreimage(preimage.enroll_key);
 
         if (prev_preimage == PreImageInfo.init)
