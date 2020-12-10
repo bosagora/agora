@@ -40,7 +40,8 @@ import agora.consensus.state.UTXODB;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
-import std.exception;
+import std.algorithm;
+import std.range;
 
 mixin AddLogger!();
 
@@ -121,7 +122,8 @@ public class SlashPolicy
             height = the desired block height to look up the hash for
 
         Returns:
-            the random seed
+            the random seed if there are one or more valid preimages,
+            otherwise Hash.init.
 
     ***************************************************************************/
 
@@ -140,6 +142,11 @@ public class SlashPolicy
             if (this.hasRevealedPreimage(height, key))
                 valid_keys ~= key;
         }
+
+        // NOTE: The preimage root of `Hash.init` value is currently
+        // checked in the `validateSlashingData` function of `Ledger`.
+        if (valid_keys.length == 0)
+            return Hash.init;
 
         return this.enroll_man.getRandomSeed(valid_keys, height);
     }
@@ -168,6 +175,44 @@ public class SlashPolicy
             return true;
         else
             return false;
+    }
+
+    /***************************************************************************
+
+        Check if information for pre-images and slashed validators is valid
+
+        Params:
+            height = the height of proposed block
+            missing_validators = list of indices to the validator UTXO set
+                which have not revealed the preimage
+
+        Returns:
+            `null` if the information is valid at the proposed height,
+            otherwise a string explaining the reason it is invalid.
+
+    ***************************************************************************/
+
+    public string isInvalidPreimageRootReason (Height height,
+        const ref uint[] missing_validators) @safe
+    {
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        uint[] local_missing_validators;
+        foreach (idx, key; keys)
+        {
+            if (!this.hasRevealedPreimage(height, key))
+                local_missing_validators ~= cast(uint)idx;
+        }
+
+        if (local_missing_validators != missing_validators)
+            return "The list of missing validators does not match with the local one";
+
+        return null;
     }
 }
 

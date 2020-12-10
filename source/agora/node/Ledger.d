@@ -37,6 +37,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
 import agora.node.BlockStorage;
 import agora.node.Fee;
@@ -77,6 +78,9 @@ public class Ledger
 
     /// Enrollment manager
     private EnrollmentManager enroll_man;
+
+    /// Slashing policy manager
+    private SlashPolicy slash_man;
 
     /// If not null call this delegate
     /// A block was externalized
@@ -120,6 +124,7 @@ public class Ledger
         this.utxo_set = utxo_set;
         this.storage = storage;
         this.enroll_man = enroll_man;
+        this.slash_man = new SlashPolicy(this.enroll_man, params);
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
         this.payload_checker = payload_checker;
@@ -439,6 +444,11 @@ public class Ledger
 
         this.enroll_man.getEnrollments(data.enrolls,
             Height(this.getBlockHeight()));
+
+        // get information about validators not revealing a preimage timely
+        this.slash_man.getMissingValidators(data.missing_validators,
+            this.getBlockHeight());
+
         foreach (ref Transaction tx; this.pool)
         {
             if (auto reason = tx.isInvalidReason(utxo_finder, next_height, &this.payload_checker.check))
@@ -492,6 +502,24 @@ public class Ledger
         }
 
         return null;
+    }
+
+    /***************************************************************************
+
+        Check whether the slashing data is valid.
+
+        Params:
+            data = consensus data
+
+        Returns:
+            the error message if validation failed, otherwise null
+
+    ***************************************************************************/
+
+    public string validateSlashingData (in ConsensusData data) @safe
+    {
+        return this.slash_man.isInvalidPreimageRootReason(this.getBlockHeight(),
+                data.missing_validators);
     }
 
     /***************************************************************************
@@ -1377,4 +1405,162 @@ unittest
     blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 4);
     assert(blocks[3].header.height == 3);
+}
+
+// create slashing data and check validity for that
+unittest
+{
+    import agora.common.crypto.Schnorr;
+    import agora.consensus.data.genesis.Test;
+    import agora.consensus.data.PreImageInfo;
+    import agora.consensus.PreImage;
+
+    auto params = new immutable(ConsensusParams)(10);
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+
+    Transaction[] genTransactions (Transaction[] txs)
+    {
+        return txs.enumerate()
+            .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address)
+                .sign())
+            .array;
+    }
+
+    Transaction[] genGeneralBlock (Transaction[] txs)
+    {
+        auto new_txs = genTransactions(txs);
+        new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        ledger.forceCreateBlock();
+        return new_txs;
+    }
+
+    // generate payment transaction to the first 8 well-known keypairs
+    auto genesis_txs = genesisSpendable().array;
+    auto txs = genesis_txs[0 .. 4].enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign()).array;
+    txs ~= genesis_txs[4 .. 8].enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign()).array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 1);
+
+    // generate a block with only freezing transactions
+    auto new_txs = txs[0 .. 4].enumerate()
+        .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address)
+            .sign(TxType.Freeze)).array;
+    new_txs ~= txs[4 .. 7].enumerate()
+        .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address).sign())
+        .array;
+    new_txs ~= TxBuilder(txs[$ - 1]).split(WK.Keys[0].address.repeat(8)).sign();
+    new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 2);
+
+    // UTXOs for enrollments
+    Hash[] utxos = [
+        UTXO.getHash(hashFull(new_txs[0]), 0),
+        UTXO.getHash(hashFull(new_txs[1]), 0),
+        UTXO.getHash(hashFull(new_txs[2]), 0),
+        UTXO.getHash(hashFull(new_txs[3]), 0)
+    ];
+
+    new_txs = iota(new_txs[$ - 1].outputs.length).enumerate
+        .map!(en => TxBuilder(new_txs[$ - 1], cast(uint)en.index)
+            .refund(WK.Keys[en.index].address).sign())
+        .array;
+    new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 3);
+
+    foreach (height; 4 .. 10)
+    {
+        new_txs = genGeneralBlock(new_txs);
+        assert(ledger.getBlockHeight() == Height(height));
+    }
+
+    // add four new enrollments
+    Enrollment[] enrollments;
+    PreImageCache[] caches;
+    auto pairs = iota(4).map!(idx => WK.Keys[idx]).array;
+    foreach (idx, kp; pairs)
+    {
+        auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        auto cycle = PreImageCycle(
+                0, 0,
+                PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
+                PreImageCache(params.ValidatorCycle, 1));
+        const seed = cycle.populate(pair.v, true);
+        caches ~= cycle.preimages;
+        auto enroll = EnrollmentManager.makeEnrollment(
+            pair, utxos[idx], params.ValidatorCycle,
+            seed, idx);
+        assert(ledger.enroll_man.addEnrollment(enroll, kp.address, Height(1),
+                &ledger.utxo_set.peekUTXO));
+        enrollments ~= enroll;
+    }
+
+    foreach (idx, hash; utxos)
+    {
+        Enrollment stored_enroll = ledger.enroll_man.getEnrollment(hash);
+        assert(stored_enroll == enrollments[idx]);
+    }
+
+    // create the 10th block to make the `Enrollment`s enrolled
+    new_txs = genGeneralBlock(new_txs);
+    assert(ledger.getBlockHeight() == Height(10));
+    ledger.enroll_man.clearExpiredValidators(Height(10));
+    auto b10 = ledger.getBlocksFrom(Height(10))[0];
+    assert(b10.header.enrollments.length == 4);
+
+    // block 11
+    new_txs = genGeneralBlock(new_txs);
+    assert(ledger.getBlockHeight() == Height(11));
+
+    // check missing validators not revealing pre-images.
+    // there are three missing validators at the height of 11.
+    auto temp_txs = genTransactions(new_txs);
+    temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+
+    auto preimage = PreImageInfo(
+        enrollments[0].utxo_key,
+        caches[0][$ - 2],
+        1);
+    ledger.enroll_man.addPreimage(preimage);
+    auto gotten_image =
+        ledger.enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
+    assert(gotten_image == preimage);
+
+    ConsensusData data;
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    assert(data.missing_validators.length == 3);
+    assert(data.missing_validators == [0, 1, 2]);
+
+    // check validity of slashing information
+    assert(ledger.validateSlashingData(data) == null);
+    ConsensusData forged_data = data;
+    forged_data.missing_validators = [1, 2, 3];
+    assert(ledger.validateSlashingData(forged_data) != null);
+
+    // reveal preimages of all the validators
+    foreach (idx, cache; caches[1 .. $])
+    {
+        preimage = PreImageInfo(
+            enrollments[idx + 1].utxo_key,
+            cache[$ - 2],
+            1);
+        ledger.enroll_man.addPreimage(preimage);
+        gotten_image =
+            ledger.enroll_man.getValidatorPreimage(enrollments[idx + 1].utxo_key);
+        assert(gotten_image == preimage);
+    }
+
+    // there's no missing validator at the height of 11
+    // after revealing preimages
+    temp_txs.each!(tx => ledger.pool.remove(tx));
+    temp_txs = genTransactions(new_txs);
+    temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    assert(data.missing_validators.length == 0);
 }
