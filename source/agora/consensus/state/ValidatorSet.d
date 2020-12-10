@@ -329,7 +329,8 @@ public class ValidatorSet
             pub_keys.length = 0;
             assumeSafeAppend(pub_keys);
             auto results = this.db.execute("SELECT public_key FROM validator_set
-                WHERE enrolled_height < ? ORDER BY public_key ASC", height.value);
+                WHERE enrolled_height < ? AND active = ? ORDER BY public_key ASC",
+                    height.value, EnrollmentStatus.Active);
             foreach (row; results)
                 pub_keys ~= PublicKey.fromString(row.peek!(char[])(0));
             return true;

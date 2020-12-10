@@ -34,9 +34,9 @@ unittest
 {
     TestConf conf = {
         timeout : 10.seconds,
-        outsider_validators : 2,
+        outsider_validators : 3,
         txs_to_nominate : 0, // zero allows any number of txs for nomination
-        recurring_enrollment : false,
+        recurring_enrollment : false
     };
     auto network = makeTestNetwork(conf);
     network.start();
@@ -72,7 +72,7 @@ unittest
             format!"Expected block height %s but outsider %s has height %s."
                 (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
 
-    // Now we enroll two new validators.
+    // Now we enroll the set B validators.
     set_b.enumerate.each!((idx, _) => network.enroll(GenesisValidators + idx));
 
     // Block 20, After this the Genesis block enrolled validators will be expired.
