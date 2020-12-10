@@ -494,13 +494,26 @@ version (unittest)
 {
     import agora.utils.Test : WK;
 
+    public KeyPair[] genesis_validator_keys = [
+        WK.Keys.NODE2,
+        WK.Keys.NODE3,
+        WK.Keys.NODE4,
+        WK.Keys.NODE5,
+        WK.Keys.NODE6,
+        WK.Keys.NODE7 ];
+
+    ulong defaultCycleZero (PublicKey key)
+    {
+        return 0;
+    }
+
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
-        Transactions txs, Enrollment[] enrollments = null, ulong cycle = 0,
-        KeyPair[] keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
-            WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7]) @safe nothrow
+        Transactions txs, Enrollment[] enrollments = null,
+        KeyPair[] keys = genesis_validator_keys,
+        ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k)) @safe nothrow
     {
         auto block = makeNewBlock(prev_block, txs, enrollments);
-        return multiSigTestBlock(block, keys, cycle);
+        return multiSigTestBlock(block, cycleForValidator, keys);
     }
 }
 
@@ -706,7 +719,12 @@ unittest
 
 version (unittest)
 {
-    public Block multiSigTestBlock (Block block, KeyPair[] keys, ulong cycle = 0) @trusted nothrow
+    import agora.utils.Log;
+    mixin AddLogger!();
+
+    public Block multiSigTestBlock (ref Block block,
+        ulong delegate (PublicKey) cycleForValidator,
+        KeyPair[] keys) @trusted nothrow
     {
         import agora.common.crypto.Schnorr;
         import agora.common.crypto.ECC;
@@ -721,16 +739,27 @@ version (unittest)
         {
             Scalar v = secretKeyToCurveScalar(key.secret);
             // rc = r used in signing the commitment
-            const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", cycle));
+            const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise",
+                cycleForValidator(key.address)));
             const Scalar r = rc + challenge; // make it unique each challenge
             const Pair R = Pair.fromScalar(r);
             const K = Point(key.address[]);
-            sigs ~= multiSigSign(R, v, challenge);
+            auto sig = multiSigSign(R, v, challenge);
+            log.trace("multiSigTestBlock: cycle {} index {} Commited R for validator {} is \n{} \nsig is {}",
+                cycleForValidator(key.address), i, key.address, rc.toPoint(), sig);
+            sigs ~= sig;
             validators[i] = true;
         }
-        keys.enumerate.each!((idx, key) => validatorSign(idx, key));
-        block.header.signature = multiSigCombine(sigs);
+        try
+        {
+            keys.enumerate.each!((idx, key) => validatorSign(idx, key));
+        } catch (Exception e)
+        {
+            log.error("Unit test signing error: {}", e);
+        }
+        // Create new block with updates
         block.header.validators = validators;
+        block.header.signature = multiSigCombine(sigs);
         return block;
     }
 }

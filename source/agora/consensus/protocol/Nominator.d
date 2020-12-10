@@ -875,10 +875,13 @@ extern(D):
                 this.slot_sigs[height][this.schnorr_pair.V] = this.createBlockSignature(block);
             }
             const signed_block = this.updateMultiSignature(block);
-            if (!this.ledger.acceptBlock(signed_block))
+            if (signed_block != Block.init)
             {
-                log.error("Block was not accepted by node {}", this.node_public_key);
-                assert(0, format!"Block was not accepted"());
+                if (!this.ledger.acceptBlock(signed_block))
+                {
+                    log.error("Block was not accepted by node {}", this.node_public_key);
+                    assert(0, format!"Block was not accepted"());
+                }
             }
         }
         catch (Exception exc)
@@ -897,7 +900,7 @@ extern(D):
         this.network.gossipBlockSignature(block_sig);
     }
 
-    /// Combine the received block signatures into a Schnorr multisig
+    /// If more than half have signed create a combined Schnorr multisig and return the updated block
     private Block updateMultiSignature (const ref Block block) const
     {
         auto all_validators = this.enroll_man.getCountOfValidators(block.header.height);
@@ -922,6 +925,13 @@ extern(D):
             validator_mask[idx] = true;
         }
         const Signature[] sigs = block_sigs.values;
+        // There must exist signatures for at least half the validators to externalize
+        if (sigs.length <= all_validators / 2)
+        {
+            log.trace("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
+                sigs.length, all_validators / 2, all_validators, block.header.height);
+            return Block.init;
+        }
         Block signed_block = block.updateSignature(multiSigCombine(sigs), validator_mask);
         log.trace("Updated block signatures for block {}, mask: {}",
                 block.header.height, validator_mask);
