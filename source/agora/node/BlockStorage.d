@@ -1198,7 +1198,6 @@ unittest
     const(Block)[] blocks;
     Hash[] block_hashes;
 
-    auto gen_key_pair = WK.Keys.Genesis;
     blocks ~= GenesisBlock;
     storage.saveBlock(GenesisBlock);
     block_hashes ~= hashFull(GenesisBlock.header);
@@ -1225,11 +1224,12 @@ unittest
         {
             txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
             Enrollment[] no_enrollments = null;
-            ulong cycle = 0;
-            KeyPair[] keys_only5 = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
-                WK.Keys.NODE5, WK.Keys.NODE6];
-            last_block = makeNewTestBlock(blocks[$ - 1], txs,
-                no_enrollments, cycle, keys_only5);
+            last_block = makeNewTestBlock(blocks[$ - 1], txs, no_enrollments,
+                genesis_validator_keys[0 .. $ - 1], // last validator will not sign
+                (PublicKey k)
+                {
+                    return 0;
+                });
             last_txs = txs;
 
             blocks ~= last_block;
@@ -1257,8 +1257,12 @@ unittest
     iota(0, 5).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set"(i)));
     assert(!block.header.validators[5], "validator bit 5 should not be set");
-    Block updated_block = multiSigTestBlock(block, [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
-                WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7]);
+    Block updated_block = multiSigTestBlock(block,
+        (PublicKey key)
+        {
+            return 0;
+        },
+        genesis_validator_keys);
     storage.updateBlockMultiSig(updated_block);
     assert(storage.tryReadBlock(block, Height(BlockCount - 1)));
     iota(0, 6).each!(i => assert(block.header.validators[i],

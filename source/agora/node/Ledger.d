@@ -64,6 +64,8 @@ version (unittest)
 /// Ditto
 public class Ledger
 {
+    import agora.common.crypto.ECC : Point;
+
     /// data storage for all the blocks
     private IBlockStorage storage;
 
@@ -169,14 +171,23 @@ public class Ledger
                 {
                     const active_enrollments = enroll_man.getValidatorCount(
                         block.header.height);
+                    const enrolled_validators = enroll_man.getCountOfValidators(
+                        block.header.height);
                     log.trace("Active validator count = {}", active_enrollments);
                     if (auto fail_reason = block.isInvalidReason(
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
-                        active_enrollments,
                         &this.payload_checker.check,
-                        this.enroll_man.getEnrollmentFinder()))
+                        this.enroll_man.getEnrollmentFinder(),
+                        active_enrollments,
+                        enrolled_validators,
+                        &this.enroll_man.getValidatorAtIndex,
+                        (const ref Point key) @safe nothrow
+                        {
+                            const PK = PublicKey(key[]);
+                            return this.enroll_man.getCommitmentNonce(PK);
+                        }))
                         throw new Exception(
                             "A block loaded from disk is invalid: " ~
                             fail_reason);
@@ -234,6 +245,27 @@ public class Ledger
         return this.acceptBlock(block);
     }
 
+    version (unittest)
+    private bool externalize (ConsensusData data,
+        string file = __FILE__, size_t line = __LINE__)
+        @trusted
+    {
+        import agora.utils.Test : WK;
+
+        auto next_block = Height(this.last_block.header.height + 1);
+        KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
+            .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
+            .map!(K => WK.Keys[K])
+            .array();
+        const block = makeNewTestBlock(this.last_block, data.tx_set,
+            data.enrolls, public_keys,
+            (PublicKey pubkey)
+            {
+                return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
+            });
+        return this.acceptBlock(block, file, line);
+    }
+
     /***************************************************************************
 
         Add a block to the ledger.
@@ -248,9 +280,12 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptBlock (const ref Block block) @safe
+    public bool acceptBlock (const ref Block block,
+        string file = __FILE__, size_t line = __LINE__) @safe
     {
-        if (auto fail_reason = this.validateBlock(block))
+        if (auto fail_reason = block.header.height == 0
+            ? block.isGenesisBlockInvalidReason()
+            : this.validateBlock(block, file, line))
         {
             log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
             return false;
@@ -341,8 +376,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void addValidatedBlock (const ref Block block,
-        bool updateValidatorIndexMaps = true) @safe
+    private void addValidatedBlock (const ref Block block) @safe
     {
         if (!this.storage.saveBlock(block))
             assert(0, format!"Failed to save block: %s"(prettify(block)));
@@ -371,12 +405,9 @@ public class Ledger
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
 
-        if (updateValidatorIndexMaps)
-        {
-            // Prepare maps for next block with maybe new enrollments
-            log.trace("Storing active validators for next block using height {}.", block.header.height);
-            this.enroll_man.updateValidatorIndexMaps(Height(block.header.height + 1));
-        }
+        // Prepare maps for next block with maybe new enrollments
+        log.trace("Storing active validators for next block using height {}.", block.header.height);
+        this.enroll_man.updateValidatorIndexMaps(Height(block.header.height + 1));
     }
 
     mixin DefineCollectorForStats!("block_stats", "collectBlockStats");
@@ -570,17 +601,22 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateBlock (const ref Block block) nothrow @safe
+    public string validateBlock (const ref Block block,
+        string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
-        size_t active_enrollments = enroll_man.getValidatorCount(
-                block.header.height);
-
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
-            active_enrollments,
             &this.payload_checker.check,
-            this.enroll_man.getEnrollmentFinder());
+            this.enroll_man.getEnrollmentFinder(),
+            this.enroll_man.getValidatorCount(block.header.height),
+            this.enroll_man.getCountOfValidators(block.header.height),
+            &this.enroll_man.getValidatorAtIndex,
+            (const ref Point key) @safe nothrow
+            {
+                const PK = PublicKey(key[]);
+                return this.enroll_man.getCommitmentNonce(PK);
+            }, file, line);
     }
 
     /***************************************************************************
@@ -682,12 +718,13 @@ public class Ledger
 version (unittest)
 {
     /// simulate block creation as if a nomination and externalize round completed
-    private void forceCreateBlock (Ledger ledger)
+    private void forceCreateBlock (Ledger ledger,
+        string file = __FILE__, size_t line = __LINE__)
     {
         ConsensusData data;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
         assert(data.tx_set.length == Block.TxsInTestBlock);
-        assert(ledger.onExternalized(data));
+        assert(ledger.externalize(data, file, line));
     }
 
     /// A `Ledger` with sensible defaults for `unittest` blocks
@@ -1462,11 +1499,12 @@ unittest
             .array;
     }
 
-    Transaction[] genGeneralBlock (Transaction[] txs)
+    Transaction[] genGeneralBlock (Transaction[] txs,
+        string file = __FILE__, size_t line = __LINE__)
     {
         auto new_txs = genTransactions(txs);
         new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-        ledger.forceCreateBlock();
+        ledger.forceCreateBlock(file, line);
         return new_txs;
     }
 
@@ -1545,6 +1583,7 @@ unittest
     new_txs = genGeneralBlock(new_txs);
     assert(ledger.getBlockHeight() == Height(10));
     ledger.enroll_man.clearExpiredValidators(Height(10));
+    ledger.enroll_man.updateValidatorIndexMaps(Height(11));
     auto b10 = ledger.getBlocksFrom(Height(10))[0];
     assert(b10.header.enrollments.length == 4);
 

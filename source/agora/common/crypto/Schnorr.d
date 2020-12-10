@@ -121,7 +121,7 @@ public Point extractNonce (Signature sig) @safe @nogc nothrow pure
 
 *******************************************************************************/
 
-package struct Sig
+public struct Sig
 {
     /// Commitment
     public Point R;
