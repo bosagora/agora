@@ -67,7 +67,7 @@ int main (string[] args)
         foreach (const ref addr; addresses)
             clients ~= new RestInterfaceClient!API(addr);
 
-        waitForDiscovery(clients, 5.seconds);
+        waitForDiscovery(clients, 10.seconds);
         const GenesisBlock = clients[0].getBlocksFrom(0, 1)[0];
 
         foreach (idx, ref client; clients)
