@@ -568,6 +568,19 @@ public class TestAPIManager
         this.createNameRegistry();
     }
 
+
+    /***************************************************************************
+
+        Returns:
+            A pointer to the network registry
+
+    ***************************************************************************/
+
+    public Registry* getRegistry ()
+    {
+        return &this.reg;
+    }
+
     /***************************************************************************
 
         Sets the clock time to the expected clock time to produce a block at
