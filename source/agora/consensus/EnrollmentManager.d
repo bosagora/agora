@@ -1025,7 +1025,7 @@ unittest
     assert(man.getEnrollments(enrolls, Height(9)).length == 0);
 
     // clear up all validators
-    man.clearExpiredValidators(Height(1018));
+    man.validator_set.removeAll();
 
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
