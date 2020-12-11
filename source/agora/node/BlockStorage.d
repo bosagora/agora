@@ -1180,9 +1180,32 @@ public class MemBlockStorage : IBlockStorage
     }
 }
 
-
-///
+/// test memory storage
 unittest
+{
+    MemBlockStorage memory_storage = new MemBlockStorage();
+    testStorage(memory_storage);
+}
+
+/// test disk storage
+// N.B. This is disabled by default as tests may become flaky if they rely on IO
+version (none)
+unittest
+{
+    import agora.utils.Test;
+
+    auto temp_dir = makeCleanTempDir(__MODULE__);
+    assert(temp_dir.exists);
+    scope(exit) mkdirRecurse(temp_dir);
+
+    auto diskStorage = new BlockStorage(temp_dir);
+    scope(exit) diskStorage.release();
+
+    testStorage(diskStorage);
+}
+
+version (unittest)
+private void testStorage (IBlockStorage storage)
 {
     import agora.common.crypto.Key;
     import agora.consensus.data.genesis.Test;
@@ -1193,7 +1216,6 @@ unittest
     import std.range;
 
     const size_t BlockCount = 50;
-    MemBlockStorage storage = new MemBlockStorage();
 
     const(Block)[] blocks;
     Hash[] block_hashes;
