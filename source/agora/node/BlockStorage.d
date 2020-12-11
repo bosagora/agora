@@ -155,7 +155,7 @@ public interface IBlockStorage
     public final void readBlock (ref Block block, Height height)
     {
         if (!this.tryReadBlock(block, height))
-            throw new Exception(format("Reading block at height %d failed", height));
+            throw new Exception(format("Reading block at height %s failed", height));
     }
 
     /***************************************************************************
