@@ -311,7 +311,7 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Build an `Enrollment` using `buildEnrollment`, stores and returns it
+        Build an `Enrollment` using `makeEnrollment`, stores and returns it
 
         Params:
             utxo = The hash of the frozen UTXO used as a stake.
@@ -319,7 +319,7 @@ public class EnrollmentManager
                    (`key_pair` argument to constructor).
 
         Returns:
-            The `Enrollment` created by `buildEnrollment`
+            The `Enrollment` created by `makeEnrollment`
 
     ***************************************************************************/
 
