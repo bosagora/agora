@@ -18,6 +18,7 @@ import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.ValidatorBlockSig;
 import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.common.Set;
@@ -244,6 +245,25 @@ class NetworkClient
         {
             this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
                 envelope);
+        });
+    }
+
+    /***************************************************************************
+
+        Sends an SCP envelope to another node.
+
+        Params:
+            envelope = the envelope to send
+
+    ***************************************************************************/
+
+    public void sendBlockSignature (ValidatorBlockSig block_sig) nothrow
+    {
+        // simulates schedule() under the hood
+        this.taskman.setTimer(0.seconds,
+        {
+            this.attemptRequest!(API.receiveBlockSignature, Throw.No)(this.api,
+                block_sig);
         });
     }
 
