@@ -169,7 +169,7 @@ public class Ledger
                 {
                     const active_enrollments = enroll_man.getValidatorCount(
                         block.header.height);
-
+                    log.trace("Active validator count = {}", active_enrollments);
                     if (auto fail_reason = block.isInvalidReason(
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
@@ -183,6 +183,7 @@ public class Ledger
                 }
                 this.updateUTXOSet(block);
                 this.updateValidatorSet(block);
+                this.enroll_man.updateValidatorIndexMaps(Height(height + 1));
                 last_read_block = block;
             }
             ManagedDatabase.commitBatch();
@@ -266,6 +267,35 @@ public class Ledger
 
     /***************************************************************************
 
+        Update the Schnorr multi-signature for an externalized block
+        in the Ledger.
+
+        Params:
+            height = height of block to be updated
+
+        Returns:
+            true if the block was updated
+
+    ***************************************************************************/
+
+    public bool updateBlockMultiSig (const ref Block block) @safe
+    {
+        if (!this.storage.updateBlockMultiSig(block))
+        {
+            log.error("Failed to update block: {}", prettify(block));
+            return false;
+        }
+        if (block.header.height == this.last_block.header.height
+            && !this.storage.readLastBlock(this.last_block))
+        {
+            log.error("Failed to update last_block");
+            return false;
+        }
+        return true;
+    }
+
+    /***************************************************************************
+
         Called when a new transaction is received.
 
         If the transaction is accepted it will be added to
@@ -339,6 +369,10 @@ public class Ledger
         // read back and cache the last block
         if (!this.storage.readLastBlock(this.last_block))
             assert(0, format!"Failed to read last block: %s"(prettify(this.last_block)));
+
+        // Prepare maps for next block with maybe new enrollments
+        log.trace("Storing active validators for next block using height {}.", block.header.height);
+        this.enroll_man.updateValidatorIndexMaps(Height(block.header.height + 1));
 
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);

@@ -30,6 +30,7 @@ import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.ValidatorBlockSig;
 import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.Types;
@@ -1046,6 +1047,32 @@ public class NetworkManager
             }
 
             client.sendEnvelope(envelope);
+        }
+    }
+
+    /***************************************************************************
+
+        Gossips the ValidatorBlockSig to the network of connected validators.
+
+        Params:
+            block_sig = the Validator Block Signature to gossip to the network.
+
+    ***************************************************************************/
+
+    public void gossipBlockSignature (ValidatorBlockSig block_sig) nothrow
+    {
+        log.trace("Gossip block signature {} for height #{} node {}",
+            block_sig.signature, block_sig.height , block_sig.public_key);
+        foreach (client; this.validators[])
+        {
+            if (this.banman.isBanned(client.address))
+            {
+                log.trace("Not sending signature to {} as it's banned",
+                    client.address);
+                continue;
+            }
+
+            client.sendBlockSignature(block_sig);
         }
     }
 
