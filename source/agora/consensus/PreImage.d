@@ -15,6 +15,7 @@ module agora.consensus.PreImage;
 
 import agora.common.crypto.ECC;
 import agora.common.Hash;
+import agora.common.Types;
 
 /*******************************************************************************
 
@@ -389,5 +390,99 @@ public struct PreImageCycle
             next_images.reset(this.seeds.byStride[$ - 1 - this.index]);
             return next_images[$ - 1];
         }
+    }
+
+    /***************************************************************************
+
+        Seek to the `PreImage`s at height `height`
+
+        This will calculate the `index` and `nonce` according to the given
+        height and populate the `seed` and `preimages` if neccesary.
+
+        This will be particularly usefull since the PreImages will now be
+        consumed not by new enrollments but creation of new blocks.
+
+        Params:
+          secret = The secret key of the node, used as part of the hash
+                   to generate the cycle seeds
+          height = Requested height
+
+    ***************************************************************************/
+
+    private void seek (scope const ref Scalar secret, Height height) @safe @nogc nothrow
+    {
+        uint seek_index = cast (uint) (height / this.preimages.length());
+        uint seek_nonce = seek_index / NumberOfCycles;
+        seek_index %= NumberOfCycles;
+
+        if (this.seeds[0] == Hash.init || seek_nonce != this.nonce)
+        {
+            this.nonce = seek_nonce;
+            this.index = seek_index;
+            const cycle_seed = hashMulti(
+                secret, "consensus.preimages", this.nonce);
+            this.seeds.reset(cycle_seed);
+            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+        }
+        else if (seek_index != this.index)
+        {
+            this.index = seek_index;
+            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+        }
+    }
+
+    /***************************************************************************
+
+        Get PreImage at height `height`
+
+        This will first seek to the given `height` and return the expected
+        PreImage
+
+        Params:
+          secret = The secret key of the node, used as part of the hash
+                   to generate the cycle seeds
+          height = Requested height
+
+        Returns:
+            PreImage at `height`
+
+    ***************************************************************************/
+
+    public Hash getPreImage (scope const ref Scalar secret, Height height) @safe @nogc nothrow
+    {
+        this.seek(secret, height);
+        auto offset = height % this.preimages.length();
+        return this.preimages[$ - offset - 1];
+    }
+}
+
+// Test `seek` and `populate` equivalence
+unittest
+{
+    const ValidatorCycle = 2;
+    auto secret = Scalar.random();
+    auto pop_cycle = PreImageCycle(
+            /* nonce: */ 0,
+            /* index:  */ 0,
+            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
+                ValidatorCycle),
+            /* preimages: */ PreImageCache(ValidatorCycle, 1)
+        );
+    auto seek_cycle = PreImageCycle(
+            /* nonce: */ 0,
+            /* index:  */ 0,
+            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
+                ValidatorCycle),
+            /* preimages: */ PreImageCache(ValidatorCycle, 1)
+        );
+
+    foreach (idx; 0..PreImageCycle.NumberOfCycles + 2)
+    {
+        pop_cycle.populate(secret, true);
+        seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle));
+        assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
+        // A offset within the ValidatorCycle should not change cached PreImages
+        seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle + 1));
+        assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
     }
 }
