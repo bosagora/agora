@@ -44,6 +44,28 @@ public enum EnrollmentStatus : int
     Active = 1,
 }
 
+/// The information that can be queried for an enrollment
+public struct EnrollmentState
+{
+    /// If the most recent enrollment is still active
+    EnrollmentStatus status;
+
+    /// The Height the enrollment was accepted at
+    Height enrolled_height;
+
+    /// Length of the Validation cycle
+    uint cycle_length;
+
+    /// The most recently revealed PreImage
+    Hash last_image;
+
+    /// Distance of the most recently revealed PreImage
+    ushort distance;
+}
+
+/// Delegate type to query the history of Enrollments
+public alias EnrollmentFinder = bool delegate (in Hash enroll_key, out EnrollmentState state) @trusted nothrow;
+
 /// Ditto
 public class ValidatorSet
 {
@@ -570,6 +592,50 @@ public class ValidatorSet
         }
 
         return true;
+    }
+
+    /***************************************************************************
+
+        Find the most recent Enrollment with the provided UTXO hash, regardless
+        of it's active status
+
+        Params:
+            enroll_key = The key for the enrollment
+            state = struct to fill once an enrollment is found
+
+        Returns:
+            true if an enrollment with the key was ever accepted, false otherwise
+
+    ***************************************************************************/
+
+    bool findRecentEnrollment (in Hash enroll_key, out EnrollmentState state) @trusted nothrow
+    {
+        try
+        {
+            // No filter for `active` field, since we want to query the whole history
+            // of enrollments
+            auto results = this.db.execute("SELECT active, enrolled_height," ~
+                "cycle_length, preimage, distance FROM " ~
+                "validator_set WHERE key = ?", enroll_key.toString());
+
+            if (!results.empty && results.oneValue!(byte[]).length != 0)
+            {
+                auto row = results.front;
+                state.status = row.peek!(EnrollmentStatus)(0);
+                state.enrolled_height = Height(row.peek!(size_t)(1));
+                state.cycle_length = row.peek!(uint)(2);
+                state.last_image = Hash(row.peek!(char[])(3));
+                state.distance = row.peek!(ushort)(4);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on findRecentEnrollment: {}, " ~
+                "Key for enrollment: {}", ex.msg, enroll_key);
+        }
+
+        return false;
     }
 }
 

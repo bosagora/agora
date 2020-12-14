@@ -923,6 +923,17 @@ public class EnrollmentManager
     {
         this.validator_set.removeAll();
     }
+
+    /***************************************************************************
+
+        Returns: A delegate to query past Enrollments
+
+    ***************************************************************************/
+
+    public EnrollmentFinder getEnrollmentFinder () @trusted nothrow
+    {
+        return &this.validator_set.findRecentEnrollment;
+    }
 }
 
 /// tests for member functions of EnrollmentManager
