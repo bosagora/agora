@@ -1562,7 +1562,14 @@ public class TestValidatorNode : Validator, TestAPI
             }
         }
         assert(utxo_hashes.length > 0, format!"No frozen utxo for %s"(pubkey));
-        return this.enroll_man.createEnrollment(utxo_hashes[0]);
+
+        const enroll_height = this.enroll_man.getEnrolledHeight(utxo_hashes[0]);
+        // The first height at which the enrollment can be enrolled.
+        const avail_height = enroll_height == ulong.max ?
+                                this.ledger.getBlockHeight() + 1 :
+                                enroll_height + this.params.ValidatorCycle;
+        return this.enroll_man.createEnrollment(utxo_hashes[0],
+                                                    Height(avail_height));
     }
 
 

@@ -67,7 +67,7 @@ private class SameKeyValidator : TestValidatorNode
         }
         assert(unused_utxo != Hash.init);
 
-        return this.enroll_man.createEnrollment(unused_utxo);
+        return this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight());
     }
 }
 

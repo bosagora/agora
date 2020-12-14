@@ -160,11 +160,6 @@ public class EnrollmentManager
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
 
-        // load the count of 'populate' of `PreImageCycle`
-        const uint populate_count = this.getCycleIndex();
-        foreach (_; 0 .. populate_count)
-            this.cycle.populate(this.key_pair.v, true);
-
         Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
 
@@ -297,13 +292,6 @@ public class EnrollmentManager
         if (enroll.utxo_key in self_utxos)
         {
             this.setEnrollmentKey(enroll.utxo_key);
-
-            // consume pre-images
-            this.cycle.populate(this.key_pair.v, true);
-
-            // save the count of 'populate' of `PreImageCycle`
-            this.setCycleIndex(
-                (this.cycle.nonce * this.cycle.NumberOfCycles) + this.cycle.index);
         }
 
         return null;
@@ -317,19 +305,20 @@ public class EnrollmentManager
             utxo = The hash of the frozen UTXO used as a stake.
                    It must be owned by the private key this validator controls
                    (`key_pair` argument to constructor).
+            height = The height that the created Enrollment can be available
 
         Returns:
             The `Enrollment` created by `makeEnrollment`
 
     ***************************************************************************/
 
-    public Enrollment createEnrollment (in Hash utxo) @safe nothrow
+    public Enrollment createEnrollment (in Hash utxo, Height height) @safe nothrow
     {
         // K, frozen UTXO hash
         this.enroll_key = utxo;
 
         // X, final seed data and preimages of hashes
-        const seed = this.cycle.populate(this.key_pair.v, false);
+        const seed = this.cycle.getPreImage(this.key_pair.v, height);
         const enroll = makeEnrollment(
             this.key_pair, utxo, this.params.ValidatorCycle,
             seed, this.cycle.index);
@@ -515,7 +504,8 @@ public class EnrollmentManager
 
         preimage.enroll_key = this.enroll_key;
         preimage.distance = cast(ushort)next_dist;
-        preimage.hash = this.cycle.preimages[$ - next_dist - 1];
+        const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
+        preimage.hash = this.cycle.getPreImage(this.key_pair.v, Height(enrolled + next_dist));
         return true;
     }
 
@@ -775,55 +765,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the cycle index of `PreImageCycle`
-
-        Returns:
-            the cycle index
-
-    ***************************************************************************/
-
-    private uint getCycleIndex () @trusted nothrow
-    {
-        try
-        {
-            auto results = this.db.execute(
-                `SELECT val FROM node_enroll_data WHERE key = 'cycle_index'`);
-            if (results.empty)
-                return 0;
-
-            return results.oneValue!(uint);
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error {}", ex);
-            return 0;
-        }
-    }
-
-    /***************************************************************************
-
-        Set the cycle index of `PreImageCycle`
-
-        Params:
-            cycle_index = the cycle index
-
-    ***************************************************************************/
-
-    private void setCycleIndex (uint cycle_index) @trusted nothrow
-    {
-        try
-        {
-            this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "cycle_index", cycle_index);
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error {}", ex);
-        }
-    }
-
-    /***************************************************************************
-
         Update the distance of the pre-image that will be revealed next time
 
         Params:
@@ -1078,9 +1019,6 @@ unittest
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == ordered_enrollments[2].utxo_key);
-
-    // check the cycle count for enrollment
-    assert(man.getCycleIndex() == 4);
 }
 
 /// Test for adding and getting pre-images
@@ -1100,7 +1038,7 @@ unittest
     Hash[] utxo_hashes = utxo_set.keys;
 
     auto utxo_hash = utxo_hashes[0];
-    auto enroll = man.createEnrollment(utxo_hash);
+    auto enroll = man.createEnrollment(utxo_hash, Height(1));
     assert(man.addEnrollment(enroll, key_pair.address, Height(1),
             utxo_set.getUTXOFinder()));
 
@@ -1311,18 +1249,18 @@ unittest
 
     // create and add the first enrollment
     Enrollment[] enrolls;
-    auto enroll = man.createEnrollment(utxo_set.keys[0]);
-    assert(man.addEnrollment(enroll, key_pair.address, Height(10),
+    auto enroll = man.createEnrollment(utxo_set.keys[0], Height(10));
+    assert(man.addEnrollment(enroll, key_pair.address, Height(9),
             utxo_set.getUTXOFinder()));
 
     // if the current height is smaller than the available height,
     // we can get no enrollment
-    man.getEnrollments(enrolls, Height(9));
+    man.getEnrollments(enrolls, Height(8));
     assert(enrolls.length == 0);
 
     // if the current height is greater than or equal to the available height,
     // we can get enrollments
-    man.getEnrollments(enrolls, Height(10));
+    man.getEnrollments(enrolls, Height(9));
     assert(enrolls.length == 1);
 
     // make the enrollment a validator
@@ -1420,34 +1358,6 @@ unittest
         man.getRandomSeed(utxos, Height(1008)).to!string);
 }
 
-// Tests for not consuming pre-images before being a validator
-unittest
-{
-    import std.stdio;
-    import std.range;
-    import agora.consensus.data.Transaction;
-
-    scope utxo_set = new TestUTXOSet;
-    genesisSpendable()
-        .map!(txb => txb.refund(WK.Keys[0].address).sign(TxType.Freeze))
-        .each!(tx => utxo_set.put(tx));
-    scope man = new EnrollmentManager(":memory:", WK.Keys[0],
-        new immutable(ConsensusParams)(10));
-
-    // create the first enrollment and add it as a validator
-    auto enroll = man.createEnrollment(utxo_set.keys[0]);
-    assert(man.addValidator(enroll, WK.Keys[0].address, Height(2), utxo_set.getUTXOFinder(),
-            utxo_set.storage) is null);
-    auto preimages_valid = man.cycle.preimages.byStride().dup;
-
-    // create the second enrollment
-    enroll = man.createEnrollment(utxo_set.keys[0]);
-
-    // pre-images of the current cycle have not changed
-    auto preimages_enroll = man.cycle.preimages.byStride().dup;
-    assert(preimages_enroll[] == preimages_valid[]);
-}
-
 // Tests for get/set a enrollment key
 unittest
 {
@@ -1487,7 +1397,7 @@ unittest
     assert(key_pair.address == man.getEnrollmentPublicKey());
 
     // first enrollment succeeds
-    auto enroll = man.createEnrollment(utxo_hashes[0]);
+    auto enroll = man.createEnrollment(utxo_hashes[0], Height(1));
     assert(man.addEnrollment(enroll, key_pair.address, Height(1),
             &utxo_set.peekUTXO));
 
@@ -1496,7 +1406,7 @@ unittest
             &utxo_set.peekUTXO, utxo_set.storage) is null);
 
     // second enrollment with the same public key fails
-    auto enroll2 = man.createEnrollment(utxo_hashes[1]);
+    auto enroll2 = man.createEnrollment(utxo_hashes[1], Height(1));
     assert(!man.addEnrollment(enroll2, key_pair.address, Height(1),
             &utxo_set.peekUTXO));
 
