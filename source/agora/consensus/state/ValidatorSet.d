@@ -217,6 +217,35 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        In validatorSet DB, return the cycle length.
+
+        Params:
+            enroll_hash = key for an enrollment
+
+        Returns:
+            the cycle length, or `uint.max` if no matching key exists
+
+    ***************************************************************************/
+
+    public uint getCycleLength (in Hash enroll_hash) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT cycle_length FROM validator_set" ~
+                " WHERE key = ?", enroll_hash.toString());
+            if (!results.empty)
+                return results.oneValue!(uint);
+        }
+        catch (Exception ex)
+        {
+
+            log.error("ManagedDatabase operation error: {}", ex.msg);
+        }
+        return uint.max;
+    }
+
+    /***************************************************************************
+
         Check if a enrollment data exists in the validator set.
 
         Params:
@@ -317,19 +346,11 @@ public class ValidatorSet
 
     public void clearExpiredValidators (Height block_height) @safe nothrow
     {
-        // the smallest enrolled height would be 0 (genesis block),
-        // so the passed block height should be at minimum the
-        // size of the validator cycle
-        if (block_height < this.params.ValidatorCycle)
-            return;
-
         try
         {
             () @trusted {
                 this.db.execute("DELETE FROM validator_set WHERE " ~
-                    "enrolled_height <= ?",
-                    block_height - this.params.ValidatorCycle);
-
+                    "enrolled_height + cycle_length <= ?", block_height.value);
             }();
         }
         catch (Exception ex)
@@ -360,12 +381,11 @@ public class ValidatorSet
     {
         try
         {
-            const height = (block_height >= this.params.ValidatorCycle) ?
-                block_height - this.params.ValidatorCycle + 1 : 0;
             return () @trusted {
                 return this.db.execute(
-                    "SELECT count(*) FROM validator_set WHERE enrolled_height >= ?",
-                    height).oneValue!ulong;
+                    "SELECT count(*) FROM validator_set WHERE " ~
+                    "enrolled_height + cycle_length > ?",
+                    block_height.value).oneValue!ulong;
             }();
         }
         catch (Exception ex)
@@ -527,12 +547,13 @@ public class ValidatorSet
             return false;
         }
 
+        const validator_cycle = this.getCycleLength(preimage.enroll_key);
+
         // Ignore same height pre-image because validators will gossip them
         if (prev_preimage.distance == preimage.distance)
             return false;
 
-        if (auto reason = isInvalidReason(preimage, prev_preimage,
-            this.params.ValidatorCycle))
+        if (auto reason = isInvalidReason(preimage, prev_preimage, validator_cycle))
         {
             log.info("Invalid pre-image data: {}. Pre-image: {}",
                 reason, preimage);
