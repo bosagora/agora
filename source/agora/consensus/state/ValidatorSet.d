@@ -699,14 +699,14 @@ unittest
     enroll = createEnrollment(utxos[3], WK.Keys[3], seed_sources[utxos[3]],
         set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
-    set.clearExpiredValidators(Height(1016));
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle + 8));
     keys.length = 0;
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[3]);
 
     // add enrollment at the genesis block:
-    // validates blocks [1 .. 1008] inclusively
+    // validates blocks [1 .. set.params.ValidatorCycle] inclusively
     set.clearExpiredValidators(Height(long.max));  // clear all
     assert(set.count == 0);
     seed_sources[utxos[0]] = Scalar.random();
@@ -714,36 +714,36 @@ unittest
         set.params.ValidatorCycle);
     assert(set.add(Height(0), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
-    // not cleared yet at height 1007
-    set.clearExpiredValidators(Height(1007));
+    // not cleared yet at height set.params.ValidatorCycle - 1
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle - 1));
     keys.length = 0;
     assert(set.count == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
-    // cleared after block height 1008 was externalized
-    set.clearExpiredValidators(Height(1008));
+    // cleared after block height set.params.ValidatorCycle was externalized
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle));
     assert(set.count == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
 
-    // now try with validator for [1 .. 1009]
+    // now try with validator for [1 .. set.params.ValidatorCycle + 1]
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
-    // not cleared yet at height 1008
-    set.clearExpiredValidators(Height(1008));
+    // not cleared yet at height set.params.ValidatorCycle
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle));
     keys.length = 0;
     assert(set.count == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
-    // cleared after block height 1009 was externalized
-    set.clearExpiredValidators(Height(1009));
+    // cleared after block height set.params.ValidatorCycle was externalized
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle + 1));
     assert(set.count == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
