@@ -16,11 +16,14 @@ module agora.consensus.validation.Enrollment;
 
 import agora.common.Amount;
 import agora.common.Types;
+import agora.common.Hash;
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Enrollment;
 import agora.consensus.state.UTXOSet;
+import agora.consensus.state.ValidatorSet;
+import agora.consensus.data.PreImageInfo;
 
 import std.conv;
 
@@ -28,6 +31,9 @@ version (unittest)
 {
     import agora.common.Hash;
     import agora.consensus.data.Transaction;
+    import agora.consensus.data.Params;
+    import agora.common.ManagedDatabase;
+    import agora.consensus.PreImage;
 }
 
 /*******************************************************************************
@@ -42,6 +48,7 @@ version (unittest)
     Params:
         enrollment = The enrollment of the target to be verified
         findUTXO = delegate to find the referenced unspent UTXOs with
+        height = The `Height` that this `Enrollment` is proposed at
 
     Returns:
         `null` if the validator's UTXO is valid, otherwise a string
@@ -50,7 +57,8 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Enrollment enrollment,
-    scope UTXOFinder findUTXO) nothrow @safe
+    scope UTXOFinder findUTXO, Height height,
+    scope EnrollmentFinder findEnrollment) nothrow @safe
 {
     UTXO utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
@@ -80,15 +88,26 @@ public string isInvalidReason (const ref Enrollment enrollment,
         return Message;
     }
 
+    EnrollmentState enroll_state;
+    if (findEnrollment(enrollment.utxo_key, enroll_state))
+    {
+        Hash temp_hash = enrollment.random_seed;
+        foreach (_; enroll_state.enrolled_height + enroll_state.distance .. height)
+            temp_hash = hashFull(temp_hash);
+        if (temp_hash != enroll_state.last_image)
+            return "The seed has an invalid hash value";
+    }
+
     return null;
 }
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
 public bool isValid (const ref Enrollment enrollment,
-    scope UTXOFinder findUTXO) nothrow @safe
+    scope UTXOFinder findUTXO, Height height,
+    scope EnrollmentFinder findEnrollment) nothrow @safe
 {
-    return isInvalidReason(enrollment, findUTXO) is null;
+    return isInvalidReason(enrollment, findUTXO, height, findEnrollment) is null;
 }
 
 ///
@@ -99,7 +118,10 @@ unittest
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
+    auto params = new immutable(ConsensusParams)();
     scope utxo_set = new TestUTXOSet();
+    scope validator_set = new ValidatorSet(new ManagedDatabase(":memory:"),
+                                           params);
     scope UTXOFinder utxoFinder = utxo_set.getUTXOFinder();
 
     // normal frozen transaction
@@ -170,10 +192,14 @@ unittest
     enroll4.cycle_length = 1008;
     enroll4.enroll_sig = sign(node_key_pair_invalid, signature_noise, enroll4);
 
-    assert(!enroll1.isValid(utxoFinder));
-    assert(!enroll2.isValid(utxoFinder));
-    assert(!enroll3.isValid(utxoFinder));
-    assert(!enroll4.isValid(utxoFinder));
+    assert(!enroll1.isValid(utxoFinder, Height(0),
+                                    &validator_set.findRecentEnrollment));
+    assert(!enroll2.isValid(utxoFinder, Height(0),
+                                    &validator_set.findRecentEnrollment));
+    assert(!enroll3.isValid(utxoFinder, Height(0),
+                                    &validator_set.findRecentEnrollment));
+    assert(!enroll4.isValid(utxoFinder, Height(0),
+                                    &validator_set.findRecentEnrollment));
 
     utxo_set.put(tx1);
     utxo_set.put(tx2);
@@ -181,17 +207,57 @@ unittest
     utxo_set.put(tx4);
 
     // Nomal
-    assert(enroll1.isValid(utxoFinder));
+    assert(enroll1.isValid(utxoFinder, Height(0),
+                                        &validator_set.findRecentEnrollment));
 
     // Unspent frozen UTXO not found for the validator.
-    assert(!enroll1.isValid( utxoFinder));
+    assert(!enroll1.isValid( utxoFinder, Height(0),
+                                        &validator_set.findRecentEnrollment));
 
     // UTXO is not frozen.
-    assert(canFind(enroll2.isInvalidReason(utxoFinder), "UTXO is not frozen"));
+    assert(canFind(enroll2.isInvalidReason(utxoFinder,
+        Height(0), &validator_set.findRecentEnrollment), "UTXO is not frozen"));
 
     // The frozen amount must be equal to or greater than 40,000 BOA.
-    assert(!enroll3.isValid(utxoFinder));
+    assert(!enroll3.isValid(utxoFinder, Height(0),
+                                        &validator_set.findRecentEnrollment));
 
     // Enrollment signature verification has an error.
-    assert(!enroll4.isValid(utxoFinder));
+    assert(!enroll4.isValid(utxoFinder, Height(0),
+                                        &validator_set.findRecentEnrollment));
+
+    const utxoPeek = &utxo_set.peekUTXO;
+    auto cycle = PreImageCycle(
+        /* nounce: */ 0,
+        /* index:  */ 0,
+        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
+                                    params.ValidatorCycle),
+        // Since those pre-images might be accessed often,
+        // use an interval of 1 (no interval)
+        /* preimages: */ PreImageCache(params.ValidatorCycle, 1)
+    );
+
+    auto n0_secret = secretKeyToCurveScalar(key_pairs[0].secret);
+    enroll1.utxo_key = utxo_hash1;
+    enroll1.random_seed = cycle.getPreImage(n0_secret, Height(0));
+    enroll1.cycle_length = params.ValidatorCycle;
+    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
+
+    assert(validator_set.add(Height(0), utxoPeek, enroll1,
+                                                key_pairs[0].address) is null);
+
+    validator_set.clearExpiredValidators(Height(params.ValidatorCycle));
+    assert(validator_set.getValidatorCount(Height(params.ValidatorCycle)) == 0);
+
+    // First 2 iterations should fail because commitment is wrong
+    foreach (offset; [-1, +1, 0])
+    {
+        enroll1.random_seed = cycle.getPreImage(n0_secret,
+                                        Height(params.ValidatorCycle + offset));
+        enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
+        assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),
+                            utxoPeek, enroll1, key_pairs[0].address) is null));
+    }
+    assert(validator_set.getValidatorCount(Height(params.ValidatorCycle)) == 1);
+
 }

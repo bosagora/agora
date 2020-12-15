@@ -175,7 +175,8 @@ public class Ledger
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
                         active_enrollments,
-                        &this.payload_checker.check))
+                        &this.payload_checker.check,
+                        this.enroll_man.getEnrollmentFinder()))
                         throw new Exception(
                             "A block loaded from disk is invalid: " ~
                             fail_reason);
@@ -543,7 +544,8 @@ public class Ledger
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
             active_enrollments,
-            &this.payload_checker.check);
+            &this.payload_checker.check,
+            this.enroll_man.getEnrollmentFinder());
     }
 
     /***************************************************************************

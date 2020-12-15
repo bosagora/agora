@@ -27,6 +27,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.state.UTXOSet;
+import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState;
 import agora.consensus.validation;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
@@ -77,10 +78,11 @@ public class EnrollmentPool
     ***************************************************************************/
 
     public bool add (const ref Enrollment enroll, Height avail_height,
-        scope UTXOFinder finder) @safe nothrow
+        scope UTXOFinder finder, scope EnrollmentFinder findEnrollment) @safe nothrow
     {
         // check validity of the enrollment data
-        if (auto reason = isInvalidReason(enroll, finder))
+        if (auto reason = isInvalidReason(enroll, finder,
+                                            avail_height, findEnrollment))
         {
             log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
             return false;
@@ -343,6 +345,12 @@ unittest
     Enrollment[] enrollments;
     Height avail_height;
 
+    bool findEnrollment (in Hash enroll_key,
+                            out EnrollmentState state) @trusted nothrow
+    {
+        return false;
+    }
+
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
         .each!(tx => storage.put(tx));
 
@@ -355,10 +363,12 @@ unittest
         enrollments ~= createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
             params.ValidatorCycle);
         avail_height = Height(params.ValidatorCycle);
-        assert(pool.add(enrollments[$ - 1], avail_height, storage.getUTXOFinder()));
+        assert(pool.add(enrollments[$ - 1], avail_height,
+                                storage.getUTXOFinder(), &findEnrollment));
         assert(pool.count() == index + 1);
         assert(pool.hasEnrollment(utxo_hash, avail_height));
-        assert(!pool.add(enrollments[$ - 1], avail_height, storage.getUTXOFinder()));
+        assert(!pool.add(enrollments[$ - 1], avail_height,
+                                storage.getUTXOFinder(), &findEnrollment));
     }
 
     // check if enrolled heights are not set
@@ -396,7 +406,8 @@ unittest
     Enrollment[] ordered_enrollments = enrollments.dup;
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(pool.add(ordered_enroll, Height(1), &storage.peekUTXO));
+        assert(pool.add(ordered_enroll, Height(1),
+                        &storage.peekUTXO, &findEnrollment));
     pool.getEnrollments(enrolls, Height(1));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));

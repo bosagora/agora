@@ -116,7 +116,8 @@ public class ValidatorSet
         const ref Enrollment enroll, PublicKey pubkey) @safe nothrow
     {
         // check validaty of the enrollment data
-        if (auto reason = isInvalidReason(enroll, finder))
+        if (auto reason = isInvalidReason(enroll, finder,
+                                    block_height, &this.findRecentEnrollment))
             return reason;
 
         // check if already exists
