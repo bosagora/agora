@@ -229,6 +229,9 @@ public struct EventHandlerConfig
 
     /// URLs to push a data when a pre-image is updated
     public immutable string[] preimage_updated_handler_addresses;
+
+    /// URLs to push a data when a transaction is received
+    public immutable string[] transaction_received_handler_addresses;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
@@ -753,7 +756,9 @@ private EventHandlerConfig parserEventHandlers (Node* node, in CommandLine c)
         block_externalized_handler_addresses:
             assumeUnique(parseSequence(*node, "block_externalized")),
         preimage_updated_handler_addresses:
-            assumeUnique(parseSequence(*node, "preimage_received"))
+            assumeUnique(parseSequence(*node, "preimage_received")),
+        transaction_received_handler_addresses:
+            assumeUnique(parseSequence(*node, "transaction_received")),
     };
 
     return handlers;
@@ -772,6 +777,7 @@ noexist_event_handlers:
         auto conf = parserEventHandlers("event_handlers" in node, cmdln);
         assert(conf.block_externalized_handler_addresses.length == 0);
         assert(conf.preimage_updated_handler_addresses.length == 0);
+        assert(conf.transaction_received_handler_addresses.length == 0);
     }
 
     // If the nodes and values exist
@@ -783,10 +789,13 @@ event_handlers:
     - http://127.0.0.1:3836
   preimage_received:
     - http://127.0.0.1:3836
+  transaction_received:
+    - http://127.0.0.1:3836
 `;
         auto node = Loader.fromString(conf_example).load();
         auto conf = parserEventHandlers("event_handlers" in node, cmdln);
         assert(conf.block_externalized_handler_addresses == [ `http://127.0.0.1:3836` ]);
         assert(conf.preimage_updated_handler_addresses == [ `http://127.0.0.1:3836` ]);
+        assert(conf.transaction_received_handler_addresses == [ `http://127.0.0.1:3836` ]);
     }
 }
