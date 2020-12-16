@@ -702,12 +702,13 @@ public class EnrollmentManager
         foreach (const ref key; keys)
         {
             const preimage = this.validator_set.getPreimageAt(key, height);
-            // this should not happen. validators which didn't reveal the
-            // preimage should not be in the active validator set 'keys'.
+            // We could have a misbehaving validator that does not reveal
+            // its preimages in real world. In order to deal with the validator,
+            // We implement the slashing protocol.
             if (preimage == PreImageInfo.init)
             {
-                log.fatal("No preimage at height {} for validator key {}", height.value, key);
-                assert(0, "No preimage at expected height");
+                log.info("No preimage at height {} for validator key {}", height.value, key);
+                continue;
             }
             rand_seed = hashMulti(rand_seed, preimage);
         }
