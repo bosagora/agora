@@ -97,24 +97,14 @@ private class NoPreImageVN : TestValidatorNode
     }
 }
 
-// This specifies the bad behavior of nominators
-enum NominatorType
-{
-    MismatchingMPV,     // The missing preimage validators are faked
-    FalsePreImageRoot,  // The random seed is faked
-}
-
 private class BadNominator : TestNominator
 {
-    NominatorType bad_type;
-
     /// Ctor
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
         TaskManager taskman, string data_dir, ulong txs_to_nominate,
-        shared(time_t)* curr_time, NominatorType bad_type)
+        shared(time_t)* curr_time)
     {
-        this.bad_type = bad_type;
         super(params, clock, network, key_pair, ledger, taskman,
             data_dir, txs_to_nominate);
     }
@@ -128,16 +118,8 @@ extern (C++):
         ValidationLevel ret;
         () @trusted {
             auto data = deserializeFull!ConsensusData(value[]);
-            if (this.bad_type == NominatorType.MismatchingMPV)
-            {
-                data.missing_validators.length = 0;
-                data.missing_validators ~= 2;
-            }
-            else
-            {
-                assert(0, format!"Invalid BadNominatorType: %s"
-                        (this.bad_type));
-            }
+            data.missing_validators.length = 0;
+            data.missing_validators ~= 2;
             auto next_value = data.serializeFull().toVec();
             ret = super.validateValue(slot_idx, next_value, nomination);
         }();
@@ -148,14 +130,10 @@ extern (C++):
 
 private class BadNominatingVN : TestValidatorNode
 {
-    NominatorType bad_type;
-
     ///
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time,
-        NominatorType bad_type)
+        in TestConf test_conf, shared(time_t)* cur_time)
     {
-        this.bad_type = bad_type;
         super(config, reg, blocks, test_conf, cur_time);
     }
 
@@ -167,7 +145,7 @@ private class BadNominatingVN : TestValidatorNode
     {
         return new BadNominator(
             params, clock, network, key_pair, ledger, taskman, data_dir,
-            this.txs_to_nominate, this.cur_time, this.bad_type);
+            this.txs_to_nominate, this.cur_time);
     }
 }
 
@@ -257,7 +235,7 @@ unittest
                 auto time = new shared(time_t)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!BadNominatingVN(
                     conf, &this.reg, this.blocks, this.test_conf,
-                    time, NominatorType.MismatchingMPV, conf.node.timeout);
+                    time, conf.node.timeout);
                 this.reg.register(conf.node.address, api.tid());
                 this.nodes ~= NodePair(conf.node.address, api, time);
             }
@@ -286,66 +264,4 @@ unittest
     // try to make block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(1));
-}
-
-/// Situation: There is a validator does not reveal a pre-image for next
-//      height and the information is contained in a `ConsensusData`. But
-//      two bad nominators manipulate information about the preimage root.
-/// Expectation: The expected block has not been generated.
-unittest
-{
-    static class BadNominatingAPIManager : TestAPIManager
-    {
-        ///
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
-
-        ///
-        public override void createNewNode (Config conf, string file, int line)
-        {
-            if (this.nodes.length == 0)
-            {
-                auto time = new shared(time_t)(this.initial_time);
-                auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
-                    conf, &this.reg, this.blocks, this.test_conf,
-                    time, conf.node.timeout);
-                this.reg.register(conf.node.address, api.tid());
-                this.nodes ~= NodePair(conf.node.address, api, time);
-            }
-            else if (this.nodes.length >= 4)
-            {
-                auto time = new shared(time_t)(this.initial_time);
-                auto api = RemoteAPI!TestAPI.spawn!BadNominatingVN(
-                    conf, &this.reg, this.blocks, this.test_conf,
-                    time, NominatorType.FalsePreImageRoot, conf.node.timeout);
-                this.reg.register(conf.node.address, api.tid());
-                this.nodes ~= NodePair(conf.node.address, api, time);
-            }
-            else
-                super.createNewNode(conf, file, line);
-        }
-    }
-
-    TestConf conf = {
-        recurring_enrollment : false,
-    };
-    auto network = makeTestNetwork!BadNominatingAPIManager(conf);
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery();
-    auto nodes = network.clients;
-    auto spendable = network.blocks[$ - 1].spendable().array;
-
-    // discarded UTXOs (just to trigger block creation)
-    auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
-
-    Thread.sleep(5.seconds);
-
-    // try to make block 1
-    txs.each!(tx => nodes[0].putTransaction(tx));
-    unexpectBlock(nodes, Height(1));
 }
