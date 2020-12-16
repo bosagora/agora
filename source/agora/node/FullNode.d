@@ -16,6 +16,7 @@ module agora.node.FullNode;
 import agora.api.FullNode;
 import agora.api.handler.BlockExternalizedHandler;
 import agora.api.handler.PreImageReceivedHandler;
+import agora.api.handler.TransactionReceivedHandler;
 import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -126,6 +127,9 @@ public class FullNode : API
 
     /// PreImage Received Handler list
     protected PreImageReceivedHandler[Address] preimage_handlers;
+
+    /// Transaction Received Handler list
+    protected TransactionReceivedHandler[Address] transaction_handlers;
 
     /// Endpoint request stats
     protected EndpointRequestStats endpoint_request_stats;
@@ -315,6 +319,7 @@ public class FullNode : API
         {
             log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
             this.network.gossipTransaction(tx);
+            this.pushTransaction(tx);
         }
     }
 
@@ -693,6 +698,36 @@ public class FullNode : API
                 {
                     log.error("Error sending preImage (enroll_key: {}) to {} :{}",
                         pre_image.enroll_key, address, e);
+                }
+            });
+        }
+    }
+
+    /***************************************************************************
+
+        Push the transaction to the `transaction_handlers` target server list
+        set in config.
+
+        Convert `Transaction` to JSON serialization and send it POST using Rest.
+
+        Params:
+            tx = Received `Transaction`
+
+    ***************************************************************************/
+
+    protected void pushTransaction (const Transaction tx) @safe
+    {
+        foreach (address, handler; this.transaction_handlers)
+        {
+            runTask({
+                try
+                {
+                    handler.pushTransaction(tx);
+                }
+                catch (Exception e)
+                {
+                    log.error("Error sending transaction (tx hash: {}) to {} :{}",
+                        hashFull(tx), address, e);
                 }
             });
         }

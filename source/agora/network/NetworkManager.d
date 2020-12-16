@@ -25,6 +25,7 @@ module agora.network.NetworkManager;
 import agora.api.Validator;
 import agora.api.handler.BlockExternalizedHandler;
 import agora.api.handler.PreImageReceivedHandler;
+import agora.api.handler.TransactionReceivedHandler;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -1177,6 +1178,34 @@ public class NetworkManager
         settings.httpClientSettings.readTimeout = this.node_config.timeout;
 
         return new RestInterfaceClient!PreImageReceivedHandler(settings);
+    }
+
+    /***************************************************************************
+
+        Instantiates a client object implementing `TransactionReceivedHandler`
+
+        In the default implementation, this returns a `TransactionReceivedHandler`
+
+        Params:
+            address = The address (IPv4, IPv6, hostname) of target Server
+        Returns:
+            A TransactionReceivedHandler to communicate with the server
+            at `address`
+
+    ***************************************************************************/
+
+    public TransactionReceivedHandler getTransactionReceivedHandler
+        (Address address)
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = this.node_config.timeout;
+        settings.httpClientSettings.readTimeout = this.node_config.timeout;
+
+        return new RestInterfaceClient!TransactionReceivedHandler(settings);
     }
 }
 

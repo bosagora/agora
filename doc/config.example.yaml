@@ -116,3 +116,6 @@ event_handlers:
   # URLs to push a data when a pre-image is updated. (path is "/preimage_received")
   preimage_received:
     - http://127.0.0.1:3836/preimage_received
+  # URLs to push a data when a transaction is updated. (path is "/transaction_received")
+  transaction_received:
+    - http://127.0.0.1:3836/transaction_received

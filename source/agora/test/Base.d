@@ -1135,6 +1135,7 @@ public class TestNetworkManager : NetworkManager
 {
     import agora.api.handler.BlockExternalizedHandler;
     import agora.api.handler.PreImageReceivedHandler;
+    import agora.api.handler.TransactionReceivedHandler;
 
     ///
     public Registry* registry;
@@ -1210,6 +1211,13 @@ public class TestNetworkManager : NetworkManager
 
     ///
     protected final override PreImageReceivedHandler getPreimageReceivedHandler
+        (Address address)
+    {
+        assert(0, "Not supported");
+    }
+
+    ///
+    protected final override TransactionReceivedHandler getTransactionReceivedHandler
         (Address address)
     {
         assert(0, "Not supported");
