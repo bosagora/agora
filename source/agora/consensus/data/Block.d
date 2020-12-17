@@ -407,7 +407,6 @@ unittest
     enrollments ~= Enrollment.init;
     enrollments ~= Enrollment.init;
 
-    const ubyte[Signature.sizeof] sig_data = 42;
     Block block =
     {
         header:
@@ -416,13 +415,15 @@ unittest
             height:      Height(0),
             merkle_root: merkle,
             validators:  validators,
-            signature:   Signature(sig_data),
+            signature:   Signature.fromString(
+                            "0x0f55e869b35fdd36a1f5147771c0c2f5ad35ec7b3e4e"
+                            ~ "4f77bd37f1e0aef06d1a4b62ed5c610735b73e3175"
+                            ~ "47ab3dc3402b05fd57419a2a5def798a03df2ef56a"),
             enrollments: enrollments,
         },
         txs: [ tx ],
         merkle_tree: [ merkle ],
     };
-
     testSymmetry!Block();
     testSymmetry(block);
 }
