@@ -140,6 +140,9 @@ public string validateScript (in ScriptType type, in ubyte[] opcodes,
             bytes.popFrontN(payload_size);
             break;
 
+        case OP.PUSH_NUM_1: .. case OP.PUSH_NUM_5:
+            break;
+
         default:
             break;
         }
@@ -174,6 +177,10 @@ unittest
     // only pushes are allowed for unlock
     test!"=="(validateScript(ScriptType.Unlock, [OP.FALSE], StackMaxItemSize,
         result),
+        null);
+    test!"=="(validateScript(ScriptType.Unlock,
+        [OP.PUSH_NUM_1, OP.PUSH_NUM_2, OP.PUSH_NUM_3, OP.PUSH_NUM_4, OP.PUSH_NUM_5],
+        StackMaxItemSize, result),
         null);
     test!"=="(validateScript(ScriptType.Unlock, [OP.PUSH_BYTES_1, 1],
         StackMaxItemSize, result), null);
