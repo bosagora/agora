@@ -434,6 +434,19 @@ public class Engine
                 stack.push(payload);
                 break;
 
+            case OP.PUSH_NUM_1: .. case OP.PUSH_NUM_5:
+                static const ubyte[1] OneByte = [0];
+                if (!stack.canPush(OneByte))
+                    return "Stack overflow while executing PUSH_NUM_*";
+
+                // note: must be GC-allocated!
+                // todo: replace with preallocated values just like
+                // `TrueValue` and `FalseValue`
+                const ubyte[] number
+                    = [cast(ubyte)((opcode + 1) - OP.PUSH_NUM_1)];
+                stack.push(number);
+                break;
+
             case OP.DUP:
                 if (stack.empty)
                     return "DUP opcode requires an item on the stack";
