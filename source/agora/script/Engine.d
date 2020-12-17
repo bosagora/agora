@@ -542,9 +542,6 @@ public class Engine
 
                 break;
 
-            case OP.INVALID:
-                return "Script panic while executing OP.INVALID opcode";
-
             default:
                 assert(0);  // should have been handled
             }
@@ -898,16 +895,6 @@ version (unittest)
     // sensible defaults
     private const TestStackMaxTotalSize = 16_384;
     private const TestStackMaxItemSize = 512;
-}
-
-// OP.INVALID
-unittest
-{
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.INVALID]), Unlock.init, Transaction.init,
-            Input.init),
-        "Script panic while executing OP.INVALID opcode");
 }
 
 // OP.DUP
