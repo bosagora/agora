@@ -507,6 +507,26 @@ public class Engine
                     return "VERIFY_SIG signature failed validation";
                 break;
 
+            case OP.CHECK_MULTI_SIG:
+                bool is_valid;
+                if (auto error = this.verifyMultiSig!(OP.CHECK_MULTI_SIG)(
+                    stack, tx, is_valid))
+                    return error;
+
+                // canPush() check unnecessary
+                stack.push(is_valid ? TrueValue : FalseValue);
+                break;
+
+            case OP.VERIFY_MULTI_SIG:
+                bool is_valid;
+                if (auto error = this.verifyMultiSig!(OP.VERIFY_MULTI_SIG)(
+                    stack, tx, is_valid))
+                    return error;
+
+                if (!is_valid)
+                    return "VERIFY_MULTI_SIG signature failed validation";
+                break;
+
             case OP.CHECK_SEQ_SIG:
                 bool is_valid;
                 if (auto error = this.verifySequenceSignature!(OP.CHECK_SEQ_SIG)(
@@ -763,6 +783,187 @@ public class Engine
 
         const sig = Signature(sig_bytes);
         sig_valid = Schnorr.verify(point, sig, tx);
+        return null;
+    }
+
+    /***************************************************************************
+
+        Verifies a threshold multi-signature. Any `N of M` configuration up to
+        5 keys and 5 signatures is allowed.
+
+        Reads a `count` from the stack, then reads `count` number of Public
+        keys from the stack, then reads `req_count` from the stack, then reads
+        `req_count` number of signatures from the stack.
+
+        There need to be exactly `req_count` valid signatures on the stack.
+
+        For each key it will try to validate against the first signature.
+        When validation fails, it tries the next key with the same signature.
+        When validation succeeds, it moves on to the next signature.
+
+        The keys and signatures must be placed in the same order on the stack.
+
+        If any of the Signatures or Public keys are missing or in an
+        invalid format, an error string is returned.
+
+        Otherwise the mult-sig is checked and the `sig_valid` parameter
+        is set to the validation result.
+
+        Params:
+            OP = the opcode
+            stack = should contain the count, the public keys,
+                the count of required signatures
+            tx = the transaction that should have been signed
+
+        Returns:
+            an error string if the Signature and Public key are missing or
+            invalid, otherwise returns null.
+
+    ***************************************************************************/
+
+    private string verifyMultiSig (OP op)(ref Stack stack, in Transaction tx,
+        out bool sig_valid) nothrow @safe //@nogc  // stack.pop() is not @nogc
+    {
+        static assert(op == OP.CHECK_MULTI_SIG || op == OP.VERIFY_MULTI_SIG);
+
+        // if changed, check assumptions
+        static assert(Point.sizeof == 32);
+        static assert(Signature.sizeof == 64);
+
+        // todo: move to consensus params?
+        enum MAX_PUB_KEYS = 5;
+        alias MAX_SIGNATURES = MAX_PUB_KEYS;
+
+        // two counts plus the pubkeys and the signatures
+        enum MAX_STACK_ITEMS = 2 + MAX_PUB_KEYS + MAX_SIGNATURES;
+
+        // smallest possible stack is: <sig> <1> <pubkey> <1>
+        if (stack.count() < 4)
+        {
+            static immutable err1 = op.to!string
+                ~ " opcode requires at minimum four items on the stack";
+            return err1;
+        }
+
+        if (stack.count() > MAX_STACK_ITEMS)
+        {
+            static immutable err2 = op.to!string
+                ~ " opcode cannot accept more than " ~ MAX_PUB_KEYS.to!string
+                ~ " keys and " ~ MAX_SIGNATURES.to!string
+                ~ " signatures on the stack";
+            return err2;
+        }
+
+        const pubkey_count_arr = stack.pop();
+        if (pubkey_count_arr.length != 1)
+        {
+            static immutable err3 = op.to!string
+                ~ " opcode requires 1-byte public key count on the stack";
+            return err3;
+        }
+
+        const ubyte key_count = pubkey_count_arr[0];
+        if (key_count < 1 || key_count > MAX_PUB_KEYS)
+        {
+            static immutable err4 = op.to!string
+                ~ " opcode can accept between 1 to " ~ MAX_PUB_KEYS.to!string
+                ~ " keys on the stack";
+            return err4;
+        }
+
+        if (key_count > stack.count())
+        {
+            static immutable err5 = op.to!string
+                ~ " not enough keys on the stack";
+            return err5;
+        }
+
+        // buffer
+        Point[MAX_PUB_KEYS] pub_keys_buffer;
+        foreach (idx, ref key; pub_keys_buffer[0 .. key_count])
+        {
+            const key_bytes = stack.pop();
+            if (key_bytes.length != Point.sizeof)
+            {
+                static immutable err6 = op.to!string
+                    ~ " opcode requires 32-byte public key on the stack";
+                return err6;
+            }
+
+            key = Point(key_bytes);
+            if (!key.isValid())
+            {
+                static immutable err7 = op.to!string
+                    ~ " 32-byte public key on the stack is invalid";
+                return err7;
+            }
+        }
+
+        // slice
+        Point[] keys = pub_keys_buffer[0 .. key_count];
+
+        const sig_count_arr = stack.pop();
+        if (sig_count_arr.length != 1)
+        {
+            static immutable err8 = op.to!string
+                ~ " opcode requires 1-byte signature count on the stack";
+            return err8;
+        }
+
+        const ubyte sig_count = sig_count_arr[0];
+        if (sig_count < 1 || sig_count > MAX_SIGNATURES)
+        {
+            static immutable err9 = op.to!string
+                ~ " opcode can accept between 1 to "
+                ~ MAX_SIGNATURES.to!string ~ " signatures on the stack";
+            return err9;
+        }
+
+        if (sig_count > stack.count())
+        {
+            static immutable err10 = op.to!string
+                ~ " not enough signatures on the stack";
+            return err10;
+        }
+
+        if (sig_count > key_count)
+        {
+            static immutable err11 = op.to!string
+                ~ " opcode cannot accept more signatures than there are keys";
+            return err11;
+        }
+
+        // buffer
+        Signature[MAX_SIGNATURES] sigs_buffer;
+        foreach (idx, ref sig; sigs_buffer[0 .. sig_count])
+        {
+            const sig_bytes = stack.pop();
+            if (sig_bytes.length != Signature.sizeof)
+            {
+                static immutable err12 = op.to!string
+                    ~ " opcode requires 64-byte signature on the stack";
+                return err12;
+            }
+
+            sig = Signature(sig_bytes);
+        }
+
+        // slice
+        Signature[] sigs = sigs_buffer[0 .. sig_count];
+
+        // if there are no sigs left, validation succeeded.
+        // if there are more sigs left than keys left it means we cannot reach
+        // the minimum required signatures as there's not enough keys to
+        // compare with.
+        while (sigs.length > 0 && sigs.length <= keys.length)
+        {
+            if (Schnorr.verify(keys.front, sigs.front, tx))
+                sigs.popFront();
+
+            keys.popFront();
+        }
+
+        sig_valid = sigs.length == 0;
         return null;
     }
 
@@ -1101,6 +1302,292 @@ unittest
             ~ [ubyte(32)] ~ kp.V[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init),
         null);
+}
+
+// OP.CHECK_MULTI_SIG / OP.VERIFY_MULTI_SIG
+unittest
+{
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    const Transaction tx;
+    test!("==")(engine.execute(
+        Lock(LockType.Script, [OP.CHECK_MULTI_SIG]), Unlock.init, tx, Input.init),
+        "CHECK_MULTI_SIG opcode requires at minimum four items on the stack");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            [OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.CHECK_MULTI_SIG]),
+        Unlock.init, tx, Input.init),
+        "CHECK_MULTI_SIG opcode requires at minimum four items on the stack");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+            [OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.PUSH_NUM_1,
+                OP.CHECK_MULTI_SIG]),
+        Unlock.init, tx, Input.init),
+        "CHECK_MULTI_SIG opcode requires 32-byte public key on the stack");
+    // invalid key (crypto_core_ed25519_is_valid_point() fails)
+    Point invalid_key;
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // required sigs
+            ~ [ubyte(32)] ~ invalid_key[]
+            ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ Signature.init[]),
+        tx, Input.init),
+        "CHECK_MULTI_SIG 32-byte public key on the stack is invalid");
+    // valid key, invalid signature
+    Point valid_key = Point.fromString(
+        "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // required sigs
+            ~ [ubyte(32)] ~ valid_key[]
+            ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ Signature.init[]),
+        tx, Input.init),
+        "Script failed");
+
+    const Pair kp1 = Pair.random();
+    const sig1 = sign(kp1, tx);
+    const Pair kp2 = Pair.random();
+    const sig2 = sign(kp2, tx);
+    const Pair kp3 = Pair.random();
+    const sig3 = sign(kp3, tx);
+    const Pair kp4 = Pair.random();
+    const sig4 = sign(kp4, tx);
+    const Pair kp5 = Pair.random();
+    const sig5 = sign(kp5, tx);
+
+    // valid key + signature
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // required sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]),
+        tx, Input.init),
+        null);
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // fails: more sigs than keys
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig2[]),
+        tx, Input.init),
+        "CHECK_MULTI_SIG opcode cannot accept more signatures than there are keys");
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]),  // fails: not enough sigs pushed
+        tx, Input.init),
+        "CHECK_MULTI_SIG not enough signatures on the stack");
+    // valid
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig2[]),
+        tx, Input.init),
+        null);
+    // invalid order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig2[]),
+        tx, Input.init),
+        "Script failed");
+    // ditto invalid order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig2[]
+             ~ [ubyte(64)] ~ sig1[]),
+        tx, Input.init),
+        "Script failed");
+    // 1 of 2 is ok
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]),
+        tx, Input.init),
+        null);
+    // ditto 1 of 2 is ok
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig2[]),
+        tx, Input.init),
+        null);
+    // 1 of 5: any sig is enough
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]),
+        tx, Input.init),
+        null);
+    // 1 of 5: ditto
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_1)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig2[]),
+        tx, Input.init),
+        null);
+    // 2 of 5: ok when sigs are in the same order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig5[]),
+        tx, Input.init),
+        null);
+    // 2 of 5: fails when sigs are in the wrong order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig5[]
+             ~ [ubyte(64)] ~ sig1[]),
+        tx, Input.init),
+        "Script failed");
+    // 3 of 5: ok when sigs are in the same order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig3[]
+             ~ [ubyte(64)] ~ sig5[]),
+        tx, Input.init),
+        null);
+    // 3 of 5: fails when sigs are in the wrong order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig5[]
+             ~ [ubyte(64)] ~ sig3[]),
+        tx, Input.init),
+        "Script failed");
+    // 5 of 5: ok when sigs are in the same order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_5)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig2[]
+             ~ [ubyte(64)] ~ sig3[]
+             ~ [ubyte(64)] ~ sig4[]
+             ~ [ubyte(64)] ~ sig5[]),
+        tx, Input.init),
+        null);
+    // 5 of 5: fails when sigs are in the wrong order
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_5)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.CHECK_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig3[]
+             ~ [ubyte(64)] ~ sig2[]
+             ~ [ubyte(64)] ~ sig4[]
+             ~ [ubyte(64)] ~ sig5[]),
+        tx, Input.init),
+        "Script failed");
+    // ditto but with VERIFY_MULTI_SIG
+    test!("==")(engine.execute(
+        Lock(LockType.Script,
+              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp3.V[]
+            ~ [ubyte(32)] ~ kp4.V[]
+            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
+            ~ [ubyte(OP.VERIFY_MULTI_SIG)]),
+        Unlock([ubyte(64)] ~ sig1[]
+             ~ [ubyte(64)] ~ sig5[]
+             ~ [ubyte(64)] ~ sig3[]),
+        tx, Input.init),
+        "VERIFY_MULTI_SIG signature failed validation");
 }
 
 // OP.CHECK_SEQ_SIG / OP.VERIFY_SEQ_SIG
