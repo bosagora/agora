@@ -238,8 +238,8 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Enrollment[] getEnrollments (ref Enrollment[] enrolls, Height height)
-        @trusted nothrow
+    public Enrollment[] getEnrollments (ref Enrollment[] enrolls, Height height,
+                                    scope UTXOFinder peekUTXO) @trusted nothrow
     {
         enrolls.length = 0;
         assumeSafeAppend(enrolls);
@@ -248,16 +248,11 @@ public class EnrollmentManager
         this.enroll_pool.getEnrollments(pool_enrolls, Height(height + 1));
         foreach (enroll; pool_enrolls)
         {
-            const enroll_height = this.getEnrolledHeight(enroll.utxo_key);
-            const avail_height =
-                this.enroll_pool.getAvailableHeight(enroll.utxo_key);
-            assert(avail_height != Height(0));
-            if (enroll_height == ulong.max ||
-                (avail_height >= enroll_height &&
-                    height >= enroll_height + this.params.ValidatorCycle - 1))
-            {
+            UTXO utxo;
+            if (peekUTXO(enroll.utxo_key, utxo) &&
+                this.isInvalidCandidateReason(enroll, utxo.output.address,
+                                    Height(height + 1), peekUTXO) is null)
                 enrolls ~= enroll;
-            }
         }
         return enrolls;
     }
@@ -942,7 +937,7 @@ unittest
     }
 
     Enrollment[] enrolls;
-    man.getEnrollments(enrolls, Height(1));
+    man.getEnrollments(enrolls, Height(1), &utxo_set.peekUTXO);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -967,7 +962,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[0], pairs[0].address, Height(9),
             utxo_set.getUTXOFinder(), utxos) !is null);
     assert(man.getEnrolledHeight(ordered_enrollments[1].utxo_key) == ulong.max);
-    man.getEnrollments(enrolls, Height(9));
+    man.getEnrollments(enrolls, Height(9), &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set
     assert(man.validator_set.count() == 1);
@@ -976,7 +971,8 @@ unittest
     man.removeEnrollment(utxo_hashes[0]);
     man.removeEnrollment(utxo_hashes[1]);
     man.removeEnrollment(utxo_hashes[2]);
-    assert(man.getEnrollments(enrolls, Height(9)).length == 0);
+    assert(man.getEnrollments(enrolls, Height(9), &utxo_set.peekUTXO)
+                                                                .length == 0);
 
     // clear up all validators
     man.validator_set.removeAll();
@@ -986,7 +982,8 @@ unittest
     foreach (idx, ordered_enroll; ordered_enrollments)
         assert(man.addEnrollment(ordered_enroll, pairs[idx].address, Height(10),
             &utxo_set.peekUTXO));
-    man.getEnrollments(enrolls, Height(man.params.ValidatorCycle + 8));
+    man.getEnrollments(enrolls, Height(man.params.ValidatorCycle + 8),
+                                                    &utxo_set.peekUTXO);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -1257,26 +1254,26 @@ unittest
 
     // if the current height is smaller than the available height,
     // we can get no enrollment
-    man.getEnrollments(enrolls, Height(8));
+    man.getEnrollments(enrolls, Height(8), &utxo_set.peekUTXO);
     assert(enrolls.length == 0);
 
     // if the current height is greater than or equal to the available height,
     // we can get enrollments
-    man.getEnrollments(enrolls, Height(9));
+    man.getEnrollments(enrolls, Height(9), &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
 
     // make the enrollment a validator
     man.addValidator(enroll, key_pair.address, Height(10), &utxo_set.peekUTXO, utxos);
-    man.getEnrollments(enrolls, Height(11));
+    man.getEnrollments(enrolls, Height(11), &utxo_set.peekUTXO);
     assert(enrolls.length == 0);
 
     // add the enrollment that is already a validator, and check if
     // the enrollment can be nominated at the height before the cycle end
     enroll = man.createEnrollment(utxo_set.keys[0], Height(10 + validator_cycle));
     assert(man.addEnrollment(enroll, key_pair.address, Height(11), &utxo_set.peekUTXO));
-    man.getEnrollments(enrolls, Height(validator_cycle + 8));
+    man.getEnrollments(enrolls, Height(validator_cycle + 8), &utxo_set.peekUTXO);
     assert(enrolls.length == 0);
-    man.getEnrollments(enrolls, Height(validator_cycle + 9));
+    man.getEnrollments(enrolls, Height(validator_cycle + 9), &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
 
     // make the enrollment a validator again
@@ -1289,7 +1286,7 @@ unittest
     // constraint
     assert(!man.addEnrollment(enroll, key_pair.address, Height(validator_cycle + 10),
         &utxo_set.peekUTXO));
-    man.getEnrollments(enrolls, Height(validator_cycle + 11));
+    man.getEnrollments(enrolls, Height(validator_cycle + 11), &utxo_set.peekUTXO);
     assert(enrolls.length == 0);
 }
 
