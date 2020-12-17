@@ -36,10 +36,6 @@ import std.traits : EnumMembers;
 
 public enum OP : ubyte
 {
-    /// Executing this is an error and will cause script execution to fail.
-    /// Purposefully located first to default OPs to errors.
-    INVALID = 0x50,
-
     /// Used to encode a small data push to the stack (up to 75 bytes),
     /// may be used with `case PUSH_BYTES_1: .. case PUSH_BYTES_64:` syntax.
     PUSH_BYTES_1 = 0x01,
