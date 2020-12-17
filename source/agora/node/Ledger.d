@@ -443,8 +443,8 @@ public class Ledger
         const next_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        this.enroll_man.getEnrollments(data.enrolls,
-            Height(this.getBlockHeight()));
+        this.enroll_man.getEnrollments(data.enrolls, this.getBlockHeight(),
+                                                    &this.utxo_set.peekUTXO);
 
         // get information about validators not revealing a preimage timely
         this.slash_man.getMissingValidators(data.missing_validators,
@@ -1131,7 +1131,7 @@ unittest
     // Check if there are any unregistered enrollments
     Enrollment[] unreg_enrollments;
     assert(ledger.enroll_man.getEnrollments(unreg_enrollments,
-        ledger.getBlockHeight()) is null);
+        ledger.getBlockHeight(), &ledger.utxo_set.peekUTXO) is null);
     auto block_4 = ledger.getBlocksFrom(Height(4));
     enrollments.sort!("a.utxo_key < b.utxo_key");
     assert(block_4[0].header.enrollments == enrollments);
