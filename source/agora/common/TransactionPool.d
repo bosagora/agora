@@ -106,7 +106,7 @@ public class TransactionPool
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
-            "(key BLOB PRIMARY KEY, val BLOB NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL)");
 
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
@@ -144,7 +144,7 @@ public class TransactionPool
 
         () @trusted {
             db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
-                hashFull(tx)[], buffer);
+                hashFull(tx), buffer);
         }();
 
         return true;
@@ -166,7 +166,7 @@ public class TransactionPool
             this.input_set.remove(input.hashFull());
 
         auto hash = tx.hashFull();
-        this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash[]);
+        this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash);
     }
 
     /***************************************************************************
@@ -248,7 +248,7 @@ public class TransactionPool
     public bool hasTransactionHash (in Hash tx) @trusted
     {
         return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-            "tx_pool WHERE key = ?)", tx[]).front.peek!bool(0);
+            "tx_pool WHERE key = ?)", tx).front.peek!bool(0);
     }
 
     /***************************************************************************
