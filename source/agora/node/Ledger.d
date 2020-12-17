@@ -1493,7 +1493,7 @@ unittest
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxos[idx], params.ValidatorCycle,
-            seed, idx);
+            seed, 0);
         assert(ledger.enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &ledger.utxo_set.peekUTXO));
         enrollments ~= enroll;
