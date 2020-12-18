@@ -155,6 +155,7 @@ private UnitTestResult customModuleUnitTester ()
 
     //
     const chatty = !!("dchatty" in environment);
+    const all_single_threaded = !!("dsinglethreaded" in environment);
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
 
@@ -190,7 +191,7 @@ private UnitTestResult customModuleUnitTester ()
 
             // this test checks GC usage stats before / after tests,
             // but other threads can change the outcome of the GC usage stats
-            if (mod.name == "agora.common.Serializer")
+            if (all_single_threaded || mod.name == "agora.common.Serializer")
                 single_threaded ~= ModTest(mod.name, fp);
             else if (mod.name == "agora.test.ManyValidators")
                 heavy_tests ~= ModTest(mod.name, fp);
