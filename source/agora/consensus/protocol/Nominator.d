@@ -366,6 +366,7 @@ extern(D):
             return;
 
         log.info("Nomination started at {}", cur_time);
+        log.trace("Consensus data is: {}", data);
         this.is_nominating = true;
 
         // note: we are not passing the previous tx set as we don't really
@@ -412,11 +413,11 @@ extern(D):
         auto next_dup = duplicate_value(&next_value);
         if (this.scp.nominate(slot_idx, next_dup, prev_dup))
         {
-            log.info("{}(): Tx set nominated", __FUNCTION__);
+            log.info("{}(): Tx set triggered new nomination", __FUNCTION__);
         }
         else
         {
-            log.info("{}(): Tx set rejected nomination", __FUNCTION__);
+            log.info("{}(): Tx set didn't trigger new nomination", __FUNCTION__);
         }
     }
 
@@ -451,6 +452,8 @@ extern(D):
 
     public void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
     {
+        log.trace("Receiving envelope: {}", scpPrettify(&envelope));
+
         // ignore messages if `startNominatingTimer` was never called or
         // if `stopNominatingTimer` was called
         if (this.nomination_timer is null)
@@ -981,6 +984,7 @@ extern(D):
         try
         {
             SCPEnvelope env = cast()envelope;
+            log.trace("Emitting envelope: {}", scpPrettify(&envelope));
 
             // deep-dup as SCP stores pointers to memory on the stack
             env.statement.pledges = deserializeFull!(SCPStatement._pledges_t)(
@@ -1022,6 +1026,7 @@ extern(D):
                         msg));
 
                 log.info("combineCandidates: {}", slot_idx);
+                log.trace("Combined consensus data: {}", data);
                 // todo: currently we just pick the first of the candidate values,
                 // but we should ideally pick tx's out of the combined set
                 return duplicate_value(&candidate);
