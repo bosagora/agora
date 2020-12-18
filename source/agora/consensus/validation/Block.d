@@ -101,6 +101,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     import std.algorithm;
     import std.string;
     import std.conv;
+    import std.range;
 
     if (block.header.height == 0)
         return "Block: Genesis block should be validated using isGenesisBlockInvalidReason";
@@ -164,13 +165,21 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     const Scalar challenge = hashFull(block);
 
     log.trace("Validators expected to sign this block is {}", enrolled_validators);
+    // Check that more than half have signed
+    auto signed = iota(0, enrolled_validators).filter!(i => block.header.validators[i]).count();
+    if (signed <= enrolled_validators / 2)
+    {
+        log.error("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
+                signed, enrolled_validators / 2, enrolled_validators, block.header.height);
+        return "Only " ~ to!string(signed) ~ " signed the block. Require more than " ~ to!string(enrolled_validators);
+        }
     foreach (idx; 0 .. enrolled_validators)
     {
         const K = getValidatorAtIndex(block.header.height, idx);
         log.trace("idx {} PublicKey: {}", idx, PublicKey(K[]));
         if (K == Point.init)
         {
-            log.trace("[{}:{}] idx #{}: Validator {} not found for height {}",
+            log.error("[{}:{}] idx #{}: Validator {} not found for height {}",
                 file, line, idx, PublicKey(K[]), block.header.height);
             return "Block: Couldn't find a Validator for the given index "
                 ~ to!string(idx) ~ " at height " ~ to!string(block.header.height.value);

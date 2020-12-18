@@ -728,6 +728,7 @@ version (unittest)
     {
         import agora.common.crypto.Schnorr;
         import agora.common.crypto.ECC;
+        import std.format;
 
         auto validators = BitField!ubyte(keys.length);
         Signature[] sigs;
@@ -755,7 +756,7 @@ version (unittest)
             keys.enumerate.each!((idx, key) => validatorSign(idx, key));
         } catch (Exception e)
         {
-            log.error("Unit test signing error: {}", e);
+            assert(0, format!"Unit test signing error: %s"(e));
         }
         // Create new block with updates
         block.header.validators = validators;
