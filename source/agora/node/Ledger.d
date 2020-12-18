@@ -619,6 +619,9 @@ public class Ledger
         const expect_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
+        if (!data.tx_set.length)
+            return "Transaction set doesn't contain any transactions";
+
         foreach (const ref tx; data.tx_set)
         {
             if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, &this.payload_checker.check))
