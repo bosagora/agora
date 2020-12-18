@@ -3,8 +3,8 @@
     "targetType": "executable",
     "targetPath": "build",
     "dflags": [ "-i" ],
-    "libs-posix": [ "sodium" ],
-    "libs-windows": [ "libsodium" ],
+    "libs-posix": [ "sodium", "sqlite3" ],
+    "libs-windows": [ "libsodium", "libsqlite3" ],
     "versions": 
     [
         "Have_base32",
