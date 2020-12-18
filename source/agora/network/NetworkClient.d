@@ -250,10 +250,10 @@ class NetworkClient
 
     /***************************************************************************
 
-        Sends an SCP envelope to another node.
+        Sends a Validator Block Signature to another node.
 
         Params:
-            envelope = the envelope to send
+            block_sig = the details of the block signature
 
     ***************************************************************************/
 

@@ -1515,7 +1515,7 @@ public class TestFullNode : FullNode, TestAPI
         assert(0);
     }
 
-/// ditto
+    /// ditto
     public override void receiveBlockSignature (ValidatorBlockSig block_sig) @safe
     {
         assert(0);

@@ -224,27 +224,7 @@ public class Ledger
         Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
     }
 
-    /***************************************************************************
-
-        Called when a consensus data set is externalized.
-
-        This will create a new block and add it to the ledger.
-
-        Params:
-            data = the consensus data which was externalized
-
-        Returns:
-            true if the consensus data was accepted
-
-    ***************************************************************************/
-
-    public bool onExternalized (ConsensusData data)
-        @trusted
-    {
-        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls);
-        return this.acceptBlock(block);
-    }
-
+    /// Called when a consensus data set is externalized for use in unit tests.
     version (unittest)
     private bool externalize (ConsensusData data,
         string file = __FILE__, size_t line = __LINE__)
