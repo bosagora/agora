@@ -282,15 +282,12 @@ private void waitForCount(size_t target_count, shared(size_t)* counter, string n
     while (atomicLoad(*counter) < target_count)
     {
         // That's at least 5 seconds
-        assert(loopCount < 500, format("Only received %d of %d, expected %s envelopes!",
+        assert(loopCount < 1000, format("Only received %d of %d, expected %s envelopes!",
                    atomicLoad(*counter), target_count, name));
         loopCount++;
         Thread.sleep(10.msecs);
     }
 }
-
-// This delay is unfortunately needed before checking the number of confirmed envelopes
-private enum Duration sufficient_time_for_first_envelope = 1.seconds;
 
 /// Half nodes not signing correctly WILL NOT prevent block from being externalized if we require 3 out of 6
 unittest
@@ -307,8 +304,8 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-    waitForCount(GenesisValidators - 1, &network.envelope_type_counts.nominate_count, "nominate");
-    Thread.sleep(sufficient_time_for_first_envelope);
+    waitForCount(1, &network.envelope_type_counts.externalize_count, "externalize");
+    Thread.sleep(1.seconds);
     assert(network.envelope_type_counts.confirm_count > 0, "The block should have been confirmed! Perhaps the delay needs to be increased");
     assert(network.envelope_type_counts.externalize_count > 0, "The block should have been externalized!");
 }
@@ -328,8 +325,7 @@ unittest
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
-    waitForCount(GenesisValidators - 1, &network.envelope_type_counts.nominate_count, "nominate");
-    Thread.sleep(sufficient_time_for_first_envelope);
+    Thread.sleep(2.seconds);
     assert(network.envelope_type_counts.confirm_count == 0, "The block should not have been confirmed!");
     assert(network.envelope_type_counts.externalize_count == 0, "The block should not have been externalized!");
 }
