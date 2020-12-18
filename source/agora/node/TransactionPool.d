@@ -400,6 +400,8 @@ public class TransactionPool
 
     private bool isValidTransaction (const ref Transaction tx) @trusted
     {
+        // Transaction pool should never deal with CoinBase TXs
+        assert(tx.type != TxType.Coinbase);
         return !this.hasTransactionHash(tx.hashFull());
     }
 

@@ -402,13 +402,15 @@ public class Ledger
     {
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = Height(this.getBlockHeight() + 1);
-        auto reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
-            expected_height, &this.payload_checker.check);
+        string reason;
 
-        if (reason !is null || !this.pool.add(tx))
+        if (tx.type == TxType.Coinbase ||
+            (reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
+                expected_height, &this.payload_checker.check)) !is null ||
+            !this.pool.add(tx))
         {
             log.info("Rejected tx. Reason: {}. Tx: {}",
-                reason !is null ? reason : "double-spend", tx);
+                reason !is null ? reason : "double-spend/coinbase", tx);
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return false;
         }

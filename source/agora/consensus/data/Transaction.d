@@ -32,6 +32,7 @@ public enum TxType : ubyte
 {
     Payment,
     Freeze,
+    Coinbase,
 }
 
 /*******************************************************************************
@@ -150,6 +151,12 @@ public struct Input
         this.utxo = hashMulti(tx.hashFull(), index);
     }
 
+    /// Ctor to create dummy inputs for Coinbase TXs
+    public this (Height height) nothrow @safe
+    {
+        this.utxo = hashFull(height);
+    }
+
     /***************************************************************************
 
         Implements hashing support
@@ -191,6 +198,14 @@ unittest
         DataPayload([1,2,3])
     );
     testSymmetry(data_tx);
+
+    Transaction cb_tx = Transaction(
+        TxType.Coinbase,
+        [Input(Height(0))],
+        [Output.init],
+        DataPayload([1,2,3])
+    );
+    testSymmetry(cb_tx);
 }
 
 unittest
@@ -265,4 +280,24 @@ unittest
     Transaction new_tx = deserializeJson!Transaction(json_str);
     assert(new_tx.payload.data.length == old_tx.payload.data.length);
     assert(new_tx.payload.data == old_tx.payload.data);
+}
+
+// Check exact same Coinbase TXs for different heights generate different hashes
+unittest
+{
+    Transaction h0_tx = Transaction(
+        TxType.Coinbase,
+        [Input(Height(0))],
+        [Output.init],
+        DataPayload([1,2,3])
+    );
+
+    Transaction h1_tx = Transaction(
+        TxType.Coinbase,
+        [Input(Height(1))],
+        [Output.init],
+        DataPayload([1,2,3])
+    );
+
+    assert(h0_tx.hashFull() != h1_tx.hashFull());
 }

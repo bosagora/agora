@@ -49,7 +49,7 @@ public string isInvalidReason (
 {
     import std.conv;
 
-    if (tx.inputs.length == 0)
+    if (tx.type != TxType.Coinbase && tx.inputs.length == 0)
         return "Transaction: No input";
 
     if (tx.outputs.length == 0)
@@ -96,8 +96,8 @@ public string isInvalidReason (
             if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
                 return fail_reason;
 
-            if (utxo_value.type != TxType.Payment)
-                return "Transaction: Can only freeze a Payment transaction";
+            if (utxo_value.type == TxType.Freeze)
+                return "Transaction: Can't freeze an already frozen transaction";
         }
 
         if (sum_unspent.integral() < Amount.MinFreezeAmount.integral())
@@ -133,13 +133,25 @@ public string isInvalidReason (
         auto error = checkPayload(tx);
         if (error !is null) return error;
     }
+    else if (tx.type == TxType.Coinbase)
+    {
+        if (tx.inputs.length != 1)
+            return "Transaction: Coinbase transactions must" ~
+                "include a single Input";
+
+        if (tx.inputs[0] != Input(height))
+            return "Transaction: Coinbase transaction contains invalid input";
+
+        if (tx.payload.data.length != 0)
+            return "Transaction: Coinbase transactions can't include payload";
+    }
     else
         return "Transaction: Invalid transaction type";
 
     Amount new_unspent;
     if (!tx.getSumOutput(new_unspent))
         return "Transaction: Referenced Output(s) overflow";
-    if (!sum_unspent.sub(new_unspent))
+    if (tx.type != TxType.Coinbase && !sum_unspent.sub(new_unspent))
         return "Transaction: Output(s) are higher than Input(s)";
     return null;
 }
@@ -974,4 +986,41 @@ unittest
     // test for data storage using frozen input
     assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, tx with type of Freeze should not pass validation. tx: %s", dataTx));
+}
+
+unittest
+{
+    scope storage = new TestUTXOSet;
+    scope utxoFinder = storage.getUTXOFinder();
+
+    const key_pair = KeyPair.random;
+
+    scope payload_checker = new DataPayloadChecker(1024, 200);
+    scope checker = &payload_checker.check;
+
+    // Only output transaction
+    auto tx = Transaction(
+        TxType.Coinbase,
+        [],
+        [
+            Output(Amount(2826), key_pair.address),
+            Output(Amount(3895), key_pair.address),
+        ],
+    );
+
+    // No input
+    assert(!isValid(tx, utxoFinder, Height(0), checker));
+
+    // Add the expected input, should validate
+    tx.inputs ~= Input(Height(0));
+    assert(isValid(tx, utxoFinder, Height(0), checker));
+
+    // Add some data, should not validate
+    ubyte[] data = [0xDE, 0xAD, 0xBE, 0xEF];
+    tx.payload = DataPayload(data);
+    assert(!isValid(tx, utxoFinder, Height(0), checker));
+
+    // Remove the inputs, still should not validate
+    tx.inputs.length = 0;
+    assert(!isValid(tx, utxoFinder, Height(0), checker));
 }
