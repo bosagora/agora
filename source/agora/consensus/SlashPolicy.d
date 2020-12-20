@@ -115,6 +115,36 @@ public class SlashPolicy
 
     /***************************************************************************
 
+        Get the UTXOs of the validators that do not reveal their pre-images
+        by indices
+
+        Params:
+            validators_utxos = will contain the UTXOs ot the validators
+            missing_validators = indices of validators being slashed
+
+    ***************************************************************************/
+
+    public void getMissingValidatorsUTXOs (ref Hash[] validators_utxos,
+        const uint[] missing_validators) @safe nothrow
+    {
+        validators_utxos.length = 0;
+        () @trusted { assumeSafeAppend(validators_utxos); }();
+
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys))
+        {
+            log.fatal("Could not retrieve enrollments");
+            assert(0);
+        }
+
+        foreach (idx; missing_validators)
+        {
+            validators_utxos ~= keys[idx];
+        }
+    }
+
+    /***************************************************************************
+
         Get the random seed reduced from the preimages for the provided
         block height.
 
@@ -322,18 +352,22 @@ unittest
     // get all the validators and find index of the first and second validastors
     uint first_validator;
     uint second_validator;
+    Hash first_validator_utxo;
+    Hash second_validator_utxo;
     Hash[] utxos;
     assert(enroll_man.getEnrolledUTXOs(utxos));
     foreach (idx, utxo; utxos)
         if (utxo == enrollments[0].utxo_key)
         {
             first_validator = cast(uint)idx;
+            first_validator_utxo = utxo;
             break;
         }
     foreach (idx, utxo; utxos)
         if (utxo == enrollments[1].utxo_key)
         {
             second_validator = cast(uint)idx;
+            second_validator_utxo = utxo;
             break;
         }
 
@@ -367,6 +401,12 @@ unittest
                 (missing_validators.length));
     assert(missing_validators.find(first_validator).empty());
     assert(missing_validators.find(second_validator).empty());
+
+    // get the UTXOs of the validators that do not reveals preimages
+    Hash[] validators_utxos;
+    slash_man.getMissingValidatorsUTXOs(validators_utxos, missing_validators);
+    assert(validators_utxos.find(first_validator_utxo).empty());
+    assert(validators_utxos.find(second_validator_utxo).empty());
 
     // get and check random seed
     Hash preimage_root = slash_man.getRandomSeed(Height(2));
