@@ -1095,6 +1095,20 @@ public class EnrollmentManager
     {
         return &this.validator_set.findRecentEnrollment;
     }
+
+    /***************************************************************************
+
+        Unenroll the validator from the validator set
+
+        Params:
+            enroll_hash = key for the validator to unenroll
+
+    ***************************************************************************/
+
+    public void unenrollValidator (in Hash enroll_hash) @trusted
+    {
+        this.validator_set.unenroll(enroll_hash);
+    }
 }
 
 /// tests for member functions of EnrollmentManager
@@ -1708,4 +1722,41 @@ unittest
             Height(params.ValidatorCycle), &utxo_set.peekUTXO,
                                                 utxo_set.storage) is null);
     assert(man.getValidatorCount(Height(params.ValidatorCycle)) == 1);
+}
+
+// Test for adding and removing validators
+unittest
+{
+    import agora.consensus.data.Transaction;
+    import std.array;
+    import std.range;
+
+    Hash[] utxos;
+    auto utxo_set = new TestUTXOSet;
+    genesisSpendable()
+        .enumerate.map!(tup => tup.value
+            .refund(WK.Keys[tup.index].address).sign(TxType.Freeze))
+        .each!((tx) {
+            utxo_set.put(tx);
+            utxos ~= UTXO.getHash(tx.hashFull(), 0);
+        });
+
+    auto man = new EnrollmentManager(":memory:", WK.Keys.A,
+        new immutable(ConsensusParams));
+    auto e1 = EnrollmentManager.makeEnrollment(
+        WK.Keys.A, utxos[0], 10, 0);
+    auto e2 = EnrollmentManager.makeEnrollment(
+        WK.Keys.B, utxos[1], 10, 0);
+
+    assert(man.addEnrollment(e1, WK.Keys.A.address, Height(1), &utxo_set.peekUTXO));
+    assert(man.addEnrollment(e2, WK.Keys.B.address, Height(1), &utxo_set.peekUTXO));
+
+    assert(man.addValidator(e1, WK.Keys.A.address, Height(2), &utxo_set.peekUTXO,
+        utxo_set.storage) is null);
+    assert(man.addValidator(e2, WK.Keys.B.address, Height(2), &utxo_set.peekUTXO,
+        utxo_set.storage) is null);
+
+    assert(man.getValidatorCount(Height(2)) == 2);
+    man.unenrollValidator(utxos[0]);
+    assert(man.getValidatorCount(Height(2)) == 1);
 }

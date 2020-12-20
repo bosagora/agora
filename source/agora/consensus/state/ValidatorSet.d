@@ -220,6 +220,30 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Unenroll the enrollment with the given UTXO key from the validator set
+
+        Params:
+            utxo_key = the UTXO key of the enrollment data to unerno
+
+    ***************************************************************************/
+
+    public void unenroll (in Hash enroll_hash) @trusted nothrow
+    {
+        try
+        {
+            () @trusted {
+                this.db.execute("UPDATE validator_set SET active = ? WHERE key = ?",
+                    EnrollmentStatus.Expired, enroll_hash.toString());
+            }();
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error: {}", ex.msg);
+        }
+    }
+
+    /***************************************************************************
+
         In validatorSet DB, return the enrolled block height.
 
         Params:
