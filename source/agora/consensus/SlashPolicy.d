@@ -143,7 +143,7 @@ public class SlashPolicy
                 valid_keys ~= key;
         }
 
-        // NOTE: The preimage root of `Hash.init` value is currently
+        // NOTE: The random seed of `Hash.init` value is currently
         // checked in the `validateSlashingData` function of `Ledger`.
         if (valid_keys.length == 0)
             return Hash.init;
