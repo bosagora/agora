@@ -464,6 +464,45 @@ public class Ledger
 
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx));
+
+        this.updateSlashedUTXOSet(block);
+    }
+
+    /***************************************************************************
+
+        Update the UTXOs of validators that are to be slashed
+
+        Params:
+            block = the block to update the UTXO set with
+
+    ***************************************************************************/
+
+    protected void updateSlashedUTXOSet (const ref Block block) @safe
+    {
+        Hash[] validator_utxos;
+        this.slash_man.getMissingValidatorsUTXOs(validator_utxos,
+            block.header.missing_validators);
+        foreach (utxo; validator_utxos)
+        {
+            UTXO utxo_value;
+            if (!this.utxo_set.peekUTXO(utxo, utxo_value))
+                assert(0, "UTXO for the slashed validator not found!");
+
+            auto remain_amount = Amount(utxo_value.output.value);
+            remain_amount.sub(this.slash_man.penalty_amount);
+            Transaction slashing_tx =
+            {
+                TxType.Payment,
+                inputs: [Input(utxo)],
+                outputs: [
+                    Output(this.slash_man.penalty_amount,
+                        this.slash_man.penalty_address),
+                    Output(remain_amount, utxo_value.output.address),
+                ],
+            };
+            this.utxo_set.updateUTXOCache(
+                slashing_tx, block.header.height, true);
+        }
     }
 
     /***************************************************************************
@@ -495,6 +534,31 @@ public class Ledger
                 log.fatal("Validated block: {}", block);
                 assert(0);
             }
+        }
+
+        this.updateSlashedValidatorSet(block);
+    }
+
+    /***************************************************************************
+
+        Update the validators that are to be slashed
+
+        Params:
+            block = the block to update the Validator set with
+
+    ***************************************************************************/
+
+    protected void updateSlashedValidatorSet (const ref Block block) @safe
+    {
+        if (block.header.height == 0)
+            return;
+
+        Hash[] validators_utxos;
+        this.slash_man.getMissingValidatorsUTXOs(validators_utxos,
+            block.header.missing_validators);
+        foreach (utxo; validators_utxos)
+        {
+            this.enroll_man.unenrollValidator(utxo);
         }
     }
 
@@ -777,6 +841,20 @@ version (unittest)
                 new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"),
                 new DataPayloadChecker());
+        }
+
+        ///
+        protected override void updateSlashedUTXOSet (const ref Block block)
+            @safe
+        {
+            return;
+        }
+
+        ///
+        protected override void updateSlashedValidatorSet (const ref Block block)
+            @safe
+        {
+            return;
         }
     }
 }

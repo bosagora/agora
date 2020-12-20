@@ -139,10 +139,42 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(1));
 
+    auto frozen_hash = utxo_set.getUTXOs(bad_address).keys[0];
+    auto frozen_utxo = utxo_set.getUTXOs(bad_address).values[0];
+    UTXO utxo;
+    utxo_set.peekUTXO(frozen_hash, utxo);
+    assert(utxo.type == TxType.Freeze);
+
     // block 2
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectBlock(Height(2));
     auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
     assert(block2.header.missing_validators.length == 1);
+    assert(nodes[0].getValidatorCount() == 5,
+        format!"Invalid validator count, current: %s"(nodes[0].getValidatorCount()));
+
+    // check if the frozen UTXO is refunded to the owner and
+    // the penalty is re-routed to the `CommonsBudget`
+    utxo_set.peekUTXO(frozen_hash, utxo);
+    assert(utxo == UTXO.init);
+    auto slashed_hash = utxo_set.getUTXOs(bad_address).keys[0];
+    auto slashed_utxo = utxo_set.getUTXOs(bad_address).values[0];
+    auto common_utxo = utxo_set.getUTXOs(WK.Keys.CommonsBudget.address).values[0];
+    auto slashed_amout = slashed_utxo.output.value;
+    slashed_amout.add(common_utxo.output.value);
+    assert(frozen_utxo.output.value == slashed_amout);
+
+    // spend refunded UTXO and create block 3
+    Transaction new_tx = {
+        TxType.Payment,
+        inputs: [Input(slashed_hash)],
+        outputs: [Output(slashed_utxo.output.value, slashed_utxo.output.address)],
+    };
+    new_tx.inputs[0].signature =
+        WK.Keys[slashed_utxo.output.address].secret.sign(new_tx.hashFull()[]);
+    txs = txs[0..7].map!(tx => TxBuilder(tx).sign()).array();
+    txs ~= new_tx;
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(Height(3));
 }

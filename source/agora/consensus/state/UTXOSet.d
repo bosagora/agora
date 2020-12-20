@@ -49,10 +49,12 @@ abstract class UTXOCache
         Params:
             tx = the transaction
             height = local height of the block
+            slashed = whether the transaction is for slashing
 
     ***************************************************************************/
 
-    public void updateUTXOCache (const ref Transaction tx, Height height) @safe
+    public void updateUTXOCache (const ref Transaction tx, Height height,
+        bool slashed = false) @safe
     {
         import std.algorithm : any;
 
@@ -60,7 +62,10 @@ abstract class UTXOCache
         Height unlock_height = Height(height + 1);
 
         // for payments of frozen transactions, it will melt after 2016 blocks
-        if ((tx.type == TxType.Payment)
+        // If this is an unfreeze and slashing transaction, don't melt but
+        // instead set the unlock height to the next block as it will be sent to
+        // the commons budget.
+        if ((tx.type == TxType.Payment && !slashed)
             && tx.inputs.any!(input =>
                 (
                     (this.getUTXO(input.utxo).type == TxType.Freeze)
