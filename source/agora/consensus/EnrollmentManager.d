@@ -1112,6 +1112,27 @@ public class EnrollmentManager
     {
         this.validator_set.unenroll(enroll_hash);
     }
+
+    /***************************************************************************
+
+        Query Validators that have just finished their cycle
+
+        Params:
+            height = requested height
+            ex_validators = Array to save the ExpiringValidators
+
+        Returns:
+            `PublicKey`s and enrollment heights of `Validator`s whose enrollment
+            cycle have just ended
+
+    ***************************************************************************/
+
+    public ExpiringValidator[] getExpiringValidators (Height height,
+        ref ExpiringValidator[] ex_validators)
+        @trusted nothrow
+    {
+        return this.validator_set.getExpiringValidators(height, ex_validators);
+    }
 }
 
 /// tests for member functions of EnrollmentManager

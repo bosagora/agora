@@ -35,6 +35,8 @@ import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
 
+import std.typecons : Tuple;
+
 mixin AddLogger!();
 
 public enum EnrollmentStatus : int
@@ -64,6 +66,10 @@ public struct EnrollmentState
 
 /// Delegate type to query the history of Enrollments
 public alias EnrollmentFinder = bool delegate (in Hash enroll_key, out EnrollmentState state) @trusted nothrow;
+
+/// A Height and PublicKey pair to represent expiring Validators
+public alias ExpiringValidator = Tuple!(Height, "enrolled_height",
+    PublicKey, "pubkey");
 
 /// Ditto
 public class ValidatorSet
@@ -732,6 +738,49 @@ public class ValidatorSet
 
         return false;
     }
+
+    /***************************************************************************
+
+        Query Validators that have just finished their cycle
+
+        Params:
+            height = requested height
+            ex_validators = Array to save the ExpiringValidators
+
+        Returns:
+            `PublicKey`s and enrollment heights of `Validator`s whose enrollment
+            cycle have just ended
+
+    ***************************************************************************/
+
+    public ExpiringValidator[] getExpiringValidators (Height height,
+        ref ExpiringValidator[] ex_validators)
+        @trusted nothrow
+    {
+        ex_validators.length = 0;
+        assumeSafeAppend(ex_validators);
+
+        try
+        {
+            auto results = this.db.execute("SELECT enrolled_height, public_key" ~
+                " FROM validator_set WHERE enrolled_height + cycle_length = ?" ~
+                " AND active =  ?", height.value, EnrollmentStatus.Active);
+
+            foreach (row; results)
+            {
+                ex_validators ~= ExpiringValidator(Height(row.peek!(ulong)(0)),
+                    PublicKey.fromString(row.peek!(char[])(1)));
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on findExpiringValidators: {}, ",
+                ex.msg);
+            ex_validators.length = 0;
+        }
+
+        return ex_validators;
+    }
 }
 
 version (unittest)
@@ -782,6 +831,9 @@ unittest
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
     assert(set.count() == 1);
+    ExpiringValidator[] ex_validators;
+    assert(set.getExpiringValidators(
+        Height(1 + set.params.ValidatorCycle), ex_validators).length == 1);
     assert(set.hasEnrollment(utxos[0]));
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) !is null);
 
@@ -790,12 +842,22 @@ unittest
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
     assert(set.count() == 2);
+    assert(set.getExpiringValidators(
+        Height(1 + set.params.ValidatorCycle), ex_validators).length == 2);
+    // Too early
+    assert(set.getExpiringValidators(
+        Height(1 + set.params.ValidatorCycle - 1), ex_validators).length == 0);
+    // Already expired
+    assert(set.getExpiringValidators(
+        Height(1 + set.params.ValidatorCycle + 1), ex_validators).length == 0);
 
     seed_sources[utxos[2]] = Scalar.random();
     auto enroll3 = createEnrollment(utxos[2], WK.Keys[2], seed_sources[utxos[2]],
         set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
     assert(set.count() == 3);
+    assert(set.getExpiringValidators(
+        Height(9 + set.params.ValidatorCycle), ex_validators).length == 1);
 
     // check if enrolled heights are not set
     Hash[] keys;
@@ -902,3 +964,4 @@ unittest
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
 }
+
