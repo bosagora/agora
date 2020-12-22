@@ -29,6 +29,7 @@ import agora.consensus.protocol.Data;
 import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.EnrollmentManager;
 import agora.consensus.SCPEnvelopeStore;
 import agora.network.Clock;
 import agora.network.NetworkManager;
@@ -108,6 +109,9 @@ public extern (C++) class Nominator : SCPDriver
     /// SCPEnvelopeStore instance
     protected SCPEnvelopeStore scp_envelope_store;
 
+    /// Enrollment manager
+    private EnrollmentManager enroll_man;
+
 extern(D):
 
     /***************************************************************************
@@ -120,6 +124,7 @@ extern(D):
             network = the network manager for gossiping SCP messages
             key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
+            enroll_man = used to look up the commitment & preimages
             taskman = used to run timers
             data_dir = path to the data directory
 
@@ -127,7 +132,7 @@ extern(D):
 
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         this.params = params;
         this.clock = clock;
@@ -139,6 +144,7 @@ extern(D):
         this.scp = createSCP(this, node_id, IsValidator, no_quorum);
         this.taskman = taskman;
         this.ledger = ledger;
+        this.enroll_man = enroll_man;
         this.scp_envelope_store = this.getSCPEnvelopeStore(data_dir);
         this.restoreSCPState();
     }

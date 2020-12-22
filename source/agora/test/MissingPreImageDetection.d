@@ -102,10 +102,11 @@ private class BadNominator : TestNominator
     /// Ctor
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir, ulong txs_to_nominate,
+        EnrollmentManager enroll_man, TaskManager taskman,
+        string data_dir, ulong txs_to_nominate,
         shared(time_t)* curr_time)
     {
-        super(params, clock, network, key_pair, ledger, taskman,
+        super(params, clock, network, key_pair, ledger, enroll_man, taskman,
             data_dir, txs_to_nominate);
     }
 
@@ -141,10 +142,10 @@ private class BadNominatingVN : TestValidatorNode
     protected override TestNominator getNominator (
         immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        TaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new BadNominator(
-            params, clock, network, key_pair, ledger, taskman, data_dir,
+            params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
             this.txs_to_nominate, this.cur_time);
     }
 }
