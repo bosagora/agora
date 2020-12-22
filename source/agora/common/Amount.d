@@ -112,6 +112,24 @@ public struct Amount
         return value <= MaxUnitSupply.value;
     }
 
+    /***************************************************************************
+
+        Returns:
+            Greatest common divisor of `Amount`s in `ams`
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public static Amount gcd (in Amount[] ams)
+    {
+        import std.numeric : gcd;
+        assert(ams.length != 0);
+        ulong res = ams[0].value;
+        foreach (idx; 1..ams.length)
+            res = gcd(res, ams[idx].value);
+        return Amount(res);
+    }
+
     /// `isInRange` but as member function
     pragma(inline, true)
     public bool isValid () const
@@ -137,6 +155,33 @@ public struct Amount
     {
         bool overflow;
         this.value = addu(this.value, other.value, overflow);
+        if (overflow || !this.isValid())
+        {
+            // If we overflow, make sure to poison the return value
+            this.value = ulong.max;
+            return false;
+        }
+        return true;
+    }
+
+    /***************************************************************************
+
+        Multiply this `Amount` by `multiplier`
+
+        Params:
+            multiplier = Multiplier
+
+        Returns:
+            `true` if the addition returned a number within bounds.
+            `false` if the number is out of the [0; MaxUnitSupply] bound.
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public bool mul (ulong multiplier)
+    {
+        bool overflow;
+        this.value = mulu(this.value, multiplier, overflow);
         if (overflow || !this.isValid())
         {
             // If we overflow, make sure to poison the return value
@@ -203,6 +248,41 @@ public struct Amount
         const Amount remainder = this.value % denominator;
         this.value = (this.value / denominator);
         return remainder;
+    }
+
+    /***************************************************************************
+
+        Take a percentage of the `value`
+
+        Params:
+            percentage = Requested percentage
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public void percentage (ubyte percentage)
+    {
+        assert(percentage <= 100);
+        this.value *= percentage;
+        this.value /= 100;
+    }
+
+    /***************************************************************************
+
+        Count how many `other` can be paid by `this`
+
+        Params:
+            other = Another `Amount` value.
+
+        Returns: result of integer division op (this.value / other.value)
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public ulong count (Amount other)
+    {
+        assert(other.value > 0);
+        return this.value / other.value;
     }
 
     /// Returns: The integral part of the amount (value / 1 BOA)
@@ -359,4 +439,32 @@ pure nothrow unittest
 
     arr.sort!((a, b) => a < b);
     assert(arr == [Amount(100), Amount(100), Amount(200), Amount(300)]);
+}
+
+unittest
+{
+    assert(Amount(100) == Amount.gcd([Amount(100), Amount(100), Amount(200),
+        Amount(300)]));
+    assert(Amount(1) == Amount.gcd([Amount(3), Amount(5), Amount(7),
+        Amount(13)]));
+    assert(Amount(3) == Amount.gcd([Amount(3)]));
+}
+
+unittest
+{
+    Amount amt = Amount(100);
+    amt.percentage(33);
+    assert(amt == Amount(33));
+    amt.percentage(33);
+    assert(amt == Amount(10));
+    amt.percentage(10);
+    assert(amt == Amount(1));
+}
+
+unittest
+{
+    Amount amt = Amount(100);
+    assert(amt.mul(44));
+    assert(amt == Amount(4400));
+    assert(!amt.mul(ulong.max));
 }

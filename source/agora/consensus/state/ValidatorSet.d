@@ -781,6 +781,45 @@ public class ValidatorSet
 
         return ex_validators;
     }
+
+    /***************************************************************************
+
+        Query stakes of active Validators
+
+        Params:
+            peekUTXO = A delegate to query UTXOs
+            utxos = Array to save the stakes
+
+        Returns:
+            Staked UTXOs of existing Validators
+
+    ***************************************************************************/
+
+    public UTXO[] getValidatorStakes (UTXOFinder peekUTXO, ref UTXO[] utxos,
+        const ref uint[] missing_validators) @trusted nothrow
+    {
+        import std.algorithm;
+        import std.range;
+        utxos.length = 0;
+        assumeSafeAppend(utxos);
+
+        Hash[] keys;
+        if (!this.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        keys.enumerate.each!((idx, key) {
+            if (missing_validators.canFind(idx))
+                return;
+            UTXO utxo;
+            assert(peekUTXO(key, utxo), "Missing enroll UTXO");
+            utxos ~= utxo;
+        });
+
+        return utxos;
+    }
 }
 
 version (unittest)

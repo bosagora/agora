@@ -16,8 +16,11 @@ module agora.consensus.Fee;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXO;
 
 import std.math;
+import std.algorithm;
+import std.array;
 
 /// Delegate to check data payload
 public alias FeeChecker = string delegate (in Transaction tx,
@@ -180,6 +183,10 @@ public class FeeManager
     /// The factor to calculate for the fee of data payload
     public uint TxPayloadFeeFactor;
 
+    /// The share that Validators would get out of the transction fees
+    /// Out of 100
+    public immutable ubyte ValidatorTXFeeCut = 70;
+
     /// Ctor
     public this (in PublicKey commons_budget_address,
                  uint tx_payload_max_size,
@@ -227,6 +234,84 @@ public class FeeManager
     public Amount getDataFee (ulong data_size) pure nothrow @safe @nogc
     {
         return calculateDataFee(data_size, this.TxPayloadFeeFactor);
+    }
+
+    /***************************************************************************
+
+        Calculate the `Amount` of fees that should be paid to each Validator
+
+        Params:
+            tot_fee = Total amount of fees
+            tot_data_fee = Total amount of data fees
+            stakes = Staked UTXO of each Validator
+
+        Return:
+            `Amount` of fees that should be paid to each Validator
+
+    ***************************************************************************/
+
+    public Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
+        UTXO[] stakes) nothrow @safe
+    {
+        // no stakes, no fees
+        if (stakes.length == 0)
+            return [];
+
+        // tx_fees = (tot_fee - tot_data_fee) * (ValidatorTXFeeCut / 100)
+        Amount tx_fees = tot_fee;
+        tx_fees.mustSub(tot_data_fee);
+        tx_fees.percentage(this.ValidatorTXFeeCut);
+
+        Amount sum_stake;
+        Amount[] stake_amounts = stakes.map!(utxo => utxo.output.value).array;
+        stake_amounts.each!(stake => sum_stake.mustAdd(stake));
+
+        // Stake amount for a single "share"
+        Amount share_stake = Amount.gcd(stake_amounts);
+        // Total "share" count staked
+        const total_shares = sum_stake.count(share_stake);
+
+        // tx_fees now equals "share value"
+        tx_fees.div(total_shares);
+
+        ulong[] shares = stake_amounts.map!(stake => stake.count(share_stake)).array;
+
+        Amount[] validator_fees;
+        foreach (share; shares)
+        {
+            auto validator_fee = tx_fees;
+            validator_fee.mul(share);
+            validator_fees ~= validator_fee;
+        }
+        return validator_fees;
+    }
+
+
+    /***************************************************************************
+
+        Calculate the `Amount` of fees that should be paid to
+        `CommonsBudgetAddress`
+
+        Params:
+            tot_fee = Total amount of fees
+            tot_data_fee = Total amount of data fees
+            stakes = Staked UTXO of each Validator
+
+        Return:
+            `Amount` of fees that should be paid to `CommonsBudgetAddress`
+
+    ***************************************************************************/
+
+    public Amount getCommonsBudgetFee (Amount tot_fee, Amount tot_data_fee,
+        UTXO[] stakes) nothrow @safe
+    {
+        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee,
+            stakes);
+
+        Amount total_val_fee;
+        validator_fees.each!(fee => total_val_fee.mustAdd(fee));
+        tot_fee.mustSub(total_val_fee);
+        return tot_fee;
     }
 
     /// For unittest
