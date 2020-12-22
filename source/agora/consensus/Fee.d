@@ -20,7 +20,8 @@ import agora.consensus.data.Transaction;
 import std.math;
 
 /// Delegate to check data payload
-public alias PayloadChecker = string delegate (in Transaction tx) nothrow @safe;
+public alias FeeChecker = string delegate (in Transaction tx,
+    Amount sum_unspent) nothrow @safe;
 
 /*******************************************************************************
 
@@ -168,7 +169,7 @@ unittest
 
 *******************************************************************************/
 
-public class DataPayloadChecker
+public class FeeManager
 {
     /// The address of commons budget
     public PublicKey CommonsBudgetAddress;
@@ -207,7 +208,7 @@ public class DataPayloadChecker
 
     ***************************************************************************/
 
-    public string check (in Transaction tx) nothrow @safe
+    public string check (in Transaction tx, Amount sum_unspent) nothrow @safe
     {
         if (tx.payload.data.length == 0)
             return null;
@@ -215,29 +216,15 @@ public class DataPayloadChecker
         if (tx.payload.data.length > this.TxPayloadMaxSize)
             return "Transaction: The size of the data payload is too large";
 
-        uint count_commons_budget = 0;
-        Amount sum_fee;
-        foreach (output; tx.outputs)
-        {
-            if (output.address == this.CommonsBudgetAddress)
-            {
-                count_commons_budget++;
-                sum_fee.add(output.value);
-            }
-        }
-
-        if (count_commons_budget == 0)
-            return "Transaction: Output does not exist to pay the fee for data payload";
-
         const required_fee = calculateDataFee(tx.payload.data.length, this.TxPayloadFeeFactor);
-        if (sum_fee < required_fee)
-            return "Transaction: There is not enough fee for data payload.";
+        if (sum_unspent < required_fee)
+            return "Transaction: There is not enough fee.";
 
         return null;
     }
 
     /// Calculates the fee of data payloads
-    public Amount getFee (ulong data_size) pure nothrow @safe @nogc
+    public Amount getDataFee (ulong data_size) pure nothrow @safe @nogc
     {
         return calculateDataFee(data_size, this.TxPayloadFeeFactor);
     }

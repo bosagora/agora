@@ -41,6 +41,7 @@ import agora.consensus.Fee;
 import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
 import agora.consensus.validation.Block : validateBlockTimestamp;
+import agora.consensus.Fee;
 import agora.network.Clock;
 import agora.node.BlockStorage;
 import agora.stats.Block;
@@ -105,7 +106,7 @@ public class Ledger
     private BlockStats block_stats;
 
     /// The checker of transaction data payload
-    private DataPayloadChecker payload_checker;
+    private FeeManager fee_man;
 
     /// The new block timestamp has to be greater than the previous block timestamp,
     /// but less than current time + block_timestamp_tolerance
@@ -121,7 +122,7 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             pool = the transaction pool
-            payload_checker = the checker of data payload
+            fee_man = the checker of data payload
             clock = the clock instance
             block_timestamp_tolerance = the proposed block timestamp should be less
                 than curr_timestamp + block_timestamp_tolerance
@@ -133,7 +134,7 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        DataPayloadChecker payload_checker, Clock clock,
+        FeeManager fee_man, Clock clock,
         Duration block_timestamp_tolerance = 60.seconds,
         void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
     {
@@ -144,7 +145,7 @@ public class Ledger
         this.slash_man = new SlashPolicy(this.enroll_man, params);
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
-        this.payload_checker = payload_checker;
+        this.fee_man = fee_man;
         this.clock = clock;
         this.block_timestamp_tolerance = block_timestamp_tolerance;
         if (!this.storage.load(params.Genesis))
@@ -229,7 +230,7 @@ public class Ledger
                         last_read_block.header.height,
                         last_read_block.header.hashFull,
                         this.utxo_set.getUTXOFinder(),
-                        &this.payload_checker.check,
+                        &this.fee_man.check,
                         this.enroll_man.getEnrollmentFinder(),
                         active_enrollments,
                         enrolled_validators,
@@ -406,7 +407,7 @@ public class Ledger
 
         if (tx.type == TxType.Coinbase ||
             (reason = tx.isInvalidReason(this.utxo_set.getUTXOFinder(),
-                expected_height, &this.payload_checker.check)) !is null ||
+                expected_height, &this.fee_man.check)) !is null ||
             !this.pool.add(tx))
         {
             log.info("Rejected tx. Reason: {}. Tx: {}",
@@ -640,7 +641,7 @@ public class Ledger
 
         foreach (ref Transaction tx; this.pool)
         {
-            if (auto reason = tx.isInvalidReason(utxo_finder, next_height, &this.payload_checker.check))
+            if (auto reason = tx.isInvalidReason(utxo_finder, next_height, &this.fee_man.check))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
                 data.tx_set ~= tx;
@@ -682,7 +683,7 @@ public class Ledger
 
         foreach (const ref tx; data.tx_set)
         {
-            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, &this.payload_checker.check))
+            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, &this.fee_man.check))
                 return fail_reason;
         }
 
@@ -743,7 +744,7 @@ public class Ledger
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
-            &this.payload_checker.check,
+            &this.fee_man.check,
             this.enroll_man.getEnrollmentFinder(),
             this.enroll_man.getValidatorCount(block.header.height),
             this.enroll_man.getCountOfValidators(block.header.height),
@@ -917,7 +918,7 @@ version (unittest)
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"),
-                new DataPayloadChecker(),
+                new FeeManager(),
                 mock_clock,
                 block_timestamp_tolerance_dur);
         }
@@ -1536,7 +1537,7 @@ unittest
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", kp, params),
                 new TransactionPool(":memory:"),
-                new DataPayloadChecker(),
+                new FeeManager(),
                 new MockClock(time(null)));
         }
 
@@ -1668,7 +1669,7 @@ unittest
 unittest
 {
     scope ledger = new TestLedger(WK.Keys.NODE2);
-    scope payload_checker = new DataPayloadChecker();
+    scope fee_man = new FeeManager();
 
     // Generate payment transactions to the first 8 well-known keypairs
     auto txs = genesisSpendable().enumerate()
@@ -1685,12 +1686,12 @@ unittest
         data[idx] = cast(ubyte)(idx % 256);
 
     // Calculate fee
-    Amount data_fee = payload_checker.getFee(data.length);
+    Amount data_fee = fee_man.getDataFee(data.length);
 
     // Generate a block with data stored transactions
     txs = txs.enumerate()
         .map!(en => TxBuilder(en.value)
-              .draw(data_fee, [ledger.params.CommonsBudgetAddress])
+              .deduct(data_fee)
               .sign(TxType.Payment, data))
               .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
@@ -1704,14 +1705,12 @@ unittest
     {
         assert(tx.type == TxType.Payment);
         assert(tx.outputs.length > 0);
-        assert(tx.outputs[0].value == data_fee);
-        assert(tx.outputs[0].address == ledger.params.CommonsBudgetAddress);
         assert(tx.payload.data == data);
     }
 
     // Generate a block to reuse transactions used for data storage
     txs = txs.enumerate()
-        .map!(en => TxBuilder(en.value, 1)
+        .map!(en => TxBuilder(en.value)
               .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
               .sign())
               .array;

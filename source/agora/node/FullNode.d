@@ -36,6 +36,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.Fee;
 import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
@@ -138,7 +139,7 @@ public class FullNode : API
     protected ApplicationStats app_stats;
 
     /// The checker of transaction data payload
-    protected DataPayloadChecker payload_checker;
+    protected FeeManager fee_man;
 
     /***************************************************************************
 
@@ -180,9 +181,9 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.validator, params);
-        this.payload_checker = getDataPayloadChecker(this.params);
+        this.fee_man = this.getFeeManager(this.params);
         this.ledger = new Ledger(params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, this.payload_checker, this.clock,
+            this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
             config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
@@ -488,9 +489,9 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected DataPayloadChecker getDataPayloadChecker (immutable(ConsensusParams) params)
+    protected FeeManager getFeeManager (immutable(ConsensusParams) params)
     {
-        return new DataPayloadChecker(
+        return new FeeManager(
             params.CommonsBudgetAddress,
             params.TxPayloadMaxSize,
             params.TxPayloadFeeFactor);

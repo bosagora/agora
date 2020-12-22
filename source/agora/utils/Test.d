@@ -589,6 +589,29 @@ public struct TxBuilder
         return this;
     }
 
+    /***************************************************************************
+
+        Deduct a certain amount
+
+        Useful when trying to deduct fees from outputs
+
+        Params:
+            amount = Amount to deduct
+
+        Returns:
+            Reference to `this` for easy chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) deduct (Amount amount)
+        return
+    {
+        if (!this.leftover.value.sub(amount))
+            assert(0, format("Error: Withdrawing %s BOA underflown", amount));
+
+        return this;
+    }
+
     /// Refund output for the transaction
     private Output leftover;
 

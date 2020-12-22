@@ -211,7 +211,7 @@ unittest
     auto signature = WK.Keys.Genesis.secret.sign(hashFull(txs[0])[]);
     txs[0].inputs[0].signature = signature;
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // make sure the transaction is still authentic (signature is correct),
