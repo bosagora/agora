@@ -1133,6 +1133,26 @@ public class EnrollmentManager
     {
         return this.validator_set.getExpiringValidators(height, ex_validators);
     }
+
+    /***************************************************************************
+
+        Query stakes of active Validators
+
+        Params:
+            peekUTXO = A delegate to query UTXOs
+            utxos = Array to save the stakes
+
+        Returns:
+            Staked UTXOs of existing Validators
+
+    ***************************************************************************/
+
+    public UTXO[] getValidatorStakes (UTXOFinder peekUTXO, ref UTXO[] utxos,
+        const ref uint[] missing_validators) @trusted nothrow
+    {
+        return this.validator_set.getValidatorStakes(peekUTXO, utxos,
+            missing_validators);
+    }
 }
 
 /// tests for member functions of EnrollmentManager
