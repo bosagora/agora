@@ -121,6 +121,19 @@ public class EnrollmentManager
     /// Validator preimages stats
     private ValidatorPreimagesStats validator_preimages_stats;
 
+    /// In order to support collecting signatures *after* a block is
+    /// externalized we must know the key index for the block header bitmask
+    /// for the active validator set *for that block height*.
+    /// Once a block is externalized the validator set might change
+    /// - so we store for each block height (can be optimised later) the maps
+    ///   for key_to_index and index_to_key
+
+    /// used for setting the signature bitmask during signature collection
+    private ulong[Point][Height] key_to_index;
+
+    /// used for validating the signature
+    private Point[ulong][Height] index_to_key;
+
     /***************************************************************************
 
         Constructor
@@ -164,6 +177,87 @@ public class EnrollmentManager
         this.enroll_key = this.getEnrollmentKey();
 
         Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
+    }
+
+    /***************************************************************************
+
+        Update the validator key index maps
+
+        Params:
+            height = the block height the validators will next sign
+
+    ***************************************************************************/
+
+    public void updateValidatorIndexMaps (Height height) @safe
+    {
+        PublicKey[] keys;
+        if (!this.getActiveValidatorPublicKeys(keys, height))
+            assert(0, "Database failure on fetching Validator Public Keys");
+
+        if (keys.length == 0)
+            log.error("No Active validator public keys at height {}", height);
+
+        foreach (idx, key; keys)
+        {
+            log.trace("Update validator lookup maps at height {} for index {} pubkey {}", height, idx, PublicKey(key[]));
+            const K = Point(key[]);
+            this.key_to_index[height][K] = idx;
+            this.index_to_key[height][idx] = K;
+        }
+    }
+
+    /***************************************************************************
+
+        Params:
+            height = the height at which to look up the mapping for
+
+        Returns:
+            the count of validators at this enrollment height
+
+    ***************************************************************************/
+
+    public size_t getCountOfValidators (const Height height) const nothrow @safe
+    {
+        return height !in this.key_to_index ? 0
+            : this.index_to_key[height].length;
+    }
+
+    /***************************************************************************
+
+        Params:
+            height = the height at which to look up the mapping for
+            K = the Key for which to find the bitfield index to use
+
+        Returns:
+            the index of this key, or ulong.max if none was found
+
+    ***************************************************************************/
+
+    public ulong getIndexOfValidator (const Height height, Point K) const nothrow @safe
+    {
+        if (height !in this.key_to_index || K !in this.key_to_index[height])
+            return ulong.max;
+        else
+            return this.key_to_index[height][K];
+    }
+
+    /***************************************************************************
+
+        Params:
+            height = the height at which to look up the mapping for
+            index = the index for which to find the associated Key
+
+        Returns:
+            the key belonging to this index, or Point.init if none was found
+
+    ***************************************************************************/
+
+    public Point getValidatorAtIndex (Height height, ulong index) nothrow @safe
+    {
+        if (height !in this.index_to_key || index !in this.index_to_key[height])
+            return Point.init;
+        else
+            return this.index_to_key[height][index];
     }
 
     /***************************************************************************
@@ -437,6 +531,24 @@ public class EnrollmentManager
     public bool getEnrolledUTXOs (out Hash[] keys) @safe nothrow
     {
         return this.validator_set.getEnrolledUTXOs(keys);
+    }
+
+    /***************************************************************************
+
+        Get all the enrolled validator's public keys.
+
+        Params:
+            keys = will contain the set of public keys
+            height = the height of proposed block
+
+        Returns:
+            Return true if there was no error in getting the public keys
+
+    ***************************************************************************/
+
+    public bool getActiveValidatorPublicKeys (ref PublicKey[] keys, Height height) @safe nothrow
+    {
+        return this.validator_set.getActiveValidatorPublicKeys(keys, height);
     }
 
     /***************************************************************************

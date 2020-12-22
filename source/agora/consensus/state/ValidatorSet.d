@@ -309,6 +309,39 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Get all the current validators in ascending order of public key
+
+        Params:
+            pub_keys = will contain the public keys
+            height = the block height for which we want the active validators
+
+        Returns:
+            Return true if there was no error in getting the public keys
+
+    ***************************************************************************/
+
+    public bool getActiveValidatorPublicKeys (ref PublicKey[] pub_keys, Height height)
+        @trusted nothrow
+    {
+        try
+        {
+            pub_keys.length = 0;
+            assumeSafeAppend(pub_keys);
+            auto results = this.db.execute("SELECT public_key FROM validator_set
+                WHERE enrolled_height < ? ORDER BY public_key ASC", height.value);
+            foreach (row; results)
+                pub_keys ~= PublicKey.fromString(row.peek!(char[])(0));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error: {}", ex.msg);
+            return false;
+        }
+    }
+
+    /***************************************************************************
+
         Get all the current validators in ascending order with the utxo_key
 
         Params:
