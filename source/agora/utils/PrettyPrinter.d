@@ -20,6 +20,7 @@
 module agora.utils.PrettyPrinter;
 
 import agora.common.Amount;
+import agora.common.BitField;
 import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
@@ -330,11 +331,12 @@ private struct BlockHeaderFmt
     {
         try
         {
-            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]",
+            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %s",
                 this.value.height.value, HashFmt(this.value.prev_block),
                 HashFmt(this.value.merkle_root),
                 this.value.enrollments.fold!((a, b) =>
-                    format!"%s\n%s"(a, prettify(b)))(""));
+                    format!"%s\n%s"(a, prettify(b)))(""),
+                this.value.signature, this.value.validators);
         }
         catch (Exception ex)
         {
@@ -351,7 +353,9 @@ private struct BlockHeaderFmt
 { utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
 { utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
 { utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
-{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]`;
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
+Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+Validators: [0]`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual, actual);
 }
@@ -390,7 +394,9 @@ private struct BlockFmt
 { utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
 { utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
 { utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
-{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }],
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
+Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+Validators: [0],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
@@ -441,7 +447,9 @@ Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
 { utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
 { utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
 { utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
-{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }],
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
+Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+Validators: [0],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
@@ -453,7 +461,9 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0x72e6...3b7d, Root: 0x07a8...acf4, Enrollments: [],
+Height: 1, Prev: 0x72e6...3b7d, Root: 0x07a8...acf4, Enrollments: []
+Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
+Validators: [64],
 Transactions: 2
 Type : Payment, Inputs (1): 0xc378...d314:0x0fbf...ba74
 Outputs (1): GCOQ...LRIJ(61,000,000)
@@ -462,9 +472,18 @@ Outputs (1): GCOQ...LRIJ(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
-    const Block secondBlock = makeNewBlock(GenesisBlock,
+    import agora.consensus.data.Block;
+
+    const Block second_block = makeNewBlock(GenesisBlock,
         genesisSpendable().take(2).map!(txb => txb.sign()));
-    const(Block)[] blocks = [GenesisBlock, secondBlock];
+
+    auto validators = BitField!ubyte(2);
+    validators[1] = true;
+    const signature = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+                              "c2467c18e38b36367be78000000000000000000016f60" ~
+                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
+    const block2 = second_block.updateSignature(signature, validators);
+    const(Block)[] blocks = [GenesisBlock, block2];
     const actual = format("%s", prettify(blocks));
     assert(ResultStr == actual, actual);
 }
