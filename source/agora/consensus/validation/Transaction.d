@@ -35,7 +35,7 @@ version (unittest)
         tx = `Transaction`
         findUTXO = delegate for finding `Output`
         height = height of block
-        checkPayload = delegate for checking data payload
+        checkFee = delegate for checking tx fee
 
     Return:
         `null` if the transaction is valid, a string explaining the reason it
@@ -44,7 +44,8 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (
-    in Transaction tx, scope UTXOFinder findUTXO, in Height height, scope PayloadChecker checkPayload)
+    in Transaction tx, scope UTXOFinder findUTXO, in Height height,
+    scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
     @safe nothrow
 {
     import std.conv;
@@ -130,8 +131,6 @@ public string isInvalidReason (
         if ((count_freeze > 0) && (count_freeze != tx.inputs.length))
             return "Transaction: Rejected combined inputs (freeze & payment)";
 
-        auto error = checkPayload(tx);
-        if (error !is null) return error;
     }
     else if (tx.type == TxType.Coinbase)
     {
@@ -153,15 +152,17 @@ public string isInvalidReason (
         return "Transaction: Referenced Output(s) overflow";
     if (tx.type != TxType.Coinbase && !sum_unspent.sub(new_unspent))
         return "Transaction: Output(s) are higher than Input(s)";
-    return null;
+    return checkFee(tx, sum_unspent);
 }
 
 /// Ditto but returns a bool, only used in unittests
 version (unittest)
-public bool isValid (in Transaction tx, scope UTXOFinder findUTXO, in Height height, scope PayloadChecker checkPayload)
+public bool isValid (in Transaction tx, scope UTXOFinder findUTXO,
+    in Height height,
+    scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
     @safe nothrow
 {
-    return isInvalidReason(tx, findUTXO, height, checkPayload) is null;
+    return isInvalidReason(tx, findUTXO, height, checkFee) is null;
 }
 
 /// verify transaction data
@@ -172,7 +173,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // Creates the first transaction.
@@ -221,7 +222,7 @@ unittest
     Transaction tx_1 = { outputs: [ Output(Amount(1000), key_pairs[0].address) ] };
     Hash tx_1_hash = hashFull(tx_1);
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     scope storage = new TestUTXOSet;
@@ -267,7 +268,7 @@ unittest
     key_pairs ~= KeyPair.random();
     key_pairs ~= KeyPair.random();
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // Create the first transaction.
@@ -319,7 +320,7 @@ unittest
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     Transaction secondTx;
@@ -465,7 +466,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     Height block_height;
@@ -624,7 +625,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create a transaction having no input
@@ -664,7 +665,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create the first transaction.
@@ -709,7 +710,7 @@ unittest
     TxType unknown_type = cast(TxType)100; // any number is OK for test except 0 and 1
     KeyPair key_pair = KeyPair.random;
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create a transaction having unknown transaction type
@@ -733,7 +734,7 @@ unittest
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create the first transaction
@@ -792,7 +793,7 @@ unittest
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
-    scope payload_checker = new DataPayloadChecker();
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create the first transaction
@@ -837,7 +838,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
-    scope payload_checker = new DataPayloadChecker(1024, 200);
+    scope payload_checker = new FeeManager(1024, 200);
     scope checker = &payload_checker.check;
 
     // create the payment transaction.
@@ -896,12 +897,13 @@ unittest
         format("When storing data, tx with large data payload should not pass validation. tx: %s", dataTx));
 
 
-    // Test 2. Without commons budget
-    // create a transaction without commons budget
+    // Test 2. With not enough fee
+    // create a transaction with not enough fee
     dataTx = Transaction(
         TxType.Payment,
         [Input(payment_utxo)],
-        [Output(Amount(40_000L * 10_000_000L), key_pair.address)],
+        [Output(Amount(80_000L * 10_000_000L - normal_data_fee.integral + 1),
+            key_pair.address)],
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
@@ -909,37 +911,16 @@ unittest
 
     // test for transaction without commons budget
     assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
-        format("When storing data, tx without commons budget output should not pass validation. tx: %s", dataTx));
-
-
-    // Test 3. With not enough fee
-    // create a transaction with not enough fee
-    dataTx = Transaction(
-        TxType.Payment,
-        [Input(payment_utxo)],
-        [
-            Output(Amount(1L), payload_checker.CommonsBudgetAddress),
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)
-        ],
-        DataPayload(normal_data)
-    );
-    dataHash = hashFull(dataTx);
-    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
-
-    // test for the transaction with not enough fee
-    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, tx with not enough fee should not pass validation. tx: %s", dataTx));
 
-
-    // Test 4. Nomal
+    // Test 3. Nomal
     // create a transaction with enough fee
+    Amount rem_amount = paymentTx.outputs[0].value;
+    rem_amount.sub(normal_data_fee);
     dataTx = Transaction(
         TxType.Payment,
         [Input(payment_utxo)],
-        [
-            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)
-        ],
+        [Output(rem_amount, key_pair.address)],
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
@@ -956,7 +937,6 @@ unittest
         TxType.Payment,
         [Input(frozen_utxo)],
         [
-            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ],
         DataPayload(normal_data)
@@ -975,7 +955,6 @@ unittest
         TxType.Freeze,
         [Input(payment_utxo)],
         [
-            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ],
         DataPayload(normal_data)
@@ -995,7 +974,7 @@ unittest
 
     const key_pair = KeyPair.random;
 
-    scope payload_checker = new DataPayloadChecker(1024, 200);
+    scope payload_checker = new FeeManager(1024, 200);
     scope checker = &payload_checker.check;
 
     // Only output transaction

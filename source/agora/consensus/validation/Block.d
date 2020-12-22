@@ -98,7 +98,7 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (const ref Block block, Height prev_height,
-    in Hash prev_hash, scope UTXOFinder findUTXO, scope PayloadChecker checkPayload,
+    in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
     scope EnrollmentFinder findEnrollment, size_t active_enrollments, size_t enrolled_validators,
     Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (const ref Point, const Height) nothrow @safe getCommitmentNonce,
@@ -132,7 +132,8 @@ public string isInvalidReason (const ref Block block, Height prev_height,
 
     foreach (const ref tx; block.txs)
     {
-        if (auto fail_reason = VTx.isInvalidReason(tx, findUTXO, block.header.height, checkPayload))
+        if (auto fail_reason = VTx.isInvalidReason(tx, findUTXO,
+            block.header.height, checkFee))
             return fail_reason;
     }
 
@@ -399,8 +400,8 @@ unittest
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
     assert(block.isGenesisBlockValid());
 
-    scope payload_checker = new DataPayloadChecker();
-    scope checker = &payload_checker.check;
+    scope fee_man = new FeeManager();
+    scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
 
     // don't accept block height 0 from the network
@@ -561,26 +562,26 @@ unittest
 
     KeyPair key_pair = KeyPair.random;
 
-    scope payload_checker = new DataPayloadChecker(1024, 200);
-    scope checker = &payload_checker.check;
+    scope fee_man = new FeeManager(1024, 200);
+    scope checker = &fee_man.check;
 
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
 
     // create data with nomal size
     ubyte[] normal_data;
-    normal_data.length = payload_checker.TxPayloadMaxSize;
+    normal_data.length = fee_man.TxPayloadMaxSize;
     foreach (idx; 0 .. normal_data.length)
         normal_data[idx] = cast(ubyte)(idx % 256);
 
     // calculate fee
-    Amount normal_data_fee = calculateDataFee(normal_data.length, payload_checker.TxPayloadFeeFactor);
+    Amount normal_data_fee = calculateDataFee(normal_data.length, fee_man.TxPayloadFeeFactor);
 
     // create a transaction with data payload and enough fee
     Transaction dataTx = Transaction(
         TxType.Payment,
         [],
         [
-            Output(normal_data_fee, payload_checker.CommonsBudgetAddress),
+            Output(normal_data_fee, fee_man.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ],
         DataPayload(normal_data)
@@ -618,14 +619,14 @@ version (unittest)
 
     public string isValidcheck (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
-        size_t active_enrollments, size_t enrolled_validators, scope PayloadChecker checkPayload,
+        size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
         ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
         Duration block_timestamp_tolerance_dur = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         return isInvalidReason(block, prev_height, prev_hash, findUTXO,
-            checkPayload, findEnrollment, active_enrollments, enrolled_validators,
+            checkFee, findEnrollment, active_enrollments, enrolled_validators,
             (Height h, ulong i) @safe nothrow
             {
                 return Point(genesis_validator_keys[i].address[]);
@@ -644,14 +645,14 @@ version (unittest)
     /// Ditto but returns `bool` and logs reason if fails, only usable in unittests
     public bool isValid (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
-        size_t active_enrollments, size_t enrolled_validators, scope PayloadChecker checkPayload,
+        size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
         ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
         Duration block_timestamp_tolerance_dur = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkPayload, findEnrollment, enrollment_cycle,
+            active_enrollments, enrolled_validators, checkFee, findEnrollment, enrollment_cycle,
             prev_timestamp, curr_timestamp, block_timestamp_tolerance_dur);
         if (reason !is null)
             log.trace("[{}:{}] block height {} is invalid: {}",
@@ -662,13 +663,13 @@ version (unittest)
     /// Ditto but returns `bool`, only usable in unittests
     public bool isNotValid (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
-        size_t active_enrollments, size_t enrolled_validators, scope PayloadChecker checkPayload,
+        size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
         ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
         Duration block_timestamp_tolerance_dur = 100.seconds) nothrow @safe
     {
         return isValidcheck(block, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkPayload, findEnrollment, enrollment_cycle,
+            active_enrollments, enrolled_validators, checkFee, findEnrollment, enrollment_cycle,
             prev_timestamp, curr_timestamp, block_timestamp_tolerance_dur) !is null;
     }
 }
@@ -708,8 +709,8 @@ unittest
     scope utxos = new TestUTXOSet();
     scope findUTXO = &utxos.peekUTXO;
 
-    scope payload_checker = new DataPayloadChecker();
-    scope checker = &payload_checker.check;
+    scope fee_man = new FeeManager();
+    scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
 
     auto gen_key = WK.Keys.Genesis;
@@ -889,8 +890,8 @@ unittest
     scope utxo_set = new TestUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
-    scope payload_checker = new DataPayloadChecker();
-    scope checker = &payload_checker.check;
+    scope fee_man = new FeeManager();
+    scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
 
     auto gen_key = WK.Keys.Genesis;
@@ -1019,8 +1020,8 @@ unittest
     scope utxo_set = new TestUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
-    scope payload_checker = new DataPayloadChecker();
-    scope checker = &payload_checker.check;
+    scope fee_man = new FeeManager();
+    scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
 
     auto gen_key = WK.Keys.Genesis;
