@@ -191,7 +191,9 @@ public int sendTxProcess (string[] args, ref string[] outputs,
         [Output(Amount(op.amount), PublicKey.fromString(op.address))]
     };
 
-    auto signature = key_pair.secret.sign(hashFull(tx)[]);
+    import agora.crypto.Schnorr;
+    Pair pair = Pair(key_pair.secret, key_pair.secret.toPoint());
+    auto signature = sign(pair, tx);
     tx.inputs[0].unlock = genKeyUnlock(signature);
 
     if (op.dump)
