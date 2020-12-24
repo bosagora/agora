@@ -153,13 +153,25 @@ public struct PublicKey
         assert(writer.data() == address);
     }
 
-    /// Create a Public key from Stellar's string representation
+    /***************************************************************************
+
+        Params:
+            str = the string which should contain a public key
+
+        Returns:
+            a Public key from Stellar's string representation
+
+        Throws:
+            an Exception if the input string is not well-formed
+
+    ***************************************************************************/
+
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         const bin = Base32.decode(str);
-        assert(bin.length == 1 + PublicKey.Width + 2);
-        assert(bin[0] == VersionByte.AccountID);
-        assert(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
+        enforce(bin.length == 1 + PublicKey.Width + 2);
+        enforce(bin[0] == VersionByte.AccountID);
+        enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
         return PublicKey(typeof(this.data)(bin[1 .. $ - 2]));
     }
 
@@ -169,6 +181,12 @@ public struct PublicKey
         immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
         PublicKey pubkey = PublicKey.fromString(address);
         assert(pubkey.toString() == address);
+        assertThrown(PublicKey.fromString(  // bad length
+            "GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQF"));
+        assertThrown(PublicKey.fromString(  // bad version byte
+            "XDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW"));
+        assertThrown(PublicKey.fromString(  // bad checksum
+            "GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFF"));
     }
 
     /***************************************************************************
@@ -426,14 +444,40 @@ public struct Seed
         assert(ocean_format("{}", sd) == "**SEED**");
     }
 
-    /// Create a Seed from Stellar's string representation
+    /***************************************************************************
+
+        Params:
+            str = the string which should contain the seed
+
+        Returns:
+            a Seed from from Stellar's string representation
+
+        Throws:
+            an Exception if the input string is not well-formed
+
+    ***************************************************************************/
+
     public static Seed fromString (scope const(char)[] str)
     {
         const bin = Base32.decode(str);
-        assert(bin.length == 1 + Seed.Width + 2);
-        assert(bin[0] == VersionByte.Seed);
-        assert(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
+        enforce(bin.length == 1 + Seed.Width + 2);
+        enforce(bin[0] == VersionByte.Seed);
+        enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
         return Seed(typeof(this.data)(bin[1 .. $ - 2]));
+    }
+
+    ///
+    unittest
+    {
+        immutable seed_str = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
+        Seed seed = Seed.fromString(seed_str);
+        assert(seed.toString(PrintMode.Clear) == seed_str);
+        assertThrown(Seed.fromString(  // bad length
+            "SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7T"));
+        assertThrown(Seed.fromString(  // bad version byte
+            "XBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ"));
+        assertThrown(Seed.fromString(  // bad checksum
+            "SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TT"));
     }
 }
 
