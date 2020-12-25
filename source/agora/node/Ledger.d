@@ -639,9 +639,22 @@ public class Ledger
         this.slash_man.getMissingValidators(data.missing_validators,
             this.getBlockHeight());
 
+        Amount tot_fee, tot_data_fee;
         foreach (ref Transaction tx; this.pool)
         {
-            if (auto reason = tx.isInvalidReason(utxo_finder, next_height, &this.fee_man.check))
+            scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
+                const err = this.fee_man.check(tx, sum_unspent);
+                if (!err)
+                {
+                    tot_fee.add(sum_unspent);
+                    tot_data_fee.add(
+                        this.fee_man.getDataFee(tx.payload.data.length));
+                }
+                return err;
+            };
+
+            if (auto reason = tx.isInvalidReason(utxo_finder, next_height,
+                    checkAndAcc))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
                 data.tx_set ~= tx;
@@ -652,6 +665,20 @@ public class Ledger
                 return;
             }
         }
+
+        UTXO[] stakes;
+        this.enroll_man.getValidatorStakes(&this.utxo_set.peekUTXO, stakes,
+            data.missing_validators);
+        const commons_fee = this.fee_man.getCommonsBudgetFee(tot_fee,
+            tot_data_fee, stakes);
+
+        // pay the commons budget
+        if (commons_fee > Amount(0))
+            data.tx_set ~= Transaction(
+                TxType.Coinbase,
+                [Input(next_height)],
+                [Output(commons_fee, this.params.CommonsBudgetAddress)],
+            );
     }
 
     /// Error message describing the reason of validation failure
@@ -890,7 +917,7 @@ version (unittest)
     {
         ConsensusData data;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-        assert(data.tx_set.length == Block.TxsInTestBlock);
+        assert(data.tx_set.length >= Block.TxsInTestBlock);
         if (!ledger.externalize(data, file, line))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized!"(ledger.getBlockHeight() + 1));
@@ -1410,17 +1437,19 @@ unittest
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
 
+    auto freeze_txs = blocks[3].txs.filter!(tx => tx.type == TxType.Freeze)
+        .array;
     // make enrollments
     KeyPair[] enroll_key_pair;
-    foreach (txid, tx; blocks[3].txs)
+    foreach (txid, tx; freeze_txs)
         foreach (key_pair; in_key_pairs_freeze)
             if (tx.outputs[0].address == key_pair.address)
                 enroll_key_pair ~= key_pair;
 
     const utxo_hashes = [
-        UTXO.getHash(hashFull(blocks[3].txs[0]), 0),
-        UTXO.getHash(hashFull(blocks[3].txs[1]), 0),
-        UTXO.getHash(hashFull(blocks[3].txs[2]), 0),
+        UTXO.getHash(hashFull(freeze_txs[0]), 0),
+        UTXO.getHash(hashFull(freeze_txs[1]), 0),
+        UTXO.getHash(hashFull(freeze_txs[2]), 0),
     ];
 
     Enrollment[] enrollments ;
@@ -1701,7 +1730,9 @@ unittest
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
 
-    foreach (ref tx; blocks[2].txs)
+    auto not_coinbase_txs = blocks[2].txs.filter!(tx =>
+        tx.type != TxType.Coinbase).array;
+    foreach (ref tx; not_coinbase_txs)
     {
         assert(tx.type == TxType.Payment);
         assert(tx.outputs.length > 0);
