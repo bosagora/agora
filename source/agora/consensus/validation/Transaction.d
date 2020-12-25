@@ -152,6 +152,7 @@ public string isInvalidReason (
         return "Transaction: Referenced Output(s) overflow";
     if (tx.type != TxType.Coinbase && !sum_unspent.sub(new_unspent))
         return "Transaction: Output(s) are higher than Input(s)";
+    // NOTE: Make sure fees are always checked last
     return checkFee(tx, sum_unspent);
 }
 
