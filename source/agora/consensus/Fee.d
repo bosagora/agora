@@ -13,11 +13,13 @@
 
 module agora.consensus.Fee;
 
+import agora.common.Types;
 import agora.common.Amount;
 import agora.common.crypto.Key;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
-
+import agora.consensus.state.UTXOSet;
 import std.math;
 import std.algorithm;
 import std.array;
@@ -187,6 +189,12 @@ public class FeeManager
     /// Out of 100
     public immutable ubyte ValidatorTXFeeCut = 70;
 
+    /// Payout period
+    public immutable ubyte PayoutPeriod = 144;
+
+    /// Total Amount of fees accumulated per address
+    private Amount[PublicKey] accumulated_fees;
+
     /// Ctor
     public this (in PublicKey commons_budget_address,
                  uint tx_payload_max_size,
@@ -250,7 +258,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
+    private Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
         UTXO[] stakes) nothrow @safe
     {
         // no stakes, no fees
@@ -312,6 +320,110 @@ public class FeeManager
         validator_fees.each!(fee => total_val_fee.mustAdd(fee));
         tot_fee.mustSub(total_val_fee);
         return tot_fee;
+    }
+
+    /***************************************************************************
+
+        Calculate and accumulates the `Amount` of fees that should be paid to
+        each Validator
+
+        Params:
+            block = Block to calculate the fees
+            stakes = Staked UTXO of each Validator
+            peekUTXO = delegate to find the UTXOs
+
+        Return:
+            `Amount` of fees that should be paid to each Validator
+
+    ***************************************************************************/
+
+    public void accumulateFees (ref const Block block, UTXO[] stakes,
+        scope UTXOFinder peekUTXO) nothrow @safe
+    {
+        if (block.header.height % PayoutPeriod == 0)
+            this.clearAccumulatedFees();
+
+        Amount tot_fee, tot_data_fee;
+        this.getTXSetFees(block.txs, peekUTXO, tot_fee, tot_data_fee);
+
+        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee,
+            stakes);
+
+        foreach (idx, stake; stakes)
+        {
+            this.accumulated_fees.update(stake.output.address,
+                { return validator_fees[idx]; },
+                (ref Amount so_far) {
+                    so_far.mustAdd(validator_fees[idx]);
+                    return so_far;
+                }
+            );
+        }
+    }
+
+    /***************************************************************************
+
+        Returns the accumulated `Amount` of fees that should be paid on given
+        height
+
+        Params:
+            height = requested height
+
+        Return:
+            `Amount` of fees that should be paid to each Validator
+
+    ***************************************************************************/
+
+    public Amount[PublicKey] getAccumulatedFees (Height height) nothrow @safe
+    {
+        return height % PayoutPeriod == 0 ? this.accumulated_fees : null;
+    }
+
+    /// Clears the accumulated fees
+    public void clearAccumulatedFees () nothrow @safe
+    {
+        () @trusted {
+            this.accumulated_fees.clear();
+        } ();
+    }
+
+    /***************************************************************************
+
+        Calculate total fees of a Transaction set
+
+        Params:
+            tx_set = Transaction set
+            peekUTXO = A delegate to query UTXOs
+            tot_fee = Total fee (incl. data fees)
+            tot_data_fee = Total data fee
+
+    ***************************************************************************/
+
+    public void getTXSetFees (const ref Transaction[] tx_set,
+        scope UTXOFinder peekUTXO, ref Amount tot_fee, ref Amount tot_data_fee)
+        nothrow @safe
+    {
+        foreach (const ref tx; tx_set)
+        {
+            // Coinbase TXs are not subject to fees
+            if (tx.type == TxType.Coinbase)
+                continue;
+
+            Amount tot_in, tot_out;
+            foreach (input; tx.inputs)
+            {
+                UTXO utxo;
+                assert(peekUTXO(input.utxo, utxo));
+                tot_in.mustAdd(utxo.output.value);
+            }
+
+            assert(tx.getSumOutput(tot_out), "Not validated block in" ~
+                "getTXSetFees");
+            // sum(inputs) - sum(outputs)
+            tot_in.mustSub(tot_out);
+            tot_fee.mustAdd(tot_in);
+            tot_data_fee.mustAdd(this.getDataFee(tx.payload.data.length));
+        }
     }
 
     /// For unittest
