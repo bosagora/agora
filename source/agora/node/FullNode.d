@@ -168,7 +168,9 @@ public class FullNode : API
                 config.node.quorum_shuffle_interval,
                 config.node.block_interval_sec,
                 config.node.tx_payload_max_size,
-                config.node.tx_payload_fee_factor);
+                config.node.tx_payload_fee_factor,
+                config.node.validator_tx_fee_cut,
+                config.node.payout_period);
 
         this.metadata = this.getMetadata(config.node.data_dir);
 
@@ -491,10 +493,7 @@ public class FullNode : API
 
     protected FeeManager getFeeManager (immutable(ConsensusParams) params)
     {
-        return new FeeManager(
-            params.CommonsBudgetAddress,
-            params.TxPayloadMaxSize,
-            params.TxPayloadFeeFactor);
+        return new FeeManager(params);
     }
 
     /***************************************************************************

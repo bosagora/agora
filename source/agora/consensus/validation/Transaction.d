@@ -839,7 +839,7 @@ unittest
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
-    scope payload_checker = new FeeManager(1024, 200);
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create the payment transaction.
@@ -862,7 +862,7 @@ unittest
 
     // create data with nomal size
     ubyte[] normal_data;
-    normal_data.length = payload_checker.TxPayloadMaxSize;
+    normal_data.length = payload_checker.params.TxPayloadMaxSize;
     foreach (idx; 0 .. normal_data.length)
         normal_data[idx] = cast(ubyte)(idx % 256);
 
@@ -872,8 +872,10 @@ unittest
     large_data ~= cast(ubyte)(0);
 
     // calculate fee
-    Amount normal_data_fee = calculateDataFee(normal_data.length, payload_checker.TxPayloadFeeFactor);
-    Amount large_data_fee = calculateDataFee(large_data.length, payload_checker.TxPayloadFeeFactor);
+    Amount normal_data_fee = calculateDataFee(normal_data.length,
+        payload_checker.params.TxPayloadFeeFactor);
+    Amount large_data_fee = calculateDataFee(large_data.length,
+        payload_checker.params.TxPayloadFeeFactor);
 
     Transaction dataTx;
     Hash dataHash;
@@ -885,7 +887,7 @@ unittest
         TxType.Payment,
         [Input(payment_utxo)],
         [
-            Output(large_data_fee, payload_checker.CommonsBudgetAddress),
+            Output(large_data_fee, payload_checker.params.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ],
         DataPayload(large_data)
@@ -975,7 +977,7 @@ unittest
 
     const key_pair = KeyPair.random;
 
-    scope payload_checker = new FeeManager(1024, 200);
+    scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // Only output transaction
