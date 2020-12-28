@@ -562,26 +562,27 @@ unittest
 
     KeyPair key_pair = KeyPair.random;
 
-    scope fee_man = new FeeManager(1024, 200);
+    scope fee_man = new FeeManager();
     scope checker = &fee_man.check;
 
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
 
     // create data with nomal size
     ubyte[] normal_data;
-    normal_data.length = fee_man.TxPayloadMaxSize;
+    normal_data.length = fee_man.params.TxPayloadMaxSize;
     foreach (idx; 0 .. normal_data.length)
         normal_data[idx] = cast(ubyte)(idx % 256);
 
     // calculate fee
-    Amount normal_data_fee = calculateDataFee(normal_data.length, fee_man.TxPayloadFeeFactor);
+    Amount normal_data_fee = calculateDataFee(normal_data.length,
+        fee_man.params.TxPayloadFeeFactor);
 
     // create a transaction with data payload and enough fee
     Transaction dataTx = Transaction(
         TxType.Payment,
         [],
         [
-            Output(normal_data_fee, fee_man.CommonsBudgetAddress),
+            Output(normal_data_fee, fee_man.params.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ],
         DataPayload(normal_data)

@@ -1746,6 +1746,13 @@ public struct TestConf
     /// The duration between requests for retrieving the latest blocks
     /// from all other nodes
     Duration block_catchup_interval = 2.seconds;
+
+    /// The share that Validators would get out of the transction fees
+    /// Out of 100
+    public ubyte validator_tx_fee_cut = 70;
+
+    /// How frequent the payments to Validators will be
+    public uint payout_period = 5;
 }
 
 /*******************************************************************************
@@ -1800,6 +1807,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             max_listeners : (test_conf.max_listeners == 0)
                 ? TotalNodes - 1 : test_conf.max_listeners,
             block_catchup_interval : test_conf.block_catchup_interval,
+            validator_tx_fee_cut : test_conf.validator_tx_fee_cut,
+            payout_period : test_conf.payout_period,
         };
 
         return conf;

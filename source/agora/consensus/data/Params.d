@@ -56,6 +56,13 @@ public immutable class ConsensusParams
     /// The factor to calculate for the fee of the payload
     public uint TxPayloadFeeFactor;
 
+    /// The share that Validators would get out of the transction fees (Out of 100)
+    /// The rest would go to the Commons Budget
+    public ubyte ValidatorTXFeeCut;
+
+    /// How frequent the payments to Validators will be in blocks
+    public uint PayoutPeriod;
+
     /***************************************************************************
 
         Constructor
@@ -75,7 +82,9 @@ public immutable class ConsensusParams
                  uint quorum_shuffle_interval = 30,
                  uint block_interval_sec = 1,
                  uint tx_payload_maxsize = 1024,
-                 uint tx_payload_fee_factor = 200)
+                 uint tx_payload_fee_factor = 200,
+                 ubyte validator_tx_fee_cut = 70,
+                 uint payout_period = 144)
     {
         this.Genesis = genesis;
         this.CommonsBudgetAddress = commons_budget_address,
@@ -86,6 +95,8 @@ public immutable class ConsensusParams
         this.BlockIntervalSeconds = block_interval_sec;
         this.TxPayloadMaxSize = tx_payload_maxsize;
         this.TxPayloadFeeFactor = tx_payload_fee_factor;
+        this.ValidatorTXFeeCut = validator_tx_fee_cut;
+        this.PayoutPeriod = payout_period;
     }
 
     /// Default for unittest, uses the test genesis block

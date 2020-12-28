@@ -180,6 +180,13 @@ public struct NodeConfig
     /// The duration between requests for retrieving the latest blocks
     /// from all other nodes
     public Duration block_catchup_interval = 20.seconds;
+
+    /// The share that Validators would get out of the transction fees (Out of 100)
+    /// The rest would go to the Commons Budget
+    public ubyte validator_tx_fee_cut = 70;
+
+    /// How frequent the payments to Validators will be in blocks
+    public uint payout_period = 144;
 }
 
 /// Validator config

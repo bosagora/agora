@@ -19,6 +19,7 @@ import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
+import agora.consensus.data.Params;
 import agora.consensus.state.UTXOSet;
 import std.math;
 import std.algorithm;
@@ -176,33 +177,16 @@ unittest
 
 public class FeeManager
 {
-    /// The address of commons budget
-    public PublicKey CommonsBudgetAddress;
-
-    /// The maximum size of data payload
-    public uint TxPayloadMaxSize;
-
-    /// The factor to calculate for the fee of data payload
-    public uint TxPayloadFeeFactor;
-
-    /// The share that Validators would get out of the transction fees
-    /// Out of 100
-    public immutable ubyte ValidatorTXFeeCut = 70;
-
-    /// Payout period
-    public immutable ubyte PayoutPeriod = 144;
+    /// Parameters for consensus-critical constants
+    public immutable(ConsensusParams) params;
 
     /// Total Amount of fees accumulated per address
     private Amount[PublicKey] accumulated_fees;
 
     /// Ctor
-    public this (in PublicKey commons_budget_address,
-                 uint tx_payload_max_size,
-                 uint tx_payload_fee_factor)
+    public this (immutable(ConsensusParams) params)
     {
-        this.CommonsBudgetAddress = commons_budget_address,
-        this.TxPayloadMaxSize = tx_payload_max_size;
-        this.TxPayloadFeeFactor = tx_payload_fee_factor;
+        this.params = params;
     }
 
     /***************************************************************************
@@ -228,10 +212,11 @@ public class FeeManager
         if (tx.payload.data.length == 0)
             return null;
 
-        if (tx.payload.data.length > this.TxPayloadMaxSize)
+        if (tx.payload.data.length > this.params.TxPayloadMaxSize)
             return "Transaction: The size of the data payload is too large";
 
-        const required_fee = calculateDataFee(tx.payload.data.length, this.TxPayloadFeeFactor);
+        const required_fee = calculateDataFee(tx.payload.data.length,
+            this.params.TxPayloadFeeFactor);
         if (sum_unspent < required_fee)
             return "Transaction: There is not enough fee.";
 
@@ -241,7 +226,7 @@ public class FeeManager
     /// Calculates the fee of data payloads
     public Amount getDataFee (ulong data_size) pure nothrow @safe @nogc
     {
-        return calculateDataFee(data_size, this.TxPayloadFeeFactor);
+        return calculateDataFee(data_size, this.params.TxPayloadFeeFactor);
     }
 
     /***************************************************************************
@@ -268,7 +253,7 @@ public class FeeManager
         // tx_fees = (tot_fee - tot_data_fee) * (ValidatorTXFeeCut / 100)
         Amount tx_fees = tot_fee;
         tx_fees.mustSub(tot_data_fee);
-        tx_fees.percentage(this.ValidatorTXFeeCut);
+        tx_fees.percentage(this.params.ValidatorTXFeeCut);
 
         Amount sum_stake;
         Amount[] stake_amounts = stakes.map!(utxo => utxo.output.value).array;
@@ -340,7 +325,7 @@ public class FeeManager
     public void accumulateFees (ref const Block block, UTXO[] stakes,
         scope UTXOFinder peekUTXO) nothrow @safe
     {
-        if (block.header.height % PayoutPeriod == 0)
+        if (block.header.height % this.params.PayoutPeriod == 0)
             this.clearAccumulatedFees();
 
         Amount tot_fee, tot_data_fee;
@@ -376,7 +361,7 @@ public class FeeManager
 
     public Amount[PublicKey] getAccumulatedFees (Height height) nothrow @safe
     {
-        return height % PayoutPeriod == 0 ? this.accumulated_fees : null;
+        return height % this.params.PayoutPeriod == 0 ? this.accumulated_fees : null;
     }
 
     /// Clears the accumulated fees
@@ -427,11 +412,8 @@ public class FeeManager
     }
 
     /// For unittest
-    version (unittest) public this (
-        uint tx_payload_max_size = 1024,
-        uint tx_payload_fee_factor = 200)
+    version (unittest) public this ()
     {
-        import agora.utils.WellKnownKeys;
-        this(CommonsBudget.address, tx_payload_max_size, tx_payload_fee_factor);
+        this(new immutable(ConsensusParams));
     }
 }
