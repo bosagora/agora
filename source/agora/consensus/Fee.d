@@ -416,4 +416,62 @@ public class FeeManager
     {
         this(new immutable(ConsensusParams));
     }
+
+    unittest
+    {
+        import std;
+        import agora.utils.Test;
+        import agora.common.Hash;
+
+        auto man = new FeeManager();
+        auto utxoset = new TestUTXOSet();
+
+        Amount double_stake = Amount.MinFreezeAmount; assert(double_stake.mul(2));
+        auto frozen_txs = [
+            Transaction(TxType.Freeze, [], [Output(Amount.MinFreezeAmount,
+                WK.Keys[0].address)]),
+            Transaction(TxType.Freeze, [], [Output(Amount.MinFreezeAmount,
+                WK.Keys[0].address)]),
+            Transaction(TxType.Freeze, [], [Output(double_stake,
+                WK.Keys[0].address)]),
+        ];
+
+        frozen_txs.each!(tx => utxoset.put(tx));
+        auto keys = frozen_txs.map!(tx => UTXO.getHash(tx.hashFull(), 0));
+
+        UTXO[] stakes;
+        foreach (key; keys)
+        {
+            UTXO utxo;
+            assert(utxoset.peekUTXO(key, utxo));
+            stakes ~= utxo;
+        }
+
+        // When stakes are equal they should receive the same amount
+        assert(man.getValidatorFees(Amount.UnitPerCoin, Amount(0),
+            stakes[0..$-1]).uniq.array.length == 1);
+
+        // 1 2X stake, 2 1X stakes
+        auto fees = man.getValidatorFees(Amount.UnitPerCoin, Amount(0), stakes);
+        assert(fees.length == stakes.length);
+
+        fees = fees.uniq.array;
+        assert(fees.length == 2);
+        // Should be exactly double
+        assert(fees[1].count(fees[0]) == 2);
+        assert(fees[1].div(2) == Amount(0));
+
+        // With some data fee
+        Amount tot_fee = Amount.UnitPerCoin; assert(tot_fee.mul(2));
+        auto w_data_fees = man.getValidatorFees(tot_fee,
+            Amount.UnitPerCoin, stakes);
+        auto commons_fee = man.getCommonsBudgetFee(tot_fee,
+            Amount.UnitPerCoin, stakes);
+
+        tot_fee.mustSub(commons_fee);
+        foreach (fee; w_data_fees)
+            tot_fee.mustSub(fee);
+        // None wasted, none created
+        assert(tot_fee == Amount(0));
+    }
 }
