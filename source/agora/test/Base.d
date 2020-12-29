@@ -869,7 +869,7 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void printLogs (string file = __FILE__, size_t line = __LINE__)
+    public void printLogs (string file = __FILE__, int line = __LINE__)
     {
         synchronized  // make sure logging output is not interleaved
         {
@@ -898,7 +898,7 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void waitForDiscovery (Duration timeout = 5.seconds,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         try
         {
@@ -931,14 +931,14 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void generateBlocks (Height block_height,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         generateBlocks(iota(GenesisValidators), block_height, file, line);
     }
 
     /// Ditto
     public void generateBlocks (Idxs)(Idxs client_idxs, Height block_height,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
@@ -962,14 +962,14 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    void addBlock (string file = __FILE__, size_t line = __LINE__)
+    void addBlock (string file = __FILE__, int line = __LINE__)
     {
         addBlock(iota(0, GenesisValidators), file, line);
     }
 
     /// Ditto
     void addBlock (Idxs)(Idxs client_idxs,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
@@ -1009,7 +1009,7 @@ public class TestAPIManager
                 (file, line, enrolled_height));
         // Check block is at target height for the participating clients
         expectBlock(client_idxs, target_height,
-            all_blocks[enrolled_height].header);
+            all_blocks[enrolled_height].header, 10.seconds, file, line);
     }
 
     /***************************************************************************
@@ -1032,7 +1032,7 @@ public class TestAPIManager
 
     /// Ditto
     void enroll (Idxs)(Idxs client_idxs, size_t client_idx,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
@@ -1058,14 +1058,14 @@ public class TestAPIManager
     ***************************************************************************/
 
     void assertSameBlocks (Height height,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         assertSameBlocks(iota(GenesisValidators), height, file, line);
     }
 
     /// Ditto
     void assertSameBlocks (Idxs)(Idxs client_idxs, Height height,
-        string file = __FILE__, size_t line = __LINE__)
+        string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
