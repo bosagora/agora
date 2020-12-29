@@ -62,10 +62,10 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
 {
     extern(D) this (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ulong test_start_time)
     {
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            this.txs_to_nominate);
+            this.txs_to_nominate, test_start_time);
     }
 
     // As byzantine we will not sign envelope to make sure we test rejection of gossiped signature when bad
@@ -93,7 +93,7 @@ private class ByzantineNode () : TestValidatorNode
         EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new BadBlockSigningNominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir);
+            enroll_man, taskman, data_dir, this.test_start_time);
     }
 }
 

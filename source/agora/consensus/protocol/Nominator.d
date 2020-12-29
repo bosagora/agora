@@ -57,6 +57,7 @@ import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 import core.stdc.time;
 
+import std.algorithm : max;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -73,7 +74,7 @@ enum MaxTransactionsPerBlock = 1000;
 public extern (C++) class Nominator : SCPDriver
 {
     /// Consensus parameters
-    private immutable(ConsensusParams) params;
+    protected immutable(ConsensusParams) params;
 
     /// Clock instance
     private Clock clock;
@@ -312,7 +313,7 @@ extern(D):
 
     /***************************************************************************
 
-        Gets the expected block nomination time for for the provided height.
+        Gets the expected block nomination time.
 
         Params:
             height = the height to look up the expected time for
@@ -322,10 +323,9 @@ extern(D):
 
     ***************************************************************************/
 
-    private ulong getExpectedBlockTime (Height height) @safe @nogc nothrow pure
+    protected ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
-        return this.params.GenesisStartTime +
-            (height * this.params.BlockIntervalSeconds);
+        return ledger.getLastBlock().header.timestamp + this.params.BlockIntervalSeconds;
     }
 
     /***************************************************************************
@@ -348,16 +348,16 @@ extern(D):
             return;
 
         const cur_time = this.clock.networkTime();
-        if (cur_time < this.params.GenesisStartTime)
+        const genesis_start_time = this.params.Genesis.header.timestamp;
+        if (cur_time < genesis_start_time)
         {
             log.fatal("Clock is out of sync. " ~
                 "Current time: {}. Genesis time: {}", cur_time,
-                this.params.GenesisStartTime);
+                genesis_start_time);
             return;
         }
 
-        const slot_idx = this.ledger.getBlockHeight() + 1;
-        const nom_time = this.getExpectedBlockTime(Height(slot_idx));
+        const nom_time = this.getExpectedBlockTime();
         if (cur_time < nom_time)
             return;  // too early to nominate
 
@@ -369,6 +369,7 @@ extern(D):
         log.trace("Consensus data is: {}", data);
         this.is_nominating = true;
 
+        const slot_idx = this.ledger.getBlockHeight() + 1;
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
         this.nominate(slot_idx, data);
@@ -521,7 +522,7 @@ extern(D):
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 this.ledger.getBlockHeight(), con_data.missing_validators);
             const Block proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-                con_data.enrolls, random_seed, con_data.missing_validators);
+                con_data.timestamp, con_data.enrolls, random_seed, con_data.missing_validators);
             const Signature signature = envelope.statement.pledges.confirm_.value_sig;
             const Height height = Height(envelope.statement.slotIndex);
             if (!this.addBlockSignature(public_key, proposed_block, signature, height))
@@ -713,7 +714,7 @@ extern(D):
         Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 this.ledger.getBlockHeight(), con_data.missing_validators);
         const proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-            con_data.enrolls, random_seed, con_data.missing_validators);
+            con_data.timestamp, con_data.enrolls, random_seed, con_data.missing_validators);
 
         Height height = proposed_block.header.height;
         const Signature signature = createBlockSignature(proposed_block);
@@ -784,9 +785,6 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
-        const cur_time = this.clock.networkTime();
-        const exp_time = this.getExpectedBlockTime(Height(slot_idx));
-
         try
         {
             auto data = deserializeFull!ConsensusData(value[]);
@@ -811,26 +809,6 @@ extern(D):
                 "Error: {}", ex.msg);
             return ValidationLevel.kInvalidValue;
         }
-
-        // after validation, check the time
-        if (cur_time < exp_time)
-        {
-            log.info(
-                "validateValue(): Received {} too early (-{}s). " ~
-                "Height: {}. Time: {}. Expected time: {}",
-                nomination ? "nomination" : "ballot",
-                exp_time - cur_time, Height(slot_idx), cur_time, exp_time);
-
-            // In the Nominating phase `kMaybeValidValue` is equal to
-            // `kInvalidValue` and the node will not echo these nominations.
-            // In the Balloting phase `kMaybeValidValue` is a value which
-            // is valid (UTXO set, signatures..) but the node considers
-            // the ballot to arrive too early. A quorum slice might still accept
-            // this ballot, in which case the node will be forced to accept
-            // it too.
-            return ValidationLevel.kMaybeValidValue;
-        }
-
         return ValidationLevel.kFullyValidatedValue;
     }
 
@@ -875,7 +853,7 @@ extern(D):
 
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 this.ledger.getBlockHeight(), data.missing_validators);
-            const block = makeNewBlock(prev_block, data.tx_set, data.enrolls,
+            const block = makeNewBlock(prev_block, data.tx_set, data.timestamp, data.enrolls,
                 random_seed, data.missing_validators);
 
             // If we did not sign yet then add signature

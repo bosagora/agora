@@ -447,13 +447,23 @@ extern(D):
     /// number of txs required for nomination
     protected ulong txs_to_nominate;
 
+    /// test start time
+    protected ulong test_start_time;
+
     ///
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ulong txs_to_nominate)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+        ulong txs_to_nominate, ulong test_start_time)
     {
+        this.test_start_time = test_start_time;
         this.txs_to_nominate = txs_to_nominate;
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir);
+    }
+
+    protected override ulong getExpectedBlockTime () @safe @nogc nothrow pure
+    {
+        return max(this.test_start_time, ledger.getLastBlock().header.timestamp) + this.params.BlockIntervalSeconds;
     }
 
     /// Overrides the default behavior and changes nomination behavior based
@@ -536,12 +546,12 @@ public class TestAPIManager
     /// Contains the initial blockchain state of all nodes
     public immutable(Block)[] blocks;
 
-    /// Genesis block start time
-    public const time_t genesis_start_time;
+    /// Start time of the tests
+    public const time_t test_start_time;
 
     /// The initial clock time of every spawned node. Note that if there were
     /// any extra blocks loaded (`blocks` in the ctor) then the initial time
-    /// will be genesis_start_time + (last_height * block_interval)
+    /// will be test_start_time + (last_height * block_interval)
     protected time_t initial_time;
 
     /// convenience: returns a random-access range which lets us access clients
@@ -558,11 +568,11 @@ public class TestAPIManager
 
     ///
     public this (immutable(Block)[] blocks, TestConf test_conf,
-        time_t genesis_start_time)
+        time_t test_start_time)
     {
         this.test_conf = test_conf;
         this.blocks = blocks;
-        this.genesis_start_time = genesis_start_time;
+        this.test_start_time = test_start_time;
         this.initial_time = this.getBlockTime(blocks[$ - 1].header.height);
         this.reg.initialize();
         this.createNameRegistry();
@@ -738,7 +748,7 @@ public class TestAPIManager
 
     public time_t getBlockTime (Height height)
     {
-        return to!time_t(this.genesis_start_time +
+        return to!time_t(this.test_start_time +
             (height * this.test_conf.block_interval_sec));
     }
 
@@ -1350,6 +1360,9 @@ private mixin template TestNodeMixin ()
     /// pointer to the unittests-adjusted clock time
     protected shared(time_t)* cur_time;
 
+    /// test start time
+    protected ulong test_start_time;
+
     /// Blocks to preload into the memory storage
     private immutable(Block)[] blocks;
 
@@ -1485,6 +1498,7 @@ public class TestFullNode : FullNode, TestAPI
         this.registry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
+        this.test_start_time = *cur_time;
         super(config);
     }
 
@@ -1551,6 +1565,7 @@ public class TestValidatorNode : Validator, TestAPI
         this.blocks = blocks;
         this.txs_to_nominate = test_conf.txs_to_nominate;
         this.cur_time = cur_time;
+        this.test_start_time = *cur_time;
         super(config);
     }
 
@@ -1593,7 +1608,7 @@ public class TestValidatorNode : Validator, TestAPI
         KeyPair key_pair, Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new TestNominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir, this.txs_to_nominate);
+            enroll_man, taskman, data_dir, this.txs_to_nominate, this.test_start_time);
     }
 
     /// Provides a unittest-adjusted clock source for the node
@@ -1888,18 +1903,14 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .serializeFull()
         .toHexString();
 
-    // for unittests the time begins now
-    const genesis_start_time = time(null);
+    const test_start_time = time(null);
     foreach (ref conf; all_configs)
-    {
         conf.node.testing = true;
-        conf.node.genesis_start_time = genesis_start_time;
-    }
 
     immutable(Block)[] blocks = generateExtraBlocks(GenesisBlock,
         test_conf.extra_blocks);
 
-    auto net = new APIManager(blocks, test_conf, genesis_start_time);
+    auto net = new APIManager(blocks, test_conf, test_start_time);
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
 

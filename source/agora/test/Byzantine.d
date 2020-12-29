@@ -73,11 +73,12 @@ private extern(C++) class ByzantineNominator : TestNominator
 
     extern(D) this (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ByzantineReason reason)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ByzantineReason reason,
+        ulong test_start_time)
     {
         this.reason = reason;
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            this.txs_to_nominate);
+            this.txs_to_nominate, this.test_start_time);
     }
 
     // override signing with Byzantine behaviour of not signing or signing with invalid signature
@@ -110,7 +111,7 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         return new ByzantineNominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir, reason);
+            enroll_man, taskman, data_dir, reason, test_start_time);
     }
 }
 
@@ -125,11 +126,11 @@ private class SpyNominator : TestNominator
         NetworkManager network, KeyPair key_pair, Ledger ledger,
         EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
         ulong txs_to_nominate, shared(time_t)* curr_time,
-        shared(EnvelopeTypeCounts)* envelope_type_counts)
+        shared(EnvelopeTypeCounts)* envelope_type_counts, ulong test_start_time)
     {
         this.envelope_type_counts = envelope_type_counts;
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-        txs_to_nominate);
+        txs_to_nominate, test_start_time);
     }
 
     public override void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
@@ -175,7 +176,7 @@ private class SpyingValidator : TestValidatorNode
     {
         return new SpyNominator(
             params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            this.txs_to_nominate, this.cur_time, this.envelope_type_counts);
+            this.txs_to_nominate, this.cur_time, this.envelope_type_counts, this.test_start_time);
     }
 }
 
@@ -187,9 +188,9 @@ private class ByzantineManager (bool addSpyValidator = false,
     shared(EnvelopeTypeCounts) envelope_type_counts;
 
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, time_t genesis_start_time)
+    public this (immutable(Block)[] blocks, TestConf test_conf, time_t test_start_time)
     {
-        super(blocks, test_conf, genesis_start_time);
+        super(blocks, test_conf, test_start_time);
     }
 
     public override void createNewNode (Config conf,
@@ -285,7 +286,7 @@ private void waitForCount(size_t target_count, shared(size_t)* counter, string n
         assert(loopCount < 1000, format("Only received %d of %d, expected %s envelopes!",
                    atomicLoad(*counter), target_count, name));
         loopCount++;
-        Thread.sleep(10.msecs);
+        Thread.sleep(30.msecs);
     }
 }
 

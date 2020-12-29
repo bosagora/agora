@@ -156,3 +156,34 @@ public class Clock
             this.net_time_offset = time_offset;
     }
 }
+
+///
+public class MockClock : Clock
+{
+    private ulong time;
+
+    ///
+    public this (ulong time)
+    {
+        super(null, null);
+        this.time = time;
+    }
+
+    ///
+    public void setTime (ulong time)
+    {
+        this.time = time;
+    }
+
+    /// returns time set by constructor
+    public override time_t networkTime () @safe nothrow { return cast(time_t)(time);}
+
+    /// returns time set by constructor
+    public override time_t localTime () @safe nothrow @nogc { return cast(time_t)(time);}
+
+    /// do nothing
+    public override void startSyncing () @safe nothrow {}
+
+    /// do nothing
+    public override void synchronize () @safe nothrow {}
+}

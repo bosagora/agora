@@ -95,9 +95,9 @@ private class PersistentNode : TestValidatorNode
 private class WithPersistentNodeAPIManager : TestAPIManager
 {
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, time_t genesis_start_time)
+    public this (immutable(Block)[] blocks, TestConf test_conf, time_t test_start_time)
     {
-        super(blocks, test_conf, genesis_start_time);
+        super(blocks, test_conf, test_start_time);
     }
 
     public override void createNewNode (Config conf,

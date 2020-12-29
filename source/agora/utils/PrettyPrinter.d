@@ -470,7 +470,7 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0xd053...80d8, Root: 0x07a8...acf4, Enrollments: []
+Height: 1, Prev: 0xd56c...8a5f, Root: 0x07a8...acf4, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],
@@ -486,7 +486,7 @@ Outputs (1): GCOQ...LRIJ(61,000,000)
     import agora.consensus.data.Block;
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign()));
+        genesisSpendable().take(2).map!(txb => txb.sign()), 0);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;

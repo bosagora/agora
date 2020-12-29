@@ -53,20 +53,20 @@ unittest
     void checkNodeLocalTime (ulong idx, ulong expected_height)
     {
         retryFor(nodes[idx].getLocalTime() == expected_height +
-            network.genesis_start_time, 5.seconds,
+            network.test_start_time, 5.seconds,
             format!"Expected node #%s would have time of height %s not %s"
                 (idx, expected_height,
-                    nodes[idx].getLocalTime() - network.genesis_start_time));
+                    nodes[idx].getLocalTime() - network.test_start_time));
     }
 
     // Check the node network time
     void checkNodeNetworkTime (ulong idx, ulong expected_height)
     {
         retryFor(nodes[idx].getNetworkTime() == expected_height +
-            network.genesis_start_time, 5.seconds,
+            network.test_start_time, 5.seconds,
             format!"Expected node #%s would have time of height %s not %s"
                 (idx, expected_height, nodes[idx].getNetworkTime() -
-                    network.genesis_start_time));
+                    network.test_start_time));
     }
 
     // clock times for nodes:    [ 1,  1,  1,  1,  1, 0] median => 1

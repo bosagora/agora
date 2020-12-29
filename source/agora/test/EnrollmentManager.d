@@ -266,11 +266,11 @@ unittest
         public this (immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
             EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ulong txs_to_nominate,
-            shared(time_t)* curr_time, shared(size_t)* countPtr)
+            shared(time_t)* curr_time, shared(size_t)* countPtr, ulong test_start_time)
         {
             this.runCount = countPtr;
             super(params, clock, network, key_pair, ledger, enroll_man, taskman,
-                data_dir, txs_to_nominate);
+                data_dir, txs_to_nominate, test_start_time);
         }
 
         ///
@@ -310,7 +310,7 @@ unittest
         {
             return new BadNominator(
                 params, clock, network, key_pair, ledger, enroll_man, taskman,
-                data_dir, this.txs_to_nominate, this.cur_time, this.runCount);
+                data_dir, this.txs_to_nominate, this.cur_time, this.runCount, this.test_start_time);
         }
     }
 

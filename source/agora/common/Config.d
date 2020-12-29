@@ -114,11 +114,6 @@ public struct NodeConfig
     /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
     public bool testing;
 
-    /// The Unix timestamp of the Genesis block. Blocks are created at a
-    /// regular interval starting from this time.
-    public time_t genesis_start_time =
-        SysTime(DateTime.fromISOString("20200731T000000"), UTC()).toUnixTime;
-
     /// How often a block should be created
     public uint block_interval_sec = 600;
 
@@ -174,6 +169,10 @@ public struct NodeConfig
 
     /// The factor to calculate for the fee of data payload
     public uint tx_payload_fee_factor = 200;
+
+    /// The new block timestamp has to be greater than the previous block timestamp,
+    /// but less than current time + block_timestamp_tolerance
+    public Duration block_timestamp_tolerance = 60.seconds;
 }
 
 /// Validator config
@@ -374,8 +373,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
         : PublicKey.init;
 
     auto testing = opt!(bool, "node", "testing")(cmdln, node);
-    auto genesis_start_time = get!(time_t, "node", "genesis_start_time",
-        str => SysTime(DateTime.fromISOString(str)).toUnixTime)(cmdln, node);
     uint block_interval_sec = get!(uint, "node", "block_interval_sec")(cmdln, node);
 
     Duration retry_delay = get!(Duration, "node", "retry_delay",
@@ -398,13 +395,13 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
     const tx_payload_max_size = opt!(uint, "node", "tx_payload_max_size")(cmdln, node);
     const tx_payload_fee_factor = opt!(uint, "node", "tx_payload_fee_factor")(cmdln, node);
+    const block_timestamp_tolerance_secs = opt!(uint, "node", "block_timestamp_tolerance_secs")(cmdln, node);
 
     NodeConfig result = {
             min_listeners : min_listeners,
             max_listeners : max_listeners,
             commons_budget_address : commons_budget_address,
             testing : testing,
-            genesis_start_time : genesis_start_time,
             block_interval_sec : block_interval_sec,
             address : address,
             port : port,
@@ -419,7 +416,8 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             preimage_reveal_interval : preimage_reveal_interval,
             stats_listening_port : stats_listening_port,
             tx_payload_max_size : tx_payload_max_size,
-            tx_payload_fee_factor : tx_payload_fee_factor
+            tx_payload_fee_factor : tx_payload_fee_factor,
+            block_timestamp_tolerance : block_timestamp_tolerance_secs.seconds,
     };
     return result;
 }
