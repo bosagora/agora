@@ -309,7 +309,7 @@ public struct Point
     /// Internal state
     package BitBlob!(crypto_core_ed25519_BYTES * 8) data;
 
-    private this (typeof(this.data) data) @safe
+    private this (typeof(this.data) data) @safe @nogc pure nothrow
     {
         this.data = data;
     }
