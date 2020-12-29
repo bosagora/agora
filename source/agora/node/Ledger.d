@@ -988,7 +988,7 @@ version (unittest)
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"),
-                new FeeManager(),
+                new FeeManager(params),
                 mock_clock,
                 block_timestamp_tolerance_dur);
         }
@@ -1954,4 +1954,87 @@ unittest
 
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
     assert(data.missing_validators.length == 0);
+}
+
+unittest
+{
+    import std;
+    import agora.common.crypto.Schnorr;
+    import agora.consensus.data.genesis.Test;
+    import agora.consensus.data.PreImageInfo;
+    import agora.consensus.PreImage;
+    import agora.utils.WellKnownKeys : CommonsBudget;
+    // validator_cycle = 20, max_quorum_nodes = 7,
+    // quorum_threshold = 80, payout_period = 5
+    auto params = new immutable(ConsensusParams)(GenesisBlock,
+        CommonsBudget.address,
+        /* validator_cycle */ 20,
+        /* max_quorum_nodes */ 7,
+        /* quorum_threshold */ 80,
+        /* quorum_shuffle_interval */ 30,
+        /* block_interval_sec */ 1,
+        /* tx_payload_maxsize */ 1024,
+        /* tx_payload_fee_factor */ 200,
+        /* validator_tx_fee_cut */ 70,
+        /* payout_period */ 5);
+
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+
+    Hash[] genesisEnrollKeys;
+    ledger.enroll_man.getEnrolledUTXOs(genesisEnrollKeys);
+
+    // Reveal preimages for all validators but 1
+    foreach (idx, key; genesisEnrollKeys[0..$-1])
+    {
+        UTXO stake;
+        assert(ledger.utxo_set.peekUTXO(key, stake));
+        KeyPair kp = WK.Keys[stake.output.address];
+        auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        auto cycle = PreImageCycle(
+            0, 0,
+            PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
+            PreImageCache(params.ValidatorCycle, 1));
+        const preimage = PreImageInfo(key,
+            cycle.getPreImage(pair.v, Height(params.ValidatorCycle)),
+                cast (ushort) (params.ValidatorCycle));
+
+        ledger.enroll_man.addPreimage(preimage);
+    }
+
+    // Block with no fee
+    auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
+    no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == blocks.length);
+    blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
+
+    // No Coinbase TX
+    assert(blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
+        .array.length == 0);
+
+    // Create blocks from height 2 to 6, with fees
+    foreach (height; 2..7)
+    {
+        Amount per_tx_fee = Amount.UnitPerCoin;
+        auto txs = blocks[$-1].spendable.map!(txb =>
+            txb.deduct(per_tx_fee).sign()).array();
+        txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        ledger.forceCreateBlock();
+        assert(ledger.getBlockHeight() == blocks.length);
+        blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
+
+        auto cb_txs = blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
+            .array;
+        // Payout block should pay the CommonsBudget + all validators (excl MPV)
+        // other blocks should only pay CommonsBudget
+        assert(cb_txs.length == (blocks[$-1].header.height == params.PayoutPeriod
+            ? genesisEnrollKeys.length : 1));
+
+        // MPV should never be paid
+        UTXO mpv_stake;
+        assert(ledger.utxo_set.peekUTXO(genesisEnrollKeys[$-1], mpv_stake));
+        assert(cb_txs[0].outputs.filter!(output => output.address ==
+            mpv_stake.output.address).array.length == 0);
+    }
 }
