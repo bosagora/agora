@@ -68,6 +68,8 @@ public string isInvalidReason (const ref Enrollment enrollment,
         return "Enrollment: UTXO is not frozen";
 
     Point address = Point(utxo_set_value.output.address);
+    if (!address.isValid())
+        return "Enrollment: Address is not a valid point on Curve25519";
 
     if (!verify(address, enrollment.enroll_sig, enrollment))
         return "Enrollment: signature verification failed";
@@ -252,4 +254,9 @@ unittest
     }
     assert(validator_set.getValidatorCount(Height(params.ValidatorCycle)) == 1);
 
+    Enrollment invalid;
+    assert(isInvalidReason(invalid,
+        (in Hash, out UTXO utxo) { utxo.type = TxType.Freeze; return true; },
+        Height(0), null)
+        == "Enrollment: Address is not a valid point on Curve25519");
 }
