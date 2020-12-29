@@ -23,7 +23,7 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = { txs_to_nominate : 2, block_interval_sec : 2 };
+    TestConf conf = { txs_to_nominate : 2, block_interval_sec : 10 };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -49,7 +49,7 @@ unittest
     // wait for propagation
     nodes.each!(node =>
        txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)
+           node.hasTransactionHash(hashFull(tx)).retryFor(4.seconds)
     ));
 
     // time updated, block height 1
@@ -58,7 +58,7 @@ unittest
     void checkHeight(Height height)
     {
         network.waitForPreimages(b0.header.enrollments,
-            cast(ushort) (height - 1));
+            cast(ushort) (height - 1), 30.seconds);
         network.setTimeFor(height);
         network.assertSameBlocks(height);
     }
