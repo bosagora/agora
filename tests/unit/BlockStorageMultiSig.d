@@ -67,7 +67,7 @@ private void main ()
 
     iota(1, BlockCount).each!(h => {
         // Sign each block with signature and set validator 1 as signed
-        block = makeNewBlock(prev_block, txs, null);
+        block = makeNewBlock(prev_block, txs, prev_block.header.timestamp + 1, null);
         block.header.signature = SIG1;
         block.header.validators = BitField!ubyte(6);
         block.header.validators[1] = true;

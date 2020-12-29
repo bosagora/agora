@@ -165,7 +165,6 @@ public class FullNode : API
                 config.node.max_quorum_nodes,
                 config.node.quorum_threshold,
                 config.node.quorum_shuffle_interval,
-                config.node.genesis_start_time,
                 config.node.block_interval_sec,
                 config.node.tx_payload_max_size,
                 config.node.tx_payload_fee_factor);
@@ -183,7 +182,8 @@ public class FullNode : API
             config.validator, params);
         this.payload_checker = getDataPayloadChecker(this.params);
         this.ledger = new Ledger(params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, this.payload_checker, &this.onAcceptedBlock);
+            this.storage, this.enroll_man, this.pool, this.payload_checker, this.clock,
+            config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
         this.exception = new RestException(
             400, Json("The query was incorrect"), string.init, int.init);
 

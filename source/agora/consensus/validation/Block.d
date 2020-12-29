@@ -34,6 +34,8 @@ import agora.utils.Log;
 
 import std.algorithm;
 
+import core.time : Duration, seconds;
+
 mixin AddLogger!();
 
 version (unittest)
@@ -84,6 +86,10 @@ version (unittest)
             given height and index into map
         getCommitmentNonce = delegate to provide the commitment Nonce of the
             validator given by it's Point K
+        prev_timestamp = the timestamp of the of the direct ancestor of this block
+        curr_timestamp = the current timestamp
+        block_timestamp_tolerance_dur = the proposed block timestamp should be less
+                than curr_timestamp + block_timestamp_tolerance_dur
 
     Returns:
         `null` if the block is valid, a string explaining the reason it
@@ -96,6 +102,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     scope EnrollmentFinder findEnrollment, size_t active_enrollments, size_t enrolled_validators,
     Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (const ref Point) nothrow @safe getCommitmentNonce,
+    ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
     string file = __FILE__, size_t line = __LINE__) nothrow @safe
 {
     import std.algorithm;
@@ -219,7 +226,57 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             file, line, block.header.validators.length);
         return "Block: Invalid schnorr signature";
     }
-    return null;
+    return validateBlockTimestamp(prev_timestamp, block.header.timestamp, curr_timestamp, block_timestamp_tolerance_dur);
+}
+
+/*******************************************************************************
+
+    Check the validity of the timestamp for a block
+
+    new_block_ts is valid if and only if
+    prev_block_ts < new_block_ts <= curr_timestamp + block_timestamp_tolerance_secs
+
+    Params:
+        prev_block_ts = the timestam of the block preceding the new block
+        new_block_ts  = the timestamp of the block we are trying to validate
+        curr_timestamp = the current clock timestamp
+        block_timestamp_tolerance_dur = the proposed block timestamp should be less
+                than curr_timestamp + block_timestamp_tolerance_dur
+
+    Returns:
+        `null` if the new_block_ts is valid, otherwise a string explaining
+        the reason it is invalid.
+
+*******************************************************************************/
+
+public string validateBlockTimestamp (ulong prev_block_ts, ulong new_block_ts, ulong curr_timestamp,
+        Duration block_timestamp_tolerance_dur) @safe nothrow
+{
+    string res;
+    try
+    {
+        import std.conv : to;
+        import std.datetime.systime : SysTime, unixTimeToStdTime;
+
+        const block_timestamp_tolerance_secs = block_timestamp_tolerance_dur.total!"seconds";
+
+        if (new_block_ts <= prev_block_ts)
+            res = "the timestamp in consensus data is not greater than the timestamp in the last block\n" ~
+                    "new block timestamp: " ~ to!string(SysTime(unixTimeToStdTime(new_block_ts))) ~ "\n" ~
+                    "previous block's timestamp: " ~ to!string(SysTime(unixTimeToStdTime(prev_block_ts)));
+        else if (new_block_ts > curr_timestamp + block_timestamp_tolerance_secs)
+            res =  "(the timestamp in consensus data) is greater than (the timestamp in the last block + tolerance)\n" ~
+                    "new block timestamp: " ~ to!string(SysTime(unixTimeToStdTime(new_block_ts))) ~ "\n" ~
+                    "current timestamp: " ~ to!string(SysTime(unixTimeToStdTime(curr_timestamp))) ~ "\n" ~
+                    "tolerance in seconds: " ~to!string(block_timestamp_tolerance_secs);
+    }
+    catch (Exception e)
+    {
+        return "Exception happened while validating timestamp";
+    }
+    if (res !is null)
+        log.warn("validateBlockTimestamp(): {}", res);
+    return res;
 }
 
 /*******************************************************************************
@@ -570,6 +627,8 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope PayloadChecker checkPayload,
         scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
+        ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
+        Duration block_timestamp_tolerance_dur = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         return isInvalidReason(block, prev_height, prev_hash, findUTXO,
@@ -584,7 +643,9 @@ version (unittest)
                     secretKeyToCurveScalar(lookupSecretKeyFromPoint(key)),
                     "consensus.signature.noise", enrollment_cycle))
                     .toPoint();
-            });
+            },
+            prev_timestamp, (curr_timestamp == ulong.max) ? block.header.timestamp : curr_timestamp,
+            block_timestamp_tolerance_dur);
     }
 
     /// Ditto but returns `bool` and logs reason if fails, only usable in unittests
@@ -592,10 +653,13 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope PayloadChecker checkPayload,
         scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
+        ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
+        Duration block_timestamp_tolerance_dur = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkPayload, findEnrollment, enrollment_cycle);
+            active_enrollments, enrolled_validators, checkPayload, findEnrollment, enrollment_cycle,
+            prev_timestamp, curr_timestamp, block_timestamp_tolerance_dur);
         if (reason !is null)
             log.trace("[{}:{}] block height {} is invalid: {}",
                 file, line, block.header.height, reason);
@@ -606,10 +670,13 @@ version (unittest)
     public bool isNotValid (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope PayloadChecker checkPayload,
-        scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0) nothrow @safe
+        scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
+        ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
+        Duration block_timestamp_tolerance_dur = 100.seconds) nothrow @safe
     {
         return isValidcheck(block, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkPayload, findEnrollment, enrollment_cycle) !is null;
+            active_enrollments, enrolled_validators, checkPayload, findEnrollment, enrollment_cycle,
+            prev_timestamp, curr_timestamp, block_timestamp_tolerance_dur) !is null;
     }
 }
 

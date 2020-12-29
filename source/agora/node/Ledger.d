@@ -39,6 +39,8 @@ import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
+import agora.consensus.validation.Block : validateBlockTimestamp;
+import agora.network.Clock;
 import agora.node.BlockStorage;
 import agora.node.Fee;
 import agora.stats.Block;
@@ -52,6 +54,8 @@ import std.conv : to;
 import std.exception;
 import std.format;
 import std.range;
+
+import core.time : Duration, seconds;
 
 mixin AddLogger!();
 
@@ -78,6 +82,9 @@ public class Ledger
     /// UTXO set
     private UTXOSet utxo_set;
 
+    // Clock instance
+    private Clock clock;
+
     /// Enrollment manager
     private EnrollmentManager enroll_man;
 
@@ -100,6 +107,10 @@ public class Ledger
     /// The checker of transaction data payload
     private DataPayloadChecker payload_checker;
 
+    /// The new block timestamp has to be greater than the previous block timestamp,
+    /// but less than current time + block_timestamp_tolerance
+    public Duration block_timestamp_tolerance;
+
     /***************************************************************************
 
         Constructor
@@ -111,6 +122,9 @@ public class Ledger
             enroll_man = the enrollmentManager
             pool = the transaction pool
             payload_checker = the checker of data payload
+            clock = the clock instance
+            block_timestamp_tolerance = the proposed block timestamp should be less
+                than curr_timestamp + block_timestamp_tolerance
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
@@ -119,7 +133,8 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        DataPayloadChecker payload_checker,
+        DataPayloadChecker payload_checker, Clock clock,
+        Duration block_timestamp_tolerance = 60.seconds,
         void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
     {
         this.params = params;
@@ -130,6 +145,8 @@ public class Ledger
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
         this.payload_checker = payload_checker;
+        this.clock = clock;
+        this.block_timestamp_tolerance = block_timestamp_tolerance;
         if (!this.storage.load(params.Genesis))
             assert(0);
 
@@ -187,7 +204,10 @@ public class Ledger
                         {
                             const PK = PublicKey(key[]);
                             return this.enroll_man.getCommitmentNonce(PK);
-                        }))
+                        },
+                        last_read_block.header.timestamp,
+                        cast(ulong) this.clock.networkTime(),
+                        this.block_timestamp_tolerance))
                         throw new Exception(
                             "A block loaded from disk is invalid: " ~
                             fail_reason);
@@ -226,6 +246,20 @@ public class Ledger
 
     /***************************************************************************
 
+        Returns the last block in the `Ledger`
+
+        Returns:
+            last block in the `Ledger`
+
+    ***************************************************************************/
+
+    public const(Block) getLastBlock () const @safe @nogc nothrow pure
+    {
+        return last_block;
+    }
+
+    /***************************************************************************
+
         Called when a consensus data set is externalized.
 
         This will create a new block and add it to the ledger.
@@ -244,7 +278,7 @@ public class Ledger
         Hash random_seed = this.slash_man.getExternalizedRandomSeed(
             this.getBlockHeight(), data.missing_validators);
 
-        auto block = makeNewBlock(this.last_block, data.tx_set, data.enrolls,
+        auto block = makeNewBlock(this.last_block, data.tx_set, data.timestamp, data.enrolls,
             random_seed, data.missing_validators);
         return this.acceptBlock(block);
     }
@@ -266,7 +300,8 @@ public class Ledger
             (PublicKey pubkey)
             {
                 return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
-            });
+            },
+            data.timestamp);
         return this.acceptBlock(block, file, line);
     }
 
@@ -577,6 +612,8 @@ public class Ledger
         @safe
     {
         data = ConsensusData.init;
+        data.timestamp = max(clock.networkTime(), this.last_block.header.timestamp + 1);
+        log.trace("Going to nominate current timestamp [{}] or newer", clock.networkTime());
         const next_height = Height(this.getBlockHeight() + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
@@ -642,7 +679,8 @@ public class Ledger
                 return fail_reason;
         }
 
-        return null;
+        return validateBlockTimestamp(last_block.header.timestamp, data.timestamp,
+            clock.networkTime(), block_timestamp_tolerance);
     }
 
     /***************************************************************************
@@ -678,6 +716,9 @@ public class Ledger
     public string validateBlock (const ref Block block,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
+        size_t active_enrollments = enroll_man.getValidatorCount(
+                block.header.height);
+
         return block.isInvalidReason(this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
@@ -690,7 +731,11 @@ public class Ledger
             {
                 const PK = PublicKey(key[]);
                 return this.enroll_man.getCommitmentNonce(PK);
-            }, file, line);
+            },
+            this.last_block.header.timestamp,
+            cast(ulong) this.clock.networkTime(),
+            block_timestamp_tolerance,
+            file, line);
     }
 
     /***************************************************************************
@@ -814,6 +859,9 @@ public class Ledger
 /// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
 {
+    import core.stdc.time : time;
+    import agora.network.Clock : MockClock;
+
     /// simulate block creation as if a nomination and externalize round completed
     private void forceCreateBlock (Ledger ledger,
         string file = __FILE__, size_t line = __LINE__)
@@ -829,7 +877,9 @@ version (unittest)
     {
         public this (KeyPair key_pair,
             const(Block)[] blocks = null,
-            immutable(ConsensusParams) params_ = null)
+            immutable(ConsensusParams) params_ = null,
+            Duration block_timestamp_tolerance_dur = 600.seconds,
+            Clock mock_clock = new MockClock(time(null)))
         {
             const params = (params_ !is null)
                 ? params_
@@ -843,7 +893,9 @@ version (unittest)
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"),
-                new DataPayloadChecker());
+                new DataPayloadChecker(),
+                mock_clock,
+                block_timestamp_tolerance_dur);
         }
 
         ///
@@ -1137,6 +1189,61 @@ private KeyPair[] getRandomKeyPairs ()
     return WK.Keys.byRange().take(8).array();
 }
 
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+    ConsensusData data;
+    auto genesis_ts = GenesisBlock.header.timestamp;
+    MockClock mock_clock = new MockClock(time(null));
+
+    auto getLedger (Clock clock)
+    {
+        auto ledger = new TestLedger(WK.Keys.NODE2, null, null, 600.seconds, clock);
+        auto txs = genesisSpendable().enumerate()
+            .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+            .array();
+        txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        return ledger;
+    }
+
+    // no matter how far the clock is ahead, we still accept blocks as long as
+    // the clock has a time greater than the time in the latest block header
+    auto ledger = getLedger(mock_clock);
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    data.timestamp = genesis_ts + 1;
+    mock_clock.setTime(genesis_ts + 2000);
+    assert(ledger.externalize(data));
+
+    // if the clock is behind of the timestamp of the new block and
+    // ahead of the timestamp of the last block and
+    // and within the tolerance interval,
+    // then we accept block
+    ledger = getLedger(mock_clock);
+    data.timestamp = genesis_ts + 1000;
+    mock_clock.setTime(genesis_ts + 500);
+    assert(ledger.externalize(data));
+
+    // if the clock is behind of the timestamp of the new block and
+    // ahead of the timestamp of the last block and
+    // and NOT within the tolerance interval,
+    // then we reject block
+    ledger = getLedger(mock_clock);
+    data.timestamp = genesis_ts + 1000;
+    mock_clock.setTime(genesis_ts + 100);
+    assert(!ledger.externalize(data));
+    // if the time passes by and now we are within the tolerance interval, then
+    // we will accept block
+    mock_clock.setTime(genesis_ts + 900);
+    assert(ledger.externalize(data));
+
+    // if the clock is behind of the timestamp of the latest accepted block, then
+    // we reject the block regardless of the current time
+    ledger = getLedger(mock_clock);
+    data.timestamp = genesis_ts -1;
+    mock_clock.setTime(genesis_ts + 100);
+    assert(!ledger.externalize(data));
+}
+
 /// Situation : Create two blocks, one containing only `Payment` transactions,
 ///             the other containing only `Freeze` ones
 /// Expectation: Block creation succeeds
@@ -1392,6 +1499,7 @@ unittest
     import std.conv;
     import std.exception;
     import std.range;
+    import core.stdc.time : time;
 
     static class ThrowingLedger : Ledger
     {
@@ -1404,7 +1512,8 @@ unittest
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", kp, params),
                 new TransactionPool(":memory:"),
-                new DataPayloadChecker());
+                new DataPayloadChecker(),
+                new MockClock(time(null)));
         }
 
         override void updateUTXOSet (const ref Block block) @safe

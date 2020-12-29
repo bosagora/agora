@@ -37,6 +37,9 @@ node:
   # is going to connect to, for example: http://0.0.0.0:8008
   # It can also be set to -1 do disable listening (default is -1)
   stats_listening_port: 9110
+  # The new block timestamp has to be greater than the previous block timestamp,
+  # but less than current time + block_timestamp_tolerance_secs
+  block_timestamp_tolerance_secs: 60
 
 ################################################################################
 ##                             Validator configuration                        ##
