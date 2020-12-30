@@ -90,6 +90,8 @@ version (unittest)
         curr_timestamp = the current timestamp
         block_timestamp_tolerance_dur = the proposed block timestamp should be less
                 than curr_timestamp + block_timestamp_tolerance_dur
+        getCoinbaseTX = delegate to get the expected Coinbase TX for a given TX
+            set
 
     Returns:
         `null` if the block is valid, a string explaining the reason it
@@ -103,6 +105,8 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (const ref Point, const Height) nothrow @safe getCommitmentNonce,
     ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
+    Transaction[] delegate (const ref Transaction[] tx_set, const ref uint[]
+    missing_validators) nothrow @safe getCoinbaseTX,
     string file = __FILE__, size_t line = __LINE__) nothrow @safe
 {
     import std.algorithm;
@@ -136,6 +140,13 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             block.header.height, checkFee))
             return fail_reason;
     }
+
+    auto expected_cb_txs = getCoinbaseTX(block.txs,
+        block.header.missing_validators);
+    auto incoming_cb_txs = block.txs.filter!(
+            tx => tx.type == TxType.Coinbase);
+    if (!isPermutation(expected_cb_txs, incoming_cb_txs))
+        return "Invalid Coinbase transaction";
 
     Hash[] merkle_tree;
     if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
@@ -640,7 +651,11 @@ version (unittest)
                     .toPoint();
             },
             prev_timestamp, (curr_timestamp == ulong.max) ? block.header.timestamp : curr_timestamp,
-            block_timestamp_tolerance_dur);
+            block_timestamp_tolerance_dur,
+            (const ref Transaction[] tx_set, const ref uint[] missing_validators)
+            {
+                return cast(Transaction[]) [];
+            });
     }
 
     /// Ditto but returns `bool` and logs reason if fails, only usable in unittests
