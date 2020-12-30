@@ -735,6 +735,28 @@ public class Ledger
 
     /***************************************************************************
 
+        Create the Coinbase TX for this nomination round
+
+        Params:
+            tx_set = Transaction set to generate the CoinBase TX for
+            missing_validators = MPVs
+
+        Returns:
+            List of expected Coinbase TXs
+
+    ***************************************************************************/
+
+    public Transaction[] getCoinbaseTX (const ref Transaction[] tx_set,
+        const ref uint[] missing_validators) nothrow @safe
+    {
+        Amount tot_fee, tot_data_fee;
+        this.fee_man.getTXSetFees(tx_set, &this.utxo_set.peekUTXO, tot_fee,
+            tot_data_fee);
+        return this.getCoinbaseTX(tot_fee, tot_data_fee, missing_validators);
+    }
+
+    /***************************************************************************
+
         Check whether the consensus data is valid.
 
         Params:
@@ -851,6 +873,7 @@ public class Ledger
             this.last_block.header.timestamp,
             cast(ulong) this.clock.networkTime(),
             block_timestamp_tolerance,
+            &this.getCoinbaseTX,
             file, line);
     }
 
