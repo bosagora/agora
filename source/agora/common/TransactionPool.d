@@ -81,8 +81,8 @@ public class TransactionPool
     /// SQLite db instance
     private ManagedDatabase db;
 
-    /// Map for hashes for Input objects of each transaction in TX pool
-    private Set!Hash input_set;
+    /// Keeps track of which TXs spend which inputs
+    private Set!Hash[Hash] spenders;
 
     /***************************************************************************
 
@@ -110,10 +110,7 @@ public class TransactionPool
 
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
-        {
-            foreach (const ref input; tx.inputs)
-                this.input_set.put(input.hashFull());
-        }
+            this.updateSpenderList(tx);
     }
 
     /***************************************************************************
@@ -137,8 +134,7 @@ public class TransactionPool
             return false;
 
         // insert each input information of the transaction
-        foreach (const ref input; tx.inputs)
-            this.input_set.put(input.hashFull());
+        this.updateSpenderList(tx);
 
         serializeToBuffer(tx, buffer);
 
@@ -156,17 +152,107 @@ public class TransactionPool
 
         Params:
             tx = the transaction to remove
+            rm_double_spent = remove the TXs that use the same inputs
 
     ***************************************************************************/
 
-    public void remove (const ref Transaction tx) @trusted
+    public void remove (const ref Transaction tx,
+        bool rm_double_spent = true) @trusted
     {
-        // delete inputs of transaction from the set of Input hashes
-        foreach (const ref input; tx.inputs)
-            this.input_set.remove(input.hashFull());
+        auto tx_hash = tx.hashFull();
+        if (!this.hasTransactionHash(tx_hash))
+            return;
 
-        auto hash = tx.hashFull();
-        this.db.execute("DELETE FROM tx_pool WHERE key = ?", hash);
+        this.db.execute("DELETE FROM tx_pool WHERE key = ?", tx_hash);
+
+        if (rm_double_spent)
+        {
+            // Incoming TX is accepted into the chain, so any other TXs in the pool
+            // that use the same inputs are now invalid, remove them too
+            Set!Hash inv_txs;
+
+            this.gatherDoubleSpentTXs(tx, inv_txs);
+            foreach (input; tx.inputs)
+                this.spenders.remove(input.hashFull());
+
+            inv_txs.each!(inv_tx_hash => this.remove(inv_tx_hash, false));
+        }
+        else
+            foreach (input; tx.inputs)
+                if (auto list = input.hashFull() in this.spenders)
+                    (*list).remove(tx_hash);
+    }
+
+    /// Ditto
+    public void remove (Hash tx_hash,
+        bool rm_double_spent = true) @trusted
+    {
+        if (!this.hasTransactionHash(tx_hash))
+            return;
+
+        auto results = this.db.execute("SELECT val FROM tx_pool " ~
+            "WHERE key = ?", tx_hash);
+        if (!results.empty)
+        {
+            auto tx = deserializeFull!Transaction(results
+                .front.peek!(ubyte[])(0));
+            this.remove(tx, rm_double_spent);
+        }
+    }
+
+    /***************************************************************************
+
+        Add the given TX to `spenders` list
+
+        Params:
+            tx = the transaction to add
+
+    ***************************************************************************/
+
+    private void updateSpenderList (const ref Transaction tx) @safe
+    {
+        auto tx_hash = tx.hashFull();
+
+        // insert each input information of the transaction
+        foreach (const ref input; tx.inputs)
+        {
+            const in_hash = input.hashFull();
+            // Update the spenders list
+            if (in_hash !in this.spenders)
+                this.spenders[in_hash] = Set!Hash();
+            this.spenders[in_hash].put(tx_hash);
+        }
+    }
+
+    /***************************************************************************
+
+        Gather TXs that share inputs with the given TX
+
+        Params:
+            tx = a transaction
+            double_spent_txs = container to write the double-spend TXs
+
+        Returns:
+            true if double-spend TXs where found, false otherwise
+
+    ***************************************************************************/
+
+    private bool gatherDoubleSpentTXs (const ref Transaction tx,
+        ref Set!Hash double_spent_txs)
+    {
+        double_spent_txs.clear();
+
+        const tx_hash = tx.hashFull();
+        foreach (const ref input; tx.inputs)
+        {
+            const in_hash = input.hashFull();
+            if (auto cur_spenders = in_hash in this.spenders)
+                foreach (spender; *cur_spenders)
+                    if (spender != tx_hash)
+                        double_spent_txs.put(spender);
+        }
+
+        return double_spent_txs.length > 0;
     }
 
     /***************************************************************************
@@ -265,19 +351,7 @@ public class TransactionPool
 
     private bool isValidTransaction (const ref Transaction tx) @trusted
     {
-        auto txHash = tx.hashFull();
-
-        if (this.hasTransactionHash(txHash))
-            return false;  // double-spend
-
-        foreach (const ref input; tx.inputs)
-        {
-            auto hash = input.hashFull();
-            if (hash in this.input_set)
-                return false;
-        }
-
-        return true;
+        return !this.hasTransactionHash(tx.hashFull());
     }
 
     /***************************************************************************
@@ -466,18 +540,98 @@ unittest
     signature = key_pair1.secret.sign(hashFull(tx2)[]);
     tx2.inputs[0].signature = signature;
 
-    // add first tx to the pool
+    // add txs to the pool
     assert(pool.add(tx1));
+    assert(pool.add(tx2));
 
-    // add duplicate tx => return false
-    assert(!pool.add(tx2));
+    assert(pool.length == 2);
+    pool.remove(tx1);
+    assert(pool.length == 0);
 
-    // create second transaction pool
-    auto pool2 = new TransactionPool(":memory:");
+    assert(pool.add(tx1));
+    assert(pool.add(tx2));
+    assert(pool.length == 2);
+    pool.remove(tx2);
+    assert(pool.length == 0);
+}
 
-    // add duplicate tx into second pool => return true
-    assert(pool2.add(tx2));
+// test addition and removal of double-spend txs
+unittest
+{
+    import agora.common.Amount;
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
 
-    // add first tx => return false
-    assert(!pool2.add(tx1));
+    auto pool = new TransactionPool(":memory:");
+
+    Transaction tx1 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(0), KeyPair.random.address)]
+    };
+
+    Transaction tx2 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 1)],
+        [Output(Amount(0), KeyPair.random.address)]
+    };
+
+    Transaction tx3 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 1)],
+        [Output(Amount(0), KeyPair.random.address)]
+    };
+
+    assert(pool.add(tx1));
+    assert(pool.add(tx2));
+    assert(pool.add(tx3));
+    assert(pool.length == 3);
+    // tx3 should be removed as well.
+    pool.remove(tx2);
+    assert(pool.length == 1);
+    assert(pool.hasTransactionHash(tx1.hashFull()));
+}
+
+// test addition and removal of double-spend txs
+// with a more complex relation betwween double-spend txs
+unittest
+{
+    import agora.common.Amount;
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
+
+    auto pool = new TransactionPool(":memory:");
+
+    Transaction tx1 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(0), KeyPair.random.address)]
+    };
+
+    Transaction tx2 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0), Input(Hash.init, 1)],
+        [Output(Amount(0), KeyPair.random.address)]
+    };
+
+    Transaction tx3 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 1)],
+        [Output(Amount(0), KeyPair.random.address)]
+    };
+
+    assert(pool.add(tx1));
+    assert(pool.add(tx2));
+    assert(pool.add(tx3));
+    assert(pool.length == 3);
+    // tx2 will be removed as well.
+    pool.remove(tx1);
+    assert(pool.length == 1);
+    assert(pool.hasTransactionHash(tx3.hashFull()));
 }
