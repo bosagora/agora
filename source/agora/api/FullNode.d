@@ -23,8 +23,9 @@ import agora.common.Set;
 import agora.common.Serializer;
 import agora.consensus.data.Transaction;
 
-import vibe.web.rest;
+import vibe.data.serialization;
 import vibe.http.common;
+import vibe.web.rest;
 
 // TODO: time_t is not a fixed-size, need another type for the API
 import core.stdc.time;
@@ -68,6 +69,7 @@ public struct NodeInfo
 *******************************************************************************/
 
 @path("/")
+@serializationPolicy!(Base64ArrayPolicy)
 public interface API
 {
 // The REST generator requires @safe methods
