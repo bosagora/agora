@@ -242,7 +242,7 @@ public extern(C++, (StdNamespace))  struct equal_to (T = void) {}
     (e.g. push_back).
 
     Extra items, like `ConstIterator` and `toString` / `fromString` are for
-     ease of use (e.g. `to/fromString` actually allows vibe.d to deserialize it)
+    ease of use (e.g. `to/fromString` actually allows vibe.d to deserialize it)
 
 *******************************************************************************/
 
