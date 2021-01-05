@@ -16,6 +16,16 @@
 
 module agora.utils.Workarounds;
 
+version (CRuntime_Musl)
+{
+    import agora.utils.libunwind;
+    shared static this ()
+    {
+        import core.runtime;
+        Runtime.traceHandler = &libunwindDefaultTraceHandler;
+    }
+}
+
 /**
  * Workaround for segfault similar (or identical) to https://github.com/dlang/dub/issues/1812
  * https://dlang.org/changelog/2.087.0.html#gc_parallel
