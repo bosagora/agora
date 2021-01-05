@@ -326,25 +326,28 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
 
         alias opDollar = length;
 
+        static if (is(T : ubyte))
+        {
+            import vibe.data.serialization : Base64ArrayPolicy;
+            package alias SerPolicy = Base64ArrayPolicy;
+        }
+        else
+        {
+            package alias SerPolicy = DefaultPolicy;
+        }
+
         string toString() const @trusted
         {
-            bool first = true;
-            string ret = "[ ";
-            foreach (ref entry; this.constIterator())
-            {
-                if (!first)
-                    ret ~= ", ";
-                ret ~= entry.serializeToJsonString();
-                first = false;
-            }
-            ret ~= " ]";
-            return ret;
+            import std.array : appender, Appender;
+
+            auto app = appender!string();
+            serializeWithPolicy!(JsonStringSerializer!(Appender!string), SerPolicy)(this[], app);
+            return app.data;
         }
 
         static typeof(this) fromString(string src) @safe
         {
-            import scpd.types.Utils;
-            auto array = src.deserializeJson!(T[]);
+            auto array = src.deserializeWithPolicy!(JsonStringSerializer!string, SerPolicy, T[]);
             typeof(this) vec;
             foreach (ref item; array)
                 vec.push_back(item);
@@ -395,6 +398,20 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             }
         }
     }
+}
+
+unittest
+{
+    import std.algorithm : each;
+    import std.conv : to;
+    import std.range : iota;
+
+    vector!ubyte vec_ubyte;
+    iota(5).each!((num) {ubyte b = cast(ubyte)num; vec_ubyte.push_back(b);});
+    auto serialized = vec_ubyte.toString();
+    assert(serialized == `"AAECAwQ="`, "actual serialized: " ~ serialized);
+    auto deserialized = vec_ubyte.fromString(serialized)[];
+    assert(deserialized == [0, 1, 2, 3, 4], "actual deserialized: " ~ to!string(deserialized));
 }
 
 unittest
