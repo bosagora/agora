@@ -1,8 +1,11 @@
 # Part of the source tree, but not needed to build Agora
 .git/
+ci/
 doc/
 hooks/
 tests/
+LICENSE
+README.md
 
 # Various build folders
 .dub/
