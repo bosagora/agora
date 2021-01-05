@@ -50,6 +50,7 @@ static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
 
+import vibe.data.serialization;
 import vibe.web.rest;
 
 ///
@@ -66,6 +67,7 @@ public import agora.api.FullNode;
 *******************************************************************************/
 
 @path("/")
+@serializationPolicy!(Base64ArrayPolicy)
 public interface API : agora.api.FullNode.API
 {
 // The REST generator requires @safe methods
