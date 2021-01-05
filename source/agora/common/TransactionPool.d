@@ -55,6 +55,9 @@ static this ()
     TransactionPool.initialize();
 }
 
+/// A delegate type to select one of the double spent TXs
+public alias DoubleSpentSelector = size_t delegate(Transaction[] txs);
+
 /// A transaction pool that is serializable to disk, backed by SQLite
 public class TransactionPool
 {
@@ -84,6 +87,9 @@ public class TransactionPool
     /// Keeps track of which TXs spend which inputs
     private Set!Hash[Hash] spenders;
 
+    /// A delegate to select one of the double spent TXs
+    public DoubleSpentSelector selector;
+
     /***************************************************************************
 
         Params:
@@ -111,6 +117,10 @@ public class TransactionPool
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
             this.updateSpenderList(tx);
+
+        // Set selector after rebuilding the spender list, so nothing gets
+        // filtered out
+        this.selector = &this.defaultSelector;
     }
 
     /***************************************************************************
@@ -292,11 +302,50 @@ public class TransactionPool
     {
         () @trusted
         {
-            auto results = this.db.execute("SELECT val FROM tx_pool");
+            // TXs that went through the "selection" process and should be
+            // skipped
+            bool[Hash] skip_txs;
+
+            auto results = this.db.execute("SELECT key, val FROM tx_pool");
 
             foreach (ref row; results)
             {
-                auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(0));
+                auto key = Hash(row.peek!(char[])(0));
+                if (key in skip_txs)
+                    continue;
+
+                auto tx = deserializeFull!Transaction(row.peek!(ubyte[])(1));
+
+                Set!Hash db_keys; // Gather double spent TX keys
+                if (this.selector && this.gatherDoubleSpentTXs(tx, db_keys))
+                {
+                    db_keys.put(key);
+
+                    // Filter out TXs already went through the selector
+                    Hash[] db_keys_filtered;
+                    foreach (db_key; db_keys)
+                        if (db_key !in skip_txs)
+                            db_keys_filtered ~= db_key;
+
+                    // Fetch TXs
+                    Transaction[] db_txs;
+                    foreach (db_key; db_keys_filtered)
+                    {
+                        auto db_tx = deserializeFull!Transaction(this.db.execute(
+                        "SELECT val FROM tx_pool WHERE key = ?", db_key)
+                            .oneValue!(ubyte[]));
+                        db_txs ~= db_tx;
+                    }
+
+                    auto selected_idx = this.selector(db_txs);
+                    // Our new TX that we will return
+                    tx = db_txs[selected_idx];
+
+                    // Update the skip list
+                    db_txs.each!(db_tx => skip_txs[db_tx.hashFull()] = true);
+                    this.gatherDoubleSpentTXs(tx, db_keys);
+                    db_keys.each!(db_key => skip_txs[db_key] = true);
+                }
 
                 // break
                 if (auto ret = dg(tx))
@@ -352,6 +401,23 @@ public class TransactionPool
     private bool isValidTransaction (const ref Transaction tx) @trusted
     {
         return !this.hasTransactionHash(tx.hashFull());
+    }
+
+    /***************************************************************************
+
+        Select first TX from double-spend set
+
+        Params:
+            tx = the transaction set
+
+        Returns:
+            Always selects first transaction
+
+    ***************************************************************************/
+
+    private size_t defaultSelector (Transaction[] txs)
+    {
+        return 0;
     }
 
     /***************************************************************************
@@ -634,4 +700,76 @@ unittest
     pool.remove(tx1);
     assert(pool.length == 1);
     assert(pool.hasTransactionHash(tx3.hashFull()));
+}
+
+// test double-spend selection mechanism
+unittest
+{
+    import agora.common.Amount;
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
+
+    // Pick the TX with max output value, assumes only one output
+    size_t selector (Transaction[] txs)
+    {
+        size_t max_idx = 0;
+        Amount max_amt = txs[max_idx].outputs[0].value;
+
+        foreach (idx, tx; txs)
+        {
+            assert(tx.outputs.length == 1);
+            if (tx.outputs[0].value > max_amt)
+            {
+                max_idx = idx;
+                max_amt = tx.outputs[0].value;
+            }
+        }
+        return max_idx;
+    }
+
+    auto pool = new TransactionPool(":memory:");
+    pool.selector = &selector;
+
+    Transaction tx1 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(2), KeyPair.random.address)]
+    };
+
+    Transaction tx2 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0), Input(Hash.init, 1)],
+        [Output(Amount(1), KeyPair.random.address)]
+    };
+
+    assert(pool.add(tx1));
+    assert(pool.add(tx2));
+    assert(pool.length == 2);
+
+    ulong idx = 0;
+    // only tx1 should be returned.
+    foreach (ref Transaction tx; pool)
+    {
+        assert(tx == tx1);
+        assert(idx++ == 0);
+    }
+
+    pool.remove(tx1);
+    assert(pool.length == 0);
+
+    // Now tx1 has lower output value
+    tx1.outputs[0].value.sub(Amount(2));
+    assert(pool.add(tx1));
+    assert(pool.add(tx2));
+    assert(pool.length == 2);
+
+    idx = 0;
+    // only tx2 should be returned.
+    foreach (ref Transaction tx; pool)
+    {
+        assert(tx == tx2);
+        assert(idx++ == 0);
+    }
 }
