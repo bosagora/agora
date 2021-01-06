@@ -28,6 +28,7 @@ import agora.api.handler.PreImageReceivedHandler;
 import agora.api.handler.TransactionReceivedHandler;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.common.crypto.Key;
 import agora.common.Config;
@@ -318,6 +319,9 @@ public class NetworkManager
     /// Validator instance
     protected const ValidatorConfig validator_config = ValidatorConfig.init;
 
+    /// ConsensusConfig instance
+    protected const ConsensusConfig consensus_config = ConsensusConfig.init;
+
     /// Task manager
     private TaskManager taskman;
 
@@ -371,6 +375,7 @@ public class NetworkManager
         this.taskman = taskman;
         this.node_config = config.node;
         this.validator_config = config.validator;
+        this.consensus_config = config.consensus;
         this.metadata = metadata;
         this.banman = this.getBanManager(config.banman, clock,
             node_config.data_dir);
@@ -810,7 +815,8 @@ public class NetworkManager
     ***************************************************************************/
 
     public void getBlocksFrom (Height block_height,
-        scope bool delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
+        scope bool delegate(const(Block)[],
+        const(PreImageInfo)[]) @safe onReceivedBlocks) nothrow
     {
         struct Pair { Height height; NetworkClient client; }
 
@@ -845,6 +851,17 @@ public class NetworkManager
 
             do
             {
+                auto start_height =
+                    block_height < this.consensus_config.validator_cycle ?
+                        0 : block_height - this.consensus_config.validator_cycle;
+
+                log.info("Retrieving preimages from the height of {} from {}..",
+                    start_height, pair.client.address);
+
+                auto preimages = pair.client.getPreimages(start_height, block_height);
+
+                log.info("Received {} preimages", preimages.length);
+
                 auto blocks = pair.client.getBlocksFrom(block_height, MaxBlocks);
                 if (blocks.length == 0)
                     continue LNextNode;
@@ -853,7 +870,7 @@ public class NetworkManager
                     blocks[0].header.height, blocks[$ - 1].header.height);
 
                 // one or more blocks were rejected, stop retrieval from node
-                if (!onReceivedBlocks(blocks))
+                if (!onReceivedBlocks(blocks, preimages))
                     continue LNextNode;
 
                 block_height += blocks.length;

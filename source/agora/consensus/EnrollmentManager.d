@@ -785,6 +785,35 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Add pre-images for enrolled validators
+
+        Params:
+            preimages = the pre-images to add
+
+        Returns:
+            true if preimages was added successfully
+
+    ***************************************************************************/
+
+    public bool addPreimages (const PreImageInfo[] preimages) @safe nothrow
+    {
+        foreach (image; preimages)
+        {
+            auto stored_image =
+                this.validator_set.getPreimage(image.enroll_key);
+            if (stored_image == PreImageInfo.init ||
+                stored_image.distance >= image.distance)
+                continue;
+
+            if (!this.validator_set.addPreimage(image))
+                return false;
+        }
+
+        return true;
+    }
+
+    /***************************************************************************
+
         Get the public key of node that is used for a enrollment
 
         Returns:
