@@ -213,11 +213,6 @@ public class SlashPolicy
                 valid_keys ~= key;
         }
 
-        // TODO: This should not happen in fact, which situation will be handled
-        // in issue #1444. (https://github.com/bpfkorea/agora/issues/1444)
-        if (valid_keys.length == 0)
-            return Hash.init;
-
         return this.enroll_man.getRandomSeed(valid_keys, height);
     }
 

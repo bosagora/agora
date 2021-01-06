@@ -83,6 +83,7 @@ version (unittest)
         active_enrollments = the number of enrollments that do not expire
             at the next block height (prev_height + 1).
         enrolled_validators = the number of validators enrolled at this height
+        random_seed = Hash of random seed of the preimages
         getValidatorAtIndex = delegate to provide validator Point K for
             given height and index into map
         getCommitmentNonce = delegate to provide the commitment Nonce of the
@@ -102,7 +103,8 @@ version (unittest)
 
 public string isInvalidReason (const ref Block block, Height prev_height,
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
-    scope EnrollmentFinder findEnrollment, size_t active_enrollments, size_t enrolled_validators,
+    scope EnrollmentFinder findEnrollment, size_t active_enrollments,
+    size_t enrolled_validators, in Hash random_seed,
     Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (const ref Point, const Height) nothrow @safe getCommitmentNonce,
     ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
@@ -178,6 +180,12 @@ public string isInvalidReason (const ref Block block, Height prev_height,
         if (auto fail_reason = VEn.isInvalidReason(enrollment, enrollmentsUTXOFinder,
                                             block.header.height, findEnrollment))
             return fail_reason;
+    }
+
+    if (block.header.random_seed == Hash.init
+        || block.header.random_seed != random_seed)
+    {
+        return "Block: Header's random seed does not match that of known pre-images";
     }
 
     Point sum_K;
@@ -640,14 +648,17 @@ version (unittest)
     public string isValidcheck (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
-        scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
-        ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
+        scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
+        ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
         Duration block_timestamp_tolerance_dur = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
+        if (random_seed == Hash.init)
+            random_seed = getTestRandomSeed();
+
         return isInvalidReason(block, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, active_enrollments, enrolled_validators,
-            (Height h, ulong i) @safe nothrow
+            random_seed, (Height h, ulong i) @safe nothrow
             {
                 return Point(genesis_validator_keys[i].address[]);
             },
@@ -670,14 +681,15 @@ version (unittest)
     public bool isValid (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
-        scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
-        ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
+        scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
+        ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
         Duration block_timestamp_tolerance_dur = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkFee, findEnrollment, enrollment_cycle,
-            prev_timestamp, curr_timestamp, block_timestamp_tolerance_dur);
+            active_enrollments, enrolled_validators, checkFee, findEnrollment,
+            random_seed, enrollment_cycle, prev_timestamp, curr_timestamp,
+            block_timestamp_tolerance_dur);
         if (reason !is null)
             log.trace("[{}:{}] block height {} is invalid: {}",
                 file, line, block.header.height, reason);
@@ -688,13 +700,14 @@ version (unittest)
     public bool isNotValid (const ref Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
-        scope EnrollmentFinder findEnrollment, ulong enrollment_cycle = 0,
-        ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
+        scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
+        ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
         Duration block_timestamp_tolerance_dur = 100.seconds) nothrow @safe
     {
         return isValidcheck(block, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkFee, findEnrollment, enrollment_cycle,
-            prev_timestamp, curr_timestamp, block_timestamp_tolerance_dur) !is null;
+            active_enrollments, enrolled_validators, checkFee, findEnrollment,
+            random_seed, enrollment_cycle, prev_timestamp, curr_timestamp,
+            block_timestamp_tolerance_dur) !is null;
     }
 }
 
@@ -1023,12 +1036,14 @@ unittest
     auto block3 = makeNewTestBlock(block2, txs_3, enrollments, preimage_root,
         missing_validators);
     assert(block3.isValid(block2.header.height, hashFull(block2.header), findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments));
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker,
+        findGenesisEnrollments, preimage_root));
     enrollments.sort!("a.utxo_key > b.utxo_key");
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     assert(block3.isNotValid(block2.header.height, hashFull(block2.header), findUTXO,
-        Enrollment.MinValidatorCount, Enrollment.MinValidatorCount, checker, findGenesisEnrollments));
+        Enrollment.MinValidatorCount, Enrollment.MinValidatorCount, checker,
+        findGenesisEnrollments, preimage_root));
 }
 
 /// test that there must always exist active validators
@@ -1163,7 +1178,8 @@ unittest
             missing_validators);
         assert(block3.header.enrollments.length == Enrollment.MinValidatorCount);
         assert(block3.isValid(block2.header.height, hashFull(block2.header),
-            findUTXO, 0, genesis_validator_keys.length, checker, findGenesisEnrollments));
+            findUTXO, 0, genesis_validator_keys.length, checker, findGenesisEnrollments,
+            preimage_root));
     }
 
     // When there are still active validators at the new block height,

@@ -657,6 +657,12 @@ public auto genesisSpendable () @safe pure nothrow
     return GenesisBlock.spendable;
 }
 
+/// Get random seed for making new block
+public Hash getTestRandomSeed () @safe nothrow
+{
+    return hashFull(Hash.init);
+}
+
 ///
 @safe nothrow unittest
 {

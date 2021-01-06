@@ -244,8 +244,8 @@ public class Ledger
     public bool onExternalized (ConsensusData data)
         @trusted
     {
-        Hash random_seed = this.slash_man.getExternalizedRandomSeed(
-            this.getBlockHeight(), data.missing_validators);
+        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight(),
+            data.missing_validators);
 
         Transaction[] externalized_tx_set;
         if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
@@ -268,7 +268,10 @@ public class Ledger
     {
         import agora.utils.Test : WK;
 
-        auto next_block = this.last_block.header.height + 1;
+        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight(),
+            data.missing_validators);
+
+        auto next_block = Height(this.last_block.header.height + 1);
         KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
             .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
             .map!(K => WK.Keys[K])
@@ -283,7 +286,7 @@ public class Ledger
         }
 
         const block = makeNewTestBlock(this.last_block,
-            externalized_tx_set, data.enrolls, Hash.init,
+            externalized_tx_set, data.enrolls, random_seed,
             data.missing_validators, public_keys,
             (PublicKey pubkey)
             {
@@ -829,6 +832,7 @@ public class Ledger
             this.enroll_man.getEnrollmentFinder(),
             this.enroll_man.getValidatorCount(block.header.height),
             this.enroll_man.getCountOfValidators(block.header.height),
+            this.getRandomSeed(),
             &this.enroll_man.getValidatorAtIndex,
             (const ref Point key, const Height height) @safe nothrow
             {
@@ -1057,6 +1061,22 @@ public class Ledger
     {
         return this.unknown_txs;
     }
+
+    /***************************************************************************
+
+        Generate the random seed reduced from the preimages for the current
+        height
+
+        Returns:
+            the random seed if there are one or more valid preimages,
+            otherwise Hash.init.
+
+    ***************************************************************************/
+
+    public Hash getRandomSeed() nothrow @safe
+    {
+        return this.slash_man.getRandomSeed(this.last_block.header.height);
+    }
 }
 
 /// Note: these unittests historically assume a block always contains
@@ -1117,6 +1137,19 @@ version (unittest)
             @safe
         {
             return;
+        }
+
+        ///
+        public override Hash getExternalizedRandomSeed (in Height height,
+            const ref uint[] missing_validators) @safe nothrow
+        {
+            return getTestRandomSeed();
+        }
+
+        ///
+        public override Hash getRandomSeed() nothrow @safe
+        {
+            return getTestRandomSeed();
         }
     }
 }
@@ -1680,6 +1713,19 @@ unittest
             super.updateValidatorSet(block);
             if (this.throw_in_update_validators)
                 throw new Exception("");
+        }
+
+        ///
+        public override Hash getExternalizedRandomSeed (in Height height,
+            const ref uint[] missing_validators) @safe nothrow
+        {
+            return getTestRandomSeed();
+        }
+
+        ///
+        public override Hash getRandomSeed() nothrow @safe
+        {
+            return getTestRandomSeed();
         }
     }
 

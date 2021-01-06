@@ -100,8 +100,8 @@ private class SameKeyNodeAPIManager : TestAPIManager
 unittest
 {
     TestConf conf = {
-        extra_blocks : 16,
-        recurring_enrollment : false,
+        txs_to_nominate : 0, // zero allows any number of txs for nomination
+        recurring_enrollment : false
     };
 
     auto network = makeTestNetwork!SameKeyNodeAPIManager(conf);
@@ -111,7 +111,8 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
 
-    // Sanity check
+    // generate 16 blocks
+    network.generateBlocks(Height(16));
     assert(network.blocks[0].header.enrollments.length >= 1);
     network.expectBlock(Height(16), network.blocks[0].header, 5.seconds);
 
@@ -129,7 +130,7 @@ unittest
 
     // Block 17
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(17), network.blocks[0].header, 5.seconds);
+    network.expectBlock(Height(17), network.blocks[0].header, 10.seconds);
 
     // Freeze builders
     auto freezable = txs[$ - 4]
