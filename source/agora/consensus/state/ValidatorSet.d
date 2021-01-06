@@ -582,6 +582,48 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Get validators' pre-image information
+
+        Params:
+            start_height = the starting enrolled height to begin retrieval from
+            end_height = the end enrolled height to finish retrieval to
+
+        Returns:
+            preimages' information of the validators
+
+    ***************************************************************************/
+
+    public PreImageInfo[] getPreimages (Height start_height,
+        Height end_height) @trusted nothrow
+    {
+        PreImageInfo[] preimages;
+
+        try
+        {
+            auto results = this.db.execute("SELECT key, preimage, distance " ~
+                "FROM validator_set WHERE enrolled_height >= ? AND " ~
+                "enrolled_height <= ?",
+                start_height, end_height);
+
+            foreach (row; results)
+            {
+                Hash enroll_key = Hash(row.peek!(char[])(0));
+                Hash preimage = Hash(row.peek!(char[])(1));
+                ushort distance = row.peek!ushort(2);
+                preimages ~= PreImageInfo(enroll_key, preimage, distance);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on getPreimages: {}, heights " ~
+                "[{}..{}]", ex.msg, start_height, end_height);
+        }
+
+        return preimages;
+    }
+
+    /***************************************************************************
+
         Get validator's pre-image for the given block height from the
         validator set
 
