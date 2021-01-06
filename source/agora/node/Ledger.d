@@ -672,9 +672,36 @@ public class Ledger
             }
         }
 
+        const pre_cb_len = data.tx_set.length;
+        data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
+            data.missing_validators);
+        // No more than 1 CB per block
+        assert(data.tx_set.length - pre_cb_len <= 1);
+    }
+
+    /***************************************************************************
+
+        Create the Coinbase TX for this nomination round and append it to the
+        tx_set
+
+        Params:
+            tot_fee = Total fee amount (incl. data)
+            tot_data_fee = Total data fee amount
+            missing_validators = MPVs
+
+        Returns:
+            List of expected Coinbase TXs
+
+    ***************************************************************************/
+
+    public Transaction[] getCoinbaseTX (Amount tot_fee, Amount tot_data_fee,
+        const ref uint[] missing_validators) nothrow @safe
+    {
+        const next_height = Height(this.getBlockHeight() + 1);
+
         UTXO[] stakes;
         this.enroll_man.getValidatorStakes(&this.utxo_set.peekUTXO, stakes,
-            data.missing_validators);
+            missing_validators);
         const commons_fee = this.fee_man.getCommonsBudgetFee(tot_fee,
             tot_data_fee, stakes);
 
@@ -696,8 +723,7 @@ public class Ledger
                 if (pair.value > Amount(0))
                     coinbase_tx.outputs ~= Output(pair.value, pair.key);
 
-        if (coinbase_tx.outputs.length)
-            tx_set ~= coinbase_tx;
+        return coinbase_tx.outputs.length > 0 ? [coinbase_tx] : [];
     }
 
     /// Error message describing the reason of validation failure
@@ -727,11 +753,33 @@ public class Ledger
         if (!data.tx_set.length)
             return InvalidConsensusDataReason.NoTransactions;
 
+        Amount tot_fee, tot_data_fee;
+        scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
+            const err = this.fee_man.check(tx, sum_unspent);
+            if (!err && tx.type != TxType.Coinbase)
+            {
+                tot_fee.add(sum_unspent);
+                tot_data_fee.add(
+                    this.fee_man.getDataFee(tx.payload.data.length));
+            }
+            return err;
+        };
+
         foreach (const ref tx; data.tx_set)
         {
-            if (auto fail_reason = tx.isInvalidReason(utxo_finder, expect_height, &this.fee_man.check))
+            if (auto fail_reason = tx.isInvalidReason(utxo_finder,
+                expect_height, checkAndAcc))
                 return fail_reason;
         }
+
+        Transaction[] expected_cb_txs = this.getCoinbaseTX(tot_fee,
+            tot_data_fee, data.missing_validators);
+        assert(expected_cb_txs.length <= 1);
+
+        auto incoming_cb_txs = data.tx_set.filter!(
+                tx => tx.type == TxType.Coinbase);
+        if (!isPermutation(expected_cb_txs, incoming_cb_txs))
+            return "Invalid Coinbase transaction";
 
         size_t active_enrollments = enroll_man.getValidatorCount(expect_height);
 
@@ -2005,6 +2053,17 @@ unittest
     // Block with no fee
     auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
     no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+
+    ConsensusData data;
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    // Filter out the CB TXs, just in case
+    data.tx_set = data.tx_set.filter!(tx => tx.type != TxType.Coinbase).array;
+    // This is a block with no fees, a ConsensusData with Coinbase TXs should
+    // fail validation
+    data.tx_set ~= Transaction(TxType.Coinbase, [Input(Height(blocks.length))],
+        [Output(Amount(1), CommonsBudgetAddress)]);
+    assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == blocks.length);
     blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
@@ -2020,15 +2079,39 @@ unittest
         auto txs = blocks[$-1].spendable.map!(txb =>
             txb.deduct(per_tx_fee).sign()).array();
         txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+
+        data = ConsensusData.init;
+        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+        assert(data.tx_set[$ - 1].type == TxType.Coinbase);
+        assert(data.tx_set[$ - 1].outputs.length >= 1);
+
+        // Decrease the paid amount, should fail
+        data.tx_set[$ - 1].outputs[$ - 1].value.mustSub(Amount(1));
+        assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        // Increase the paid amount, should fail
+        data.tx_set[$ - 1].outputs[$ - 1].value.mustAdd(Amount(2));
+        assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        data.tx_set[$ - 1].outputs[$ - 1].value.mustSub(Amount(1));
+        // Add an extra payment, should fail
+        data.tx_set[$ - 1].outputs ~= Output(Amount(1), KeyPair.random.address);
+        assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        if (blocks.length % params.PayoutPeriod == 0)
+        {
+            // Remove an existing payment, should fail
+            data.tx_set[$ - 1].outputs = data.tx_set[$ - 1].outputs[0 .. $ - 2];
+            assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        }
+
         ledger.forceCreateBlock();
         assert(ledger.getBlockHeight() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
             .array;
+        assert(cb_txs.length == 1);
         // Payout block should pay the CommonsBudget + all validators (excl MPV)
         // other blocks should only pay CommonsBudget
-        assert(cb_txs.length == (blocks[$-1].header.height == params.PayoutPeriod
+        assert(cb_txs[0].outputs.length == (blocks[$-1].header.height == params.PayoutPeriod
             ? genesisEnrollKeys.length : 1));
 
         // MPV should never be paid
