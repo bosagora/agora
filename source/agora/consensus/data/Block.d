@@ -88,31 +88,6 @@ public struct BlockHeader
         foreach (validator; this.missing_validators)
             hashPart(validator, dg);
     }
-
-    /***************************************************************************
-
-        Block Header Serialization
-
-        Params:
-            dg = serialize function accumulator
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        dg(this.prev_block[]);
-        serializePart(this.height.value, dg);
-        dg(this.merkle_root[]);
-        serializePart(this.validators, dg);
-        serializePart(this.signature, dg);
-        serializePart(this.enrollments.length, dg);
-        foreach (enrollment; this.enrollments)
-            serializePart(enrollment, dg);
-        dg(this.random_seed[]);
-        serializePart(this.missing_validators.length, dg);
-        foreach (validator; this.missing_validators)
-            serializePart(validator, dg);
-    }
 }
 
 /// hashing test
