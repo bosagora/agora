@@ -372,6 +372,29 @@ class NetworkClient
 
     /***************************************************************************
 
+        Get the array of pre-images starting from the `enrolled_height`.
+
+        Params:
+            start_height = the starting enrolled height to begin retrieval from
+            end_height = the end enrolled height to finish retrieval to
+
+        Returns:
+            the array of preimages of validators enrolling from `enrolled_height`
+            to `end_height`
+
+            If the request failed, returns an empty array
+
+    ***************************************************************************/
+
+    public PreImageInfo[] getPreimages (ulong start_height,
+        ulong end_height) nothrow
+    {
+        return this.attemptRequest!(API.getPreimages, Throw.No)(this.api,
+            start_height, end_height);
+    }
+
+    /***************************************************************************
+
         Attempt a request up to 'this.max_retries' attempts, and make the task
         wait this.retry_delay between each attempt.
 

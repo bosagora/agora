@@ -300,14 +300,38 @@ public class FullNode : API
                     return;
 
                 this.network.getBlocksFrom(
-                    this.ledger.getBlockHeight() + 1,
-                    // if any blocks fail validation => short-circuit
-                    blocks => blocks.all!(block => this.acceptBlock(block)));
+                    Height(this.ledger.getBlockHeight() + 1),
+                    &addBlocks);
                 this.network.getUnknownTXs(this.ledger);
             }
             catchup(); // avoid delay
             this.taskman.setTimer(this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);
         });
+    }
+
+    /***************************************************************************
+
+        Add blocks to the ledger and add the related pre-images
+
+        Params:
+            blocks = the blocks to be added
+            preimages = the preimages needed to check the validity of the blocks
+
+        Returns:
+            true if the blocks and preimages was added
+
+    ***************************************************************************/
+
+    bool addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages) @safe
+    {
+        foreach (block; blocks)
+        {
+            if(!this.ledger.enrollment_manager.addPreimages(preimages))
+                return false;
+            if (!this.ledger.acceptBlock(block))
+                return false;
+        }
+        return true;
     }
 
     /***************************************************************************
