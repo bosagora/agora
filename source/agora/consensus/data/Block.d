@@ -497,7 +497,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
 /// only used in unittests with defualt block signing with the genesis validators
 version (unittest)
 {
-    import agora.utils.Test : WK;
+    import agora.utils.Test;
 
     public KeyPair[] genesis_validator_keys = [
         WK.Keys.NODE2,
@@ -519,6 +519,9 @@ version (unittest)
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
         ulong timestamp = ulong.max) @safe nothrow
     {
+        if (random_seed == Hash.init)
+            random_seed = getTestRandomSeed();
+
         // the timestamp passed to makeNewBlock should really be
         // prev_block.header.timestamp + ConsensusParams.BlockInterval instead of
         // prev_block.header.timestamp + 1
