@@ -680,6 +680,14 @@ public class FullNode : API
         return this.enroll_man.getValidatorPreimage(enroll_key);
     }
 
+    /// GET: /preimages_from
+    public override PreImageInfo[] getPreimages (ulong start_height,
+        ulong end_height) @safe nothrow
+    {
+        return this.enroll_man.getValidatorPreimages(Height(start_height),
+            Height(end_height)).array();
+    }
+
     /// GET /local_time
     public override time_t getLocalTime () @safe nothrow
     {

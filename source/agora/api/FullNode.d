@@ -215,6 +215,24 @@ public interface API
 
     /***************************************************************************
 
+        Get validators' pre-image information
+
+        API:
+            GET /preimages
+
+        Params:
+            start_height = the starting enrolled height to begin retrieval from
+            end_height = the end enrolled height to finish retrieval to
+
+        Returns:
+            preimages' information of the validators
+
+    ***************************************************************************/
+
+    public PreImageInfo[] getPreimages (ulong start_height, ulong end_height);
+
+    /***************************************************************************
+
         Reveals a pre-image
 
         API:
