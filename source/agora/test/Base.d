@@ -31,7 +31,7 @@ import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
-import agora.common.TransactionPool;
+import agora.node.TransactionPool;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;

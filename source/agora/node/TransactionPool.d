@@ -12,7 +12,7 @@
 
 *******************************************************************************/
 
-module agora.common.TransactionPool;
+module agora.node.TransactionPool;
 
 import agora.common.ManagedDatabase;
 import agora.common.Types;
