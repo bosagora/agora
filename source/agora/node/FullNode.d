@@ -28,7 +28,7 @@ import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
-import agora.common.TransactionPool;
+import agora.node.TransactionPool;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
