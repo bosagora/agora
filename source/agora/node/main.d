@@ -18,13 +18,8 @@
 
 module agora.node.main;
 
-/// Workaround for issue likely related to dub #225,
-/// expects a main() function and invokes it after unittesting.
-version (unittest)
-{
-    import agora.utils.Workarounds;
-    void main () { }
-}
+// TODO: Remove those two lines when compatibility for dub < v1.24 is dropped
+version (unittest) {}
 else:
 
 import agora.common.Config;
