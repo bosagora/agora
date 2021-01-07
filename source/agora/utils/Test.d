@@ -45,6 +45,7 @@ import std.algorithm;
 import std.array;
 import std.file;
 import std.format;
+import std.functional;
 import std.path;
 import std.range;
 
@@ -435,13 +436,16 @@ public struct TxBuilder
         Params:
             type = type of `Transaction`
             data = data payload of `Transaction`
+            lookupDg = delegate to look up the `KeyPair`
 
         Returns:
             The finalized & signed `Transaction`.
 
     ***************************************************************************/
 
-    public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = []) @safe nothrow
+    public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = [],
+        scope KeyPair delegate(PublicKey pubkey) @safe nothrow lookupDg = toDelegate(&WK.Keys.opIndex))
+        @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
@@ -464,7 +468,7 @@ public struct TxBuilder
         // Sign all inputs using WK keys
         foreach (idx, ref in_; this.inputs)
         {
-            auto ownerKP = WK.Keys[in_.output.address];
+            auto ownerKP = lookupDg(in_.output.address);
             assert(ownerKP !is KeyPair.init,
                     "Address not found in Well-Known keypairs: "
                     ~ in_.output.address.toString());
