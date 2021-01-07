@@ -58,6 +58,7 @@ import agora.registry.NameRegistryImpl;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
+import agora.utils.Workarounds;
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Validator : ValidatorAPI = API;
 
@@ -103,6 +104,10 @@ shared static this()
 {
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
 }
+
+/// Workaround for issue likely related to dub #225,
+/// expects a main() function and invokes it after unittesting.
+void main () { }
 
 void testAssertHandler (string file, ulong line, string msg) nothrow
 {
