@@ -595,22 +595,22 @@ public struct TxBuilder
     private Transaction data;
 }
 
-    /***************************************************************************
+/***************************************************************************
 
-        Takes a block object and filters the payment outputs
-        into a range of `TxBuilder` objects.
+    Takes a block object and filters the payment outputs
+    into a range of `TxBuilder` objects.
 
-        Note that the outputs may not be spendable anymore if other
-        blocks have been externalized after this block.
+    Note that the outputs may not be spendable anymore if other
+    blocks have been externalized after this block.
 
-        Params:
-            block = a `Block` object
+    Params:
+        block = a `Block` object
 
-        Returns:
-            A range of `TxBuilder`s which reference each Payment output of
-            the input block
+    Returns:
+        A range of `TxBuilder`s which reference each Payment output of
+        the input block
 
-    ***************************************************************************/
+***************************************************************************/
 
 public auto spendable (const ref Block block) @safe pure nothrow
 {
