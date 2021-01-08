@@ -336,6 +336,8 @@ public class Ledger
         this.block_stats.increaseMetricBy!"agora_block_txs_total"(
             block.txs.length);
         this.block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
+        this.block_stats.setMetricTo!"agora_block_height_counter"(
+            block.header.height.value);
         return true;
     }
 
