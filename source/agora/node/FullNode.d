@@ -70,7 +70,7 @@ import core.time;
 mixin AddLogger!();
 
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
-private enum uint MaxBatchBlocksSent = 1000;
+private enum uint MaxBatchBlocksSent = 20;
 
 /*******************************************************************************
 
