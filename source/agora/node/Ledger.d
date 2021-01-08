@@ -164,63 +164,8 @@ public class Ledger
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
 
-        // need to rebuild the UTXO set and Validator set,
-        // starting from the genesis block
         if (this.utxo_set.length == 0)
-        {
-            ManagedDatabase.beginBatch();
-            scope (failure) ManagedDatabase.rollback();
-
-            // clear validator set
-            this.enroll_man.removeAllValidators();
-
-            Block last_read_block = gen_block;
-            foreach (height; 0 .. this.last_block.header.height + 1)
-            {
-                Block block;
-                this.storage.readBlock(block, Height(height));
-                if (height == 0)
-                {
-                    if (auto reason = block.isGenesisBlockInvalidReason())
-                        throw new Exception(
-                            "Genesis block loaded from disk is invalid: " ~
-                            reason);
-                }
-                else
-                {
-                    const active_enrollments = enroll_man.getValidatorCount(
-                        block.header.height);
-                    const enrolled_validators = enroll_man.getCountOfValidators(
-                        block.header.height);
-                    log.trace("Active validator count = {}", active_enrollments);
-                    if (auto fail_reason = block.isInvalidReason(
-                        last_read_block.header.height,
-                        last_read_block.header.hashFull,
-                        this.utxo_set.getUTXOFinder(),
-                        &this.payload_checker.check,
-                        this.enroll_man.getEnrollmentFinder(),
-                        active_enrollments,
-                        enrolled_validators,
-                        &this.enroll_man.getValidatorAtIndex,
-                        (const ref Point key) @safe nothrow
-                        {
-                            const PK = PublicKey(key[]);
-                            return this.enroll_man.getCommitmentNonce(PK);
-                        },
-                        last_read_block.header.timestamp,
-                        cast(ulong) this.clock.networkTime(),
-                        this.block_timestamp_tolerance))
-                        throw new Exception(
-                            "A block loaded from disk is invalid: " ~
-                            fail_reason);
-                }
-                this.updateUTXOSet(block);
-                this.updateValidatorSet(block);
-                this.enroll_man.updateValidatorIndexMaps(Height(height + 1));
-                last_read_block = block;
-            }
-            ManagedDatabase.commitBatch();
-        }
+            this.rebuildUTXOAndValidatorSet(gen_block);
         else if (this.enroll_man.validatorCount() == 0)
         {
             // +1 because the genesis block counts as one
@@ -244,6 +189,69 @@ public class Ledger
 
         Utils.getCollectorRegistry().addCollector(&this.collectTxStats);
         Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
+    }
+
+    /***************************************************************************
+
+        This routine will be called from the constructor to rebuild the state
+        from scratch, based the on-disk chain.
+
+    ***************************************************************************/
+
+    private void rebuildUTXOAndValidatorSet (ref Block gen_block)
+    {
+        ManagedDatabase.beginBatch();
+        scope (failure) ManagedDatabase.rollback();
+
+        // clear validator set
+        this.enroll_man.removeAllValidators();
+
+        Block last_read_block = gen_block;
+        foreach (height; 0 .. this.last_block.header.height + 1)
+        {
+            Block block;
+            this.storage.readBlock(block, Height(height));
+            if (height == 0)
+            {
+                if (auto reason = block.isGenesisBlockInvalidReason())
+                    throw new Exception(
+                        "Genesis block loaded from disk is invalid: " ~
+                        reason);
+            }
+            else
+            {
+                const active_enrollments = enroll_man.getValidatorCount(
+                    block.header.height);
+                const enrolled_validators = enroll_man.getCountOfValidators(
+                    block.header.height);
+                log.trace("Active validator count = {}", active_enrollments);
+                if (auto fail_reason = block.isInvalidReason(
+                        last_read_block.header.height,
+                        last_read_block.header.hashFull,
+                        this.utxo_set.getUTXOFinder(),
+                        &this.payload_checker.check,
+                        this.enroll_man.getEnrollmentFinder(),
+                        active_enrollments,
+                        enrolled_validators,
+                        &this.enroll_man.getValidatorAtIndex,
+                        (const ref Point key) @safe nothrow
+                        {
+                            const PK = PublicKey(key[]);
+                            return this.enroll_man.getCommitmentNonce(PK);
+                        },
+                        last_read_block.header.timestamp,
+                        cast(ulong) this.clock.networkTime(),
+                        this.block_timestamp_tolerance))
+                        throw new Exception(
+                            "A block loaded from disk is invalid: " ~
+                            fail_reason);
+            }
+            this.updateUTXOSet(block);
+            this.updateValidatorSet(block);
+            this.enroll_man.updateValidatorIndexMaps(Height(height + 1));
+            last_read_block = block;
+        }
+        ManagedDatabase.commitBatch();
     }
 
     /***************************************************************************
