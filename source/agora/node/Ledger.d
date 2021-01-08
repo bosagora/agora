@@ -155,6 +155,8 @@ public class Ledger
             assert(0);
         log.info("Last known block: #{} ({})", this.last_block.header.height,
                  this.last_block.header.hashFull());
+        this.block_stats.setMetricTo!"agora_block_height_counter"(
+            this.last_block.header.height.value);
 
         Block gen_block;
         this.storage.readBlock(gen_block, Height(0));
