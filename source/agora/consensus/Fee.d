@@ -16,14 +16,19 @@ module agora.consensus.Fee;
 import agora.common.Types;
 import agora.common.Amount;
 import agora.common.crypto.Key;
+import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.Params;
 import agora.consensus.state.UTXOSet;
+import agora.utils.Log;
+
 import std.math;
 import std.algorithm;
 import std.array;
+
+mixin AddLogger!();
 
 /// Delegate to check data payload
 public alias FeeChecker = string delegate (in Transaction tx,
@@ -177,6 +182,9 @@ unittest
 
 public class FeeManager
 {
+    /// SQLite db instance
+    private ManagedDatabase db;
+
     /// Parameters for consensus-critical constants
     public immutable(ConsensusParams) params;
 
@@ -184,9 +192,23 @@ public class FeeManager
     private Amount[PublicKey] accumulated_fees;
 
     /// Ctor
-    public this (immutable(ConsensusParams) params)
+    public this (string db_path, immutable(ConsensusParams) params)
     {
+        this.db = new ManagedDatabase(db_path);
         this.params = params;
+
+        this.db.execute("CREATE TABLE IF NOT EXISTS accumulated_fees " ~
+            "(public_key TEXT PRIMARY KEY, fee TEXT)");
+
+        auto results = this.db.execute("SELECT public_key, fee " ~
+            " FROM accumulated_fees");
+
+        foreach (ref row; results)
+        {
+            const key = PublicKey.fromString(row.peek!(char[])(0));
+            const fee = Amount.fromString(row.peek!(char[])(1));
+            this.accumulated_fees[key] = fee;
+        }
     }
 
     /***************************************************************************
@@ -323,7 +345,7 @@ public class FeeManager
     ***************************************************************************/
 
     public void accumulateFees (ref const Block block, UTXO[] stakes,
-        scope UTXOFinder peekUTXO) nothrow @safe
+        scope UTXOFinder peekUTXO) nothrow @trusted
     {
         if (block.header.height % this.params.PayoutPeriod == 0)
             this.clearAccumulatedFees();
@@ -343,6 +365,19 @@ public class FeeManager
                     return so_far;
                 }
             );
+
+            try
+            {
+                auto new_fee = this.accumulated_fees[stake.output.address]
+                    .toString();
+                this.db.execute("INSERT INTO accumulated_fees (public_key, fee)"
+                    ~ " VALUES (?,?) ON CONFLICT(public_key) DO UPDATE SET fee = ?",
+                    stake.output.address.toString(), new_fee, new_fee);
+            }
+            catch (Exception e)
+            {
+                log.error("ManagedDatabase operation error on accumulateFees");
+            }
         }
     }
 
@@ -368,6 +403,11 @@ public class FeeManager
     public void clearAccumulatedFees () nothrow @safe
     {
         () @trusted {
+            try
+                this.db.execute("DELETE FROM accumulated_fees");
+            catch (Exception e)
+                log.error("ManagedDatabase operation error on clearAccumulatedFees");
+
             this.accumulated_fees.clear();
         } ();
     }
@@ -414,7 +454,7 @@ public class FeeManager
     /// For unittest
     version (unittest) public this ()
     {
-        this(new immutable(ConsensusParams));
+        this(":memory:", new immutable(ConsensusParams));
     }
 
     unittest

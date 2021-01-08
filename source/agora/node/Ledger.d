@@ -1059,7 +1059,7 @@ version (unittest)
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(":memory:", key_pair, params),
                 new TransactionPool(":memory:"),
-                new FeeManager(params),
+                new FeeManager(":memory:", params),
                 mock_clock,
                 block_timestamp_tolerance_dur);
         }

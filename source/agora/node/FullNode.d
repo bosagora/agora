@@ -183,7 +183,7 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet(config.node.data_dir);
         this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
             config.validator, params);
-        this.fee_man = this.getFeeManager(this.params);
+        this.fee_man = this.getFeeManager(config.node.data_dir, this.params);
         this.ledger = new Ledger(params, this.utxo_set,
             this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
             config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
@@ -484,6 +484,7 @@ public class FullNode : API
         Unittests can override this method.
 
         Params:
+            data_dir = path to the data directory
             params = the consensus-critical constants
 
         Returns:
@@ -491,9 +492,11 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected FeeManager getFeeManager (immutable(ConsensusParams) params)
+    protected FeeManager getFeeManager (string data_dir,
+        immutable(ConsensusParams) params)
     {
-        return new FeeManager(params);
+        return new FeeManager(
+                buildPath(config.node.data_dir, "fee_manager.dat"), params);
     }
 
     /***************************************************************************

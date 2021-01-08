@@ -46,6 +46,7 @@ import agora.consensus.data.genesis.Test;
 import agora.consensus.SCPEnvelopeStore;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
+import agora.consensus.Fee;
 import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
@@ -1415,6 +1416,13 @@ private mixin template TestNodeMixin ()
     protected override UTXOSet getUtxoSet (string data_dir)
     {
         return new UTXOSet(":memory:");
+    }
+
+    /// Return a FeeManager backed by an in-memory SQLite db
+    protected override FeeManager getFeeManager (string data_dir,
+        immutable(ConsensusParams) params)
+    {
+        return new FeeManager(":memory:", params);
     }
 
     /// Return a LocalRest-backed task manager

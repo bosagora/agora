@@ -54,6 +54,7 @@ private class PersistentNode : TestValidatorNode
 {
     import agora.consensus.EnrollmentManager;
     import agora.consensus.state.UTXODB;
+    import agora.consensus.Fee;
     import agora.node.BlockStorage;
 
     mixin ForwardCtor!();
@@ -64,6 +65,8 @@ private class PersistentNode : TestValidatorNode
     private static EnrollmentManager em_saved;
     ///
     private static IBlockStorage blockstorage_saved;
+    ///
+    private static FeeManager fee_man;
 
     ///
     protected override IBlockStorage getBlockStorage (string data_dir) @system
@@ -90,6 +93,16 @@ private class PersistentNode : TestValidatorNode
             em_saved = super.getEnrollmentManager(data_dir, validator_config, params);
         return em_saved;
     }
+
+    ///
+    protected override FeeManager getFeeManager (string data_dir,
+        immutable(ConsensusParams) params)
+    {
+        if (fee_man is null)
+            fee_man = super.getFeeManager(data_dir, params);
+        return fee_man;
+    }
+
 }
 
 private class WithPersistentNodeAPIManager : TestAPIManager
