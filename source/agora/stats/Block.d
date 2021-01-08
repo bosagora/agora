@@ -16,9 +16,9 @@ module agora.stats.Block;
 import agora.stats.Stats;
 
 ///
-///
 public struct BlockStatsValue
 {
+    public ulong agora_block_height_counter;
     public ulong agora_block_externalized_total;
     public ulong agora_block_enrollments_gauge;
     public ulong agora_block_txs_total;
