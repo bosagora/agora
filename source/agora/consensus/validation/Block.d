@@ -101,7 +101,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     in Hash prev_hash, scope UTXOFinder findUTXO, scope PayloadChecker checkPayload,
     scope EnrollmentFinder findEnrollment, size_t active_enrollments, size_t enrolled_validators,
     Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
-    Point delegate (const ref Point) nothrow @safe getCommitmentNonce,
+    Point delegate (const ref Point, const Height) nothrow @safe getCommitmentNonce,
     ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
     string file = __FILE__, size_t line = __LINE__) nothrow @safe
 {
@@ -198,7 +198,7 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             continue;  // this validator hasn't signed yet
         }
 
-        const CR = getCommitmentNonce(K);  // commited R
+        const CR = getCommitmentNonce(K, block.header.height);  // commited R
         log.trace("Commited R for validator {} is {}", PublicKey(K[]), CR);
         if (CR == Point.init)
             return "Block: Couldn't find commitment for this validator";
@@ -212,15 +212,8 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             file, line, active_enrollments, block.header.height);
         return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
     }
-    Sig blockSig_Rs = Sig.fromBlob(block.header.signature);
-    if (sum_R != blockSig_Rs.R)
-    {
-        log.error("[{}:{}] Block: Height {} has invalid schnorr signature - sum of R not matching signature R. " ~
-            "enrolled_validators is {} bitmask is {}.",
-            file, line, block.header.height, enrolled_validators, block.header.validators);
-        return "Block: Invalid schnorr signature - sum of R not matching sig";
-    }
-    if (!multiSigVerify(block.header.signature, sum_K, challenge))
+    const sig = Sig(sum_R, Sig.fromBlob(block.header.signature).s);
+    if (!multiSigVerify(sig, sum_K, challenge))
     {
         log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators",
             file, line, block.header.validators.length);
@@ -637,7 +630,7 @@ version (unittest)
             {
                 return Point(genesis_validator_keys[i].address[]);
             },
-            (const ref Point key) @trusted nothrow
+            (const ref Point key, const Height height) @trusted nothrow
             {
                 return Scalar(hashMulti(
                     secretKeyToCurveScalar(lookupSecretKeyFromPoint(key)),

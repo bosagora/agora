@@ -400,28 +400,25 @@ nothrow @nogc @safe unittest
 }
 
 /// Single-signer as part of multi-sig
-public Signature multiSigSign (const ref Pair R,
+public Scalar multiSigSign (const ref Scalar r,
     const ref Scalar v, const ref Scalar c) nothrow @nogc @safe
 {
-    Scalar s = R.v + (v * c);
-    return Sig(R.V, s).toBlob();
+    return r + (v * c);
 }
 
 /// multi-sig verify
-public bool multiSigVerify (const ref Signature signature,
+public bool multiSigVerify (const ref Sig sig,
     const ref Point sumV, const ref Scalar c) nothrow @nogc @safe
 {
-    Sig sigRs = Sig.fromBlob(signature);
-    return sigRs.s.toPoint() == sigRs.R + (sumV * c);
+    return sig.s.toPoint() == sig.R + (sumV * c);
 }
 
 /// multi-sig combine
-public Signature multiSigCombine (S)(const S signatures) nothrow @nogc @safe
+public Sig multiSigCombine (S)(const S sigs) nothrow @nogc @safe
 {
-    auto sigs = signatures.map!(x => Sig.fromBlob(x));
     Point sum_R = sigs.map!(x => x.R).sum(Point.init);
     Scalar sum_s = sigs.map!(x => x.s).sum(Scalar.init);
-    return Sig(sum_R, sum_s).toBlob();
+    return Sig(sum_R, sum_s);
 }
 
 /// testing multiSig for block signing
@@ -435,24 +432,21 @@ public Signature multiSigCombine (S)(const S signatures) nothrow @nogc @safe
     const kp1_R = Pair.random();  // (R, r), the public and private nonce
 
     // first signer
-    const Signature signature1 = multiSigSign(kp1_R, kp1_K.v, c);
+    const Scalar s1 = multiSigSign(kp1_R.v, kp1_K.v, c);
 
     const kp2_K = Pair.random();  // key-pair
     const kp2_R = Pair.random();  // (R, r), the public and private nonce
 
     // second signer
-    const Signature signature2 = multiSigSign(kp2_R, kp2_K.v, c);
-
-    Sig sig1 = Sig.fromBlob(signature1);
-    Sig sig2 = Sig.fromBlob(signature2);
+    const Scalar s2 = multiSigSign(kp2_R.v, kp2_K.v, c);
 
     // verification of individual signatures
-    assert(sig1.s.toPoint() == kp1_R.V + (kp1_K.V * c));
-    assert(sig2.s.toPoint() == kp2_R.V + (kp2_K.V * c));
+    assert(s1.toPoint() == kp1_R.V + (kp1_K.V * c));
+    assert(s2.toPoint() == kp2_R.V + (kp2_K.V * c));
 
-    const Signature[] sigs = [ signature1, signature2 ];
+    const Sig[] sigs = [ Sig(kp1_R.V, s1), Sig(kp2_R.V, s2) ];
     // "multi-sig" - collection of one or more signatures
-    const Signature multiSignature = multiSigCombine(sigs);
+    const Sig multiSignature = multiSigCombine(sigs);
 
     const sumK = kp1_K.V + kp2_K.V;
     // verification of combined signatures

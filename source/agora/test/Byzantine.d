@@ -135,6 +135,7 @@ private class SpyNominator : TestNominator
 
     public override void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
     {
+        super.receiveEnvelope(envelope);
         // Make sure we don't count for same node more than once
         if (nodes_received[envelope.statement.pledges.type_].count(envelope.statement.nodeID) > 0) return;
         nodes_received[envelope.statement.pledges.type_] ~= envelope.statement.nodeID;
@@ -225,10 +226,10 @@ private class ByzantineManager (bool addSpyValidator = false,
     }
 }
 
-/// Block should be added if we have 5 / 6 validators signing (our SpyValidator does not sign)
+/// Block should be added if we have 6 of 6 validators signing
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 };
+    TestConf conf = { quorum_threshold : 100 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -237,15 +238,16 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
+    assert(node_1.getQuorumConfig().threshold == 6); // We should need all 6 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1));
 }
 
-/// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other not signing node)
+/// Block should be added if we have 5 of 6 valid signatures (1 not signing the envelope)
 unittest
 {
-    TestConf conf = { quorum_threshold : 66 };
+    TestConf conf = { quorum_threshold : 83 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -254,15 +256,16 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
+    assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1));
 }
 
-/// Block should be added if we have 4 of 6 valid signatures (1 spy node and 1 other with invalid signature)
+/// Block should be added if we have 5 of 6 valid signatures (1 signs envelope with invalid signature)
 unittest
 {
-    TestConf conf = { quorum_threshold : 66 };
+    TestConf conf = { quorum_threshold : 83 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -271,6 +274,7 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
+    assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1));
@@ -290,10 +294,10 @@ private void waitForCount(size_t target_count, shared(size_t)* counter, string n
     }
 }
 
-/// Half nodes not signing correctly WILL NOT prevent block from being externalized if we require 3 out of 6
+/// 4 out of 6 nodes signing correctly WILL NOT prevent block from being externalized if we require 4 out of 6
 unittest
 {
-    TestConf conf = { quorum_threshold : 50 };
+    TestConf conf = { quorum_threshold : 66 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -301,7 +305,7 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 3); // We should need 3 nodes
+    assert(node_1.getQuorumConfig().threshold == 4); // We should need 4 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
@@ -311,10 +315,10 @@ unittest
     assert(network.envelope_type_counts.externalize_count > 0, "The block should have been externalized!");
 }
 
-/// Half nodes not signing correctly WILL prevent block from being externalized if we require 4 out of 6
+/// 4 out of 6 nodes signing correctly WILL prevent block from being externalized if we require 5 out of 6
 unittest
 {
-    TestConf conf = { quorum_threshold : 51 };
+    TestConf conf = { quorum_threshold : 83 };
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -322,7 +326,7 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 4); // We should need 4 nodes
+    assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus

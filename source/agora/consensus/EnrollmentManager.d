@@ -489,6 +489,7 @@ public class EnrollmentManager
 
         Params:
             key = the public key to look up
+            height = height of block the R will be used to check the signature
 
         Returns:
             The `R` used in the signature of the Enrollment,
@@ -496,15 +497,17 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Point getCommitmentNonce (const ref PublicKey key) @trusted nothrow
+    public Point getCommitmentNonce (const ref PublicKey key, Height height) @trusted nothrow
     {
-        return this.validator_set.getCommitmentNonce(key);
+        return this.validator_set.getCommitmentNonce(key, height);
     }
 
     /***************************************************************************
 
         Get the r that was used to sign the enrollment of this validator node
 
+        Params:
+            height = height of block that r will sign
         Returns:
             The initial `r` used when signing the Enrollment
 
