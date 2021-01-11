@@ -1,3 +1,5 @@
+set AGORA_VERSION="HEAD"
+
 rem call dub test --skip-registry=all --compiler=%DC%
 call dub build --skip-registry=all --compiler=%DC% -c unittest -b unittest
 if %errorlevel% neq 0 exit /b %errorlevel%

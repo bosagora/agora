@@ -10,8 +10,12 @@
 
     "targetType": "executable",
     "targetPath": "build",
+    "stringImportPaths" : [ "build" ],
     "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/quorum/QuorumIntersectionTests.d" ],
-    "preGenerateCommands": [ "$DUB source/scpp/build.d || sleep 5s || $DUB source/scpp/build.d" ],
+    "preGenerateCommands": [
+        "$DUB source/agora/cli/version/main.d",
+        "$DUB source/scpp/build.d || sleep 5s || $DUB source/scpp/build.d"
+    ],
     "sourceFiles-posix": [
         "source/scpp/build/BallotProtocol.o",
         "source/scpp/build/cbitset.o",
@@ -110,6 +114,7 @@
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
+                "source/agora/cli/version/*",
                 "source/agora/registry/main.d"
             ]
         },
@@ -139,6 +144,7 @@
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/client/*",
                 "source/agora/cli/vanity/*",
+                "source/agora/cli/version/*",
                 "source/agora/node/main.d",
                 "source/agora/registry/main.d"
             ]
@@ -154,6 +160,7 @@
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
+                "source/agora/cli/version/*",
                 "source/agora/node/main.d",
                 "source/agora/registry/main.d"
             ]
@@ -170,6 +177,7 @@
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
+                "source/agora/cli/version/*",
                 "source/agora/node/main.d",
                 "source/agora/registry/main.d"
             ]

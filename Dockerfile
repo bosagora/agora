@@ -1,10 +1,11 @@
 # Build Agora from source
 FROM bpfk/agora-builder:latest AS Builder
 ARG DUB_OPTIONS
+ARG AGORA_VERSION="HEAD"
 ADD . /root/agora/
 WORKDIR /root/agora/
 RUN apk --no-cache add llvm-libunwind-dev
-RUN dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
+RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
 
 # Runner
 FROM alpine:3.12.0

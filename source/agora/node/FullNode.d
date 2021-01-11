@@ -206,9 +206,10 @@ public class FullNode : API
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
+        enum build_version = import(VersionFileName);
         this.app_stats.setMetricTo!"agora_application_info"(
             1, // Unused, see article linked in the struct's documentationx
-            "HEAD", // TODO: FIXME
+            build_version,
             __TIMESTAMP__, __VERSION__.to!string,
             config.validator.enabled
                 ? config.validator.key_pair.address.toString() : null,

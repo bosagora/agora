@@ -3,6 +3,8 @@
 set -xeu
 set -o pipefail
 
+export AGORA_VERSION="HEAD"
+
 dub build --skip-registry=all --compiler=${DC}
 dub build -c client --skip-registry=all --compiler=${DC}
 
