@@ -177,7 +177,7 @@ struct SCPStatement {
     };
     struct _confirm_t {
       SCPBallot ballot{};
-      uint512 value_sig{};
+      uint256 value_sig{};
       uint32 nPrepared{};
       uint32 nCommit{};
       uint32 nH{};
@@ -192,7 +192,7 @@ struct SCPStatement {
                typename _quorumSetHash_T,
                typename = typename
                std::enable_if<std::is_constructible<SCPBallot, _ballot_T>::value
-                              && std::is_constructible<uint512, _value_sig_T>::value
+                              && std::is_constructible<uint256, _value_sig_T>::value
                               && std::is_constructible<uint32, _nPrepared_T>::value
                               && std::is_constructible<uint32, _nCommit_T>::value
                               && std::is_constructible<uint32, _nH_T>::value

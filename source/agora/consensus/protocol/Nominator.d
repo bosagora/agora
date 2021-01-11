@@ -119,8 +119,8 @@ public extern (C++) class Nominator : SCPDriver
     /// SCPEnvelopeStore instance
     protected SCPEnvelopeStore scp_envelope_store;
 
-    // Height => Point (public key) => Signature (signature)
-    private Signature[Point][Height] slot_sigs;
+    // Height => Point (public key) => Signature
+    private Sig[Point][Height] slot_sigs;
 
     /// Enrollment manager
     private EnrollmentManager enroll_man;
@@ -531,9 +531,9 @@ extern(D):
                 this.ledger.getBlockHeight(), con_data.missing_validators);
             const Block proposed_block = makeNewBlock(prev_block, con_data.tx_set,
                 con_data.timestamp, con_data.enrolls, random_seed, con_data.missing_validators);
-            const Signature signature = envelope.statement.pledges.confirm_.value_sig;
-            const Height height = Height(envelope.statement.slotIndex);
-            if (!this.addBlockSignature(public_key, proposed_block, signature, height))
+            const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
+                public_key, Scalar(envelope.statement.pledges.confirm_.value_sig));
+            if (!this.collectBlockSignature(block_sig, proposed_block))
                 return;
         }
 
@@ -553,6 +553,8 @@ extern(D):
     public void receiveBlockSignature (scope ref const(ValidatorBlockSig) block_sig) @trusted
     {
         const cur_height = this.ledger.getBlockHeight();
+        log.trace("Received BLOCK SIG {} from node {} for block {}",
+                    block_sig.signature, block_sig.public_key, block_sig.height);
         if (cur_height >= block_sig.height)
         {
             auto blocks = this.ledger.getBlocksFrom(Height(block_sig.height));
@@ -563,20 +565,8 @@ extern(D):
                 return;
             }
             const Block block = blocks.front;
-            const Point K = Point(block_sig.public_key[]);
-            const Scalar block_challenge = hashFull(block);
-            if (!multiSigVerify(block_sig.signature, K, block_challenge))
-            {
-                log.warn("INVALID Block signature recieved for slot {} for node {}\n" ~
-                    "This node with ledger height {} is {}",
-                    block_sig.height, block_sig.public_key, cur_height, this.node_public_key);
+            if (!collectBlockSignature(block_sig, block))
                 return;
-            }
-            log.trace("VALID Block signature recieved for slot {} for node {}\n" ~
-                "This node with ledger height {} is {}",
-                    block_sig.height, block_sig.public_key, cur_height, this.node_public_key);
-            this.slot_sigs[block_sig.height][K] = block_sig.signature;
-
             const signed_block = updateMultiSignature(block);
             if (signed_block == Block.init)
             {
@@ -650,7 +640,7 @@ extern(D):
 
     ***************************************************************************/
 
-    protected Signature createBlockSignature(const Block block) @trusted nothrow
+    protected Sig createBlockSignature(const Block block) @trusted nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
@@ -658,8 +648,8 @@ extern(D):
         // rc = r used in signing the commitment
         const Scalar rc = this.enroll_man.getCommitmentNonceScalar(block.header.height);
         const Scalar r = rc + challenge; // make it unique each challenge
-        const Pair R = Pair.fromScalar(r);
-        return multiSigSign(R, this.schnorr_pair.v, challenge);
+        const Point R = r.toPoint();
+        return Sig(R, multiSigSign(r, this.schnorr_pair.v, challenge));
     }
 
     extern (C++):
@@ -725,55 +715,60 @@ extern(D):
             con_data.timestamp, con_data.enrolls, random_seed, con_data.missing_validators);
 
         Height height = proposed_block.header.height;
-        const Signature signature = createBlockSignature(proposed_block);
+        const Sig sig = createBlockSignature(proposed_block);
 
-        envelope.statement.pledges.confirm_.value_sig = opaque_array!64(BitBlob!512(signature[]));
-        auto block_sig = ValidatorBlockSig(height, this.node_public_key, signature);
+        envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!256(sig.s[]));
 
         // Store our block signature in the slot_sigs map
         log.trace("signConfirmBallot: ADD block signature at height {} for this node {}",
             height, this.node_public_key);
-        this.slot_sigs[block_sig.height][this.schnorr_pair.V] = signature;
+        this.slot_sigs[height][this.schnorr_pair.V] = sig;
     }
 
     /***************************************************************************
 
-        Add the block signature for a confirmed ballot.
-        The passed envelope's signature must already be verified,
-        and the envelope statement must be a confirmed ballot.
+        Collect the block signature for a confirmed ballot or gossiped signature
+        only if the signature is valid for validator and block hash
 
         Params:
-            public_key = the key which signed this envelope,
-                needed for proposed block header signature validation
+            block_sig = the structure with the block signature details
             block = the proposed block
-            signature = block signature to collect
 
         Returns:
-            true if the SCP protocol accepted this envelope
+            true if verified
 
     ***************************************************************************/
 
-    private bool addBlockSignature (const ref PublicKey public_key, const Block block,
-        const Signature signature, const Height height) nothrow
+    private bool collectBlockSignature (const ref ValidatorBlockSig block_sig,
+        const Block block) nothrow
     {
-        const Point K = Point(public_key[]);
+        const Point K = Point(block_sig.public_key[]);
         if (!K.isValid())
         {
-            log.error("Invalid point from public_key {}", public_key);
+            log.warn("Invalid point from public_key {}", block_sig.public_key);
             return false;
         }
         const Scalar block_challenge = hashFull(block);
-        // Check this signature is valid
-        if (!multiSigVerify(signature, K, block_challenge))
+        // Fetch the R from enrollment commitment for signing validator
+        const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
+        log.trace("Commited R for validator {} is {}", block_sig.public_key, CR);
+        // Determine the R of signature (R, s)
+        Point R = CR + block_challenge.toPoint();
+        // Compose the signature (R, s)
+        const sig = Sig(R, block_sig.signature.asScalar());
+        // Check this signature is valid for this block and signing validator
+        if (!multiSigVerify(sig, K, block_challenge))
         {
-            log.error("INVALID block signature at height {} for node {}",
-                height, public_key);
+            log.warn("INVALID Block signature received for slot {} from node {}",
+                block_sig.height, block_sig.public_key);
             return false;
         }
         log.trace("VALID block signature at height {} for node {}",
-            height, public_key);
+            block_sig.height, block_sig.public_key);
+        log.trace("VALID Block signature received for slot {} for node {}",
+            block_sig.height, block_sig.public_key);
         // collect the signature
-        this.slot_sigs[height][K] = signature;
+        this.slot_sigs[block_sig.height][K] = Sig(R, block_sig.signature.asScalar());
         return true;
     }
 
@@ -871,14 +866,10 @@ extern(D):
                 this.slot_sigs[height][this.schnorr_pair.V] = this.createBlockSignature(block);
             }
             const signed_block = this.updateMultiSignature(block);
-            if (signed_block != Block.init)
-            {
-                if (!this.ledger.acceptBlock(signed_block))
-                {
-                    log.error("Block was not accepted by node {}", this.node_public_key);
-                    assert(0, format!"Block was not accepted"());
-                }
-            }
+            assert(signed_block != Block.init,
+                format!"INVALID Block signature. Can not externalize this block at height %s on node %s"
+                    (height, this.node_public_key));
+            verifyBlock(signed_block);
         }
         catch (Exception exc)
         {
@@ -886,7 +877,17 @@ extern(D):
             abort();
         }
         gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
-            this.slot_sigs[height][this.schnorr_pair.V]));
+            this.slot_sigs[height][this.schnorr_pair.V].s));
+    }
+
+    /// function for verifying the block which can be overriden in byzantine unit tests
+    extern(D) protected void verifyBlock (const Block signed_block)
+    {
+        if (!this.ledger.acceptBlock(signed_block))
+        {
+            log.error("Block was not accepted by node {}", this.node_public_key);
+            assert(0, format!"Block was not accepted"());
+        }
     }
 
     /// function for gossip of block sig which can be overriden in byzantine unit tests
@@ -906,7 +907,7 @@ extern(D):
             log.trace("No signatures at height {}", block.header.height);
             return Block.init;
         }
-        const Signature[Point] block_sigs = this.slot_sigs[block.header.height];
+        const Sig[Point] block_sigs = this.slot_sigs[block.header.height];
 
         auto validator_mask = BitField!ubyte(all_validators);
         foreach (K; block_sigs.byKey())
@@ -920,7 +921,7 @@ extern(D):
             }
             validator_mask[idx] = true;
         }
-        const Signature[] sigs = block_sigs.values;
+        const Sig[] sigs = block_sigs.values;
         // There must exist signatures for at least half the validators to externalize
         if (sigs.length <= all_validators / 2)
         {
@@ -928,13 +929,9 @@ extern(D):
                 sigs.length, all_validators / 2, all_validators, block.header.height);
             return Block.init;
         }
-        Block signed_block = block.updateSignature(multiSigCombine(sigs), validator_mask);
+        Block signed_block = block.updateSignature(multiSigCombine(sigs).toBlob(), validator_mask);
         log.trace("Updated block signatures for block {}, mask: {}",
                 block.header.height, validator_mask);
-        foreach (Signature sig; this.slot_sigs[block.header.height].values)
-        {
-            log.trace("sig={}", Sig.fromBlob(sig).R);
-        }
         return signed_block;
     }
 

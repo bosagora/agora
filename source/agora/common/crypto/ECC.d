@@ -155,6 +155,10 @@ public struct Scalar
         import ocean.text.convert.Formatter : ocean_format = format;
         assert(phobos_format("%s", s) == "**SCALAR**");
         assert(ocean_format("{}", s) == "**SCALAR**");
+
+        import vibe.data.json;
+        assert(s.serializeToJsonString() == "\"**SCALAR**\"",
+            s.serializeToJsonString());
     }
 
     /// Vibe.d deserialization
@@ -245,6 +249,12 @@ public struct Scalar
         if (!ret.isValid)
             assert(0, "libsodium generated invalid Point from valid Scalar!");
         return ret;
+    }
+
+    /// Convenience overload to allow this to be converted to a BitBlob
+    public const(ubyte)[] opSlice () const @safe pure nothrow @nogc
+    {
+        return this.data[];
     }
 
     /***************************************************************************

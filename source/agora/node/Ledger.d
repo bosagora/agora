@@ -234,10 +234,10 @@ public class Ledger
                         active_enrollments,
                         enrolled_validators,
                         &this.enroll_man.getValidatorAtIndex,
-                        (const ref Point key) @safe nothrow
+                        (const ref Point key, const Height height) @safe nothrow
                         {
                             const PK = PublicKey(key[]);
-                            return this.enroll_man.getCommitmentNonce(PK);
+                            return this.enroll_man.getCommitmentNonce(PK, height);
                         },
                         last_read_block.header.timestamp,
                         cast(ulong) this.clock.networkTime(),
@@ -746,10 +746,10 @@ public class Ledger
             this.enroll_man.getValidatorCount(block.header.height),
             this.enroll_man.getCountOfValidators(block.header.height),
             &this.enroll_man.getValidatorAtIndex,
-            (const ref Point key) @safe nothrow
+            (const ref Point key, const Height height) @safe nothrow
             {
                 const PK = PublicKey(key[]);
-                return this.enroll_man.getCommitmentNonce(PK);
+                return this.enroll_man.getCommitmentNonce(PK, block.header.height);
             },
             this.last_block.header.timestamp,
             cast(ulong) this.clock.networkTime(),
@@ -888,7 +888,10 @@ version (unittest)
         ConsensusData data;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
         assert(data.tx_set.length == Block.TxsInTestBlock);
-        assert(ledger.externalize(data, file, line));
+        if (!ledger.externalize(data, file, line))
+        {
+            assert(0, format!"Failure in unit test. Block %s should have been externalized!"(ledger.getBlockHeight() + 1));
+        }
     }
 
     /// A `Ledger` with sensible defaults for `unittest` blocks

@@ -91,9 +91,10 @@ public class ValidatorSet
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
-            "(key TEXT PRIMARY KEY, public_key TEXT, " ~
+            "(key TEXT, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
-            "distance INTEGER, preimage TEXT, nonce BLOB, active INTEGER)");
+            "distance INTEGER, preimage TEXT, nonce BLOB, active INTEGER, " ~
+            "PRIMARY KEY (key, active))");
     }
 
     /***************************************************************************
@@ -133,7 +134,7 @@ public class ValidatorSet
         {
             () @trusted {
                 const ZeroDistance = 0;  // initial distance
-                this.remove(enroll.utxo_key);
+                this.unenroll(enroll.utxo_key);
                 this.db.execute("INSERT INTO validator_set " ~
                     "(key, public_key, cycle_length, enrolled_height, " ~
                     "distance, preimage, nonce, active) " ~
@@ -180,28 +181,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Remove the enrollment data with the given UTXO key from the validator set
-
-        Params:
-            utxo_key = the UTXO key of the enrollment data to remove
-
-    ***************************************************************************/
-
-    public void remove (in Hash enroll_hash) @trusted nothrow
-    {
-        try
-        {
-            this.db.execute("DELETE FROM validator_set WHERE key = ?",
-                enroll_hash.toString());
-        }
-        catch (Exception ex)
-        {
-            log.error("Error while calling ValidatorSet.remove(): {}", ex);
-        }
-    }
-
-    /***************************************************************************
-
         Remove all validators from the validator set
 
     ***************************************************************************/
@@ -221,6 +200,8 @@ public class ValidatorSet
     /***************************************************************************
 
         Unenroll the enrollment with the given UTXO key from the validator set
+        First we remove any previous expired record for this key and then we set
+        the current active record to expired
 
         Params:
             utxo_key = the UTXO key of the enrollment data to unerno
@@ -232,6 +213,8 @@ public class ValidatorSet
         try
         {
             () @trusted {
+                this.db.execute("DELETE from validator_set WHERE key = ? AND active = ?",
+                    EnrollmentStatus.Expired, enroll_hash.toString());
                 this.db.execute("UPDATE validator_set SET active = ? WHERE key = ?",
                     EnrollmentStatus.Expired, enroll_hash.toString());
             }();
@@ -422,6 +405,13 @@ public class ValidatorSet
         try
         {
             () @trusted {
+                if (block_height > this.params.ValidatorCycle)
+                {
+                    this.db.execute("DELETE from validator_set " ~
+                    "WHERE (enrolled_height < ? AND active = ?) or (enrolled_height < ?)",
+                    EnrollmentStatus.Expired, block_height - this.params.ValidatorCycle,
+                    block_height - this.params.ValidatorCycle - 1);
+                }
                 this.db.execute("UPDATE validator_set SET active = ? WHERE enrolled_height <= ? AND active = ?",
                     EnrollmentStatus.Expired, block_height - this.params.ValidatorCycle, EnrollmentStatus.Active);
             }();
@@ -508,9 +498,12 @@ public class ValidatorSet
     /***************************************************************************
 
         Extract the `R` used in the signing of the associated enrollment
+        We do not check the active flag as we may get block signatures afer
+        the next cycle has started
 
         Params:
             key = The public key of the validator
+            height = height of block being signed
 
         Returns:
             the `R` that was used in the signing of the Enrollment,
@@ -518,12 +511,14 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public Point getCommitmentNonce (const ref PublicKey key) @trusted nothrow
+    public Point getCommitmentNonce (const ref PublicKey key, in Height height) @trusted nothrow
     {
         try
         {
             auto results = this.db.execute("SELECT nonce FROM validator_set " ~
-                "WHERE public_key = ?", key.toString());
+                "WHERE public_key = ? and enrolled_height < ? " ~
+                "and enrolled_height >= ?", key.toString(), height.value,
+                    height.value <= this.params.ValidatorCycle ? 0 : height.value - this.params.ValidatorCycle);
 
             if (!results.empty && results.oneValue!(ubyte[]).length != 0)
             {
@@ -696,7 +691,8 @@ public class ValidatorSet
     /***************************************************************************
 
         Find the most recent Enrollment with the provided UTXO hash, regardless
-        of it's active status
+        of it's active status but order by status descending so that active is
+        returned first
 
         Params:
             enroll_key = The key for the enrollment
@@ -715,7 +711,7 @@ public class ValidatorSet
             // of enrollments
             auto results = this.db.execute("SELECT active, enrolled_height," ~
                 "cycle_length, preimage, distance FROM " ~
-                "validator_set WHERE key = ?", enroll_key.toString());
+                "validator_set WHERE key = ? ORDER BY active DESC", enroll_key.toString());
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
@@ -808,10 +804,10 @@ unittest
     assert(keys.isStrictlyMonotonic!("a < b"));
 
     // remove ValidatorSet
-    set.remove(utxos[1]);
+    set.unenroll(utxos[1]);
     assert(set.count() == 2);
     assert(set.hasEnrollment(utxos[0]));
-    set.remove(utxos[0]);
+    set.unenroll(utxos[0]);
     assert(!set.hasEnrollment(utxos[0]));
     set.removeAll();
     assert(set.count() == 0);

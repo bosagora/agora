@@ -755,7 +755,7 @@ version (unittest)
         import std.format;
 
         auto validators = BitField!ubyte(keys.length);
-        Signature[] sigs;
+        Sig[] sigs;
 
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
@@ -769,10 +769,10 @@ version (unittest)
             const Scalar r = rc + challenge; // make it unique each challenge
             const Pair R = Pair.fromScalar(r);
             const K = Point(key.address[]);
-            auto sig = multiSigSign(R, v, challenge);
-            log.trace("multiSigTestBlock: cycle {} index {} Commited R for validator {} is \n{} \nsig is {}",
+            Scalar sig = multiSigSign(r, v, challenge);
+            log.trace("multiSigTestBlock: cycle {} index {}. (R, s) for validator {} is ({}, {})",
                 cycleForValidator(key.address), i, key.address, rc.toPoint(), sig);
-            sigs ~= sig;
+            sigs ~= Sig(R.V, sig);
             validators[i] = true;
         }
         try
@@ -784,7 +784,7 @@ version (unittest)
         }
         // Create new block with updates
         block.header.validators = validators;
-        block.header.signature = multiSigCombine(sigs);
+        block.header.signature = multiSigCombine(sigs).toBlob();
         return block;
     }
 }
