@@ -125,6 +125,10 @@ public extern (C++) class Nominator : SCPDriver
     /// Enrollment manager
     private EnrollmentManager enroll_man;
 
+    /// Delegate called when node's own nomination is invalid
+    extern (D) public void delegate(const ref ConsensusData data, const ref
+        string msg) @safe onInvalidNomination = null;
+
 extern(D):
 
     /***************************************************************************
@@ -297,6 +301,8 @@ extern(D):
         {
             log.fatal("tryNominate(): Invalid consensus data: {}. Data: {}",
                     msg, data);
+            if (this.onInvalidNomination)
+                this.onInvalidNomination(data, msg);
             return false;
         }
 
@@ -305,6 +311,8 @@ extern(D):
         {
             log.fatal("tryNominate(): Invalid preimage data: {}. Data: {}",
                     msg, data);
+            if (this.onInvalidNomination)
+                this.onInvalidNomination(data, msg);
             return false;
         }
 
