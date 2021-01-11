@@ -155,7 +155,7 @@ jobs:
 
       - name: Build documentation
         run: |
-          dub build -b ddox
+          AGORA_VERSION=HEAD dub build -b ddox
           # Filter out libraries
           # `x:ddocFilterArgs` in `dub.json` does not seem to work,
           # so we do it manually

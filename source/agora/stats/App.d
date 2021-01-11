@@ -27,6 +27,8 @@ import agora.stats.Stats;
 
 *******************************************************************************/
 
+public immutable VersionFileName = "VERSION";
+
 public struct ApplicationStatsLabels
 {
     /// Version of Agora being run (git commit / tag)

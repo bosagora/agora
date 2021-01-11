@@ -1,0 +1,1 @@
+This directory is needed when building, as the version script outputs the VERSION file here.
