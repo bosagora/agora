@@ -298,7 +298,8 @@ public class TransactionPool
             is(DGT : int delegate(ref Transaction)) ||
             is(DGT : int delegate(const Transaction)) ||
             is(DGT : int delegate(const ref Transaction)) ||
-            is(DGT : int delegate(in Transaction)))
+            is(DGT : int delegate(in Transaction)) ||
+            is(DGT : int delegate(ref Hash, ref Transaction)))
     {
         () @trusted
         {
@@ -340,6 +341,7 @@ public class TransactionPool
                     auto selected_idx = this.selector(db_txs);
                     // Our new TX that we will return
                     tx = db_txs[selected_idx];
+                    key = db_keys_filtered[selected_idx];
 
                     // Update the skip list
                     db_txs.each!(db_tx => skip_txs[db_tx.hashFull()] = true);
@@ -348,7 +350,12 @@ public class TransactionPool
                 }
 
                 // break
-                if (auto ret = dg(tx))
+                int ret;
+                static if (is(DGT : int delegate(ref Hash, ref Transaction)))
+                    ret = dg(key, tx);
+                else
+                    ret = dg(tx);
+                if (ret)
                     return ret;
             }
             return 0;
@@ -363,7 +370,11 @@ public class TransactionPool
         if (dg is null)
         {
             Transaction tx;
-            dg(tx);
+            Hash hash;
+            static if (is(DGT : int delegate(ref Hash, ref Transaction)))
+                dg(hash, tx);
+            else
+                dg(tx);
         }
         return 0;
     }
@@ -752,8 +763,9 @@ unittest
 
     ulong idx = 0;
     // only tx1 should be returned.
-    foreach (ref Transaction tx; pool)
+    foreach (ref Hash hash, ref Transaction tx; pool)
     {
+        assert(tx.hashFull() == hash);
         assert(tx == tx1);
         assert(idx++ == 0);
     }
@@ -769,9 +781,42 @@ unittest
 
     idx = 0;
     // only tx2 should be returned.
-    foreach (ref Transaction tx; pool)
+    foreach (ref Hash hash, ref Transaction tx; pool)
     {
+        assert(tx.hashFull() == hash);
         assert(tx == tx2);
         assert(idx++ == 0);
+    }
+}
+
+unittest
+{
+    import agora.common.Amount;
+    import agora.common.crypto.Key;
+    import agora.common.Hash;
+    import std.stdio;
+
+    auto pool = new TransactionPool(":memory:");
+
+    Transaction tx1 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 0)],
+        [Output(Amount(2), KeyPair.random.address)]
+    };
+
+    Transaction tx2 =
+    {
+        TxType.Payment,
+        [Input(Hash.init, 1)],
+        [Output(Amount(1), KeyPair.random.address)]
+    };
+
+    assert(pool.add(tx1));
+    assert(pool.add(tx2));
+
+    foreach (ref Hash hash, ref Transaction tx; pool)
+    {
+        assert(tx.hashFull() == hash);
     }
 }
