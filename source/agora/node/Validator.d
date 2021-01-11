@@ -234,7 +234,7 @@ public class Validator : FullNode, API
 
         if (this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
             this.nominator.startNominatingTimer();
-        else if (this.config.validator.recurring_enrollment)
+        if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.getBlockHeight());
     }
 
