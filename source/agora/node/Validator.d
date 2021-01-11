@@ -32,6 +32,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
 import agora.consensus.state.UTXODB;
+import agora.consensus.protocol.Data;
 import agora.network.Clock;
 import agora.network.NetworkManager;
 import agora.node.admin.AdminInterface;
@@ -96,6 +97,7 @@ public class Validator : FullNode, API
         this.nominator = this.getNominator(this.params, this.clock,
             this.network, this.config.validator.key_pair, this.ledger,
             this.enroll_man, this.taskman, this.config.node.data_dir);
+        this.nominator.onInvalidNomination = &this.invalidNominationHandler;
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
@@ -507,5 +509,25 @@ public class Validator : FullNode, API
         }
 
         return Hash.init;
+    }
+
+    /***************************************************************************
+
+        A delegate to be called by Nominator when node's own nomination is
+        invalid
+
+        Params:
+            data = Invalid ConsensusData
+            msg = Reason
+
+    ***************************************************************************/
+
+    private void invalidNominationHandler (const ref ConsensusData data,
+        const ref string msg) @safe
+    {
+        // Network needs Validators, see if we can enroll
+        if (this.config.validator.recurring_enrollment &&
+            msg == Ledger.InvalidConsensusDataReason.NotEnoughValidators)
+            this.checkAndEnroll(this.ledger.getBlockHeight());
     }
 }
