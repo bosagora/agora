@@ -435,6 +435,32 @@ public class TransactionPool
 
     /***************************************************************************
 
+        Get a transaction from pool by hash
+
+        Params:
+            tx = the transaction hash
+
+        Returns:
+            Transaction or Transaction.init
+
+    ***************************************************************************/
+
+    public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
+    {
+        try
+        {
+            auto results =  this.db.execute("SELECT val FROM tx_pool WHERE key = ?",
+                hash);
+            if (!results.empty)
+                return deserializeFull!Transaction(results.oneValue!(ubyte[])());
+        }
+        catch (Exception ex)
+            log.error("ManagedDatabase operation error on getTransactionByHash");
+        return Transaction.init;
+    }
+
+    /***************************************************************************
+
         Take the specified number of transactions and remove them from the pool.
 
         Params:
@@ -708,10 +734,16 @@ unittest
     assert(pool.add(tx1));
     assert(pool.add(tx2));
     assert(pool.add(tx3));
+    assert(tx1 == pool.getTransactionByHash(tx1.hashFull()));
+    assert(tx2 == pool.getTransactionByHash(tx2.hashFull()));
+    assert(tx3 == pool.getTransactionByHash(tx3.hashFull()));
     assert(pool.length == 3);
     // tx2 will be removed as well.
     pool.remove(tx1);
     assert(pool.length == 1);
+    assert(Transaction.init == pool.getTransactionByHash(tx1.hashFull()));
+    assert(Transaction.init == pool.getTransactionByHash(tx2.hashFull()));
+    assert(tx3 == pool.getTransactionByHash(tx3.hashFull()));
     assert(pool.hasTransactionHash(tx3.hashFull()));
 }
 

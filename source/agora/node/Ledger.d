@@ -969,6 +969,23 @@ public class Ledger
             block.header.missing_validators);
         this.fee_man.accumulateFees(block, stakes, &this.utxo_set.peekUTXO);
     }
+
+    /***************************************************************************
+
+        Get a transaction from pool by hash
+
+        Params:
+            tx = the transaction hash
+
+        Returns:
+            Transaction or Transaction.init
+
+    ***************************************************************************/
+
+    public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
+    {
+        return this.pool.getTransactionByHash(hash);
+    }
 }
 
 /// Note: these unittests historically assume a block always contains
