@@ -19,6 +19,7 @@ node:
 
   validator_cycle: 20
   block_interval_sec: 5
+  block_catchup_interval_secs: 2
 
 ################################################################################
 ##                             Validator configuration                        ##

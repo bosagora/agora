@@ -40,6 +40,9 @@ node:
   # The new block timestamp has to be greater than the previous block timestamp,
   # but less than current time + block_timestamp_tolerance_secs
   block_timestamp_tolerance_secs: 60
+  # The duration between requests for retrieving the latest blocks
+  # from all other nodes
+  block_catchup_interval_secs: 20
 
 ################################################################################
 ##                             Validator configuration                        ##

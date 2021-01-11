@@ -173,6 +173,10 @@ public struct NodeConfig
     /// The new block timestamp has to be greater than the previous block timestamp,
     /// but less than current time + block_timestamp_tolerance
     public Duration block_timestamp_tolerance = 60.seconds;
+
+    /// The duration between requests for retrieving the latest blocks
+    /// from all other nodes
+    public Duration block_catchup_interval = 20.seconds;
 }
 
 /// Validator config
@@ -396,6 +400,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     const tx_payload_max_size = opt!(uint, "node", "tx_payload_max_size")(cmdln, node);
     const tx_payload_fee_factor = opt!(uint, "node", "tx_payload_fee_factor")(cmdln, node);
     const block_timestamp_tolerance_secs = opt!(uint, "node", "block_timestamp_tolerance_secs")(cmdln, node);
+    const block_catchup_interval = opt!(uint, "node", "block_catchup_interval_secs")(cmdln, node);
 
     NodeConfig result = {
             min_listeners : min_listeners,
@@ -418,6 +423,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             tx_payload_max_size : tx_payload_max_size,
             tx_payload_fee_factor : tx_payload_fee_factor,
             block_timestamp_tolerance : block_timestamp_tolerance_secs.seconds,
+            block_catchup_interval : block_catchup_interval.seconds,
     };
     return result;
 }

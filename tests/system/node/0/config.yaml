@@ -17,6 +17,7 @@ node:
 
   tx_payload_max_size: 1024
   tx_payload_fee_factor: 200
+  block_catchup_interval_secs: 2
 
 ################################################################################
 ##                             Validator configuration                        ##

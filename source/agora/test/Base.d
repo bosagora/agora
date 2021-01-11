@@ -1735,6 +1735,10 @@ public struct TestConf
 
     /// If the enrollments will be renewed or not at the end of the cycle
     bool recurring_enrollment = true;
+
+    /// The duration between requests for retrieving the latest blocks
+    /// from all other nodes
+    Duration block_catchup_interval = 2.seconds;
 }
 
 /*******************************************************************************
@@ -1789,6 +1793,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 : test_conf.min_listeners,
             max_listeners : (test_conf.max_listeners == 0)
                 ? TotalNodes - 1 : test_conf.max_listeners,
+            block_catchup_interval : test_conf.block_catchup_interval,
         };
 
         return conf;
