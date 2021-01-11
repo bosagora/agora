@@ -761,7 +761,7 @@ public class NetworkManager
                     blocks => blocks.all!(block => ledger.acceptBlock(block)));
             }
             catchup(); // avoid delay
-            this.taskman.setTimer(2.seconds, &catchup, Periodic.Yes);
+            this.taskman.setTimer(node_config.block_catchup_interval, &catchup, Periodic.Yes);
         });
     }
 
