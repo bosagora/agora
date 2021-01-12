@@ -449,6 +449,14 @@ public class FullNode : API
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
 
+    /// GET: /blocks/:height
+    public override const(Block) getBlock (ulong height)  @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks", "http");
+        return this.ledger.getBlocksFrom(Height(height)).front();
+    }
+
     /// Start the StatsServer
     public void startStatsServer ()
     {
