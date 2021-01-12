@@ -26,8 +26,8 @@ import agora.consensus.data.Params;
 import agora.consensus.data.genesis;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
+import agora.consensus.Fee;
 import agora.consensus.validation;
-import agora.node.Fee;
 import agora.test.Base;
 
 import core.thread;

@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.node.Fee;
+module agora.consensus.Fee;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;

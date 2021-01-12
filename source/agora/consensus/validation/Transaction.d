@@ -1,3 +1,4 @@
+
 /*******************************************************************************
 
     Contains validation routines for transactions
@@ -18,8 +19,8 @@ import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
+import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
-import agora.node.Fee;
 
 version (unittest)
 {
