@@ -24,12 +24,12 @@ import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
                                             EnrollmentStatus;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
-import agora.node.Fee;
 import agora.utils.Log;
 
 import std.algorithm;
