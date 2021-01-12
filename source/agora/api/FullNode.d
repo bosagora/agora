@@ -146,6 +146,24 @@ public interface API
 
     /***************************************************************************
 
+        Expose blocks as a REST collection
+
+        API:
+            GET /blocks/:height
+
+        Params:
+            _height = The height of the block to return
+
+        Returns:
+            The block at height `_height`, or throw an `Exception` (404).
+
+    ***************************************************************************/
+
+    @path("/blocks/:height")
+    public const(Block) getBlock (ulong _height);
+
+    /***************************************************************************
+
         Get the array of hashes which form the merkle path
 
         API:
