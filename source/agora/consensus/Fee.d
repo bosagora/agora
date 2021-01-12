@@ -35,7 +35,7 @@ public alias PayloadChecker = string delegate (in Transaction tx) nothrow @safe;
 
 *******************************************************************************/
 
-public Amount calculateDataFee(ulong data_size, uint factor) pure nothrow @safe @nogc
+public Amount calculateDataFee (ulong data_size, uint factor) pure nothrow @safe @nogc
 {
     const ulong decimal = 100L;
     ulong fee = cast(ulong)(
@@ -237,7 +237,7 @@ public class DataPayloadChecker
     }
 
     /// Calculates the fee of data payloads
-    public Amount getFee(ulong data_size) pure nothrow @safe @nogc
+    public Amount getFee (ulong data_size) pure nothrow @safe @nogc
     {
         return calculateDataFee(data_size, this.TxPayloadFeeFactor);
     }
