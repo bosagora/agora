@@ -1782,7 +1782,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             max_quorum_nodes : test_conf.max_quorum_nodes,
             quorum_threshold : test_conf.quorum_threshold,
             quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
-            preimage_reveal_interval : 1.seconds,  // check revealing frequently
             block_interval_sec : test_conf.block_interval_sec,
             min_listeners : test_conf.min_listeners == 0
                 ? (GenesisValidators + test_conf.full_nodes) - 1
@@ -1824,7 +1823,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             key_pair : key_pair,
             addresses_to_register : [self_address],
             registry_address : test_conf.registry_address,
-            recurring_enrollment : test_conf.recurring_enrollment
+            recurring_enrollment : test_conf.recurring_enrollment,
+            preimage_reveal_interval : 1.seconds,  // check revealing frequently
         };
 
         Config conf =

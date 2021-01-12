@@ -69,6 +69,8 @@ validator:
   # Whether or not the Validator will enroll automatically at the startup or
   # at the end of Validator cycle
   recurring_enrollment: true
+  # How often (in seconds) we should check for pre-images to reveal
+  preimage_reveal_interval: 10
 
 ################################################################################
 ##                         Ban manager configuration                          ##

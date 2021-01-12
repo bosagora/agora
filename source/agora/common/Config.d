@@ -156,9 +156,6 @@ public struct NodeConfig
     /// validator set changes (new enrollments, expired enrollments..)
     public uint quorum_shuffle_interval = 30;
 
-    /// How often should the periodic preimage reveal timer trigger (in seconds)
-    public Duration preimage_reveal_interval = 10.seconds;
-
     /// The local address where the stats server (currently Prometheus)
     /// is going to connect to, for example: http://0.0.0.0:8008
     /// It can also be set to 0 do disable listening
@@ -192,6 +189,9 @@ public struct ValidatorConfig
 
     // If the enrollments will be renewed or not at the end of the cycle
     public bool recurring_enrollment = true;
+
+    /// How often should the periodic preimage reveal timer trigger (in seconds)
+    public Duration preimage_reveal_interval = 10.seconds;
 }
 
 /// Admin API config
@@ -390,8 +390,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     assert(quorum_threshold >= 1 && quorum_threshold <= 100);
     auto quorum_shuffle_interval = get!(uint, "node", "quorum_shuffle_interval")(
         cmdln, node);
-    auto preimage_reveal_interval = get!(Duration, "node", "preimage_reveal_interval",
-        str => str.to!ulong.seconds)(cmdln, node);
     const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
     const tx_payload_max_size = opt!(uint, "node", "tx_payload_max_size")(cmdln, node);
     const tx_payload_fee_factor = opt!(uint, "node", "tx_payload_fee_factor")(cmdln, node);
@@ -413,7 +411,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             max_quorum_nodes : max_quorum_nodes,
             quorum_threshold : quorum_threshold,
             quorum_shuffle_interval : quorum_shuffle_interval,
-            preimage_reveal_interval : preimage_reveal_interval,
             stats_listening_port : stats_listening_port,
             tx_payload_max_size : tx_payload_max_size,
             tx_payload_fee_factor : tx_payload_fee_factor,
@@ -436,7 +433,6 @@ node:
   port: 2926
   data_dir: .cache
   quorum_shuffle_interval: 10
-  preimage_reveal_interval: 5
   commons_budget_address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
   tx_payload_max_size: 512
   tx_payload_fee_factor: 300
@@ -447,7 +443,6 @@ node:
         assert(config.max_listeners == 10);
         assert(config.data_dir == ".cache");
         assert(config.quorum_shuffle_interval == 10);
-        assert(config.preimage_reveal_interval == 5.seconds);
         assert(config.commons_budget_address.toString() == "GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ");
         assert(config.tx_payload_max_size == 512);
         assert(config.tx_payload_fee_factor == 300);
@@ -463,13 +458,17 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
 
     auto registry_address = get!(string, "validator", "registry_address")(cmdln, node);
     const recurring_enrollment = get!(bool, "validator", "recurring_enrollment")(cmdln, node);
+    const preimage_reveal_interval = get!(Duration, "validator", "preimage_reveal_interval",
+        str => str.to!ulong.seconds)(cmdln, node);
+
     ValidatorConfig result = {
         enabled: true,
         key_pair:
             KeyPair.fromSeed(Seed.fromString(get!(string, "validator", "seed")(cmdln, node))),
         registry_address: registry_address,
         addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
-        recurring_enrollment : recurring_enrollment
+        recurring_enrollment : recurring_enrollment,
+        preimage_reveal_interval : preimage_reveal_interval,
     };
     return result;
 }
@@ -487,10 +486,12 @@ validator:
   seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
   registry_address: http://127.0.0.1:3003
   recurring_enrollment : false
+  preimage_reveal_interval: 99
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseValidatorConfig("validator" in node, cmdln);
         assert(config.enabled);
+        assert(config.preimage_reveal_interval == 99.seconds);
         assert(config.key_pair == KeyPair.fromSeed(
             Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
         assert(!config.recurring_enrollment);
