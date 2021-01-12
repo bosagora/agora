@@ -651,6 +651,13 @@ public class Ledger
         }
     }
 
+    /// Error message describing the reason of validation failure
+    public static enum InvalidConsensusDataReason : string
+    {
+        NoTransactions = "Transaction set doesn't contain any transactions",
+        NotEnoughValidators = "Enrollment: Insufficient number of active validators",
+    }
+
     /***************************************************************************
 
         Check whether the consensus data is valid.
@@ -669,7 +676,7 @@ public class Ledger
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         if (!data.tx_set.length)
-            return "Transaction set doesn't contain any transactions";
+            return InvalidConsensusDataReason.NoTransactions;
 
         foreach (const ref tx; data.tx_set)
         {
@@ -680,7 +687,7 @@ public class Ledger
         size_t active_enrollments = enroll_man.getValidatorCount(expect_height);
 
         if (data.enrolls.length + active_enrollments < Enrollment.MinValidatorCount)
-            return "Enrollment: Insufficient number of active validators";
+            return InvalidConsensusDataReason.NotEnoughValidators;
 
         foreach (const ref enroll; data.enrolls)
         {
