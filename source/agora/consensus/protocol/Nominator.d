@@ -109,6 +109,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Whether we're in the asynchronous stage of nominating
     private bool is_nominating;
 
+    /// Last height that we finished the nomination round
+    private Height last_confirmed_height;
+
     /// Periodic nomination timer. It runs every second and checks the clock
     /// time to see if it's time to start nominating. We do not use the
     /// `BlockInterval` interval directly because this makes the timer
@@ -351,8 +354,9 @@ extern(D):
 
     private void checkNominate () @safe
     {
-        // already in the asynchronous stage of nominating
-        if (this.is_nominating)
+        const slot_idx = this.ledger.getBlockHeight() + 1;
+        // are we done nominating this round
+        if (this.last_confirmed_height >= slot_idx)
             return;
 
         const cur_time = this.clock.networkTime();
@@ -373,11 +377,9 @@ extern(D):
         if (!this.prepareNominatingSet(data))
             return;
 
-        log.info("Nomination started at {}", cur_time);
-        log.trace("Consensus data is: {}", data);
+        log.trace("Nominating {} at {}", data, cur_time);
         this.is_nominating = true;
 
-        const slot_idx = this.ledger.getBlockHeight() + 1;
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
         this.nominate(slot_idx, data);
@@ -977,6 +979,13 @@ extern(D):
             env.statement.pledges = deserializeFull!(SCPStatement._pledges_t)(
                 serializeFull(env.statement.pledges));
             this.network.gossipEnvelope(env);
+
+            // Per SCP rules, once we CONFIRM a NOMINATE; we can't
+            // nominate new values. Keep track of the biggest slot_idx we confirmed
+            // a NOMINATE on
+            if (envelope.statement.slotIndex > this.last_confirmed_height &&
+                envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
+                this.last_confirmed_height = Height(envelope.statement.slotIndex);
         }
         catch (Exception ex)
         {
