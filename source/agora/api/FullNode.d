@@ -243,4 +243,20 @@ public interface API
     ***************************************************************************/
 
     public time_t getLocalTime ();
+
+    /***************************************************************************
+
+        API:
+            GET /transactions
+
+        Params:
+            tx_hashes = A Set of Transaction hashes
+
+        Returns:
+            Transactions corresponding to the requested hashes or
+            Transaction.init for hashes that can't be found in the pool
+
+    ***************************************************************************/
+
+    public Transaction[] getTransactions (Set!Hash tx_hashes);
 }

@@ -355,6 +355,23 @@ class NetworkClient
 
     /***************************************************************************
 
+        Params:
+            tx_hashes = A Set of Transaction hashes
+
+        Returns:
+            Transactions corresponding to the requested hashes or
+            Transaction.init for hashes that can't be found in the pool
+
+    ***************************************************************************/
+
+    public Transaction[] getTransactions (Set!Hash tx_hashes) @trusted nothrow
+    {
+        return this.attemptRequest!(API.getTransactions, Throw.No)(this.api,
+            tx_hashes);
+    }
+
+    /***************************************************************************
+
         Attempt a request up to 'this.max_retries' attempts, and make the task
         wait this.retry_delay between each attempt.
 
