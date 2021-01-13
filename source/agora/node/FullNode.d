@@ -82,6 +82,10 @@ mixin AddLogger!();
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
 private enum uint MaxBatchBlocksSent = 20;
 
+/// Maximum number of transactions that will be sent in a call to
+/// getTransactionByHash
+private enum uint MaxBatchTranscationsSent = 100;
+
 /*******************************************************************************
 
     Implementation of the FullNode API
@@ -762,5 +766,30 @@ public class FullNode : API
                 }
             });
         }
+    }
+
+    /***************************************************************************
+
+        Params:
+            tx_hashes = A Set of Transaction hashes
+
+        Returns:
+            Transactions, if found in the pool, corresponding to the
+            requested hashes
+
+    ***************************************************************************/
+
+    public Transaction[] getTransactions (Set!Hash tx_hashes) @safe
+    {
+        Transaction[] found_txs;
+        foreach (hash; tx_hashes)
+        {
+            if (found_txs.length >= MaxBatchTranscationsSent)
+                break;
+            auto tx = this.pool.getTransactionByHash(hash);
+            if (tx != Transaction.init)
+                found_txs ~= tx;
+        }
+        return found_txs;
     }
 }
