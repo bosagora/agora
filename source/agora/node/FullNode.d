@@ -235,6 +235,13 @@ public class FullNode : API
         this.startStatsServer();
     }
 
+    /// Returns an already instantiated version of the BanManager
+    /// (please also see `NetworkManager.getBanMananger()`)
+    package BanManager getAlreadyCreatedBanManager () @safe @nogc nothrow pure
+    {
+        return this.network.getAlreadyCreatedBanManager();
+    }
+
     /***************************************************************************
 
         Starts the periodic network discovery task.

@@ -34,7 +34,7 @@ private int main (string[] args)
     const lflags = getLflags();
     if (!importPaths.length || !lflags.length)
         return 1;
-    const Args = ["rdmd", "-vcolumns"] ~ args[1 .. $] ~
+    const Args = ["rdmd", "-vcolumns", "-i=stdx"] ~ args[1 .. $] ~
         importPaths.map!(v => "-I" ~ v).array ~
         lflags.map!(v => "-L" ~ v).array;
 

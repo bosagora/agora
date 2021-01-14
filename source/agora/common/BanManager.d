@@ -17,10 +17,12 @@ module agora.common.BanManager;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.network.Clock;
+import agora.utils.InetUtils;
 import agora.utils.Log;
 
 import std.file;
 import std.path;
+import std.socket : getAddressInfo, AddressFamily;
 import std.stdio;
 
 import core.stdc.stdlib;
@@ -174,6 +176,23 @@ public class BanManager
 
         if (status.fail_count >= this.config.max_failed_requests)
         {
+            try
+            {
+                immutable host_and_port = InetUtils.extractHostAndPort(address);
+                if (host_and_port.type == HostType.Domain)
+                    foreach (ref addr_info; getAddressInfo(host_and_port.host))
+                    {
+                       auto resolved_address = addr_info.address.toAddrString();
+                       if (addr_info.address.addressFamily == AddressFamily.INET6)
+                           resolved_address = InetUtils.expandIPv6(resolved_address);
+
+                       this.ban(resolved_address);
+                    }
+            }
+            catch (Exception e)
+            {
+                log.trace("Error happened while trying to resolve DNS name {}", address);
+            }
             status.fail_count = 0;
             this.ban(address);
         }
