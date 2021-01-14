@@ -1368,7 +1368,7 @@ public interface TestAPI : ValidatorAPI
 /// (multiple-inheritance is not supported in D)
 private mixin template TestNodeMixin ()
 {
-    private Registry* registry;
+    protected Registry* registry;
 
     /// pointer to the unittests-adjusted clock time
     protected shared(time_t)* cur_time;
