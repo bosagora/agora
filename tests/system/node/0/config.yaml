@@ -19,6 +19,7 @@ node:
 
 consensus:
   validator_cycle: 20
+  slash_penalty_amount: 10000
 
 ################################################################################
 ##                             Validator configuration                        ##

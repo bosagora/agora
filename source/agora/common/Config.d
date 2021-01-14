@@ -15,6 +15,7 @@
 
 module agora.common.Config;
 
+import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.crypto.Key;
 import agora.common.Set;
@@ -197,6 +198,9 @@ public struct ConsensusConfig
 
     /// How frequent the payments to Validators will be in blocks
     public uint payout_period = 144;
+
+    /// The amount of a penalty for slashed validators
+    public Amount slash_penalty_amount = 10_000.coins;
 }
 
 /// Validator config
@@ -474,6 +478,7 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
     const tx_payload_fee_factor = get!(uint, "consensus", "tx_payload_fee_factor")(cmdln, node);
     const validator_tx_fee_cut = get!(ubyte, "consensus", "validator_tx_fee_cut")(cmdln, node);
     const payout_period = get!(uint, "consensus", "payout_period")(cmdln, node);
+    const slash_penalty_value = opt!(ulong, "node", "slash_penalty_amount")(cmdln, node);
 
     if (quorum_threshold < 1 || quorum_threshold > 100)
         throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
@@ -487,6 +492,7 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
         tx_payload_fee_factor: tx_payload_fee_factor,
         validator_tx_fee_cut: validator_tx_fee_cut,
         payout_period: payout_period,
+        slash_penalty_amount : slash_penalty_value.coins,
     };
 
     return result;
@@ -509,6 +515,7 @@ consensus:
     tx_payload_fee_factor:   2100
     validator_tx_fee_cut:      69
     payout_period:           9999
+    slash_penalty_amount:   20000
 `;
 
     auto node = Loader.fromString(conf_example).load();
@@ -521,6 +528,7 @@ consensus:
     assert(config.tx_payload_fee_factor == 2100);
     assert(config.validator_tx_fee_cut == 69);
     assert(config.payout_period == 9999);
+    assert(config.slash_penalty_amount == 20_000.coins);
 }
 
 /// Parse the validator config section

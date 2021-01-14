@@ -75,8 +75,7 @@ public class SlashPolicy
     public this (EnrollmentManager enroll_man, immutable(ConsensusParams) params)
     {
         this.enroll_man = enroll_man;
-        // TODO: This should be set through ConsensusParams
-        this.penalty_amount = Amount(10_000L * 10_000_000L);
+        this.penalty_amount = params.SlashPenaltyAmount;
         this.penalty_address = params.CommonsBudgetAddress;
     }
 
@@ -300,6 +299,8 @@ unittest
     import std.format;
     import std.range;
 
+    import TESTNET = agora.consensus.data.genesis.Test;
+
     scope utxo_set = new TestUTXOSet;
     Hash[] utxo_hashes;
 
@@ -315,7 +316,10 @@ unittest
             utxo_hashes ~= UTXO.getHash(tx.hashFull(), 0);
         });
 
-    auto params = new immutable(ConsensusParams);
+    auto params = new immutable(ConsensusParams)(
+        TESTNET.GenesisBlock,
+        TESTNET.CommonsBudgetAddress,
+        1008, 7, 80, 30, 1, 1024, 200, 70, 144, 20_000.coins);
     scope enroll_man = new EnrollmentManager(":memory:", WK.Keys.A, params);
 
     // create 8 enrollments
@@ -348,6 +352,7 @@ unittest
 
     // create slashing manager
     scope slash_man = new SlashPolicy(enroll_man, params);
+    assert(slash_man.penalty_amount == Amount(200_000_000_000L));
 
     // get all the validators and find index of the first and second validastors
     uint first_validator;
