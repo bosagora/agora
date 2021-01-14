@@ -289,6 +289,7 @@ public class FullNode : API
                     Height(this.ledger.getBlockHeight() + 1),
                     // if any blocks fail validation => short-circuit
                     blocks => blocks.all!(block => this.acceptBlock(block)));
+                this.network.getUnknownTXs(this.ledger);
             }
             catchup(); // avoid delay
             this.taskman.setTimer(this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);

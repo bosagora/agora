@@ -37,6 +37,7 @@ import agora.common.Types;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
+import agora.common.Hash;
 import agora.consensus.data.Transaction;
 import agora.network.Clock;
 import agora.network.NetworkClient;
@@ -860,6 +861,37 @@ public class NetworkManager
         {
             log.error("Couldn't retrieve blocks: {}. Will try again later..",
                 ex.msg);
+        }
+    }
+
+    /***************************************************************************
+
+        Retrieve blocks starting from block_height up to the highest block
+        that's available from the connected nodes.
+
+    ***************************************************************************/
+
+    public void getUnknownTXs (Ledger ledger) @safe nothrow
+    {
+        auto unknown_txs = ledger.getUnknownTXHashes();
+
+        foreach (peer; this.peers[])
+        {
+            if (unknown_txs.length == 0)
+                break;
+
+            foreach (tx; peer.getTransactions(unknown_txs))
+            {
+                try
+                {
+                    ledger.acceptTransaction(tx);
+                    unknown_txs.remove(tx.hashFull());
+                }
+                catch (Exception e)
+                {
+                    log.info("Unknown TX {} threw {}", tx, e.msg);
+                }
+            }
         }
     }
 
