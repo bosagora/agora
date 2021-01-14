@@ -77,6 +77,9 @@ public class Ledger
     /// Pool of transactions to pick from when generating blocks
     private TransactionPool pool;
 
+    /// TX Hashes Ledger encountered but dont have in the pool
+    private Set!Hash unknown_txs;
+
     /// The last block in the ledger
     private Block last_block;
 
@@ -388,6 +391,8 @@ public class Ledger
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return false;
         }
+        // If we were looking for this TX, stop
+        this.unknown_txs.remove(tx.hashFull());
 
         this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         return true;
@@ -441,6 +446,9 @@ public class Ledger
         // Prepare maps for next block with maybe new enrollments
         log.trace("Storing active validators for next block using height {}.", block.header.height);
         this.enroll_man.updateValidatorIndexMaps(Height(block.header.height + 1));
+
+        // Clear the unknown TXs every round (clear() is not @safe)
+        this.unknown_txs = Set!Hash.init;
 
         if (externalized && this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
@@ -1048,9 +1056,24 @@ public class Ledger
 
         if (local_unknown_txs.length > 0)
         {
+            local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
             return InvalidConsensusDataReason.MayBeValid;
         }
         return null;
+    }
+
+    /***************************************************************************
+
+        Get a set of TX Hashes that Ledger is missing
+
+        Returns:
+            set of TX Hashes that Ledger is missing
+
+    ***************************************************************************/
+
+    public Set!Hash getUnknownTXHashes () @safe nothrow
+    {
+        return this.unknown_txs;
     }
 }
 
