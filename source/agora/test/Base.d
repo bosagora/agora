@@ -137,6 +137,9 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
     throw new AssertError(msg, file, line);
 }
 
+/// Skip printing out per-node logs ony agora/test/* failures
+shared bool no_logs = false;
+
 /// Custom unnitest runner as a workaround for multi-threading issue:
 /// Agora unittests spawn threads, which allocate. The Ocean tests
 /// inspect GC stats for memory allocation changes, and potentially fail
@@ -161,6 +164,7 @@ private UnitTestResult customModuleUnitTester ()
 
     //
     const chatty = !!("dchatty" in environment);
+    no_logs = !!("dnologs" in environment);
     const all_single_threaded = !!("dsinglethreaded" in environment);
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
@@ -886,6 +890,9 @@ public class TestAPIManager
 
     public void printLogs (string file = __FILE__, int line = __LINE__)
     {
+        if (no_logs)
+            return;
+
         synchronized  // make sure logging output is not interleaved
         {
             writeln("---------------------------- START OF LOGS ----------------------------");
