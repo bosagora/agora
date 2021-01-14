@@ -184,7 +184,8 @@ public class FullNode : API
                 config.consensus.tx_payload_max_size,
                 config.consensus.tx_payload_fee_factor,
                 config.consensus.validator_tx_fee_cut,
-                config.consensus.payout_period);
+                config.consensus.payout_period,
+                config.consensus.slash_penalty_amount);
 
         this.taskman = this.getTaskManager();
         this.clock = this.getClock(this.taskman);
