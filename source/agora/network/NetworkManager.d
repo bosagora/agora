@@ -409,6 +409,13 @@ public class NetworkManager
         }
     }
 
+    /// Returns an already instantiated version of the BanManager
+    /// (please also see `NetworkManager.getBanMananger()`)
+    public BanManager getAlreadyCreatedBanManager () @safe @nogc nothrow pure
+    {
+        return this.banman;
+    }
+
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
