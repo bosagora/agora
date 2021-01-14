@@ -15,15 +15,31 @@ module agora.utils.InetUtils;
 
 import agora.utils.Log;
 
+import vibe.inet.url : URL;
+
 import std.algorithm;
 import std.algorithm.searching;
 import std.array;
+import std.ascii : isAlpha, isDigit;
 import std.conv;
+import std.range : zip, iota;
+import std.regex : matchFirst, regex;
+import std.string : indexOf, strip;
 import std.socket;
+import std.typecons : tuple, Tuple;
 
 import core.stdc.string;
 
 mixin AddLogger!();
+
+///
+public enum HostType : ubyte
+{
+    IPv4,
+    IPv6,
+    Domain,
+    Invalid,
+}
 
 ///
 mixin template AddGetAllIPs()
@@ -173,6 +189,141 @@ version (Windows)
         return null;
     }
 }
+
+    /***************************************************************************
+
+        Expand an IPv6 address to its canonical representation
+
+        For example:
+            ::5:6:7:8      => 0:0:0:0:5:6:7:8
+            1:2:3::7:8     => 1:2:3:0:0:0:7:8
+            ::             => 0:0:0:0:0:0:0:0
+
+        Params:
+            ip = compressed IPv6 address
+
+        Returns:
+            uncompressed representation of IPv6 address
+
+    ***************************************************************************/
+
+    public static string expandIPv6 (const(char)[] ip) @safe pure
+    {
+        auto parts = ip.split(":");
+        const first_empty_ind = parts.countUntil("");
+
+        // filter out all the empty parts, except the first one
+        auto res = zip(iota(parts.length), parts).filter!((tup) => tup[0] == first_empty_ind || !tup[1].empty()).
+                   map!(tup => tup[1]).array();
+
+        // fill in the empty part with the needed zeros
+        return () @trusted pure {
+            return cast(string) res.map!(part => (part.empty() ? replicate(cast(const(char)[][])["0"], 8 - res.length + 1) : [part]))
+                        .joiner.array.join(":");
+        }();
+    }
+
+    unittest
+    {
+        assert(expandIPv6("1:2:3:4:5:6:7:8") == "1:2:3:4:5:6:7:8");
+        assert(expandIPv6("::5:6:7:8") == "0:0:0:0:5:6:7:8");
+        assert(expandIPv6("::8") == "0:0:0:0:0:0:0:8");
+        assert(expandIPv6("::5:0:0:0") == "0:0:0:0:5:0:0:0");
+        assert(expandIPv6("1:2:3:4:5:6:7::") == "1:2:3:4:5:6:7:0");
+        assert(expandIPv6("1::") == "1:0:0:0:0:0:0:0");
+        assert(expandIPv6("1:2:3::7:8") == "1:2:3:0:0:0:7:8");
+        assert(expandIPv6("::") == "0:0:0:0:0:0:0:0");
+    }
+
+    ///
+    public alias HostPortTup = Tuple!(string, "host", ushort, "port", HostType, "type");
+
+    /***************************************************************************
+
+        Extracts host and port from a URL and determine the host type
+
+        Host can be DNS host name, IPv6 or IPv4 address.
+
+        Example URLs are
+            https://www.bosagora.io:1234/data
+            http://[1:2::3]/data
+
+        Params:
+          url = the URL from which we would like to extract the host and port
+
+        Returns: `HostPortTup` containing the extracted host, port and host type
+
+    ****************************************************************************/
+
+    public static HostPortTup extractHostAndPort (string url) @safe
+    {
+        url = url.strip();
+        // detect wether url has valid schema and append 'http' if not
+        auto idx = url.indexOf(':');
+        if (idx < 1 || (url.length && !url[0].isAlpha()))
+            url = "http://" ~ url;
+
+        // parse url
+        URL parsed_url;
+        try
+        {
+            parsed_url = URL.parse(url);
+        }
+        catch(Exception e)
+        {
+            return HostPortTup("",0, HostType.Invalid);
+        }
+
+        HostType host_type = HostType.Domain;
+        if (parsed_url.host.canFind(':'))
+            host_type = HostType.IPv6;
+        else if (parsed_url.host.all!(c => c.isDigit() || c == '.'))
+            host_type = HostType.IPv4;
+
+        return HostPortTup(parsed_url.host, parsed_url.port, host_type);
+    }
+
+    unittest
+    {
+        // IPv6 tests
+        assert(extractHostAndPort("https://[1:2:3:4:5:6]:12345/blabla/blabla/")
+                == HostPortTup("1:2:3:4:5:6", 12345, HostType.IPv6));
+
+        assert(extractHostAndPort("https://[1:2:3:4:5:6]/blabla")
+            == HostPortTup("1:2:3:4:5:6", 443, HostType.IPv6));
+
+        assert(extractHostAndPort("https://[3::1]/blabla")
+            == HostPortTup("3::1", 443, HostType.IPv6));
+
+        assert(extractHostAndPort("https://[::1]/blabla")
+            == HostPortTup("::1", 443, HostType.IPv6));
+
+        assert(extractHostAndPort("http://[::]:1234")
+            == HostPortTup("::", 1234, HostType.IPv6));
+
+        assert(extractHostAndPort("[::]")
+            == HostPortTup("::", 80, HostType.IPv6));
+
+        // IPv4 tests
+        assert(extractHostAndPort("https://1.2.3.4:12345/blabla/blabla")
+                == HostPortTup("1.2.3.4", 12345, HostType.IPv4));
+
+        assert(extractHostAndPort("https://1.2.3.4/blabla")
+            == HostPortTup("1.2.3.4", 443, HostType.IPv4));
+
+        assert(extractHostAndPort("http://1.2.3.4")
+            == HostPortTup("1.2.3.4", 80, HostType.IPv4));
+
+        assert(extractHostAndPort("1.2.3.4")
+            == HostPortTup("1.2.3.4", 80, HostType.IPv4));
+
+        // Domain tests
+        assert(extractHostAndPort("http://node-0:1826/blabla/blabla/")
+            == HostPortTup("node-0", 1826, HostType.Domain));
+
+        assert(extractHostAndPort("seed.bosagora.io/blabla")
+            == HostPortTup("seed.bosagora.io", 80, HostType.Domain));
+    }
 
     public static string[] getPublicIPs()
     {
