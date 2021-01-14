@@ -180,13 +180,13 @@ unittest
     // create genesis block
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
     last_txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock(iota(1), Height(1));
+    network.expectBlock(iota(GenesisValidators), Height(1));
 
     // create 1 additional block and enough `tx`es
     auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
     // send it to one node
     txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock(iota(1), Height(2));
+    network.expectBlock(iota(GenesisValidators), Height(2));
     last_txs = txs;
 
     // the validator node has 2 blocks, but bad node pretends to have 3
