@@ -30,17 +30,17 @@ public struct FileBasedLock
 {
     ///
     public string file_name;
-    
+
     ///
     public string file_path;
 
     ///
     private string file_dir;
-    
-    ///
-    private File file; 
 
-    /// 
+    ///
+    private File file;
+
+    ///
     private bool create_dir;
 
     /***************************************************************************
@@ -50,7 +50,7 @@ public struct FileBasedLock
         Params:
             file_name = name of the lock file
             file_dir = the directory where the lock file has to be created
-            create_dir = true, if the directory holding the lock file 
+            create_dir = true, if the directory holding the lock file
                          needs to be created
 
         Returns:
@@ -59,7 +59,7 @@ public struct FileBasedLock
     ***************************************************************************/
 
     public this (string file_name, string file_dir = tempDir(), bool create_dir = false)
-    {	
+    {
         this.file_name = file_name;
         this.file_dir = file_dir;
         this.create_dir = create_dir;
@@ -76,10 +76,10 @@ public struct FileBasedLock
     ***************************************************************************/
 
     public void lockThrow ()
-    {		 
+    {
         lock({
                 // using excusive locks for the entire file
-                if (!file.tryLock(LockType.readWrite, 0, 0)) 
+                if (!file.tryLock(LockType.readWrite, 0, 0))
                     throw new Exception(format("unable to lock file: %s", file_path));
                 return true;
             });
@@ -92,7 +92,7 @@ public struct FileBasedLock
     ***************************************************************************/
 
     public void lockBlock ()
-    { 
+    {
         lock({
                 file.lock(LockType.readWrite, 0, 0);
                 return true;
@@ -110,7 +110,7 @@ public struct FileBasedLock
 
     public bool lockTry ()
     {
-        return 
+        return
         lock({
                 return file.tryLock(LockType.readWrite, 0, 0);
             });
@@ -121,10 +121,10 @@ public struct FileBasedLock
         Unlocks the file
 
     ***************************************************************************/
-    
+
     public void unlock ()
     {
-        file.unlock();	
+        file.unlock();
     }
 
     /***************************************************************************
@@ -145,13 +145,13 @@ public struct FileBasedLock
             mkdirRecurse(file_dir);
 
         // 1. if the file doesn't exists, then the File's constructor will create it
-        // 2. it the file exists and an other process has already acquired 
+        // 2. it the file exists and an other process has already acquired
         //    an excusive log to it, we can still open it for writing
-        file = File(file_path,"w"); 
+        file = File(file_path,"w");
         auto ret_val = lock_delegate();
-        
+
         // writing the PID of the current process into the lock file to help debugging
-        file.write(getpid()); 
+        file.write(getpid());
         file.flush();
 
         return ret_val;
