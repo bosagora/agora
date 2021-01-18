@@ -166,7 +166,18 @@ public class Ledger
                 "different from the one in the config file");
 
         if (this.utxo_set.length == 0)
-            this.rebuildUTXOAndValidatorSet(gen_block);
+        {
+            // clear validator set
+            this.enroll_man.removeAllValidators();
+
+            foreach (height; 0 .. this.last_block.header.height + 1)
+            {
+                Block block;
+                this.storage.readBlock(block, Height(height));
+                this.acceptBlock(block, false);
+                this.last_block = block;
+            }
+        }
         else if (this.enroll_man.validatorCount() == 0)
         {
             // +1 because the genesis block counts as one
@@ -190,71 +201,6 @@ public class Ledger
 
         Utils.getCollectorRegistry().addCollector(&this.collectTxStats);
         Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
-    }
-
-    /***************************************************************************
-
-        This routine will be called from the constructor to rebuild the state
-        from scratch, based the on-disk chain.
-
-    ***************************************************************************/
-
-    private void rebuildUTXOAndValidatorSet (ref Block gen_block)
-    {
-        ManagedDatabase.beginBatch();
-        scope (failure) ManagedDatabase.rollback();
-
-        // clear validator set
-        this.enroll_man.removeAllValidators();
-
-        Block last_read_block = gen_block;
-        foreach (height; 0 .. this.last_block.header.height + 1)
-        {
-            Block block;
-            this.storage.readBlock(block, Height(height));
-            if (height == 0)
-            {
-                if (auto reason = block.isGenesisBlockInvalidReason())
-                    throw new Exception(
-                        "Genesis block loaded from disk is invalid: " ~
-                        reason);
-            }
-            else
-            {
-                const active_enrollments = enroll_man.getValidatorCount(
-                    block.header.height);
-                const enrolled_validators = enroll_man.getCountOfValidators(
-                    block.header.height);
-                log.trace("Active validator count = {}", active_enrollments);
-                if (auto fail_reason = block.isInvalidReason(
-                        last_read_block.header.height,
-                        last_read_block.header.hashFull,
-                        this.utxo_set.getUTXOFinder(),
-                        &this.fee_man.check,
-                        this.enroll_man.getEnrollmentFinder(),
-                        active_enrollments,
-                        enrolled_validators,
-                        &this.enroll_man.getValidatorAtIndex,
-                        (const ref Point key, const Height height) @safe nothrow
-                        {
-                            const PK = PublicKey(key[]);
-                            return this.enroll_man.getCommitmentNonce(PK, height);
-                        },
-                        last_read_block.header.timestamp,
-                        cast(ulong) this.clock.networkTime(),
-                        this.block_timestamp_tolerance,
-                        &this.getCoinbaseTX))
-                        throw new Exception(
-                            "A block loaded from disk is invalid: " ~
-                            fail_reason);
-            }
-            this.accumulateFees(block);
-            this.updateUTXOSet(block);
-            this.updateValidatorSet(block);
-            this.enroll_man.updateValidatorIndexMaps(Height(height + 1));
-            last_read_block = block;
-        }
-        ManagedDatabase.commitBatch();
     }
 
     /***************************************************************************
@@ -315,7 +261,7 @@ public class Ledger
                 return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
             },
             data.timestamp);
-        return this.acceptBlock(block, file, line);
+        return this.acceptBlock(block, true, file, line);
     }
 
     /***************************************************************************
@@ -326,24 +272,31 @@ public class Ledger
 
         Params:
             block = the block to add
+            externalized = whether the block is `externalized` now
 
         Returns:
             true if the block was accepted
 
     ***************************************************************************/
 
-    public bool acceptBlock (const ref Block block,
+    public bool acceptBlock (const ref Block block, bool externalized = true,
         string file = __FILE__, size_t line = __LINE__) @safe
     {
         if (auto fail_reason = block.header.height == 0
             ? block.isGenesisBlockInvalidReason()
             : this.validateBlock(block, file, line))
         {
-            log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
-            return false;
+            if (externalized)
+            {
+                log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
+                return false;
+            }
+            else
+                throw new Exception("A block loaded from disk is invalid: " ~
+                    fail_reason);
         }
 
-        this.addValidatedBlock(block);
+        this.addValidatedBlock(block, externalized);
         this.block_stats.increaseMetricBy!"agora_block_txs_amount_total"(
             getUnspentAmount(block.txs));
         this.block_stats.increaseMetricBy!"agora_block_txs_total"(
@@ -432,12 +385,14 @@ public class Ledger
 
         Params:
             block = the block to add
+            externalized = whether the block is `externalized` now
 
     ***************************************************************************/
 
-    private void addValidatedBlock (const ref Block block) @safe
+    private void addValidatedBlock (const ref Block block,
+        bool externalized = true) @safe
     {
-        if (!this.storage.saveBlock(block))
+        if (externalized && !this.storage.saveBlock(block))
             assert(0, format!"Failed to save block: %s"(prettify(block)));
 
         // Keep track of the fees generated by this block, before updating the
@@ -462,14 +417,14 @@ public class Ledger
             || this.enroll_man.validatorCount() != old_count;
 
         // read back and cache the last block
-        if (!this.storage.readLastBlock(this.last_block))
+        if (externalized && !this.storage.readLastBlock(this.last_block))
             assert(0, format!"Failed to read last block: %s"(prettify(this.last_block)));
 
         // Prepare maps for next block with maybe new enrollments
         log.trace("Storing active validators for next block using height {}.", block.header.height);
         this.enroll_man.updateValidatorIndexMaps(Height(block.header.height + 1));
 
-        if (this.onAcceptedBlock !is null)
+        if (externalized && this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
     }
 
