@@ -5,7 +5,7 @@ set -o pipefail
 
 AGORA_VERSION=HEAD
 
-GIT_DESCRIBE_OUT=`git describe`
+GIT_DESCRIBE_OUT=`git describe --always`
 
 if [ -n "$GIT_DESCRIBE_OUT" ]
 then
