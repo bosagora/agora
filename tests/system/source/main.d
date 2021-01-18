@@ -54,8 +54,8 @@ int main (string[] args)
     writefln("%s START SYSTEM TEST", PREFIX);
     if (args.length < 2)
     {
-        writeln("%s You must enter addresses of the nodes to connect to.", PREFIX);
-        writeln("%s   ex) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...", PREFIX);
+        writefln("%s You must enter addresses of the nodes to connect to.", PREFIX);
+        writefln("%s   ex) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...", PREFIX);
         return 1;
     }
 
