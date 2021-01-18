@@ -39,6 +39,9 @@ import std.traits;
 import core.stdc.time;
 import core.time;
 
+/// Path to the import file containing the version information
+public immutable VersionFileName = "VERSION";
+
 /// Command-line arguments
 public struct CommandLine
 {
@@ -50,6 +53,9 @@ public struct CommandLine
 
     /// Do not output anything
     public bool quiet;
+
+    /// Print the version information
+    public bool version_;
 
     /// Overrides for config options
     public string[][string] overrides;
@@ -259,6 +265,10 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
             "Example: ./agora -O node.validator=true -o dns=1.1.1.1 -o dns=2.2.2.2\n" ~
             "Array values are additive, other items are set to the last override",
             &cmdline.overridesHandler,
+
+        "version",
+            "Print Agora's version and build informations, then exit",
+            &cmdline.version_,
         );
 }
 
