@@ -52,6 +52,13 @@ private int main (string[] args)
             defaultGetoptPrinter("The Agora node", help.options);
             return 0;
         }
+        if (cmdln.version_)
+        {
+            enum build_version = import(VersionFileName);
+            writeln("Agora ", build_version, ", build on ", __TIMESTAMP__);
+            writeln("Built with the LDC compiler, frontend version: ", __VERSION__);
+            return 0;
+        }
     }
     catch (Exception ex)
     {
