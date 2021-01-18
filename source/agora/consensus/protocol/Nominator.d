@@ -904,7 +904,7 @@ extern(D):
 
         if (block.header.height !in this.slot_sigs)
         {
-            log.trace("No signatures at height {}", block.header.height);
+            log.error("No signatures at height {}", block.header.height);
             return Block.init;
         }
         const Sig[Point] block_sigs = this.slot_sigs[block.header.height];
@@ -925,7 +925,7 @@ extern(D):
         // There must exist signatures for at least half the validators to externalize
         if (sigs.length <= all_validators / 2)
         {
-            log.trace("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
+            log.error("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
                 sigs.length, all_validators / 2, all_validators, block.header.height);
             return Block.init;
         }
