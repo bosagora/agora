@@ -57,6 +57,7 @@ private int main (string[] args)
     {
         writefln("Error parsing command-line arguments '%(%s %)': %s", args,
             ex.message);
+        return 1;
     }
 
     Nullable!Config config = ()
