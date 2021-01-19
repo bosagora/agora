@@ -329,6 +329,30 @@ public struct Amount
     public static Amount invalid (ulong units) { return Amount(units, true); }
 }
 
+/*******************************************************************************
+
+        Make an Amount with the number of coins
+
+        Params:
+            num_coins = the number of coins
+
+        Returns:
+            The Amount calculated with cents per unit and the number of coins
+
+*******************************************************************************/
+
+public Amount coins (in ulong num_coins)
+{
+    return Amount(Amount.UnitPerCoin.value * num_coins, true);
+}
+
+unittest
+{
+    auto am1 = 10_000.coins;
+    auto am2 = Amount(100_000_000_000L);
+    assert(am1 == am2);
+}
+
 ///
 nothrow pure @nogc @safe unittest
 {
