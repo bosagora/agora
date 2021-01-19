@@ -59,7 +59,7 @@ public struct BlockHeader
     /// Enrolled validators
     public Enrollment[] enrollments;
 
-    /// Hash of random seed of the preimages for this this height
+    /// Hash of random seed of the preimages for this height
     public Hash random_seed;
 
     /// List of indices to the validator UTXO set which have not revealed the preimage
