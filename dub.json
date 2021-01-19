@@ -92,6 +92,7 @@
             "name": "name-registry",
             "targetName": "name-registry",
             "mainSourceFile": "source/agora/registry/main.d",
+            "libs-linux": [ "unwind" ],
             "excludedSourceFiles": ["source/agora/cli/*", "source/agora/node/main.d"]
         },
         {
