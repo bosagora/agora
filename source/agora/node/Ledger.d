@@ -236,8 +236,17 @@ public class Ledger
         Hash random_seed = this.slash_man.getExternalizedRandomSeed(
             this.getBlockHeight(), data.missing_validators);
 
-        auto block = makeNewBlock(this.last_block, data.tx_set, data.timestamp, data.enrolls,
-            random_seed, data.missing_validators);
+        Transaction[] externalized_tx_set;
+        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
+        {
+            log.info("Missing TXs, can not create new block at Height {} : {}",
+                this.getBlockHeight() + 1, prettify(data));
+            return false;
+        }
+
+        auto block = makeNewBlock(this.last_block,
+            externalized_tx_set, data.timestamp, data.enrolls, random_seed,
+            data.missing_validators);
         return this.acceptBlock(block);
     }
 
@@ -253,8 +262,18 @@ public class Ledger
             .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
             .map!(K => WK.Keys[K])
             .array();
-        const block = makeNewTestBlock(this.last_block, data.tx_set,
-            data.enrolls, Hash.init, data.missing_validators, public_keys,
+
+        Transaction[] externalized_tx_set;
+        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
+        {
+            log.info("Missing TXs, can not create new block at Height {} : {}",
+                this.getBlockHeight() + 1, prettify(data));
+            return false;
+        }
+
+        const block = makeNewTestBlock(this.last_block,
+            externalized_tx_set, data.enrolls, Hash.init,
+            data.missing_validators, public_keys,
             (PublicKey pubkey)
             {
                 return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
@@ -599,7 +618,7 @@ public class Ledger
             this.getBlockHeight());
 
         Amount tot_fee, tot_data_fee;
-        foreach (ref Transaction tx; this.pool)
+        foreach (ref Hash hash, ref Transaction tx; this.pool)
         {
             scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
                 const err = this.fee_man.check(tx, sum_unspent);
@@ -616,7 +635,7 @@ public class Ledger
                     checkAndAcc))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
-                data.tx_set ~= tx;
+                data.tx_set ~= hash;
 
             if (data.tx_set.length >= max_txs)
             {
@@ -627,7 +646,7 @@ public class Ledger
 
         const pre_cb_len = data.tx_set.length;
         data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
-            data.missing_validators);
+            data.missing_validators).map!(tx => tx.hashFull()).array;
         // No more than 1 CB per block
         assert(data.tx_set.length - pre_cb_len <= 1);
     }
@@ -684,6 +703,7 @@ public class Ledger
     {
         NoTransactions = "Transaction set doesn't contain any transactions",
         NotEnoughValidators = "Enrollment: Insufficient number of active validators",
+        MayBeValid = "May be valid",
     }
 
     /***************************************************************************
@@ -728,33 +748,9 @@ public class Ledger
         if (!data.tx_set.length)
             return InvalidConsensusDataReason.NoTransactions;
 
-        Amount tot_fee, tot_data_fee;
-        scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
-            const err = this.fee_man.check(tx, sum_unspent);
-            if (!err && tx.type != TxType.Coinbase)
-            {
-                tot_fee.add(sum_unspent);
-                tot_data_fee.add(
-                    this.fee_man.getDataFee(tx.payload.data.length));
-            }
-            return err;
-        };
-
-        foreach (const ref tx; data.tx_set)
-        {
-            if (auto fail_reason = tx.isInvalidReason(utxo_finder,
-                expect_height, checkAndAcc))
-                return fail_reason;
-        }
-
-        Transaction[] expected_cb_txs = this.getCoinbaseTX(tot_fee,
-            tot_data_fee, data.missing_validators);
-        assert(expected_cb_txs.length <= 1);
-
-        auto incoming_cb_txs = data.tx_set.filter!(
-                tx => tx.type == TxType.Coinbase);
-        if (!isPermutation(expected_cb_txs, incoming_cb_txs))
-            return "Invalid Coinbase transaction";
+        Transaction[] tx_set;
+        if (auto fail_reason = this.getValidTXSet(data, tx_set))
+            return fail_reason;
 
         size_t active_enrollments = enroll_man.getValidatorCount(expect_height);
 
@@ -985,6 +981,76 @@ public class Ledger
     public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
     {
         return this.pool.getTransactionByHash(hash);
+    }
+
+    /***************************************************************************
+
+        Get the valid TX set that `data` is representing
+
+        Params:
+            data = consensus value
+            tx_set = buffer to write the found TXs
+
+        Returns:
+            `null` if node can build a valid TX set, a string explaining
+            the reason otherwise.
+
+    ***************************************************************************/
+
+    public string getValidTXSet (ConsensusData data, ref Transaction[]
+        tx_set) @safe nothrow
+    {
+        const expect_height = Height(this.getBlockHeight() + 1);
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
+        bool[Hash] local_unknown_txs;
+
+        Amount tot_fee, tot_data_fee;
+        scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
+            const err = this.fee_man.check(tx, sum_unspent);
+            if (!err && tx.type != TxType.Coinbase)
+            {
+                tot_fee.add(sum_unspent);
+                tot_data_fee.add(
+                    this.fee_man.getDataFee(tx.payload.data.length));
+            }
+            return err;
+        };
+
+        foreach (const ref tx_hash; data.tx_set)
+        {
+            auto tx = this.getTransactionByHash(tx_hash);
+            if (tx == Transaction.init)
+                local_unknown_txs[tx_hash] = true;
+            else if (auto fail_reason = tx.isInvalidReason(utxo_finder,
+                expect_height, checkAndAcc))
+                return fail_reason;
+            else
+                tx_set ~= tx;
+        }
+
+        auto expected_cb_txs = this.getCoinbaseTX(tot_fee,
+            tot_data_fee, data.missing_validators);
+        auto excepted_cb_hashes = expected_cb_txs.map!(tx => tx.hashFull());
+        assert(expected_cb_txs.length <= 1);
+
+        // Because CB TXs are never in the pool, they will always end up in
+        // local_unknown_txs. There should be atleast expected_cb_txs.length
+        // number of unknown txs.
+        if (!expected_cb_txs.empty()
+                && local_unknown_txs.length <= expected_cb_txs.length)
+            foreach (tx_hash; excepted_cb_hashes)
+                if (tx_hash !in local_unknown_txs)
+                    return "Invalid Coinbase transaction";
+
+        // If we met our CB expectations, remove them.
+        excepted_cb_hashes.each!(tx => local_unknown_txs.remove(tx));
+        expected_cb_txs.each!(tx => tx_set ~= tx);
+
+        if (local_unknown_txs.length > 0)
+        {
+            return InvalidConsensusDataReason.MayBeValid;
+        }
+        return null;
     }
 }
 
@@ -2049,13 +2115,13 @@ unittest
 
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-    // Filter out the CB TXs, just in case
-    data.tx_set = data.tx_set.filter!(tx => tx.type != TxType.Coinbase).array;
     // This is a block with no fees, a ConsensusData with Coinbase TXs should
-    // fail validation
+    // fail validation. But since the Ledger does not know about the hash, it will
+    // think someone else may validate it.
     data.tx_set ~= Transaction(TxType.Coinbase, [Input(Height(blocks.length))],
-        [Output(Amount(1), CommonsBudgetAddress)]);
-    assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        [Output(Amount(1), CommonsBudgetAddress)]).hashFull();
+    assert(ledger.validateConsensusData(data) ==
+        Ledger.InvalidConsensusDataReason.MayBeValid);
 
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == blocks.length);
@@ -2075,25 +2141,13 @@ unittest
 
         data = ConsensusData.init;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-        assert(data.tx_set[$ - 1].type == TxType.Coinbase);
-        assert(data.tx_set[$ - 1].outputs.length >= 1);
 
-        // Decrease the paid amount, should fail
-        data.tx_set[$ - 1].outputs[$ - 1].value.mustSub(Amount(1));
+        // Remove the coinbase TX
+        data.tx_set = data.tx_set[0 .. $ - 1];
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
-        // Increase the paid amount, should fail
-        data.tx_set[$ - 1].outputs[$ - 1].value.mustAdd(Amount(2));
+        // Add Invalid coinbase TX
+        data.tx_set ~= Transaction(TxType.Coinbase).hashFull();
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
-        data.tx_set[$ - 1].outputs[$ - 1].value.mustSub(Amount(1));
-        // Add an extra payment, should fail
-        data.tx_set[$ - 1].outputs ~= Output(Amount(1), KeyPair.random.address);
-        assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
-        if (blocks.length % params.PayoutPeriod == 0)
-        {
-            // Remove an existing payment, should fail
-            data.tx_set[$ - 1].outputs = data.tx_set[$ - 1].outputs[0 .. $ - 2];
-            assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
-        }
 
         ledger.forceCreateBlock();
         assert(ledger.getBlockHeight() == blocks.length);

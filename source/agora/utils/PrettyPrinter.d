@@ -560,7 +560,7 @@ private struct ConsensusDataFmt
         try
         {
             formattedWrite(sink, "{ tx_set: %s, enrolls: %s }",
-                this.data.tx_set.map!(tx => TransactionFmt(tx)),
+                this.data.tx_set.map!(tx => HashFmt(tx)),
                 this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)));
         }
         catch (Exception ex)
@@ -573,6 +573,7 @@ private struct ConsensusDataFmt
 ///
 unittest
 {
+    import agora.common.Hash;
     import agora.common.Serializer;
     import agora.common.Set;
 
@@ -597,18 +598,11 @@ unittest
 
     const(ConsensusData) cd =
     {
-        tx_set: GenesisBlock.txs,
+        tx_set: GenesisBlock.txs.map!(tx => tx.hashFull()).array,
         enrolls: [ record, record, ],
     };
 
-    static immutable Res1 = `{ tx_set: [Type : Freeze, Inputs: None
-Outputs (6):
-GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
-GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000), Type : Payment, Inputs: None
-Outputs (8):
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
+    static immutable Res1 = `{ tx_set: [0x6314...75bc, 0x7a5b...f95c], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));
