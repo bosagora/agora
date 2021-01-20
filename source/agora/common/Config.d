@@ -668,6 +668,7 @@ private T get (T, string section, string name, alias conv)
     (in CommandLine cmdl, Node* node)
 {
     static immutable QualifiedName = (section ~ "." ~ name);
+    static immutable Names = [ section, name ];
 
     if (auto val = QualifiedName in cmdl.overrides)
         return conv((*val)[$ - 1]);
@@ -677,9 +678,9 @@ private T get (T, string section, string name, alias conv)
             return conv((*val).as!string);
 
     // If the user sets a default value, just return it
-    static if (is(typeof(mixin(`Config.` ~ QualifiedName)) : T)
-               && mixin(`Config.init.` ~ QualifiedName) != T.init)
-        return mixin(`Config.init.` ~ QualifiedName);
+    static if (is(typeof(initValue!(Config.init, Names)) : T)
+               && hasCustomInit!(Config.init, Names))
+        return initValue!(Config.init, Names);
     // Additionally, `bool` is special cased, as a `bool` that is mandatory
     // does not make sense: it defaults to either `true` or `false`
     else static if (is(T == bool))
@@ -688,6 +689,34 @@ private T get (T, string section, string name, alias conv)
         throw new Exception(format(
             "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
             name, section, QualifiedName));
+}
+
+/// Helper template to check if a struct's field has a non-default init
+private template hasCustomInit (alias instance, const string[] FieldNames)
+{
+    private alias T = typeof(initValue!(instance, FieldNames));
+    enum bool hasCustomInit = initValue!(instance, FieldNames) != T.init;
+}
+
+/// Helper template to get the initial value of a field
+private template initValue (alias instance, const string[] FieldNames)
+{
+    static if (FieldNames.length == 1)
+        static immutable initValue = __traits(getMember, instance, FieldNames[0]);
+    else
+        static immutable initValue =  initValue!(__traits(getMember, instance, FieldNames[0]), FieldNames[1 .. $]);
+}
+
+unittest
+{
+    static assert(initValue!(Config.init, ["consensus", "max_quorum_nodes"]) == 7);
+    static assert(hasCustomInit!(Config.init, [ "consensus", "max_quorum_nodes"]));
+
+    static assert(initValue!(Config.init, ["validator", "enabled"]) == false);
+    static assert(!hasCustomInit!(Config.init, ["validator", "enabled"]));
+
+    static assert(initValue!(Config.init.validator, ["preimage_reveal_interval"]) == 10.seconds);
+    static assert(hasCustomInit!(Config.init.validator, ["preimage_reveal_interval"]));
 }
 
 /// Helper function to get a config parameter with a converter
