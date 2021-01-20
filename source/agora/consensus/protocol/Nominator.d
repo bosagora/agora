@@ -57,7 +57,7 @@ import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 import core.stdc.time;
 
-import std.algorithm : max;
+import std.algorithm : max, map;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -533,8 +533,18 @@ extern(D):
             const Block prev_block = blocks.front;
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 this.ledger.getBlockHeight(), con_data.missing_validators);
-            const Block proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-                con_data.timestamp, con_data.enrolls, random_seed, con_data.missing_validators);
+
+            Transaction[] received_tx_set;
+            if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set))
+            {
+                log.info("Missing TXs while checking envelope signature : {}",
+                    prettify(envelope));
+                return; // We dont have all the TXs for this block. Try to catchup
+            }
+
+            const Block proposed_block = makeNewBlock(prev_block,
+                received_tx_set, con_data.timestamp, con_data.enrolls,
+                random_seed, con_data.missing_validators);
             const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
                 public_key, Scalar(envelope.statement.pledges.confirm_.value_sig));
             if (!this.collectBlockSignature(block_sig, proposed_block))
@@ -716,8 +726,18 @@ extern(D):
         const prev_block = blocks.front;
         Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 this.ledger.getBlockHeight(), con_data.missing_validators);
-        const proposed_block = makeNewBlock(prev_block, con_data.tx_set,
-            con_data.timestamp, con_data.enrolls, random_seed, con_data.missing_validators);
+
+        Transaction[] signed_tx_set;
+        if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
+        {
+            log.info("Missing TXs while signing confirm ballot {}",
+                prettify(envelope));
+            return;
+        }
+
+        const proposed_block = makeNewBlock(prev_block,
+            signed_tx_set, con_data.timestamp, con_data.enrolls,
+            random_seed, con_data.missing_validators);
 
         Height height = proposed_block.header.height;
         const Sig sig = createBlockSignature(proposed_block);
@@ -862,8 +882,19 @@ extern(D):
 
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 this.ledger.getBlockHeight(), data.missing_validators);
-            const block = makeNewBlock(prev_block, data.tx_set, data.timestamp, data.enrolls,
-                random_seed, data.missing_validators);
+
+            Transaction[] externalized_tx_set;
+            if (auto fail_reason = this.ledger.getValidTXSet(data,
+                externalized_tx_set))
+            {
+                log.info("Missing TXs while externalizing at Height {}: {}",
+                    height, prettify(data));
+                return;
+            }
+
+            const block = makeNewBlock(prev_block,
+                externalized_tx_set, data.timestamp, data.enrolls, random_seed,
+                data.missing_validators);
 
             // If we did not sign yet then add signature and gossip to other nodes
             if (this.schnorr_pair.V !in this.slot_sigs[height])

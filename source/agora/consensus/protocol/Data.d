@@ -13,6 +13,8 @@
 
 module agora.consensus.protocol.Data;
 
+import agora.common.Hash;
+
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 
@@ -20,7 +22,7 @@ import agora.consensus.data.Transaction;
 public struct ConsensusData
 {
     /// The transaction set that is being nominated / voted on
-    public Transaction[] tx_set;
+    public Hash[] tx_set;
 
     /// The enrollments that are being nominated / voted on
     public Enrollment[] enrolls;
@@ -39,6 +41,8 @@ unittest
     import agora.common.Serializer;
     import agora.common.Types;
     import agora.consensus.data.genesis.Test;
+    import std.algorithm;
+    import std.array;
 
     testSymmetry!ConsensusData();
 
@@ -60,7 +64,7 @@ unittest
 
     const(ConsensusData) data =
     {
-        tx_set:  GenesisBlock.txs,
+        tx_set:  GenesisBlock.txs.map!(tx => tx.hashFull()).array,
         enrolls: [ record, record, ],
         missing_validators : [ 1, 3, 5 ],
         timestamp: 12345678
