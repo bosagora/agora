@@ -86,6 +86,9 @@ public struct Config
     /// The node config
     public NodeConfig node;
 
+    /// Consensus parameters for the chain
+    public ConsensusConfig consensus;
+
     /// The validator config
     public ValidatorConfig validator;
 
@@ -136,6 +139,11 @@ public struct NodeConfig
     /// Bind port
     public ushort port = 0xB0A;
 
+    /// The local address where the stats server (currently Prometheus)
+    /// is going to connect to, for example: http://0.0.0.0:8008
+    /// It can also be set to 0 do disable listening
+    public ushort stats_listening_port;
+
     /// Time to wait between request retries
     public Duration retry_delay = 3.seconds;
 
@@ -147,6 +155,21 @@ public struct NodeConfig
 
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir = "/var/lib/agora/";
+
+    /// The duration between requests for retrieving the latest blocks
+    /// from all other nodes
+    public Duration block_catchup_interval = 20.seconds;
+
+    /// The new block timestamp has to be greater than the previous block timestamp,
+    /// but less than current time + block_timestamp_tolerance
+    public Duration block_timestamp_tolerance = 60.seconds;
+}
+
+/// Loosely matches `agora.consensus.data.Params : ConsensusParams`
+public struct ConsensusConfig
+{
+    static assert(!hasUnsharedAliasing!(typeof(this)),
+        "Type must be shareable accross threads");
 
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
@@ -162,24 +185,11 @@ public struct NodeConfig
     /// validator set changes (new enrollments, expired enrollments..)
     public uint quorum_shuffle_interval = 30;
 
-    /// The local address where the stats server (currently Prometheus)
-    /// is going to connect to, for example: http://0.0.0.0:8008
-    /// It can also be set to 0 do disable listening
-    public ushort stats_listening_port;
-
     /// The maximum size of data payload
     public uint tx_payload_max_size = 1024;
 
     /// The factor to calculate for the fee of data payload
     public uint tx_payload_fee_factor = 200;
-
-    /// The new block timestamp has to be greater than the previous block timestamp,
-    /// but less than current time + block_timestamp_tolerance
-    public Duration block_timestamp_tolerance = 60.seconds;
-
-    /// The duration between requests for retrieving the latest blocks
-    /// from all other nodes
-    public Duration block_catchup_interval = 20.seconds;
 
     /// The share that Validators would get out of the transction fees (Out of 100)
     /// The rest would go to the Commons Budget
@@ -362,6 +372,7 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
     {
         banman : parseBanManagerConfig("banman" in root, cmdln),
         node : parseNodeConfig("node" in root, cmdln),
+        consensus: parseConsensusConfig("consensus" in root, cmdln),
         validator : parseValidatorConfig("validator" in root, cmdln),
         network : assumeUnique(parseSequence("network", cmdln, root)),
         dns_seeds : assumeUnique(parseSequence("dns", cmdln, root, true)),
@@ -405,15 +416,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
 
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
-    auto validator_cycle = get!(uint, "node", "validator_cycle")(cmdln, node);
-    auto max_quorum_nodes = get!(uint, "node", "max_quorum_nodes")(cmdln, node);
-    auto quorum_threshold = get!(uint, "node", "quorum_threshold")(cmdln, node);
-    assert(quorum_threshold >= 1 && quorum_threshold <= 100);
-    auto quorum_shuffle_interval = get!(uint, "node", "quorum_shuffle_interval")(
-        cmdln, node);
     const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
-    const tx_payload_max_size = opt!(uint, "node", "tx_payload_max_size")(cmdln, node);
-    const tx_payload_fee_factor = opt!(uint, "node", "tx_payload_fee_factor")(cmdln, node);
     const block_timestamp_tolerance_secs = opt!(uint, "node", "block_timestamp_tolerance_secs")(cmdln, node);
     const block_catchup_interval = opt!(uint, "node", "block_catchup_interval_secs")(cmdln, node);
 
@@ -429,13 +432,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             max_retries : max_retries,
             timeout : timeout,
             data_dir : data_dir,
-            validator_cycle : validator_cycle,
-            max_quorum_nodes : max_quorum_nodes,
-            quorum_threshold : quorum_threshold,
-            quorum_shuffle_interval : quorum_shuffle_interval,
             stats_listening_port : stats_listening_port,
-            tx_payload_max_size : tx_payload_max_size,
-            tx_payload_fee_factor : tx_payload_fee_factor,
             block_timestamp_tolerance : block_timestamp_tolerance_secs.seconds,
             block_catchup_interval : block_catchup_interval.seconds,
     };
@@ -455,21 +452,75 @@ node:
   address: 0.0.0.0
   port: 2926
   data_dir: .cache
-  quorum_shuffle_interval: 10
   commons_budget_address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
-  tx_payload_max_size: 512
-  tx_payload_fee_factor: 300
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
         assert(config.min_listeners == 2);
         assert(config.max_listeners == 10);
         assert(config.data_dir == ".cache");
-        assert(config.quorum_shuffle_interval == 10);
         assert(config.commons_budget_address.toString() == "GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ");
-        assert(config.tx_payload_max_size == 512);
-        assert(config.tx_payload_fee_factor == 300);
     }
+}
+
+/// Parse Consensus parameters
+private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
+{
+    const validator_cycle = get!(uint, "consensus", "validator_cycle")(cmdln, node);
+    const max_quorum_nodes = get!(uint, "consensus", "max_quorum_nodes")(cmdln, node);
+    const quorum_threshold = get!(uint, "consensus", "quorum_threshold")(cmdln, node);
+    const quorum_shuffle_interval = get!(uint, "consensus", "quorum_shuffle_interval")(cmdln, node);
+    const tx_payload_max_size = get!(uint, "consensus", "tx_payload_max_size")(cmdln, node);
+    const tx_payload_fee_factor = get!(uint, "consensus", "tx_payload_fee_factor")(cmdln, node);
+    const validator_tx_fee_cut = get!(ubyte, "consensus", "validator_tx_fee_cut")(cmdln, node);
+    const payout_period = get!(uint, "consensus", "payout_period")(cmdln, node);
+
+    if (quorum_threshold < 1 || quorum_threshold > 100)
+        throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
+
+    ConsensusConfig result = {
+        validator_cycle: validator_cycle,
+        max_quorum_nodes: max_quorum_nodes,
+        quorum_threshold: quorum_threshold,
+        quorum_shuffle_interval: quorum_shuffle_interval,
+        tx_payload_max_size: tx_payload_max_size,
+        tx_payload_fee_factor: tx_payload_fee_factor,
+        validator_tx_fee_cut: validator_tx_fee_cut,
+        payout_period: payout_period,
+    };
+
+    return result;
+}
+
+///
+unittest
+{
+    import dyaml.loader;
+
+    CommandLine cmdln;
+
+    immutable conf_example = `
+consensus:
+    validator_cycle:           42
+    max_quorum_nodes:         420
+    quorum_threshold:          96
+    quorum_shuffle_interval:  210
+    tx_payload_max_size:     2048
+    tx_payload_fee_factor:   2100
+    validator_tx_fee_cut:      69
+    payout_period:           9999
+`;
+
+    auto node = Loader.fromString(conf_example).load();
+    auto config = parseConsensusConfig("consensus" in node, cmdln);
+    assert(config.validator_cycle == 42);
+    assert(config.max_quorum_nodes == 420);
+    assert(config.quorum_threshold == 96);
+    assert(config.quorum_shuffle_interval == 210);
+    assert(config.tx_payload_max_size == 2048);
+    assert(config.tx_payload_fee_factor == 2100);
+    assert(config.validator_tx_fee_cut == 69);
+    assert(config.payout_period == 9999);
 }
 
 /// Parse the validator config section

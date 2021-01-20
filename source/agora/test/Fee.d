@@ -99,8 +99,8 @@ unittest
             if (this.nodes.length == 0)
             {
                 assert(conf.validator.enabled);
-                conf.node.validator_tx_fee_cut = 50;
-                conf.node.payout_period = 7;
+                conf.consensus.validator_tx_fee_cut = 50;
+                conf.consensus.payout_period = 7;
             }
             super.createNewNode(conf, file, line);
         }
@@ -162,8 +162,8 @@ unittest
             if (this.nodes.length == 0)
             {
                 assert(conf.validator.enabled);
-                conf.node.validator_tx_fee_cut = 50;
-                conf.node.payout_period = 7;
+                conf.consensus.validator_tx_fee_cut = 50;
+                conf.consensus.payout_period = 7;
             }
             super.createNewNode(conf, file, line);
         }
