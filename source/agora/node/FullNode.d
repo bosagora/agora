@@ -162,15 +162,15 @@ public class FullNode : API
                 config.node.testing ?
                     TESTNET.GenesisBlock : COINNET.GenesisBlock,
                 commons_budget,
-                config.node.validator_cycle,
-                config.node.max_quorum_nodes,
-                config.node.quorum_threshold,
-                config.node.quorum_shuffle_interval,
+                config.consensus.validator_cycle,
+                config.consensus.max_quorum_nodes,
+                config.consensus.quorum_threshold,
+                config.consensus.quorum_shuffle_interval,
                 config.node.block_interval_sec,
-                config.node.tx_payload_max_size,
-                config.node.tx_payload_fee_factor,
-                config.node.validator_tx_fee_cut,
-                config.node.payout_period);
+                config.consensus.tx_payload_max_size,
+                config.consensus.tx_payload_fee_factor,
+                config.consensus.validator_tx_fee_cut,
+                config.consensus.payout_period);
 
         this.metadata = this.getMetadata(config.node.data_dir);
 

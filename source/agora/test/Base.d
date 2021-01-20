@@ -1796,6 +1796,20 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     const TotalNodes = GenesisValidators + test_conf.full_nodes +
         test_conf.outsider_validators + test_conf.outsider_full_nodes;
 
+    ConsensusConfig makeConsensusConfig ()
+    {
+        ConsensusConfig result = {
+            validator_cycle : GenesisValidatorCycle,
+            max_quorum_nodes : test_conf.max_quorum_nodes,
+            quorum_threshold : test_conf.quorum_threshold,
+            quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
+            validator_tx_fee_cut : test_conf.validator_tx_fee_cut,
+            payout_period : test_conf.payout_period,
+        };
+
+        return result;
+    }
+
     NodeConfig makeNodeConfig (Address address)
     {
         NodeConfig conf =
@@ -1804,10 +1818,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             retry_delay : test_conf.retry_delay,
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
-            validator_cycle : GenesisValidatorCycle,
-            max_quorum_nodes : test_conf.max_quorum_nodes,
-            quorum_threshold : test_conf.quorum_threshold,
-            quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
             block_interval_sec : test_conf.block_interval_sec,
             min_listeners : test_conf.min_listeners == 0
                 ? (GenesisValidators + test_conf.full_nodes) - 1
@@ -1815,8 +1825,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             max_listeners : (test_conf.max_listeners == 0)
                 ? TotalNodes - 1 : test_conf.max_listeners,
             block_catchup_interval : test_conf.block_catchup_interval,
-            validator_tx_fee_cut : test_conf.validator_tx_fee_cut,
-            payout_period : test_conf.payout_period,
         };
 
         return conf;
@@ -1860,6 +1868,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : makeNodeConfig(self_address),
+            consensus: makeConsensusConfig(),
             validator : validator,
             network : makeNetworkConfig(idx, addresses),
         };
