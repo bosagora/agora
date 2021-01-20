@@ -859,16 +859,20 @@ extern(D):
             const block = makeNewBlock(prev_block, data.tx_set, data.timestamp, data.enrolls,
                 random_seed, data.missing_validators);
 
-            // If we did not sign yet then add signature
+            // If we did not sign yet then add signature and gossip to other nodes
             if (this.schnorr_pair.V !in this.slot_sigs[height])
             {
                 log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.node_public_key);
                 this.slot_sigs[height][this.schnorr_pair.V] = this.createBlockSignature(block);
             }
             const signed_block = this.updateMultiSignature(block);
-            assert(signed_block != Block.init,
-                format!"INVALID Block signature. Can not externalize this block at height %s on node %s"
-                    (height, this.node_public_key));
+            if (signed_block == Block.init)
+            {
+                log.warn("Not ready to externalize this block at height {} on node {}", height, this.node_public_key);
+                gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
+                    this.slot_sigs[height][this.schnorr_pair.V].s));
+                return;
+            }
             verifyBlock(signed_block);
         }
         catch (Exception exc)
@@ -877,7 +881,7 @@ extern(D):
             abort();
         }
         gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
-            this.slot_sigs[height][this.schnorr_pair.V].s));
+                    this.slot_sigs[height][this.schnorr_pair.V].s));
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
@@ -904,7 +908,7 @@ extern(D):
 
         if (block.header.height !in this.slot_sigs)
         {
-            log.error("No signatures at height {}", block.header.height);
+            log.warn("No signatures at height {}", block.header.height);
             return Block.init;
         }
         const Sig[Point] block_sigs = this.slot_sigs[block.header.height];
@@ -915,7 +919,7 @@ extern(D):
             ulong idx = this.enroll_man.getIndexOfValidator(block.header.height, K);
             if (idx == ulong.max)
             {
-                log.error("Unable to determine index of validator {} at block height {}",
+                log.warn("Unable to determine index of validator {} at block height {}",
                     PublicKey(K[]), block.header.height, block.header.height);
                 return Block.init;
             }
@@ -925,7 +929,7 @@ extern(D):
         // There must exist signatures for at least half the validators to externalize
         if (sigs.length <= all_validators / 2)
         {
-            log.error("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
+            log.warn("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
                 sigs.length, all_validators / 2, all_validators, block.header.height);
             return Block.init;
         }
