@@ -94,7 +94,7 @@ public extern (C++) class Nominator : SCPDriver
     private TaskManager taskman;
 
     /// Ledger instance
-    protected Ledger ledger;
+    protected ValidatingLedger ledger;
 
     /// The mapping of all known quorum sets
     private SCPQuorumSetPtr[Hash] known_quorums;
@@ -153,7 +153,7 @@ extern(D):
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
-        Clock clock, NetworkManager network, Ledger ledger,
+        Clock clock, NetworkManager network, ValidatingLedger ledger,
         EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         this.params = params;
