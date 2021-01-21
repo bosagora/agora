@@ -196,7 +196,20 @@ public class FeeManager
     {
         this.db = new ManagedDatabase(db_path);
         this.params = params;
+        this.init();
+    }
 
+    /// Ctor
+    private this (ManagedDatabase db, immutable(ConsensusParams) params)
+    {
+        this.db = db;
+        this.params = params;
+        this.init();
+    }
+
+    /// Init DB and rebuild the in-memory state
+    private void init ()
+    {
         this.db.execute("CREATE TABLE IF NOT EXISTS accumulated_fees " ~
             "(public_key TEXT PRIMARY KEY, fee TEXT)");
 
@@ -370,9 +383,9 @@ public class FeeManager
             {
                 auto new_fee = this.accumulated_fees[stake.output.address]
                     .toString();
-                this.db.execute("INSERT INTO accumulated_fees (public_key, fee)"
-                    ~ " VALUES (?,?) ON CONFLICT(public_key) DO UPDATE SET fee = ?",
-                    stake.output.address.toString(), new_fee, new_fee);
+                this.db.execute("REPLACE INTO accumulated_fees " ~
+                    "(fee, public_key) VALUES (?,?)", new_fee,
+                    stake.output.address.toString());
             }
             catch (Exception e)
             {
@@ -457,6 +470,12 @@ public class FeeManager
         this(":memory:", new immutable(ConsensusParams));
     }
 
+    /// For unittest
+    version (unittest) public ManagedDatabase getDB ()
+    {
+        return this.db;
+    }
+
     unittest
     {
         import std;
@@ -514,4 +533,62 @@ public class FeeManager
         // None wasted, none created
         assert(tot_fee == Amount(0));
     }
+}
+
+unittest
+{
+    import agora.utils.Test;
+    import agora.consensus.state.UTXOSet;
+    import agora.common.Hash;
+
+    auto fee_man = new FeeManager();
+
+    Transaction freeze_tx = {
+        TxType.Freeze,
+        outputs: [
+            Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address),
+        ]
+    };
+
+    auto utxo_set = new TestUTXOSet;
+    utxo_set.put(freeze_tx);
+
+    Hash txhash = hashFull(freeze_tx);
+    Hash stake_hash = UTXO.getHash(txhash, 0);
+
+    Transaction gen_tx = {
+        TxType.Payment,
+        outputs: [
+            Output(Amount(2_000_000L), WK.Keys.NODE2.address),
+        ]
+    };
+    utxo_set.put(gen_tx);
+
+    Transaction spend_tx = {
+        TxType.Payment,
+        inputs: [
+            Input(gen_tx.hashFull(), 0)
+        ],
+        outputs: [
+            Output(Amount(1_000_000L), WK.Keys.NODE2.address),
+        ]
+    };
+
+    UTXO utxo;
+    assert(utxo_set.peekUTXO(spend_tx.inputs[0].utxo, utxo));
+    assert(utxo_set.peekUTXO(stake_hash, utxo));
+
+    Block block;
+    block.txs ~= spend_tx;
+
+    fee_man.accumulateFees(block, [utxo], &utxo_set.peekUTXO);
+
+    block.header.height = Height(1);
+    fee_man.accumulateFees(block, [utxo], &utxo_set.peekUTXO);
+
+    auto fee_man_2 = new FeeManager(fee_man.getDB(), new immutable(ConsensusParams));
+
+    // fee_man_2 should recover from DB
+    assert(fee_man.getAccumulatedFees(Height(0)) ==
+        fee_man_2.getAccumulatedFees(Height(0)));
 }
