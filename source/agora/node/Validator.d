@@ -94,8 +94,13 @@ public class Validator : FullNode, API
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
+        auto vledger = new ValidatingLedger(this.params, this.utxo_set,
+                this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
+                config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
+        this.ledger = vledger;
+
         this.nominator = this.getNominator(
-            this.clock, this.network, this.ledger, this.enroll_man, this.taskman);
+            this.clock, this.network, vledger, this.enroll_man, this.taskman);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
 
         // currently we are not saving preimage info,
@@ -388,7 +393,7 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     protected Nominator getNominator (Clock clock, NetworkManager network,
-        Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman)
+        ValidatingLedger ledger, EnrollmentManager enroll_man, TaskManager taskman)
     {
         return new Nominator(
             this.params, this.config.validator.key_pair, clock, network, ledger,

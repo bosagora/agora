@@ -241,41 +241,6 @@ public class Ledger
         return this.last_block.header.height;
     }
 
-    version (unittest)
-    private bool externalize (ConsensusData data,
-        string file = __FILE__, size_t line = __LINE__)
-        @trusted
-    {
-        import agora.utils.Test : WK;
-
-        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight(),
-            data.missing_validators);
-
-        auto next_block = Height(this.last_block.header.height + 1);
-        KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
-            .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
-            .map!(K => WK.Keys[K])
-            .array();
-
-        Transaction[] externalized_tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
-        {
-            log.info("Missing TXs, can not create new block at Height {} : {}",
-                this.getBlockHeight() + 1, prettify(data));
-            return false;
-        }
-
-        const block = makeNewTestBlock(this.last_block,
-            externalized_tx_set, random_seed, data.enrolls,
-            data.missing_validators, public_keys,
-            (PublicKey pubkey)
-            {
-                return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
-            },
-            data.time_offset);
-        return this.acceptBlock(block, file, line);
-    }
-
     /***************************************************************************
 
         Add a block to the ledger.
@@ -573,76 +538,6 @@ public class Ledger
         {
             this.enroll_man.unenrollValidator(utxo);
         }
-    }
-
-    /***************************************************************************
-
-        Collect up to a maximum number of transactions to nominate
-
-        Params:
-            txs = will contain the transaction set to nominate,
-                  or empty if not enough txs were found
-            max_txs = the maximum number of transactions to prepare.
-
-    ***************************************************************************/
-
-    public void prepareNominatingSet (ref ConsensusData data, ulong max_txs)
-        @safe
-    {
-        data = ConsensusData.init;
-        if (clock.networkTime < this.params.GenesisTimestamp)
-        {
-            log.error("Network time [{}] is before Genesis timestamp [{}]. Will not nominate yet.",
-                clock.networkTime, this.params.GenesisTimestamp);
-            return;
-        }
-        const genesis_offset =  clock.networkTime - this.params.GenesisTimestamp;
-        data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
-        log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
-        const next_height = this.getBlockHeight() + 1;
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
-
-        this.enroll_man.getEnrollments(data.enrolls, this.getBlockHeight(),
-                                                    &this.utxo_set.peekUTXO);
-
-        // get information about validators not revealing a preimage timely
-        this.slash_man.getMissingValidators(data.missing_validators,
-            this.getBlockHeight());
-
-        Amount tot_fee, tot_data_fee;
-        foreach (ref Hash hash, ref Transaction tx; this.pool)
-        {
-            scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
-                const err = this.fee_man.check(tx, sum_unspent);
-                if (!err)
-                {
-                    tot_fee.add(sum_unspent);
-                    tot_data_fee.add(
-                        this.fee_man.getDataFee(tx.payload.data.length));
-                }
-                return err;
-            };
-
-            if (auto reason = tx.isInvalidReason(utxo_finder, next_height,
-                    checkAndAcc))
-                log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
-            else
-                data.tx_set ~= hash;
-
-            if (data.tx_set.length >= max_txs)
-            {
-                data.tx_set.sort();
-                return;
-            }
-        }
-
-        const pre_cb_len = data.tx_set.length;
-        // Dont append a CB TX to an empty TX set
-        if (pre_cb_len > 0)
-            data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
-                data.missing_validators).map!(tx => tx.hashFull()).array;
-        // No more than 1 CB per block
-        assert(data.tx_set.length - pre_cb_len <= 1);
     }
 
     /***************************************************************************
@@ -1076,6 +971,135 @@ public class Ledger
     }
 }
 
+/*******************************************************************************
+
+    A ledger that participate in the consensus protocol
+
+    This ledger is held by validators, as they need to do additional bookkeeping
+    when e.g. proposing transactions.
+
+*******************************************************************************/
+
+public class ValidatingLedger : Ledger
+{
+    /// See parent class
+    public this (immutable(ConsensusParams) params,
+        UTXOSet utxo_set, IBlockStorage storage,
+        EnrollmentManager enroll_man, TransactionPool pool,
+        FeeManager fee_man, Clock clock,
+        Duration block_timestamp_tolerance,
+        void delegate (in Block, bool) @safe onAcceptedBlock)
+    {
+        super(params, utxo_set, storage, enroll_man, pool, fee_man, clock,
+              block_timestamp_tolerance, onAcceptedBlock);
+    }
+
+    /***************************************************************************
+
+        Collect up to a maximum number of transactions to nominate
+
+        Params:
+            txs = will contain the transaction set to nominate,
+                  or empty if not enough txs were found
+            max_txs = the maximum number of transactions to prepare.
+
+    ***************************************************************************/
+
+    public void prepareNominatingSet (ref ConsensusData data, ulong max_txs)
+        @safe
+    {
+        data = ConsensusData.init;
+        if (clock.networkTime < this.params.GenesisTimestamp)
+        {
+            log.error("Network time [{}] is before Genesis timestamp [{}]. Will not nominate yet.",
+                clock.networkTime, this.params.GenesisTimestamp);
+            return;
+        }
+        const genesis_offset =  clock.networkTime - this.params.GenesisTimestamp;
+        data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
+        log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
+        const next_height = this.getBlockHeight() + 1;
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
+
+        this.enroll_man.getEnrollments(data.enrolls, this.getBlockHeight(),
+                                                    &this.utxo_set.peekUTXO);
+
+        // get information about validators not revealing a preimage timely
+        this.slash_man.getMissingValidators(data.missing_validators,
+            this.getBlockHeight());
+
+        Amount tot_fee, tot_data_fee;
+        foreach (ref Hash hash, ref Transaction tx; this.pool)
+        {
+            scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
+                const err = this.fee_man.check(tx, sum_unspent);
+                if (!err)
+                {
+                    tot_fee.add(sum_unspent);
+                    tot_data_fee.add(
+                        this.fee_man.getDataFee(tx.payload.data.length));
+                }
+                return err;
+            };
+
+            if (auto reason = tx.isInvalidReason(utxo_finder, next_height,
+                    checkAndAcc))
+                log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
+            else
+                data.tx_set ~= hash;
+
+            if (data.tx_set.length >= max_txs)
+            {
+                data.tx_set.sort();
+                return;
+            }
+        }
+
+        const pre_cb_len = data.tx_set.length;
+        // Dont append a CB TX to an empty TX set
+        if (pre_cb_len > 0)
+            data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
+                data.missing_validators).map!(tx => tx.hashFull()).array;
+        // No more than 1 CB per block
+        assert(data.tx_set.length - pre_cb_len <= 1);
+    }
+
+    version (unittest)
+    private bool externalize (ConsensusData data,
+        string file = __FILE__, size_t line = __LINE__)
+        @trusted
+    {
+        import agora.utils.Test : WK;
+
+        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight(),
+            data.missing_validators);
+
+        auto next_block = Height(this.last_block.header.height + 1);
+        KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
+            .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
+            .map!(K => WK.Keys[K])
+            .array();
+
+        Transaction[] externalized_tx_set;
+        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
+        {
+            log.info("Missing TXs, can not create new block at Height {} : {}",
+                this.getBlockHeight() + 1, prettify(data));
+            return false;
+        }
+
+        const block = makeNewTestBlock(this.last_block,
+            externalized_tx_set, random_seed, data.enrolls,
+            data.missing_validators, public_keys,
+            (PublicKey pubkey)
+            {
+                return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
+            },
+            data.time_offset);
+        return this.acceptBlock(block, file, line);
+    }
+}
+
 /// Note: these unittests historically assume a block always contains
 /// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
@@ -1083,7 +1107,7 @@ version (unittest)
     import core.stdc.time : time;
 
     /// simulate block creation as if a nomination and externalize round completed
-    private void forceCreateBlock (Ledger ledger, ulong max_txs = Block.TxsInTestBlock,
+    private void forceCreateBlock (ValidatingLedger ledger, ulong max_txs = Block.TxsInTestBlock,
         string file = __FILE__, size_t line = __LINE__)
     {
         ConsensusData data;
@@ -1096,7 +1120,7 @@ version (unittest)
     }
 
     /// A `Ledger` with sensible defaults for `unittest` blocks
-    private final class TestLedger : Ledger
+    private final class TestLedger : ValidatingLedger
     {
         public this (KeyPair key_pair,
             const(Block)[] blocks = null,
@@ -1118,7 +1142,7 @@ version (unittest)
                 new TransactionPool(":memory:"),
                 new FeeManager(":memory:", params),
                 mock_clock,
-                block_time_offset_tolerance_dur);
+                block_time_offset_tolerance_dur, null);
         }
 
         ///

@@ -202,9 +202,13 @@ public class FullNode : API
         this.utxo_set = this.getUtxoSet();
         this.enroll_man = this.getEnrollmentManager();
         this.fee_man = this.getFeeManager();
-        this.ledger = new Ledger(params, this.utxo_set,
-            this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
-            config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
+
+        // Only instantiate a Ledger when we're not validating, as a transitional
+        // measure towards a more fine-grained Ledger.
+        if (!config.validator.enabled)
+            this.ledger = new Ledger(params, this.utxo_set,
+                this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
+                config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
 
         // Make `BlockExternalizedHandler` from config
         foreach (address;
