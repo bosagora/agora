@@ -49,20 +49,22 @@ public interface IBlockStorage
 
     /***************************************************************************
 
-        Load the block storage. If there was nothing to load,
-        a Genesis block will be added to the ledger. In this case the calling
-        code should treat the block as new and update the set of UTXOs, etc.
+        Load and initialize the block storage
+
+        If there was nothing to load, the provided `genesis` block will be added
+        to the ledger. In this case the calling code should treat the block
+        as new and update the set of UTXOs, etc.
 
         Params:
             genesis = In case the storage is empty, the genesis block to write
                       to it.
 
-        Returns:
-            `false` if the data couldn't be loaded, `true` otherwise.
+        Throws:
+            If the data couldn't be loaded.
 
     ***************************************************************************/
 
-    public bool load (const ref Block genesis);
+    public void load (const ref Block genesis);
 
     /***************************************************************************
 
@@ -91,7 +93,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public bool saveBlock (const ref Block block);
+    public void saveBlock (const ref Block block);
 
     /***************************************************************************
 
@@ -278,29 +280,20 @@ public class BlockStorage : IBlockStorage
             genesis = In case the storage is empty, the genesis block to write
                       to it.
 
-        Returns:
-            `false` when it fails to load.
+        Throws:
+            When it fails to load.
 
     ***************************************************************************/
 
-    public override bool load (const ref Block genesis) @safe nothrow
+    public override void load (const ref Block genesis) @safe
     {
-        try
-        {
-            if (!this.root_path.exists)
-                mkdirRecurse(this.root_path);
-            this.loadAllIndexes();
-        }
-        catch (Exception e)
-            return false;
+        if (!this.root_path.exists)
+            mkdirRecurse(this.root_path);
+        this.loadAllIndexes();
 
         // Add Genesis if the storage is empty
         if (this.height_idx.length == 0)
-        {
-            if (!this.saveBlock(genesis))
-                return false;
-        }
-        return true;
+            this.saveBlock(genesis);
     }
 
     /***************************************************************************
@@ -423,86 +416,76 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public override bool saveBlock (const ref Block block) @safe nothrow
+    public override void saveBlock (const ref Block block) @safe
     {
-        try
+        if ((this.height_idx.length > 0) &&
+            (this.height_idx.back.height >= block.header.height))
+            throw new Exception("BlockStorage internals are inconsistent");
+
+        size_t last_pos, last_size;
+        if (this.length == ulong.max)
         {
-            if ((this.height_idx.length > 0) &&
-                (this.height_idx.back.height >= block.header.height))
-                return false;
-
-            size_t last_pos, last_size;
-            if (this.length == ulong.max)
+            if (this.height_idx.length > 0)
             {
-                if (this.height_idx.length > 0)
-                {
-                    last_pos = this.height_idx.back.position;
+                last_pos = this.height_idx.back.position;
 
-                    if (!this.readSizeT(last_pos, last_size))
-                        return false;
+                if (!this.readSizeT(last_pos, last_size))
+                    throw new Exception("BlockStorage: Failed to read a size_t");
 
-                    this.length = last_pos + size_t.sizeof + last_size;
-                }
-                else
-                {
-                    last_pos = 0;
-                    last_size = 0;
-                    this.length = 0;
-                }
+                this.length = last_pos + size_t.sizeof + last_size;
             }
-
-            const size_t block_position = this.length;
-            const size_t data_position = block_position + size_t.sizeof;
-
-            this.is_saving = true;
-            scope(exit) this.is_saving = false;
-            size_t block_size = 0;
-            scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+            else
             {
-                // write to memory
-                if (!this.write(data_position + block_size, data))
-                    assert(0);
+                last_pos = 0;
+                last_size = 0;
+                this.length = 0;
+            }
+        }
 
-                block_size += data.length;
-            };
-            serializePart(block, dg);
+        const size_t block_position = this.length;
+        const size_t data_position = block_position + size_t.sizeof;
 
-            // write block data size
-            if (!this.writeSizeT(block_position, block_size))
-                return false;
-
-            this.length += size_t.sizeof + block_size;
-
-            if (!this.writeChecksum())
+        this.is_saving = true;
+        scope(exit) this.is_saving = false;
+        size_t block_size = 0;
+        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+        {
+            // write to memory
+            if (!this.write(data_position + block_size, data))
                 assert(0);
 
-            // add to index of height
-            this.height_idx.insert(
-                HeightPosition(
-                    block.header.height,
-                    block_position
-                )
-            );
+            block_size += data.length;
+        };
+        serializePart(block, dg);
 
-            // add to index of hash
-            ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
-            this.hash_idx.insert(
-                HashPosition(
-                    hash_bytes,
-                    block_position
-                )
-            );
+        // write block data size
+        if (!this.writeSizeT(block_position, block_size))
+            throw new Exception("BlockStorage: Failed to write a size_t");
 
-            if (!this.saveIndex(block.header.height, hash_bytes, block_position))
-                return false;
+        this.length += size_t.sizeof + block_size;
 
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.error("BlockStorage.saveBlock: {}", ex);
-            return false;
-        }
+        if (!this.writeChecksum())
+            throw new Exception("BlockStorage: Failed to write checksum");
+
+        // add to index of height
+        this.height_idx.insert(
+            HeightPosition(
+                block.header.height,
+                block_position
+            )
+        );
+
+        // add to index of hash
+        ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
+        this.hash_idx.insert(
+            HashPosition(
+                hash_bytes,
+                block_position
+            )
+        );
+
+        if (!this.saveIndex(block.header.height, hash_bytes, block_position))
+            throw new Exception("Blockstorage: Failed to save the index");
     }
 
     /***************************************************************************
@@ -1029,21 +1012,19 @@ public class MemBlockStorage : IBlockStorage
     }
 
     /// No-op: MemBlockStorage does no I/O
-    public override bool load (const ref Block genesis)
+    public override void load (const ref Block genesis) @safe
     {
         // Allow `load` to be called multiple times
         // This is useful when wanting to simulate persistence
         // in a network integration test.
         if (this.blocks.length)
-            return true;
+            return;
 
         if (this._to_load.length == 0)
             return this.saveBlock(genesis);
 
         foreach (const ref block; this._to_load)
-            if (!this.saveBlock(block))
-                return false;
-        return true;
+            this.saveBlock(block);
     }
 
     invariant ()
@@ -1089,12 +1070,10 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public bool saveBlock (const ref Block block) @safe nothrow
+    public void saveBlock (const ref Block block) @safe
     {
-        scope (failure) assert(0);
-
         if (this.blocks.length != block.header.height)
-            return false;
+            throw new Exception("BlockStorage: Expected blocks in serial order");
 
         size_t block_position = this.blocks.length;
 
@@ -1116,7 +1095,6 @@ public class MemBlockStorage : IBlockStorage
                 block_position
             )
         );
-        return true;
     }
 
     /***************************************************************************

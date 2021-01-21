@@ -47,7 +47,7 @@ private void main ()
     auto path = makeCleanTempDir(__MODULE__);
 
     BlockStorage storage = new BlockStorage(path);
-    assert(storage.load(GenesisBlock));
+    storage.load(GenesisBlock);
 
     Block block;
     Block prev_block = cast(Block) GenesisBlock;
