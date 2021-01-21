@@ -26,15 +26,28 @@ version = DRuntime_Use_LLVM_Libunwind;
 
 import core.stdc.stdio;
 import core.stdc.inttypes;
+import core.stdc.string : strlen;
+
+// https://github.com/dlang/druntime/pull/3335
+extern(C)
+{
+    int dladdr(scope const void *addr, Dl_info *info)
+        nothrow @nogc @system;
+
+    struct Dl_info
+    {
+        const(char)* dli_fname;
+        void*        dli_fbase;
+        const(char)* dli_sname;
+        void*        dli_saddr;
+    }
+}
 
 /// Ditto
 public class LibunwindHandler : Throwable.TraceInfo
 {
     private static struct FrameInfo
     {
-        char[1024] buff = void;
-
-        const(char)[] name;
         const(void)* address;
     }
 
@@ -50,8 +63,6 @@ public class LibunwindHandler : Throwable.TraceInfo
      */
     public this (size_t frames_to_skip = 1) nothrow @nogc
     {
-        import core.stdc.string : strlen;
-
         static assert(typeof(FrameInfo.address).sizeof == unw_word_t.sizeof,
                       "Mismatch in type size for call to unw_get_proc_name");
 
@@ -66,13 +77,6 @@ public class LibunwindHandler : Throwable.TraceInfo
         unw_proc_info_t pip = void;
         foreach (idx, ref frame; this.callstack)
         {
-            if (int r = unw_get_proc_name(
-                    &cursor, frame.buff.ptr, frame.buff.length,
-                    cast(unw_word_t*) &frame.address))
-                frame.name = "<ERROR: Unable to retrieve function name>";
-            else
-                frame.name = frame.buff[0 .. strlen(frame.buff.ptr)];
-
             if (unw_get_proc_info(&cursor, &pip) == 0)
                 frame.address += pip.start_ip;
 
@@ -93,11 +97,35 @@ public class LibunwindHandler : Throwable.TraceInfo
     {
         // This will be upstream, but we can't read debug infos yet
         //return traceHandlerOpApplyImpl2(this.callstack[0 .. this.numframes], dg);
+
+        // https://code.woboq.org/userspace/glibc/debug/backtracesyms.c.html
+        // The logic that glibc's backtrace use is to check for for `dli_fname`,
+        // the file name, and error if not present, then check for `dli_sname`.
+        // In case `dli_fname` is present but not `dli_sname`, the address is
+        // printed related to the file. We just print the file.
+        static const(char)* getFrameName (const(void)* ptr)
+        {
+            Dl_info info = void;
+            if (dladdr(ptr, &info))
+            {
+                // Return symbol name if possible
+                if (info.dli_sname !is null && info.dli_sname[0] != '\0')
+                    return info.dli_sname;
+
+                // Fall back to file name
+                if (info.dli_fname !is null && info.dli_fname[0] != '\0')
+                    return info.dli_fname;
+            }
+
+            // `dladdr` failed
+            return "<ERROR: Unable to retrieve function name>";
+        }
+
         char[1024 + 64] buff;
         foreach (idx, const ref frame; this.callstack[0 .. this.numframes])
         {
-            auto ret = snprintf(buff.ptr, buff.length, "[%p] %.*s\n", frame.address,
-                                cast(int) frame.name.length, frame.name.ptr);
+            auto ret = snprintf(buff.ptr, buff.length, "[%p] %s\n", frame.address,
+                                getFrameName(frame.address));
             if (ret <= 0)
                 continue;
 
