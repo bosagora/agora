@@ -874,33 +874,14 @@ private EventHandlerConfig parserEventHandlers (Node* node, in CommandLine c)
     if (node is null)
         return EventHandlerConfig.init;
 
-    const(string)[] parseSequence (Node node, string section)
-    {
-        if (auto val = section in c.overrides)
-            return *val;
-
-        auto elem = section in node;
-        if (elem is null)
-            return null;
-
-        enforce(elem.type == NodeType.sequence,
-            format("`%s` section must be a sequence", section));
-
-        string[] result;
-        foreach (string item; *elem)
-            result ~= item;
-
-        return result;
-    }
-
     EventHandlerConfig handlers =
     {
         block_externalized_handler_addresses:
-            assumeUnique(parseSequence(*node, "block_externalized")),
+            assumeUnique(parseSequence("block_externalized", c, *node, true)),
         preimage_updated_handler_addresses:
-            assumeUnique(parseSequence(*node, "preimage_received")),
+            assumeUnique(parseSequence("preimage_received", c, *node, true)),
         transaction_received_handler_addresses:
-            assumeUnique(parseSequence(*node, "transaction_received")),
+            assumeUnique(parseSequence("transaction_received", c, *node, true)),
     };
 
     return handlers;
