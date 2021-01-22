@@ -94,9 +94,8 @@ public class Validator : FullNode, API
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
-        this.nominator = this.getNominator(this.params, this.clock,
-            this.network, this.config.validator.key_pair, this.ledger,
-            this.enroll_man, this.taskman, this.config.node.data_dir);
+        this.nominator = this.getNominator(
+            this.clock, this.network, this.ledger, this.enroll_man, this.taskman);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
 
         // currently we are not saving preimage info,
@@ -310,26 +309,23 @@ public class Validator : FullNode, API
         simulate byzantine nodes.
 
         Params:
-            params = consensus params
             clock = Clock instance
             network = the network manager for gossiping SCPEnvelopes
-            key_pair = the key pair of the node
             ledger = Ledger instance
             enroll_man = Enrollment manager
             taskman = the task manager
-            data_dir = path to the data directory
 
         Returns:
             An instance of a `Nominator`
 
     ***************************************************************************/
 
-    protected Nominator getNominator (immutable(ConsensusParams) params,
-        Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+    protected Nominator getNominator (Clock clock, NetworkManager network,
+        Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman)
     {
-        return new Nominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir);
+        return new Nominator(
+            this.params, clock, network, this.config.validator.key_pair, ledger,
+            enroll_man, taskman, this.config.node.data_dir);
     }
 
     /***************************************************************************

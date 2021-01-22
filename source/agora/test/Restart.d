@@ -69,37 +69,34 @@ private class PersistentNode : TestValidatorNode
     private static FeeManager fee_man;
 
     ///
-    protected override IBlockStorage getBlockStorage (string data_dir) @system
+    protected override IBlockStorage getBlockStorage () @system
     {
         if (blockstorage_saved is null)
-            blockstorage_saved = super.getBlockStorage(data_dir);
+            blockstorage_saved = super.getBlockStorage();
         return blockstorage_saved;
     }
 
     ///
-    protected override UTXOSet getUtxoSet (string data_dir)
+    protected override UTXOSet getUtxoSet ()
     {
         if (utxo_set_saved is null)
-            utxo_set_saved = super.getUtxoSet(data_dir);
+            utxo_set_saved = super.getUtxoSet();
         return utxo_set_saved;
     }
 
     ///
-    protected override EnrollmentManager getEnrollmentManager (
-        string data_dir, in ValidatorConfig validator_config,
-        immutable(ConsensusParams) params)
+    protected override EnrollmentManager getEnrollmentManager ()
     {
         if (em_saved is null)
-            em_saved = super.getEnrollmentManager(data_dir, validator_config, params);
+            em_saved = super.getEnrollmentManager();
         return em_saved;
     }
 
     ///
-    protected override FeeManager getFeeManager (string data_dir,
-        immutable(ConsensusParams) params)
+    protected override FeeManager getFeeManager ()
     {
         if (fee_man is null)
-            fee_man = super.getFeeManager(data_dir, params);
+            fee_man = super.getFeeManager();
         return fee_man;
     }
 
