@@ -106,12 +106,10 @@ unittest
             super(config, reg, blocks, test_conf, cur_time);
         }
 
-        protected override EnrollmentManager getEnrollmentManager (
-            string data_dir, in ValidatorConfig validator_config,
-            immutable(ConsensusParams) params)
+        protected override EnrollmentManager getEnrollmentManager ()
         {
-            return new BadEnrollmentManager(":memory:",
-                validator_config.key_pair, params);
+            return new BadEnrollmentManager(
+                ":memory:", this.config.validator.key_pair, params);
         }
     }
 

@@ -88,12 +88,10 @@ private class NoPreImageVN : TestValidatorNode
         super(config, reg, blocks, test_conf, cur_time);
     }
 
-    protected override EnrollmentManager getEnrollmentManager (
-        string data_dir, in ValidatorConfig validator_config,
-        immutable(ConsensusParams) params)
+    protected override EnrollmentManager getEnrollmentManager ()
     {
-        return new MissingPreImageEM(":memory:", validator_config.key_pair,
-            params);
+        return new MissingPreImageEM(
+            ":memory:", this.config.validator.key_pair, params);
     }
 }
 
@@ -139,13 +137,13 @@ private class BadNominatingVN : TestValidatorNode
     }
 
     ///
-    protected override TestNominator getNominator (
-        immutable(ConsensusParams) params, Clock clock,
-        NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+    protected override TestNominator getNominator (Clock clock,
+        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
+        TaskManager taskman)
     {
         return new BadNominator(
-            params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
+            this.params, clock, network, this.config.validator.key_pair, ledger,
+            enroll_man, taskman, this.config.node.data_dir,
             this.txs_to_nominate, this.cur_time, this.test_start_time);
     }
 }

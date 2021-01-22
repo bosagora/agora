@@ -116,12 +116,14 @@ private class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override TestNominator getNominator (immutable(ConsensusParams) params,
-        Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+    protected override BadBlockSigningNominator getNominator (Clock clock,
+        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
+        TaskManager taskman)
     {
-        return new BadBlockSigningNominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir, reason, this.test_start_time);
+        return new BadBlockSigningNominator(
+            this.params, clock, network, this.config.validator.key_pair, ledger,
+            enroll_man, taskman, this.config.node.data_dir,
+            reason, this.test_start_time);
     }
 }
 

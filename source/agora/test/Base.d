@@ -1395,34 +1395,33 @@ private mixin template TestNodeMixin ()
         output.put("======================================================================\n\n");
     }
 
-    protected override IBlockStorage getBlockStorage (string data_dir) @system
+    protected override IBlockStorage getBlockStorage () @system
     {
         return new MemBlockStorage(this.blocks);
     }
 
     /// Used by the node
-    public override Metadata getMetadata (string _unused) @system
+    public override Metadata getMetadata () @system
     {
         return new MemMetadata();
     }
 
     /// Return a transaction pool backed by an in-memory SQLite db
-    public override TransactionPool getPool (string) @system
+    public override TransactionPool getPool () @system
     {
         return new TransactionPool(":memory:");
     }
 
     /// Return a UTXO set backed by an in-memory SQLite db
-    protected override UTXOSet getUtxoSet (string data_dir)
+    protected override UTXOSet getUtxoSet ()
     {
         return new UTXOSet(":memory:");
     }
 
     /// Return a FeeManager backed by an in-memory SQLite db
-    protected override FeeManager getFeeManager (string data_dir,
-        immutable(ConsensusParams) params)
+    protected override FeeManager getFeeManager ()
     {
-        return new FeeManager(":memory:", params);
+        return new FeeManager(":memory:", this.params);
     }
 
     /// Return a LocalRest-backed task manager
@@ -1433,18 +1432,18 @@ private mixin template TestNodeMixin ()
 
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
-        in Config config, Metadata metadata, TaskManager taskman, Clock clock)
+        Metadata metadata, TaskManager taskman, Clock clock)
     {
         assert(taskman !is null);
-        return new TestNetworkManager(config, metadata, taskman, clock, this.registry);
+        return new TestNetworkManager(
+            this.config, metadata, taskman, clock, this.registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
-    protected override EnrollmentManager getEnrollmentManager (
-        string data_dir, in ValidatorConfig validator_config,
-        immutable(ConsensusParams) params)
+    protected override EnrollmentManager getEnrollmentManager ()
     {
-        return new EnrollmentManager(":memory:", validator_config.key_pair, params);
+        return new EnrollmentManager(
+            ":memory:", this.config.validator.key_pair, this.params);
     }
 
     /// Get the active validator count for the current block height
@@ -1623,12 +1622,14 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Returns an instance of a TestNominator with customizable behavior
-    protected override TestNominator getNominator (
-        immutable(ConsensusParams) params, Clock clock, NetworkManager network,
-        KeyPair key_pair, Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+    protected override TestNominator getNominator (Clock clock,
+        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
+        TaskManager taskman)
     {
-        return new TestNominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir, this.txs_to_nominate, this.test_start_time);
+        return new TestNominator(
+            this.params, clock, network, this.config.validator.key_pair, ledger,
+            enroll_man, taskman, this.config.node.data_dir,
+            this.txs_to_nominate, this.test_start_time);
     }
 
     /// Provides a unittest-adjusted clock source for the node

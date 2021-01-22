@@ -85,12 +85,14 @@ private class TestNode () : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override TestNominator getNominator (immutable(ConsensusParams) params,
-        Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+    protected override TestNominator getNominator (Clock clock,
+        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
+        TaskManager taskman)
     {
-        return new DoesNotExternalizeBlockNominator(params, clock, network, key_pair, ledger,
-            enroll_man, taskman, data_dir, this.test_start_time);
+        return new DoesNotExternalizeBlockNominator(
+            this.params, clock, network, this.config.validator.key_pair, ledger,
+            enroll_man, taskman, this.config.node.data_dir,
+            this.test_start_time);
     }
 }
 

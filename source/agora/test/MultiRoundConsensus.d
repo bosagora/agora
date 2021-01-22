@@ -81,14 +81,14 @@ unittest
         mixin ForwardCtor!();
 
         ///
-        protected override CustomNominator getNominator (
-            immutable(ConsensusParams) params, Clock clock,
-            NetworkManager network, KeyPair key_pair, Ledger ledger,
-            EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+        protected override CustomNominator getNominator (Clock clock,
+            NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
+            TaskManager taskman)
         {
             return new CustomNominator(
-                params, clock, network, key_pair, ledger, enroll_man, taskman,
-                data_dir, this.txs_to_nominate, this.cur_time, this.test_start_time);
+                this.params, clock, network, this.config.validator.key_pair,
+                ledger, enroll_man, taskman, this.config.node.data_dir,
+                this.txs_to_nominate, this.cur_time, this.test_start_time);
         }
     }
 

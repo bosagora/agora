@@ -1,6 +1,15 @@
 /*******************************************************************************
 
-    Implementation of the FullNode's API.
+    Implementation of the full node's API.
+
+    See `agora.api.Validator` for a full description of the differences between
+    a full node and a validator.
+
+    Dependency_injection:
+      To make the code testable, this classes exposes a few functions which are
+      used to perform dependency injection. Those functions all follow the same
+      pattern: they are `protected`, and called `getXXX`.
+      They can rely on both `this.config` and `this.params` fields being set.
 
     Copyright:
         Copyright (c) 2019 - 2020 BOS Platform Foundation Korea
@@ -155,9 +164,10 @@ public class FullNode : API
         import TESTNET = agora.consensus.data.genesis.Test;
         import COINNET = agora.consensus.data.genesis.Coinnet;
 
+        this.config = config;
+
         auto commons_budget = config.node.testing ?
             TESTNET.CommonsBudgetAddress : COINNET.CommonsBudgetAddress;
-
         this.params = new immutable(ConsensusParams)(
                 config.node.testing ?
                     TESTNET.GenesisBlock : COINNET.GenesisBlock,
@@ -172,18 +182,15 @@ public class FullNode : API
                 config.consensus.validator_tx_fee_cut,
                 config.consensus.payout_period);
 
-        this.metadata = this.getMetadata(config.node.data_dir);
-
-        this.config = config;
         this.taskman = this.getTaskManager();
         this.clock = this.getClock(this.taskman);
-        this.network = this.getNetworkManager(config, this.metadata, this.taskman, this.clock);
-        this.storage = this.getBlockStorage(config.node.data_dir);
-        this.pool = this.getPool(config.node.data_dir);
-        this.utxo_set = this.getUtxoSet(config.node.data_dir);
-        this.enroll_man = this.getEnrollmentManager(config.node.data_dir,
-            config.validator, params);
-        this.fee_man = this.getFeeManager(config.node.data_dir, this.params);
+        this.metadata = this.getMetadata();
+        this.network = this.getNetworkManager(this.metadata, this.taskman, this.clock);
+        this.storage = this.getBlockStorage();
+        this.pool = this.getPool();
+        this.utxo_set = this.getUtxoSet();
+        this.enroll_man = this.getEnrollmentManager();
+        this.fee_man = this.getFeeManager();
         this.ledger = new Ledger(params, this.utxo_set,
             this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
             config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
@@ -371,7 +378,7 @@ public class FullNode : API
     /// Returns a newly constructed StatsServer
     protected StatsServer getStatsServer ()
     {
-        return new StatsServer(config.node.stats_listening_port);
+        return new StatsServer(this.config.node.stats_listening_port);
     }
 
     /***************************************************************************
@@ -391,10 +398,10 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected NetworkManager getNetworkManager (in Config config,
-        Metadata metadata, TaskManager taskman, Clock clock)
+    protected NetworkManager getNetworkManager (Metadata metadata,
+        TaskManager taskman, Clock clock)
     {
-        return new NetworkManager(config, metadata, taskman, clock);
+        return new NetworkManager(this.config, metadata, taskman, clock);
     }
 
     /***************************************************************************
@@ -443,18 +450,15 @@ public class FullNode : API
         Subclasses can override this method and return
         a TransactionPool backed by an in-memory SQLite database.
 
-        Params:
-            data_dir = path to the data directory
-
         Returns:
             the transaction pool
 
     ***************************************************************************/
 
-    protected TransactionPool getPool (string data_dir)
+    protected TransactionPool getPool ()
     {
-        return new TransactionPool(buildPath(
-            config.node.data_dir, "tx_pool.dat"));
+        return new TransactionPool(
+            this.config.node.data_dir.buildPath("tx_pool.dat"));
     }
 
     /***************************************************************************
@@ -464,17 +468,14 @@ public class FullNode : API
         Unittest code may override this method to provide a Utxo set
         that doesn't do any I/O.
 
-        Params:
-            data_dir = path to the data directory
-
         Returns:
             the UTXOSet instance
 
     ***************************************************************************/
 
-    protected UTXOSet getUtxoSet (string data_dir)
+    protected UTXOSet getUtxoSet ()
     {
-        return new UTXOSet(buildPath(config.node.data_dir, "utxo_set.dat"));
+        return new UTXOSet(this.config.node.data_dir.buildPath("utxo_set.dat"));
     }
 
     /***************************************************************************
@@ -483,20 +484,16 @@ public class FullNode : API
 
         Unittests can override this method.
 
-        Params:
-            data_dir = path to the data directory
-            params = the consensus-critical constants
-
         Returns:
             the DataPayloadChecker instance
 
     ***************************************************************************/
 
-    protected FeeManager getFeeManager (string data_dir,
-        immutable(ConsensusParams) params)
+    protected FeeManager getFeeManager ()
     {
         return new FeeManager(
-                buildPath(config.node.data_dir, "fee_manager.dat"), params);
+            this.config.node.data_dir.buildPath("fee_manager.dat"),
+            this.params);
     }
 
     /***************************************************************************
@@ -507,29 +504,19 @@ public class FullNode : API
         a Metadata object which loads/dumps data in memory
         rather than on disk, to avoid I/O (e.g. for unittesting)
 
-        Note: not exposed in the API.
-
-        Params:
-            data_dir = path to the data directory
-
         Returns:
             the metadata loaded from disk
 
     ***************************************************************************/
 
-    protected Metadata getMetadata (string data_dir) @system
+    protected Metadata getMetadata () @system
     {
-        return new DiskMetadata(data_dir);
+        return new DiskMetadata(this.config.node.data_dir);
     }
 
     /***************************************************************************
 
         Returns an instance of a BlockStorage or MemoryStorage
-
-        Note: not exposed in the API.
-
-        Params:
-            data_dir = path to the blockdata directory
 
         Returns:
             Returns instance of `MemoryStorage` if data_dir is empty,
@@ -537,7 +524,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected IBlockStorage getBlockStorage (string data_dir) @system
+    protected IBlockStorage getBlockStorage () @system
     {
         version (unittest)
         {
@@ -545,7 +532,7 @@ public class FullNode : API
         }
         else
         {
-            return new BlockStorage(data_dir);
+            return new BlockStorage(this.config.node.data_dir);
         }
     }
 
@@ -553,21 +540,16 @@ public class FullNode : API
 
         Returns an instance of a EnrollmentManager
 
-        Params:
-            data_dir = path to the data dirctory
-            node_config = the node config
-            params = the consensus-critical constants
-
         Returns:
             the enrollment manager
 
     ***************************************************************************/
 
-    protected EnrollmentManager getEnrollmentManager (string data_dir,
-        in ValidatorConfig validator_config, immutable(ConsensusParams) params)
+    protected EnrollmentManager getEnrollmentManager ()
     {
-        return new EnrollmentManager(buildPath(data_dir, "validator_set.dat"),
-            validator_config.key_pair, params);
+        return new EnrollmentManager(
+            this.config.node.data_dir.buildPath("validator_set.dat"),
+            this.config.validator.key_pair, this.params);
     }
 
     /// GET: /merkle_path
