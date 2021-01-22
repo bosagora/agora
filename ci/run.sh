@@ -19,4 +19,4 @@ export dchatty=1
 export dsinglethreaded=1
 # A run currently (2020-07-21) takes < 6 minutes on Linux
 # Run a single test at a time to prevent resource issues and also see which test failed
-timeout -s SEGV 15m ./build/agora-unittests
+timeout -s SEGV 20m ./build/agora-unittests
