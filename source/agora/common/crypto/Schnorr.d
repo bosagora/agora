@@ -444,13 +444,25 @@ public Sig multiSigCombine (S)(const S sigs) nothrow @nogc @safe
     assert(s1.toPoint() == kp1_R.V + (kp1_K.V * c));
     assert(s2.toPoint() == kp2_R.V + (kp2_K.V * c));
 
-    const Sig[] sigs = [ Sig(kp1_R.V, s1), Sig(kp2_R.V, s2) ];
+    Sig[] sigs = [ Sig(kp1_R.V, s1), Sig(kp2_R.V, s2) ];
     // "multi-sig" - collection of one or more signatures
-    const Sig multiSignature = multiSigCombine(sigs);
+    Sig two_sigs = multiSigCombine(sigs);
 
     const sumK = kp1_K.V + kp2_K.V;
     // verification of combined signatures
-    assert(multiSigVerify(multiSignature, sumK, c));
+    assert(multiSigVerify(two_sigs, sumK, c));
+
+    // Now add one more signature
+    const kp3_K = Pair.random();  // key-pair
+    const kp3_R = Pair.random();  // (R, r), the public and private nonce
+
+    // third signer
+    const Scalar s3 = multiSigSign(kp3_R.v, kp3_K.v, c);
+    // Add third signature
+    Sig three_sigs = multiSigCombine([ two_sigs, Sig(kp3_R.V, s3) ]);
+    // verification of updated combined signatures
+    const three_sumK = sumK + kp3_K.V;
+    assert(multiSigVerify(three_sigs, three_sumK, c));
 }
 
 // rogue-key attack

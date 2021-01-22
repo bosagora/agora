@@ -321,7 +321,7 @@ public class NetworkManager
     }
 
     /// Config instance
-    protected const NodeConfig node_config = NodeConfig.init;
+    public const NodeConfig node_config = NodeConfig.init;
 
     /// Validator instance
     protected const ValidatorConfig validator_config = ValidatorConfig.init;
@@ -339,7 +339,7 @@ public class NetworkManager
     protected DList!NetworkClient validators;
 
     /// All connected nodes (Validators & FullNodes)
-    protected DList!NetworkClient peers;
+    public DList!NetworkClient peers;
 
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
@@ -737,36 +737,6 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Periodically retrieve the latest blocks and apply them to the
-        provided ledger.
-
-        Params:
-            ledger = the Ledger to apply received blocks to
-
-    ***************************************************************************/
-
-    public void startPeriodicCatchup (Ledger ledger)
-    {
-        this.taskman.runTask(
-        ()
-        {
-            void catchup ()
-            {
-                if (this.peers.empty())  // no clients yet (discovery)
-                    return;
-
-                this.getBlocksFrom(
-                    Height(ledger.getBlockHeight() + 1),
-                    // if any blocks fail validation => short-circuit
-                    blocks => blocks.all!(block => ledger.acceptBlock(block)));
-            }
-            catchup(); // avoid delay
-            this.taskman.setTimer(node_config.block_catchup_interval, &catchup, Periodic.Yes);
-        });
-    }
-
-    /***************************************************************************
-
         Get a BanManager instance.
 
         Can be overriden in unittests to test ban management
@@ -835,7 +805,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    private void getBlocksFrom (Height block_height,
+    public void getBlocksFrom (Height block_height,
         scope bool delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
         struct Pair { Height height; NetworkClient client; }

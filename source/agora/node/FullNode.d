@@ -238,7 +238,7 @@ public class FullNode : API
     public void start ()
     {
         this.startPeriodicDiscovery();
-        this.network.startPeriodicCatchup(this.ledger);
+        this.startPeriodicCatchup();
         this.startStatsServer();
     }
 
@@ -259,6 +259,51 @@ public class FullNode : API
             discover(); // avoid delay
             this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
         });
+    }
+
+    /***************************************************************************
+
+        Periodically retrieve the latest blocks and apply them to the
+        provided ledger.
+
+        Params:
+            ledger = the Ledger to apply received blocks to
+
+    ***************************************************************************/
+
+    protected void startPeriodicCatchup ()
+    {
+        this.taskman.runTask(
+        ()
+        {
+            void catchup ()
+            {
+                if (this.network.peers.empty())  // no clients yet (discovery)
+                    return;
+
+                this.network.getBlocksFrom(
+                    Height(this.ledger.getBlockHeight() + 1),
+                    // if any blocks fail validation => short-circuit
+                    blocks => blocks.all!(block => this.acceptBlock(block)));
+            }
+            catchup(); // avoid delay
+            this.taskman.setTimer(this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);
+        });
+    }
+
+    /***************************************************************************
+
+        Function that is overriden in Validator to enable block signing during
+            periodic catchup.
+
+        Params:
+            block = block to be added to the Ledger
+
+    ***************************************************************************/
+
+    protected bool acceptBlock(const ref Block block) @trusted
+    {
+        return this.ledger.acceptBlock(block);
     }
 
     /***************************************************************************
