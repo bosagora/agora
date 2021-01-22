@@ -15,9 +15,11 @@ module agora.api.handler.PreImageReceivedHandler;
 
 import agora.consensus.data.PreImageInfo;
 
+import vibe.data.serialization;
 import vibe.web.rest;
 import vibe.http.common;
 
+@serializationPolicy!(Base64ArrayPolicy)
 public interface PreImageReceivedHandler
 {
 // The REST generator requires @safe methods

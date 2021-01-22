@@ -15,9 +15,11 @@ module agora.api.handler.TransactionReceivedHandler;
 
 import agora.consensus.data.Transaction;
 
+import vibe.data.serialization;
 import vibe.web.rest;
 import vibe.http.common;
 
+@serializationPolicy!(Base64ArrayPolicy)
 public interface TransactionReceivedHandler
 {
 // The REST generator requires @safe methods
