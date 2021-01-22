@@ -15,9 +15,11 @@ module agora.api.handler.BlockExternalizedHandler;
 
 import agora.consensus.data.Block;
 
+import vibe.data.serialization;
 import vibe.web.rest;
 import vibe.http.common;
 
+@serializationPolicy!(Base64ArrayPolicy)
 public interface BlockExternalizedHandler
 {
 // The REST generator requires @safe methods
