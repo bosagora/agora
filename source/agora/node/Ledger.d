@@ -1663,7 +1663,7 @@ unittest
 // Return Genesis block plus 'count' number of blocks
 version (unittest)
 private immutable(Block)[] genBlocksToIndex (
-    KeyPair key_pair, size_t count, scope immutable(ConsensusParams) params)
+    size_t count, scope immutable(ConsensusParams) params)
 {
     const(Block)[] blocks = [ params.Genesis ];
 
@@ -1699,7 +1699,7 @@ unittest
         const ValidatorCycle = 10;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
-        const blocks = genBlocksToIndex(key_pair, ValidatorCycle - 1, params);
+        const blocks = genBlocksToIndex(ValidatorCycle - 1, params);
         scope ledger = new TestLedger(WK.Keys.A, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
@@ -1711,7 +1711,7 @@ unittest
         const ValidatorCycle = 20;
         auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
-        const blocks = genBlocksToIndex(key_pair, ValidatorCycle, params);
+        const blocks = genBlocksToIndex(ValidatorCycle, params);
         // Enrollment: Insufficient number of active validators
         assertThrown!Exception(new TestLedger(WK.Keys.A, blocks, params));
     }
@@ -1763,7 +1763,7 @@ unittest
     // normal test: UTXO set and Validator set updated
     {
         auto key_pair = KeyPair.random();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params);
+        const blocks = genBlocksToIndex(params.ValidatorCycle, params);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
@@ -1789,7 +1789,7 @@ unittest
     // Validator set was not modified
     {
         auto key_pair = KeyPair.random();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params);
+        const blocks = genBlocksToIndex(params.ValidatorCycle, params);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
@@ -1816,7 +1816,7 @@ unittest
     // Validator set reverted
     {
         auto key_pair = KeyPair.random();
-        const blocks = genBlocksToIndex(key_pair, params.ValidatorCycle, params);
+        const blocks = genBlocksToIndex(params.ValidatorCycle, params);
         assert(blocks.length == 1009);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
