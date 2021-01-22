@@ -1065,20 +1065,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Remove the enrollment from the enrollment pool
-
-        Params:
-            enroll_hash = key for the enrollment to remove
-
-    ***************************************************************************/
-
-    public void removeEnrollment (in Hash enroll_hash) @trusted
-    {
-        this.enroll_pool.remove(enroll_hash);
-    }
-
-    /***************************************************************************
-
         Remove all validators from the validator set
 
     ***************************************************************************/
@@ -1229,7 +1215,7 @@ unittest
     assert(stored_enroll == ordered_enrollments[1]);
 
     // remove an Enrollment object
-    man.removeEnrollment(utxo_hashes[1]);
+    man.enroll_pool.remove(utxo_hashes[1]);
     assert(man.enroll_pool.count() == 2);
 
     // test for getEnrollment with removed enrollment
@@ -1249,9 +1235,9 @@ unittest
     assert(man.validator_set.count() == 1);
     assert(man.enroll_pool.count() == 1);
 
-    man.removeEnrollment(utxo_hashes[0]);
-    man.removeEnrollment(utxo_hashes[1]);
-    man.removeEnrollment(utxo_hashes[2]);
+    man.enroll_pool.remove(utxo_hashes[0]);
+    man.enroll_pool.remove(utxo_hashes[1]);
+    man.enroll_pool.remove(utxo_hashes[2]);
     assert(man.getEnrollments(enrolls, Height(9), &utxo_set.peekUTXO)
                                                                 .length == 0);
 
