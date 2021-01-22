@@ -20,7 +20,6 @@ import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.common.Task;
-import agora.node.TransactionPool;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
