@@ -199,7 +199,7 @@ public class EnrollmentManager
 
         foreach (idx, key; keys)
         {
-            log.trace("Update validator lookup maps at height {} for index {} pubkey {}", height, idx, PublicKey(key[]));
+            log.trace("Update validator lookup maps at height {} for index {} pubkey {}", height, idx, key);
             const K = Point(key[]);
             this.key_to_index[height][K] = idx;
             this.index_to_key[height][idx] = K;
@@ -235,10 +235,17 @@ public class EnrollmentManager
 
     public ulong getIndexOfValidator (const Height height, Point K) const nothrow @safe
     {
-        if (height !in this.key_to_index || K !in this.key_to_index[height])
+        if (height !in this.key_to_index)
+        {
+            log.warn("No keys at this height {}", height);
             return ulong.max;
-        else
-            return this.key_to_index[height][K];
+        }
+        if (K !in this.key_to_index[height])
+        {
+            log.warn("Public key {} not found in keys at this height {}", PublicKey(K[]), height);
+            return ulong.max;
+        }
+        return this.key_to_index[height][K];
     }
 
     /***************************************************************************

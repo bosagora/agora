@@ -229,7 +229,7 @@ public class Validator : FullNode, API
         this.clock.startSyncing();
         this.taskman.setTimer(this.config.validator.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
-        this.network.startPeriodicCatchup(this.ledger);
+        this.startPeriodicCatchup();
 
         if (this.config.admin.enabled)
             this.admin_interface.start();
@@ -263,6 +263,70 @@ public class Validator : FullNode, API
         endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
             1, "public_key", "http");
         return this.config.validator.key_pair.address;
+    }
+
+    /***************************************************************************
+
+        Store the block in the ledger if valid.
+        If block is not yet signed by this node then sign it and also
+        gossip the block sig from this node to other nodes.
+
+        Params:
+            block = block to be added to the Ledger
+
+    ***************************************************************************/
+
+    protected override bool acceptBlock(const ref Block block) @trusted
+    {
+        import agora.common.crypto.Schnorr;
+        import agora.common.BitField;
+        import std.algorithm;
+        import std.range;
+        import std.format;
+
+        if (auto err = this.ledger.validateBlock(block))
+        {
+            log.error("Block failed to validate: {}", err);
+            return false;
+        }
+        auto sig = this.nominator.createBlockSignature(block);
+        auto multi_sig = Sig.fromBlob(block.header.signature);
+        auto validators = this.enroll_man.getCountOfValidators(block.header.height);
+        auto signed_validators = BitField!ubyte(validators);
+        iota(0, validators).each!(i => signed_validators[i]= block.header.validators[i]);
+
+        // Make sure the indexes are up to date
+        this.nominator.enroll_man.updateValidatorIndexMaps(block.header.height);
+        auto node_validator_index = this.nominator.enroll_man
+            .getIndexOfValidator(block.header.height, this.nominator.schnorr_pair.V);
+
+        // It can be a block before this validator was enrolled
+        if (node_validator_index == ulong.max)
+        {
+            log.trace("This validator {} was not active at height {}",
+                this.nominator.node_public_key, block.header.height);
+            return this.ledger.acceptBlock(block);
+        }
+        assert(node_validator_index < validators, format!"The validator index %s is invalid"(node_validator_index));
+        if (signed_validators[node_validator_index])
+        {
+            log.trace("This node's signature is already in the block signature");
+            // Gossip this signature as it may have been only shared via ballot signing
+            this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
+                this.nominator.node_public_key, sig.s));
+        }
+        else
+        {
+            signed_validators[node_validator_index] = true;
+            this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
+                this.nominator.node_public_key, sig.s));
+            log.trace("Periodic Catchup: ADD to block signature R: {} and s: {}",
+                sig.R, sig.s.toString(PrintMode.Clear));
+            const signed_block = block.updateSignature(
+                multiSigCombine([ multi_sig, sig ]).toBlob(), signed_validators);
+            return this.ledger.acceptBlock(signed_block);
+        }
+        return this.ledger.acceptBlock(block);
     }
 
     /***************************************************************************

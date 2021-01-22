@@ -211,10 +211,11 @@ public string isInvalidReason (const ref Block block, Height prev_height,
         }
 
         const CR = getCommitmentNonce(K, block.header.height);  // commited R
-        log.trace("Commited R for validator {} is {}", PublicKey(K[]), CR);
+        log.trace("Block.isInvalidReason: Enrollment commitment CR for validator {} is {}", PublicKey(K[]), CR);
         if (CR == Point.init)
             return "Block: Couldn't find commitment for this validator";
         Point R = CR + challenge.toPoint();
+        log.trace("Block.isInvalidReason: Block signing commitment R for validator {} is {}", PublicKey(K[]), R);
         sum_K = sum_K == Point.init ? K : (sum_K + K);
         sum_R = sum_R == Point.init ? R : (sum_R + R);
     }
@@ -224,11 +225,17 @@ public string isInvalidReason (const ref Block block, Height prev_height,
             file, line, active_enrollments, block.header.height);
         return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
     }
-    const sig = Sig(sum_R, Sig.fromBlob(block.header.signature).s);
+    Sig sig = Sig.fromBlob(block.header.signature);
+    if (sum_R != sig.R)
+    {
+        log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Sum of R mismatch",
+            file, line, enrolled_validators);
+        return "Block: Invalid schnorr signature";
+    }
     if (!multiSigVerify(sig, sum_K, challenge))
     {
-        log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators",
-            file, line, block.header.validators.length);
+        log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Multisig failed verification",
+            file, line, enrolled_validators);
         return "Block: Invalid schnorr signature";
     }
     return validateBlockTimestamp(prev_timestamp, block.header.timestamp, curr_timestamp, block_timestamp_tolerance_dur);

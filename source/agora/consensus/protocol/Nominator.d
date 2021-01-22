@@ -86,10 +86,10 @@ public extern (C++) class Nominator : SCPDriver
     private NetworkManager network;
 
     /// Schnorr key-pair of this node
-    protected Pair schnorr_pair;
+    public Pair schnorr_pair;
 
     /// Public key of this node
-    protected PublicKey node_public_key;
+    public PublicKey node_public_key;
 
     /// Task manager
     private TaskManager taskman;
@@ -123,7 +123,7 @@ public extern (C++) class Nominator : SCPDriver
     private Sig[Point][Height] slot_sigs;
 
     /// Enrollment manager
-    private EnrollmentManager enroll_man;
+    public EnrollmentManager enroll_man;
 
     /// Delegate called when node's own nomination is invalid
     extern (D) public void delegate(const ref ConsensusData data, const ref
@@ -486,15 +486,17 @@ extern(D):
         if (!verify(V, envelope.signature, challenge))
         {
             log.trace("INVALID Envelope signature {} \nfor public key {} \n" ~
-                "envelope {}\n challenge {}",
-                envelope.signature, public_key, scpPrettify(&envelope), challenge);
+                "envelope {}\nchallenge {}",
+                envelope.signature, public_key, scpPrettify(&envelope),
+                challenge.toString(PrintMode.Clear));
             return;
         }
         else
         {
             log.trace("VALID Envelope signature {} \nfor public key {} \n" ~
-                "envelope {}\n challenge {}",
-                envelope.signature, public_key, scpPrettify(&envelope), challenge);
+                "envelope {}\nchallenge {}",
+                envelope.signature, public_key, scpPrettify(&envelope),
+                challenge.toString(PrintMode.Clear));
         }
         // we check confirmed statements before validating with
         // 'scp.receiveEnvelope()'
@@ -640,15 +642,17 @@ extern(D):
 
     ***************************************************************************/
 
-    protected Sig createBlockSignature(const Block block) @trusted nothrow
+    public Sig createBlockSignature(const Block block) @trusted nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
 
         // rc = r used in signing the commitment
         const Scalar rc = this.enroll_man.getCommitmentNonceScalar(block.header.height);
+        log.trace("createBlockSignature: Enrollment commitment CR for validator {} is {}", this.node_public_key, rc.toPoint());
         const Scalar r = rc + challenge; // make it unique each challenge
         const Point R = r.toPoint();
+        log.trace("createBlockSignature: Block signing commitment R for validator {} is {}", this.node_public_key, R);
         return Sig(R, multiSigSign(r, this.schnorr_pair.v, challenge));
     }
 
@@ -674,9 +678,8 @@ extern(D):
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         envelope.signature = sign(this.schnorr_pair, challenge);
         log.trace("SIGN Envelope signature {} \nfor public key {} \n" ~
-                "envelope {}\n challenge {}",
-                envelope.signature, this.node_public_key,
-                scpPrettify(&envelope), challenge);
+            "envelope {}", envelope.signature, this.node_public_key,
+            scpPrettify(&envelope), challenge);
     }
 
     /***************************************************************************
@@ -751,21 +754,22 @@ extern(D):
         const Scalar block_challenge = hashFull(block);
         // Fetch the R from enrollment commitment for signing validator
         const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
-        log.trace("Commited R for validator {} is {}", block_sig.public_key, CR);
+        log.trace("collectBlockSignature: Enrollment commitment CR for validator {} is {}", block_sig.public_key, CR);
         // Determine the R of signature (R, s)
         Point R = CR + block_challenge.toPoint();
+        log.trace("collectBlockSignature: Block signing commitment R for validator {} is {}", block_sig.public_key, R);
         // Compose the signature (R, s)
         const sig = Sig(R, block_sig.signature.asScalar());
         // Check this signature is valid for this block and signing validator
         if (!multiSigVerify(sig, K, block_challenge))
         {
-            log.warn("INVALID Block signature received for slot {} from node {}",
+            log.warn("collectBlockSignature: INVALID Block signature received for slot {} from node {}",
                 block_sig.height, block_sig.public_key);
             return false;
         }
-        log.trace("VALID block signature at height {} for node {}",
+        log.trace("collectBlockSignature: VALID block signature at height {} for node {}",
             block_sig.height, block_sig.public_key);
-        log.trace("VALID Block signature received for slot {} for node {}",
+        log.trace("collectBlockSignature: VALID Block signature received for slot {} for node {}",
             block_sig.height, block_sig.public_key);
         // collect the signature
         this.slot_sigs[block_sig.height][K] = Sig(R, block_sig.signature.asScalar());
