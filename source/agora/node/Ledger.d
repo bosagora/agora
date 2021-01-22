@@ -535,7 +535,6 @@ public class Ledger
             if (!this.utxo_set.peekUTXO(enrollment.utxo_key, utxo))
                 assert(0);
 
-            this.enroll_man.removeEnrollment(enrollment.utxo_key);
             if (auto r = this.enroll_man.addValidator(enrollment, utxo.output.address,
                 block.header.height, &this.utxo_set.peekUTXO, utxos))
             {
