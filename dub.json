@@ -85,13 +85,26 @@
             "name": "server",
             "targetName": "agora",
             "mainSourceFile": "source/agora/node/main.d",
+            "preGenerateCommands": [
+                "$DUB scripts/build_tracy.d",
+            ],
+            "sourceFiles-posix": [
+                "build/TracyClient.o"
+            ],
+            "sourceFiles-windows": [
+                "build/TracyClient.obj"
+            ],
             "excludedSourceFiles": ["source/agora/cli/*", "source/agora/registry/main.d"]
         },
         {
             "name": "name-registry",
             "targetName": "name-registry",
             "mainSourceFile": "source/agora/registry/main.d",
-            "excludedSourceFiles": ["source/agora/cli/*", "source/agora/node/main.d"]
+            "excludedSourceFiles": [
+                "source/agora/cli/*",
+                "source/agora/node/main.d",
+                "source/agora/utils/gc/*"
+            ]
         },
         {
             "name": "client",
@@ -115,13 +128,18 @@
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
                 "source/agora/registry/main.d",
-                "source/agora/test/*"
+                "source/agora/test/*",
+                "source/agora/utils/gc/*"
             ]
         },
         {
             "name": "unittest",
             "targetName": "agora-unittests",
-            "excludedSourceFiles": ["source/agora/cli/*/main.d", "source/agora/registry/main.d"],
+            "excludedSourceFiles": [
+                "source/agora/cli/*/main.d",
+                "source/agora/registry/main.d",
+                "source/agora/utils/gc/*"
+            ],
             "sourceFiles-posix": [
                 "source/scpp/build/DSizeChecks.o",
                 "source/scpp/build/DLayoutChecks.o"
@@ -146,7 +164,8 @@
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
                 "source/agora/node/main.d",
-                "source/agora/registry/main.d"
+                "source/agora/registry/main.d",
+                "source/agora/utils/gc/*"
             ]
         },
         {
@@ -162,7 +181,8 @@
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
                 "source/agora/node/main.d",
-                "source/agora/registry/main.d"
+                "source/agora/registry/main.d",
+                "source/agora/utils/gc/*"
             ]
         },
         {
@@ -179,7 +199,8 @@
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
                 "source/agora/node/main.d",
-                "source/agora/registry/main.d"
+                "source/agora/registry/main.d",
+                "source/agora/utils/gc/*"
             ]
         }
     ],

@@ -52,3 +52,6 @@
 [submodule "crypto"]
 	path = submodules/crypto
 	url = https://github.com/bpfkorea/crypto.git
+[submodule "tracy"]
+	path = submodules/tracy
+	url = https://github.com/wolfpld/tracy.git

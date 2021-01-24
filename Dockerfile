@@ -4,6 +4,7 @@ ARG DUB_OPTIONS
 ARG AGORA_VERSION="HEAD"
 ADD . /root/agora/
 WORKDIR /root/agora/
+RUN apk --no-cache add linux-headers
 RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
 
 # Runner
