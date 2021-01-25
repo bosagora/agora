@@ -326,11 +326,38 @@ public Config parseConfigString (string data, string path)
 unittest
 {
     assertThrown!Exception(parseConfigString("", "/dev/null"));
-    // Missing 'network' section
+
+    // Missing 'network' section for a non validator node
     {
         immutable conf_str = `
-node:
-  validator: false
+validator:
+  enabled: false
+`;
+        assertThrown!Exception(parseConfigString(conf_str, "/dev/null"));
+    }
+
+    // Missing 'network' section for a validator node with name registry
+    {
+        immutable conf_str = `
+validator:
+  enabled: true
+  registry_address: http://127.0.0.1:3003
+  seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  recurring_enrollment: true
+  preimage_reveal_interval: 10
+`;
+        parseConfigString(conf_str, "/dev/null");
+    }
+
+        // Missing 'network' section for a validator node without name registry
+    {
+        immutable conf_str = `
+validator:
+  enabled: true
+  registry_address: disabled
+  seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  recurring_enrollment: true
+  preimage_reveal_interval: 10
 `;
         assertThrown!Exception(parseConfigString(conf_str, "/dev/null"));
     }
@@ -378,13 +405,17 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
         node : parseNodeConfig("node" in root, cmdln),
         consensus: parseConsensusConfig("consensus" in root, cmdln),
         validator : parseValidatorConfig("validator" in root, cmdln),
-        network : assumeUnique(parseSequence("network", cmdln, root)),
+        network : assumeUnique(parseSequence("network", cmdln, root, true)),
         dns_seeds : assumeUnique(parseSequence("dns", cmdln, root, true)),
         logging: parseLoggingSection("logging" in root, cmdln),
         event_handlers: parserEventHandlers("event_handlers" in root, cmdln),
     };
 
-    enforce(conf.network.length > 0, "Network section is empty");
+    if (conf.validator.enabled)
+        enforce(conf.network.length || conf.validator.registry_address != "disabled",
+            "Either the network section must not be empty, or 'validator.registry_address' must be set");
+    else
+        enforce(conf.network.length, "Network section must not be empty");
 
     Node* admin = "admin" in root;
     conf.admin.enabled = get!(bool, "admin", "enabled")(cmdln, admin);
