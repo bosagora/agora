@@ -221,11 +221,6 @@ public class FullNode : API
             this.transaction_handlers[address] = this.network
                 .getTransactionReceivedHandler(address);
 
-        // Special case
-        // Block externalized handler is set and push for Genesis block.
-        if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
-            this.pushBlock(this.params.Genesis);
-
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
         enum build_version = import(VersionFileName);
@@ -252,6 +247,11 @@ public class FullNode : API
         this.startPeriodicDiscovery();
         this.startPeriodicCatchup();
         this.startStatsServer();
+
+        // Special case
+        // Block externalized handler is set and push for Genesis block.
+        if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
+            this.pushBlock(this.params.Genesis);
     }
 
     /// Returns an already instantiated version of the BanManager
