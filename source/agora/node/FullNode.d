@@ -114,9 +114,6 @@ public class FullNode : API
     /// Network of connected nodes
     protected NetworkManager network;
 
-    /// Reusable exception object
-    protected RestException exception;
-
     /// Transaction pool
     protected TransactionPool pool;
 
@@ -205,8 +202,6 @@ public class FullNode : API
         this.ledger = new Ledger(params, this.utxo_set,
             this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
             config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
-        this.exception = new RestException(
-            400, Json("The query was incorrect"), string.init, int.init);
 
         // Make `BlockExternalizedHandler` from config
         foreach (address;
