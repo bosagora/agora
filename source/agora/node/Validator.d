@@ -222,13 +222,14 @@ public class Validator : FullNode, API
     public override void start ()
     {
         this.started = true;
+        // Note: Switching the next two lines leads to test failure
+        // It should not, and this needs to be fixed eventually
         this.network.startPeriodicNameRegistration();
-        this.startPeriodicDiscovery();
-        this.startStatsServer();
+        super.start();
+
         this.clock.startSyncing();
         this.taskman.setTimer(this.config.validator.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
-        this.startPeriodicCatchup();
 
         if (this.config.admin.enabled)
             this.admin_interface.start();
@@ -245,7 +246,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void startPeriodicDiscovery ()
+    protected override void startPeriodicDiscovery ()
     {
         this.taskman.runTask(
         ()

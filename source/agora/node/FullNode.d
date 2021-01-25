@@ -267,7 +267,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    private void startPeriodicDiscovery ()
+    protected void startPeriodicDiscovery ()
     {
         this.taskman.runTask(
         ()
