@@ -214,6 +214,12 @@ public class FullNode : API
             this.preimage_handlers[address] = this.network
                 .getPreimageReceivedHandler(address);
 
+        // Make `TransactionReceivedHandler` from config
+        foreach (address;
+            config.event_handlers.transaction_received_handler_addresses)
+            this.transaction_handlers[address] = this.network
+                .getTransactionReceivedHandler(address);
+
         // Special case
         // Block externalized handler is set and push for Genesis block.
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
