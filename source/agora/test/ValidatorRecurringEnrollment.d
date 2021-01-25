@@ -15,7 +15,25 @@
 module agora.test.ValidatorRecurringEnrollment;
 
 import agora.test.Base;
+
+import agora.consensus.data.Params;
+import agora.consensus.protocol.Data;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.Block;
+import agora.consensus.state.UTXODB;
+import agora.consensus.EnrollmentManager;
+import agora.consensus.Fee;
+import agora.common.Hash;
+import agora.common.Task;
+import agora.common.Config;
+import agora.common.Metadata;
+import agora.common.crypto.Key;
+import agora.network.NetworkManager;
+import agora.network.Clock;
+import agora.node.Ledger;
+import geod24.Registry;
+import core.stdc.time;
 
 unittest
 {
@@ -70,15 +88,6 @@ unittest
 // They should not be able to enroll and no new block should be created.
 unittest
 {
-    import agora.consensus.EnrollmentManager;
-    import agora.consensus.data.Enrollment;
-    import agora.consensus.data.Params;
-    import agora.consensus.data.Block;
-    import agora.common.Hash;
-    import agora.common.Config;
-    import agora.common.crypto.Key;
-    import geod24.Registry;
-    import core.stdc.time;
     import std.exception;
     import core.exception : AssertError;
 
@@ -173,4 +182,91 @@ unittest
     // Try creating one last block, should fail
     assertThrown!AssertError(createAndExpectNewBlock(
         Height(GenesisValidatorCycle)));
+}
+
+// Not all validators can enroll at the same height again. They should enroll
+// in 2 subsequent blocks. Nodes that can't enroll in the first block should
+// create another enrollment request for the next block
+unittest
+{
+    static class SocialDistancingNominator : TestNominator
+    {
+        public this (immutable(ConsensusParams) params, Clock clock,
+            NetworkManager network, KeyPair key_pair, Ledger ledger,
+            EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+            ulong txs_to_nominate, ulong test_start_time)
+        {
+            super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
+            txs_to_nominate, test_start_time);
+        }
+
+        protected override bool prepareNominatingSet (out ConsensusData data) @safe
+        {
+            auto ret = super.prepareNominatingSet(data);
+            if (data.enrolls.length > 3)
+                data.enrolls.length = 3;
+            return ret;
+        }
+    }
+
+    static class SocialDistancingValidator : TestValidatorNode
+    {
+        public this (Config config, Registry* reg, immutable(Block)[] blocks,
+            in TestConf test_conf, shared(time_t)* cur_time)
+        {
+            super(config, reg, blocks, test_conf, cur_time);
+        }
+        ///
+        protected override TestNominator getNominator (Clock clock,
+            NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
+            TaskManager taskman)
+        {
+            return new SocialDistancingNominator(
+                this.params, clock, network, this.config.validator.key_pair,
+                ledger, enroll_man, taskman, this.config.node.data_dir,
+                this.txs_to_nominate, this.test_start_time);
+        }
+
+    }
+
+    static class SocialDistancingAPIManager : TestAPIManager
+    {
+        public this (immutable(Block)[] blocks, TestConf test_conf,
+            time_t initial_time)
+        {
+            super(blocks, test_conf, initial_time);
+        }
+
+        public override void createNewNode (Config conf, string file = __FILE__,
+            int line = __LINE__)
+        {
+            if (conf.validator.enabled)
+                this.addNewNode!SocialDistancingValidator(conf, file, line);
+            else
+                this.addNewNode!TestFullNode(conf, file, line);
+        }
+    }
+
+    TestConf conf = {
+        quorum_threshold : 100
+    };
+
+    auto network = makeTestNetwork!SocialDistancingAPIManager(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    // Get the genesis block, make sure it's the only block externalized
+    auto blocks = node_1.getBlocksFrom(0, 2);
+    assert(blocks.length == 1);
+
+    network.generateBlocks(Height(GenesisValidatorCycle + 1));
+    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 2);
+    assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 1));
+    assert(blocks[$ - 1].header.enrollments.length == 3);
+    assert(blocks[$ - 2].header.enrollments.length == 3);
 }
