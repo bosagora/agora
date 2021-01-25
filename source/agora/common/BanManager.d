@@ -223,7 +223,7 @@ public class BanManager
 
     public void banUntil (Address address, time_t banned_until) @safe nothrow
     {
-        log.trace("BanManager: Address {} banned until {}", address, banned_until);
+        log.info("BanManager: Address {} banned until {}", address, banned_until);
         this.get(address).banned_until = banned_until;
     }
 
