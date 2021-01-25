@@ -1,0 +1,55 @@
+name: Build agora
+
+on: [push, pull_request]
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with:
+          submodules: false
+          persist-credentials: false
+
+      - name: Determining Agora version number
+        shell: bash
+        env:
+          github_ref: ${{ github.ref }}
+          github_sha: ${{ github.sha }}
+        run: |
+          set -xeu
+          set -o pipefail
+          if [[ $github_ref == /refs/tags/* ]]
+          then
+            AGORA_VERSION="${github_ref#"/refs/tags/"}-${github_sha}"
+          else
+            AGORA_VERSION="$github_sha"
+          fi
+          echo "AGORA_VERSION=$AGORA_VERSION" >> $GITHUB_ENV
+
+        # This step will checkout the source with all the submodules
+      - name: Build and push
+        id: docker_build_and_push
+        uses: docker/build-push-action@v2
+        with:
+          push: ${{ github.event_name == 'push' }}
+          tags: bpfk/agora
+          build-args: |
+            AGORA_VERSION=${{ env.AGORA_VERSION }}
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
