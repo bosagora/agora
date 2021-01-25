@@ -269,8 +269,6 @@ public class FullNode : API
 
     private void startPeriodicDiscovery ()
     {
-        import core.time;
-
         this.taskman.runTask(
         ()
         {
