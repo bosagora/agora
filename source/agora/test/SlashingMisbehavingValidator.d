@@ -39,13 +39,27 @@ import geod24.Registry;
 // after enrollment.
 private class MissingPreImageEM : EnrollmentManager
 {
+    private shared bool* reveal_preimage;
+
     mixin ForwardCtor!();
+
+    ///
+    public this (Parameters!(EnrollmentManager.__ctor) args,
+        shared(bool)* reveal_preimage)
+    {
+        this.reveal_preimage = reveal_preimage;
+        super(args);
+    }
 
     /// This does not reveal pre-images intentionally
     public override bool getNextPreimage (out PreImageInfo preimage,
         Height height) @safe
     {
-        return false;
+        assert(this.reveal_preimage != null);
+        if (*this.reveal_preimage == false)
+            return false;
+        else
+            return super.getNextPreimage(preimage, height);
     }
 }
 
@@ -54,13 +68,23 @@ private class MissingPreImageEM : EnrollmentManager
 private class NoPreImageVN : TestValidatorNode
 {
     public static shared UTXOSet utxo_set;
+    private shared bool* reveal_preimage;
 
     mixin ForwardCtor!();
+
+    ///
+    public this (Parameters!(TestValidatorNode.__ctor) args,
+        shared(bool)* reveal_preimage)
+    {
+        this.reveal_preimage = reveal_preimage;
+        super(args);
+    }
 
     protected override EnrollmentManager getEnrollmentManager ()
     {
         return new MissingPreImageEM(
-            ":memory:", this.config.validator.key_pair, params);
+            ":memory:", this.config.validator.key_pair, params,
+            this.reveal_preimage);
     }
 
     protected override UTXOSet getUtxoSet()
@@ -80,6 +104,8 @@ unittest
     import agora.script.Lock;
     static class BadAPIManager : TestAPIManager
     {
+        public static shared bool reveal_preimage = false;
+
         mixin ForwardCtor!();
 
         ///
@@ -90,7 +116,7 @@ unittest
                 auto time = new shared(time_t)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
                     conf, &this.reg, this.blocks, this.test_conf,
-                    time, conf.node.timeout);
+                    time, &reveal_preimage, conf.node.timeout);
                 this.reg.register(conf.node.address, api.tid());
                 this.nodes ~= NodePair(conf.node.address, api, time);
             }
@@ -151,4 +177,69 @@ unittest
     // check the leftover UTXO is melting and the penalty UTXO is unfrozen
     assert(slashed_utxo.unlock_height == 2018);
     assert(common_utxo.unlock_height == 3);
+}
+
+/// Situation: All the validators do not reveal their pre-images for
+///     some time in the middle of creating the block of height 2 and
+///     then start revealing their pre-images.
+/// Expectation: The block of height 2 is created in the end after
+///     some failures.
+unittest
+{
+    static class LazyAPIManager : TestAPIManager
+    {
+        public static shared bool reveal_preimage = false;
+
+        ///
+        public this (immutable(Block)[] blocks, TestConf test_conf,
+            time_t initial_time)
+        {
+            super(blocks, test_conf, initial_time);
+        }
+
+        ///
+        public override void createNewNode (Config conf, string file, int line)
+        {
+            if (conf.validator.enabled == true)
+            {
+                auto time = new shared(time_t)(this.initial_time);
+                auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
+                    conf, &this.reg, this.blocks, this.test_conf,
+                    time, &reveal_preimage, conf.node.timeout);
+                this.reg.register(conf.node.address, api.tid());
+                this.nodes ~= NodePair(conf.node.address, api, time);
+            }
+            else
+                super.createNewNode(conf, file, line);
+        }
+    }
+
+    TestConf conf = {
+        recurring_enrollment : false,
+    };
+    auto network = makeTestNetwork!LazyAPIManager(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+    auto nodes = network.clients;
+    auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array;
+
+    // block 1
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(Height(1));
+
+    // block 2 must not be created because all the validators do not
+    // reveal any pre-images after their enrollments.
+    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs.each!(tx => nodes[0].putTransaction(tx));
+    network.expectBlock(Height(1));
+
+    // all the validators start revealing pre-images
+    LazyAPIManager.reveal_preimage = true;
+
+    // block 2 created with no slashed validator
+    network.expectBlock(Height(2));
+    auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
+    assert(block2.header.missing_validators.length == 0);
 }

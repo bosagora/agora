@@ -773,6 +773,8 @@ public class Ledger
             return fail_reason;
 
         size_t active_enrollments = enroll_man.getValidatorCount(expect_height);
+        assert(active_enrollments >= data.missing_validators.length);
+        active_enrollments -= data.missing_validators.length;
 
         if (data.enrolls.length + active_enrollments < Enrollment.MinValidatorCount)
             return InvalidConsensusDataReason.NotEnoughValidators;
