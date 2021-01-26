@@ -97,6 +97,19 @@ public struct Height
     {
         return Height(this.value++);
     }
+
+    /// Allow to offset an height by a fixed number
+    public Height opBinary (string op : "+") (ulong offset) const
+    {
+        return Height(this.value + offset);
+    }
+
+    /// Allow to offset an height by a fixed number
+    public ref Height opBinaryAssign (string op : "+=") (ulong offset) return
+    {
+        this.value += offset;
+        return this;
+    }
 }
 
 ///
@@ -113,4 +126,10 @@ unittest
     auto x = Height(10);
     assert(x++ == 10);
     assert(x == 11);
+
+    auto y = x + 1;
+    assert(y == 12);
+
+    y += 5;
+    assert(y == 17);
 }

@@ -59,7 +59,7 @@ abstract class UTXOCache
         import std.algorithm : any;
 
         // defaults to next block
-        Height unlock_height = Height(height + 1);
+        Height unlock_height = height + 1;
 
         // for payments of frozen transactions, it will melt after 2016 blocks
         // If this is an unfreeze and slashing transaction, don't melt but
@@ -73,7 +73,7 @@ abstract class UTXOCache
             )
         )
         {
-            unlock_height = Height(height + 2016);
+            unlock_height = height + 2016;
         }
 
         foreach (const ref input; tx.inputs)

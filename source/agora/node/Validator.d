@@ -544,7 +544,7 @@ public class Validator : FullNode, API
             log.trace("Sending Enrollment at height {} for {} cycles with {}",
                 block_height, this.params.ValidatorCycle, enroll_key);
             this.network.sendEnrollment(
-                this.enroll_man.createEnrollment(enroll_key, Height(block_height + 1)));
+                this.enroll_man.createEnrollment(enroll_key, block_height + 1));
         }
     }
 

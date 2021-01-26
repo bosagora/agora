@@ -349,13 +349,13 @@ public class EnrollmentManager
         assumeSafeAppend(enrolls);
 
         static Enrollment[] pool_enrolls;
-        this.enroll_pool.getEnrollments(pool_enrolls, Height(height + 1));
+        this.enroll_pool.getEnrollments(pool_enrolls, height + 1);
         foreach (enroll; pool_enrolls)
         {
             UTXO utxo;
             if (peekUTXO(enroll.utxo_key, utxo) &&
                 this.isInvalidCandidateReason(enroll, utxo.output.address,
-                                    Height(height + 1), peekUTXO) is null)
+                                    height + 1, peekUTXO) is null)
                 enrolls ~= enroll;
         }
         return enrolls;
@@ -662,7 +662,7 @@ public class EnrollmentManager
         preimage.enroll_key = this.enroll_key;
         preimage.distance = cast(ushort)next_dist;
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
-        preimage.hash = this.cycle.getPreImage(this.key_pair.v, Height(enrolled + next_dist));
+        preimage.hash = this.cycle.getPreImage(this.key_pair.v, enrolled + next_dist);
         return true;
     }
 
