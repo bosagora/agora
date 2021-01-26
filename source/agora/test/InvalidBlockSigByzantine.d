@@ -71,11 +71,12 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
 
     extern(D) this (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ByzantineReason reason, ulong test_start_time)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+        ulong txs_to_nominate, ulong test_start_time, ByzantineReason reason)
     {
         this.reason = reason;
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            this.txs_to_nominate, test_start_time);
+            txs_to_nominate, test_start_time);
     }
 
     extern(D) override protected Sig createBlockSignature(const Block block) @trusted nothrow
@@ -123,7 +124,7 @@ private class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new BadBlockSigningNominator(
             this.params, clock, network, this.config.validator.key_pair, ledger,
             enroll_man, taskman, this.config.node.data_dir,
-            reason, this.test_start_time);
+            this.txs_to_nominate, this.test_start_time, reason);
     }
 }
 

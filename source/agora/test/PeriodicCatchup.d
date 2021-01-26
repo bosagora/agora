@@ -63,10 +63,11 @@ private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
 {
     extern(D) this (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ulong test_start_time)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+        ulong txs_to_nominate, ulong test_start_time)
     {
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            this.txs_to_nominate, test_start_time);
+            txs_to_nominate, test_start_time);
     }
 
     public override void valueExternalized (uint64_t slot_idx, ref const(Value) value) nothrow
@@ -92,7 +93,7 @@ private class TestNode () : TestValidatorNode
         return new DoesNotExternalizeBlockNominator(
             this.params, clock, network, this.config.validator.key_pair, ledger,
             enroll_man, taskman, this.config.node.data_dir,
-            this.test_start_time);
+            this.txs_to_nominate, this.test_start_time);
     }
 }
 
