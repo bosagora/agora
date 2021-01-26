@@ -620,7 +620,20 @@ public class FullNode : API
     public override Hash[] getMerklePath (ulong block_height, Hash hash) @safe
     {
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "merkle_path", "http");
-        return this.ledger.getMerklePath(Height(block_height), hash);
+
+        const Height height = Height(block_height);
+
+        if (this.ledger.getBlockHeight() < height)
+            return null;
+
+        Block block;
+        if (!this.storage.tryReadBlock(block, height))
+            return null;
+
+        size_t index = block.findHashIndex(hash);
+        if (index >= block.txs.length)
+            return null;
+        return block.getMerklePath(index);
     }
 
     /// PUT: /enroll_validator
