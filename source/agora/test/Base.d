@@ -1624,13 +1624,12 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Returns an instance of a TestNominator with customizable behavior
-    protected override TestNominator getNominator (Clock clock,
-        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
-        TaskManager taskman)
+    protected override TestNominator getNominator (
+        Parameters!(Validator.getNominator) args)
     {
         return new TestNominator(
-            this.params, this.config.validator.key_pair, clock, network, ledger,
-            enroll_man, taskman, this.config.node.data_dir,
+            this.params, this.config.validator.key_pair, args,
+            this.config.node.data_dir,
             this.txs_to_nominate, this.test_start_time);
     }
 

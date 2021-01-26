@@ -213,13 +213,12 @@ unittest
             super(config, reg, blocks, test_conf, cur_time);
         }
         ///
-        protected override TestNominator getNominator (Clock clock,
-            NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
-            TaskManager taskman)
+        protected override TestNominator getNominator (
+            Parameters!(TestValidatorNode.getNominator) args)
         {
             return new SocialDistancingNominator(
-                this.params, this.config.validator.key_pair, clock, network,
-                ledger, enroll_man, taskman, this.config.node.data_dir,
+                this.params, this.config.validator.key_pair, args,
+                this.config.node.data_dir,
                 this.txs_to_nominate, this.test_start_time);
         }
 
