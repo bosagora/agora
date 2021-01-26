@@ -2054,19 +2054,10 @@ unittest
     import agora.consensus.data.PreImageInfo;
     import agora.consensus.PreImage;
     import agora.utils.WellKnownKeys : CommonsBudget;
-    // validator_cycle = 20, max_quorum_nodes = 7,
-    // quorum_threshold = 80, payout_period = 5
+
+    ConsensusConfig config = { validator_cycle: 20, payout_period: 5 };
     auto params = new immutable(ConsensusParams)(GenesisBlock,
-        CommonsBudget.address,
-        /* validator_cycle */ 20,
-        /* max_quorum_nodes */ 7,
-        /* quorum_threshold */ 80,
-        /* quorum_shuffle_interval */ 30,
-        /* block_interval_sec */ 1,
-        /* tx_payload_maxsize */ 1024,
-        /* tx_payload_fee_factor */ 200,
-        /* validator_tx_fee_cut */ 70,
-        /* payout_period */ 5);
+        CommonsBudget.address, config);
 
     const(Block)[] blocks = [ GenesisBlock ];
     scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);

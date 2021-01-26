@@ -311,10 +311,11 @@ unittest
             utxo_hashes ~= UTXO.getHash(tx.hashFull(), 0);
         });
 
+    ConsensusConfig conf = { slash_penalty_amount: 20_000.coins };
     auto params = new immutable(ConsensusParams)(
         TESTNET.GenesisBlock,
         TESTNET.CommonsBudgetAddress,
-        1008, 7, 80, 30, 1, 1024, 200, 70, 144, 20_000.coins);
+        conf);
     scope enroll_man = new EnrollmentManager(":memory:", WK.Keys.A, params);
 
     // create 8 enrollments
