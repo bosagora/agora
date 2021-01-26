@@ -92,8 +92,8 @@ public struct Height
         return Height(ul);
     }
 
-    //Prevent needing to cast when using unary post plus operator
-    Height opUnary (string op) () if (op == "++")
+    /// Prevent needing to cast when using unary post plus operator
+    public Height opUnary (string op) () if (op == "++")
     {
         return Height(this.value++);
     }
