@@ -140,9 +140,9 @@ extern(D):
 
         Params:
             params = consensus params
+            key_pair = the key pair of this node
             clock = clock instance
             network = the network manager for gossiping SCP messages
-            key_pair = the key pair of this node
             ledger = needed for SCP state restoration & block validation
             enroll_man = used to look up the commitment & preimages
             taskman = used to run timers
@@ -150,8 +150,8 @@ extern(D):
 
     ***************************************************************************/
 
-    public this (immutable(ConsensusParams) params, Clock clock,
-        NetworkManager network, KeyPair key_pair, Ledger ledger,
+    public this (immutable(ConsensusParams) params, KeyPair key_pair,
+        Clock clock, NetworkManager network, Ledger ledger,
         EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
     {
         this.params = params;

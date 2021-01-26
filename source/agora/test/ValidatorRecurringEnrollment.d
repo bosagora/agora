@@ -218,7 +218,7 @@ unittest
             TaskManager taskman)
         {
             return new SocialDistancingNominator(
-                this.params, clock, network, this.config.validator.key_pair,
+                this.params, this.config.validator.key_pair, clock, network,
                 ledger, enroll_man, taskman, this.config.node.data_dir,
                 this.txs_to_nominate, this.test_start_time);
         }

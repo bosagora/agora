@@ -387,7 +387,7 @@ public class Validator : FullNode, API
         Ledger ledger, EnrollmentManager enroll_man, TaskManager taskman)
     {
         return new Nominator(
-            this.params, clock, network, this.config.validator.key_pair, ledger,
+            this.params, this.config.validator.key_pair, clock, network, ledger,
             enroll_man, taskman, this.config.node.data_dir);
     }
 
