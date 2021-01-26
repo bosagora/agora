@@ -265,3 +265,63 @@ unittest
     assert(blocks[$ - 1].header.enrollments.length == 3);
     assert(blocks[$ - 2].header.enrollments.length == 3);
 }
+
+// Some nodes are interrupted during their validator cycles, they should
+// still manage to enroll when they are back online
+unittest
+{
+    TestConf conf = {
+        quorum_threshold : 66
+    };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    // Get the genesis block, make sure it's the only block externalized
+    auto blocks = node_1.getBlocksFrom(0, 2);
+    assert(blocks.length == 1);
+
+    auto sleep_node_1 = nodes[$ - 1];
+    auto sleep_node_2 = nodes[$ - 2];
+
+    // Approach end of the cycle
+    network.generateBlocks(Height(GenesisValidatorCycle - 2));
+
+    // Make 2 nodes sleep
+    sleep_node_1.ctrl.sleep(60.seconds, true);
+    sleep_node_2.ctrl.sleep(60.seconds, true);
+
+    network.generateBlocks(iota(GenesisValidators - 2),
+        Height(GenesisValidatorCycle - 1));
+
+    // Wake one up right before cycle ends
+    sleep_node_2.ctrl.sleep(0.seconds);
+    // Let it catch up
+    network.expectBlock(iota(GenesisValidators - 1),
+        Height(GenesisValidatorCycle - 1));
+
+    network.generateBlocks(iota(GenesisValidators - 1),
+        Height(GenesisValidatorCycle));
+
+    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    auto enrolls1 = blocks[$ - 1].header.enrollments.length;
+
+    // This nodes will wake up to an expired cycle, it should immediately enroll
+    sleep_node_1.ctrl.sleep(0.seconds);
+    // Let it catch up
+    network.expectBlock(Height(GenesisValidatorCycle));
+
+    network.generateBlocks(iota(GenesisValidators),
+        Height(GenesisValidatorCycle + 1));
+
+    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    auto enrolls2 = blocks[$ - 1].header.enrollments.length;
+
+    // By now, all genesis validators should be enrolled again
+    assert(enrolls1 + enrolls2 == GenesisValidators);
+}
