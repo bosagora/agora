@@ -71,14 +71,10 @@ private extern(C++) class ByzantineNominator : TestNominator
 {
     private ByzantineReason reason;
 
-    extern(D) this (immutable(ConsensusParams) params,
-        Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
-        ulong txs_to_nominate, ulong test_start_time, ByzantineReason reason)
+    extern(D) this (Parameters!(typeof(super).__ctor) args, ByzantineReason reason)
     {
+        super(args);
         this.reason = reason;
-        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            txs_to_nominate, test_start_time);
     }
 
     // override signing with Byzantine behaviour of not signing or signing with invalid signature
@@ -122,15 +118,11 @@ private class SpyNominator : TestNominator
     private NodeID[][SCPStatementType.max + 1] nodes_received;
 
     /// Ctor
-    public this (immutable(ConsensusParams) params, Clock clock,
-        NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
-        ulong txs_to_nominate, ulong test_start_time,
+    public this (Parameters!(typeof(super).__ctor) args,
         shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
+        super(args);
         this.envelope_type_counts = envelope_type_counts;
-        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-        txs_to_nominate, test_start_time);
     }
 
     public override void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
