@@ -95,6 +95,8 @@ public import std.format;
 public import std.range;
 // To print messages to the screen while debugging a test
 public import std.stdio;
+// Make inheriting much easier
+public import std.traits : Parameters;
 
 // Convenience constants
 public const size_t GenesisValidators = GenesisBlock.header.enrollments.count();
@@ -442,9 +444,9 @@ private final class LocalRestTimer : ITimer
 public class TestBanManager : BanManager
 {
     /// Ctor
-    public this (Config conf, Clock clock, cstring data_dir)
+    public this (Parameters!(BanManager.__ctor) args)
     {
-        super(conf, clock, data_dir);
+        super(args);
     }
 
     /// no-op
@@ -465,14 +467,12 @@ extern(D):
     protected ulong test_start_time;
 
     ///
-    public this (immutable(ConsensusParams) params, Clock clock,
-        NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+    public this (Parameters!(Nominator.__ctor) args,
         ulong txs_to_nominate, ulong test_start_time)
     {
-        this.test_start_time = test_start_time;
+        super(args);
         this.txs_to_nominate = txs_to_nominate;
-        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir);
+        this.test_start_time = test_start_time;
     }
 
     protected override ulong getExpectedBlockTime () @safe @nogc nothrow pure
@@ -1122,10 +1122,9 @@ public class TestAPIManager
 public class TestNetworkClient : NetworkClient
 {
     /// See NetworkClient ctor
-    public this (TaskManager taskman, BanManager banman, Address address,
-        ValidatorAPI api, Duration retry, size_t max_retries)
+    public this (Parameters!(NetworkClient.__ctor) args)
     {
-        super(taskman, banman, address, api, retry, max_retries);
+        super(args);
     }
 
     /***************************************************************************
@@ -1170,11 +1169,10 @@ public class TestNetworkManager : NetworkManager
     public Registry* registry;
 
     /// Constructor
-    public this (Config config, Metadata metadata,
-        TaskManager taskman, Clock clock, Registry* reg)
+    public this (Parameters!(NetworkManager.__ctor) args, Registry* reg)
     {
+        super(args);
         this.registry = reg;
-        super(config, metadata, taskman, clock);
     }
 
     /// No "http://" in unittests, we just use the string as-is
@@ -1671,10 +1669,9 @@ public class TestValidatorNode : Validator, TestAPI
 public mixin template ForwardCtor ()
 {
     ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time)
+    public this (Parameters!(typeof(super).__ctor) args)
     {
-        super(config, reg, blocks, test_conf, cur_time);
+        super(args);
     }
 }
 
