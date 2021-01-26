@@ -265,8 +265,8 @@ unittest
         /// Ctor
         public this (immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
-            EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ulong txs_to_nominate,
-            shared(time_t)* curr_time, shared(size_t)* countPtr, ulong test_start_time)
+            EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+            ulong txs_to_nominate, ulong test_start_time, shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
             super(params, clock, network, key_pair, ledger, enroll_man, taskman,
@@ -310,8 +310,7 @@ unittest
             return new BadNominator(
                 this.params, clock, network, this.config.validator.key_pair,
                 ledger, enroll_man, taskman, this.config.node.data_dir,
-                this.txs_to_nominate, this.cur_time, this.runCount,
-                this.test_start_time);
+                this.txs_to_nominate, this.test_start_time, this.runCount);
         }
     }
 
