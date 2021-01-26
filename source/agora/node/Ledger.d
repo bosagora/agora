@@ -878,34 +878,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Get the array of hashs the merkle path.
-
-        Params:
-            block_height = block height with transaction hash
-            hash         = transaction hash
-
-        Returns:
-            the array of hashs the merkle path
-
-    ***************************************************************************/
-
-    public Hash[] getMerklePath (Height block_height, in Hash hash) @safe nothrow
-    {
-        if (this.getBlockHeight() < block_height)
-            return null;
-
-        Block block;
-        if (!this.storage.tryReadBlock(block, block_height))
-            return null;
-
-        size_t index = block.findHashIndex(hash);
-        if (index >= block.txs.length)
-            return null;
-        return block.getMerklePath(index);
-    }
-
-    /***************************************************************************
-
         Generate the random seed reduced from the preimages for the provided
         block height.
 
@@ -1259,63 +1231,6 @@ unittest
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     const block = makeNewTestBlock(ledger.params.Genesis, txs);
     assert(ledger.acceptBlock(block));
-}
-
-/// Merkle Proof
-unittest
-{
-    scope ledger = new TestLedger(WK.Keys.NODE2);
-
-    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-    ledger.forceCreateBlock();
-
-    Hash[] hashes;
-    hashes.reserve(txs.length);
-    foreach (ref e; txs)
-        hashes ~= hashFull(e);
-
-    // transactions are ordered lexicographically by hash in the Merkle tree
-    hashes.sort!("a < b");
-
-    const Hash ha = hashes[0];
-    const Hash hb = hashes[1];
-    const Hash hc = hashes[2];
-    const Hash hd = hashes[3];
-    const Hash he = hashes[4];
-    const Hash hf = hashes[5];
-    const Hash hg = hashes[6];
-    const Hash hh = hashes[7];
-
-    const Hash hab = hashMulti(ha, hb);
-    const Hash hcd = hashMulti(hc, hd);
-    const Hash hef = hashMulti(he, hf);
-    const Hash hgh = hashMulti(hg, hh);
-
-    const Hash habcd = hashMulti(hab, hcd);
-    const Hash hefgh = hashMulti(hef, hgh);
-
-    const Hash habcdefgh = hashMulti(habcd, hefgh);
-
-    Hash[] merkle_path;
-    merkle_path = ledger.getMerklePath(Height(1), hc);
-    assert(merkle_path.length == 3);
-    assert(merkle_path[0] == hd);
-    assert(merkle_path[1] == hab);
-    assert(merkle_path[2] == hefgh);
-    assert(habcdefgh == Block.checkMerklePath(hc, merkle_path, 2));
-    assert(habcdefgh != Block.checkMerklePath(hd, merkle_path, 2));
-
-    merkle_path = ledger.getMerklePath(Height(1), he);
-    assert(merkle_path.length == 3);
-    assert(merkle_path[0] == hf);
-    assert(merkle_path[1] == hgh);
-    assert(merkle_path[2] == habcd);
-    assert(habcdefgh == Block.checkMerklePath(he, merkle_path, 4));
-    assert(habcdefgh != Block.checkMerklePath(hf, merkle_path, 4));
-
-    merkle_path = ledger.getMerklePath(Height(1), Hash.init);
-    assert(merkle_path.length == 0);
 }
 
 /// Situation: Ledger is constructed with blocks present in storage
