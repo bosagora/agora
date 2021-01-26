@@ -100,13 +100,12 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override TestNominator getNominator (Clock clock,
-        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
-        TaskManager taskman)
+    protected override TestNominator getNominator (
+        Parameters!(TestValidatorNode.getNominator) args)
     {
         return new ByzantineNominator(
-            this.params, this.config.validator.key_pair, clock, network, ledger,
-            enroll_man, taskman, this.config.node.data_dir,
+            this.params, this.config.validator.key_pair, args,
+            this.config.node.data_dir,
             this.txs_to_nominate, this.test_start_time, reason);
     }
 }
@@ -162,13 +161,12 @@ private class SpyingValidator : TestValidatorNode
     }
 
     ///
-    protected override TestNominator getNominator (Clock clock,
-        NetworkManager network, Ledger ledger, EnrollmentManager enroll_man,
-        TaskManager taskman)
+    protected override TestNominator getNominator (
+        Parameters!(TestValidatorNode.getNominator) args)
     {
         return new SpyNominator(
-            this.params, this.config.validator.key_pair, clock, network,
-            ledger, enroll_man, taskman, this.config.node.data_dir,
+            this.params, this.config.validator.key_pair, args,
+            this.config.node.data_dir,
             this.txs_to_nominate, this.test_start_time, this.envelope_type_counts);
     }
 }
