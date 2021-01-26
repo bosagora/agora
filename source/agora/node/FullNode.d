@@ -175,16 +175,8 @@ public class FullNode : API
                 config.node.testing ?
                     TESTNET.GenesisBlock : COINNET.GenesisBlock,
                 commons_budget,
-                config.consensus.validator_cycle,
-                config.consensus.max_quorum_nodes,
-                config.consensus.quorum_threshold,
-                config.consensus.quorum_shuffle_interval,
-                config.node.block_interval_sec,
-                config.consensus.tx_payload_max_size,
-                config.consensus.tx_payload_fee_factor,
-                config.consensus.validator_tx_fee_cut,
-                config.consensus.payout_period,
-                config.consensus.slash_penalty_amount);
+                config.consensus,
+                config.node.block_interval_sec);
 
         this.taskman = this.getTaskManager();
         this.clock = this.getClock(this.taskman);

@@ -28,6 +28,7 @@ import agora.api.handler.PreImageReceivedHandler;
 import agora.api.handler.TransactionReceivedHandler;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
+import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.common.crypto.Key;
