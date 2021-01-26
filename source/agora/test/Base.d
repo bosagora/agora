@@ -1004,7 +1004,7 @@ public class TestAPIManager
         auto all_blocks = first_client.getAllBlocks();
 
         // traget height will be one more than previous block
-        Height target_height = Height(all_blocks[$ - 1].header.height + 1);
+        Height target_height = all_blocks[$ - 1].header.height + 1;
 
         assert(all_blocks.length > 0,
             format!"[%s:%s] No blocks in first client!"(file, line));

@@ -260,7 +260,7 @@ public class Ledger
     {
         import agora.utils.Test : WK;
 
-        auto next_block = Height(this.last_block.header.height + 1);
+        auto next_block = this.last_block.header.height + 1;
         KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
             .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
             .map!(K => WK.Keys[K])
@@ -378,7 +378,7 @@ public class Ledger
     public bool acceptTransaction (Transaction tx) @safe
     {
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
-        const Height expected_height = Height(this.getBlockHeight() + 1);
+        const Height expected_height = this.getBlockHeight() + 1;
         string reason;
 
         if (tx.type == TxType.Coinbase ||
@@ -615,7 +615,7 @@ public class Ledger
         data = ConsensusData.init;
         data.timestamp = max(clock.networkTime(), this.last_block.header.timestamp + 1);
         log.trace("Going to nominate current timestamp [{}] or newer", clock.networkTime());
-        const next_height = Height(this.getBlockHeight() + 1);
+        const next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         this.enroll_man.getEnrollments(data.enrolls, this.getBlockHeight(),
@@ -677,7 +677,7 @@ public class Ledger
     public Transaction[] getCoinbaseTX (Amount tot_fee, Amount tot_data_fee,
         const ref uint[] missing_validators) nothrow @safe
     {
-        const next_height = Height(this.getBlockHeight() + 1);
+        const next_height = this.getBlockHeight() + 1;
 
         UTXO[] stakes;
         this.enroll_man.getValidatorStakes(&this.utxo_set.peekUTXO, stakes,
@@ -750,7 +750,7 @@ public class Ledger
 
     public string validateConsensusData (ConsensusData data) @trusted
     {
-        const expect_height = Height(this.getBlockHeight() + 1);
+        const expect_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         if (!data.tx_set.length)
@@ -870,7 +870,9 @@ public class Ledger
             return block;
         }
 
-        return iota(start_height, this.getBlockHeight() + 1)
+        // Call to `Height.value` to work around
+        // https://issues.dlang.org/show_bug.cgi?id=21583
+        return iota(start_height.value, this.getBlockHeight() + 1)
             .map!(idx => readBlock(Height(idx)));
     }
 
@@ -1008,7 +1010,7 @@ public class Ledger
     public string getValidTXSet (ConsensusData data, ref Transaction[]
         tx_set) @safe nothrow
     {
-        const expect_height = Height(this.getBlockHeight() + 1);
+        const expect_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
         bool[Hash] local_unknown_txs;
 

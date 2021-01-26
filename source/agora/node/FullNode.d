@@ -300,7 +300,7 @@ public class FullNode : API
                     return;
 
                 this.network.getBlocksFrom(
-                    Height(this.ledger.getBlockHeight() + 1),
+                    this.ledger.getBlockHeight() + 1,
                     // if any blocks fail validation => short-circuit
                     blocks => blocks.all!(block => this.acceptBlock(block)));
                 this.network.getUnknownTXs(this.ledger);
