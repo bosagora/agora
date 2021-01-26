@@ -73,12 +73,12 @@ private extern(C++) class ByzantineNominator : TestNominator
 
     extern(D) this (immutable(ConsensusParams) params,
         Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir, ByzantineReason reason,
-        ulong test_start_time)
+        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
+        ulong txs_to_nominate, ulong test_start_time, ByzantineReason reason)
     {
         this.reason = reason;
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            this.txs_to_nominate, this.test_start_time);
+            txs_to_nominate, test_start_time);
     }
 
     // override signing with Byzantine behaviour of not signing or signing with invalid signature
@@ -111,7 +111,7 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new ByzantineNominator(
             this.params, clock, network, this.config.validator.key_pair, ledger,
             enroll_man, taskman, this.config.node.data_dir,
-            reason, this.test_start_time);
+            this.txs_to_nominate, this.test_start_time, reason);
     }
 }
 
