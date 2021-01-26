@@ -69,14 +69,10 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
 {
     private ByzantineReason reason;
 
-    extern(D) this (immutable(ConsensusParams) params,
-        Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
-        ulong txs_to_nominate, ulong test_start_time, ByzantineReason reason)
+    extern(D) this (Parameters!(TestNominator.__ctor) args, ByzantineReason reason)
     {
+        super(args);
         this.reason = reason;
-        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            txs_to_nominate, test_start_time);
     }
 
     extern(D) override protected Sig createBlockSignature(const Block block) @trusted nothrow

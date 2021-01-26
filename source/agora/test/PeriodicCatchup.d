@@ -61,13 +61,9 @@ mixin AddLogger!();
 
 private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
 {
-    extern(D) this (immutable(ConsensusParams) params,
-        Clock clock, NetworkManager network, KeyPair key_pair, Ledger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
-        ulong txs_to_nominate, ulong test_start_time)
+    extern(D) this (Parameters!(TestNominator.__ctor) args)
     {
-        super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
-            txs_to_nominate, test_start_time);
+        super(args);
     }
 
     public override void valueExternalized (uint64_t slot_idx, ref const(Value) value) nothrow
