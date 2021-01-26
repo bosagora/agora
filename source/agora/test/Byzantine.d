@@ -105,7 +105,7 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         TaskManager taskman)
     {
         return new ByzantineNominator(
-            this.params, clock, network, this.config.validator.key_pair, ledger,
+            this.params, this.config.validator.key_pair, clock, network, ledger,
             enroll_man, taskman, this.config.node.data_dir,
             this.txs_to_nominate, this.test_start_time, reason);
     }
@@ -167,7 +167,7 @@ private class SpyingValidator : TestValidatorNode
         TaskManager taskman)
     {
         return new SpyNominator(
-            this.params, clock, network, this.config.validator.key_pair,
+            this.params, this.config.validator.key_pair, clock, network,
             ledger, enroll_man, taskman, this.config.node.data_dir,
             this.txs_to_nominate, this.test_start_time, this.envelope_type_counts);
     }

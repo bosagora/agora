@@ -87,7 +87,7 @@ private class TestNode () : TestValidatorNode
         TaskManager taskman)
     {
         return new DoesNotExternalizeBlockNominator(
-            this.params, clock, network, this.config.validator.key_pair, ledger,
+            this.params, this.config.validator.key_pair, clock, network, ledger,
             enroll_man, taskman, this.config.node.data_dir,
             this.txs_to_nominate, this.test_start_time);
     }
