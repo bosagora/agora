@@ -102,8 +102,6 @@ private extern(C++) class ByzantineNominator : TestNominator
 /// node which refuses to co-operate: doesn't sign or signs with invalid signature
 class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 {
-    ByzantineReason reason;
-
     mixin ForwardCtor!();
 
     protected override TestNominator getNominator (Clock clock,
@@ -113,7 +111,7 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new ByzantineNominator(
             this.params, clock, network, this.config.validator.key_pair, ledger,
             enroll_man, taskman, this.config.node.data_dir,
-            this.reason, this.test_start_time);
+            reason, this.test_start_time);
     }
 }
 
