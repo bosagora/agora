@@ -57,7 +57,7 @@ unittest
         public this (immutable(ConsensusParams) params, Clock clock,
             NetworkManager network, KeyPair key_pair, Ledger ledger,
             EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
-            ulong txs_to_nominate, shared(time_t)* curr_time, ulong test_start_time)
+            ulong txs_to_nominate, ulong test_start_time)
         {
             super(params, clock, network, key_pair, ledger, enroll_man, taskman,
                 data_dir, txs_to_nominate, test_start_time);
@@ -88,7 +88,7 @@ unittest
             return new CustomNominator(
                 this.params, clock, network, this.config.validator.key_pair,
                 ledger, enroll_man, taskman, this.config.node.data_dir,
-                this.txs_to_nominate, this.cur_time, this.test_start_time);
+                this.txs_to_nominate, this.test_start_time);
         }
     }
 

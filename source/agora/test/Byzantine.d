@@ -125,8 +125,8 @@ private class SpyNominator : TestNominator
     public this (immutable(ConsensusParams) params, Clock clock,
         NetworkManager network, KeyPair key_pair, Ledger ledger,
         EnrollmentManager enroll_man, TaskManager taskman, string data_dir,
-        ulong txs_to_nominate, shared(time_t)* curr_time,
-        shared(EnvelopeTypeCounts)* envelope_type_counts, ulong test_start_time)
+        ulong txs_to_nominate, ulong test_start_time,
+        shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
         this.envelope_type_counts = envelope_type_counts;
         super(params, clock, network, key_pair, ledger, enroll_man, taskman, data_dir,
@@ -177,8 +177,7 @@ private class SpyingValidator : TestValidatorNode
         return new SpyNominator(
             this.params, clock, network, this.config.validator.key_pair,
             ledger, enroll_man, taskman, this.config.node.data_dir,
-            this.txs_to_nominate, this.cur_time, this.envelope_type_counts,
-            this.test_start_time);
+            this.txs_to_nominate, this.test_start_time, this.envelope_type_counts);
     }
 }
 
