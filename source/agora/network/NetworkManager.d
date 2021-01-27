@@ -340,7 +340,7 @@ public class NetworkManager
     protected DList!NetworkClient validators;
 
     /// All connected nodes (Validators & FullNodes)
-    public DList!NetworkClient peers;
+    public DList!NodeConnInfo peers;
 
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
@@ -420,7 +420,7 @@ public class NetworkManager
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
         this.connected_peers.put(node.address);
-        this.peers.insertBack(node.client);
+        this.peers.insertBack(node);
 
         if (node.is_validator)
         {
@@ -832,7 +832,7 @@ public class NetworkManager
         }
 
         auto node_pair = this.peers[]
-            .map!(node => Pair(getHeight(node), node))
+            .map!(node => Pair(getHeight(node.client), node.client))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
 
@@ -887,7 +887,7 @@ public class NetworkManager
             if (unknown_txs.length == 0)
                 break;
 
-            foreach (tx; peer.getTransactions(unknown_txs))
+            foreach (tx; peer.client.getTransactions(unknown_txs))
             {
                 try
                 {
@@ -1032,7 +1032,7 @@ public class NetworkManager
                 continue;
             }
 
-            node.sendTransaction(tx);
+            node.client.sendTransaction(tx);
         }
     }
 
@@ -1087,7 +1087,7 @@ public class NetworkManager
                 continue;
             }
 
-            node.sendEnrollment(enroll);
+            node.client.sendEnrollment(enroll);
         }
     }
 
@@ -1110,7 +1110,7 @@ public class NetworkManager
                 continue;
             }
 
-            node.sendPreimage(preimage);
+            node.client.sendPreimage(preimage);
         }
     }
 
