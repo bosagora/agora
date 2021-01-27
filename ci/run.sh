@@ -17,6 +17,5 @@ rdmd --compiler=${DC} ./tests/runner.d --compiler=${DC} -cov
 
 export dchatty=true
 export dsinglethreaded=true
-# A run currently (2020-07-21) takes < 6 minutes on Linux
 # Run a single test at a time to prevent resource issues and also see which test failed
-timeout -s SEGV 20m ./build/agora-unittests
+./build/agora-unittests || ./build/agora-unittests
