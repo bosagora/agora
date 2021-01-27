@@ -332,9 +332,6 @@ public class NetworkManager
     /// Connection tasks for the nodes we're trying to connect to
     protected ConnectionTask[Address] connection_tasks;
 
-    /// List of validator clients
-    protected DList!NetworkClient validators;
-
     /// All connected nodes (Validators & FullNodes)
     public DList!NodeConnInfo peers;
 
@@ -420,7 +417,6 @@ public class NetworkManager
 
         if (node.is_validator)
         {
-            this.validators.insertBack(node.client);
             this.required_peer_keys.remove(node.key);
             this.connected_validator_keys.put(node.key);
         }
@@ -546,25 +542,20 @@ public class NetworkManager
         offsets ~= TimeInfo(this.validator_config.key_pair.address,
             this.clock.localTime(), 0, 0);
 
-        foreach (node; this.validators[])
+        foreach (node; this.validators())
         {
-            // todo: cache getPublicKey()
-            PublicKey pk;
-            if (collectException(node.getPublicKey(), pk))
-                continue;  // request failed
-
-            if (pk !in this.quorum_set_keys)
+            if (node.key !in this.quorum_set_keys)
                 continue;
 
             const req_start = this.clock.localTime();
-            const node_time = node.getLocalTime();
+            const node_time = node.client.getLocalTime();
             if (node_time == 0)
                 continue;  // request failed
 
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
             const offset = (node_time - dist_delay) - req_start;
-            offsets ~= TimeInfo(pk, node_time, req_delay, offset);
+            offsets ~= TimeInfo(node.key, node_time, req_delay, offset);
         }
 
         // we heard from at least one quorum slice
@@ -791,6 +782,20 @@ public class NetworkManager
                 ex);
         }
     }
+
+    /***************************************************************************
+
+        Returns:
+          A range of peers which are validators. Each element of the range
+          contains a `PublicKey key` and a `NetworkClient client` member.
+
+    ***************************************************************************/
+
+    public auto validators () return @safe nothrow pure
+    {
+        return this.peers[].filter!(p => p.is_validator);
+    }
+
 
     /***************************************************************************
 
@@ -1043,8 +1048,7 @@ public class NetworkManager
 
     public void gossipEnvelope (SCPEnvelope envelope)
     {
-        foreach (client; this.validators[])
-            client.sendEnvelope(envelope);
+        this.validators().each!(v => v.client.sendEnvelope(envelope));
     }
 
     /***************************************************************************
@@ -1060,8 +1064,7 @@ public class NetworkManager
     {
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.public_key);
-        foreach (client; this.validators[])
-            client.sendBlockSignature(block_sig);
+        this.validators().each!(v => v.client.sendBlockSignature(block_sig));
     }
 
     /***************************************************************************
