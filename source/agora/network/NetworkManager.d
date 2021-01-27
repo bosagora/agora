@@ -1048,15 +1048,7 @@ public class NetworkManager
     public void gossipEnvelope (SCPEnvelope envelope)
     {
         foreach (client; this.validators[])
-        {
-            if (this.banman.isBanned(client.address))
-            {
-                log.trace("Not sending to {} as it's banned", client.address);
-                continue;
-            }
-
             client.sendEnvelope(envelope);
-        }
     }
 
     /***************************************************************************
@@ -1073,16 +1065,7 @@ public class NetworkManager
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.public_key);
         foreach (client; this.validators[])
-        {
-            if (this.banman.isBanned(client.address))
-            {
-                log.trace("Not sending signature to {} as it's banned",
-                    client.address);
-                continue;
-            }
-
             client.sendBlockSignature(block_sig);
-        }
     }
 
     /***************************************************************************
