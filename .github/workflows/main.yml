@@ -32,7 +32,7 @@ jobs:
           - { dc: ldc-1.24.0, artifacts: true }
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
 
     # Checkout this repository and its submodules
