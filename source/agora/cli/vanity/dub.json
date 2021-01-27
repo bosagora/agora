@@ -12,13 +12,13 @@
     ],
 
     "dependencies": {
-        "base32":           { "path": "../../../../submodules/base32/", "version": "*" },
-        "bitblob":          { "path": "../../../../submodules/bitblob/", "version": "*" },
-        "d2sqlite3":        { "path": "../../../../submodules/d2sqlite3/", "version": "*" },
-        "dyaml":            { "path": "../../../../submodules/dyaml/", "version": "*" },
-        "libsodiumd":       { "path": "../../../../submodules/libsodiumd/", "version": "*" },
-        "localrest":        { "path": "../../../../submodules/localrest/", "version": "*" },
-        "ocean":            { "path": "../../../../submodules/ocean/", "version": "*" },
-        "vibe-d":           { "path": "../../../../submodules/vibe.d/", "version": "*" }
+        "base32":           { "version": "*" },
+        "bitblob":          { "version": "*" },
+        "d2sqlite3":        { "version": "*" },
+        "dyaml":            { "version": "*" },
+        "libsodiumd":       { "version": "*" },
+        "localrest":        { "version": "*" },
+        "ocean":            { "version": "*" },
+        "vibe-d":           { "version": "*" }
     }
 }
