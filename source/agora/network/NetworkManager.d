@@ -72,9 +72,6 @@ public class NetworkManager
     /// Node information
     private static struct NodeConnInfo
     {
-        /// Address of the node
-        Address address;
-
         /// Is this node a Validator
         bool is_validator;
 
@@ -196,7 +193,6 @@ public class NetworkManager
                 log.info("Found new FullNode: {}", address);
 
             NodeConnInfo node = {
-                address : this.address,
                 is_validator : is_validator,
                 key : key,
                 client : client
@@ -419,7 +415,7 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
-        this.connected_peers.put(node.address);
+        this.connected_peers.put(node.client.address);
         this.peers.insertBack(node);
 
         if (node.is_validator)
@@ -430,8 +426,8 @@ public class NetworkManager
         }
 
         this.discovery_task.add(node.client);
-        this.metadata.peers.put(node.address);
-        this.connection_tasks.remove(node.address);
+        this.metadata.peers.put(node.client.address);
+        this.connection_tasks.remove(node.client.address);
 
         this.registerAsListener(node.client);
     }
@@ -920,7 +916,7 @@ public class NetworkManager
     {
         return this.required_peer_keys.length == 0 &&
             this.peers[].filter!(node =>
-                !this.banman.isBanned(node.address)).count >= this.node_config.max_listeners;
+                !this.banman.isBanned(node.client.address)).count >= this.node_config.max_listeners;
     }
 
     /// Returns: the list of node IPs this node is connected to
@@ -1026,9 +1022,9 @@ public class NetworkManager
     {
         foreach (ref node; this.peers[])
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(node.client.address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned", node.client.address);
                 continue;
             }
 
@@ -1081,9 +1077,9 @@ public class NetworkManager
     {
         foreach (ref node; this.peers[])
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(node.client.address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned", node.client.address);
                 continue;
             }
 
@@ -1104,9 +1100,9 @@ public class NetworkManager
     {
         foreach (ref node; this.peers[])
         {
-            if (this.banman.isBanned(node.address))
+            if (this.banman.isBanned(node.client.address))
             {
-                log.trace("Not sending to {} as it's banned", node.address);
+                log.trace("Not sending to {} as it's banned", node.client.address);
                 continue;
             }
 
