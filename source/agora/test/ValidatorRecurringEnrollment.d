@@ -325,3 +325,58 @@ unittest
     // By now, all genesis validators should be enrolled again
     assert(enrolls1 + enrolls2 == GenesisValidators);
 }
+
+// No validator will willingly re-enroll until the network is stuck
+unittest
+{
+    static class BatValidator : TestValidatorNode
+    {
+        public this (Config config, Registry* reg, immutable(Block)[] blocks,
+            in TestConf test_conf, shared(time_t)* cur_time)
+        {
+            super(config, reg, blocks, test_conf, cur_time);
+        }
+
+        protected override void invalidNominationHandler (const ref ConsensusData data,
+            const ref string msg) @safe
+        {
+            // Unlike the regular validator, dont check the config. BatValidator
+            // always answers a cry for help.
+            if (msg == Ledger.InvalidConsensusDataReason.NotEnoughValidators)
+                this.checkAndEnroll(this.ledger.getBlockHeight());
+        }
+    }
+
+    static class GothamAPIManager : TestAPIManager
+    {
+        public this (immutable(Block)[] blocks, TestConf test_conf,
+            time_t initial_time)
+        {
+            super(blocks, test_conf, initial_time);
+        }
+
+        public override void createNewNode (Config conf, string file = __FILE__,
+            int line = __LINE__)
+        {
+            if (conf.validator.enabled)
+                this.addNewNode!BatValidator(conf, file, line);
+            else
+                this.addNewNode!TestFullNode(conf, file, line);
+        }
+    }
+
+    TestConf conf = {
+        quorum_threshold : 100,
+        recurring_enrollment : false,
+    };
+
+    auto network = makeTestNetwork!GothamAPIManager(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    // Even if configured to not re-enroll, BatValidator should enroll if there
+    // are not enough validators
+    network.generateBlocks(Height(GenesisValidatorCycle + 1));
+}

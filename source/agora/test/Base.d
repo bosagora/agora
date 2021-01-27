@@ -493,7 +493,11 @@ extern(D):
         // defensive coding, same as base class
         // (but may be overruled by derived classes)
         if (auto msg = this.ledger.validateConsensusData(data))
+        {
+            if (this.onInvalidNomination)
+                this.onInvalidNomination(data, msg);
             return false;
+        }
 
         return true;
     }
