@@ -526,7 +526,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void checkAndEnroll (Height block_height) @safe
+    protected void checkAndEnroll (Height block_height) @safe
     {
         Hash enroll_key = this.enroll_man.getEnrolledUTXO(
             this.utxo_set.getUTXOFinder());
@@ -581,7 +581,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void invalidNominationHandler (const ref ConsensusData data,
+    protected void invalidNominationHandler (const ref ConsensusData data,
         const ref string msg) @safe
     {
         // Network needs Validators, see if we can enroll
