@@ -137,32 +137,24 @@ public struct Input
     /// A signature that should be verified using the `previous[index].address` public key
     public Signature signature;
 
-    /// The UTXO this `Input` references must be at least `unlock_age` older
-    /// than the block height at which the spending transaction wants to be
-    /// included in the block. Use for implementing relative time locks.
-    public uint unlock_age = 0;
-
     /// Simple ctor
-    public this (in Hash utxo_, in Signature sig = Signature.init, uint unlock_age = 0)
+    public this (in Hash utxo_, in Signature sig = Signature.init)
         inout pure nothrow @nogc @safe
     {
         this.utxo = utxo_;
         this.signature = sig;
-        this.unlock_age = unlock_age;
     }
 
     /// Ctor which does hashing based on index
-    public this (Hash txhash, ulong index, uint unlock_age = 0) nothrow @safe
+    public this (Hash txhash, ulong index) nothrow @safe
     {
         this.utxo = hashMulti(txhash, index);
-        this.unlock_age = unlock_age;
     }
 
     /// Ctor which does hashing based on the `Transaction` and index
-    public this (in Transaction tx, ulong index, uint unlock_age = 0) nothrow @safe
+    public this (in Transaction tx, ulong index) nothrow @safe
     {
         this.utxo = hashMulti(tx.hashFull(), index);
-        this.unlock_age = unlock_age;
     }
 
     /// Ctor to create dummy inputs for Coinbase TXs
@@ -183,7 +175,6 @@ public struct Input
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
         dg(this.utxo[]);
-        hashPart(this.unlock_age, dg);
     }
 }
 
@@ -240,7 +231,7 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0x428d691addd27708b719a5e47cbac932618f0f843681dc0a46c97971ff8c419c817c65d90f3b74394db46801843b79537a583903bec5da57de70155276d2aa46`);
+        `0x79a7bb3cae7e4d46a45674fefd3708557574890ce7a554c09c7d486346a31feb82005aa593620db332c1ae32c5ab44f0977c8834969883a1928e8db0d1b3ccac`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -251,7 +242,7 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0x6ce6bdeac41ffa444e6c2250ec09e04652597c3ec92f54f69029cc16ae4fc84faa5372b56e24c4c8667d00a8d1c0a7bc550999e4cdcd039548361a15e72fa081`);
+        `0x7b8f848dcc4deab1c2161aa4e91401b6d9e57f2ac8126493f0343efbc23a89217871e7b1c2ef8f1a40736cd4b331e26de43b48f593097fe97941a92673635895`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }

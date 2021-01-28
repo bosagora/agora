@@ -470,15 +470,15 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0xd52b...cff7, Root: 0x71ec...647a, Enrollments: []
+Height: 1, Prev: 0xd52b...cff7, Root: 0x6c02...2e3a, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0x7f87...1a84:0x0008...5740
+Type : Payment, Inputs (1): 0x7f87...1a84:0x01b2...18e4
 Outputs (1): GCOQ...LRIJ(61,000,000)
-Type : Payment, Inputs (1): 0x82dd...11c3:0x0966...2734
+Type : Payment, Inputs (1): 0x82dd...11c3:0x09da...4e5b
 Outputs (1): GCOQ...LRIJ(61,000,000)
 ====================================================
 `;
