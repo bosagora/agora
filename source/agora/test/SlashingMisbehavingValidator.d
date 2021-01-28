@@ -17,7 +17,6 @@ module agora.test.SlashingMisbehavingValidator;
 version (unittest):
 
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr;
 import agora.common.Config;
 import agora.common.Hash;
 import agora.consensus.data.Block;
@@ -171,11 +170,8 @@ unittest
         inputs: [Input(slashed_hash)],
         outputs: [Output(slashed_utxo.output.value, slashed_utxo.output.address)],
     };
-    const key = WK.Keys[slashed_utxo.output.address].secret
-        .secretKeyToCurveScalar();
-    const kp = Pair(key, key.toPoint());
-    auto signature = sign(kp, new_tx);
-    new_tx.inputs[0].unlock = genKeyUnlock(signature);
+    new_tx.inputs[0].unlock =
+        genKeyUnlock(WK.Keys[slashed_utxo.output.address].secret.sign(new_tx.hashFull()[]));
     txs = txs[0..7].map!(tx => TxBuilder(tx).sign()).array();
     txs ~= new_tx;
     txs.each!(tx => nodes[0].putTransaction(tx));

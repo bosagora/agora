@@ -19,6 +19,8 @@ import agora.api.Validator;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
 
+import std.functional;
+
 /// Ditto
 unittest
 {
@@ -51,7 +53,7 @@ unittest
     auto txs_2 = split_up[2].map!(txb => txb.sign()).array;
     const uint UnlockAge_3 = 3;
     auto age_3_txs = split_up[3].map!(txb => txb.sign(TxType.Payment,
-        null, Height(0), UnlockAge_3)).array();
+        null, toDelegate(&WK.Keys.opIndex), Height(0), UnlockAge_3)).array();
 
     age_3_txs.each!(tx => node_1.putTransaction(tx));  // rejected, wrong age
     txs_0.each!(tx => node_1.putTransaction(tx));      // accepted

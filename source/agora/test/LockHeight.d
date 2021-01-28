@@ -19,6 +19,8 @@ import agora.api.Validator;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
 
+import std.functional;
+
 /// Ditto
 unittest
 {
@@ -39,11 +41,11 @@ unittest
 
     const Height UnlockHeight_2 = Height(2);
     auto unlock_2_txs = txs.map!(tx => TxBuilder(tx).sign(TxType.Payment,
-        null, UnlockHeight_2)).array();
+        null, toDelegate(&WK.Keys.opIndex), UnlockHeight_2)).array();
 
     const Height UnlockHeight_3 = Height(3);
     auto unlock_3_txs = txs.map!(tx => TxBuilder(tx).sign(TxType.Payment,
-        null, UnlockHeight_3)).array();
+        null, toDelegate(&WK.Keys.opIndex), UnlockHeight_3)).array();
 
     assert(unlock_2_txs != unlock_3_txs);
 
