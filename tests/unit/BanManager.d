@@ -24,12 +24,14 @@ import std.file;
 import std.path;
 import std.range;
 
+import core.time;
+
 ///
 private void main ()
 {
     auto path = makeCleanTempDir();
 
-    BanManager.Config conf = { max_failed_requests : 10, ban_duration : 60 };
+    BanManager.Config conf = { max_failed_requests : 10, ban_duration : 60.seconds };
     auto banman = new BanManager(conf, new Clock(null, null), path);
     banman.load();  // should not throw
 
