@@ -84,15 +84,6 @@ public string isInvalidReason (
         if (!sum_unspent.add(utxo_value.output.value))
             return "Transaction: Input overflow";
 
-        // note: this is strictly not necessary to be here, the Input's script
-        // should be evaluated for validity and then the Input could be kept
-        // until the unlock height becomes valid. Alternatively we could reject
-        // it here right away and force the party to send it again at the right
-        // time. However, we run into a risk if we ever implement caching of
-        // rejecting them if they're submitted too early.
-        if (height < utxo_value.unlock_height + input.unlock_age)
-            return "Transanction: Input's unlock age cannot be used for this block height";
-
         return null;
     }
 
