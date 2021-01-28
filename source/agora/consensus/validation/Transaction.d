@@ -17,25 +17,14 @@ module agora.consensus.validation.Transaction;
 import agora.common.Amount;
 import agora.common.Hash;
 import agora.common.Types;
-import agora.common.crypto.Schnorr;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
-import agora.script.Engine;
-import agora.script.Lock;
 
 version (unittest)
 {
     import agora.common.crypto.Key;
-}
-
-version (unittest)
-private Unlock signUnlock (KeyPair key_pair, Transaction tx)
-{
-    auto secret = secretKeyToCurveScalar(key_pair.secret);
-    auto kp = Pair(secret, secret.toPoint());
-    return genKeyUnlock(sign(kp, tx));
 }
 
 /*******************************************************************************
@@ -44,7 +33,6 @@ private Unlock signUnlock (KeyPair key_pair, Transaction tx)
 
     Params:
         tx = `Transaction`
-        engine = script execution engine
         findUTXO = delegate for finding `Output`
         height = height of block
         checkFee = delegate for checking tx fee
@@ -56,7 +44,7 @@ private Unlock signUnlock (KeyPair key_pair, Transaction tx)
 *******************************************************************************/
 
 public string isInvalidReason (
-    in Transaction tx, Engine engine, scope UTXOFinder findUTXO, in Height height,
+    in Transaction tx, scope UTXOFinder findUTXO, in Height height,
     scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
     @safe nothrow
 {
@@ -67,9 +55,6 @@ public string isInvalidReason (
 
     if (tx.outputs.length == 0)
         return "Transaction: No output";
-
-    if (tx.lock_height > height)
-        return "Transaction: Not unlocked for this height";
 
     foreach (output; tx.outputs)
     {
@@ -89,21 +74,12 @@ public string isInvalidReason (
     {
         if (!findUTXO(input.utxo, utxo_value))
             return "Transaction: Input ref not in UTXO";
+
+        if (!utxo_value.output.address.verify(input.signature, tx_hash[]))
+            return "Transaction: Input has invalid signature";
+
         if (!sum_unspent.add(utxo_value.output.value))
             return "Transaction: Input overflow";
-
-        // note: this is strictly not necessary to be here, the Input's script
-        // should be evaluated for validity and then the Input could be kept
-        // until the unlock height becomes valid. Alternatively we could reject
-        // it here right away and force the party to send it again at the right
-        // time. However, we run into a risk if we ever implement caching of
-        // rejecting them if they're submitted too early.
-        if (height < utxo_value.unlock_height + input.unlock_age)
-            return "Transanction: Input's unlock age cannot be used for this block height";
-
-        if (auto error = engine.execute(utxo_value.output.lock, input.unlock,
-            tx, input))
-            return error;
 
         return null;
     }
@@ -182,26 +158,19 @@ public string isInvalidReason (
 
 /// Ditto but returns a bool, only used in unittests
 version (unittest)
-public bool isValid (in Transaction tx, Engine engine, scope UTXOFinder findUTXO,
+public bool isValid (in Transaction tx, scope UTXOFinder findUTXO,
     in Height height,
     scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
     @safe nothrow
 {
-    return isInvalidReason(tx, engine, findUTXO, height, checkFee) is null;
-}
-
-version (unittest)
-{
-    // sensible defaults
-    private const TestStackMaxTotalSize = 16_384;
-    private const TestStackMaxItemSize = 512;
+    return isInvalidReason(tx, findUTXO, height, checkFee) is null;
 }
 
 /// verify transaction data
 unittest
 {
     import std.format;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -226,31 +195,30 @@ unittest
         ]
     );
 
-    secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` < the sum of `Input`)
-    assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
+    assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
-    secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
-    assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
+    assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
-    secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+    secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
-    assert(!secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
+    assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 }
 
 /// negative output amounts disallowed
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
     Transaction tx_1 = { outputs: [ Output(Amount(1000), key_pairs[0].address) ] };
     Hash tx_1_hash = hashFull(tx_1);
@@ -270,9 +238,9 @@ unittest
         outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address)]
     };
 
-    tx_2.inputs[0].unlock = signUnlock(key_pairs[0], tx_2);
+    tx_2.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_2)[]);
 
-    assert(!tx_2.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+    assert(!tx_2.isValid(storage.getUTXOFinder(), Height(0), checker));
 
     // Creates the third transaction.
     // Reject a transaction whose output value is zero
@@ -283,9 +251,9 @@ unittest
         outputs : [Output(Amount.invalid(0), key_pairs[1].address)]
     };
 
-    tx_3.inputs[0].unlock = signUnlock(key_pairs[0], tx_3);
+    tx_3.inputs[0].signature = key_pairs[0].secret.sign(hashFull(tx_3)[]);
 
-    assert(!tx_3.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+    assert(!tx_3.isValid(storage.getUTXOFinder(), Height(0), checker));
 }
 
 /// This creates a new transaction and signs it as a publickey
@@ -294,7 +262,6 @@ unittest
 {
     import std.format;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet;
 
     immutable(KeyPair)[] key_pairs;
@@ -323,10 +290,10 @@ unittest
 
     // Signs the previous hash value.
     Hash tx1Hash = hashFull(tx1);
-    tx1.inputs[0].unlock = signUnlock(key_pairs[0], tx1);
+    tx1.inputs[0].signature = key_pairs[0].secret.sign(tx1Hash[]);
     storage.put(tx1);
 
-    assert(tx1.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
+    assert(tx1.isValid(storage.getUTXOFinder(), Height(0), checker),
            format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
@@ -341,15 +308,16 @@ unittest
 
     Hash tx2Hash = hashFull(tx2);
     // Sign with incorrect key
-    tx2.inputs[0].unlock = signUnlock(key_pairs[2], tx2);
+    tx2.inputs[0].signature = key_pairs[2].secret.sign(tx2Hash[]);
     storage.put(tx2);
-    assert(!tx2.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+    // Signature verification must be error
+    assert(!tx2.isValid(storage.getUTXOFinder(), Height(0), checker),
+           format("Transaction signature is not validated %s", tx2));
 }
 
 /// verify transactions associated with freezing
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -384,10 +352,10 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
-        secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is valid.
-        assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+        assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 
     // When the privious transaction type is `Freeze`, second transaction type is `Freeze`.
@@ -414,10 +382,10 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
-        secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is invalid.
-        assert(!secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+        assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 
     // When the privious transaction with not enough amount at freezing.
@@ -444,10 +412,10 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount(100_000_000_000L), key_pairs[1].address)]
         );
-        secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is invalid.
-        assert(!secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+        assert(!secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 
     // When the privious transaction with too many amount at freezings.
@@ -473,10 +441,10 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount(500_000_000_000L), key_pairs[1].address)]
         );
-        secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is valid.
-        assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+        assert(secondTx.isValid(storage.getUTXOFinder(), Height(0), checker));
     }
 }
 
@@ -496,7 +464,6 @@ unittest
 /// ---------------------------------------------------------------------------
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -549,10 +516,10 @@ unittest
             [Input(previousHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
         );
-        secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+        secondTx.inputs[0].signature = key_pairs[0].secret.sign(hashFull(secondTx)[]);
 
         // Second Transaction is VALID.
-        assert(secondTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(secondTx.isValid(storage.getUTXOFinder(), block_height, checker));
 
         // Save to UTXOSet
         secondHash = hashFull(secondTx);
@@ -580,10 +547,10 @@ unittest
             [Input(secondHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[2].address)]
         );
-        thirdTx.inputs[0].unlock = signUnlock(key_pairs[1], thirdTx);
+        thirdTx.inputs[0].signature = key_pairs[1].secret.sign(hashFull(thirdTx)[]);
 
         // Third Transaction is VALID.
-        assert(thirdTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(thirdTx.isValid(storage.getUTXOFinder(), block_height, checker));
 
         // Save to UTXOSet
         thirdHash = hashFull(thirdTx);
@@ -611,10 +578,10 @@ unittest
             [Input(thirdHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
-        fourthTx.inputs[0].unlock = signUnlock(key_pairs[2], fourthTx);
+        fourthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
         // Third Transaction is INVALID.
-        assert(!fourthTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(!fourthTx.isValid(storage.getUTXOFinder(), block_height, checker));
     }
 
     // Creates the fifth payment transaction
@@ -629,10 +596,10 @@ unittest
             [Input(thirdHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
-        fifthTx.inputs[0].unlock = signUnlock(key_pairs[2], fourthTx);
+        fifthTx.inputs[0].signature = key_pairs[2].secret.sign(hashFull(fourthTx)[]);
 
         // Third Transaction is VALID.
-        assert(fifthTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(fifthTx.isValid(storage.getUTXOFinder(), block_height, checker));
 
         // Save to UTXOSet
         fifthHash = hashFull(fifthTx);
@@ -656,7 +623,6 @@ unittest
     import std.string;
     import std.algorithm.searching;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
@@ -672,7 +638,7 @@ unittest
     storage.put(oneTx);
 
     // test for Payment transaction having no input
-    assert(canFind(toLower(oneTx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker)), "no input"),
+    assert(canFind(toLower(oneTx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker)), "no input"),
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
@@ -689,7 +655,7 @@ unittest
     storage.put(secondTx);
 
     // test for Freeze transaction having no output
-    assert(canFind(toLower(secondTx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker)), "no output"),
+    assert(canFind(toLower(secondTx.isInvalidReason(storage.getUTXOFinder(), Height(0), checker)), "no output"),
         format("Tx having no output should not pass validation. tx: %s", secondTx));
 }
 
@@ -697,7 +663,6 @@ unittest
 unittest
 {
     import std.format;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -730,11 +695,11 @@ unittest
     );
     Hash thirdHash = hashFull(thirdTx);
     storage.put(thirdTx);
-    thirdTx.inputs[0].unlock = signUnlock(key_pairs[0], thirdTx);
-    thirdTx.inputs[1].unlock = signUnlock(key_pairs[0], thirdTx);
+    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for transaction having combined inputs
-    assert(!thirdTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
+    assert(!thirdTx.isValid(storage.getUTXOFinder(), Height(0), checker),
         format("Tx having combined inputs should not pass validation. tx: %s", thirdTx));
 }
 
@@ -742,7 +707,6 @@ unittest
 unittest
 {
     import std.format;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     Transaction[Hash] storage;
     TxType unknown_type = cast(TxType)100; // any number is OK for test except 0 and 1
     KeyPair key_pair = KeyPair.random;
@@ -760,7 +724,7 @@ unittest
     storage[firstHash] = firstTx;
 
     // test for unknown transaction type
-    assert(!firstTx.isValid(engine, null, Height(0), checker),
+    assert(!firstTx.isValid(null, Height(0), checker),
         format("Tx having unknown type should not pass validation. tx: %s", firstTx));
 }
 
@@ -768,7 +732,6 @@ unittest
 unittest
 {
     import std.format;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -801,11 +764,11 @@ unittest
     );
     storage.put(thirdTx);
     auto thirdHash = hashFull(thirdTx);
-    thirdTx.inputs[0].unlock = signUnlock(key_pairs[0], thirdTx);
-    thirdTx.inputs[1].unlock = signUnlock(key_pairs[0], thirdTx);
+    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for input overflow in Payment transaction
-    assert(!thirdTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("Tx having input overflow should not pass validation. tx: %s", thirdTx));
 
     // create the fourth transaction
@@ -816,11 +779,11 @@ unittest
     );
     storage.put(fourthTx);
     auto fourthHash = hashFull(fourthTx);
-    fourthTx.inputs[0].unlock = signUnlock(key_pairs[0], fourthTx);
-    fourthTx.inputs[1].unlock = signUnlock(key_pairs[0], fourthTx);
+    fourthTx.inputs[0].signature = key_pairs[0].secret.sign(fourthHash[]);
+    fourthTx.inputs[1].signature = key_pairs[0].secret.sign(fourthHash[]);
 
     // test for input overflow in Freeze transaction
-    assert(!fourthTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(!fourthTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("Tx having input overflow should not pass validation. tx: %s", fourthTx));
 }
 
@@ -828,7 +791,6 @@ unittest
 unittest
 {
     import std.format;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -862,11 +824,11 @@ unittest
     );
     storage.put(thirdTx);
     auto thirdHash = hashFull(thirdTx);
-    thirdTx.inputs[0].unlock = signUnlock(key_pairs[0], thirdTx);
-    thirdTx.inputs[1].unlock = signUnlock(key_pairs[0], thirdTx);
+    thirdTx.inputs[0].signature = key_pairs[0].secret.sign(thirdHash[]);
+    thirdTx.inputs[1].signature = key_pairs[0].secret.sign(thirdHash[]);
 
     // test for output overflow in Payment transaction
-    assert(!thirdTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(!thirdTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("Tx having output overflow should not pass validation. tx: %s", thirdTx));
 }
 
@@ -875,7 +837,6 @@ unittest
 {
     import std.format;
     scope storage = new TestUTXOSet;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     KeyPair key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
@@ -932,10 +893,10 @@ unittest
         DataPayload(large_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
 
     // test for the transaction with large data
-    assert(!dataTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, tx with large data payload should not pass validation. tx: %s", dataTx));
 
 
@@ -949,10 +910,10 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
 
     // test for transaction without commons budget
-    assert(!dataTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, tx with not enough fee should not pass validation. tx: %s", dataTx));
 
     // Test 3. Nomal
@@ -966,10 +927,10 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
 
     // test for the transaction with enough fee
-    assert(dataTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, Transaction data is not validated. tx: %s", dataTx));
 
 
@@ -984,10 +945,10 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
 
     // test for data storage using frozen input
-    assert(dataTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, tx with frozen input should pass validation. tx: %s", dataTx));
 
 
@@ -1002,10 +963,10 @@ unittest
         DataPayload(normal_data)
     );
     dataHash = hashFull(dataTx);
-    dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
+    dataTx.inputs[0].signature = key_pair.secret.sign(dataHash[]);
 
     // test for data storage using frozen input
-    assert(!dataTx.isValid(engine, &storage.peekUTXO, Height(0), checker),
+    assert(!dataTx.isValid(&storage.peekUTXO, Height(0), checker),
         format("When storing data, tx with type of Freeze should not pass validation. tx: %s", dataTx));
 }
 
@@ -1013,7 +974,7 @@ unittest
 {
     scope storage = new TestUTXOSet;
     scope utxoFinder = storage.getUTXOFinder();
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+
     const key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
@@ -1030,54 +991,18 @@ unittest
     );
 
     // No input
-    assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
+    assert(!isValid(tx, utxoFinder, Height(0), checker));
 
     // Add the expected input, should validate
     tx.inputs ~= Input(Height(0));
-    assert(isValid(tx, engine, utxoFinder, Height(0), checker));
+    assert(isValid(tx, utxoFinder, Height(0), checker));
 
     // Add some data, should not validate
     ubyte[] data = [0xDE, 0xAD, 0xBE, 0xEF];
     tx.payload = DataPayload(data);
-    assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
+    assert(!isValid(tx, utxoFinder, Height(0), checker));
 
     // Remove the inputs, still should not validate
     tx.inputs.length = 0;
-    assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
-}
-
-/// transaction-level absolute time lock
-unittest
-{
-    import ocean.core.Test;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    scope storage = new TestUTXOSet;
-    scope payload_checker = new FeeManager();
-    scope checker = &payload_checker.check;
-
-    KeyPair kp = KeyPair.random();
-
-    Transaction prev_tx = { outputs: [Output(Amount(100), kp.address)] };
-    storage.put(prev_tx);
-
-    Transaction tx = Transaction(
-        TxType.Payment, [Input(hashFull(prev_tx), 0)],
-        [Output(Amount(50), kp.address)]);
-
-    // effectively disabled lock
-    tx.lock_height = Height(0);
-    tx.inputs[0].unlock = signUnlock(kp, tx);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker), null);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker), null);
-
-    tx.lock_height = Height(10);
-    tx.inputs[0].unlock = signUnlock(kp, tx);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker),
-        "Transaction: Not unlocked for this height");
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(9), checker),
-        "Transaction: Not unlocked for this height");
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(10), checker),
-        null);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker),
-        null);
+    assert(!isValid(tx, utxoFinder, Height(0), checker));
 }

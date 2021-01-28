@@ -35,7 +35,6 @@ import agora.network.Clock;
 import agora.node.Ledger;
 import agora.node.BlockStorage;
 import agora.node.TransactionPool;
-import agora.script.Engine;
 import geod24.Registry;
 import core.stdc.time;
 import core.thread;
@@ -127,14 +126,13 @@ unittest
     static class PickyLedger : Ledger
     {
         public this (immutable(ConsensusParams) params,
-            Engine engine,
             UTXOSet utxo_set, IBlockStorage storage,
             EnrollmentManager enroll_man, TransactionPool pool,
             FeeManager fee_man, Clock clock,
             Duration block_timestamp_tolerance = 60.seconds,
             void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
         {
-            super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
+            super(params, utxo_set, storage, enroll_man, pool, fee_man,
                 clock, block_timestamp_tolerance, onAcceptedBlock);
         }
 
@@ -152,10 +150,9 @@ unittest
             in TestConf test_conf, shared(time_t)* cur_time)
         {
             super(config, reg, blocks, test_conf, cur_time);
-            this.ledger = new PickyLedger(params, this.engine, this.utxo_set,
-                this.storage, this.enroll_man, this.pool, this.fee_man,
-                this.clock, config.node.block_timestamp_tolerance,
-                &this.onAcceptedBlock);
+            this.ledger = new PickyLedger(params, this.utxo_set, this.storage,
+                this.enroll_man, this.pool, this.fee_man, this.clock,
+                config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
         }
 
         public override void putTransaction (Transaction tx) @safe

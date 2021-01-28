@@ -59,7 +59,9 @@ private void main ()
                 Output(Amount(1_000), WK.Keys[idx % 8].address)
             ]
         );
-        // no unlock script because blocks are not validated here
+        // We can use a random keypair because blocks are not validated
+        // Use a key that is not used elsewhere.
+        tx.inputs[0].signature = WK.Keys.X.secret.sign(hashFull(tx)[]);
         blocks ~= makeNewBlock(blocks[$ - 1], [tx], blocks[$ - 1].header.timestamp + 1, null, Hash.init, null);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);

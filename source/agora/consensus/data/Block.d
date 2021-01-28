@@ -23,7 +23,6 @@ import agora.common.Hash;
 import agora.common.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.script.Lock;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
@@ -98,18 +97,22 @@ public struct BlockHeader
 /// hashing test
 unittest
 {
-    import std.conv : to;
     import agora.common.crypto.Key;
     auto address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
     PublicKey pubkey = PublicKey.fromString(address);
 
-    Output[1] outputs = [ Output(Amount(100), pubkey) ];
-    Transaction tx = { outputs: outputs[] };
-    BlockHeader header = { merkle_root : tx.hashFull() };
+    // above parts not @safe/@nogc yet
+    () @safe @nogc nothrow
+    {
+        Output[1] outputs = [ Output(Amount(100), pubkey) ];
+        Transaction tx = { outputs: outputs[] };
+        BlockHeader header = { merkle_root : tx.hashFull() };
 
-    auto hash = hashFull(header);
-    auto exp_hash = Hash("0xf9970c8b9f45c172c21df299db3c1db6ac3e618629e3229eb8650921e52fc0080417a93714fc15a01d6bbf91004e0646c7377c2608c34d272a2b0a5897fced4f");
-    assert(hash == exp_hash, hash.to!string);
+        auto hash = hashFull(header);
+        auto exp_hash = Hash("0x110c703c994b2a4ef39819acbf4ea4df99f71b0a99a7cf873e4be60087baff20370eeed" ~
+                             "c3121e67379ccedea082f2c263d9aa576d3806cdcf42b260e4ee20423");
+        assert(hash == exp_hash);
+    }();
 }
 
 /*******************************************************************************
@@ -593,8 +596,7 @@ unittest
     {
         tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
-        tx.inputs[0].unlock = genKeyUnlock(
-            key_pairs[idx].secret.sign(last_hash[]));
+        tx.inputs[0].signature = key_pairs[idx].secret.sign(last_hash[]);
         txs ~= tx;
     }
 

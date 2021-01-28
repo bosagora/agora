@@ -39,7 +39,6 @@ import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
-import agora.script.Lock;
 public import agora.utils.Utility : retryFor;
 
 import std.algorithm;
@@ -310,7 +309,6 @@ public struct TxBuilder
 
         Params:
             refundMe = The address to receive the funds by default.
-            lock = the lock to use in place of an address
             tx = The transaction to attach to. If the `index` overload is used,
                  only the specified `index` will be attached, and it will be
                  the refund address. Otherwise, the first output is used.
@@ -318,15 +316,9 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public this (in PublicKey refundMe) @safe pure nothrow
+    public this (in PublicKey refundMe) @safe pure nothrow @nogc
     {
         this.leftover = Output(Amount(0), refundMe);
-    }
-
-    /// Ditto
-    public this (in Lock lock) @safe pure nothrow
-    {
-        this.leftover = Output(Amount(0), lock);
     }
 
     /// Ditto
@@ -340,13 +332,6 @@ public struct TxBuilder
     public this (const Transaction tx, uint index) @safe nothrow
     {
         this(tx.outputs[index].address);
-        this.attach(tx, index);
-    }
-
-    /// Ditto
-    public this (const Transaction tx, uint index, in Lock lock) @safe nothrow
-    {
-        this(lock);
         this.attach(tx, index);
     }
 
@@ -444,23 +429,6 @@ public struct TxBuilder
         return this;
     }
 
-    // Uses a random nonce when signing (non-determenistic signature),
-    // and defaults to LockType.Key
-    private Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
-        @safe nothrow
-    {
-        auto ownerKP = WK.Keys[out_ref.output.address];
-        assert(ownerKP !is KeyPair.init,
-                "Address not found in Well-Known keypairs: "
-                ~ out_ref.output.address.toString());
-
-        import Schnorr = agora.common.crypto.Schnorr;
-        auto pk = () @trusted { return secretKeyToCurveScalar(ownerKP.secret); }();
-        Pair pair = Pair(pk, pk.toPoint());
-        auto sig = Schnorr.sign(pair, tx);
-        return genKeyUnlock(sig);
-    }
-
     /***************************************************************************
 
         Finalize the transaction, signing the input, and reset the builder
@@ -469,11 +437,6 @@ public struct TxBuilder
             type = type of `Transaction`
             data = data payload of `Transaction`
             lookupDg = delegate to look up the `KeyPair`
-			lock_height = the transaction-level height lock
-            unlock_age = the unlock age for each input in the transaction
-            unlocker = optional delegate to generate the unlock script.
-                If one is not provided then a LockType.Key unlock script
-                is automatically generated.
 
         Returns:
             The finalized & signed `Transaction`.
@@ -481,22 +444,18 @@ public struct TxBuilder
     ***************************************************************************/
 
     public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = [],
-        Height lock_height = Height(0), uint unlock_age = 0,
-        Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
-        unlocker = null) @safe nothrow
+        scope KeyPair delegate(PublicKey pubkey) @safe nothrow lookupDg = toDelegate(&WK.Keys.opIndex))
+        @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
                "Output-less transactions are not valid");
 
-        if (unlocker is null)
-            unlocker = &this.keyUnlocker;
         this.data.type = type;
-        this.data.lock_height = lock_height;
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
+            this.data.inputs ~= Input(in_.hash);
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
@@ -508,7 +467,14 @@ public struct TxBuilder
         const txHash = this.data.hashFull();
         // Sign all inputs using WK keys
         foreach (idx, ref in_; this.inputs)
-            this.data.inputs[idx].unlock = unlocker(this.data, in_);
+        {
+            auto ownerKP = lookupDg(in_.output.address);
+            assert(ownerKP !is KeyPair.init,
+                    "Address not found in Well-Known keypairs: "
+                    ~ in_.output.address.toString());
+            this.data.inputs[idx].signature = () @trusted
+                { return ownerKP.secret.sign(txHash[]); }();
+        }
 
         // Return the result and reset this
         this.inputs = null;
@@ -593,7 +559,7 @@ public struct TxBuilder
         the refund `Output` will holds the leftovers.
 
         Params:
-            KeyRange = A range of `PublicKey` or `Lock`
+            KeyRange = A range of `PublicKey`
             toward = Beneficiary to split the currently available amount between
 
         Returns:
@@ -604,8 +570,7 @@ public struct TxBuilder
     public ref typeof(this) split (KeyRange) (scope KeyRange toward) return
     {
         static assert (isInputRange!KeyRange);
-        static assert (is(ElementType!KeyRange : PublicKey)
-            || is(ElementType!KeyRange : Lock));
+        static assert (is(ElementType!KeyRange : PublicKey));
 
         assert(!toward.empty, "No beneficiary in `split` transaction");
 

@@ -169,12 +169,12 @@ unittest
         // 0
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
-            WK.Keys.NODE5.address]),
+            WK.Keys.NODE7.address]),
 
         // 1
         QuorumConfig(6, [
@@ -190,18 +190,18 @@ unittest
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 3
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
@@ -220,8 +220,8 @@ unittest
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
@@ -234,16 +234,16 @@ unittest
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
+            WK.Keys.NODE5.address]),
 
         // 7
         QuorumConfig(6, [
+            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
     ];
 
@@ -275,35 +275,35 @@ unittest
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
+            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 1
         QuorumConfig(6, [
-            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
+            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 2
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 3
         QuorumConfig(6, [
-            WK.Keys.NODE4.address,
+            WK.Keys.NODE2.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
@@ -314,14 +314,24 @@ unittest
         // 4
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
+            WK.Keys.NODE7.address]),
+
+        // 5
+        QuorumConfig(6, [
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.B.address,
+            WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
-        // 5
+        // 6
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
@@ -331,22 +341,12 @@ unittest
             WK.Keys.A.address,
             WK.Keys.NODE7.address]),
 
-        // 6
-        QuorumConfig(6, [
-            WK.Keys.NODE2.address,
-            WK.Keys.NODE6.address,
-            WK.Keys.B.address,
-            WK.Keys.NODE3.address,
-            WK.Keys.A.address,
-            WK.Keys.NODE7.address,
-            WK.Keys.NODE5.address]),
-
         // 7
         QuorumConfig(6, [
+            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),

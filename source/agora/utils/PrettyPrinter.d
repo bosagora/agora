@@ -213,11 +213,8 @@ private struct InputFmt
     {
         try
         {
-            // todo: use better formatting for byte arrays
-            import agora.common.Hash;
             formattedWrite(sink, "%s:%s",
-                HashFmt(this.value.utxo),
-                HashFmt(hashFull(this.value.unlock)));
+                HashFmt(this.value.utxo), HashFmt(this.value.signature));
         }
         catch (Exception ex)
         {
@@ -229,8 +226,7 @@ private struct InputFmt
 @safe unittest
 {
     Input input;
-    assert(format("%s", InputFmt(input)) == "0x0000...0000:0xcee2...6a78",
-        format("%s", InputFmt(input)));
+    assert(format("%s", InputFmt(input)) == "0x0000...0000:0x0000...0000");
 }
 
 /// Formatting struct for `Output`
@@ -354,13 +350,13 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xb126...3364, Enrollments: [
-{ utxo: 0x1a1a...e751, seed: 0xaf43...fceb, cycles: 20, sig: 0x02ef...1304 }
-{ utxo: 0x25f5...8cf1, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d51...4fe2 }
-{ utxo: 0x4fab...acff, seed: 0xa050...2cb4, cycles: 20, sig: 0x0f8f...6b31 }
-{ utxo: 0xbf15...0aef, seed: 0x0a82...4328, cycles: 20, sig: 0x06b3...7422 }
-{ utxo: 0xc0ab...0e5f, seed: 0xd034...97c1, cycles: 20, sig: 0x0e17...5c01 }
-{ utxo: 0xd827...bc8d, seed: 0xa24b...12bc, cycles: 20, sig: 0x06bf...6634 }]
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
+{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
+{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
+{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
+{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -397,13 +393,13 @@ private struct BlockFmt
 
 @safe unittest
 {
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xb126...3364, Enrollments: [
-{ utxo: 0x1a1a...e751, seed: 0xaf43...fceb, cycles: 20, sig: 0x02ef...1304 }
-{ utxo: 0x25f5...8cf1, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d51...4fe2 }
-{ utxo: 0x4fab...acff, seed: 0xa050...2cb4, cycles: 20, sig: 0x0f8f...6b31 }
-{ utxo: 0xbf15...0aef, seed: 0x0a82...4328, cycles: 20, sig: 0x06b3...7422 }
-{ utxo: 0xc0ab...0e5f, seed: 0xd034...97c1, cycles: 20, sig: 0x0e17...5c01 }
-{ utxo: 0xd827...bc8d, seed: 0xa24b...12bc, cycles: 20, sig: 0x06bf...6634 }]
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
+{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
+{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
+{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
+{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -452,13 +448,13 @@ private struct RangeFmt (R)
 {
     static immutable ResultStr = `
 ====================================================
-Height: 0, Prev: 0x0000...0000, Root: 0xb126...3364, Enrollments: [
-{ utxo: 0x1a1a...e751, seed: 0xaf43...fceb, cycles: 20, sig: 0x02ef...1304 }
-{ utxo: 0x25f5...8cf1, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d51...4fe2 }
-{ utxo: 0x4fab...acff, seed: 0xa050...2cb4, cycles: 20, sig: 0x0f8f...6b31 }
-{ utxo: 0xbf15...0aef, seed: 0x0a82...4328, cycles: 20, sig: 0x06b3...7422 }
-{ utxo: 0xc0ab...0e5f, seed: 0xd034...97c1, cycles: 20, sig: 0x0e17...5c01 }
-{ utxo: 0xd827...bc8d, seed: 0xa24b...12bc, cycles: 20, sig: 0x06bf...6634 }]
+Height: 0, Prev: 0x0000...0000, Root: 0x788c...9254, Enrollments: [
+{ utxo: 0x4688...a3ac, seed: 0x0a82...4328, cycles: 20, sig: 0x0cab...7422 }
+{ utxo: 0x4dde...e6ef, seed: 0xd034...97c1, cycles: 20, sig: 0x0ed4...5c01 }
+{ utxo: 0x8c15...70e0, seed: 0xaf43...fceb, cycles: 20, sig: 0x0947...1304 }
+{ utxo: 0x9490...85b0, seed: 0xa24b...12bc, cycles: 20, sig: 0x0e45...6634 }
+{ utxo: 0xb20d...08eb, seed: 0xa050...2cb4, cycles: 20, sig: 0x052e...6b31 }
+{ utxo: 0xdb39...2d85, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0e00...4fe2 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -474,32 +470,23 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0x5a96...8163, Root: 0xd437...e2c9, Enrollments: []
+Height: 1, Prev: 0xd56c...8a5f, Root: 0x07a8...acf4, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0x533f...5e2e:0xcee2...6a78
+Type : Payment, Inputs (1): 0xc378...d314:0x0fbf...ba74
 Outputs (1): GCOQ...LRIJ(61,000,000)
-Type : Payment, Inputs (1): 0x915d...fde1:0xcee2...6a78
+Type : Payment, Inputs (1): 0xfca9...baf8:0x02da...95d1
 Outputs (1): GCOQ...LRIJ(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
     import agora.consensus.data.Block;
 
-    // need reproducible unlocks for test (signing generates unique nonces)
-    import agora.script.Lock;
-    import agora.utils.Test;
-    Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
-    {
-        return Unlock.init;
-    }
-
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign(TxType.Payment,
-            null, Height(0), 0, &unlocker)), 0);
+        genesisSpendable().take(2).map!(txb => txb.sign()), 0);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;
@@ -615,7 +602,7 @@ unittest
         enrolls: [ record, record, ],
     };
 
-    static immutable Res1 = `{ tx_set: [0x5208...074c, 0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
+    static immutable Res1 = `{ tx_set: [0x6314...75bc, 0x7a5b...f95c], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));
