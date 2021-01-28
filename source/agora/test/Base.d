@@ -1842,7 +1842,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     BanManager.Config ban_conf =
     {
         max_failed_requests : test_conf.max_failed_requests,
-        ban_duration: 300
+        ban_duration: 300.seconds,
     };
 
     immutable(Address[]) makeNetworkConfig (size_t idx, Address[] addresses)

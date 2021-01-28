@@ -27,6 +27,7 @@ import std.stdio;
 
 import core.stdc.stdlib;
 import core.stdc.time;
+import core.time;
 
 mixin AddLogger!();
 
@@ -40,7 +41,7 @@ public class BanManager
         public size_t max_failed_requests = 10;
 
         /// How long does a ban lasts, in seconds (default: 1 day)
-        public time_t ban_duration = 60 * 60 * 24;
+        public Duration ban_duration = 1.days;
     }
 
     ///
@@ -219,13 +220,13 @@ public class BanManager
 
         Params:
             address = the address to ban
-            ban_seconds = the amount of seconds to ban the address for
+            duration = How long to ban the address for
 
     ***************************************************************************/
 
-    public void banFor (Address address, long ban_seconds) @safe nothrow
+    public void banFor (Address address, Duration duration) @safe nothrow
     {
-        const ban_until = this.getCurTime() + ban_seconds;
+        const ban_until = this.getCurTime() + duration.total!"seconds";
         // TODO: cast to time_t for the time being
         this.banUntil(address, cast(time_t)ban_until);
     }
@@ -330,7 +331,7 @@ unittest
     class UnitBanMan : BanManager
     {
         time_t time;
-        this () { super(Config(10, 86400), null, null); }
+        this () { super(Config(10, 1.days), null, null); }
         protected override time_t getCurTime () const { return this.time; }
         public override void dump () { }
         public override void load () { }
@@ -366,7 +367,7 @@ unittest
     assert(!banman.isBanned("node-1"));
 
     // banFor
-    banman.banFor("node-1", 10);
+    banman.banFor("node-1", 10.seconds);
     banman.time = 86509;
     assert(banman.isBanned("node-1"));
     banman.time++;

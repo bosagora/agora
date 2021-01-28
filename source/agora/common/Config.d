@@ -624,7 +624,8 @@ private BanManager.Config parseBanManagerConfig (Node* node, in CommandLine cmdl
 {
     BanManager.Config conf;
     conf.max_failed_requests = get!(size_t, "banman", "max_failed_requests")(cmdln, node);
-    conf.ban_duration = cast(time_t)get!(size_t, "banman", "ban_duration")(cmdln, node);
+    conf.ban_duration = get!(Duration, "banman", "ban_duration",
+                             str => str.to!ulong.seconds)(cmdln, node);
     return conf;
 }
 
