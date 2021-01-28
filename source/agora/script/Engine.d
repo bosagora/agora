@@ -495,7 +495,7 @@ public class Engine
                 break;
 
             case OP.VERIFY_LOCK_HEIGHT:
-                if (stack.empty())
+                if (stack.count() < 1)
                     return "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack";
 
                 const height_bytes = stack.pop();
@@ -510,7 +510,7 @@ public class Engine
                 break;
 
             case OP.VERIFY_UNLOCK_AGE:
-                if (stack.empty())
+                if (stack.count() < 1)
                     return "VERIFY_UNLOCK_AGE opcode requires an unlock age on the stack";
 
                 const age_bytes = stack.pop();
@@ -580,7 +580,7 @@ public class Engine
                 break;
             }
 
-            if (stack.empty())
+            if (stack.count() < 1)
                 return "IF/NOT_IF opcode requires an item on the stack";
 
             const top = stack.pop();
