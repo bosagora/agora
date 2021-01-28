@@ -23,7 +23,6 @@ module agora.script.Engine;
 import agora.common.crypto.ECC;
 import Schnorr = agora.common.crypto.Schnorr;
 import agora.common.Hash;
-import agora.common.Types : Height;
 import agora.consensus.data.Transaction;
 import agora.script.Lock;
 import agora.script.Opcodes;
@@ -494,21 +493,6 @@ public class Engine
                     return "VERIFY_SIG signature failed validation";
                 break;
 
-            case OP.VERIFY_LOCK_HEIGHT:
-                if (stack.count() < 1)
-                    return "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack";
-
-                const height_bytes = stack.pop();
-                if (height_bytes.length != ulong.sizeof)
-                    return "VERIFY_LOCK_HEIGHT height lock must be an 8-byte number";
-
-                const Height lock_height = Height(littleEndianToNative!ulong(
-                    height_bytes[0 .. ulong.sizeof]));
-                if (lock_height > tx.lock_height)
-                    return "VERIFY_LOCK_HEIGHT height lock of transaction is too low";
-
-                break;
-
             case OP.INVALID:
                 return "Script panic while executing OP.INVALID opcode";
 
@@ -928,53 +912,6 @@ unittest
             ~ [ubyte(32)] ~ kp.V[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init),
         null);
-}
-
-// OP.VERIFY_LOCK_HEIGHT
-unittest
-{
-    const height_9 = nativeToLittleEndian(ulong(9));
-    const height_10 = nativeToLittleEndian(ulong(10));
-    const height_11 = nativeToLittleEndian(ulong(11));
-
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx_10 = { lock_height : Height(10) };
-    const Transaction tx_11 = { lock_height : Height(11) };
-    test!("==")(engine.execute(
-        Lock(LockType.Script,
-            toPushOpcode(height_9)
-            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
-        null);
-    test!("==")(engine.execute(
-        Lock(LockType.Script,
-            toPushOpcode(height_10)
-            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),  // tx with matching unlock height
-        null);
-    test!("==")(engine.execute(
-        Lock(LockType.Script,
-            toPushOpcode(height_11)
-            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
-        "VERIFY_LOCK_HEIGHT height lock of transaction is too low");
-    test!("==")(engine.execute(
-        Lock(LockType.Script,
-            toPushOpcode(height_11)
-            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_11, Input.init),  // tx with matching unlock height
-        null);
-    test!("==")(engine.execute(
-        Lock(LockType.Script,
-            toPushOpcode(nativeToLittleEndian(ubyte(9)))
-            ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
-        "VERIFY_LOCK_HEIGHT height lock must be an 8-byte number");
-    test!("==")(engine.execute(
-        Lock(LockType.Script,
-            [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
-        "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack");
 }
 
 // LockType.Key (Native P2PK - Pay to Public Key), consumes 33 bytes
