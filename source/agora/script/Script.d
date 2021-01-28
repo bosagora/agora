@@ -183,6 +183,9 @@ unittest
 
     test!"=="(validateScript(ScriptType.Lock, [255], StackMaxItemSize, result),
         "Script contains an unrecognized opcode");
+    // OP.INVALID is only semantically invalid
+    test!"=="(validateScript(ScriptType.Lock, [OP.INVALID], StackMaxItemSize,
+        result), null);
 
     // PUSH_BYTES_*
     test!"=="(validateScript(ScriptType.Lock, [1], StackMaxItemSize, result),
