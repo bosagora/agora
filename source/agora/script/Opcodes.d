@@ -122,27 +122,6 @@ public enum OP : ubyte
     /// script execution to fail if the signature is invalid
     VERIFY_SIG = 0x60,
 
-    /// Supports non-interactive threshold multi-signatures. A combination
-    /// of `N / M` is supported where `N <= M` and where the number of keys
-    /// and signatures does not exceed 5.
-    /// Pops an item from the stock which is the count of public keys that
-    /// should be read from the stack. It pops those public keys, and then
-    /// pops another item which is the number of required signatures.
-    /// Then it pops that many signatures from the stack. Then it walks through
-    /// all the public keys and validates the signatures in sequence. If a
-    /// key did not validate, it's removed from the internal list. If we've
-    /// ran out of keys and the number of valid signatures is less than
-    /// the required amount it means signature validation has failed.
-    /// It pushes the result of validation to the tack.
-    /// The keys and signatures must be placed in the same order on the stack.
-    /// Supports up to 5 public keys total as the signature validation is not
-    /// as efficient as alternative implementations such as MuSig.
-    CHECK_MULTI_SIG = 0x61,
-
-    /// Ditto, but instead of pushing the result to the stack it will cause the
-    /// script execution to fail if the signature is invalid
-    VERIFY_MULTI_SIG = 0x62,
-
     /// Expects a new sequence ID on the stack and an expected sequence ID
     /// on the stack. Verifies `sequence_id >= expected_id`, and adds
     /// `sequence_id` to the signature hash. The matching Input is blanked
