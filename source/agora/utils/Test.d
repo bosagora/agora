@@ -310,7 +310,6 @@ public struct TxBuilder
 
         Params:
             refundMe = The address to receive the funds by default.
-            lock = the lock to use in place of an address
             tx = The transaction to attach to. If the `index` overload is used,
                  only the specified `index` will be attached, and it will be
                  the refund address. Otherwise, the first output is used.
@@ -324,12 +323,6 @@ public struct TxBuilder
     }
 
     /// Ditto
-    public this (in Lock lock) @safe pure nothrow
-    {
-        this.leftover = Output(Amount(0), lock);
-    }
-
-    /// Ditto
     public this (const Transaction tx) @safe nothrow
     {
         this(tx.outputs[0].address);
@@ -340,13 +333,6 @@ public struct TxBuilder
     public this (const Transaction tx, uint index) @safe nothrow
     {
         this(tx.outputs[index].address);
-        this.attach(tx, index);
-    }
-
-    /// Ditto
-    public this (const Transaction tx, uint index, in Lock lock) @safe nothrow
-    {
-        this(lock);
         this.attach(tx, index);
     }
 
@@ -593,7 +579,7 @@ public struct TxBuilder
         the refund `Output` will holds the leftovers.
 
         Params:
-            KeyRange = A range of `PublicKey` or `Lock`
+            KeyRange = A range of `PublicKey`
             toward = Beneficiary to split the currently available amount between
 
         Returns:
@@ -604,8 +590,7 @@ public struct TxBuilder
     public ref typeof(this) split (KeyRange) (scope KeyRange toward) return
     {
         static assert (isInputRange!KeyRange);
-        static assert (is(ElementType!KeyRange : PublicKey)
-            || is(ElementType!KeyRange : Lock));
+        static assert (is(ElementType!KeyRange : PublicKey));
 
         assert(!toward.empty, "No beneficiary in `split` transaction");
 
