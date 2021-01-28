@@ -437,8 +437,7 @@ public struct TxBuilder
             type = type of `Transaction`
             data = data payload of `Transaction`
             lookupDg = delegate to look up the `KeyPair`
-			lock_height = the transaction-level height lock
-            unlock_age = the unlock age for each input in the transaction
+            lock_height = the transaction-level height lock
 
         Returns:
             The finalized & signed `Transaction`.
@@ -447,7 +446,8 @@ public struct TxBuilder
 
     public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = [],
         scope KeyPair delegate(PublicKey pubkey) @safe nothrow lookupDg = toDelegate(&WK.Keys.opIndex),
-        Height lock_height = Height(0), uint unlock_age = 0) @safe nothrow
+		Height lock_height = Height(0))
+        @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
@@ -458,7 +458,7 @@ public struct TxBuilder
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash, Signature.init, unlock_age);
+            this.data.inputs ~= Input(in_.hash);
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
