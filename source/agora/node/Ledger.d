@@ -44,7 +44,6 @@ import agora.consensus.validation.Block : validateBlockTimestamp;
 import agora.consensus.Fee;
 import agora.network.Clock;
 import agora.node.BlockStorage;
-import agora.script.Lock;
 import agora.stats.Block;
 import agora.stats.Tx;
 import agora.stats.Utils;
@@ -1241,7 +1240,7 @@ unittest
         foreach (ref output; tx.outputs)
             output.value = Amount(0);
         foreach (ref input; tx.inputs)
-            input.unlock = genKeyUnlock(WK.Keys.Genesis.secret.sign(hashFull(tx)[]));
+            input.signature = WK.Keys.Genesis.secret.sign(hashFull(tx)[]);
     }
 
     txs.each!(tx => assert(!ledger.acceptTransaction(tx)));
@@ -1396,7 +1395,7 @@ private Transaction[] makeTransactionForFreezing (
         };
 
         auto signature = in_key_pair[idx % Block.TxsInTestBlock].secret.sign(hashFull(tx)[]);
-        tx.inputs[0].unlock = genKeyUnlock(signature);
+        tx.inputs[0].signature = signature;
         transactions ~= tx;
 
         // new transactions will refer to the just created transactions
@@ -2058,7 +2057,7 @@ unittest
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
     assert(data.missing_validators.length == 3);
-    assert(data.missing_validators == [0, 1, 3]);
+    assert(data.missing_validators == [0, 1, 2]);
 
     // check validity of slashing information
     assert(ledger.validateSlashingData(data) == null);

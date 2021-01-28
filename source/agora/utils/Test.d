@@ -39,7 +39,6 @@ import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
-import agora.script.Lock;
 public import agora.utils.Utility : retryFor;
 
 import std.algorithm;
@@ -317,7 +316,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public this (in PublicKey refundMe) @safe pure nothrow
+    public this (in PublicKey refundMe) @safe pure nothrow @nogc
     {
         this.leftover = Output(Amount(0), refundMe);
     }
@@ -459,7 +458,7 @@ public struct TxBuilder
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
+            this.data.inputs ~= Input(in_.hash, Signature.init, unlock_age);
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
@@ -476,8 +475,8 @@ public struct TxBuilder
             assert(ownerKP !is KeyPair.init,
                     "Address not found in Well-Known keypairs: "
                     ~ in_.output.address.toString());
-            this.data.inputs[idx].unlock = () @trusted
-                { return genKeyUnlock(ownerKP.secret.sign(txHash[])); }();
+            this.data.inputs[idx].signature = () @trusted
+                { return ownerKP.secret.sign(txHash[]); }();
         }
 
         // Return the result and reset this

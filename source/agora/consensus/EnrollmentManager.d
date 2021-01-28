@@ -1620,15 +1620,15 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0xdc7a2c2b27784ab29d44ccb3b9ed1c02e75ac82f64eb8f5988f895d7c797f461040ae31c9f7fe1804dab829518dd4d0e889a027b5ad64af33f2bd6e44569d943`),
+        Hash(`0x28e5f0ed454f96852478a7b83f1b20378bc5d8a978add52ff30ace0f255e552afb3bd08dd2141291259f1f9794d4417c3c12187df52d20ade28ec74d305aeb94`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(504)) ==
-        Hash(`0xd955dd08edefeb089ff024438e5e81e08db55f9c80665386d535a9573a0f217df3437627913eb696d48f7a16af9d447959da528e47812cfae7971160a3ccebf5`),
+        Hash(`0x9038006d68ed7e5d42311887075e62e0d5ac98b7133dd9895f85bbe170564f2ddac7d11396ec426a5dd0a35efdc9aaae991098e907c6ce76024dbf3f93582464`),
         man.getRandomSeed(utxos, Height(504)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(1008)) ==
-        Hash(`0x1d621824f744d74151ec770c4835f45fcdc58d2c29cece0b3039e4c2546d7ef16ab4e71c33db712984130c1cd9d287a4453f7d68e7f493dec6dba845c44035be`),
+        Hash(`0x5748c01b54639413b41e57c6e82c3c2da53ba2b6966596cdaea3d77b378a252bd20b727bb3cdb52d255288f00cc3decb14aa99cf1156512ac51aa31413357e74`),
         man.getRandomSeed(utxos, Height(1008)).to!string);
 }
 

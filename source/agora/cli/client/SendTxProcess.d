@@ -21,7 +21,6 @@ import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
-import agora.script.Lock;
 
 import std.format;
 import std.getopt;
@@ -192,7 +191,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
     };
 
     auto signature = key_pair.secret.sign(hashFull(tx)[]);
-    tx.inputs[0].unlock = genKeyUnlock(signature);
+    tx.inputs[0].signature = signature;
 
     if (op.dump)
     {
@@ -278,7 +277,7 @@ unittest
     };
     Hash send_txhash = hashFull(tx);
     auto key_pair = KeyPair.fromSeed(Seed.fromString(key));
-    tx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(send_txhash[]));
+    tx.inputs[0].signature = key_pair.secret.sign(send_txhash[]);
 
     foreach (ref line; outputs)
         writeln(line);

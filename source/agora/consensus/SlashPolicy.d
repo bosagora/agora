@@ -416,11 +416,11 @@ unittest
     // get and check random seed
     Hash preimage_root = slash_man.getRandomSeed(Height(2));
     assert(preimage_root ==
-        hashMulti(hashMulti(Hash.init, preimage_2), preimage_1));
+        hashMulti(hashMulti(Hash.init, preimage_1), preimage_2));
 
     // get and check random seed when a block being externalized
     Hash externalized_seed = slash_man.getExternalizedRandomSeed(Height(2),
         missing_validators);
     assert(externalized_seed ==
-        hashMulti(hashMulti(Hash.init, preimage_2), preimage_1));
+        hashMulti(hashMulti(Hash.init, preimage_1), preimage_2));
 }
