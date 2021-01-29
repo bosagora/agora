@@ -129,7 +129,7 @@ unittest
     txs.each!(tx => valid_node.putTransaction(tx));
 
     network.setTimeFor(Height(1));
-    Thread.sleep(10.seconds);
+    Thread.sleep(1.seconds);
 
     // Assert no block was created
     network.assertSameBlocks(Height(0));
@@ -193,13 +193,8 @@ unittest
         // send it to one node
         txs.each!(tx => valid_node.putTransaction(tx));
 
-        network.setTimeFor(new_block_height);
-        Thread.sleep(10.seconds);
-
-        retryFor(valid_node.getBlockHeight() == new_block_height, 10.seconds,
-            format("Node 0 has block height %s. Expected: %s",
-                valid_node.getBlockHeight(), new_block_height));
-
+        network.expectBlock(iota(1, GenesisValidators),
+            new_block_height, blocks[0].header);
 
         // add next block
         blocks ~= valid_node.getBlocksFrom(new_block_height, 1);
