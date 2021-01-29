@@ -46,8 +46,6 @@ import agora.utils.InetUtils;
 import agora.utils.Log;
 import agora.utils.Utility;
 
-import scpd.types.Stellar_SCP;
-
 import vibe.http.common;
 import vibe.web.rest;
 
@@ -1011,20 +1009,6 @@ public class NetworkManager
     {
         return new NetworkClient(taskman, banman, address, api, retry,
             max_retries);
-    }
-
-    /***************************************************************************
-
-        Gossips the SCPEnvelope to the network of connected validators.
-
-        Params:
-            envelope = the SCPEnvelope to gossip to the network.
-
-    ***************************************************************************/
-
-    public void gossipEnvelope (SCPEnvelope envelope)
-    {
-        this.validators().each!(v => v.client.sendEnvelope(envelope));
     }
 
     /***************************************************************************
