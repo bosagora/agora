@@ -38,7 +38,6 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Hash;
-import agora.consensus.data.Transaction;
 import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.node.Ledger;
@@ -1012,29 +1011,6 @@ public class NetworkManager
     {
         return new NetworkClient(taskman, banman, address, api, retry,
             max_retries);
-    }
-
-    /***************************************************************************
-
-        Gossips the transaction to all the listeners.
-
-        Params:
-            tx = the transaction to gossip
-
-    ***************************************************************************/
-
-    public void gossipTransaction (Transaction tx) @safe
-    {
-        foreach (ref node; this.peers[])
-        {
-            if (this.banman.isBanned(node.client.address))
-            {
-                log.trace("Not sending to {} as it's banned", node.client.address);
-                continue;
-            }
-
-            node.client.sendTransaction(tx);
-        }
     }
 
     /***************************************************************************

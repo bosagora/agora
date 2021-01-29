@@ -45,28 +45,23 @@ mixin AddLogger!();
 // Nodes should request the TXs from other nodes explicitly
 unittest
 {
-    static class NoGossipNetworkManager : TestNetworkManager
-    {
-        mixin ForwardCtor!();
-
-        public override void gossipTransaction (Transaction tx) @safe
-        {
-            // Dont
-        }
-    }
-
     static class NoGossipValidator : TestValidatorNode
     {
         mixin ForwardCtor!();
 
-        protected override NetworkManager getNetworkManager (Metadata metadata,
-            TaskManager taskman, Clock clock)
+        /// Do what `FullNode.putTransaction` does, minus gossipping
+        public override void putTransaction (Transaction tx) @safe
         {
-            assert(taskman !is null);
-            return new NoGossipNetworkManager(this.config, metadata, taskman,
-                clock, this.registry);
-        }
+            auto tx_hash = hashFull(tx);
+            if (this.pool.hasTransactionHash(tx_hash))
+                return;
 
+            if (this.ledger.acceptTransaction(tx))
+            {
+                log.info("Accepted transaction but not gossiping: {}", tx_hash);
+                this.pushTransaction(tx);
+            }
+        }
     }
 
     static class NoGossipAPIManager : TestAPIManager
