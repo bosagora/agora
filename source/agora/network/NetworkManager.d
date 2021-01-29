@@ -28,7 +28,6 @@ import agora.api.handler.PreImageReceivedHandler;
 import agora.api.handler.TransactionReceivedHandler;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
-import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.common.crypto.Key;
@@ -1025,29 +1024,6 @@ public class NetworkManager
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.public_key);
         this.validators().each!(v => v.client.sendBlockSignature(block_sig));
-    }
-
-    /***************************************************************************
-
-        Sends the enrollment request to all the listeners.
-
-        Params:
-            enroll = the enrollment data to send
-
-    ***************************************************************************/
-
-    public void sendEnrollment (Enrollment enroll) @safe
-    {
-        foreach (ref node; this.peers[])
-        {
-            if (this.banman.isBanned(node.client.address))
-            {
-                log.trace("Not sending to {} as it's banned", node.client.address);
-                continue;
-            }
-
-            node.client.sendEnrollment(enroll);
-        }
     }
 
     /***************************************************************************

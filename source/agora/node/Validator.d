@@ -44,6 +44,8 @@ import agora.utils.PrettyPrinter;
 
 import scpd.types.Stellar_SCP;
 
+import std.algorithm : each;
+
 import core.stdc.stdlib : abort;
 import core.stdc.time;
 import core.time;
@@ -543,8 +545,8 @@ public class Validator : FullNode, API
         {
             log.trace("Sending Enrollment at height {} for {} cycles with {}",
                 block_height, this.params.ValidatorCycle, enroll_key);
-            this.network.sendEnrollment(
-                this.enroll_man.createEnrollment(enroll_key, block_height + 1));
+            this.network.peers.each!(p => p.client.sendEnrollment(
+                this.enroll_man.createEnrollment(enroll_key, block_height + 1)));
         }
     }
 

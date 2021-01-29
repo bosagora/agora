@@ -648,7 +648,7 @@ public class FullNode : API
             this.ledger.getBlockHeight(), this.utxo_set.getUTXOFinder()))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
-            this.network.sendEnrollment(enroll);
+            this.network.peers.each!(p => p.client.sendEnrollment(enroll));
         }
     }
 
