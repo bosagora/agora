@@ -499,7 +499,7 @@ public class Validator : FullNode, API
             this.ledger.getBlockHeight()))
         {
             this.enroll_man.addPreimage(preimage);
-            this.network.sendPreimage(preimage);
+            this.network.peers.each!(p => p.client.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }
     }
