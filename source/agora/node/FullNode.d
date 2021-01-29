@@ -668,7 +668,7 @@ public class FullNode : API
         if (this.enroll_man.addPreimage(preimage))
         {
             log.info("Accepted preimage: {}", prettify(preimage));
-            this.network.sendPreimage(preimage);
+            this.network.peers.each!(p => p.client.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }
     }
