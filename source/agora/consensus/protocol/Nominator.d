@@ -57,7 +57,7 @@ import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 import core.stdc.time;
 
-import std.algorithm : max, map;
+import std.algorithm : each, max, map;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -1005,7 +1005,7 @@ extern(D):
             // deep-dup as SCP stores pointers to memory on the stack
             env.statement.pledges = deserializeFull!(SCPStatement._pledges_t)(
                 serializeFull(env.statement.pledges));
-            this.network.gossipEnvelope(env);
+            this.network.validators().each!(v => v.client.sendEnvelope(env));
 
             // Per SCP rules, once we CONFIRM a NOMINATE; we can't
             // nominate new values. Keep track of the biggest slot_idx we confirmed
