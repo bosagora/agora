@@ -43,6 +43,7 @@ static import agora.common.Types;
 
 import libsodium;
 
+import std.bitmanip : nativeToLittleEndian;
 
 ///
 nothrow @nogc @safe unittest
@@ -145,19 +146,19 @@ public void hashPart (ubyte record, scope HashDg state) /*pure*/ nothrow @nogc @
 /// Ditto
 public void hashPart (ushort record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
 {
-    state((cast(ubyte*)&record)[0 .. ushort.sizeof]);
+    state(nativeToLittleEndian(record)[0 .. ushort.sizeof]);
 }
 
 /// Ditto
 public void hashPart (uint record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
 {
-    state((cast(ubyte*)&record)[0 .. uint.sizeof]);
+    state(nativeToLittleEndian(record)[0 .. uint.sizeof]);
 }
 
 /// Ditto
 public void hashPart (ulong record, scope HashDg state) /*pure*/ nothrow @nogc @trusted
 {
-    state((cast(ubyte*)&record)[0 .. ulong.sizeof]);
+    state(nativeToLittleEndian(record)[0 .. ulong.sizeof]);
 }
 
 /// Ditto
@@ -181,6 +182,16 @@ public void hashPart (T) (in T[] records, scope HashDg state)
         hashPart(record, state);
 }
 
+// Endianness test
+unittest
+{
+    assert(hashFull(0x0102).toString()             == "0xcab9b7ff335bf7ce6e801192cf57ec97a97d91d84de93201399ffa17cd2cd07" ~
+                                                      "1fcd7cd62d92b5fa5cc4de8bb4dd7a556cf524a9c597cdb5a8917aaf119eded8c");
+    assert(hashFull(0x01020304).toString()         == "0xe01ad62eb0275971a2973ba15f44b0b90e2da88d871ba4fda1430353b4cfe290" ~
+                                                      "3555d974665b42e34805c9730249a0905f5b433e1cb97f91e1292bb7264b4ecb");
+    assert(hashFull(0x0102030405060708).toString() == "0xcda1a14d4efa540dd742bd7a0018823063ece39955b59d6b2ac507ac32f7e06" ~
+                                                      "410c64a6334e044508855e86e3c51ca53903371937edfeb8a74fa6a848baae93f");
+}
 // Test that the implementation actually matches what the RFC gives
 nothrow @nogc @safe unittest
 {
