@@ -252,6 +252,8 @@ unittest
     import agora.consensus.data.Transaction;
     import agora.consensus.data.UTXO;
 
+    import TESTNET = agora.consensus.data.genesis.Test;
+
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
     auto utxo_set = new UTXOSet(":memory:");
@@ -262,7 +264,7 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
     );
-    utxo_set.updateUTXOCache(tx1, Height(0));
+    utxo_set.updateUTXOCache(tx1, Height(0), TESTNET.CommonsBudgetAddress);
     Hash hash1 = hashFull(tx1);
     auto utxo_hash = UTXO.getHash(hash1, 0);
 
@@ -276,7 +278,7 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address)]
     );
-    utxo_set.updateUTXOCache(tx2, Height(0));
+    utxo_set.updateUTXOCache(tx2, Height(0), TESTNET.CommonsBudgetAddress);
 
     // create the third transaction
     Transaction tx3 = Transaction(
@@ -284,7 +286,7 @@ unittest
         [Input(Hash.init, 0)],
         [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
     );
-    utxo_set.updateUTXOCache(tx3, Height(0));
+    utxo_set.updateUTXOCache(tx3, Height(0), TESTNET.CommonsBudgetAddress);
 
     // test for getting UTXOs for the first KeyPair
     utxos = utxo_set.getUTXOs(key_pairs[0].address);
