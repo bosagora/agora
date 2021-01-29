@@ -90,7 +90,7 @@ jobs:
     # Build and run the tests
     - name: '[POSIX] Build & test Agora'
       if: runner.os != 'Windows'
-      #continue-on-error: matrix.dc == 'ldc-master'
+      continue-on-error: ${{ matrix.dc == 'ldc-master' }}
       run: ./ci/run.sh
 
     - name: '[Windows] Build & test Agora'
