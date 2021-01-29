@@ -393,7 +393,7 @@ public class FullNode : API
         if (this.ledger.acceptTransaction(tx))
         {
             log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
-            this.network.gossipTransaction(tx);
+            this.network.peers[].each!(p => p.client.sendTransaction(tx));
             this.pushTransaction(tx);
         }
     }
