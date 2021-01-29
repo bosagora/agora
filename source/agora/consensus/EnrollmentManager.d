@@ -489,6 +489,31 @@ public class EnrollmentManager
         return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
 
+    /// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Test.d)
+    unittest
+    {
+        import agora.consensus.data.genesis.Test : GenesisBlock;
+        import agora.consensus.data.Transaction : Transaction, TxType;
+        import std.format;
+        import std.range;
+        import std.conv;
+        import std.algorithm;
+
+        Hash txhash = hashFull(GenesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front);
+        Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
+        auto enrollments = utxos.enumerate.map!(en =>
+            EnrollmentManager.makeEnrollment(genesis_validator_keys[en.index], en.value, 20, 0)).array;
+        Enrollment[] sorted_enrollments = enrollments.sort!((a,b) => a.utxo_key < b.utxo_key).array;
+        assert(GenesisBlock.header.enrollments == sorted_enrollments,
+            format!"%s\n\t],\n"(
+                sorted_enrollments
+                    .fold!((s, e) =>
+                        format!"%s\n%s"
+                        (s, format!"\t\tEnrollment(\n\t\tHash(`%s`),\n\t\tHash(`%s`),\n\t\t%s,\n\t\tSignature(`%s`)),"
+                            (e.utxo_key, e.random_seed, e.cycle_length, e.enroll_sig)))
+                        ("\n\tenrollments: [")));
+    }
+
     /***************************************************************************
 
         Retrieves the R from the (R, s) of the signature in the commitment
