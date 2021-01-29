@@ -498,7 +498,8 @@ public class Ledger
     {
         const height = block.header.height;
         // add the new UTXOs
-        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height));
+        block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height,
+            this.params.CommonsBudgetAddress));
 
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx));
@@ -538,8 +539,8 @@ public class Ledger
                     Output(remain_amount, utxo_value.output.address),
                 ],
             };
-            this.utxo_set.updateUTXOCache(
-                slashing_tx, block.header.height, true);
+            this.utxo_set.updateUTXOCache(slashing_tx, block.header.height,
+                this.params.CommonsBudgetAddress);
         }
     }
 

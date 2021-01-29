@@ -142,23 +142,13 @@ unittest
     // the penalty is re-routed to the `CommonsBudget`
     utxo_set.peekUTXO(frozen_hash, utxo);
     assert(utxo == UTXO.init);
-    auto slashed_hash = utxo_set.getUTXOs(bad_address).keys[0];
     auto slashed_utxo = utxo_set.getUTXOs(bad_address).values[0];
     auto common_utxo = utxo_set.getUTXOs(WK.Keys.CommonsBudget.address).values[0];
     auto slashed_amout = slashed_utxo.output.value;
     slashed_amout.add(common_utxo.output.value);
     assert(frozen_utxo.output.value == slashed_amout);
 
-    // spend refunded UTXO and create block 3
-    Transaction new_tx = {
-        TxType.Payment,
-        inputs: [Input(slashed_hash)],
-        outputs: [Output(slashed_utxo.output.value, slashed_utxo.output.address)],
-    };
-    new_tx.inputs[0].unlock =
-        genKeyUnlock(WK.Keys[slashed_utxo.output.address].secret.sign(new_tx.hashFull()[]));
-    txs = txs[0..7].map!(tx => TxBuilder(tx).sign()).array();
-    txs ~= new_tx;
-    txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(3));
+    // check the leftover UTXO is melting and the penalty UTXO is unfrozen
+    assert(slashed_utxo.unlock_height == 2018);
+    assert(common_utxo.unlock_height == 3);
 }

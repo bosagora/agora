@@ -49,23 +49,19 @@ abstract class UTXOCache
         Params:
             tx = the transaction
             height = local height of the block
-            slashed = whether the transaction is for slashing
+            commons_budget = the CommonsBudget address
 
     ***************************************************************************/
 
     public void updateUTXOCache (const ref Transaction tx, Height height,
-        bool slashed = false) @safe
+        immutable PublicKey commons_budget) @safe
     {
         import std.algorithm : any;
 
-        // defaults to next block
-        Height unlock_height = height + 1;
+        bool melting = false;
 
-        // for payments of frozen transactions, it will melt after 2016 blocks
-        // If this is an unfreeze and slashing transaction, don't melt but
-        // instead set the unlock height to the next block as it will be sent to
-        // the commons budget.
-        if ((tx.type == TxType.Payment && !slashed)
+        // check if the payments are from frozen transactions
+        if ((tx.type == TxType.Payment)
             && tx.inputs.any!(input =>
                 (
                     (this.getUTXO(input.utxo).type == TxType.Freeze)
@@ -73,7 +69,7 @@ abstract class UTXOCache
             )
         )
         {
-            unlock_height = height + 2016;
+            melting = true;
         }
 
         foreach (const ref input; tx.inputs)
@@ -85,7 +81,11 @@ abstract class UTXOCache
         foreach (idx, output; tx.outputs)
         {
             auto utxo_hash = UTXO.getHash(tx_hash, idx);
-            auto utxo_value = UTXO(unlock_height, tx.type, output);
+
+            // Melting UTXOs will melt after 2016 blocks except ones that go to
+            // the CommonsBudget and others will melt at the next block.
+            auto utxo_value = UTXO((melting && output.address != commons_budget) ?
+                height + 2016 : height + 1, tx.type, output);
             this.add(utxo_hash, utxo_value);
         }
     }
