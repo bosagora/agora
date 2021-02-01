@@ -66,7 +66,7 @@ public struct Logger
                 assert(0,"\nplease make sure you are declaring the \nmixin AddLogger!(); statement on top, followed by:\nstatic this{}; followed by:\nstatic ~this{};");
                 return;
             }
-            mixin("this.logger." ~ call ~ "(args);");            
+            mixin("this.logger." ~ call ~ "(args);");
         }
         catch (Exception ex)
         {
@@ -225,17 +225,17 @@ unittest
     };
 
     // case 1
-    // the internal buffer size is greater than the length of the messages 
+    // the internal buffer size is greater than the length of the messages
     // that we are trying to log
     assert(get_log_output("01234") == "01234");
 
     // case 2
-    // the internal buffer size is equal to the length of the messages 
+    // the internal buffer size is equal to the length of the messages
     // that we are trying to log(there is a terminating newline)
     assert(get_log_output("012345") == "012345");
 
     // case 3
-    // the internal buffer size is smaller than the length of the messages 
+    // the internal buffer size is smaller than the length of the messages
     // that we are trying to log
     assert(get_log_output("0123456789") == "3456789");
 }
