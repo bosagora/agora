@@ -308,7 +308,7 @@ private struct TransactionFmt
 Outputs (6):
 GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
 GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)`;
-    const actual0 = format("%s", TransactionFmt(GenesisBlock.txs[0]));
+    const actual0 = format("%s", TransactionFmt(testGenesisBlockFreezeTransaction));
     assert(ResultStr0 == actual0, actual0);
 
     static immutable ResultStr1 = `Type : Payment, Inputs: None
@@ -316,7 +316,7 @@ Outputs (8):
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
-    const actual1 = format("%s", TransactionFmt(GenesisBlock.txs[1]));
+    const actual1 = format("%s", TransactionFmt(testGenesisBlockPaymentTransaction));
     assert(ResultStr1 == actual1, actual1);
 }
 

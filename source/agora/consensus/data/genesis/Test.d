@@ -117,6 +117,14 @@ public immutable Block GenesisBlock = {
     ],
 };
 
+version (unittest)
+{
+    import std.algorithm;
+
+    static immutable testGenesisBlockFreezeTransaction = GenesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front;
+    static immutable testGenesisBlockPaymentTransaction = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).front;
+}
+
 ///
 unittest
 {
