@@ -169,8 +169,7 @@ public class Ledger
         this.block_stats.setMetricTo!"agora_block_height_counter"(
             this.last_block.header.height.value);
 
-        Block gen_block;
-        this.storage.readBlock(gen_block, Height(0));
+        Block gen_block = this.storage.readBlock(Height(0));
         if (gen_block != cast()params.Genesis)
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
@@ -182,8 +181,7 @@ public class Ledger
 
             foreach (height; 0 .. this.last_block.header.height + 1)
             {
-                Block block;
-                this.storage.readBlock(block, Height(height));
+                Block block = this.storage.readBlock(Height(height));
                 this.acceptBlock(block, false);
                 this.last_block = block;
             }
@@ -203,8 +201,7 @@ public class Ledger
             // using block_count, as the range is inclusive
             foreach (block_idx; min_height .. block_count)
             {
-                Block block;
-                this.storage.readBlock(block, block_idx);
+                Block block = this.storage.readBlock(block_idx);
                 this.updateValidatorSet(block);
             }
         }
@@ -877,18 +874,10 @@ public class Ledger
     {
         start_height = min(start_height, this.getBlockHeight() + 1);
 
-        const(Block) readBlock (Height height)
-        {
-            Block block;
-            if (!this.storage.tryReadBlock(block, height))
-                assert(0);
-            return block;
-        }
-
         // Call to `Height.value` to work around
         // https://issues.dlang.org/show_bug.cgi?id=21583
         return iota(start_height.value, this.getBlockHeight() + 1)
-            .map!(idx => readBlock(Height(idx)));
+            .map!(idx => this.storage.readBlock(Height(idx)));
     }
 
     /***************************************************************************

@@ -82,20 +82,19 @@ private void main ()
     }());
 
     iota(0, BlockCount).each!(h => {
-        assert(storage.tryReadBlock(block, Height(h)));
+        block = storage.readBlock(Height(h));
         writeln(format!"block at height %s:\n%s\n\n"(h, prettify(block)));
         }());
 
-    Block block2;
     /// Update each block adding an updated block multisig and set validator 0
     /// as also signed
     iota(1, BlockCount).each!(h => {
-        storage.readBlock(block2, Height(h));
+        auto block2 = storage.readBlock(Height(h));
         assert(block2.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
         block2.header.signature = SIG2;
         block2.header.validators[0] = true;
         storage.updateBlockMultiSig(block2);
-        assert(storage.tryReadBlock(block, Height(h)));
+        block = storage.readBlock(Height(h));
         assert(block == block2, format!"read block at height %s:\n%s\n\n"(h, prettify(block)));
         assert(block.header.validators[0] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
         assert(block.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));

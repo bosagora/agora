@@ -657,10 +657,7 @@ public class FullNode : API
         if (this.ledger.getBlockHeight() < height)
             return null;
 
-        Block block;
-        if (!this.storage.tryReadBlock(block, height))
-            return null;
-
+        Block block = this.storage.readBlock(height);
         size_t index = block.findHashIndex(hash);
         if (index >= block.txs.length)
             return null;
