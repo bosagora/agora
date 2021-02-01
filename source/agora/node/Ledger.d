@@ -162,8 +162,7 @@ public class Ledger
         this.storage.load(params.Genesis);
 
         // ensure latest checksum can be read
-        if (!this.storage.readLastBlock(this.last_block))
-            assert(0);
+        this.last_block = this.storage.readLastBlock();
         log.info("Last known block: #{} ({})", this.last_block.header.height,
                  this.last_block.header.hashFull());
         this.block_stats.setMetricTo!"agora_block_height_counter"(
@@ -356,12 +355,10 @@ public class Ledger
             log.error("Failed to update block: {}", prettify(block));
             return false;
         }
-        if (block.header.height == this.last_block.header.height
-            && !this.storage.readLastBlock(this.last_block))
-        {
-            log.error("Failed to update last_block");
-            return false;
-        }
+
+        if (block.header.height == this.last_block.header.height)
+            this.last_block = this.storage.readLastBlock();
+
         return true;
     }
 
@@ -448,8 +445,8 @@ public class Ledger
             || this.enroll_man.validatorCount() != old_count;
 
         // read back and cache the last block
-        if (externalized && !this.storage.readLastBlock(this.last_block))
-            assert(0, format!"Failed to read last block: %s"(prettify(this.last_block)));
+        if (externalized)
+            this.last_block = this.storage.readLastBlock();
 
         // Prepare maps for next block with maybe new enrollments
         log.trace("Storing active validators for next block using height {}.", block.header.height);
