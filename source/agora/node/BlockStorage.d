@@ -70,16 +70,15 @@ public interface IBlockStorage
 
         Read the last block from the storage.
 
-        Params:
-            block = The last block
-
         Returns:
-            Returns true if success, otherwise returns false.
+            The block that has been read.
+
+        Throws:
+            If the block cannot be read.
 
     ***************************************************************************/
 
-    public bool readLastBlock (ref Block block);
-
+    public Block readLastBlock ();
 
     /***************************************************************************
 
@@ -331,24 +330,13 @@ public class BlockStorage : IBlockStorage
         return buildPath(this.root_path, format("B%012d.dat", index));
     }
 
-    /***************************************************************************
-
-        Read the last block from the storage.
-
-        Params:
-            block = will contain the block if the read was successful
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public override bool readLastBlock (ref Block block) @safe nothrow
+    /// Implement `IBlockStorage.readLastBlock`
+    public override Block readLastBlock () @safe
     {
         if (this.height_idx.length == 0)
-            return false;
+            throw new Exception("No block has been loaded yet");
 
-        return this.tryReadBlock(block, this.height_idx.back.height);
+        return this.readBlock(this.height_idx.back.height);
     }
 
     /***************************************************************************
@@ -1030,24 +1018,13 @@ public class MemBlockStorage : IBlockStorage
             assert(blk.length > 0);
     }
 
-    /***************************************************************************
-
-        Read the last block from array.
-
-        Params:
-            block = will contain the block if the read was successful
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public bool readLastBlock (ref Block block) @safe
+    /// Implement `IBlockStorage.readLastBlock`
+    public Block readLastBlock () @safe
     {
         if (this.height_idx.length == 0)
-            return false;
+            throw new Exception("No block has been loaded yet");
 
-        return this.tryReadBlock(block, this.height_idx.back.height);
+        return this.readBlock(this.height_idx.back.height);
     }
 
     /***************************************************************************
