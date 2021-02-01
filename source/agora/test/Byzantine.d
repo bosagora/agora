@@ -204,9 +204,9 @@ private class ByzantineManager (bool addSpyValidator = false,
                 auto time = new shared(TimePoint)(this.initial_time);
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!SpyingValidator(
-                    conf, &this.reg, this.blocks, this.test_conf,
+                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
                     time, &envelope_type_counts);
-                this.reg.register(conf.node.address, node.ctrl.tid());
+                this.reg.register(conf.node.address, node.ctrl.listener());
                 this.nodes ~= NodePair(conf.node.address, node, time);
             }
             else
