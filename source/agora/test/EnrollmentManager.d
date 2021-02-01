@@ -191,11 +191,7 @@ unittest
 
     static final class BadAPIManager : TestAPIManager
     {
-        ///
-        public this (immutable(Block)[] blocks, TestConf test_conf, time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         /// see base class
         public override void createNewNode (Config conf, string file, int line)
@@ -290,12 +286,11 @@ unittest
         private shared(size_t)* runCount;
 
         /// Ctor
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            in TestConf test_conf, shared(time_t)* cur_time,
+        public this (Parameters!(TestValidatorNode.__ctor) args,
             shared(size_t)* countPtr)
         {
             this.runCount = countPtr;
-            super(config, reg, blocks, test_conf, cur_time);
+            super(args);
         }
 
         ///
@@ -314,11 +309,7 @@ unittest
         // Make sure the code in BadNominator gets executed
         shared size_t runCount;
 
-        ///
-        public this (immutable(Block)[] blocks, TestConf test_conf, time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         /// see base class
         public override void createNewNode (Config conf, string file, int line)

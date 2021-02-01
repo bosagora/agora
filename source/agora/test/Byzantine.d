@@ -152,12 +152,11 @@ private class SpyingValidator : TestValidatorNode
     shared(EnvelopeTypeCounts)* envelope_type_counts;
 
     /// Ctor
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time,
+    public this (Parameters!(typeof(super).__ctor) args,
         shared(EnvelopeTypeCounts)* envelope_type_counts)
     {
         this.envelope_type_counts = envelope_type_counts;
-        super(config, reg, blocks, test_conf, cur_time);
+        super(args);
     }
 
     ///
