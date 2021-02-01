@@ -217,7 +217,9 @@ unittest
         auto genesisKP = WK.Keys.Genesis;
         assert(WK.Keys[genesisKP.address] == genesisKP);
         // Sanity check with `agora.consensus.Genesis`
-        assert(WK.Keys.Genesis.address == GenesisBlock.txs[1].outputs[0].address);
+        GenesisBlock.payments
+            .each!(tx => tx.outputs
+                .each!(output => assert(WK.Keys.Genesis.address == output.address)));
     }
 }
 
@@ -677,10 +679,10 @@ public Hash getTestRandomSeed () @safe nothrow
 /// Essentially doing an equality transformation
 unittest
 {
-    immutable Number = GenesisBlock.txs[1].outputs.length;
+    immutable Number = GenesisBlock.payments.front.outputs.length;
     assert(Number == 8);
 
-    const tx = TxBuilder(GenesisBlock.txs[1])
+    const tx = TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -696,10 +698,10 @@ unittest
 /// Test with twice as many outputs as inputs
 unittest
 {
-    immutable Number = GenesisBlock.txs[1].outputs.length * 2;
+    immutable Number = GenesisBlock.payments.front.outputs.length * 2;
     assert(Number == 16);
 
-    const resTx1 = TxBuilder(GenesisBlock.txs[1])
+    const resTx1 = TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -729,7 +731,7 @@ unittest
 /// Test with remainder
 unittest
 {
-    const result = TxBuilder(GenesisBlock.txs[1])
+    const result = TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(3))
         .sign();
 
@@ -750,7 +752,7 @@ unittest
 /// Test with one output key
 unittest
 {
-    const result = TxBuilder(GenesisBlock.txs[1])
+    const result = TxBuilder(GenesisBlock.payments.front)
         .split([WK.Keys.A.address])
         .sign();
 
@@ -766,7 +768,7 @@ unittest
 /// Test changing the refund address (and merging outputs by extension)
 unittest
 {
-    const result = TxBuilder(GenesisBlock.txs[1])
+    const result = TxBuilder(GenesisBlock.payments.front)
         // Refund needs to be called first as it resets the outputs
         .refund(WK.Keys.Z.address)
         .split(WK.Keys.byRange.map!(k => k.address).take(3))

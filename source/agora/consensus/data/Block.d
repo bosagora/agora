@@ -407,6 +407,18 @@ public struct Block
 
         return index.empty ? this.txs.length : index.front[0];
     }
+
+    /// Returns a range of any freeze transactions in this block
+    public auto frozens () const @safe pure nothrow
+    {
+        return this.txs.filter!(tx => tx.type == TxType.Freeze);
+    }
+
+    /// Returns a range of any payment transactions in this block
+    public auto payments () const @safe pure nothrow
+    {
+        return this.txs.filter!(tx => tx.type == TxType.Payment);
+    }
 }
 
 ///
