@@ -80,9 +80,9 @@ import core.stdc.stdlib : abort;
 
 /* The following imports are frequently needed in tests */
 
+public import agora.common.Types : Height, TimePoint;
  // Contains utilities for testing, e.g. `retryFor`
 public import agora.utils.Test;
-public import agora.common.Types : Height;
 // `core.time` provides duration-related utilities, used e.g. for `retryFor`
 public import core.time;
 // Useful to express complex pipeline simply
@@ -529,16 +529,16 @@ public struct NodePair
     /// the adjustable local clock time for this node.
     /// This does not affect request timeouts and is only
     /// used in the Nomination protocol.
-    private shared(time_t)* cur_time;
+    private shared(TimePoint)* cur_time;
 
     /// Get the current clock time
-    @property time_t time () @trusted @nogc nothrow
+    @property TimePoint time () @trusted @nogc nothrow
     {
         return atomicLoad(*this.cur_time);
     }
 
     /// Set the new time
-    @property void time (time_t new_time) @trusted @nogc nothrow
+    @property void time (TimePoint new_time) @trusted @nogc nothrow
     {
         atomicStore(*this.cur_time, new_time);
     }
@@ -565,12 +565,12 @@ public class TestAPIManager
     public immutable(Block)[] blocks;
 
     /// Start time of the tests
-    public const time_t test_start_time;
+    public const TimePoint test_start_time;
 
     /// The initial clock time of every spawned node. Note that if there were
     /// any extra blocks loaded (`blocks` in the ctor) then the initial time
     /// will be test_start_time + (last_height * block_interval)
-    protected time_t initial_time;
+    protected TimePoint initial_time;
 
     /// convenience: returns a random-access range which lets us access clients
     auto clients ()
@@ -586,7 +586,7 @@ public class TestAPIManager
 
     ///
     public this (immutable(Block)[] blocks, TestConf test_conf,
-        time_t test_start_time)
+        TimePoint test_start_time)
     {
         this.test_conf = test_conf;
         this.blocks = blocks;
@@ -764,10 +764,9 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public time_t getBlockTime (Height height)
+    public TimePoint getBlockTime (Height height)
     {
-        return to!time_t(this.test_start_time +
-            (height * this.test_conf.block_interval_sec));
+        return this.test_start_time + (height * this.test_conf.block_interval_sec);
     }
 
     /***************************************************************************
@@ -791,7 +790,7 @@ public class TestAPIManager
     public TestAPI addNewNode (NodeType : TestAPI) (
         Config conf, string file = __FILE__, int line = __LINE__)
     {
-        auto time = new shared(time_t)(this.initial_time);
+        auto time = new shared(TimePoint)(this.initial_time);
         auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg,
             this.blocks, this.test_conf, time,
             conf.node.timeout, file, line);
@@ -1365,7 +1364,7 @@ public interface TestAPI : ValidatorAPI
 
     ***************************************************************************/
 
-    public time_t getNetworkTime ();
+    public TimePoint getNetworkTime ();
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -1377,7 +1376,7 @@ private mixin template TestNodeMixin ()
     protected Registry* registry;
 
     /// pointer to the unittests-adjusted clock time
-    protected shared(time_t)* cur_time;
+    protected shared(TimePoint)* cur_time;
 
     /// test start time
     protected ulong test_start_time;
@@ -1471,7 +1470,7 @@ private mixin template TestNodeMixin ()
     }
 
     /// Return the adjusted clock time
-    public override time_t getNetworkTime ()
+    public override TimePoint getNetworkTime ()
     {
         return this.clock.networkTime();
     }
@@ -1481,11 +1480,11 @@ private mixin template TestNodeMixin ()
 public class TestClock : Clock
 {
     ///
-    private shared(time_t)* cur_time;
+    private shared(TimePoint)* cur_time;
 
     ///
     public this (TaskManager taskman, GetNetTimeOffset getNetTimeOffset,
-        shared(time_t)* cur_time)
+        shared(TimePoint)* cur_time)
     {
         super(getNetTimeOffset,
             (Duration duration, void delegate() cb) nothrow @trusted
@@ -1494,7 +1493,7 @@ public class TestClock : Clock
     }
 
     ///
-    public override time_t localTime ()
+    public override TimePoint localTime ()
     {
         return atomicLoad(*this.cur_time);
     }
@@ -1518,7 +1517,7 @@ public class TestFullNode : FullNode, TestAPI
 
     ///
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time)
+        in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
         this.blocks = blocks;
@@ -1584,7 +1583,7 @@ public class TestValidatorNode : Validator, TestAPI
 
     ///
     public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time)
+        in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
         this.blocks = blocks;

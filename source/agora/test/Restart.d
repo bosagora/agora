@@ -23,8 +23,6 @@ import agora.test.Base;
 
 import geod24.Registry;
 
-import core.stdc.time;
-
 /// A test that stops and restarts a node
 unittest
 {
@@ -105,7 +103,7 @@ private class PersistentNode : TestValidatorNode
 private class WithPersistentNodeAPIManager : TestAPIManager
 {
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, time_t test_start_time)
+    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint test_start_time)
     {
         super(blocks, test_conf, test_start_time);
     }

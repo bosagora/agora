@@ -47,7 +47,6 @@ import scpd.types.Stellar_SCP;
 import std.algorithm : each;
 
 import core.stdc.stdlib : abort;
-import core.stdc.time;
 import core.time;
 
 mixin AddLogger!();

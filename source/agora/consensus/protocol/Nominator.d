@@ -55,7 +55,6 @@ import geod24.bitblob;
 
 import core.stdc.stdint;
 import core.stdc.stdlib : abort;
-import core.stdc.time;
 
 import std.algorithm : each, max, map;
 import std.conv;

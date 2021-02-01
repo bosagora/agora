@@ -37,7 +37,6 @@ import std.getopt;
 import std.range;
 import std.traits;
 
-import core.stdc.time;
 import core.time;
 
 /// Path to the import file containing the version information

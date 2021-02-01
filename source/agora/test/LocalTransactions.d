@@ -36,7 +36,6 @@ import agora.node.Ledger;
 import agora.node.BlockStorage;
 import agora.node.TransactionPool;
 import geod24.Registry;
-import core.stdc.time;
 import core.thread;
 
 mixin AddLogger!();

@@ -23,8 +23,6 @@ import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 
-import core.stdc.time;
-
 /// Ditto
 public immutable class ConsensusParams
 {

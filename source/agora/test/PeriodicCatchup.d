@@ -52,7 +52,6 @@ import std.stdio;
 
 import core.exception;
 import core.stdc.inttypes;
-import core.stdc.time;
 import core.thread;
 import core.atomic;
 
@@ -96,7 +95,7 @@ private class TestNode () : TestValidatorNode
 private class NodeManager (): TestAPIManager
 {
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, time_t genesis_start_time)
+    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint genesis_start_time)
     {
         super(blocks, test_conf, genesis_start_time);
     }

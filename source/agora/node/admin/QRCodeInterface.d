@@ -27,7 +27,6 @@ import barcode;
 import vibe.data.json;
 import vibe.http.router;
 
-import core.stdc.time;
 import std.datetime : SysTime, unixTimeToStdTime;
 import std.datetime.timezone : UTC;
 import std.format;
@@ -94,7 +93,7 @@ public class QRCodeInterface
         // The randomly generated temporary KeyPair
         KeyPair temp_kp = KeyPair.random();
 
-        time_t current_time = this.clock.networkTime();
+        TimePoint current_time = this.clock.networkTime();
         // A 'nonce' used to allow expiring
         current_time += 60 * 60 * 24 * 90; // (default: +90 days)
         SysTime expires_time = SysTime(unixTimeToStdTime(current_time));

@@ -48,7 +48,6 @@ import std.stdio;
 
 import core.exception;
 import core.stdc.inttypes;
-import core.stdc.time;
 import core.thread;
 import core.atomic;
 
@@ -178,7 +177,7 @@ private class ByzantineManager (bool addSpyValidator = false,
     shared(EnvelopeTypeCounts) envelope_type_counts;
 
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, time_t test_start_time)
+    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint test_start_time)
     {
         super(blocks, test_conf, test_start_time);
     }
@@ -188,7 +187,7 @@ private class ByzantineManager (bool addSpyValidator = false,
     {
         if (this.nodes.length < byzantine_not_signing_count + byzantine_bad_signing_count)
         {
-            auto time = new shared(time_t)(this.initial_time);
+            auto time = new shared(TimePoint)(this.initial_time);
             assert(conf.validator.enabled);
             RemoteAPI!TestAPI node;
             if (this.nodes.length < byzantine_not_signing_count)
@@ -202,7 +201,7 @@ private class ByzantineManager (bool addSpyValidator = false,
             // Add spying validator as last node
             if (addSpyValidator && this.nodes.length == GenesisValidators - 1)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!SpyingValidator(
                     conf, &this.reg, this.blocks, this.test_conf,

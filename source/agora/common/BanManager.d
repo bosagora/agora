@@ -54,7 +54,7 @@ public class BanManager
 
         /// To set an IP as banned, we simply set its un-ban time in the future.
         /// By default it's set to the past (therefore un-banned)
-        private time_t banned_until;
+        private TimePoint banned_until;
     }
 
     /// Container type to emulate an AA, with serialization routines
@@ -227,8 +227,7 @@ public class BanManager
     public void banFor (Address address, Duration duration) @safe nothrow
     {
         const ban_until = this.getCurTime() + duration.total!"seconds";
-        // TODO: cast to time_t for the time being
-        this.banUntil(address, cast(time_t)ban_until);
+        this.banUntil(address, ban_until);
     }
 
     /***************************************************************************
@@ -241,7 +240,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void banUntil (Address address, time_t banned_until) @safe nothrow
+    public void banUntil (Address address, TimePoint banned_until) @safe nothrow
     {
         log.info("BanManager: Address {} banned until {}", address, banned_until);
         this.get(address).banned_until = banned_until;
@@ -280,7 +279,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public time_t getUnbanTime (Address address) @safe nothrow pure @nogc
+    public TimePoint getUnbanTime (Address address) @safe nothrow pure @nogc
     {
         if (auto stats = address in this.ips.data)
             return stats.banned_until;
@@ -297,7 +296,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    protected time_t getCurTime () @safe nothrow @nogc
+    protected TimePoint getCurTime () @safe nothrow @nogc
     {
         return this.clock.localTime();
     }
@@ -330,9 +329,9 @@ unittest
 {
     class UnitBanMan : BanManager
     {
-        time_t time;
+        TimePoint time;
         this () { super(Config(10, 1.days), null, null); }
-        protected override time_t getCurTime () const { return this.time; }
+        protected override TimePoint getCurTime () const { return this.time; }
         public override void dump () { }
         public override void load () { }
     }
