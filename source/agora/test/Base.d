@@ -558,10 +558,10 @@ public class TestAPIManager
     }
 
     /// Registry holding the nodes
-    protected Registry reg;
+    protected Registry!TestAPI reg;
 
-    /// Name registry
-    private RemoteAPI!NameRegistryAPI name_registry;
+    /// Registry holding the name registries
+    protected Registry!NameRegistryAPI nreg;
 
     ///
     public this (immutable(Block)[] blocks, TestConf test_conf,
@@ -572,6 +572,7 @@ public class TestAPIManager
         this.test_start_time = test_start_time;
         this.initial_time = this.getBlockTime(blocks[$ - 1].header.height);
         this.reg.initialize();
+        this.nreg.initialize();
         this.createNameRegistry();
     }
 
@@ -770,11 +771,11 @@ public class TestAPIManager
         Config conf, string file = __FILE__, int line = __LINE__)
     {
         auto time = new shared(TimePoint)(this.initial_time);
-        auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg,
+        auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg, &this.nreg,
             this.blocks, this.test_conf, time,
             conf.node.timeout, file, line);
 
-        this.reg.register(conf.node.address, api.tid());
+        this.reg.register(conf.node.address, api.listener());
         this.nodes ~= NodePair(conf.node.address, api, time);
         return api;
     }
@@ -787,8 +788,8 @@ public class TestAPIManager
 
     public void createNameRegistry ()
     {
-        this.name_registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistryImpl();
-        this.reg.register("name.registry", this.name_registry.tid());
+        auto registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistryImpl();
+        this.nreg.register("name.registry", registry.ctrl.listener());
     }
 
     /***************************************************************************
@@ -828,12 +829,12 @@ public class TestAPIManager
             enforce(this.reg.unregister(node.address));
 
         /// Private functions used for `shutdown`
-        static void shutdownWithLogs (TestAPI node)
+        static void shutdownWithLogs (Object node)
         {
             (cast(FullNode)node).shutdown();
-            node.printLog();
+            (cast(TestAPI)node).printLog();
         }
-        static void shutdownSilent (TestAPI node)
+        static void shutdownSilent (Object node)
         {
             (cast(FullNode)node).shutdown();
         }
@@ -847,7 +848,9 @@ public class TestAPIManager
 
         this.nodes = null;
 
-        enforce(this.reg.unregister("name.registry"));
+        scope name_registry = new RemoteAPI!NameRegistryAPI(
+            this.nreg.locate("name.registry"));
+        enforce(this.nreg.unregister("name.registry"));
         name_registry.ctrl.shutdown();
     }
 
@@ -865,7 +868,7 @@ public class TestAPIManager
 
     public void restart (scope RemoteAPI!TestAPI client)
     {
-        client.ctrl.restart((TestAPI node) { (cast(FullNode)node).shutdown(); });
+        client.ctrl.restart((Object node) { (cast(FullNode)node).shutdown(); });
         client.ctrl.withTimeout(0.msecs, (scope TestAPI api) { api.start(); });
     }
 
@@ -1148,13 +1151,18 @@ public class TestNetworkManager : NetworkManager
     import agora.api.handler.TransactionReceivedHandler;
 
     ///
-    public Registry* registry;
+    public Registry!TestAPI* registry;
+
+    ///
+    public Registry!NameRegistryAPI* nregistry;
 
     /// Constructor
-    public this (Parameters!(NetworkManager.__ctor) args, Registry* reg)
+    public this (Parameters!(NetworkManager.__ctor) args,
+                 Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg)
     {
         super(args);
         this.registry = reg;
+        this.nregistry = nreg;
     }
 
     /// No "http://" in unittests, we just use the string as-is
@@ -1177,7 +1185,7 @@ public class TestNetworkManager : NetworkManager
     ///
     public override RemoteAPI!NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
     {
-        auto tid = this.registry.locate(address);
+        auto tid = this.nregistry.locate(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!NameRegistryAPI(tid, timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
@@ -1352,7 +1360,10 @@ public interface TestAPI : ValidatorAPI
 /// (multiple-inheritance is not supported in D)
 private mixin template TestNodeMixin ()
 {
-    protected Registry* registry;
+    ///
+    protected Registry!TestAPI* registry;
+    ///
+    protected Registry!NameRegistryAPI* nregistry;
 
     /// pointer to the unittests-adjusted clock time
     protected shared(TimePoint)* cur_time;
@@ -1420,7 +1431,7 @@ private mixin template TestNodeMixin ()
     {
         assert(taskman !is null);
         return new TestNetworkManager(
-            this.config, metadata, taskman, clock, this.registry);
+            this.config, metadata, taskman, clock, this.registry, this.nregistry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1495,10 +1506,11 @@ public class TestFullNode : FullNode, TestAPI
 
 
     ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(TimePoint)* cur_time)
+    public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
+        immutable(Block)[] blocks, in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
+        this.nregistry = nreg;
         this.blocks = blocks;
         this.cur_time = cur_time;
         this.test_start_time = *cur_time;
@@ -1561,10 +1573,11 @@ public class TestValidatorNode : Validator, TestAPI
     mixin TestNodeMixin!();
 
     ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(TimePoint)* cur_time)
+    public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
+        immutable(Block)[] blocks, in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
+        this.nregistry = nreg;
         this.blocks = blocks;
         this.txs_to_nominate = test_conf.txs_to_nominate;
         this.cur_time = cur_time;

@@ -199,9 +199,9 @@ unittest
                 auto time = new shared(TimePoint)(this.initial_time);
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!TestNode(
-                    conf, &this.reg, this.blocks, this.test_conf,
+                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
                     time, conf.node.timeout);
-                this.reg.register(conf.node.address, node.ctrl.tid());
+                this.reg.register(conf.node.address, node.ctrl.listener());
                 this.nodes ~= NodePair(conf.node.address, node, time);
             }
             else
@@ -316,9 +316,9 @@ unittest
             {
                 auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!MisbehavingValidator(
-                    conf, &this.reg, this.blocks, this.test_conf,
+                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
                     time, &this.runCount, conf.node.timeout);
-                this.reg.register(conf.node.address, api.tid());
+                this.reg.register(conf.node.address, api.ctrl.listener());
                 this.nodes ~= NodePair(conf.node.address, api, time);
             }
             else
