@@ -1201,7 +1201,7 @@ private void testStorage (IBlockStorage storage)
     Hash[] block_hashes;
 
     blocks ~= GenesisBlock;
-    storage.saveBlock(GenesisBlock);
+    storage.load(GenesisBlock);
     block_hashes ~= hashFull(GenesisBlock.header);
     Transaction[] last_txs;
     Transaction[] txs;
