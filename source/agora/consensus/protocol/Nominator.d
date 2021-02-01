@@ -470,12 +470,12 @@ extern(D):
         if (this.nomination_timer is null)
             return;
 
-        const cur_height = this.ledger.getBlockHeight();
-        if (envelope.statement.slotIndex <= cur_height)
+        const Block last_block = this.ledger.getLastBlock();
+        if (Height(envelope.statement.slotIndex) != last_block.header.height + 1)
         {
-            log.trace("Ignoring envelope with outdated slot #{} (ledger: #{})",
-                envelope.statement.slotIndex, cur_height);
-            return;  // slot was already externalized, ignore outdated message
+            log.trace("receiveEnvelope: Ignoring envelope with slot id {} as ledger is at height {}",
+                envelope.statement.slotIndex, last_block.header.height.value);
+            return;  // slot was already externalized or envelope is too new
         }
         PublicKey public_key = PublicKey(envelope.statement.nodeID);
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
@@ -523,16 +523,8 @@ extern(D):
                     envelope.statement.pledges.confirm_.ballot.value, ex);
                 return;
             }
-            auto blocks = this.ledger.getBlocksFrom(
-                Height(envelope.statement.slotIndex - 1));
-            if (blocks.empty)
-            {
-                log.info("Validated envelope slot index is too new: {}", envelope);
-                return;
-            }
-            const Block prev_block = blocks.front;
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
-                this.ledger.getBlockHeight(), con_data.missing_validators);
+                last_block.header.height, con_data.missing_validators);
 
             Transaction[] received_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set))
@@ -541,8 +533,7 @@ extern(D):
                     prettify(envelope));
                 return; // We dont have all the TXs for this block. Try to catchup
             }
-
-            const Block proposed_block = makeNewBlock(prev_block,
+            const Block proposed_block = makeNewBlock(last_block,
                 received_tx_set, con_data.timestamp, con_data.enrolls,
                 random_seed, con_data.missing_validators);
             const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
@@ -718,14 +709,9 @@ extern(D):
         {
             assert(0);  // this should never happen
         }
-
-        auto blocks = this.ledger.getBlocksFrom(
-            Height(envelope.statement.slotIndex - 1));
-        assert(!blocks.empty);
-
-        const prev_block = blocks.front;
+        const Block last_block = this.ledger.getLastBlock();
         Hash random_seed = this.ledger.getExternalizedRandomSeed(
-                this.ledger.getBlockHeight(), con_data.missing_validators);
+                last_block.header.height, con_data.missing_validators);
 
         Transaction[] signed_tx_set;
         if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
@@ -735,7 +721,14 @@ extern(D):
             return;
         }
 
-        const proposed_block = makeNewBlock(prev_block,
+
+        if (Height(envelope.statement.slotIndex) != last_block.header.height + 1)
+        {
+            log.trace("signConfirmBallot: Ignoring envelope with slot id {} as ledger is at height {}",
+                envelope.statement.slotIndex, last_block.header.height);
+            return;  // slot was already externalized or envelope is too new
+        }
+        const proposed_block = makeNewBlock(last_block,
             signed_tx_set, con_data.timestamp, con_data.enrolls,
             random_seed, con_data.missing_validators);
 
@@ -857,9 +850,13 @@ extern(D):
         ref const(Value) value) nothrow
     {
         Height height = Height(slot_idx);
-        if (height <= this.ledger.getBlockHeight())
-            return;  // slot was already externalized
-
+        const Block last_block = this.ledger.getLastBlock();
+        if (height != last_block.header.height + 1)
+        {
+            log.trace("valueExternalized: Will not externalize envelope with slot id {} as ledger is at height {}",
+                height, last_block.header.height);
+            return;  // slot was already externalized or envelope is too new
+        }
         ConsensusData data = void;
         try
             data = deserializeFull!ConsensusData(value[]);
@@ -876,12 +873,8 @@ extern(D):
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
         try
         {
-            auto blocks = this.ledger.getBlocksFrom(Height(slot_idx - 1));
-            assert(!blocks.empty);  // should not happen
-            const prev_block = blocks.front;
-
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
-                this.ledger.getBlockHeight(), data.missing_validators);
+                last_block.header.height, data.missing_validators);
 
             Transaction[] externalized_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(data,
@@ -891,8 +884,7 @@ extern(D):
                     height, prettify(data));
                 return;
             }
-
-            const block = makeNewBlock(prev_block,
+            const block = makeNewBlock(last_block,
                 externalized_tx_set, data.timestamp, data.enrolls, random_seed,
                 data.missing_validators);
 
