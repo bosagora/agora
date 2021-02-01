@@ -109,37 +109,6 @@ public interface IBlockStorage
 
     public bool updateBlockMultiSig (const ref Block block);
 
-
-    /***************************************************************************
-
-        Attempt to read a block at a specified height from the storage.
-
-        Params:
-            block = `Block` to read
-            height = height of `Block`
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public bool tryReadBlock (ref Block block, Height height) nothrow;
-
-    /***************************************************************************
-
-        Attempt to read a block with a specified hash from the storage.
-
-        Params:
-            block = `Block` to read
-            hash = `Hash` of `Block`
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public bool tryReadBlock (ref Block block, in Hash hash) nothrow;
-
     /***************************************************************************
 
         Read a block at a specified height from the storage
@@ -155,13 +124,7 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public final Block readBlock (in Height height)
-    {
-        Block result;
-        if (!this.tryReadBlock(result, height))
-            throw new Exception(format("Reading block at height %s failed", height));
-        return result;
-    }
+    public Block readBlock (in Height height);
 
     /***************************************************************************
 
@@ -178,15 +141,8 @@ public interface IBlockStorage
 
     ***************************************************************************/
 
-    public final Block readBlock (in Hash hash)
-    {
-        Block result;
-        if (!this.tryReadBlock(result, hash))
-            throw new Exception(format("Reading block failed. Hash: %s", hash));
-        return result;
-    }
+    public Block readBlock (in Hash hash);
 }
-
 
 /// The map file size
 private immutable size_t MapSize = 640 * 1024;
@@ -558,31 +514,22 @@ public class BlockStorage : IBlockStorage
         }
     }
 
-    /// See `BlockStorage.tryReadBlock(ref Block, size_t)`
-    public override bool tryReadBlock (ref Block block, Height height) @safe nothrow
+    /// Implementes `IBlockStorage.readBlock(in Height)`
+    public override Block readBlock (in Height height) @safe
     {
-        try
-        {
-            const block_pos = this.height_idx.findBlockPosition(height);
-            if (height != 0 && block_pos == 0)
-            {
-                log.trace("BlockStorage.readBlock({}): Couldn't find block at this height", height);
-                return false;
-            }
+        const block_pos = this.height_idx.findBlockPosition(height);
+        if (height != 0 && block_pos == 0)
+            throw new Exception(
+                format("Request height %s but highest height is %s",
+                       height, this.height_idx.back.height));
 
-            this.readBlockAtPosition(block, block_pos);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.trace("BlockStorage.readBlock({}): {}", height, ex);
-            return false;
-        }
+        Block block;
+        this.readBlockAtPosition(block, this.height_idx.findBlockPosition(height));
+        return block;
     }
 
-    /// See `BlockStorage.tryReadBlock(ref Block, Hash)`
-    public override bool tryReadBlock (ref Block block, in Hash hash)
-        @safe nothrow
+    /// Implements `IBlockStorage.readBlock(in Hash)`
+    public override Block readBlock (in Hash hash) @safe
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
@@ -590,18 +537,11 @@ public class BlockStorage : IBlockStorage
             = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
 
         if (finds.empty)
-            return false;
+            throw new Exception(format("Hash %s not found in block storage", hash));
 
-        try
-        {
-            this.readBlockAtPosition(block, finds.front.position);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.trace("BlockStorage.readBlock({}): {}", hash, ex);
-            return false;
-        }
+        Block block;
+        this.readBlockAtPosition(block, finds.front.position);
+        return block;
     }
 
     /// Ditto
@@ -1092,38 +1032,35 @@ public class MemBlockStorage : IBlockStorage
         return true;
     }
 
-    /// See `IBlockStorage.tryReadBlock(ref Block, size_t)`
-    public bool tryReadBlock (ref Block block, Height height) @safe nothrow
+    /// Implements `IBlockStorage.readBlock(in Height)`
+    public override Block readBlock (in Height height) @safe
     {
-        if ((this.height_idx.length == 0) ||
-            (this.height_idx.back.height < height))
-            return false;
+        if (this.height_idx.length == 0)
+            throw new Exception("No block has been loaded yet");
+        if (this.height_idx.back.height < height)
+            throw new Exception(
+                format("Request height %s but highest height is %s",
+                       height, this.height_idx.back.height));
 
-        auto finds
-            = this.height_idx[].find!( (a, b) => a.height == b)(height);
-
+        auto finds = this.height_idx[].find!((a, b) => a.height == b)(height);
         if (finds.empty)
-            return false;
+            throw new Exception(
+                format("Missing block at height %s despite knowing height %s",
+                       height, this.height_idx.back.height));
 
-        try block = deserializeFull!Block(this.blocks[finds.front.position]);
-        catch (Exception e) return false;
-        return true;
+        return deserializeFull!Block(this.blocks[finds.front.position]);
     }
 
-    /// See `IBlockStorage.tryReadBlock(ref Block, hash)`
-    public bool tryReadBlock (ref Block block, in Hash hash) @safe nothrow
+    /// Implements `IBlockStorage.readBlock(in Hash)`
+    public Block readBlock (in Hash hash) @safe
     {
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
-        auto finds
-            = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
-
+        auto finds = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
         if (finds.empty)
-            return false;
+            throw new Exception(format("Couldn't find hash %s in chain: %s", hash));
 
-        try block = deserializeFull!Block(this.blocks[finds.front.position]);
-        catch (Exception e) return false;
-        return true;
+        return deserializeFull!Block(this.blocks[finds.front.position]);
     }
 }
 
