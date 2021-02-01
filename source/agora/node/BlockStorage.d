@@ -146,18 +146,22 @@ public interface IBlockStorage
         Read a block at a specified height from the storage
 
         Params:
-            block = `Block` to read
             height = height of `Block`
+
+        Returns:
+            The block that has been read for height `height`
 
         Throws:
             If the block cannot be read
 
     ***************************************************************************/
 
-    public final void readBlock (ref Block block, Height height)
+    public final Block readBlock (in Height height)
     {
-        if (!this.tryReadBlock(block, height))
+        Block result;
+        if (!this.tryReadBlock(result, height))
             throw new Exception(format("Reading block at height %s failed", height));
+        return result;
     }
 
     /***************************************************************************
@@ -165,18 +169,22 @@ public interface IBlockStorage
         Read a block with a specified hash from the storage
 
         Params:
-            block = `Block` to read
             hash = `Hash` of `Block`
+
+        Returns:
+            The block that has been read for height `height`
 
         Throws:
             If the block cannot be read
 
     ***************************************************************************/
 
-    public final void readBlock (ref Block block, in Hash hash)
+    public final Block readBlock (in Hash hash)
     {
-        if (!this.tryReadBlock(block, hash))
+        Block result;
+        if (!this.tryReadBlock(result, hash))
             throw new Exception(format("Reading block failed. Hash: %s", hash));
+        return result;
     }
 }
 
@@ -518,9 +526,7 @@ public class BlockStorage : IBlockStorage
             const size_t block_position = this.height_idx.findBlockPosition(block.header.height);
             if (block_position == 0)
                 return false;
-            Block original_block;
-            if (!tryReadBlock(original_block, block.header.height))
-                throw new Exception("original block could not be read from disk!");
+            Block original_block = this.readBlock(block.header.height);
 
             if (block.merkle_tree != original_block.merkle_tree)
                 throw new Exception("block merkle_tree has changed!");
@@ -1233,15 +1239,13 @@ private void testStorage (IBlockStorage storage)
     Block[] loaded_blocks;
     loaded_blocks.length = BlockCount;
     foreach (idx; 0 .. BlockCount)
-        storage.readBlock(loaded_blocks[idx], Height(idx));
+        loaded_blocks[idx] = storage.readBlock(Height(idx));
 
     // compare
     assert(equal(blocks, loaded_blocks));
 
-    Block block;
-
     // Test updating the signature
-    assert(storage.tryReadBlock(block, Height(BlockCount - 1)));
+    Block block = storage.readBlock(Height(BlockCount - 1));
     auto prev_signature = block.header.signature;
     iota(0, 5).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set"(i)));
@@ -1253,7 +1257,7 @@ private void testStorage (IBlockStorage storage)
         },
         genesis_validator_keys);
     storage.updateBlockMultiSig(updated_block);
-    assert(storage.tryReadBlock(block, Height(BlockCount - 1)));
+    block = storage.readBlock(Height(BlockCount - 1));
     iota(0, 6).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set after update"(i)));
     assert(block.header.signature != prev_signature);
@@ -1263,16 +1267,15 @@ private void testStorage (IBlockStorage storage)
 
     auto rnd = rndGen;
 
-    Block random_block;
     foreach (height; iota(BlockCount).randomCover(rnd))
     {
-        storage.readBlock(random_block, Height(height));
+        Block random_block = storage.readBlock(Height(height));
         assert(random_block.header.height == height);
     }
 
     foreach (idx; iota(BlockCount).randomCover(rnd))
     {
-        storage.readBlock(random_block, block_hashes[idx]);
+        Block random_block = storage.readBlock(block_hashes[idx]);
         assert(hashFull(random_block.header) == block_hashes[idx]);
     }
 
@@ -1281,12 +1284,12 @@ private void testStorage (IBlockStorage storage)
     auto block_2 = makeNewTestBlock(GenesisBlock, txs_1);
     const ctor_blocks = [ GenesisBlock, cast(const(Block))block_2 ];
     scope store = new MemBlockStorage(ctor_blocks);
-    assert(!store.tryReadBlock(block, Height(0)));  // nothing loaded yet
+    assertThrown!Exception(store.readBlock(Height(0)));  // nothing loaded yet
     // If `MemBlockStorage` doesn't load the blocks from the constructor,
     // `ctor_blocks[1]` will be used as genesis which will then fail this test
     store.load(ctor_blocks[1]);
-    assert(store.tryReadBlock(block, Height(0)));
+    block = store.readBlock(Height(0));
     assert(block == ctor_blocks[0]);
-    assert(store.tryReadBlock(block, Height(1)));
+    block = store.readBlock(Height(1));
     assert(block == ctor_blocks[1]);
 }

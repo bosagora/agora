@@ -64,7 +64,7 @@ private void main ()
     Block[] loaded_blocks;
     loaded_blocks.length = BlockCount + 1;
     foreach (idx; 0 .. BlockCount + 1)
-        storage.readBlock(loaded_blocks[idx], Height(idx));
+        loaded_blocks[idx] = storage.readBlock(Height(idx));
 
     // Finally compare every blocks
     assert(loaded_blocks == blocks);

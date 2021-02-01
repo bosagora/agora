@@ -39,10 +39,8 @@ private void main ()
     BlockStorage storage = new BlockStorage(path);
     scope (exit) storage.release();
 
-    Block block;
-
     // Checksum detection test
-    assertThrown!Exception(storage.readBlock(block, Height(0)));
+    assertThrown!Exception(storage.readBlock(Height(0)));
 }
 
 /// Write the block data to disk
