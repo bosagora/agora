@@ -312,37 +312,15 @@ public struct Serializer
 {
     import agora.common.Serializer;
 
-    static immutable(ubyte)[] serialize (T) (auto ref T value) @trusted nothrow
+    static immutable(ubyte)[] serialize (T) (auto ref T value)
     {
         // `serializeFull` should be `@safe`, but `assumeUnique` is not
-        try
-            return ((arr) @trusted => assumeUnique(arr))(serializeFull(value));
-        catch (Throwable t)
-        {
-            try
-            {
-                writeln("ERROR: Serializable: ", T.stringof);
-                writeln(t);
-            }
-            catch (Exception ignored) {}
-            assert(0);
-        }
+        return ((arr) @trusted => assumeUnique(arr))(serializeFull(value));
     }
 
-    static QT deserialize (QT) (in ubyte[] data) @trusted nothrow
+    static QT deserialize (QT) (in ubyte[] data) @trusted
     {
-        try
-            return deserializeFull!QT(data);
-        catch (Throwable t)
-        {
-            try
-            {
-                writeln("ERROR: Deserialize:", QT.stringof);
-                writeln(t);
-            }
-            catch (Exception ignored) {}
-            assert(0);
-        }
+        return deserializeFull!QT(data);
     }
 }
 
