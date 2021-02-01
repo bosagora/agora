@@ -207,6 +207,16 @@ private alias IndexHeight = RedBlackTree!(HeightPosition, "(a.height < b.height)
 /// Type of RBTree used for hash indexing
 private alias IndexHash = RedBlackTree!(HashPosition, "(a.hash < b.hash)");
 
+/// Return the position of the block by the given height or return zero
+private size_t findBlockPosition (IndexHeight self, Height height) @safe nothrow
+{
+    if (!self.length || self.back.height < height)
+        return 0;
+
+    auto finds = self[].find!((a, b) => a.height == b)(height);
+    return finds.empty ? 0 : finds.front.position;
+}
+
 /*******************************************************************************
 
     Defines storage for Blocks using memory map file
@@ -506,7 +516,7 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            const size_t block_position = findBlockPosition(block.header.height);
+            const size_t block_position = this.height_idx.findBlockPosition(block.header.height);
             if (block_position == 0)
                 return false;
             Block original_block;
@@ -562,7 +572,7 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            this.readBlockAtPosition(block, findBlockPosition(height));
+            this.readBlockAtPosition(block, this.height_idx.findBlockPosition(height));
             return true;
         }
         catch (Exception ex)
@@ -570,21 +580,6 @@ public class BlockStorage : IBlockStorage
             log.trace("BlockStorage.readBlock({}): {}", height, ex);
             return false;
         }
-    }
-
-    /// Return the position of the block by the given height or return zero
-    private size_t findBlockPosition (Height height) @safe nothrow
-    {
-        if ((this.height_idx.length == 0) ||
-            (this.height_idx.back.height < height))
-            return 0;
-
-        auto finds
-            = this.height_idx[].find!( (a, b) => a.height == b)(height);
-
-        if (finds.empty)
-            return 0;
-        return finds.front.position;
     }
 
     /// See `BlockStorage.tryReadBlock(ref Block, Hash)`
