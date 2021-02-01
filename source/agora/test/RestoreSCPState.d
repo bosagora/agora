@@ -126,11 +126,7 @@ unittest
 
     static class ReAPIManager : TestAPIManager
     {
-        /// Ctor
-        public this (immutable(Block)[] blocks, TestConf test_conf, time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         ///
         public override void createNewNode (Config conf, string file, int line)

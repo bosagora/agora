@@ -31,12 +31,7 @@ import geod24.Registry;
 
 private class SameKeyValidator : TestValidatorNode
 {
-    /// Ctor
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time)
-    {
-        super(config, reg, blocks, test_conf, cur_time);
-    }
+    mixin ForwardCtor!();
 
     /// Create an enrollment with new UTXO which is not yet used
     public override Enrollment createEnrollmentData ()

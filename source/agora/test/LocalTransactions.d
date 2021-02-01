@@ -47,12 +47,7 @@ unittest
 {
     static class NoGossipNetworkManager : TestNetworkManager
     {
-        /// Constructor
-        public this (Config config, Metadata metadata,
-            TaskManager taskman, Clock clock, Registry* reg)
-        {
-            super(config, metadata, taskman, clock, reg);
-        }
+        mixin ForwardCtor!();
 
         public override void gossipTransaction (Transaction tx) @safe
         {
@@ -62,11 +57,7 @@ unittest
 
     static class NoGossipValidator : TestValidatorNode
     {
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            in TestConf test_conf, shared(time_t)* cur_time)
-        {
-            super(config, reg, blocks, test_conf, cur_time);
-        }
+        mixin ForwardCtor!();
 
         protected override NetworkManager getNetworkManager (Metadata metadata,
             TaskManager taskman, Clock clock)
@@ -80,11 +71,7 @@ unittest
 
     static class NoGossipAPIManager : TestAPIManager
     {
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         public override void createNewNode (Config conf, string file = __FILE__,
             int line = __LINE__)
@@ -125,16 +112,7 @@ unittest
 {
     static class PickyLedger : Ledger
     {
-        public this (immutable(ConsensusParams) params,
-            UTXOSet utxo_set, IBlockStorage storage,
-            EnrollmentManager enroll_man, TransactionPool pool,
-            FeeManager fee_man, Clock clock,
-            Duration block_timestamp_tolerance = 60.seconds,
-            void delegate (const ref Block, bool) @safe onAcceptedBlock = null)
-        {
-            super(params, utxo_set, storage, enroll_man, pool, fee_man,
-                clock, block_timestamp_tolerance, onAcceptedBlock);
-        }
+        mixin ForwardCtor!();
 
         public override bool acceptTransaction (Transaction tx) @safe
         {
@@ -146,13 +124,12 @@ unittest
 
     static class PickyValidator : TestValidatorNode
     {
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            in TestConf test_conf, shared(time_t)* cur_time)
+        public this (Parameters!(typeof(super).__ctor) args)
         {
-            super(config, reg, blocks, test_conf, cur_time);
+            super(args);
             this.ledger = new PickyLedger(params, this.utxo_set, this.storage,
                 this.enroll_man, this.pool, this.fee_man, this.clock,
-                config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
+                this.config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
         }
 
         public override void putTransaction (Transaction tx) @safe
@@ -164,11 +141,7 @@ unittest
 
     static class PickyAPIManager : TestAPIManager
     {
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         public override void createNewNode (Config conf, string file = __FILE__,
             int line = __LINE__)

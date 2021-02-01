@@ -39,12 +39,7 @@ import geod24.Registry;
 // after enrollment.
 private class MissingPreImageEM : EnrollmentManager
 {
-    ///
-    public this (string db_path, KeyPair key_pair,
-        immutable(ConsensusParams) params)
-    {
-        super(db_path, key_pair, params);
-    }
+    mixin ForwardCtor!();
 
     /// This does not reveal pre-images intentionally
     public override bool getNextPreimage (out PreImageInfo preimage,
@@ -60,12 +55,7 @@ private class NoPreImageVN : TestValidatorNode
 {
     public static shared UTXOSet utxo_set;
 
-    ///
-    public this (Config config, Registry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(time_t)* cur_time)
-    {
-        super(config, reg, blocks, test_conf, cur_time);
-    }
+    mixin ForwardCtor!();
 
     protected override EnrollmentManager getEnrollmentManager ()
     {
@@ -89,12 +79,7 @@ unittest
 {
     static class BadAPIManager : TestAPIManager
     {
-        ///
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         ///
         public override void createNewNode (Config conf, string file, int line)

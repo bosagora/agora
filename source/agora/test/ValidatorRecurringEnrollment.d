@@ -94,11 +94,7 @@ unittest
     // Will always try to enroll with PreImage at Height(0)
     static class BadEnrollmentManager : EnrollmentManager
     {
-        public this (string db_path, KeyPair key_pair,
-            immutable(ConsensusParams) params)
-        {
-            super(db_path, key_pair, params);
-        }
+        mixin ForwardCtor!();
 
         public override Enrollment createEnrollment ( in Hash utxo,
             Height height ) @safe nothrow
@@ -109,11 +105,7 @@ unittest
 
     static class BadValidator : TestValidatorNode
     {
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            in TestConf test_conf, shared(time_t)* cur_time)
-        {
-            super(config, reg, blocks, test_conf, cur_time);
-        }
+        mixin ForwardCtor!();
 
         protected override EnrollmentManager getEnrollmentManager ()
         {
@@ -124,11 +116,7 @@ unittest
 
     static class BadAPIManager : TestAPIManager
     {
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         public override void createNewNode (Config conf, string file = __FILE__,
             int line = __LINE__)
@@ -191,10 +179,7 @@ unittest
 {
     static class SocialDistancingNominator : TestNominator
     {
-        public this (Parameters!(typeof(super).__ctor) args)
-        {
-            super(args);
-        }
+        mixin ForwardCtor!();
 
         protected override bool prepareNominatingSet (out ConsensusData data) @safe
         {
@@ -207,11 +192,8 @@ unittest
 
     static class SocialDistancingValidator : TestValidatorNode
     {
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            in TestConf test_conf, shared(time_t)* cur_time)
-        {
-            super(config, reg, blocks, test_conf, cur_time);
-        }
+        mixin ForwardCtor!();
+
         ///
         protected override TestNominator getNominator (
             Parameters!(TestValidatorNode.getNominator) args)
@@ -226,11 +208,7 @@ unittest
 
     static class SocialDistancingAPIManager : TestAPIManager
     {
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         public override void createNewNode (Config conf, string file = __FILE__,
             int line = __LINE__)
@@ -331,11 +309,7 @@ unittest
 {
     static class BatValidator : TestValidatorNode
     {
-        public this (Config config, Registry* reg, immutable(Block)[] blocks,
-            in TestConf test_conf, shared(time_t)* cur_time)
-        {
-            super(config, reg, blocks, test_conf, cur_time);
-        }
+        mixin ForwardCtor!();
 
         protected override void invalidNominationHandler (const ref ConsensusData data,
             const ref string msg) @safe
@@ -349,11 +323,7 @@ unittest
 
     static class GothamAPIManager : TestAPIManager
     {
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         public override void createNewNode (Config conf, string file = __FILE__,
             int line = __LINE__)
