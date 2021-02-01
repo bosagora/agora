@@ -366,8 +366,8 @@ public class BlockStorage : IBlockStorage
                 if (findex == this.file_index)
                     return true;
 
-                if (this.is_saving && !this.writeChecksum())
-                    assert(0);
+                if (this.is_saving)
+                    this.writeChecksum();
 
                 this.release();
             }
@@ -474,8 +474,7 @@ public class BlockStorage : IBlockStorage
 
         this.length += size_t.sizeof + block_size;
 
-        if (!this.writeChecksum())
-            throw new Exception("BlockStorage: Failed to write checksum");
+        this.writeChecksum();
 
         // add to index of height
         this.height_idx.insert(
@@ -554,9 +553,7 @@ public class BlockStorage : IBlockStorage
                 throw new Exception("failed to write block data size");
 
             this.length += size_t.sizeof + block_size;
-
-            if (!this.writeChecksum())
-                assert(0);
+            this.writeChecksum();
 
             return true;
         }
@@ -956,28 +953,15 @@ public class BlockStorage : IBlockStorage
         Read the file data, calculate checksum,
         and write checksum to file at start point
 
-        Returns:
-            true if the checksum was successful
-
     *******************************************************************************/
 
-    private bool writeChecksum () @trusted nothrow
+    private void writeChecksum () @trusted
     {
-        try
-        {
-            const ubyte[4] checksum = makeChecksum(
-                cast(ubyte[])this.file[ChecksumSize .. MapSize]);
+        const ubyte[4] checksum = makeChecksum(
+            cast(ubyte[])this.file[ChecksumSize .. MapSize]);
 
-            foreach (idx, val; checksum)
-                this.file[idx] = val;
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.error("BlockStorage.writeChecksum: {}", ex);
-            return false;
-        }
+        foreach (idx, val; checksum)
+            this.file[idx] = val;
     }
 }
 
