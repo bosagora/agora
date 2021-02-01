@@ -572,7 +572,14 @@ public class BlockStorage : IBlockStorage
     {
         try
         {
-            this.readBlockAtPosition(block, this.height_idx.findBlockPosition(height));
+            const block_pos = this.height_idx.findBlockPosition(height);
+            if (height != 0 && block_pos == 0)
+            {
+                log.trace("BlockStorage.readBlock({}): Couldn't find block at this height", height);
+                return false;
+            }
+
+            this.readBlockAtPosition(block, block_pos);
             return true;
         }
         catch (Exception ex)
