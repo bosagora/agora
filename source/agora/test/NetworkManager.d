@@ -130,20 +130,22 @@ unittest
             if (conf.validator.enabled)
             {
                 api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, this.blocks, this.test_conf,
+                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
                     time, conf.node.timeout);
             }
             else
             {
                 if (this.nodes.length == 6)  // 7th good FN, 8th bad FN
                     api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, this.blocks, this.test_conf, time, conf.node.timeout);
+                        &this.reg, &this.nreg, this.blocks, this.test_conf,
+                        time, conf.node.timeout);
                 else
                     api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, this.blocks, this.test_conf, time, conf.node.timeout);
+                        &this.reg, &this.nreg, this.blocks, this.test_conf,
+                        time, conf.node.timeout);
             }
 
-            this.reg.register(conf.node.address, api.tid());
+            this.reg.register(conf.node.address, api.ctrl.listener());
             this.nodes ~= NodePair(conf.node.address, api, time);
         }
     }
