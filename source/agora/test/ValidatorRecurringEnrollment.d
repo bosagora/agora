@@ -33,7 +33,6 @@ import agora.network.NetworkManager;
 import agora.network.Clock;
 import agora.node.Ledger;
 import geod24.Registry;
-import core.stdc.time;
 
 unittest
 {

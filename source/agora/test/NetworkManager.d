@@ -32,8 +32,6 @@ import geod24.Registry;
 
 import std.array;
 
-import core.stdc.time;
-
 /// test behavior when getBlockHeight() call fails
 unittest
 {
@@ -124,7 +122,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             RemoteAPI!TestAPI api;
-            auto time = new shared(time_t)(this.initial_time);
+            auto time = new shared(TimePoint)(this.initial_time);
 
             // the test has 8 nodes:
             // 6 validators => used for creating blocks

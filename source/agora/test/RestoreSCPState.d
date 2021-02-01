@@ -37,7 +37,6 @@ import geod24.Registry;
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;
 
-import core.stdc.time;
 import core.thread;
 
 /// Class containing gshared store for SCPEnvelopeStoreTest
@@ -133,7 +132,7 @@ unittest
         {
             if (this.nodes.length == 0)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!ReValidator(
                     conf, &this.reg, this.blocks, this.test_conf, time);
                 this.reg.register(conf.node.address, api.tid());

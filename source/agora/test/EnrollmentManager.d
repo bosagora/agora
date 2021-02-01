@@ -28,7 +28,6 @@ import agora.consensus.validation.PreImage;
 import agora.network.Clock;
 import agora.test.Base;
 
-import core.stdc.time;
 import core.thread;
 import core.time;
 
@@ -198,7 +197,7 @@ unittest
         {
             if (this.nodes.length == 0)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!TestNode(
                     conf, &this.reg, this.blocks, this.test_conf,
@@ -316,7 +315,7 @@ unittest
         {
             if (this.nodes.length == 0)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!MisbehavingValidator(
                     conf, &this.reg, this.blocks, this.test_conf,
                     time, &this.runCount, conf.node.timeout);

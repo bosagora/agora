@@ -74,7 +74,6 @@ import std.file;
 import std.path : buildPath;
 import std.range;
 
-import core.stdc.time;
 import core.time;
 
 mixin AddLogger!();
@@ -721,7 +720,7 @@ public class FullNode : API
     }
 
     /// GET /local_time
-    public override time_t getLocalTime () @safe nothrow
+    public override TimePoint getLocalTime () @safe nothrow
     {
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "local_time", "http");
         return this.clock.localTime();

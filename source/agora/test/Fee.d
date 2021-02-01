@@ -78,7 +78,6 @@ unittest
 {
     import agora.consensus.data.Block;
     import agora.common.Config;
-    import core.stdc.time;
     import core.thread;
 
     TestConf conf = {
@@ -88,7 +87,7 @@ unittest
     static class LocalAPIManager : TestAPIManager
     {
         public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
+            TimePoint initial_time)
         {
             super(blocks, test_conf, initial_time);
         }
@@ -141,7 +140,6 @@ unittest
 {
     import agora.consensus.data.Block;
     import agora.common.Config;
-    import core.stdc.time;
     import core.thread;
 
     TestConf conf = {
@@ -151,7 +149,7 @@ unittest
     static class LocalAPIManager : TestAPIManager
     {
         public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
+            TimePoint initial_time)
         {
             super(blocks, test_conf, initial_time);
         }

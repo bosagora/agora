@@ -35,7 +35,6 @@ import agora.node.Ledger;
 import agora.test.Base;
 
 import core.stdc.inttypes;
-import core.stdc.time;
 import core.thread;
 
 import geod24.Registry;
@@ -92,7 +91,7 @@ unittest
         {
             if (this.nodes.length == 0)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!CustomValidator(
                     conf, &this.reg, this.blocks, this.test_conf,
                     time, conf.node.timeout);

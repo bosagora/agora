@@ -48,6 +48,7 @@
 
 module agora.network.Clock;
 
+import agora.common.Types : TimePoint;
 import agora.utils.Log;
 
 import core.stdc.time;
@@ -106,13 +107,9 @@ public class Clock
 
     ***************************************************************************/
 
-    public time_t networkTime () @safe nothrow
+    public TimePoint networkTime () @safe nothrow
     {
-        // https://issues.dlang.org/show_bug.cgi?id=21134
-        import std.conv : to;
-        // not a problem if #21134 is fixed before year 2038
-        scope (failure) assert(0);
-        return to!time_t(this.localTime() + this.net_time_offset);
+        return this.localTime() + this.net_time_offset;
     }
 
     /***************************************************************************
@@ -122,7 +119,7 @@ public class Clock
 
     ***************************************************************************/
 
-    public time_t localTime () @safe nothrow @nogc
+    public TimePoint localTime () @safe nothrow @nogc
     {
         return .time(null);
     }
@@ -160,26 +157,26 @@ public class Clock
 ///
 public class MockClock : Clock
 {
-    private ulong time;
+    private TimePoint time;
 
     ///
-    public this (ulong time)
+    public this (TimePoint time)
     {
         super(null, null);
         this.time = time;
     }
 
     ///
-    public void setTime (ulong time)
+    public void setTime (TimePoint time)
     {
         this.time = time;
     }
 
     /// returns time set by constructor
-    public override time_t networkTime () @safe nothrow { return cast(time_t)(time);}
+    public override TimePoint networkTime () @safe nothrow { return time;}
 
     /// returns time set by constructor
-    public override time_t localTime () @safe nothrow @nogc { return cast(time_t)(time);}
+    public override TimePoint localTime () @safe nothrow @nogc { return time;}
 
     /// do nothing
     public override void startSyncing () @safe nothrow {}

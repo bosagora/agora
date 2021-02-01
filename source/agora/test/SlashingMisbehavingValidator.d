@@ -30,7 +30,6 @@ import agora.utils.Test;
 import agora.test.Base;
 
 import core.stdc.stdint;
-import core.stdc.time;
 import core.thread;
 
 import geod24.Registry;
@@ -113,7 +112,7 @@ unittest
         {
             if (this.nodes.length == 5)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
                     conf, &this.reg, this.blocks, this.test_conf,
                     time, &reveal_preimage, conf.node.timeout);
@@ -192,7 +191,7 @@ unittest
 
         ///
         public this (immutable(Block)[] blocks, TestConf test_conf,
-            time_t initial_time)
+            TimePoint initial_time)
         {
             super(blocks, test_conf, initial_time);
         }
@@ -202,7 +201,7 @@ unittest
         {
             if (conf.validator.enabled == true)
             {
-                auto time = new shared(time_t)(this.initial_time);
+                auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
                     conf, &this.reg, this.blocks, this.test_conf,
                     time, &reveal_preimage, conf.node.timeout);

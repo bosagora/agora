@@ -25,7 +25,6 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
 
-import core.stdc.time;
 import core.thread;
 import geod24.Registry;
 
@@ -69,7 +68,7 @@ private class SameKeyValidator : TestValidatorNode
 private class SameKeyNodeAPIManager : TestAPIManager
 {
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, time_t initial_time)
+    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint initial_time)
     {
         super(blocks, test_conf, initial_time);
     }
@@ -79,7 +78,7 @@ private class SameKeyNodeAPIManager : TestAPIManager
     {
         if (this.nodes.length == 0)
         {
-            auto time = new shared(time_t)(this.initial_time);
+            auto time = new shared(TimePoint)(this.initial_time);
             auto api = RemoteAPI!TestAPI.spawn!SameKeyValidator(
                 conf, &this.reg, this.blocks, this.test_conf,
                 time, conf.node.timeout);

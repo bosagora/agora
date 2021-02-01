@@ -35,7 +35,6 @@ import std.array;
 import std.format;
 import std.random;
 
-import core.stdc.time;
 import core.time;
 
 mixin AddLogger!();
@@ -194,7 +193,7 @@ class NetworkClient
 
     ***************************************************************************/
 
-    public time_t getLocalTime () @trusted nothrow
+    public TimePoint getLocalTime () @trusted nothrow
     {
         return this.attemptRequest!(API.getLocalTime, Throw.No)(this.api);
     }

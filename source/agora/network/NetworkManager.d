@@ -530,7 +530,7 @@ public class NetworkManager
         static struct TimeInfo
         {
             PublicKey key;
-            time_t node_time;
+            TimePoint node_time;
             long req_delay;
             long offset;
         }

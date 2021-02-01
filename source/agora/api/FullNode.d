@@ -27,9 +27,6 @@ import vibe.data.serialization;
 import vibe.http.common;
 import vibe.web.rest;
 
-// TODO: time_t is not a fixed-size, need another type for the API
-import core.stdc.time;
-
 /// The network state (completed when sufficient validators are connected to)
 public enum NetworkState : ubyte
 {
@@ -278,7 +275,7 @@ public interface API
 
     ***************************************************************************/
 
-    public time_t getLocalTime ();
+    public TimePoint getLocalTime ();
 
     /***************************************************************************
 

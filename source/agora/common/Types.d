@@ -17,6 +17,9 @@ import agora.common.crypto.Key;
 
 import geod24.bitblob;
 
+/// Represents a specific point in time, it should be changed to time_t
+/// after time_t became platform independent
+public alias TimePoint = ulong;
 
 /// An array of const characters
 public alias cstring = const(char)[];
