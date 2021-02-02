@@ -142,6 +142,8 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
 
 /// Skip printing out per-node logs ony agora/test/* failures
 shared bool no_logs;
+import core.time;
+import std.datetime.stopwatch;
 
 /// Custom unnitest runner as a workaround for multi-threading issue:
 /// Agora unittests spawn threads, which allocate. The Ocean tests
@@ -233,10 +235,22 @@ private UnitTestResult customModuleUnitTester ()
             if (chatty)
             {
                 auto output = stdout.lockingTextWriter();
-                output.formattedWrite("Unittesting %s..\n", mod.name);
+                output.formattedWrite("%s testing..\n", mod.name);
+                stdout.flush();
             }
 
+            auto sw = StopWatch(AutoStart.no);
+            sw.start();
             mod.test();
+            sw.stop();
+            if (chatty)
+            {
+                auto output = stdout.lockingTextWriter();
+                output.formattedWrite("%s finished in %s seconds.\n", mod.name,
+                    sw.peek.total!"seconds");
+                stdout.flush();
+            }
+
             atomicOp!"+="(passed, 1);
         }
         catch (Throwable ex)
