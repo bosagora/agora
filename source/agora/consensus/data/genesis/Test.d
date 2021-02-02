@@ -3,8 +3,8 @@
     Defines a genesis block suitable for testing purpose
 
     This genesis block is used in multiple places:
-    - Most unittests;
-    - Most network unittests (TODO);
+    - Unittests;
+    - Network unittests (modules `agora.test`);
     - The system unit tests;
     - The system integration tests;
 
