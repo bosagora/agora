@@ -44,7 +44,7 @@ jobs:
           # so we do it manually
           jq '[ .[] | select(.file|startswith("source/")) ]' docs.json > docs.filtered.json
           # Generate the HTML to docs
-          dub run ddox -- generate-html docs.filtered.json ./docs/
+          dub run ddox -- generate-html --file-name-style=lowerUnderscored docs.filtered.json ./docs/
 
       - name: Upload documentation artifact
         uses: actions/upload-artifact@v2
