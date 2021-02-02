@@ -226,63 +226,6 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         channel.beginCollaborativeClose();
     }
 
-    // find a route
-    // todo: not implemented properly yet as capacity, individual balances, and
-    // fees are not taken into account yet. Only up to two channels assumed here.
-    private Hop[] findPaymentPath (in Point dest_pk, in Amount amount)
-    {
-        // see if we have a direct line to this peer
-        foreach (Hash chan_id, Channel channel; this.channels)
-        {
-            if (channel.conf.funder_pk == dest_pk
-                || channel.conf.peer_pk == dest_pk)
-            {
-                Hop hop =
-                {
-                    pub_key : dest_pk,
-                    chan_id : chan_id,
-                    fee : Amount(100)
-                };
-
-                return [hop];
-            }
-        }
-
-        // find an indirect payment path
-        Hop[] route;
-
-        // just assume there are a few channels (TODO: this is incorrect)
-        foreach (chan_id, conf; this.known_channels)
-        {
-            if (conf.peer_pk == dest_pk)
-            {
-                // bob => charlie
-                Hop hop =
-                {
-                    pub_key : conf.peer_pk,
-                    chan_id : chan_id,
-                    fee : Amount(100)
-                };
-
-                route ~= hop;
-            }
-            else
-            {
-                // alice => bob
-                Hop hop =
-                {
-                    pub_key : conf.peer_pk,
-                    chan_id : chan_id,
-                    fee : Amount(100)
-                };
-
-                route.insertInPlace(0, hop);
-            }
-        }
-
-        return route;
-    }
-
     // total_amount will take into account the fees
     public OnionPacket createOnionPacket (in Hash payment_hash,
         in Height lock_height, in Amount amount, in Hop[] path,
@@ -362,7 +305,11 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         // todo: isn't the payee supposed to set this?
         Height lock_height = Height(this.last_block_height + 100);
 
-        auto path = this.findPaymentPath(invoice.destination, invoice.amount);
+        // find a route
+        // todo: not implemented properly yet as capacity, individual balances, and
+        // fees are not taken into account yet. Only up to two channels assumed here.
+        auto path = this.network.getPaymentPath(this.kp.V, invoice.destination,
+            invoice.amount);
         Amount total_amount;
         auto packet = this.createOnionPacket(invoice.payment_hash, lock_height,
             invoice.amount, path, total_amount);
