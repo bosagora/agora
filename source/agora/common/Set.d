@@ -116,6 +116,12 @@ public struct Set (T)
         return SetT.from!(SetT)(
             iota(length).map!(_ => deserializeFull!(T)(dg, opts)));
     }
+
+    /// Provide a range to iterate on
+    public typeof(this._set.byKey) opSlice ()
+    {
+        return this._set.byKey;
+    }
 }
 
 /// fill the buffer with the set's keys
@@ -221,4 +227,11 @@ unittest
     uint[] arr = [1, 2, 3];
     arr.dropIndex(1);
     assert(arr == [1, 3]);
+}
+
+unittest
+{
+    auto set = Set!uint.from([2, 4, 6, 8]);
+    auto _2xset = set[].map!(elem => tuple(elem, 2*elem));
+    _2xset.each!(tup => assert(tup[0]*2 == tup[1]));
 }
