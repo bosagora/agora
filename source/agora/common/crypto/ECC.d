@@ -18,7 +18,6 @@
 module agora.common.crypto.ECC;
 
 import agora.common.Hash;
-import agora.common.Serializer;
 import agora.common.Types;
 
 import geod24.bitblob;
@@ -256,20 +255,6 @@ public struct Scalar
     {
         return this.data[];
     }
-
-    /***************************************************************************
-
-        Serialization
-
-        Params:
-            dg = serialize function accumulator
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        dg(this.data[]);
-    }
 }
 
 // Test Scalar fromString / toString functions
@@ -277,6 +262,9 @@ public struct Scalar
 {
     static immutable string s = "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec";
     assert(Scalar.fromString(s).toString(PrintMode.Clear) == s);
+    // Make sure it's serialized as a value type (without length)
+    import agora.common.Serializer;
+    assert(Scalar.random().serializeFull().length == Scalar.sizeof);
 }
 
 // Test valid Scalars
@@ -300,6 +288,7 @@ nothrow @nogc @safe unittest
 //
 unittest
 {
+    import agora.common.Serializer;
     testSymmetry!Scalar();
     testSymmetry(Scalar.random());
 }
@@ -424,27 +413,16 @@ public struct Point
     {
         return (crypto_core_ed25519_is_valid_point(this.data[].ptr) == 1);
     }
-
-    /***************************************************************************
-
-        Serialization
-
-        Params:
-            dg = serialize function accumulator
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        dg(this.data[]);
-    }
 }
 
 // Test serialization
 unittest
 {
+    import agora.common.Serializer;
     testSymmetry!Point();
     testSymmetry(Scalar.random().toPoint());
+    // Make sure it's serialized as a value type (without length)
+    assert(Scalar.random().toPoint().serializeFull().length == Point.sizeof);
 }
 
 // Test sorting (`opCmp`)
