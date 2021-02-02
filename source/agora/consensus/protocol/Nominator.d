@@ -335,7 +335,8 @@ extern(D):
 
     protected ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
-        return ledger.getLastBlock().header.timestamp + this.params.BlockIntervalSeconds;
+        return ledger.getLastBlock().header.timestamp +
+            this.params.BlockInterval.total!"seconds";
     }
 
     /***************************************************************************

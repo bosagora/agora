@@ -23,6 +23,8 @@ import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 
+import core.time;
+
 /// Ditto
 public immutable class ConsensusParams
 {
@@ -30,7 +32,7 @@ public immutable class ConsensusParams
     public Block Genesis;
 
     /// How often blocks should be created
-    public uint BlockIntervalSeconds;
+    public Duration BlockInterval;
 
     /// The address of commons budget
     public PublicKey CommonsBudgetAddress;
@@ -56,18 +58,18 @@ public immutable class ConsensusParams
             genesis = Genesis block to use for this chain
             commons_budget_address = Address of the 'Commons' budget
             config = The (potentially) user-configured consensus parameters
-            block_interval_sec = How often blocks are expected to be created
+            block_interval = How often blocks are expected to be created
 
     ***************************************************************************/
 
     public this (immutable(Block) genesis,
                  in PublicKey commons_budget_address,
                  ConsensusConfig config = ConsensusConfig.init,
-                 uint block_interval_sec = 1)
+                 Duration block_interval = 1.seconds)
     {
         this.Genesis = genesis;
         this.CommonsBudgetAddress = commons_budget_address,
-        this.BlockIntervalSeconds = block_interval_sec;
+        this.BlockInterval = block_interval;
         this.data = config;
     }
 

@@ -477,7 +477,8 @@ extern(D):
 
     protected override ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
-        return max(this.test_start_time, ledger.getLastBlock().header.timestamp) + this.params.BlockIntervalSeconds;
+        return max(this.test_start_time, ledger.getLastBlock().header.timestamp) +
+            this.params.BlockInterval.total!"seconds";
     }
 
     /// Overrides the default behavior and changes nomination behavior based
