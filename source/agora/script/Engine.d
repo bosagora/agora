@@ -1459,7 +1459,7 @@ unittest
     const Pair kp = Pair.random();
     const Transaction tx;
     const sig = sign(kp, tx);
-    const key_hash = hashFull(kp.V);
+    const key_hash = hashFull(kp.V[]);
     // emulating bitcoin-style P2PKH
     const Script lock = createLockP2PKH(key_hash);
     const Script unlock = createUnlockP2PKH(sig, kp.V);
@@ -1501,7 +1501,7 @@ unittest
     const Transaction tx;
     const Script redeem = makeScript(
         [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]);
-    const redeem_hash = hashFull(redeem);
+    const redeem_hash = hashFull(redeem[]);
     const sig = sign(kp, tx);
 
     // lock is: <redeem hash>
@@ -1564,7 +1564,7 @@ unittest
     // failed before the redeem script validation could ever fail.
     const Script bad_opcode_redeem = makeScript([ubyte(255)]);
     test!("==")(small.execute(
-        Lock(LockType.Redeem, bad_opcode_redeem.hashFull()[]),
+        Lock(LockType.Redeem, bad_opcode_redeem[].hashFull()[]),
         Unlock(toPushOpcode(bad_opcode_redeem[])),
         tx, Input.init),
         "Script contains an unrecognized opcode");
@@ -1574,7 +1574,7 @@ unittest
     scope tiny = new Engine(10, 10);
     const Script overflow_redeem = makeScript([OP.TRUE, OP.HASH]);
     test!("==")(tiny.execute(
-        Lock(LockType.Redeem, overflow_redeem.hashFull()[]),
+        Lock(LockType.Redeem, overflow_redeem[].hashFull()[]),
         Unlock(toPushOpcode(overflow_redeem[])),
         tx, Input.init),
         "Stack overflow while executing HASH");
@@ -1587,7 +1587,7 @@ unittest
     Transaction tx;
     const sig = sign(kp, tx);
 
-    const key_hash = hashFull(kp.V);
+    const key_hash = hashFull(kp.V[]);
     Script lock = createLockP2PKH(key_hash);
     Script unlock = createUnlockP2PKH(sig, kp.V);
 

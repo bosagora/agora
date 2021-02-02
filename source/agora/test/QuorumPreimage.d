@@ -169,29 +169,29 @@ unittest
         // 0
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 1
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 2
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
-            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
@@ -199,7 +199,7 @@ unittest
         // 3
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
-            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
@@ -208,20 +208,20 @@ unittest
 
         // 4
         QuorumConfig(6, [
-            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
 
         // 5
         QuorumConfig(6, [
-            WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
+            WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
@@ -230,21 +230,21 @@ unittest
         QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
-            WK.Keys.B.address,
-            WK.Keys.NODE3.address,
-            WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
-
-        // 7
-        QuorumConfig(6, [
-            WK.Keys.NODE4.address,
-            WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
             WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
+
+        // 7
+        QuorumConfig(6, [
+            WK.Keys.NODE2.address,
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.B.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE7.address]),
     ];
 
     static assert(quorums_1 != quorums_2);
@@ -289,7 +289,7 @@ unittest
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE5.address]),
+            WK.Keys.NODE7.address]),
 
         // 2
         QuorumConfig(6, [
@@ -323,22 +323,22 @@ unittest
 
         // 5
         QuorumConfig(6, [
+            WK.Keys.NODE4.address,
+            WK.Keys.NODE6.address,
+            WK.Keys.B.address,
+            WK.Keys.NODE3.address,
+            WK.Keys.A.address,
+            WK.Keys.NODE7.address,
+            WK.Keys.NODE5.address]),
+
+        // 6
+        QuorumConfig(6, [
             WK.Keys.NODE2.address,
             WK.Keys.NODE4.address,
             WK.Keys.NODE6.address,
             WK.Keys.B.address,
             WK.Keys.NODE3.address,
             WK.Keys.A.address,
-            WK.Keys.NODE7.address]),
-
-        // 6
-        QuorumConfig(6, [
-            WK.Keys.NODE2.address,
-            WK.Keys.NODE6.address,
-            WK.Keys.B.address,
-            WK.Keys.NODE3.address,
-            WK.Keys.A.address,
-            WK.Keys.NODE7.address,
             WK.Keys.NODE5.address]),
 
         // 7

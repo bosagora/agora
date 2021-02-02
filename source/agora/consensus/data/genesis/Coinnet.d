@@ -42,13 +42,18 @@ public immutable Block GenesisBlock =
 unittest
 {
     import agora.common.Serializer;
+    import std.conv;
+    import std.algorithm.sorting : isSorted;
+
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
 
     assert(GenesisBlock.header.prev_block == Hash.init);
     assert(GenesisBlock.header.height == 0);
-    assert(GenesisBlock.header.merkle_root == GenesisBlock.merkle_tree[2]);
+    assert(GenesisBlock.txs.isSorted(), "Block transaction must be sorted!");
     assert(GenesisBlock.merkle_tree.length == 3);
-    assert(GenesisBlock.header.merkle_root == block.buildMerkleTree());
+    Hash[] merkle_tree;
+    GenesisBlock.buildMerkleTree(GenesisBlock.txs, merkle_tree);
+    assert(merkle_tree == GenesisMerkleTree, merkle_tree.to!string);
 }
 
 // TODO: Replace with the node's enrollments
@@ -94,12 +99,22 @@ private immutable Enrollment[] Enrollments =
     ];
 
 ///
-private immutable Hash GenesisMerkleRoot =
-    Hash(`0x0e2763d2657ceb688448e24f83e9f912f118a9af82103fc097edf4a2b99fd4cdfb151f2ee29f87cc1255412b73d32801b9740cfe5fc2243fff37e2ff8fec695c`);
+private immutable Hash GenesisMerkleRoot = GenesisMerkleTree[$ - 1];
 
 ///
 private immutable Transaction[] GenesisTransactions =
     [
+        {
+            TxType.Freeze,
+            outputs: [
+                Output(Amount(2_000_000L * 10_000_000L), NODE2_ADDRESS),
+                Output(Amount(2_000_000L * 10_000_000L), NODE3_ADDRESS),
+                Output(Amount(2_000_000L * 10_000_000L), NODE4_ADDRESS),
+                Output(Amount(2_000_000L * 10_000_000L), NODE5_ADDRESS),
+                Output(Amount(2_000_000L * 10_000_000L), NODE6_ADDRESS),
+                Output(Amount(2_000_000L * 10_000_000L), NODE7_ADDRESS),
+            ],
+        },
         {
             TxType.Payment,
             outputs: [
@@ -113,23 +128,12 @@ private immutable Transaction[] GenesisTransactions =
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
             ],
         },
-        {
-            TxType.Freeze,
-            outputs: [
-                Output(Amount(2_000_000L * 10_000_000L), NODE2_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE3_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE4_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE5_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE6_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE7_ADDRESS),
-            ],
-        },
     ];
 
 private immutable Hash[] GenesisMerkleTree = [
-    Hash(`0x0bacd1635faa87fd28df08f38b06be82c57493d00d8992e0d273b49c70770259d4e8b583737c0d9564d6748b25818d475f11e85dfe1262b8600fcc5230914c14`),
-    Hash(`0x5208f03b3b95e90b3bff5e0daa1d657738839624d6605845d6e2ef3cf73d0d0ef5aff7d58bde1e00e1ccd5a502b26f569021324a4b902b7e66594e94f05e074c`),
-    Hash(`0x0e2763d2657ceb688448e24f83e9f912f118a9af82103fc097edf4a2b99fd4cdfb151f2ee29f87cc1255412b73d32801b9740cfe5fc2243fff37e2ff8fec695c`),
+    Hash(`0x03638cc6eeee41145406ecdfda16b18f1123311c64c0ed45d77e6439b7e9f62a180a968e55bc046292d6fc7424c44ae2434ceb208a7692a4e9b6b0905148189a`),
+    Hash(`0x71eb97bff3416e87e0c0bd5c15577d72e890a4cc134693b47de8172eb9fcd5a848efb5a65700ca1a53af9de9c6d3ac240dfcff6360b5eca007efecac48a8db8e`),
+    Hash(`0xc11850998e886f31e50c9fa46f8149890e574324ad5ee1119a1493265330dc2251da8f421571b41a24f907d761e3cb5efe621a1f0f744dc74a5077f71de0431c`),
 ];
 
 // TODO: Replace with the foundation's pubkey
