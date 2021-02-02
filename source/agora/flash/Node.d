@@ -26,6 +26,7 @@ import agora.flash.Channel;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
+import agora.flash.Network;
 import agora.flash.OnionPacket;
 import agora.flash.Scripts;
 import agora.flash.Types;
@@ -80,6 +81,9 @@ public abstract class FlashNode : FlashAPI
     /// any intermediaries.
     protected Hash[Hash] secrets;
 
+    /// Flash network topology
+    protected Network network;
+
     /***************************************************************************
 
         Get an instance of an Agora client.
@@ -107,6 +111,11 @@ public abstract class FlashNode : FlashAPI
         this.taskman = taskman;
         Duration timeout;
         this.agora_node = this.getAgoraClient(agora_address, timeout);
+        this.network = new Network((Hash chan_id) {
+            if (auto chan = chan_id in this.channels)
+                return *chan;
+            return null;
+        });
     }
 
     /***************************************************************************
@@ -223,6 +232,7 @@ public abstract class FlashNode : FlashAPI
             &this.onUpdateComplete);
 
         this.channels[chan_conf.chan_id] = channel;
+        this.network.addChannel(chan_conf);
 
         // todo: simplify
         if (chan_conf.chan_id in this.channels_by_key)
@@ -252,6 +262,7 @@ public abstract class FlashNode : FlashAPI
             this.kp.V.prettify, conf.chan_id);
 
         this.known_channels[conf.chan_id] = conf;
+        this.network.addChannel(conf);
 
         // todo: should not gossip this to counterparty of the just opened channel
         foreach (peer; this.known_peers.byValue())
@@ -276,6 +287,7 @@ public abstract class FlashNode : FlashAPI
             // todo: need to verify the blockchain actually contains the
             // funding transaction, otherwise this becomes a point of DDoS.
             this.known_channels[conf.chan_id] = conf;
+            this.network.addChannel(conf);
 
             to_gossip ~= conf;  // gossip only new channels
         }
