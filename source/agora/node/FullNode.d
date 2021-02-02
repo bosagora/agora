@@ -176,7 +176,7 @@ public class FullNode : API
                     TESTNET.GenesisBlock : COINNET.GenesisBlock,
                 commons_budget,
                 config.consensus,
-                config.node.block_interval_sec);
+                config.node.block_interval_sec.seconds);
 
         this.taskman = this.getTaskManager();
         this.clock = this.getClock(this.taskman);
