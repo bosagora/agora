@@ -626,24 +626,20 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Returns an instance of a BlockStorage or MemoryStorage
+        Returns an instance of an `IBlockStorage`
+
+        `IBlockStorage` is the object that handles the long-term storage
+        of blocks. The base function returns an object that stores on disk,
+        however derived classes may extend this to specify a different behavior.
 
         Returns:
-            Returns instance of `MemoryStorage` if data_dir is empty,
-            otherwise returns instance of `BlockStorage`
+            An instance of a `BlockStorage`
 
     ***************************************************************************/
 
     protected IBlockStorage makeBlockStorage () @system
     {
-        version (unittest)
-        {
-            return new MemBlockStorage();
-        }
-        else
-        {
-            return new BlockStorage(this.config.node.data_dir);
-        }
+        return new BlockStorage(this.config.node.data_dir);
     }
 
     /***************************************************************************
