@@ -233,6 +233,9 @@ public class SlashPolicy
     private bool hasRevealedPreimage (in Height height, in Hash utxo_key)
         @safe nothrow
     {
+        if (utxo_key == this.enroll_man.getEnrollmentKey())
+            return true;
+
         auto preimage = this.enroll_man.getValidatorPreimage(utxo_key);
         auto enrolled = this.enroll_man.getEnrolledHeight(preimage.enroll_key);
         assert(height >= enrolled);
@@ -264,6 +267,13 @@ public class SlashPolicy
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
         {
             log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        auto enroll_index = this.enroll_man.getIndexOfEnrollment();
+        if (enroll_index != ulong.max && !missing_validators.find(enroll_index).empty)
+        {
+            log.fatal("The node is slashing itself.");
             assert(0);
         }
 

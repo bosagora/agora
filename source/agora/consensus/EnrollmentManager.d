@@ -823,6 +823,34 @@ public class EnrollmentManager
         return PublicKey(this.key_pair.V[]);
     }
 
+    /***************************************************************************
+
+        Get the index of this node's enrollment in the sorted enrolled UTXOs
+
+        Returns:
+            the index of the enrollment, or ulong.max if this node is not
+            enrolled as a validator.
+
+    ***************************************************************************/
+
+    public ulong getIndexOfEnrollment () @safe nothrow
+    {
+        if (this.enroll_key == Hash.init)
+            return ulong.max;
+
+        Hash[] utxo_keys;
+        if (!this.validator_set.getEnrolledUTXOs(utxo_keys))
+            assert(0);
+
+        foreach (idx, key; utxo_keys)
+            if (key == this.enroll_key)
+                return idx;
+
+        log.fatal("Index of the node's enrollment not found. Enrollment: {}",
+            this.enroll_key);
+        assert(0);
+    }
+
     /// Returns: true if this validator is currently enrolled
     public bool isEnrolled (scope UTXOFinder finder) nothrow @safe
     {

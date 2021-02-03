@@ -769,8 +769,39 @@ public class Ledger
 
     public string validateSlashingData (in ConsensusData data) @safe
     {
+        if (checkSelfSlashing(data))
+        {
+            log.fatal("The node is slashing itself.");
+            assert(0);
+        }
+
         return this.slash_man.isInvalidPreimageRootReason(this.getBlockHeight(),
                 data.missing_validators);
+    }
+
+    /***************************************************************************
+
+        Check if the consensus data has the information that is slashing
+        a node itself
+
+        Params:
+            data = consensus data
+
+        Returns:
+            true if the consensus data has the information that is slashing
+            a node itself.
+
+    ***************************************************************************/
+
+    public bool checkSelfSlashing(in ConsensusData data) @safe nothrow
+    {
+        auto enroll_index = this.enroll_man.getIndexOfEnrollment();
+        if (enroll_index != ulong.max &&
+            !data.missing_validators.find(enroll_index).empty)
+        {
+            return true;
+        }
+        return false;
     }
 
     /***************************************************************************
