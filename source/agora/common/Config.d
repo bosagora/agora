@@ -124,6 +124,10 @@ public struct NodeConfig
     /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
     public bool testing;
 
+    /// Should only be set if `test` is set, can be set to the number of desired
+    /// enrollment in the test Genesis block (1 - 6)
+    public ubyte limit_test_validators;
+
     /// How often a block should be created
     public uint block_interval_sec = 600;
 
@@ -375,7 +379,10 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
     };
 
     if (conf.validator.enabled)
-        enforce(conf.network.length || conf.validator.registry_address != "disabled",
+        enforce(conf.network.length ||
+                conf.validator.registry_address != "disabled" ||
+                // Allow single-network validator (assume this is NODE6)
+                conf.node.limit_test_validators == 1,
             "Either the network section must not be empty, or 'validator.registry_address' must be set");
     else
         enforce(conf.network.length, "Network section must not be empty");
@@ -403,6 +410,12 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
         : PublicKey.init;
 
     auto testing = opt!(bool, "node", "testing")(cmdln, node);
+    auto limit_test_validators = opt!(ubyte, "node", "limit_test_validators")(cmdln, node);
+    if (!testing && limit_test_validators)
+        throw new Exception("Cannot use 'node.limit_test_validator' without 'node.testing' set to 'true'");
+    if (limit_test_validators > 6)
+        throw new Exception("Value of 'node.limit_test_validators' must be between 0 and 6, inclusive");
+
     uint block_interval_sec = get!(uint, "node", "block_interval_sec")(cmdln, node);
 
     Duration retry_delay = get!(Duration, "node", "retry_delay",
@@ -423,6 +436,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             max_listeners : max_listeners,
             commons_budget_address : commons_budget_address,
             testing : testing,
+            limit_test_validators: limit_test_validators,
             block_interval_sec : block_interval_sec,
             address : address,
             port : port,

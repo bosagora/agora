@@ -171,9 +171,27 @@ public class FullNode : API
 
         auto commons_budget = config.node.testing ?
             TESTNET.CommonsBudgetAddress : COINNET.CommonsBudgetAddress;
+        immutable Genesis = () {
+            if (!config.node.testing)
+                return COINNET.GenesisBlock;
+            if (!config.node.limit_test_validators)
+                return TESTNET.GenesisBlock;
+
+            immutable Block result = {
+                header: {
+                    merkle_root: TESTNET.GenesisBlock.header.merkle_root,
+                    timestamp: TESTNET.GenesisBlock.header.timestamp,
+                    validators: typeof(BlockHeader.validators)(config.node.limit_test_validators),
+                    enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.limit_test_validators],
+                },
+                merkle_tree: TESTNET.GenesisBlock.merkle_tree,
+                txs:         TESTNET.GenesisBlock.txs,
+            };
+            return result;
+        }();
+
         this.params = new immutable(ConsensusParams)(
-                config.node.testing ?
-                    TESTNET.GenesisBlock : COINNET.GenesisBlock,
+                Genesis,
                 commons_budget,
                 config.consensus,
                 config.node.block_interval_sec.seconds);
