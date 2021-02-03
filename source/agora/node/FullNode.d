@@ -61,10 +61,7 @@ import agora.utils.Utility;
 
 import scpd.types.Utils;
 
-import vibe.core.core;
 import vibe.data.json;
-import vibe.http.router;
-import vibe.http.server;
 import vibe.web.rest;
 
 import std.algorithm;
@@ -767,11 +764,11 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    private void pushBlock (const Block block) @safe
+    private void pushBlock (const Block block) @trusted
     {
         foreach (address, handler; this.block_handlers)
         {
-            runTask({
+            this.taskman.runTask({
                 try
                 {
                     handler.pushBlock(block);
@@ -798,11 +795,11 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void pushPreImage (const PreImageInfo pre_image) @safe
+    protected void pushPreImage (const PreImageInfo pre_image) @trusted
     {
         foreach (address, handler; this.preimage_handlers)
         {
-            runTask({
+            this.taskman.runTask({
                 try
                 {
                     handler.pushPreImage(pre_image);
@@ -828,11 +825,11 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void pushTransaction (const Transaction tx) @safe
+    protected void pushTransaction (const Transaction tx) @trusted
     {
         foreach (address, handler; this.transaction_handlers)
         {
-            runTask({
+            this.taskman.runTask({
                 try
                 {
                     handler.pushTransaction(tx);
