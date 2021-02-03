@@ -808,6 +808,12 @@ extern(D):
                 return ValidationLevel.kInvalidValue;
             }
 
+            if (this.ledger.checkSelfSlashing(data))
+            {
+                log.error("validateValue(): Slasing itself");
+                return ValidationLevel.kInvalidValue;
+            }
+
             if (auto fail_reason = this.ledger.validateSlashingData(data))
             {
                 log.info("validateValue(): Preimage Validation failed, but " ~
