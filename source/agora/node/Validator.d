@@ -286,7 +286,8 @@ public class Validator : FullNode, API
         if (auto err = this.ledger.validateBlock(block))
         {
             log.error("Block failed to validate: {}", err);
-            return false;
+            // Maybe the block was already added to the ledger
+            return this.ledger.getBlockHeight() >= block.header.height;
         }
         auto sig = this.nominator.createBlockSignature(block);
         auto multi_sig = Sig.fromBlob(block.header.signature);
