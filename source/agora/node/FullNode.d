@@ -322,7 +322,10 @@ public class FullNode : API
 
     protected bool acceptBlock(const ref Block block) @trusted
     {
-        return this.ledger.acceptBlock(block);
+        // Attempt to add block to the ledger (it may be there by other means)
+        this.ledger.acceptBlock(block);
+        // We return if height in ledger is reached for this block to prevent fetching again
+        return this.ledger.getBlockHeight() >= block.header.height;
     }
 
     /***************************************************************************
