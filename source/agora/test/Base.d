@@ -131,7 +131,7 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
     catch (Exception exc)
     {
         scope exc_name = typeid(exc).name;
-        printf("Could not print thread logs because of %.*s (%.*s:%lu): %.*s\n",
+        printf("Could not print thread logs because of %.*s (%.*s:%llu): %.*s\n",
             cast(int) exc_name.length, exc_name.ptr,
             cast(int) file.length, file.ptr, line, cast(int) msg.length, msg.ptr);
     }
