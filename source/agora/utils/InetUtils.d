@@ -168,25 +168,24 @@ version (Windows)
                 return null;
             }
         }
-        if ((ret_adapters_info = GetAdaptersInfo(adapter_info_head, &buff_length)) == NO_ERROR) {
-            adapter_info = adapter_info_head;
-            while (adapter_info)
-            {
-                auto ip_tmp = cast(char *) adapter_info.IpAddressList.IpAddress.String;
-                string ip = ip_tmp[0 .. strlen(ip_tmp)].idup;
-                if (ip.length > 0 && ip != "0.0.0.0")
-                    ips ~= ip;
-
-                adapter_info = adapter_info.Next;
-            }
-            return ips;
-        }
-        else
+        ret_adapters_info = GetAdaptersInfo(adapter_info_head, &buff_length);
+        if (ret_adapters_info != NO_ERROR)
         {
             log.error("GetAdaptersInfo failed with error: {}", ret_adapters_info);
             return null;
         }
-        return null;
+
+        adapter_info = adapter_info_head;
+        while (adapter_info)
+        {
+            auto ip_tmp = cast(char *) adapter_info.IpAddressList.IpAddress.String;
+            string ip = ip_tmp[0 .. strlen(ip_tmp)].idup;
+            if (ip.length > 0 && ip != "0.0.0.0")
+                ips ~= ip;
+
+            adapter_info = adapter_info.Next;
+        }
+        return ips;
     }
 }
 
