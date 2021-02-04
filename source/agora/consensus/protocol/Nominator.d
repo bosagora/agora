@@ -579,11 +579,7 @@ extern(D):
                     block_sig.signature, block_sig.height, block_sig.public_key);
                 return;
             }
-            if (!this.ledger.updateBlockMultiSig(signed_block))
-            {
-                log.error("Failed to update block with signature {} for block {} publicKey {}",
-                    block_sig.signature, block_sig.height, block_sig.public_key);
-            }
+            this.ledger.updateBlockMultiSig(signed_block);
         }
     }
 

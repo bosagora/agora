@@ -335,18 +335,13 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool updateBlockMultiSig (const ref Block block) @safe
+    public void updateBlockMultiSig (const ref Block block) @safe
     {
-        if (!this.storage.updateBlockMultiSig(block))
-        {
-            log.error("Failed to update block: {}", prettify(block));
-            return false;
-        }
+        this.storage.updateBlockSig(block.header.height, block.hashFull(),
+            block.header.signature, block.header.validators);
 
         if (block.header.height == this.last_block.header.height)
             this.last_block = this.storage.readLastBlock();
-
-        return true;
     }
 
     /***************************************************************************
