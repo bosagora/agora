@@ -310,43 +310,36 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    private bool map (size_t findex) @trusted nothrow
+    private bool map (size_t findex) @trusted
     {
-        try {
-            if (this.file !is null)
-            {
-                if (findex == this.file_index)
-                    return true;
-
-                if (this.is_saving)
-                    this.writeChecksum();
-
-                this.release();
-            }
-
-            this.file_index = findex;
-            const file_name = this.getFileName(this.file_index);
-            bool file_exist = std.file.exists(file_name);
-
-            this.file =
-                new MmFile(
-                    file_name,
-                    MmFile.Mode.readWrite,
-                    MapSize,
-                    null
-                );
-
-            this.file_base = DataSize * this.file_index;
-            if (file_exist)
-                return this.validateChecksum();
-
-            return true;
-        }
-        catch (Exception ex)
+        if (this.file !is null)
         {
-            log.error("BlockStorage.map: {}", ex);
-            return false;
+            if (findex == this.file_index)
+                return true;
+
+            if (this.is_saving)
+                this.writeChecksum();
+
+            this.release();
         }
+
+        this.file_index = findex;
+        const file_name = this.getFileName(this.file_index);
+        bool file_exist = std.file.exists(file_name);
+
+        this.file =
+            new MmFile(
+                file_name,
+                MmFile.Mode.readWrite,
+                MapSize,
+                null
+            );
+
+        this.file_base = DataSize * this.file_index;
+        if (file_exist)
+            return this.validateChecksum();
+
+        return true;
     }
 
     /***************************************************************************
@@ -410,7 +403,7 @@ public class BlockStorage : IBlockStorage
         this.is_saving = true;
         scope(exit) this.is_saving = false;
         size_t block_size = 0;
-        scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
+        scope SerializeDg dg = (scope const(ubyte[]) data) @safe
         {
             // write to memory
             if (!this.write(data_position + block_size, data))
@@ -463,55 +456,47 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public override bool updateBlockMultiSig (const ref Block block) @safe nothrow
+    public override bool updateBlockMultiSig (const ref Block block) @safe
     {
-        try
-        {
-            const size_t block_position = this.height_idx.findBlockPosition(block.header.height);
-            if (block_position == 0)
-                return false;
-            Block original_block = this.readBlock(block.header.height);
-
-            if (block.merkle_tree != original_block.merkle_tree)
-                throw new Exception("block merkle_tree has changed!");
-
-            ubyte[Hash.sizeof] original_hash_bytes = hashFull(original_block.header)[];
-            ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
-
-            // The block hash does not include the header signature and bitfield
-            // So they should be the same
-            if (original_hash_bytes != hash_bytes)
-                throw new Exception("block hash has changed!");
-
-            const size_t data_position = block_position + size_t.sizeof;
-
-            this.is_saving = true;
-            scope(exit) this.is_saving = false;
-            size_t block_size = 0;
-            scope SerializeDg dg = (scope const(ubyte[]) data) nothrow @safe
-            {
-                // write to memory
-                if (!this.write(data_position + block_size, data))
-                    assert(0);
-
-                block_size += data.length;
-            };
-            serializePart(block, dg);
-
-            // write block data size
-            if (!this.writeSizeT(block_position, block_size))
-                throw new Exception("failed to write block data size");
-
-            this.length += size_t.sizeof + block_size;
-            this.writeChecksum();
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.error("BlockStorage.updateBlockMultiSig: not updated : {}", ex);
+        const size_t block_position = this.height_idx.findBlockPosition(block.header.height);
+        if (block_position == 0)
             return false;
-        }
+        Block original_block = this.readBlock(block.header.height);
+
+        if (block.merkle_tree != original_block.merkle_tree)
+            throw new Exception("block merkle_tree has changed!");
+
+        ubyte[Hash.sizeof] original_hash_bytes = hashFull(original_block.header)[];
+        ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
+
+        // The block hash does not include the header signature and bitfield
+        // So they should be the same
+        if (original_hash_bytes != hash_bytes)
+            throw new Exception("block hash has changed!");
+
+        const size_t data_position = block_position + size_t.sizeof;
+
+        this.is_saving = true;
+        scope(exit) this.is_saving = false;
+        size_t block_size = 0;
+        scope SerializeDg dg = (scope const(ubyte[]) data) @safe
+        {
+            // write to memory
+            if (!this.write(data_position + block_size, data))
+                assert(0);
+
+            block_size += data.length;
+        };
+        serializePart(block, dg);
+
+        // write block data size
+        if (!this.writeSizeT(block_position, block_size))
+            throw new Exception("failed to write block data size");
+
+        this.length += size_t.sizeof + block_size;
+        this.writeChecksum();
+
+        return true;
     }
 
     /// Implementes `IBlockStorage.readBlock(in Height)`
@@ -570,7 +555,7 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    private bool writeSizeT (size_t pos, size_t value) @trusted nothrow
+    private bool writeSizeT (size_t pos, size_t value) @trusted
     {
         foreach (idx, e; (cast(const ubyte*)&value)[0 .. size_t.sizeof])
             if (!this.writeByte(pos + idx, e))
@@ -591,16 +576,11 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    private bool readSizeT (size_t pos, ref size_t value) @trusted nothrow
+    private bool readSizeT (size_t pos, ref size_t value) @trusted
     {
-        try
-        {
-            ubyte[] data = this.read(pos, pos+size_t.sizeof);
-            value = *cast(size_t*)(data.ptr);
-            return true;
-        }
-        catch (Exception e)
-            return false;
+        ubyte[] data = this.read(pos, pos+size_t.sizeof);
+        value = *cast(size_t*)(data.ptr);
+        return true;
     }
 
     /***************************************************************************
@@ -659,32 +639,24 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    private bool write (size_t pos, const ubyte[] data) @trusted nothrow
+    private bool write (size_t pos, const ubyte[] data) @trusted
     {
-        try
+        if (
+            (this.file !is null) &&
+            (pos / DataSize == this.file_index) &&
+            ((pos + data.length) / DataSize == this.file_index))
         {
-            if (
-                (this.file !is null) &&
-                (pos / DataSize == this.file_index) &&
-                ((pos + data.length) / DataSize == this.file_index))
-            {
-                const size_t x0 = pos - this.file_base + ChecksumSize;
-                foreach (idx, e; data)
-                    this.file[x0+idx] = e;
-            }
-            else
-            {
-                foreach (idx, e; data)
-                    if (!this.writeByte(pos + idx, e))
-                        return false;
-            }
-            return true;
+            const size_t x0 = pos - this.file_base + ChecksumSize;
+            foreach (idx, e; data)
+                this.file[x0+idx] = e;
         }
-        catch (Exception ex)
+        else
         {
-            log.error("BlockStorage.write: {}", ex);
-            return false;
+            foreach (idx, e; data)
+                if (!this.writeByte(pos + idx, e))
+                    return false;
         }
+        return true;
     }
 
     /***************************************************************************
@@ -700,21 +672,13 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    private bool writeByte (size_t pos, ubyte data) @trusted nothrow
+    private bool writeByte (size_t pos, ubyte data) @trusted
     {
-        try
-        {
-            if (!this.map(pos / DataSize))
-                return false;
-
-            this.file[pos - this.file_base + ChecksumSize] = data;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.error("BlockStorage.writeByte({}): {}", pos, ex);
+        if (!this.map(pos / DataSize))
             return false;
-        }
+
+        this.file[pos - this.file_base + ChecksumSize] = data;
+        return true;
     }
 
     /***************************************************************************
@@ -1020,10 +984,8 @@ public class MemBlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public override bool updateBlockMultiSig (const ref Block block) @safe nothrow
+    public override bool updateBlockMultiSig (const ref Block block) @safe
     {
-        scope (failure) assert(0, "BlockStorage: Block Signature update failed");
-
         if (this.blocks.length < block.header.height)
             return false;
 
