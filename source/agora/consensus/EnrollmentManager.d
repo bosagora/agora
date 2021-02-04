@@ -415,9 +415,6 @@ public class EnrollmentManager
 
     public Enrollment createEnrollment (in Hash utxo, Height height) @safe nothrow
     {
-        // K, frozen UTXO hash
-        this.enroll_key = utxo;
-
         // X, final seed data and preimages of hashes
         const seed = this.cycle.getPreImage(this.key_pair.v, height);
         const enroll = makeEnrollment(
