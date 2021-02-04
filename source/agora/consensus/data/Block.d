@@ -51,11 +51,11 @@ public struct BlockHeader
     /// The hash of the merkle root of the transactions
     public Hash merkle_root;
 
-    /// Bitfield containing the validators' key indices which signed the block
-    public BitField!ubyte validators;
-
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
+
+    /// Bitfield containing the validators' key indices which signed the block
+    public BitField!ubyte validators;
 
     /// Enrolled validators
     public Enrollment[] enrollments;
@@ -157,8 +157,8 @@ public struct Block
                 this.header.prev_block,
                 this.header.height,
                 this.header.merkle_root,
-                validators,
                 signature,
+                validators,
                 this.header.enrollments.dup,
                 this.header.random_seed,
                 this.header.missing_validators.dup,
