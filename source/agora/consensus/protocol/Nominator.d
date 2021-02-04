@@ -699,18 +699,23 @@ extern(D):
         assert(envelope.statement.pledges.type_ ==
             SCPStatementType.SCP_ST_CONFIRM);
 
-        ConsensusData con_data;
-        try
-        {
-            con_data = deserializeFull!ConsensusData(
-                envelope.statement.pledges.confirm_.ballot.value[]);
-        }
-        catch (Exception ex)
-        {
-            assert(0);  // this should never happen
-        }
         const Block last_block = this.ledger.getLastBlock();
-        Hash random_seed = this.ledger.getExternalizedRandomSeed(
+
+        if (Height(envelope.statement.slotIndex) != last_block.header.height + 1)
+        {
+            log.trace("signConfirmBallot: Ignoring envelope with slot id {} as ledger is at height {}",
+                envelope.statement.slotIndex, last_block.header.height);
+            return;  // slot was already externalized or envelope is too new
+        }
+
+        ConsensusData con_data = () {
+            try return deserializeFull!ConsensusData(
+                envelope.statement.pledges.confirm_.ballot.value[]);
+            catch (Exception ex)
+                assert(0);  // this should never happen
+        }();
+
+        const Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 last_block.header.height, con_data.missing_validators);
 
         Transaction[] signed_tx_set;
@@ -721,26 +726,18 @@ extern(D):
             return;
         }
 
-
-        if (Height(envelope.statement.slotIndex) != last_block.header.height + 1)
-        {
-            log.trace("signConfirmBallot: Ignoring envelope with slot id {} as ledger is at height {}",
-                envelope.statement.slotIndex, last_block.header.height);
-            return;  // slot was already externalized or envelope is too new
-        }
         const proposed_block = makeNewBlock(last_block,
             signed_tx_set, con_data.timestamp, random_seed,
             con_data.enrolls, con_data.missing_validators);
 
-        Height height = proposed_block.header.height;
         const Sig sig = createBlockSignature(proposed_block);
 
         envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!256(sig.s[]));
 
         // Store our block signature in the slot_sigs map
         log.trace("signConfirmBallot: ADD block signature at height {} for this node {}",
-            height, this.node_public_key);
-        this.slot_sigs[height][this.schnorr_pair.V] = sig;
+            last_block.header.height + 1, this.node_public_key);
+        this.slot_sigs[last_block.header.height + 1][this.schnorr_pair.V] = sig;
     }
 
     /***************************************************************************
