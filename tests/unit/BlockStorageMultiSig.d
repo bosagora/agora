@@ -22,6 +22,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 import agora.node.BlockStorage;
 import agora.utils.Test;
 import agora.utils.PrettyPrinter;
@@ -92,7 +93,7 @@ private void main ()
         assert(block2.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
         block2.header.signature = SIG2;
         block2.header.validators[0] = true;
-        storage.updateBlockMultiSig(block2);
+        storage.updateBlockSig(Height(h), block2.hashFull(), SIG2, block2.header.validators);
         block = storage.readBlock(Height(h));
         assert(block == block2, format!"read block at height %s:\n%s\n\n"(h, prettify(block)));
         assert(block.header.validators[0] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));

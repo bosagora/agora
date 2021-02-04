@@ -17,6 +17,7 @@
 module agora.node.BlockStorage;
 
 import agora.common.Amount;
+import agora.common.BitField;
 import agora.common.Types;
 import agora.common.Serializer;
 import agora.consensus.data.Block;
@@ -100,14 +101,18 @@ public interface IBlockStorage
         validator signers.
 
         Params:
-            block = `Block` to save
+            height = Height of the block to update
+            hash = Hash of the block to update (used for safety check)
+            sig  = New value for `Block.header.signature`
+            validators = New value for `Block.header.validators`
 
-        Returns:
-            Returns true if success, otherwise returns false.
+        Throws:
+            If an error happened
 
     ***************************************************************************/
 
-    public bool updateBlockMultiSig (const ref Block block);
+    public void updateBlockSig (in Height height, in Hash hash,
+        in Signature sig, in BitField!ubyte validators);
 
     /***************************************************************************
 
@@ -439,43 +444,30 @@ public class BlockStorage : IBlockStorage
             throw new Exception("Blockstorage: Failed to save the index");
     }
 
-    /***************************************************************************
-
-        Update block in the file.
-        This is intended for updating the multi-sig header signature field
-        The block size should be identical and this will not update unless it is
-
-        Params:
-            block = `Block` to save
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public override bool updateBlockMultiSig (const ref Block block) @safe
+    /// Implements `IBlockStorage.updateBlockSig`
+    public override void updateBlockSig (in Height height, in Hash hash,
+        in Signature sig, in BitField!ubyte validators) @safe
     {
-        const size_t block_position = this.height_idx.findBlockPosition(block.header.height);
+        const size_t block_position = this.height_idx.findBlockPosition(height);
         if (block_position == 0)
-            return false;
-        Block original_block = this.readBlock(block.header.height);
+            throw new Exception("Cannot update signature for Genesis block");
 
-        if (block.merkle_tree != original_block.merkle_tree)
-            throw new Exception("block merkle_tree has changed!");
-
-        ubyte[Hash.sizeof] original_hash_bytes = hashFull(original_block.header)[];
-        ubyte[Hash.sizeof] hash_bytes = hashFull(block.header)[];
-
-        // The block hash does not include the header signature and bitfield
-        // So they should be the same
-        if (original_hash_bytes != hash_bytes)
-            throw new Exception("block hash has changed!");
+        // Hardcoded values to ensure other invariant hold (such as no arrays)
+        enum SignatureOffset = 192;
+        enum ValidatorsOffset = SignatureOffset + Signature.sizeof;
+        static assert(Block.header.signature.offsetof == SignatureOffset,
+            "This code relies on the offset of `Block.header.signature` and need update");
+        static assert(Block.header.validators.offsetof == ValidatorsOffset,
+            "This code relies on the offset of `Block.header.validators` and need update");
 
         const size_t data_position = block_position + size_t.sizeof;
-
         this.is_saving = true;
         scope(exit) this.is_saving = false;
-        size_t block_size = 0;
+
+        if (!this.write(data_position + SignatureOffset, sig[]))
+            assert(0);
+
+        size_t block_size = ValidatorsOffset;
         scope SerializeDg dg = (scope const(ubyte[]) data) @safe
         {
             // write to memory
@@ -484,16 +476,8 @@ public class BlockStorage : IBlockStorage
 
             block_size += data.length;
         };
-        serializePart(block, dg);
-
-        // write block data size
-        if (!this.writeSizeT(block_position, block_size))
-            throw new Exception("failed to write block data size");
-
-        this.length += size_t.sizeof + block_size;
+        serializePart(validators, dg);
         this.writeChecksum();
-
-        return true;
     }
 
     /// Implementes `IBlockStorage.readBlock(in Height)`
@@ -965,28 +949,24 @@ public class MemBlockStorage : IBlockStorage
         );
     }
 
-    /***************************************************************************
-
-        Update block in the array.
-        This is intended for updating the multi-sig header signature field
-        The block size should be identical and this will not update unless it is
-
-        Params:
-            block = `Block` to save
-
-        Returns:
-            Returns true if success, otherwise returns false.
-
-    ***************************************************************************/
-
-    public override bool updateBlockMultiSig (const ref Block block) @safe
+    /// Implements `IBlockStorage.updateBlockSig`
+    public override void updateBlockSig (in Height height, in Hash hash,
+        in Signature sig, in BitField!ubyte validators) @safe
     {
-        if (this.blocks.length < block.header.height)
-            return false;
+        if (this.blocks.length < height)
+            throw new Exception("No such block");
 
-        this.blocks[block.header.height.value] = serializeFull!Block(block);
+        Block block = deserializeFull!Block(this.blocks[height.value]);
+        if (hash != block.hashFull())
+            throw new Exception("Mismatch in block hash while updating signatures");
+        if (block.header.validators.length != validators.length)
+            throw new Exception("Number of validators doesn't match while updating signatures");
 
-        return true;
+        block.header.signature = sig;
+        foreach (idx; 0 .. validators.length)
+            block.header.validators[idx] = validators[idx];
+
+        this.blocks[height.value] = serializeFull(block);
     }
 
     /// Implements `IBlockStorage.readBlock(in Height)`
@@ -1127,7 +1107,8 @@ private void testStorage (IBlockStorage storage)
             return 0;
         },
         genesis_validator_keys);
-    storage.updateBlockMultiSig(updated_block);
+    storage.updateBlockSig(updated_block.header.height, updated_block.hashFull(),
+        updated_block.header.signature, updated_block.header.validators);
     block = storage.readBlock(Height(BlockCount - 1));
     iota(0, 6).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set after update"(i)));
