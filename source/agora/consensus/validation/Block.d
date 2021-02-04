@@ -137,12 +137,17 @@ public string isInvalidReason (const ref Block block, Height prev_height,
     if (!block.txs.isSorted())
         return "Block: Transactions are not sorted";
 
+    bool only_coinbase = true;
     foreach (const ref tx; block.txs)
     {
+        only_coinbase &= tx.type == TxType.Coinbase;
         if (auto fail_reason = VTx.isInvalidReason(tx, findUTXO,
             block.header.height, checkFee))
             return fail_reason;
     }
+
+    if (only_coinbase)
+        return "Block: Must contain other transactions than Coinbase";
 
     auto expected_cb_txs = getCoinbaseTX(block.txs,
         block.header.missing_validators);

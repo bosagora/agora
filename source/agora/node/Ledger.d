@@ -659,8 +659,10 @@ public class Ledger
         }
 
         const pre_cb_len = data.tx_set.length;
-        data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
-            data.missing_validators).map!(tx => tx.hashFull()).array;
+        // Dont append a CB TX to an empty TX set
+        if (pre_cb_len > 0)
+            data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
+                data.missing_validators).map!(tx => tx.hashFull()).array;
         // No more than 1 CB per block
         assert(data.tx_set.length - pre_cb_len <= 1);
     }
@@ -718,6 +720,7 @@ public class Ledger
         NoTransactions = "Transaction set doesn't contain any transactions",
         NotEnoughValidators = "Enrollment: Insufficient number of active validators",
         MayBeValid = "May be valid",
+        OnlyCoinbaseTX = "Transaction set only includes a Coinbase transaction",
     }
 
     /***************************************************************************
@@ -1034,7 +1037,12 @@ public class Ledger
             local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
             return InvalidConsensusDataReason.MayBeValid;
         }
-        return null;
+
+        // Check if we have any real TXs
+        foreach (tx; tx_set)
+            if (tx.type != TxType.Coinbase)
+                return null;
+        return InvalidConsensusDataReason.OnlyCoinbaseTX;
     }
 
     /***************************************************************************
@@ -1076,12 +1084,12 @@ version (unittest)
     import agora.network.Clock : MockClock;
 
     /// simulate block creation as if a nomination and externalize round completed
-    private void forceCreateBlock (Ledger ledger,
+    private void forceCreateBlock (Ledger ledger, ulong max_txs = Block.TxsInTestBlock,
         string file = __FILE__, size_t line = __LINE__)
     {
         ConsensusData data;
-        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-        assert(data.tx_set.length >= Block.TxsInTestBlock);
+        ledger.prepareNominatingSet(data, max_txs);
+        assert(data.tx_set.length >= max_txs);
         if (!ledger.externalize(data, file, line))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized!"(ledger.getBlockHeight() + 1));
@@ -1751,7 +1759,7 @@ unittest
     {
         auto new_txs = genTransactions(txs);
         new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-        ledger.forceCreateBlock(file, line);
+        ledger.forceCreateBlock(Block.TxsInTestBlock, file, line);
         return new_txs;
     }
 
@@ -1981,4 +1989,43 @@ unittest
         assert(cb_txs[0].outputs.filter!(output => output.address ==
             mpv_stake.output.address).array.length == 0);
     }
+}
+
+// Coinbase only ConsensusData and blocks should not be validated
+unittest
+{
+    import agora.utils.WellKnownKeys : CommonsBudget;
+    import agora.consensus.data.genesis.Test;
+    import std;
+    ConsensusConfig config = { validator_cycle: 20, payout_period: 1 };
+    auto params = new immutable(ConsensusParams)(GenesisBlock,
+        CommonsBudget.address, config);
+
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+
+    auto txs = blocks[$-1].spendable.map!(txb =>
+        txb.deduct(Amount.UnitPerCoin).sign()).array();
+    assert(ledger.acceptTransaction(txs[0]));
+    ledger.forceCreateBlock(1);
+
+    ConsensusData data;
+    ledger.prepareNominatingSet(data, 1);
+    // Coinbase TX should not be nominated.
+    assert(data.tx_set.length == 0);
+
+    const Transaction[] empty_tx_set;
+    const uint[] empty_mpvs;
+
+    auto cb_tx_set = ledger.getCoinbaseTX(empty_tx_set, empty_mpvs);
+    data.tx_set ~= cb_tx_set.map!(tx => tx.hashFull()).array;
+    assert(data.tx_set.length == 1);
+    // Coinbase only nomination, Should not validate
+    assert(ledger.validateConsensusData(data) ==
+        Ledger.InvalidConsensusDataReason.OnlyCoinbaseTX);
+    assert(!ledger.externalize(data));
+
+    auto last_block = ledger.getLastBlock();
+    const block = makeNewBlock(last_block, cb_tx_set, data.timestamp);
+    assert(ledger.validateBlock(block) == "Block: Must contain other transactions than Coinbase");
 }
