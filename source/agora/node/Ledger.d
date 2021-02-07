@@ -883,14 +883,7 @@ public class Ledger
 
     public Hash getValidatorRandomSeed (Height height) nothrow
     {
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
-
-        return this.enroll_man.getRandomSeed(keys, height);
+        return this.enroll_man.getRandomSeed(height);
     }
 
     /***************************************************************************
@@ -912,7 +905,7 @@ public class Ledger
     public Hash getExternalizedRandomSeed (in Height height,
         const ref uint[] missing_validators) @safe nothrow
     {
-        return this.slash_man.getExternalizedRandomSeed(height,
+        return this.enroll_man.getExternalizedRandomSeed(height,
             missing_validators);
     }
 
@@ -1060,7 +1053,7 @@ public class Ledger
 
     public Hash getRandomSeed() nothrow @safe
     {
-        return this.slash_man.getRandomSeed(this.last_block.header.height);
+        return this.enroll_man.getRandomSeed(this.last_block.header.height);
     }
 }
 

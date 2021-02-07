@@ -1650,7 +1650,7 @@ public class TestValidatorNode : Validator, TestAPI
     {
         Hash[] utxos;
         assert(this.enroll_man.getEnrolledUTXOs(utxos) && utxos.length > 0);
-        const rand_seed = this.enroll_man.getRandomSeed(utxos, height);
+        const rand_seed = this.enroll_man.getRandomSeed(height);
         QuorumConfig[] quorums;
         foreach (pub_key; pub_keys)
             quorums ~= buildQuorumConfig(pub_key, utxos,

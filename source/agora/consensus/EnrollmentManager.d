@@ -689,7 +689,6 @@ public class EnrollmentManager
         block height.
 
         Params:
-            keys = the keys to look up (must be sorted)
             height = the desired block height to look up the images for
 
         Returns:
@@ -697,14 +696,15 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Hash getRandomSeed (in Hash[] keys, in Height height) @safe nothrow
-    in
+    public Hash getRandomSeed (in Height height) @safe nothrow
     {
-        assert(keys.length != 0);
-        assert(keys.isStrictlyMonotonic!((a, b) => a < b));
-    }
-    do
-    {
+        Hash[] keys;
+        if (!this.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
         Hash rand_seed;
         foreach (const ref key; keys)
         {
@@ -712,6 +712,54 @@ public class EnrollmentManager
             // We could have a misbehaving validator that does not reveal
             // its preimages in real world. In order to deal with the validator,
             // We implement the slashing protocol.
+            if (preimage == PreImageInfo.init)
+            {
+                log.info("No preimage at height {} for validator key {}", height.value, key);
+                continue;
+            }
+            rand_seed = hashMulti(rand_seed, preimage);
+        }
+
+        return rand_seed;
+    }
+
+    /***************************************************************************
+
+        Get the random seed reduced from the preimages of validators
+        except the provided 'missing_validators'.
+
+        Params:
+            height = the desired block height to look up the hash for
+            missing_validators = the validators that did not reveal their
+                preimages for the height
+
+        Returns:
+            the random seed if there are one or more valid preimages,
+            otherwise Hash.init.
+
+    ***************************************************************************/
+
+    public Hash getExternalizedRandomSeed (in Height height,
+        const ref uint[] missing_validators) @safe nothrow
+    {
+        Hash[] keys;
+        if (!this.getEnrolledUTXOs(keys) || keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
+        Hash[] valid_keys;
+        foreach (idx, key; keys)
+        {
+            if (missing_validators.find(idx).empty())
+                valid_keys ~= key;
+        }
+
+        Hash rand_seed;
+        foreach (const ref key; keys)
+        {
+            const preimage = this.validator_set.getPreimageAt(key, height);
             if (preimage == PreImageInfo.init)
             {
                 log.info("No preimage at height {} for validator key {}", height.value, key);
@@ -1692,17 +1740,17 @@ unittest
     }
 
     utxos.sort();  // must be sorted by enrollment key
-    assert(man.getRandomSeed(utxos, Height(1)) ==
+    assert(man.getRandomSeed(Height(1)) ==
         Hash(`0xdc7a2c2b27784ab29d44ccb3b9ed1c02e75ac82f64eb8f5988f895d7c797f461040ae31c9f7fe1804dab829518dd4d0e889a027b5ad64af33f2bd6e44569d943`),
-        man.getRandomSeed(utxos, Height(1)).to!string);
+        man.getRandomSeed(Height(1)).to!string);
 
-    assert(man.getRandomSeed(utxos, Height(504)) ==
+    assert(man.getRandomSeed(Height(504)) ==
         Hash(`0xd955dd08edefeb089ff024438e5e81e08db55f9c80665386d535a9573a0f217df3437627913eb696d48f7a16af9d447959da528e47812cfae7971160a3ccebf5`),
-        man.getRandomSeed(utxos, Height(504)).to!string);
+        man.getRandomSeed(Height(504)).to!string);
 
-    assert(man.getRandomSeed(utxos, Height(1008)) ==
+    assert(man.getRandomSeed(Height(1008)) ==
         Hash(`0x1d621824f744d74151ec770c4835f45fcdc58d2c29cece0b3039e4c2546d7ef16ab4e71c33db712984130c1cd9d287a4453f7d68e7f493dec6dba845c44035be`),
-        man.getRandomSeed(utxos, Height(1008)).to!string);
+        man.getRandomSeed(Height(1008)).to!string);
 }
 
 // Tests for get/set a enrollment key

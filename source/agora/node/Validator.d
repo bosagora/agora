@@ -172,7 +172,7 @@ public class Validator : FullNode, API
             assert(0);
         }
 
-        const rand_seed = this.enroll_man.getRandomSeed(keys, height);
+        const rand_seed = this.enroll_man.getRandomSeed(height);
         qc = buildQuorumConfig(this.config.validator.key_pair.address,
             keys, this.utxo_set.getUTXOFinder(), rand_seed,
             this.quorum_params);

@@ -144,80 +144,6 @@ public class SlashPolicy
 
     /***************************************************************************
 
-        Get the random seed reduced from the preimages for the provided
-        block height.
-
-        Params:
-            height = the desired block height to look up the hash for
-
-        Returns:
-            the random seed if there are one or more valid preimages,
-            otherwise Hash.init.
-
-    ***************************************************************************/
-
-    public Hash getRandomSeed (in Height height) @safe nothrow
-    {
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
-
-        Hash[] valid_keys;
-        foreach (key; keys)
-        {
-            if (this.hasRevealedPreimage(height, key))
-                valid_keys ~= key;
-        }
-
-        // NOTE: The random seed of `Hash.init` value is currently
-        // checked in the `validateSlashingData` function of `Ledger`.
-        if (valid_keys.length == 0)
-            return Hash.init;
-
-        return this.enroll_man.getRandomSeed(valid_keys, height);
-    }
-
-    /***************************************************************************
-
-        Get the random seed reduced from the preimages of validators
-        except the provided 'missing_validators'.
-
-        Params:
-            height = the desired block height to look up the hash for
-            missing_validators = the validators that did not reveal their
-                preimages for the height
-
-        Returns:
-            the random seed if there are one or more valid preimages,
-            otherwise Hash.init.
-
-    ***************************************************************************/
-
-    public Hash getExternalizedRandomSeed (in Height height,
-        const ref uint[] missing_validators) @safe nothrow
-    {
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
-
-        Hash[] valid_keys;
-        foreach (idx, key; keys)
-        {
-            if (missing_validators.find(idx).empty())
-                valid_keys ~= key;
-        }
-
-        return this.enroll_man.getRandomSeed(valid_keys, height);
-    }
-
-    /***************************************************************************
-
         Check if a validator has a pre-image for the height
 
         Params:
@@ -418,15 +344,4 @@ unittest
     slash_man.getMissingValidatorsUTXOs(validators_utxos, missing_validators);
     assert(validators_utxos.find(first_validator_utxo).empty());
     assert(validators_utxos.find(second_validator_utxo).empty());
-
-    // get and check random seed
-    Hash preimage_root = slash_man.getRandomSeed(Height(2));
-    assert(preimage_root ==
-        hashMulti(hashMulti(Hash.init, preimage_2), preimage_1));
-
-    // get and check random seed when a block being externalized
-    Hash externalized_seed = slash_man.getExternalizedRandomSeed(Height(2),
-        missing_validators);
-    assert(externalized_seed ==
-        hashMulti(hashMulti(Hash.init, preimage_2), preimage_1));
 }
