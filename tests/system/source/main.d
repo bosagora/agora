@@ -38,127 +38,93 @@ import core.time;
 // Lets make it easy to find our log lines
 immutable string PREFIX = ">>CI:";
 
-// keep polling the nodes for a complete network discovery, until a timeout
-private void waitForDiscovery (API[] clients, Duration timeout)
-{
-    clients.enumerate.each!((idx, api) =>
-        retryFor(api.getNodeInfo().ifThrown(NodeInfo.init)
-            .state == NetworkState.Complete,
-            timeout,
-            format("%s Client #%s has not completed discovery after %s.",
-                PREFIX, idx, timeout)));
-}
-
 int main (string[] args)
 {
     writefln("%s START SYSTEM TEST", PREFIX);
     if (args.length < 2)
     {
         writefln("%s You must enter addresses of the nodes to connect to.", PREFIX);
-        writefln("%s   ex) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...", PREFIX);
+        writefln("%s   eg.) http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002 ...", PREFIX);
         return 1;
     }
-
     /// Address array of nodes
     const addresses = args[1..$];
 
+    API[] clients;
+    foreach (const ref addr; addresses)
+        clients ~= new RestInterfaceClient!API(addr);
+
+    // Get node name from address for logging
+    string nodeFromClientIndex(size_t index)
     {
-        API[] clients;
-        foreach (const ref addr; addresses)
-            clients ~= new RestInterfaceClient!API(addr);
+        return format!"node-%s"(addresses[index][$-1 .. $]);
+    }
 
-        waitForDiscovery(clients, 10.seconds);
-        const GenesisBlock = clients[0].getBlocksFrom(0, 1)[0];
+    // keep polling the nodes for a complete network discovery, until a timeout
+    writefln("%s waitForDiscovery", PREFIX);
+    const discovery_duration = 20.seconds;
+    clients.enumerate.each!((idx, client) =>
+    {
+        retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
+            .state == NetworkState.Complete,
+            discovery_duration,
+            format("%s %s has not completed discovery after %s.",
+                PREFIX, nodeFromClientIndex(idx), discovery_duration * (idx + 1)));
+    }());
 
+    /// Check block generation
+    void assertBlockHeightAtleast (ulong height)
+    {
+        Hash block_hash;
+        const Duration retry_delay = 500.msecs;
+        const Duration max_duration = 30.seconds;
         foreach (idx, ref client; clients)
         {
-            writefln("%s Client #%s node info: %s", PREFIX, idx, client.getNodeInfo());
-            const height = client.getBlockHeight();
-            writefln("%s Client #%s has block height %s", PREFIX, idx, height);
-            writefln("%s ----------------------------------------", PREFIX);
-            assert(height == 0);
+            writefln("%s Check block height is %s for %s", PREFIX, height, nodeFromClientIndex(idx));
+            ulong node_height;
+            Duration duration = 0.seconds;
+            do
+            {
+                node_height = client.getBlockHeight();
+                if (node_height < height) // Only sleep when we need to
+                {
+                    writefln("%s %s has height %s not yet height %s: sleep %s (so far %s out of %s max) ",
+                        PREFIX, nodeFromClientIndex(idx), node_height, height, retry_delay,
+                        duration == 0.seconds ? "0 secs" : duration.toString(), max_duration);
+                    Thread.sleep(retry_delay);
+                }
+                else
+                {
+                    writefln("%s %s is at block height %s", PREFIX, nodeFromClientIndex(idx), node_height);
+                    const blocks = client.getBlocksFrom(node_height + 1, 10);
+                    writefln("%s %s has blocks:\n%s", PREFIX, nodeFromClientIndex(idx), prettify(blocks));
+                    writefln("%s ----------------------------------------", PREFIX);
+                }
+                duration += retry_delay;
+            }
+            while (node_height < height && duration < max_duration); // Retry if we're too early
+            assert(node_height >= height,
+                format!"%s %s still has block height %s less than expected height %s after more than %s"
+                    (PREFIX, nodeFromClientIndex(idx), node_height, height, duration));
         }
-
-        // Make sure the nodes use the test genesis block
-        const blocks = clients[0].getBlocksFrom(0, 1);
-        assert(blocks.length == 1);
-        assert(blocks[0] == TestGenesis.GenesisBlock);
-
-        auto kp = WK.Keys.Genesis;
-
-        writefln("%s Put 1 transaction to client[0]", PREFIX);
-        genesisSpendable().takeExactly(1)
-            .map!(txb => txb.sign()).each!(tx => clients[0].putTransaction(tx));
-
-        writefln("%s Wait 5 seconds", PREFIX);
-        Thread.sleep(5.seconds); // Give time for block to be externalized
-
-        writefln("%s Check height is 1", PREFIX);
-        assertBlockHeight(clients, addresses, 1);
-
-        // wait for distance 1 to be revealed before block 2 is proposed
-        waitForPreimages(clients, addresses, 1, 5.seconds);
-        writefln("%s Put 8 transactions to client[0]", PREFIX);
-        genesisSpendable().dropExactly(1).takeExactly(1)
-            .map!(txb =>
-                txb.split(WK.Keys.byRange.map!(k => k.address)
-                    .take(8)).sign())
-            .each!(tx => clients[0].putTransaction(tx));
-
-        writefln("%s Wait 5 seconds", PREFIX);
-        Thread.sleep(5.seconds); // Give time for block to be externalized
-
-        writefln("%s Check height is 2", PREFIX);
-        assertBlockHeight(clients, addresses, 2);
     }
+
+    clients.enumerate.each!((idx, client) =>
+    {
+        writefln("%s %s info: %s", PREFIX, nodeFromClientIndex(idx), client.getNodeInfo());
+        const height = client.getBlockHeight();
+        writefln("%s %s has block height %s", PREFIX, nodeFromClientIndex(idx), height);
+        writefln("%s ----------------------------------------", PREFIX);
+    }());
+
+    // Make sure the nodes use the test genesis block
+    const blocks = clients[0].getBlocksFrom(0, 1);
+    assert(blocks.length == 1);
+    assert(blocks[0] == TestGenesis.GenesisBlock, format!"%s Not using expected TestGenesis.GenesisBlock"(PREFIX));
+
+    auto target_height = 1;
+    iota(target_height).each!(h => assertBlockHeightAtleast(h));
+    writefln("%s All nodes reached target height %s", PREFIX, target_height);
 
     return 0;
-}
-
-/// wait for preimages for the given distance to be revealed
-private void waitForPreimages (API[] clients, in string[] addresses, in uint distance,
-    Duration timeout)
-{
-    clients.each!(client =>
-        TestGenesis.GenesisBlock.header.enrollments.each!(enroll =>
-            retryFor(client.getPreimage(enroll.utxo_key)
-                .distance >= distance, timeout)));
-}
-
-/// Check block generation
-private void assertBlockHeight (API[] clients, const string[] addresses, ulong height)
-{
-    Hash blockHash;
-    size_t times; // Number of times we slept for 500 msecs
-    foreach (idx, ref client; clients)
-    {
-        writefln("%s Check block height is %s for Client #%s ", PREFIX, height, idx);
-        ulong getHeight;
-        do
-        {
-            getHeight = client.getBlockHeight();
-            if (getHeight < height) // Only sleep when we need to
-            {
-                writefln("%s Client #%s not yet correct height: wait 500 ms", PREFIX, idx);
-                Thread.sleep(500.msecs);
-            }
-            else
-            {
-                writefln("%s Client #%s is at block height %s", PREFIX, idx, getHeight);
-                const blocks = client.getBlocksFrom(0, 42);
-                writefln("%s Client #%s has blocks:\n%s", PREFIX, idx, prettify(blocks));
-                writefln("%s ----------------------------------------", PREFIX);
-                assert(blocks.length == height + 1);
-                if (idx != 0)
-                    assert(blockHash == hashFull(blocks[height].header));
-                else
-                    blockHash = hashFull(blocks[height].header);
-            }
-        }
-        while (getHeight < height && times++ < 50); // Retry if we're too early
-        assert(getHeight == height,
-            format!"%s Client #%s still has block height %s not %s"
-                (PREFIX, idx, getHeight, height));
-        times = 0;
-    }
 }

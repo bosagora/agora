@@ -73,3 +73,10 @@ services:
       - "./node/0/:/agora/"
       - "../../source:/agora/source/"
       - "../../submodules:/agora/submodules/"
+
+  # faucet
+  faucet:
+    image: "bpfk/faucet:latest"
+    depends_on:
+      - node-7
+    command: http://node-7:7826
