@@ -18,4 +18,4 @@ rdmd --compiler=${DC} ./tests/runner.d --compiler=${DC} -cov
 export dchatty=true
 export dsinglethreaded=true
 # Run a single test at a time to prevent resource issues and also see which test failed
-./build/agora-unittests || ./build/agora-unittests
+gdb -batch -ex "handle SIGUSR1 noprint" -ex "handle SIGUSR2 noprint" -ex run -ex bt ./build/agora-unittests

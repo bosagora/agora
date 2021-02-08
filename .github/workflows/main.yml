@@ -21,7 +21,7 @@ jobs:
       # of the nigthly is broken
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macOS-10.15, windows-2019 ]
+        os: [ ubuntu-18.04 ]
         dc: [ ldc-master, ldc-1.24.0 ]
         # Define job-specific parameters
         include:
@@ -62,7 +62,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install g++-9 libsodium-dev libsqlite3-dev libunwind-dev
+        sudo apt-get install g++-9 libsodium-dev libsqlite3-dev libunwind-dev gdb
+        sudo sysctl -w vm.max_map_count=655300
 
     - name: '[Windows] Install dependencies & setup environment'
       if: runner.os == 'Windows'
