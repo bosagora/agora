@@ -147,6 +147,9 @@ public class FullNode : API
     /// The checker of transaction data payload
     protected FeeManager fee_man;
 
+    /// Timer this node has started
+    protected ITimer[] timers;
+
     /***************************************************************************
 
         Constructor
@@ -274,7 +277,7 @@ public class FullNode : API
         {
             void discover () { this.network.discover(); }
             discover(); // avoid delay
-            this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
+            this.timers ~= this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
         });
     }
 
@@ -305,7 +308,8 @@ public class FullNode : API
                 this.network.getMissingBlockSigs(this.ledger);
             }
             catchup(); // avoid delay
-            this.taskman.setTimer(this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);
+            this.timers ~= this.taskman.setTimer(
+                this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);
         });
     }
 
@@ -365,12 +369,16 @@ public class FullNode : API
     public void shutdown ()
     {
         log.info("Shutting down..");
+        foreach (timer; this.timers)
+            timer.stop();
+
         this.taskman.logStats();
         this.network.dumpMetadata();
         this.stopStatsServer();
         this.pool = null;
         this.utxo_set = null;
         this.enroll_man = null;
+        this.timers = null;
     }
 
     /***************************************************************************
@@ -539,7 +547,7 @@ public class FullNode : API
         return new Clock(
             (out long time_offset) { return true; },
             (Duration duration, void delegate() cb) nothrow @trusted
-                { this.taskman.setTimer(duration, cb, Periodic.Yes); });
+                { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************
