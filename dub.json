@@ -190,6 +190,7 @@
         "barcode":          { "version": "*" },
         "base32":           { "version": "*" },
         "bitblob":          { "version": "*" },
+        "crypto":           { "version": "*" },
         "d2sqlite3":        { "version": "*" },
         "dyaml":            { "version": "*" },
         "libsodiumd":       { "version": "*" },
