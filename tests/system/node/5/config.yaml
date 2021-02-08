@@ -9,13 +9,13 @@ node:
   max_listeners: 10
   address: 0.0.0.0
   port:    5826
-  retry_delay: 50
-  max_retries: 25
-  timeout: 100
+  retry_delay: 500
+  max_retries: 20
+  timeout: 10000
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
   block_interval_sec: 5
-  block_catchup_interval_secs: 2
+  block_catchup_interval_secs: 5
 
 consensus:
   validator_cycle: 20
