@@ -137,6 +137,24 @@ public struct Block
     ///
     public Hash[] merkle_tree;
 
+    /***************************************************************************
+
+        Computes the hash matching this block
+
+        The hash of a block is that of its header, however it is not uncommon
+        that one call `hashFull` on the block instead of the header.
+        As a result, this function simply forwards to the header.
+
+
+        Params:
+            dg = Hashing function accumulator
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.header, dg);
+    }
 
     /***************************************************************************
 
@@ -569,6 +587,13 @@ version (unittest)
     block = makeNewBlock(GenesisBlock, [Transaction.init], block_ts, [enr_2, enr_1],
         random_seed, missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
+}
+
+///
+@safe nothrow unittest
+{
+    import agora.consensus.data.genesis.Test;
+    assert(GenesisBlock.header.hashFull() == GenesisBlock.hashFull());
 }
 
 /// Test of Merkle Path and Merkle Proof
