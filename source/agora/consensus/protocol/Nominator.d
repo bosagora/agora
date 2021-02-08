@@ -538,7 +538,7 @@ extern(D):
                 random_seed, con_data.missing_validators);
             const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
                 public_key, Scalar(envelope.statement.pledges.confirm_.value_sig));
-            if (!this.collectBlockSignature(block_sig, proposed_block))
+            if (!this.collectBlockSignature(block_sig, proposed_block.hashFull()))
                 return;
         }
 
@@ -570,7 +570,7 @@ extern(D):
                 return;
             }
             const Block block = blocks.front;
-            if (!collectBlockSignature(block_sig, block))
+            if (!this.collectBlockSignature(block_sig, block.hashFull()))
                 return;
             const signed_block = updateMultiSignature(block);
             if (signed_block == Block.init)
@@ -750,7 +750,7 @@ extern(D):
 
         Params:
             block_sig = the structure with the block signature details
-            block = the proposed block
+            block_hash = the hash of the proposed block
 
         Returns:
             true if verified
@@ -758,7 +758,7 @@ extern(D):
     ***************************************************************************/
 
     private bool collectBlockSignature (const ref ValidatorBlockSig block_sig,
-        const Block block) nothrow
+        in Hash block_hash) nothrow
     {
         const Point K = Point(block_sig.public_key[]);
         if (!K.isValid())
@@ -766,7 +766,7 @@ extern(D):
             log.warn("Invalid point from public_key {}", block_sig.public_key);
             return false;
         }
-        const Scalar block_challenge = hashFull(block);
+        const Scalar block_challenge = block_hash;
         // Fetch the R from enrollment commitment for signing validator
         const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
         log.trace("collectBlockSignature: Enrollment commitment CR for validator {} is {}", block_sig.public_key, CR);
