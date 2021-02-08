@@ -573,18 +573,18 @@ public class NetworkManager
     }
 
     /// Periodically registers network addresses
-    public void startPeriodicNameRegistration ()
+    public ITimer startPeriodicNameRegistration ()
     {
         this.registry_client = this.getNameRegistryClient(
             this.validator_config.registry_address, 2.seconds);
         if (this.registry_client is null)
-            return;
+            return null;
 
         this.onRegisterName();  // avoid delay
         // we re-register in every 2 minutes, in order to cope with the situation below
         // 1. network registry server is restarted
         // 2. client running agora node acquired some new IPs
-        this.taskman.setTimer(2.minutes, &this.onRegisterName, Periodic.Yes);
+        return this.taskman.setTimer(2.minutes, &this.onRegisterName, Periodic.Yes);
     }
 
     /// Discover the network, connect to all required peers

@@ -224,11 +224,12 @@ public class Validator : FullNode, API
         this.started = true;
         // Note: Switching the next two lines leads to test failure
         // It should not, and this needs to be fixed eventually
-        this.network.startPeriodicNameRegistration();
+        this.timers ~= this.network.startPeriodicNameRegistration();
         super.start();
 
         this.clock.startSyncing();
-        this.taskman.setTimer(this.config.validator.preimage_reveal_interval,
+        this.timers ~= this.taskman.setTimer(
+            this.config.validator.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
 
         if (this.config.admin.enabled)
@@ -253,7 +254,7 @@ public class Validator : FullNode, API
         {
             void discover () { this.network.discover(this.required_peer_keys); }
             discover();  // avoid delay
-            this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
+            this.timers ~= this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
         });
     }
 
@@ -420,7 +421,7 @@ public class Validator : FullNode, API
                     time_offset);
             },
             (Duration duration, void delegate() cb) nothrow @trusted
-                { this.taskman.setTimer(duration, cb, Periodic.Yes); });
+                { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************
