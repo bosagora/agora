@@ -49,3 +49,6 @@
 [submodule "barcode"]
 	path = submodules/barcode
 	url = https://github.com/deviator/barcode.git
+[submodule "crypto"]
+	path = submodules/crypto
+	url = https://github.com/bpfkorea/crypto.git

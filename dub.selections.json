@@ -5,6 +5,7 @@
 		"base32": {"path":"submodules/base32/"},
 		"bitblob": {"path":"submodules/bitblob/"},
 		"botan": {"path":"submodules/botan/"},
+		"crypto": {"path":"submodules/crypto/"},
 		"d2sqlite3": {"path":"submodules/d2sqlite3/"},
 		"diet-ng": {"path":"submodules/diet-ng/"},
 		"dyaml": {"path":"submodules/dyaml/"},

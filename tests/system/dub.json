@@ -9,6 +9,7 @@
     [
         "Have_base32",
         "Have_bitblob",
+        "Have_crypto",
         "Have_d2sqlite3",
         "Have_diet_ng",
         "Have_eventcore",
@@ -42,6 +43,7 @@
         "../../source",
         "../../submodules/base32/src",
         "../../submodules/bitblob/source",
+        "../../submodules/crypto/source",
         "../../submodules/d2sqlite3/source",
         "../../submodules/diet-ng/source",
         "../../submodules/eventcore/source",
