@@ -130,6 +130,22 @@ public struct BitField (T = uint)
         return this._storage.length * BitsPerT;
     }
 
+    /// Sets a BitField to the value of another BitField
+    public ref BitField opAssign (scope const BitField other)
+        @safe pure nothrow @nogc scope return
+    {
+        return this.opAssign(other);
+    }
+
+    /// Ditto
+    public ref BitField opAssign (scope const ref BitField other)
+        @safe pure nothrow @nogc scope return
+    {
+        // If there's a mismatch in length, druntime will handle it
+        this._storage[] = other._storage[];
+        return this;
+    }
+
     /// Supports setting a single bit to a value
     public bool opIndexAssign (bool value, size_t index) pure nothrow @safe @nogc
     {
@@ -217,7 +233,7 @@ unittest
     assert(res[9] == false);
 }
 
-// opEquals tests
+// opEquals && opAssign tests
 unittest
 {
     auto bf1 = BitField!uint(6);
@@ -238,6 +254,14 @@ unittest
 
     bf2[5] = true;
     assert(bf2 != bf1);
+
+    // `opAssign`
+    bf2 = bf1;
+    assert(bf2 == bf1);
+    bf1[4] = false;
+    assert(bf2 != bf1);
+    bf1 = bf2;
+    assert(bf2 == bf1);
 }
 
 // Serialization tests
