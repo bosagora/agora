@@ -197,47 +197,15 @@ public interface FlashAPI
 
     /***************************************************************************
 
-        Requests a balance update for a currently open channel.
-        The channel ID must already exist, and the sequence ID must be
-        greater than the last known succesfully signed sequence ID.
-
-        A node should reject a balance update request for a sequence which
-        has already been previously accepted by this call. If the node rejects
-        the request due to disagreement about the `BalanceRequest`, the calling
-        node may attempt a new request with the same sequence ID.
-
-        This request may be issued by any party in the channel,
-        as funds may travel in any direction.
-
-        Params:
-            chan_id = an existing channel ID previously opened with
-                `openChannel()` and agreed to by the counter-party.
-            seq_id = the new sequence ID of the settle / update pair.
-                This should always be +1 of a previously successfully
-                signed sequence ID.
-            balance_req = contains information about the balance request like
-                the requested new balance.
-
-        Returns:
-            the nonce pair for the next settle & update transactions,
-            or an error code with an optional error message.
-
-    ***************************************************************************/
-
-    //public Result!PublicNonce requestBalanceUpdate (in Hash chan_id,
-    //    in uint seq_id, in BalanceRequest balance_req);
-
-    /***************************************************************************
-
         Requests a settlement signature for an established channel and a
         previously agreed-upon balance update's sequence ID as set through
-        the `requestBalanceUpdate` call.
+        the `proposePayment` / `proposeUpdate` call.
 
         Params:
             chan_id = A previously seen pending channel ID provided
                 by the funder node through the call to `openChannel()`.
             seq_id = the agreed-upon balance update's sequence ID as
-                set in the `requestBalanceUpdate` call.
+                set in the `proposePayment` / `proposeUpdate` call.
 
         Returns:
             the signature for the settlement transaction,
@@ -251,7 +219,7 @@ public interface FlashAPI
 
         Requests an update signature for an established channel and a
         previously agreed-upon balance update's sequence ID as set through
-        the `requestBalanceUpdate` call.
+        the `proposePayment` / `proposeUpdate` call.
 
         The node will reject this call unless it has received a settlement
         signature in the call to `requestSettleSig()`.
@@ -260,7 +228,7 @@ public interface FlashAPI
             chan_id = A previously seen pending channel ID provided
                 by the funder node through the call to `openChannel()`
             seq_id = the agreed-upon balance update's sequence ID as
-                set in the `requestBalanceUpdate` call, for which a
+                set in the `proposePayment` / `proposeUpdate` call, for which a
                 settlement signature was received.
 
         Returns:
