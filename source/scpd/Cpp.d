@@ -25,7 +25,7 @@
 
 module scpd.Cpp;
 
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 
 //import core.stdcpp.exception;
 import core.stdcpp.xutility;

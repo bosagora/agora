@@ -25,7 +25,7 @@ import agora.common.BitField;
 import agora.common.Config;
 import agora.common.crypto.Key;
 import agora.common.ManagedDatabase;
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -1470,7 +1470,7 @@ private immutable(Block)[] genBlocksToIndex (
 unittest
 {
     import agora.common.BitField;
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     import std.exception;
 
     // Default test genesis block has 6 validators

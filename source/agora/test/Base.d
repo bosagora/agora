@@ -208,7 +208,7 @@ private UnitTestResult customModuleUnitTester ()
 
             // this test checks GC usage stats before / after tests,
             // but other threads can change the outcome of the GC usage stats
-            if (all_single_threaded || mod.name == "agora.common.Serializer")
+            if (all_single_threaded || mod.name == "agora.crypto.Serializer")
                 single_threaded ~= ModTest(mod.name, fp);
             else if (mod.name == "agora.test.ManyValidators")
                 heavy_tests ~= ModTest(mod.name, fp);
@@ -310,7 +310,7 @@ private UnitTestResult customModuleUnitTester ()
 /// A custom serializer for LocalRest
 public struct Serializer
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     static immutable(ubyte)[] serialize (T) (auto ref T value) @trusted nothrow
     {
@@ -1792,7 +1792,7 @@ public struct TestConf
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     (in TestConf test_conf, string file = __FILE__, int line = __LINE__)
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     import std.digest;
     import std.range;
 

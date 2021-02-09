@@ -15,7 +15,7 @@ module agora.test.QuorumShuffle;
 
 version (unittest):
 
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;

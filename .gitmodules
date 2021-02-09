@@ -51,4 +51,4 @@
 	url = https://github.com/deviator/barcode.git
 [submodule "crypto"]
 	path = submodules/crypto
-	url = https://github.com/bpfkorea/crypto.git
+	url = https://github.com/hewison-chris/crypto.git

@@ -14,7 +14,7 @@
 module agora.common.Set;
 
 import agora.common.Types;
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 
 import libsodium.randombytes;
 

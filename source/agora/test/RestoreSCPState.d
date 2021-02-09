@@ -16,7 +16,7 @@ module agora.test.RestoreSCPState;
 version (unittest):
 
 import agora.common.Config;
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 import agora.common.Task;
 import agora.common.crypto.Key;
 import agora.consensus.EnrollmentManager;

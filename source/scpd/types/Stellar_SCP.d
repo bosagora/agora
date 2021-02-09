@@ -15,7 +15,7 @@ module scpd.types.Stellar_SCP;
 
 import vibe.data.json;
 
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 
 import scpd.Cpp;
 import scpd.types.Stellar_types;

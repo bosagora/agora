@@ -20,7 +20,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.SCPHash;
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;

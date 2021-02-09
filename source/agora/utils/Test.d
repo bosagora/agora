@@ -32,7 +32,7 @@ module agora.utils.Test;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;

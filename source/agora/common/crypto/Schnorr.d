@@ -149,7 +149,7 @@ public struct Sig
 // Test serialization
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     const KP = Pair.random();
     auto signature = Sig(KP.V, KP.v).toBlob();

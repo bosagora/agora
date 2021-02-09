@@ -577,7 +577,7 @@ private struct ConsensusDataFmt
 ///
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     import agora.common.Set;
     import agora.crypto.Hash;
 

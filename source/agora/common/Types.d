@@ -26,13 +26,6 @@ public alias cstring = const(char)[];
 /// A network address
 public alias Address = string;
 
-/// Whether integers are serialized in variable-length form
-public enum CompactMode : bool
-{
-    No,
-    Yes
-}
-
 /// The definition of a Quorum
 public struct QuorumConfig
 {

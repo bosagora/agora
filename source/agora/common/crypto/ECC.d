@@ -263,7 +263,7 @@ public struct Scalar
     static immutable string s = "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec";
     assert(Scalar.fromString(s).toString(PrintMode.Clear) == s);
     // Make sure it's serialized as a value type (without length)
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     assert(Scalar.random().serializeFull().length == Scalar.sizeof);
 }
 
@@ -288,7 +288,7 @@ nothrow @nogc @safe unittest
 //
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     testSymmetry!Scalar();
     testSymmetry(Scalar.random());
 }
@@ -418,7 +418,7 @@ public struct Point
 // Test serialization
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     testSymmetry!Point();
     testSymmetry(Scalar.random().toPoint());
     // Make sure it's serialized as a value type (without length)

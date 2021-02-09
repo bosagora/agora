@@ -19,7 +19,7 @@ import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.crypto.Key;
 import agora.common.Types;
-import agora.common.Serializer;
+import agora.crypto.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;

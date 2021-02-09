@@ -219,7 +219,7 @@ unittest
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     testSymmetry(GenesisBlock.txs[0]);
     testSymmetry(GenesisBlock);
 }

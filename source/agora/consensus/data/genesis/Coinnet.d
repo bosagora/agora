@@ -41,7 +41,7 @@ public immutable Block GenesisBlock =
 ///
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
 
     assert(GenesisBlock.header.prev_block == Hash.init);
@@ -171,7 +171,7 @@ unittest
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     testSymmetry(GenesisTransactions);
     testSymmetry(GenesisBlock);
 }
