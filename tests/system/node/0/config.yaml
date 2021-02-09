@@ -36,13 +36,6 @@ validator:
   registry_address: disabled
 
 ################################################################################
-##                         Ban manager configuration                          ##
-################################################################################
-banman:
-  max_failed_requests: 10
-  ban_duration: 86400
-
-################################################################################
 ##                               Node discovery                               ##
 ##                                                                            ##
 ## When the network first starts, we need to connect to some peers to learn   ##
