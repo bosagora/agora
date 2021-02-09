@@ -17,9 +17,6 @@ version (unittest):
 
 import agora.common.Amount;
 import agora.common.Config;
-import agora.common.crypto.Key;
-import agora.consensus.EnrollmentManager;
-import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
@@ -67,10 +64,7 @@ private class SameKeyValidator : TestValidatorNode
 private class SameKeyNodeAPIManager : TestAPIManager
 {
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint initial_time)
-    {
-        super(blocks, test_conf, initial_time);
-    }
+    mixin ForwardCtor!();
 
     /// See base class
     public override void createNewNode (Config conf, string file, int line)

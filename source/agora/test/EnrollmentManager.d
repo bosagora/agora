@@ -16,15 +16,10 @@ module agora.test.EnrollmentManager;
 
 version (unittest):
 
-import agora.common.Amount;
-import agora.consensus.data.Block;
 import agora.consensus.data.Params;
-import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
-import agora.consensus.EnrollmentManager;
 import agora.consensus.validation.PreImage;
-import agora.network.Clock;
 import agora.test.Base;
 
 import core.thread;
@@ -81,7 +76,7 @@ unittest
     auto first_node = network.clients[0];
 
     // Request enrollment at the height of 15
-    Enrollment enroll = first_node.createEnrollmentData();
+    auto enroll = first_node.createEnrollmentData();
     first_node.enrollValidator(enroll);
 
     // Make 5 blocks in order to finish the validator cycle

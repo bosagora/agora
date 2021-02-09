@@ -14,27 +14,17 @@
 
 module agora.test.LocalTransactions;
 
-import agora.test.Base;
-import agora.utils.Log;
-
-import agora.consensus.data.Params;
-import agora.consensus.protocol.Data;
-import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
-import agora.consensus.data.Block;
-import agora.consensus.state.UTXODB;
-import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.common.Task;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.crypto.Hash;
-import agora.network.NetworkManager;
-import agora.network.Clock;
 import agora.node.Ledger;
-import agora.node.BlockStorage;
-import agora.node.TransactionPool;
+import agora.test.Base;
+import agora.utils.Log;
+
 import geod24.Registry;
 import core.thread;
 
