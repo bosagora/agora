@@ -114,17 +114,6 @@ public struct Balance
     public HTLC[Hash] outgoing_htlcs;
 }
 
-/// A request for a new balance which also contains the senders's public
-/// nonce pair which they promise to use for signing the settle & update txs.
-//public struct BalanceRequest
-//{
-//    /// The new balance that's requested
-//    public Balance balance;
-
-//    /// The nonce the requesting peer agrees to use
-//    public PublicNonce peer_nonce;
-//}
-
 /*******************************************************************************
 
     Embeds a return value for an API as well as any error code and
