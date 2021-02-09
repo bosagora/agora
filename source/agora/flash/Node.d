@@ -89,7 +89,7 @@ public abstract class FlashNode : FlashAPI
         Get an instance of an Agora client.
 
         Params:
-            address = The address (IPv4, IPv6, hostname) of the Agora node.
+            kp = The key-pair of this node
             genesis_hash = the hash of the genesis block to use
             taskman = the task manager ot use
             agora_address = IP address of an Agora node to monitor the
