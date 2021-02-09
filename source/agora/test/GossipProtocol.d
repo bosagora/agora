@@ -16,9 +16,7 @@ module agora.test.GossipProtocol;
 version (unittest):
 
 import agora.common.crypto.Key;
-import agora.consensus.data.Block;
 import agora.common.Types;
-import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.test.Base;
 
@@ -37,7 +35,6 @@ unittest
 
     nodes.each!(node => assert(node.getBlockHeight() == 0));
 
-    Transaction[] last_txs;
     // create enough tx's for a single block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 

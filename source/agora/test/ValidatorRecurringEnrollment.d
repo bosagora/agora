@@ -16,21 +16,13 @@ module agora.test.ValidatorRecurringEnrollment;
 
 import agora.test.Base;
 
-import agora.consensus.data.Params;
+import agora.common.Config;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.Block;
-import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.Fee;
-import agora.common.Task;
-import agora.common.Config;
-import agora.common.Metadata;
-import agora.common.crypto.Key;
 import agora.crypto.Hash;
-import agora.network.NetworkManager;
-import agora.network.Clock;
 import agora.node.Ledger;
 import geod24.Registry;
 

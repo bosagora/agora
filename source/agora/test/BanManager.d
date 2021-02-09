@@ -18,7 +18,6 @@ version (unittest):
 
 import agora.common.crypto.Key;
 import agora.common.Types;
-import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.test.Base;

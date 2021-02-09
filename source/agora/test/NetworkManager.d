@@ -15,11 +15,9 @@ module agora.test.NetworkManager;
 
 version (unittest):
 
-import agora.api.Validator;
-import agora.common.BanManager;
+import agora.api.FullNode;
 import agora.common.Config;
 import agora.common.crypto.Key;
-import agora.common.Metadata;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;

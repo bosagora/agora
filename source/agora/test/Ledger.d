@@ -21,8 +21,6 @@ import agora.common.crypto.Key;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
-import agora.consensus.data.Params;
-import agora.consensus.data.genesis;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.Fee;
