@@ -213,7 +213,7 @@ class NetworkClient
 
     public void sendTransaction (Transaction tx) @trusted nothrow
     {
-        import agora.common.Hash;
+        import agora.crypto.Hash;
         const tx_hash = tx.hashFull();
 
         this.taskman.runTask(

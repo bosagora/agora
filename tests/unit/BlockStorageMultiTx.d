@@ -16,7 +16,6 @@ module unit.BlockStorageMultiTx;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;

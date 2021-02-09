@@ -206,7 +206,7 @@ public struct PublicKey
     ///
     unittest
     {
-        import agora.common.Hash;
+        import agora.crypto.Hash;
 
         immutable address =
             `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;

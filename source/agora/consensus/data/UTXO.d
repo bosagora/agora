@@ -14,11 +14,11 @@
 
 module agora.consensus.data.UTXO;
 
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 
 /// The structure of spendable transaction output
 public struct UTXO

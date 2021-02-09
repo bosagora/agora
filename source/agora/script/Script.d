@@ -14,7 +14,7 @@
 module agora.script.Script;
 
 import agora.common.crypto.ECC;
-import agora.common.Hash;
+import agora.crypto.Hash;
 import agora.script.Opcodes;
 import agora.script.Stack;
 

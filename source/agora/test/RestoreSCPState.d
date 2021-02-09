@@ -18,7 +18,6 @@ version (unittest):
 import agora.common.Config;
 import agora.common.Serializer;
 import agora.common.Task;
-import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;

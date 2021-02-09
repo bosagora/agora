@@ -37,7 +37,7 @@ import agora.common.Types;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
-import agora.common.Hash;
+import agora.crypto.Hash;
 import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.node.Ledger;

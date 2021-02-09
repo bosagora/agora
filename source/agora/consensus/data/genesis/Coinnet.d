@@ -15,12 +15,12 @@ module agora.consensus.data.genesis.Coinnet;
 
 import agora.common.Amount;
 import agora.common.BitField;
-import agora.common.Hash;
 import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 
 /// The genesis block as defined by CoinNet
 public immutable Block GenesisBlock =

@@ -270,7 +270,7 @@ struct SCPEnvelope {
 static assert(SCPEnvelope.sizeof == 264);
 
 struct SCPQuorumSet {
-    import agora.common.Hash;
+    import agora.crypto.Hash;
 
     uint32_t threshold;
     xvector!(PublicKey) validators;
@@ -293,8 +293,8 @@ struct SCPQuorumSet {
 {
     import agora.common.crypto.Key;
     import agora.common.Config;
-    import agora.common.Hash;
     import agora.common.Types;
+    import agora.crypto.Hash;
     import std.conv;
 
     const qc1 = toSCPQuorumSet(QuorumConfig(2,
@@ -339,4 +339,3 @@ static assert(SCPQuorumSet.sizeof == 56);
 
 /// From SCPDriver, here for convenience
 public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
-

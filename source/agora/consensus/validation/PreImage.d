@@ -13,9 +13,9 @@
 
 module agora.consensus.validation.PreImage;
 
-import agora.common.Hash;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
+import agora.crypto.Hash;
 
 version (unittest)
 {

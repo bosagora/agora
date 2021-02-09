@@ -17,8 +17,8 @@
 
 module agora.common.crypto.ECC;
 
-import agora.common.Hash;
 import agora.common.Types;
+import agora.crypto.Hash;
 
 import geod24.bitblob;
 import libsodium;

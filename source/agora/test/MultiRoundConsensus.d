@@ -26,7 +26,6 @@ import agora.consensus.data.Params;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.network.Clock;

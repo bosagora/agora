@@ -15,12 +15,12 @@
 module agora.consensus.validation.Transaction;
 
 import agora.common.Amount;
-import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
+import agora.crypto.Hash;
 import agora.script.Lock;
 
 version (unittest)

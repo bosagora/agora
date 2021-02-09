@@ -214,7 +214,7 @@ private struct InputFmt
         try
         {
             // todo: use better formatting for byte arrays
-            import agora.common.Hash;
+            import agora.crypto.Hash;
             formattedWrite(sink, "%s:%s",
                 HashFmt(this.value.utxo),
                 HashFmt(hashFull(this.value.unlock)));
@@ -577,9 +577,9 @@ private struct ConsensusDataFmt
 ///
 unittest
 {
-    import agora.common.Hash;
     import agora.common.Serializer;
     import agora.common.Set;
+    import agora.crypto.Hash;
 
     Hash quorumSetHash;
 

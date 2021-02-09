@@ -16,8 +16,8 @@ module agora.test.BlockTimeConsensus;
 version (unittest):
 
 import agora.api.Validator;
-import agora.common.Hash;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 import agora.test.Base;
 
 ///

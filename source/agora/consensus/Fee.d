@@ -479,8 +479,8 @@ public class FeeManager
     unittest
     {
         import std;
+        import agora.crypto.Hash;
         import agora.utils.Test;
-        import agora.common.Hash;
 
         auto man = new FeeManager();
         auto utxoset = new TestUTXOSet();
@@ -537,9 +537,9 @@ public class FeeManager
 
 unittest
 {
-    import agora.utils.Test;
     import agora.consensus.state.UTXOSet;
-    import agora.common.Hash;
+    import agora.crypto.Hash;
+    import agora.utils.Test;
 
     auto fee_man = new FeeManager();
 

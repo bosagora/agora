@@ -18,7 +18,6 @@ module unit.BlockStorageMultiSig;
 import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;

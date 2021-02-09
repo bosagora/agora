@@ -27,7 +27,6 @@ import agora.common.BanManager;
 import agora.common.BitField;
 import agora.common.Config;
 import agora.common.Types;
-import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
@@ -47,6 +46,7 @@ import agora.consensus.SCPEnvelopeStore;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
 import agora.consensus.Fee;
+import agora.crypto.Hash;
 import agora.network.Clock;
 import agora.network.NetworkClient;
 import agora.network.NetworkManager;
@@ -80,7 +80,7 @@ import core.stdc.stdlib : abort;
 
 /* The following imports are frequently needed in tests */
 
-public import agora.common.Types : Height, TimePoint;
+public import agora.common.Types;
  // Contains utilities for testing, e.g. `retryFor`
 public import agora.utils.Test;
 // `core.time` provides duration-related utilities, used e.g. for `retryFor`

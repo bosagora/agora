@@ -24,8 +24,8 @@
 
 module agora.consensus.data.Enrollment;
 
-import agora.common.Hash;
 import agora.common.Types;
+import agora.crypto.Hash;
 
 /*******************************************************************************
 

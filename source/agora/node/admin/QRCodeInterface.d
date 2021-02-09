@@ -16,9 +16,9 @@ module agora.node.admin.QRCodeInterface;
 
 import agora.common.Config;
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.PreImageInfo;
+import agora.crypto.Hash;
 import agora.utils.Log;
 import agora.network.Clock;
 

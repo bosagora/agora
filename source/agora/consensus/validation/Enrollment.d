@@ -16,7 +16,6 @@ module agora.consensus.validation.Enrollment;
 
 import agora.common.Amount;
 import agora.common.Types;
-import agora.common.Hash;
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
@@ -24,12 +23,12 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.state.ValidatorSet;
 import agora.consensus.data.PreImageInfo;
+import agora.crypto.Hash;
 
 import std.conv;
 
 version (unittest)
 {
-    import agora.common.Hash;
     import agora.consensus.data.Transaction;
     import agora.consensus.data.Params;
     import agora.common.ManagedDatabase;

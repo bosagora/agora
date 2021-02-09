@@ -32,13 +32,13 @@ module agora.utils.Test;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
+import agora.crypto.Hash;
 import agora.script.Lock;
 public import agora.utils.Utility : retryFor;
 

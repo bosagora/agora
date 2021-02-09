@@ -16,10 +16,10 @@ module agora.node.TransactionPool;
 
 import agora.common.ManagedDatabase;
 import agora.common.Types;
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 import agora.utils.Log;
 
 import d2sqlite3.library;
@@ -613,7 +613,6 @@ unittest
 {
     import agora.common.Amount;
     import agora.common.crypto.Key;
-    import agora.common.Hash;
 
     auto seed1 = "SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ";
     auto seed2 = "SCTTRCMT7DVZHQS375GWIKYQYHKA3X4IC4EOBNPRGV7DFR3X6OM5VIWL";
@@ -659,7 +658,6 @@ unittest
 {
     import agora.common.Amount;
     import agora.common.crypto.Key;
-    import agora.common.Hash;
 
     auto pool = new TransactionPool(":memory:");
 
@@ -700,7 +698,6 @@ unittest
 {
     import agora.common.Amount;
     import agora.common.crypto.Key;
-    import agora.common.Hash;
 
     auto pool = new TransactionPool(":memory:");
 
@@ -746,7 +743,6 @@ unittest
 {
     import agora.common.Amount;
     import agora.common.crypto.Key;
-    import agora.common.Hash;
 
     // Pick the TX with max output value, assumes only one output
     size_t selector (Transaction[] txs)
@@ -819,7 +815,6 @@ unittest
 {
     import agora.common.Amount;
     import agora.common.crypto.Key;
-    import agora.common.Hash;
     import std.stdio;
 
     auto pool = new TransactionPool(":memory:");

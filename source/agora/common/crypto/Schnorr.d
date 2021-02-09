@@ -44,8 +44,8 @@
 module agora.common.crypto.Schnorr;
 
 import agora.common.Types;
-import agora.common.Hash;
 import agora.common.crypto.ECC;
+import agora.crypto.Hash;
 
 import std.algorithm;
 import std.range;

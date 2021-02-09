@@ -14,12 +14,12 @@
 module agora.consensus.data.genesis;
 
 import agora.common.Amount;
-import agora.common.Hash;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.validation.Block;
+import agora.crypto.Hash;
 
 /*******************************************************************************
 
