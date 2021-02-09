@@ -14,12 +14,12 @@
 module agora.consensus.state.UTXOSet;
 
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
 public import agora.consensus.data.UTXO;
+import agora.crypto.Hash;
 import agora.utils.Log;
 
 import std.file;

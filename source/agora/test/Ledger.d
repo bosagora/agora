@@ -18,7 +18,6 @@ version (unittest):
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -28,6 +27,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.Fee;
 import agora.consensus.validation;
+import agora.crypto.Hash;
 import agora.script.Lock;
 import agora.test.Base;
 

@@ -18,7 +18,6 @@ version (unittest):
 
 import agora.common.crypto.Key;
 import agora.common.Config;
-import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;

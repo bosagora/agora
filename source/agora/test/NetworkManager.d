@@ -19,12 +19,12 @@ import agora.api.Validator;
 import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.crypto.Key;
-import agora.common.Hash;
 import agora.common.Metadata;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 import agora.script.Lock;
 import agora.test.Base;
 

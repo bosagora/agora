@@ -18,7 +18,6 @@ module agora.consensus.state.ValidatorSet;
 import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
-import agora.common.Hash;
 import agora.common.ManagedDatabase;
 import agora.common.Serializer;
 import agora.common.Types;
@@ -28,6 +27,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.PreImage;
 import agora.consensus.state.UTXOSet;
+import agora.crypto.Hash;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
@@ -1045,4 +1045,3 @@ unittest
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
 }
-

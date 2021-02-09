@@ -14,7 +14,6 @@
 module agora.consensus.validation.Block;
 
 import agora.common.Amount;
-import agora.common.Hash;
 import agora.common.Set;
 import agora.common.Types;
 import agora.common.crypto.ECC;
@@ -28,6 +27,7 @@ import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
                                             EnrollmentStatus;
+import agora.crypto.Hash;
 import agora.script.Lock;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;

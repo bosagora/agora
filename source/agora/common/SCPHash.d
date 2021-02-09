@@ -1,7 +1,7 @@
 /*******************************************************************************
 
     Contains definition of hashing routines which SCP uses.
-    These just call the hashing routines from agora.common.Hash
+    These just call the hashing routines from agora.crypto.Hash
 
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea
@@ -14,7 +14,7 @@
 
 module agora.common.SCPHash;
 
-import agora.common.Hash;
+import agora.crypto.Hash;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;

@@ -17,7 +17,6 @@ module agora.test.EnrollmentManager;
 version (unittest):
 
 import agora.common.Amount;
-import agora.common.Hash;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;

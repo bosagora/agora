@@ -368,11 +368,11 @@ private struct SCPEnvelopeFmt
 unittest
 {
     import agora.common.Config;
-    import agora.common.Hash;
     import agora.common.Serializer;
     import agora.common.Set;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.genesis.Test;
+    import agora.crypto.Hash;
     import scpd.types.Stellar_types : NodeID, uint256, StellarHash = Hash;
     import scpd.types.Utils;
 

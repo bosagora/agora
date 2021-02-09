@@ -17,7 +17,6 @@ version (unittest):
 
 import agora.common.crypto.Key;
 import agora.common.Config;
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Task;
 import agora.consensus.data.Block;

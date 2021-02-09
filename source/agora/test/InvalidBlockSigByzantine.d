@@ -78,7 +78,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
     {
         import agora.common.crypto.Schnorr;
         import agora.common.crypto.ECC;
-        import agora.common.Hash;
+        import agora.crypto.Hash;
         import agora.utils.Test : WK;
 
         // challenge = Hash(block) to Scalar

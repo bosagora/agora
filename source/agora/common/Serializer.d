@@ -103,11 +103,11 @@ import std.traits;
 unittest
 {
     import agora.common.Amount;
-    import agora.common.Hash;
     import agora.common.Serializer;
     import agora.consensus.data.Block;
     import agora.consensus.data.Transaction;
     import agora.consensus.data.genesis.Test;
+    import agora.crypto.Hash;
 
     // Serialize immutable data, then deserialize it as `const`
     ubyte[] block_bytes = serializeFull(GenesisBlock);

@@ -13,9 +13,9 @@
 
 module agora.registry.NameRegistryAPI;
 
-import agora.common.Hash;
 import agora.common.Types;
 import agora.common.crypto.Key;
+import agora.crypto.Hash;
 
 import vibe.http.common;
 import vibe.web.rest;

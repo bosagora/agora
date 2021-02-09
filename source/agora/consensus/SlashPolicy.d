@@ -285,10 +285,10 @@ public class SlashPolicy
 unittest
 {
     import agora.common.crypto.Schnorr;
-    import agora.common.Hash;
     import agora.consensus.data.Transaction;
     import agora.consensus.PreImage;
     import agora.consensus.state.UTXOSet;
+    import agora.crypto.Hash;
 
     import std.algorithm;
     import std.format;

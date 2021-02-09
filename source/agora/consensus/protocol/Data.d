@@ -13,10 +13,9 @@
 
 module agora.consensus.protocol.Data;
 
-import agora.common.Hash;
-
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 
 /// Consensus data which is nominated & voted on
 public struct ConsensusData
