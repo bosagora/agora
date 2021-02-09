@@ -14,7 +14,6 @@
     It must do it in a way that each hop node only knows where to forward
     the packet to next, but may not know the entire route path.
 
-    TODO: Encryption not yet implemented
     NOTE: See https://github.com/lightningnetwork/lightning-rfc/blob/master/04-onion-routing.md
     NOTE: See https://medium.com/softblocks/lightning-network-in-depth-part-2-htlc-and-payment-routing-db46aea445a8
 
