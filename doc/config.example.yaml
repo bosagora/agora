@@ -80,7 +80,7 @@ validator:
 ################################################################################
 banman:
   # max failed requests until an address is banned
-  max_failed_requests: 10
+  max_failed_requests: 1000
   # the default duration of a ban
   ban_duration: 86400
 
