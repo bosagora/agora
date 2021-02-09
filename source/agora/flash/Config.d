@@ -40,7 +40,7 @@ public struct ChannelConfig
     public Point pair_pk;
 
     /// Total number of co-signers needed to make update/settlement transactions
-    /// in this channel. This does not include any HTLC intermediary peers.
+    /// in this channel.
     public /*const*/ uint num_peers;
 
     /// The public key sum used for validating Update transactions.
