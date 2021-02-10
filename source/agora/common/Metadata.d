@@ -13,9 +13,9 @@
 
 module agora.common.Metadata;
 
-import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
+import agora.crypto.Serializer;
 
 import std.array;
 import std.file;

@@ -17,8 +17,8 @@ version (unittest):
 
 import agora.common.crypto.Key;
 import agora.common.Config;
-import agora.common.Serializer;
 import agora.common.Task;
+import agora.crypto.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.EnrollmentManager;

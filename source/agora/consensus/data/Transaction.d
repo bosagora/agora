@@ -22,9 +22,9 @@ module agora.consensus.data.Transaction;
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Types;
-import agora.common.Serializer;
 import agora.consensus.data.DataPayload;
 import agora.crypto.Hash;
+import agora.crypto.Serializer;
 import agora.script.Lock;
 
 import std.algorithm;

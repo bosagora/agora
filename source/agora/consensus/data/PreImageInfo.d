@@ -36,7 +36,7 @@ public struct PreImageInfo
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     testSymmetry!PreImageInfo();
 

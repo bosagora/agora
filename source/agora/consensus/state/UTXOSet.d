@@ -14,7 +14,6 @@
 module agora.consensus.state.UTXOSet;
 
 import agora.common.crypto.Key;
-import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;

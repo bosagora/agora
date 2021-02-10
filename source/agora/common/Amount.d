@@ -436,7 +436,7 @@ pure @safe nothrow @nogc unittest
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     testSymmetry!Amount();
     // FIXME: Deserializer does not yet support deserializing immutable values

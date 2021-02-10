@@ -424,7 +424,7 @@ public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
 /// Genesis block validation fail test
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
     assert(block.isGenesisBlockValid());
@@ -587,7 +587,7 @@ unittest
 /// Genesis block with transaction data is a test that fails validation
 unittest
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     KeyPair key_pair = KeyPair.random;
 

@@ -15,8 +15,8 @@ module agora.common.crypto.Key;
 
 import agora.common.crypto.Crc16;
 import agora.common.Types;
-import agora.common.Serializer;
 import agora.crypto.ECC;
+import agora.crypto.Serializer;
 
 import geod24.bitblob;
 import base32;

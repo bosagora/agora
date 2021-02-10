@@ -15,8 +15,8 @@
 module agora.consensus.SCPEnvelopeStore;
 
 import agora.common.ManagedDatabase;
-import agora.common.Serializer;
 import agora.common.Types;
+import agora.crypto.Serializer;
 import agora.utils.Log;
 
 import d2sqlite3.library;

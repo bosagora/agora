@@ -30,6 +30,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
+import agora.crypto.Serializer;
 import agora.utils.Test;
 
 /*******************************************************************************
@@ -219,7 +220,6 @@ unittest
 
 unittest
 {
-    import agora.common.Serializer;
     testSymmetry(GenesisBlock.txs[0]);
     testSymmetry(GenesisBlock);
 }

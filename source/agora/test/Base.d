@@ -310,7 +310,7 @@ private UnitTestResult customModuleUnitTester ()
 /// A custom serializer for LocalRest
 public struct Serializer
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
 
     static immutable(ubyte)[] serialize (T) (auto ref T value)
     {
@@ -1783,7 +1783,7 @@ public struct TestConf
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     (in TestConf test_conf, string file = __FILE__, int line = __LINE__)
 {
-    import agora.common.Serializer;
+    import agora.crypto.Serializer;
     import std.digest;
     import std.range;
 

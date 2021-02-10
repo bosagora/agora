@@ -16,10 +16,10 @@ module agora.node.TransactionPool;
 
 import agora.common.ManagedDatabase;
 import agora.common.Types;
-import agora.common.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
+import agora.crypto.Serializer;
 import agora.utils.Log;
 
 import d2sqlite3.library;

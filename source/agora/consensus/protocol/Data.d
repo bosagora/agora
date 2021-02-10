@@ -37,9 +37,9 @@ public struct ConsensusData
 /// ConsensusData type testSymmetry check
 unittest
 {
-    import agora.common.Serializer;
     import agora.common.Types;
     import agora.consensus.data.genesis.Test;
+    import agora.crypto.Serializer;
     import std.algorithm;
     import std.array;
 

@@ -29,9 +29,9 @@
 
 module agora.common.BitField;
 
-import agora.common.Serializer;
 import agora.common.Types;
 import agora.crypto.Hash;
+import agora.crypto.Serializer;
 
 import std.algorithm;
 import std.array : array, join, split;

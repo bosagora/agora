@@ -22,7 +22,6 @@
 
 module agora.script.Stack;
 
-import agora.common.Serializer;
 
 import std.container : SList;
 import std.range;

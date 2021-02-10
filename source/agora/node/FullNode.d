@@ -32,7 +32,6 @@ import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.common.crypto.Key;
-import agora.common.Serializer;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;

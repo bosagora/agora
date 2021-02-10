@@ -21,6 +21,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
+import agora.crypto.Serializer;
 
 /// The genesis block as defined by CoinNet
 public immutable Block GenesisBlock =
@@ -41,7 +42,6 @@ public immutable Block GenesisBlock =
 ///
 unittest
 {
-    import agora.common.Serializer;
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
 
     assert(GenesisBlock.header.prev_block == Hash.init);
@@ -171,7 +171,6 @@ unittest
 
 unittest
 {
-    import agora.common.Serializer;
     testSymmetry(GenesisTransactions);
     testSymmetry(GenesisBlock);
 }
