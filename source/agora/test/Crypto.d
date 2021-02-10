@@ -35,7 +35,7 @@ unittest
            s.serializeToJsonString());
 }
 
-// Test serialization for types in `agora.crypto.ECC`
+///
 unittest
 {
     testSymmetry!Scalar();
@@ -44,13 +44,59 @@ unittest
     testSymmetry(Scalar.random().toPoint());
     // Make sure it's serialized as a value type (without length)
     assert(Scalar.random().toPoint().serializeFull().length == Point.sizeof);
+    static struct Bar
+    {
+        string val;
+        int other;
+        uint us;
+    }
+
+    Bar[3] arr = [
+        Bar("Hello", 42, 82),
+        Bar("Cruel", 420, 840),
+        Bar("World", 2424, 100_000),
+    ];
+
+    ubyte[] buffer = new ubyte[512];
+    import ocean.core.Test: testNoAlloc;
+
+    testNoAlloc({
+            auto ret1 = serializeToBuffer(arr, buffer);
+            assert(ret1.length ==
+                   1 /* Top level array length */ +
+                   "HelloCruelWorld".length +
+                   3 /* length of string encoded as a single byte */ +
+                   5 /* 42 encoded as 4 bytes, 82 encoded as a single byte */ +
+                   6 /* 420 as 4 bytes, 840 as 2 bytes */ +
+                   9 /* 2424 as 4 bytes, 100k as 5 bytes */);
+            assert(ret1.ptr is buffer.ptr);
+        }());
 }
 
-// Test serialization for types in `agora.crypto.Schnorr`
+/// Test for static arrays
 unittest
 {
-    const KP = Pair.random();
-    auto signature = Sig(KP.V, KP.v).toBlob();
-    auto bytes = signature.serializeFull();
-    assert(bytes.deserializeFull!Signature == signature);
+    static struct Container
+    {
+        uint[4] data;
+    }
+
+    static struct Container2
+    {
+        Container[4] data;
+    }
+
+    Container2 c = {
+        data: [ {[ 1, 2, 3, 4 ]}, {[ 5, 6, 7, 8 ]},
+                {[ 9, 10, 11, 12 ]}, {[ 13, 14, 15, 16 ]} ]
+    };
+
+    // Check that no allocation is performed
+    auto serialized = serializeFull(c);
+
+    import ocean.core.Test: testNoAlloc;
+    testNoAlloc({
+            const res = deserializeFull!Container2(serialized);
+            assert(res == c);
+        }());
 }
