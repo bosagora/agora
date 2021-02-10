@@ -86,14 +86,14 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
     private Invoice[Hash] invoices;
 
     ///
-    protected Registry* agora_registry;
+    protected Registry!TestAPI* agora_registry;
 
     ///
-    protected Registry* flash_registry;
+    protected Registry!TestFlashAPI* flash_registry;
 
     ///
-    public this (const Pair kp, Registry* agora_registry,
-        string agora_address, Registry* flash_registry)
+    public this (const Pair kp, Registry!TestAPI* agora_registry,
+        string agora_address, Registry!TestFlashAPI* flash_registry)
     {
         this.agora_registry = agora_registry;
         this.flash_registry = flash_registry;
@@ -111,12 +111,12 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    protected override ControlFlashAPI getFlashClient (in Point peer_pk,
+    protected override TestFlashAPI getFlashClient (in Point peer_pk,
         Duration timeout)
     {
         if (auto peer = peer_pk in this.known_peers)
         {
-            auto control_api = cast(ControlFlashAPI)*peer;
+            auto control_api = cast(TestFlashAPI)*peer;
             assert(control_api !is null);  // something's wrong
             return control_api;
         }
@@ -124,7 +124,7 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         auto tid = this.flash_registry.locate(peer_pk.to!string);
         assert(tid != typeof(tid).init, "Flash node not initialized");
 
-        auto peer = new RemoteAPI!ControlFlashAPI(tid, timeout);
+        auto peer = new RemoteAPI!TestFlashAPI(tid, timeout);
         this.known_peers[peer_pk] = peer;
         peer.gossipChannelsOpen(this.known_channels.values);
 
@@ -349,10 +349,10 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
 public class FlashNodeFactory
 {
     /// Registry of nodes
-    private Registry* agora_registry;
+    private Registry!TestAPI* agora_registry;
 
     /// we keep a separate LocalRest registry of the flash "nodes"
-    private Registry flash_registry;
+    private Registry!TestFlashAPI flash_registry;
 
     /// list of flash addresses
     private Point[] addresses;
@@ -361,7 +361,7 @@ public class FlashNodeFactory
     private RemoteAPI!TestFlashAPI[] nodes;
 
     /// Ctor
-    public this (Registry* agora_registry)
+    public this (Registry!TestAPI* agora_registry)
     {
         this.agora_registry = agora_registry;
         this.flash_registry.initialize();
@@ -376,7 +376,7 @@ public class FlashNodeFactory
 
         this.addresses ~= pair.V;
         this.nodes ~= api;
-        this.flash_registry.register(pair.V.to!string, api.tid());
+        this.flash_registry.register(pair.V.to!string, api.listener());
 
         return api;
     }

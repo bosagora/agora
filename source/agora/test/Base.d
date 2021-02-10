@@ -576,7 +576,7 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public Registry* getRegistry ()
+    public Registry!TestAPI* getRegistry ()
     {
         return &this.reg;
     }
