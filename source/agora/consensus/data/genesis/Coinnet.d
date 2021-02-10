@@ -42,13 +42,18 @@ public immutable Block GenesisBlock =
 unittest
 {
     import agora.common.Serializer;
+    import std.conv;
+    import std.algorithm.sorting : isSorted;
+
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
 
     assert(GenesisBlock.header.prev_block == Hash.init);
     assert(GenesisBlock.header.height == 0);
-    assert(GenesisBlock.header.merkle_root == GenesisBlock.merkle_tree[2]);
+    assert(GenesisBlock.txs.isSorted(), "Block transaction must be sorted!");
     assert(GenesisBlock.merkle_tree.length == 3);
-    assert(GenesisBlock.header.merkle_root == block.buildMerkleTree());
+    Hash[] merkle_tree;
+    GenesisBlock.buildMerkleTree(GenesisBlock.txs, merkle_tree);
+    assert(merkle_tree == GenesisMerkleTree, merkle_tree.to!string);
 }
 
 // TODO: Replace with the node's enrollments
@@ -94,8 +99,7 @@ private immutable Enrollment[] Enrollments =
     ];
 
 ///
-private immutable Hash GenesisMerkleRoot =
-    Hash(`0x0e2763d2657ceb688448e24f83e9f912f118a9af82103fc097edf4a2b99fd4cdfb151f2ee29f87cc1255412b73d32801b9740cfe5fc2243fff37e2ff8fec695c`);
+private immutable Hash GenesisMerkleRoot = GenesisMerkleTree[$ - 1];
 
 ///
 private immutable Transaction[] GenesisTransactions =
