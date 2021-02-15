@@ -282,5 +282,5 @@ unittest
 
 /// OnionPacket payment router
 public alias PaymentRouter =
-    void delegate (in Hash chan_id, in Hash payment_hash, in Amount amount,
+    bool delegate (in Hash chan_id, in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet);
