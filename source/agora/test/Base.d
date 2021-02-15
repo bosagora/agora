@@ -127,6 +127,7 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
         output.formattedWrite!"[%s:%s] Assertion thrown during test: %s\n"
             (file, line, msg);
         CircularAppender!()().print(output);
+        stdout.flush();
     }
     catch (Exception exc)
     {
@@ -234,6 +235,7 @@ private UnitTestResult customModuleUnitTester ()
             {
                 auto output = stdout.lockingTextWriter();
                 output.formattedWrite("Unittesting %s..\n", mod.name);
+                stdout.flush();
             }
 
             mod.test();
@@ -246,6 +248,7 @@ private UnitTestResult customModuleUnitTester ()
             output.formattedWrite("%s\n", ex);
             // print logs of the work thread
             CircularAppender!()().print(output);
+            stdout.flush();
         }
     }
 
@@ -1401,6 +1404,7 @@ private mixin template TestNodeMixin ()
         output.put("======================================================================\n");
         CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
+        stdout.flush();
     }
 
     protected override IBlockStorage getBlockStorage () @system
