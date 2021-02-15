@@ -492,23 +492,24 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     Block block;
 
     block.header.prev_block = prev_block.header.hashFull();
-    block.header.height.value = prev_block.header.height.value + 1;
-    txs.each!(tx => block.txs ~= tx);
-    block.txs.sort;
+    block.header.height = prev_block.header.height + 1;
+    block.header.timestamp = timestamp;
+    block.header.random_seed = random_seed;
 
-    block.header.merkle_root = block.buildMerkleTree();
     block.header.enrollments = enrollments;
     block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
         ("a.utxo_key < b.utxo_key"));  // there cannot be duplicates either
 
-    block.header.random_seed = random_seed;
     block.header.missing_validators = missing_validators;
     block.header.missing_validators.sort!((a, b) => a < b);
     assert(block.header.missing_validators.isStrictlyMonotonic!
         ("a < b"));  // there cannot be duplicates either
-    block.header.timestamp = timestamp;
 
+    txs.each!(tx => block.txs ~= tx);
+    block.txs.sort;
+
+    block.header.merkle_root = block.buildMerkleTree();
     return block;
 }
 
