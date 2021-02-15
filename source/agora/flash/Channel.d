@@ -551,7 +551,10 @@ public class Channel
 
     public Result!Signature onRequestSettleSig (in uint seq_id)
     {
-        if (seq_id != this.cur_seq_id)
+        if (seq_id < this.channel_updates.length)
+            return Result!Signature(this.channel_updates[seq_id].our_settle_sig);
+
+        if (seq_id != this.update_signer.getSeqID())
             return Result!Signature(ErrorCode.InvalidSequenceID);
 
         return this.update_signer.getSettleSig();
@@ -573,7 +576,10 @@ public class Channel
 
     public Result!Signature onRequestUpdateSig (in uint seq_id)
     {
-        if (seq_id != this.cur_seq_id)
+        if (seq_id < this.channel_updates.length)
+            return Result!Signature(this.channel_updates[seq_id].our_update_sig);
+
+        if (seq_id != this.update_signer.getSeqID())
             return Result!Signature(ErrorCode.InvalidSequenceID);
 
         return this.update_signer.getUpdateSig();
@@ -644,8 +650,8 @@ public class Channel
 
         this.taskman.setTimer(0.seconds,
         {
-            auto update_pair = this.update_signer.collectSignatures(this.
-                cur_seq_id,
+            auto update_pair = this.update_signer.collectSignatures(
+                this.cur_seq_id,
                 new_outputs, priv_nonce, peer_nonce,
                 this.channel_updates[0].update_tx);  // spend from trigger tx
 
