@@ -22,6 +22,12 @@ public enum ErrorCode : ushort
     /// Requested an update transaction before the matching settlement was signed.
     SettleNotReceived,
 
+    /// Settlement signature not signed yet
+    SettleNotSigned,
+
+    /// Update signature not signed yet
+    UpdateNotSigned,
+
     /// This sequence ID was not agreed upon, or it's outdated.
     InvalidSequenceID,
 
