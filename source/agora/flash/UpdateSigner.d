@@ -147,10 +147,18 @@ public class UpdateSigner
         return this.is_collecting;
     }
 
+    public uint getSeqID ()
+    {
+        return this.seq_id;
+    }
+
     /***************************************************************************
 
         Get the settlement transaction partial signature if it's ready.
         Called by counter-parties.
+
+        It's always safe to share our settlement signature because
+        it may only attach to the matching update tx which is signed later.
 
         Returns:
             our settlement signature,
@@ -160,9 +168,10 @@ public class UpdateSigner
 
     public Result!Signature getSettleSig ()
     {
-        // it's always safe to share our settlement signature because
-        // it may only attach to the matching update tx which is signed later.
-        return Result!Signature(this.pending_settle.our_sig);
+        if (this.pending_settle.our_sig != Signature.init)
+            return Result!Signature(this.pending_settle.our_sig);
+        else
+            return Result!Signature(ErrorCode.SettleNotSigned);
     }
 
     /***************************************************************************
@@ -187,7 +196,10 @@ public class UpdateSigner
                 "Cannot share update signature until the settlement "
                 ~ "signature is received");
 
-        return Result!Signature(this.pending_update.our_sig);
+        if (this.pending_update.our_sig != Signature.init)
+            return Result!Signature(this.pending_update.our_sig);
+        else
+            return Result!Signature(ErrorCode.UpdateNotSigned);
     }
 
     /***************************************************************************
@@ -246,7 +258,7 @@ public class UpdateSigner
             if (settle_res.error)
             {
                 // todo: retry?
-                writefln("Settlement signature request rejected: %s", settle_res);
+                writefln("%s Settlement signature request rejected: %s", cast(void*)this, settle_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -258,8 +270,8 @@ public class UpdateSigner
             settle_res.value, priv_nonce, peer_nonce))
         {
             // todo: inform? ban?
-            writefln("Error during validation: %s. For settle signature: %s",
-                error, settle_res.value);
+            writefln("%s Error during validation: %s. For settle signature: %s",
+                cast(void*)this, error, settle_res.value);
             assert(0);
         }
         this.pending_settle.peer_sig = settle_res.value;
@@ -301,8 +313,10 @@ public class UpdateSigner
         UpdatePair pair =
         {
             seq_id : this.seq_id,
-            update_tx : this.pending_update.tx,
             settle_tx : this.pending_settle.tx,
+            our_settle_sig : this.pending_settle.our_sig,
+            update_tx : this.pending_update.tx,
+            our_update_sig : this.pending_update.our_sig,
         };
 
         return pair;
