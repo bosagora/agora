@@ -59,7 +59,7 @@ private void main ()
                 Output(Amount(1_000), WK.Keys[idx % 8].address)
             ]
         );
-        blocks ~= makeNewBlock(blocks[$ - 1], [tx], blocks[$ - 1].header.timestamp + 1, null, Hash.init, null);
+        blocks ~= makeNewBlock(blocks[$ - 1], [tx], blocks[$ - 1].header.timestamp + 1, Hash.init);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
     }

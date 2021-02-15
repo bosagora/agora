@@ -252,7 +252,7 @@ public class Ledger
         }
 
         auto block = makeNewBlock(this.last_block,
-            externalized_tx_set, data.timestamp, data.enrolls, random_seed,
+            externalized_tx_set, data.timestamp, random_seed, data.enrolls,
             data.missing_validators);
         return this.acceptBlock(block);
     }
@@ -2026,6 +2026,6 @@ unittest
     assert(!ledger.externalize(data));
 
     auto last_block = ledger.getLastBlock();
-    const block = makeNewBlock(last_block, cb_tx_set, data.timestamp);
+    const block = makeNewBlock(last_block, cb_tx_set, data.timestamp, getTestRandomSeed());
     assert(ledger.validateBlock(block) == "Block: Must contain other transactions than Coinbase");
 }

@@ -475,16 +475,16 @@ unittest
         prev_block = the previous block
         txs = the transactions that will be contained in the new block
         timestamp = the block timestamp
-        enrollments = the enrollments that will be contained in the new block
         random_seed = Hash of random seed of the preimages
+        enrollments = the enrollments that will be contained in the new block
         missing_validators = list of indices to the validator UTXO set
             which have not revealed the preimage
 
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, ulong timestamp, Enrollment[] enrollments = null,
-    Hash random_seed = Hash.init, uint[] missing_validators = null)
+    Transactions txs, ulong timestamp, Hash random_seed,
+    Enrollment[] enrollments = null, uint[] missing_validators = null)
     @safe nothrow
 {
     static assert (isInputRange!Transactions);
@@ -547,7 +547,7 @@ version (unittest)
         // however many tests calling makeNewTestBlock have no access to ConsensusParams
         auto block = makeNewBlock(prev_block, txs,
                 (timestamp == ulong.max) ? prev_block.header.timestamp + 1 : timestamp,
-                enrollments, random_seed, missing_validators);
+                random_seed, enrollments, missing_validators);
         return multiSigTestBlock(block, cycleForValidator, keys);
     }
 }
@@ -582,11 +582,11 @@ version (unittest)
     uint[] missing_validators = [];
 
     auto block_ts = GenesisBlock.header.timestamp;
-    auto block = makeNewBlock(GenesisBlock, [Transaction.init], block_ts, [enr_1, enr_2],
-        random_seed, missing_validators);
+    auto block = makeNewBlock(GenesisBlock, [Transaction.init], block_ts,
+        random_seed, [enr_1, enr_2], missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ascending
-    block = makeNewBlock(GenesisBlock, [Transaction.init], block_ts, [enr_2, enr_1],
-        random_seed, missing_validators);
+    block = makeNewBlock(GenesisBlock, [Transaction.init], block_ts,
+        random_seed, [enr_2, enr_1], missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
 }
 
