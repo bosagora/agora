@@ -15,7 +15,7 @@
 
 module agora.test.PeriodicCatchup;
 
-version (unittest):
+version (none):
 
 import agora.common.BitField;
 import agora.common.Config;
