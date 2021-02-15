@@ -63,9 +63,15 @@ public struct UpdatePair
     /// Settle tx which spends from `update_tx` below
     public Transaction settle_tx;
 
+    /// Our portion of the settlement multi-sig
+    public Signature our_settle_sig;
+
     /// Update tx which spends the trigger tx's outputs and can replace
     /// any previous update containing a lower sequence ID than this one's.
     public Transaction update_tx;
+
+    /// Our portion of the update multi-sig
+    public Signature our_update_sig;
 }
 
 /// A pair of settlement and update public nonces used for signing
