@@ -131,42 +131,25 @@ public immutable Block GenesisBlock = {
 ///
 unittest
 {
+    import agora.common.Serializer;
+    import std.conv;
+    import std.algorithm.sorting : isSorted;
+
+    Block block = GenesisBlock.serializeFull.deserializeFull!Block;
+
+    assert(GenesisBlock.header.prev_block == Hash.init);
+    assert(GenesisBlock.header.height == 0);
+    assert(GenesisBlock.txs.isSorted(), "Block transaction must be sorted!");
+    assert(GenesisBlock.merkle_tree.length == 3);
+    Hash[] merkle_tree;
+    GenesisBlock.buildMerkleTree(GenesisBlock.txs, merkle_tree);
+    assert(merkle_tree == GenesisMerkleTree, merkle_tree.to!string);
+}
+
+///
+unittest
+{
     import std.algorithm;
-    import agora.consensus.PreImage;
-    import agora.consensus.data.UTXO;
-    import agora.crypto.ECC;
-    import agora.crypto.Schnorr;
-
-    version (none)
-    {
-        import std.stdio;
-        import std.range;
-        import agora.consensus.EnrollmentManager;
-
-        const txs = GenesisBlock.txs;
-
-        if (!txs.isStrictlyMonotonic())
-        {
-            writeln("WARN: Genesis block transactions are unsorted!");
-            txs.enumerate.each!((idx, tx) => writefln("[%d]: %s", idx, tx));
-        }
-
-        Hash[] merkle_tree;
-        writeln("Merkle root: ", Block.buildMerkleTree(txs, merkle_tree));
-        writeln("\tMerkle tree: ", merkle_tree);
-
-        const ValidatorCycle = 20;
-        const txhash = txs[0].hashFull();
-        Enrollment[] enrolls = txs[0].outputs.enumerate()
-            .map!(tup => EnrollmentManager.makeEnrollment(
-                      WK.Keys[tup.value.address],
-                      UTXO.getHash(txhash, tup.index),
-                      ValidatorCycle))
-            .array();
-
-        enrolls.sort!((a, b) => a.utxo_key < b.utxo_key);
-        writeln("Enrollments: ", enrolls);
-    }
 
     Amount amount;
     assert(GenesisBlock.txs.all!(tx => tx.getSumOutput(amount)));
