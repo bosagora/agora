@@ -1194,19 +1194,23 @@ public class Channel
 
         const Fee = Amount(100);  // todo: coordinate based on return value
         Pair priv_nonce = Pair.random();
-        auto close_res = this.peer.closeChannel(this.conf.chan_id,
-            this.cur_seq_id, priv_nonce.V, Fee);
 
-        if (close_res.error)
+        this.taskman.setTimer(0.seconds,
         {
-            // todo: retry with bigger fee if smaller fee was rejected
-            // todo: retry?
-            // todo: try unilateral close after the configured timeout?
-            writefln("Closing tx signature request rejected: %s", close_res);
-            assert(0);
-        }
+            auto close_res = this.peer.closeChannel(this.conf.chan_id,
+                this.cur_seq_id, priv_nonce.V, Fee);
 
-        this.collectCloseSignatures(priv_nonce, close_res.value);
+            if (close_res.error)
+            {
+                // todo: retry with bigger fee if smaller fee was rejected
+                // todo: retry?
+                // todo: try unilateral close after the configured timeout?
+                writefln("Closing tx signature request rejected: %s", close_res);
+                assert(0);
+            }
+
+            this.collectCloseSignatures(priv_nonce, close_res.value);
+        });
     }
 
     /***************************************************************************
