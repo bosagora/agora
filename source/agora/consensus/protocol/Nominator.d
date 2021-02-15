@@ -534,8 +534,8 @@ extern(D):
                 return; // We dont have all the TXs for this block. Try to catchup
             }
             const Block proposed_block = makeNewBlock(last_block,
-                received_tx_set, con_data.timestamp, con_data.enrolls,
-                random_seed, con_data.missing_validators);
+                received_tx_set, con_data.timestamp, random_seed,
+                con_data.enrolls, con_data.missing_validators);
             const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
                 public_key, Scalar(envelope.statement.pledges.confirm_.value_sig));
             if (!this.collectBlockSignature(block_sig, proposed_block.hashFull()))
@@ -729,8 +729,8 @@ extern(D):
             return;  // slot was already externalized or envelope is too new
         }
         const proposed_block = makeNewBlock(last_block,
-            signed_tx_set, con_data.timestamp, con_data.enrolls,
-            random_seed, con_data.missing_validators);
+            signed_tx_set, con_data.timestamp, random_seed,
+            con_data.enrolls, con_data.missing_validators);
 
         Height height = proposed_block.header.height;
         const Sig sig = createBlockSignature(proposed_block);
@@ -885,8 +885,8 @@ extern(D):
                 return;
             }
             const block = makeNewBlock(last_block,
-                externalized_tx_set, data.timestamp, data.enrolls, random_seed,
-                data.missing_validators);
+                externalized_tx_set, data.timestamp, random_seed,
+                data.enrolls, data.missing_validators);
 
             // If we did not sign yet then add signature and gossip to other nodes
             if (this.schnorr_pair.V !in this.slot_sigs[height])

@@ -490,7 +490,7 @@ Outputs (1): GCOQ...LRIJ(61,000,000)
     import agora.consensus.data.Block;
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign()), 0);
+        genesisSpendable().take(2).map!(txb => txb.sign()), 0, Hash.init);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;
