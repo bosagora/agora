@@ -460,8 +460,8 @@ unittest
     bob.payInvoice(inv_3);
 
     // wait until the invoices are paid
-    writefln("Sleeping for 5 seconds..");
-    Thread.sleep(5.seconds);
+    writefln("Sleeping for 6 seconds..");
+    Thread.sleep(6.seconds);
 
     // alice is acting bad
     writefln("Alice unilaterally closing the channel..");
