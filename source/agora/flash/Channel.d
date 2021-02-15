@@ -609,8 +609,7 @@ public class Channel
             break;
         }
 
-        const uint new_seq_id = this.cur_seq_id + 1;
-        this.cur_seq_id = new_seq_id;
+        uint new_seq_id = this.cur_seq_id + 1;
 
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
@@ -624,6 +623,10 @@ public class Channel
             result = this.peer.proposeUpdate(this.conf.chan_id, new_seq_id,
                 secrets, pub_nonce, height);
 
+            // there may have been a new payment just before the update proposal
+            if (this.cur_seq_id >= new_seq_id)
+                new_seq_id = this.cur_seq_id + 1;
+
             if (result.error)
             {
                 writefln("ERROR PROPOSING UPDATE (trying again): %s", result);
@@ -634,6 +637,7 @@ public class Channel
             break;
         }
 
+        this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
         auto new_balance = this.foldHTLCs(this.cur_balance, secrets, height);
         const new_outputs = this.buildBalanceOutputs(new_balance);
@@ -759,7 +763,6 @@ public class Channel
         }
 
         const uint new_seq_id = this.cur_seq_id + 1;
-        this.cur_seq_id = new_seq_id;
 
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
@@ -773,6 +776,7 @@ public class Channel
             return;
         }
 
+        this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
         auto new_balance = this.buildUpdatedBalance(this.cur_balance,
             amount, payment_hash, lock_height, height);
