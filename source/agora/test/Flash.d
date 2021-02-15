@@ -551,7 +551,7 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id = bob.openNewChannel(
-        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo, Amount(6_000), Settle_1_Blocks, charlie_pk);
     writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
@@ -565,16 +565,16 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // begin off-chain transactions
-    auto inv_1 = charlie.createNewInvoice(Amount(5_000), time_t.max, "payment 1");
+    auto inv_1 = charlie.createNewInvoice(Amount(4_000), time_t.max, "payment 1");
 
     // here we assume bob sent the invoice to alice through some means,
     // e.g. QR code. Alice scans it and proposes the payment.
     // it has a direct channel to bob so it uses it.
     alice.payInvoice(inv_1);
 
-    // wait until the invoice is done (should payInvoice() be blocking?)
-    writefln("Sleeping for 7 seconds..");
-    Thread.sleep(7.seconds);
+    // Second payment attempt should fail because of insufficient funds
+    auto inv_2 = charlie.createNewInvoice(Amount(4_000), time_t.max, "payment 2");
+    alice.payInvoice(inv_2);
 
     //
     writefln("Beginning bob => charlie collaborative close..");
