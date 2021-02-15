@@ -374,8 +374,8 @@ public abstract class FlashNode : FlashAPI
 
     /// See `FlashAPI.proposeUpdate`
     public override Result!PublicNonce proposeUpdate (in Hash chan_id,
-        in uint seq_id, in Hash[] secrets, in PublicNonce peer_nonce,
-        in Height block_height)
+        in uint seq_id, in Hash[] secrets, in Hash[] rev_htlcs,
+        in PublicNonce peer_nonce, in Height block_height)
     {
         auto channel = chan_id in this.channels;
         if (channel is null)
@@ -386,7 +386,8 @@ public abstract class FlashNode : FlashAPI
             return Result!PublicNonce(ErrorCode.MismatchingBlockHeight,
                 "Mismatching block height!");
 
-        return channel.onProposedUpdate(seq_id, secrets, peer_nonce, block_height);
+        return channel.onProposedUpdate(seq_id, secrets, rev_htlcs, peer_nonce,
+            block_height);
     }
 
     /// See `FlashAPI.isCollectingSignatures`
@@ -413,21 +414,25 @@ public abstract class FlashNode : FlashAPI
 
     ***************************************************************************/
 
-    protected void onPaymentComplete (Hash chan_id, Hash payment_hash)
+    protected void onPaymentComplete (Hash chan_id, Hash payment_hash,
+        bool success = true)
     {
+        auto channel = chan_id in this.channels;
+        if (channel is null)
+        {
+            // todo: assert?
+            writefln("Error: Channel not found: %s", chan_id);
+            return;
+        }
+
         // our own secret (we are the payee)
         if (auto secret = payment_hash in this.secrets)
         {
-            auto channel = chan_id in this.channels;
-            if (channel is null)
-            {
-                // todo: assert?
-                writefln("Error: Channel not found: %s", chan_id);
-                return;
-            }
-
-            channel.proposeNewUpdate([*secret], this.last_block_height);
+            assert(success); // Payee should never fail to receive
+            channel.proposeNewUpdate([*secret], [], this.last_block_height);
         }
+        else if (!success)
+            channel.proposeNewUpdate([], [payment_hash], this.last_block_height);
     }
 
     /***************************************************************************
@@ -442,13 +447,13 @@ public abstract class FlashNode : FlashAPI
 
     ***************************************************************************/
 
-    protected void onUpdateComplete (in Hash[] secrets)
+    protected void onUpdateComplete (in Hash[] secrets, in Hash[] rev_htlcs)
     {
         foreach (chan_id, channel; this.channels)
         {
             writefln("%s: Calling learnSecrets for %s", this.kp.V.prettify,
                 chan_id);
-            channel.learnSecrets(secrets, this.last_block_height);
+            channel.learnSecrets(secrets, rev_htlcs, this.last_block_height);
         }
     }
 
@@ -465,7 +470,7 @@ public abstract class FlashNode : FlashAPI
 
     ***************************************************************************/
 
-    protected void paymentRouter (in Hash chan_id, in Hash payment_hash,
+    protected bool paymentRouter (in Hash chan_id, in Hash payment_hash,
         in Amount amount, in Height lock_height, in OnionPacket packet)
     {
         if (auto channel = chan_id in this.channels)
@@ -477,6 +482,7 @@ public abstract class FlashNode : FlashAPI
         // initial payment
         writefln("%s Could not find this channel ID: %s", this.kp.V.prettify,
             chan_id);
+        return false;
     }
 
     /***************************************************************************
