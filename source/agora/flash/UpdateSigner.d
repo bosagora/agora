@@ -240,9 +240,6 @@ public class UpdateSigner
         // todo: need to validate settlement against update, in case
         // balances are too big, etc.
 
-        // todo: move this into a retry
-        this.taskman.wait(500.msecs);
-
         Result!Signature settle_res;
         while (1)
         {
@@ -268,10 +265,6 @@ public class UpdateSigner
         }
         this.pending_settle.peer_sig = settle_res.value;
         this.pending_settle.validated = true;
-
-        // todo: figure out a way to avoid these waits
-        // (perhaps via another "readyToSign()" API call?)
-        this.taskman.wait(500.msecs);
 
         Result!Signature update_res;
         while (1)

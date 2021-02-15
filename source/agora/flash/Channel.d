@@ -1273,16 +1273,21 @@ public class Channel
         this.pending_close.our_sig = sign(this.kp.v, this.conf.pair_pk,
             nonce_pair_pk, priv_nonce.v, this.pending_close.tx);
 
-        // todo: move this into a retry
-        this.taskman.wait(500.msecs);
+        Result!Signature sig_res;
 
-        auto sig_res = this.peer.requestCloseSig(this.conf.chan_id,
-            this.cur_seq_id);
-        if (sig_res.error)
+        while (1)
         {
-            // todo: retry?
-            writefln("Closing signature request rejected: %s", sig_res);
-            assert(0);
+            sig_res = this.peer.requestCloseSig(this.conf.chan_id,
+                this.cur_seq_id);
+            if (sig_res.error)
+            {
+                // todo: retry?
+                writefln("Closing signature request rejected: %s", sig_res);
+                this.taskman.wait(100.msecs);
+                continue;
+            }
+
+            break;
         }
 
         if (auto error = this.isInvalidCloseMultiSig(this.pending_close,
