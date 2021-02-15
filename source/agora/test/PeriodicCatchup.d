@@ -15,7 +15,7 @@
 
 module agora.test.PeriodicCatchup;
 
-version (unittest):
+version (none):
 
 import agora.common.Config;
 import agora.common.Types;
