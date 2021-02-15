@@ -132,10 +132,11 @@ public class Channel
     /// When a payment has been completed we need to check whether we know
     /// the matching secret of the payment hash. Then we can propose a new
     /// channel update for the channel which uses this payment hash.
-    private void delegate (Hash chan_id, Hash payment_hash) onPaymentComplete;
+    private void delegate (Hash chan_id, Hash payment_hash, bool success = true)
+        onPaymentComplete;
 
     /// Called when a channel update has been completed.
-    private void delegate (in Hash[] secrets) onUpdateComplete;
+    private void delegate (in Hash[] secrets, in Hash[] rev_htlcs) onUpdateComplete;
 
 
     /***************************************************************************
@@ -163,8 +164,8 @@ public class Channel
         TaskManager taskman, void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
-        void delegate (Hash, Hash) onPaymentComplete,
-        void delegate (in Hash[]) onUpdateComplete)
+        void delegate (Hash, Hash, bool) onPaymentComplete,
+        void delegate (in Hash[], in Hash[] rev_htlcs) onUpdateComplete)
     {
         this.conf = conf;
         this.kp = kp;
@@ -261,28 +262,35 @@ public class Channel
 
     ***************************************************************************/
 
-    public void learnSecrets (in Hash[] secrets, in Height height)
+    public void learnSecrets (in Hash[] secrets, in Hash[] rev_htlcs,
+        in Height height)
     {
-        writefln("%s: learnSecrets(%s, hashes: %s, known: %s, %s)",
+        writefln("%s: learnSecrets(%s, hashes: %s, known: %s, drop: %s %s)",
             this.kp.V.prettify,
             secrets.map!(s => s.prettify),
             secrets.map!(s => s.hashFull.prettify),
             this.payment_hashes[].map!(s => s.prettify),
+            rev_htlcs.map!(s => s.prettify),
             height);
 
-        Hash[] matching_secrets;
+        Hash[] matching_secrets, matching_rev_htlcs;
         foreach (secret; secrets)
             if (secret.hashFull() in this.payment_hashes)
                 matching_secrets ~= secret;
 
-        writefln("%s: learnSecrets matching: %s",
+        foreach (htlc; rev_htlcs)
+            if (htlc in this.payment_hashes)
+                matching_rev_htlcs ~= htlc;
+
+        writefln("%s: learnSecrets matching: secrets: %s drop: %s",
             this.kp.V.prettify,
-            matching_secrets.map!(s => s.prettify));
+            matching_secrets.map!(s => s.prettify),
+            matching_rev_htlcs.map!(s => s.prettify));
 
         if (matching_secrets.length == 0)
             return;
 
-        this.proposeNewUpdate(matching_secrets, height);
+        this.proposeNewUpdate(matching_secrets, matching_rev_htlcs, height);
     }
 
     /***************************************************************************
@@ -606,7 +614,8 @@ public class Channel
 
     ***************************************************************************/
 
-    public void proposeNewUpdate (in Hash[] secrets, in Height height)
+    public void proposeNewUpdate (in Hash[] secrets, in Hash[] rev_htlcs,
+        in Height height)
     {
         // todo: replace with a better retry mechanism
         Result!bool is_collecting;
@@ -636,7 +645,7 @@ public class Channel
             // todo: there may be a double call here if the first request timed-out
             // and the client sends this request again.
             result = this.peer.proposeUpdate(this.conf.chan_id, new_seq_id,
-                secrets, pub_nonce, height);
+                secrets, rev_htlcs, pub_nonce, height);
 
             // there may have been a new payment just before the update proposal
             if (this.cur_seq_id >= new_seq_id)
@@ -654,7 +663,8 @@ public class Channel
 
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
-        auto new_balance = this.foldHTLCs(this.cur_balance, secrets, height);
+        auto new_balance = this.foldHTLCs(this.cur_balance, secrets, rev_htlcs,
+            height);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
         this.taskman.setTimer(0.seconds,
@@ -690,11 +700,13 @@ public class Channel
     ***************************************************************************/
 
     public Result!PublicNonce onProposedUpdate (in uint seq_id,
-        in Hash[] secrets, in PublicNonce peer_nonce, in Height height)
+        in Hash[] secrets, in Hash[] rev_htlcs, in PublicNonce peer_nonce,
+        in Height height)
     {
-        writefln("%s: onProposedUpdate from %s (%s, %s, %s)",
+        writefln("%s: onProposedUpdate from %s (%s, %s, %s, %s)",
             this.kp.V.prettify, this.peer_pk.prettify,
-            seq_id, secrets.map!(s => s.prettify), height);
+            seq_id, secrets.map!(s => s.prettify),
+            rev_htlcs.map!(s => s.prettify), height);
 
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
@@ -715,7 +727,8 @@ public class Channel
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto new_balance = this.foldHTLCs(this.cur_balance, secrets, height);
+        auto new_balance = this.foldHTLCs(this.cur_balance, secrets, rev_htlcs,
+            height);
         writefln("%s: Before folding: %s. After folding: %s", this.kp.V.prettify,
             this.cur_balance, new_balance);
         const new_outputs = this.buildBalanceOutputs(new_balance);
@@ -732,11 +745,11 @@ public class Channel
             this.channel_updates ~= update_pair;
             this.cur_balance = new_balance;
 
-            writefln("%s: Update complete! Secrets used: %s",
-                this.kp.V.prettify, secrets);
+            writefln("%s: Update complete! Secrets used: %s dropped: %s",
+                this.kp.V.prettify, secrets, rev_htlcs);
             foreach (secret; secrets)
                 this.payment_hashes.remove(secret.hashFull());
-            this.onUpdateComplete(secrets);
+            this.onUpdateComplete(secrets, rev_htlcs);
         });
 
         return Result!PublicNonce(pub_nonce);
@@ -759,7 +772,7 @@ public class Channel
 
     ***************************************************************************/
 
-    public void routeNewPayment (in Hash payment_hash, in Amount amount,
+    public bool routeNewPayment (in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet, in Height height)
     {
         // todo: need to check if the counter-party is still collecting
@@ -791,7 +804,7 @@ public class Channel
         if (result.error)
         {
             writefln("%s: Error proposing payment: %s", this.kp.V.prettify, result);
-            return;
+            return false;
         }
 
         this.cur_seq_id = new_seq_id;
@@ -813,6 +826,7 @@ public class Channel
         this.cur_balance = new_balance;
 
         this.payment_hashes.put(payment_hash);
+        return true;
     }
 
     /***************************************************************************
@@ -904,13 +918,16 @@ public class Channel
             {
                 writefln("%s: Routing to next channel: %s", this.kp.V.prettify,
                     payload.next_chan_id.prettify);
-                this.paymentRouter(payload.next_chan_id, payment_hash,
+                if (!this.paymentRouter(payload.next_chan_id, payment_hash,
                     payload.forward_amount, payload.outgoing_lock_height,
-                    payload.next_packet);
+                    payload.next_packet))
+                    // Routing to next chan failed.
+                    this.onPaymentComplete(this.conf.chan_id, payment_hash,
+                        false);
             }
-
-            // propose an update afterwards
-            this.onPaymentComplete(this.conf.chan_id, payment_hash);
+            else
+                // propose an update afterwards
+                this.onPaymentComplete(this.conf.chan_id, payment_hash);
         });
 
         return Result!PublicNonce(pub_nonce);
@@ -934,7 +951,7 @@ public class Channel
     ***************************************************************************/
 
     public Balance foldHTLCs (in Balance old_balance, in Hash[] secrets,
-        in Height height)
+        in Hash[] rev_htlcs, in Height height)
     {
         Balance new_balance;
         new_balance.refund_amount = old_balance.refund_amount;
@@ -953,9 +970,9 @@ public class Channel
         // fold outgoing HTLCs
         foreach (payment_hash, htlc; old_balance.outgoing_htlcs)
         {
-            if (htlc.lock_height < height)
+            if (htlc.lock_height < height || rev_htlcs.canFind(payment_hash))
             {
-                writefln("%s: Fold: Folded outgoing time-expired HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded outgoing time-expired/dropped HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
@@ -975,9 +992,9 @@ public class Channel
         // fold incoming HTLCs
         foreach (payment_hash, htlc; old_balance.incoming_htlcs)
         {
-            if (htlc.lock_height < height)
+            if (htlc.lock_height < height || rev_htlcs.canFind(payment_hash))
             {
-                writefln("%s: Fold: Folded incoming time-expired HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded incoming time-expired/dropped HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
@@ -1359,7 +1376,7 @@ public class Channel
             {
                 // todo: retry?
                 writefln("%s: Closing signature request rejected: %s",
-                    sig_res);
+                    this.kp.V.prettify, sig_res);
                 continue;
             }
 
