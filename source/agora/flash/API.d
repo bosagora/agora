@@ -178,6 +178,7 @@ public interface FlashAPI
             chan_id = an existing channel ID
             seq_id = the new sequence ID
             secrets = the secrets the proposer wishes to disclose
+            rev_htlcs = the htlcs the proposer wishes to drop
             peer_nonce = the nonce the calling peer will use
             block_height = the block height of the calling node. This is needed
                 in order to properly resolve any pending HTLCs in the channel.
@@ -193,7 +194,8 @@ public interface FlashAPI
     ***************************************************************************/
 
     public Result!PublicNonce proposeUpdate (in Hash chan_id, in uint seq_id,
-        in Hash[] secrets, in PublicNonce peer_nonce, in Height block_height);
+        in Hash[] secrets, in Hash[] rev_htlcs, in PublicNonce peer_nonce,
+        in Height block_height);
 
     /***************************************************************************
 
