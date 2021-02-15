@@ -15,7 +15,7 @@
 
 module agora.test.PeriodicCatchup;
 
-version (unittest):
+version (none):
 
 import agora.api.Validator;
 import agora.common.Config;
