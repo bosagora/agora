@@ -51,3 +51,53 @@ public immutable(Block) makeGenesis (
 
     return cast(immutable)(genesis);
 }
+
+/// Check the Coinnet Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Coinnet.d)
+/// This will not be used for the final Coinnet GenesisBlock which will use unknown key secrets. But can be useful for now.
+unittest
+{
+    import agora.consensus.data.genesis.Test : GenesisBlock;
+
+    checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 20);
+}
+
+/// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Test.d)
+unittest
+{
+    import agora.consensus.data.genesis.Coinnet : GenesisBlock;
+
+    checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 1008);
+}
+
+/// Assert the enrollments of a GenesisBlock match expected values and are sorted by utxo (print the potential replacement set when not matching)
+version (unittest) public void checkGenesisEnrollments (const Block genesisBlock, KeyPair[] keys, uint cycle_length)
+{
+    import agora.consensus.data.Enrollment;
+    import agora.consensus.data.Transaction : Transaction, TxType;
+    import agora.consensus.data.UTXO;
+    import agora.consensus.EnrollmentManager;
+    import std.format;
+    import std.range;
+    import std.conv;
+    import std.algorithm;
+
+    static struct NodeEnrollment
+    {
+        Enrollment enrol;
+        PublicKey key;
+    }
+    Hash txhash = hashFull(genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front);
+    Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
+    auto enrollments = utxos.enumerate.map!(en =>
+        NodeEnrollment(EnrollmentManager.makeEnrollment(keys[en.index], en.value, cycle_length, 0),
+            keys[en.index].address)).array;
+    auto sorted_enrollments = enrollments.sort!((a,b) => a.enrol.utxo_key < b.enrol.utxo_key).array;
+    assert(genesisBlock.header.enrollments == sorted_enrollments.map!(e => e.enrol).array,
+        format!"%s\n    ],\n"(
+            sorted_enrollments
+                .fold!((s, e) =>
+                    format!"%s\n%s"
+                    (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature(`%s`)),"
+                        (e.key, e.enrol.utxo_key, e.enrol.random_seed, e.enrol.cycle_length, e.enrol.enroll_sig)))
+                    ("\n    enrollments: [")));
+}
