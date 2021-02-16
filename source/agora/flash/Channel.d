@@ -868,7 +868,8 @@ public class Channel
 
     public Result!PublicNonce onProposedPayment (in uint seq_id,
         in Hash payment_hash, in Amount amount, in Height lock_height,
-        in Payload payload, in PublicNonce peer_nonce, in Height height )
+        in OnionPacket packet, in Payload payload, in PublicNonce peer_nonce,
+        in Height height )
     {
         writefln("%s: onProposedPayment from %s (%s, %s, %s, %s, %s)",
             this.kp.V.prettify, this.peer_pk.prettify,
@@ -935,11 +936,13 @@ public class Channel
             // route to the next node
             if (payload.next_chan_id != Hash.init)
             {
+                OnionPacket next_packet = nextPacket(packet);
+
                 writefln("%s: Routing to next channel: %s", this.kp.V.prettify,
                     payload.next_chan_id.prettify);
                 if (auto err = this.paymentRouter(payload.next_chan_id, payment_hash,
                     payload.forward_amount, payload.outgoing_lock_height,
-                    payload.next_packet))
+                    next_packet))
                     // Routing to next chan failed.
                     this.onPaymentComplete(this.conf.chan_id, payment_hash, err);
             }
