@@ -15,6 +15,7 @@ dub build -b unittest-cov -c unittest --skip-registry=all --compiler=${DC}
 # Run this after unit tests have proven to compile ok
 ${DC} -i -run ./tests/runner.d ${DC} -cov
 
+export dtest=flash
 export dchatty=true
 export dsinglethreaded=true
 # Run a single test at a time to prevent resource issues and also see which test failed
