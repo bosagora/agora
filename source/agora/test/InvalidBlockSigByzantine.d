@@ -153,7 +153,7 @@ unittest
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
-    network.expectBlock([1,2,3,4,5], Height(1));
+    network.expectBlock(Height(1));
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 
@@ -172,16 +172,17 @@ unittest
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
-    network.expectBlock([1,2,3,4,5], Height(1));
+    network.expectBlock(Height(1));
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 
 private void assertValidatorsBitmask (const Block block)
 {
-    assert(!block.header.validators[0],
+    auto node2_enrollment_index = 2; // Check in agora.consensus.data.genesis.Test for position of NODE2
+    assert(!block.header.validators[node2_enrollment_index], // clients are ordered by public key but validators use utxo for bitmask
         format!"The first validator signed with an invalid block signature so should not be included. mask=%s"
         (block.header.validators));
-    iota(1, 6).each!(i =>
+    iota(6).filter!(n => n != node2_enrollment_index).each!(i =>
         assert(block.header.validators[i],
             format!"The validator #%s signed with a valid block signature so should be included. mask=%s"
                 (i, block.header.validators)));
