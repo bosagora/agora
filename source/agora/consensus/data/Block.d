@@ -532,8 +532,8 @@ version (unittest)
     }
 
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
-        Transactions txs, Enrollment[] enrollments = null,
-        Hash random_seed = Hash.init, uint[] missing_validators = null,
+        Transactions txs, Hash random_seed = Hash.init,
+        Enrollment[] enrollments = null, uint[] missing_validators = null,
         KeyPair[] keys = genesis_validator_keys,
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
         ulong timestamp = ulong.max) @safe nothrow
