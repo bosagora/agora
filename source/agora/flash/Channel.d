@@ -239,14 +239,18 @@ public class Channel
     /***************************************************************************
 
         Returns:
-            the balance of the owner of the channel
+            the balance available for the provided payment direction
             (HTLCs excluded as they're locked)
 
     ***************************************************************************/
 
-    public Amount getOwnerBalance ()
+    public Amount getBalance (in PaymentDirection direction)
     {
-        return this.cur_balance.refund_amount;
+        // to pay towards owner, there must be enough peer balance (payment),
+        // for the other direction the owner balance (refund) amount is checked.
+        return direction == PaymentDirection.TowardsOwner
+            ? this.cur_balance.payment_amount
+            : this.cur_balance.refund_amount;
     }
 
     /***************************************************************************
@@ -792,8 +796,10 @@ public class Channel
 
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
-        auto new_balance = this.buildUpdatedBalance(this.cur_balance,
-            amount, payment_hash, lock_height, height);
+        const direction = this.is_owner ?
+            PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
+        auto new_balance = this.buildUpdatedBalance(direction,
+            this.cur_balance, amount, payment_hash, lock_height, height);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
         auto update_pair = this.update_signer.collectSignatures(this.
@@ -849,7 +855,9 @@ public class Channel
         // todo: check the owner balance first
         // todo: need to find the next channel ID (if forwarding packet),
         // and check our balance.
-        const cur_amount = this.getOwnerBalance();
+        const direction = this.is_owner ?
+            PaymentDirection.TowardsOwner : PaymentDirection.TowardsPeer;
+        const cur_amount = this.getBalance(direction);
         if (cur_amount < amount)
             return Result!PublicNonce(ErrorCode.ExceedsMaximumPayment,
                 format("Insufficient funds to route this payment. "
@@ -872,8 +880,8 @@ public class Channel
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto new_balance = this.buildUpdatedBalance(this.cur_balance,
-            amount, payment_hash, lock_height, height);
+        auto new_balance = this.buildUpdatedBalance(direction,
+            this.cur_balance, amount, payment_hash, lock_height, height);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
         this.taskman.setTimer(0.seconds,
@@ -942,25 +950,47 @@ public class Channel
         foreach (secret; secrets)
             payment_hashes[secret.hashFull()] = secret;
 
+        // fold outgoing HTLCs
         foreach (payment_hash, htlc; old_balance.outgoing_htlcs)
         {
-            // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                writefln("%s: Fold: Folded time-expired HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded outgoing time-expired HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                writefln("%s: Fold: Folded secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded outgoing secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("%s: Fold: DID NOT FOLD HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.prettify, payment_hash);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
+            }
+        }
+
+        // fold incoming HTLCs
+        foreach (payment_hash, htlc; old_balance.incoming_htlcs)
+        {
+            if (htlc.lock_height < height)
+            {
+                writefln("%s: Fold: Folded incoming time-expired HTLC: %s", this.kp.V.prettify, payment_hash);
+                if (!new_balance.payment_amount.add(htlc.amount))
+                    assert(0);
+            }
+            else if (payment_hash in payment_hashes)  // fold secret HTLC
+            {
+                writefln("%s: Fold: Folded incoming secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash);
+                if (!new_balance.refund_amount.add(htlc.amount))
+                    assert(0);
+            }
+            else
+            {
+                writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.prettify, payment_hash);
+                new_balance.incoming_htlcs[payment_hash] = htlc;
             }
         }
 
@@ -984,9 +1014,9 @@ public class Channel
 
     ***************************************************************************/
 
-    public Balance buildUpdatedBalance (in Balance old_balance,
-        in Amount amount, in Hash payment_hash, in Height lock_height,
-        in Height height)
+    public Balance buildUpdatedBalance (in PaymentDirection direction,
+        in Balance old_balance, in Amount amount, in Hash payment_hash,
+        in Height lock_height, in Height height)
     {
         Balance new_balance;
         new_balance.refund_amount = old_balance.refund_amount;
@@ -998,21 +1028,49 @@ public class Channel
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                writefln("%s: Fold: Folded HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded outgoing HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("%s: Fold: DID NOT FOLD HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Not folded outgoing HTLC: %s", this.kp.V.prettify, payment_hash);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
 
-        // add new HTLC
-        if (!new_balance.refund_amount.sub(amount))
-            assert(0);
-        new_balance.outgoing_htlcs[payment_hash] = HTLC(lock_height, amount);
+        // ditto (todo: avoid copy-paste)
+        foreach (hash, htlc; old_balance.incoming_htlcs)
+        {
+            // fold expired HTLCs
+            if (htlc.lock_height < height)
+            {
+                writefln("%s: Fold: Folded incoming HTLC: %s", this.kp.V.prettify, payment_hash);
+                if (!new_balance.payment_amount.add(htlc.amount))
+                    assert(0);
+            }
+            else
+            {
+                writefln("%s: Fold: Not folded incoming HTLC: %s", this.kp.V.prettify, payment_hash);
+                new_balance.incoming_htlcs[payment_hash] = htlc;
+            }
+        }
+
+        if (direction == PaymentDirection.TowardsPeer)
+        {
+            // add new HTLC
+            if (!new_balance.refund_amount.sub(amount))
+                assert(0);
+            new_balance.outgoing_htlcs[payment_hash] = HTLC(lock_height, amount);
+        }
+        else if (direction == PaymentDirection.TowardsOwner)
+        {
+            // add new HTLC
+            if (!new_balance.payment_amount.sub(amount))
+                assert(0);
+            new_balance.incoming_htlcs[payment_hash] = HTLC(lock_height, amount);
+        }
+        else assert(0);
 
         return new_balance;
     }
