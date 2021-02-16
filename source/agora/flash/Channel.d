@@ -796,20 +796,17 @@ public class Channel
             amount, payment_hash, lock_height, height);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
-        this.taskman.setTimer(0.seconds,
-        {
-            auto update_pair = this.update_signer.collectSignatures(this.
-                cur_seq_id,
-                new_outputs, priv_nonce, peer_nonce,
-                this.channel_updates[0].update_tx);  // spend from trigger tx
+        auto update_pair = this.update_signer.collectSignatures(this.
+            cur_seq_id,
+            new_outputs, priv_nonce, peer_nonce,
+            this.channel_updates[0].update_tx);  // spend from trigger tx
 
-            writefln("%s: Got new pair from %s! Balanced updated!",
-                this.kp.V.prettify, this.peer_pk.prettify);
-            this.channel_updates ~= update_pair;
-            this.cur_balance = new_balance;
+        writefln("%s: Got new pair from %s! Balanced updated!",
+            this.kp.V.prettify, this.peer_pk.prettify);
+        this.channel_updates ~= update_pair;
+        this.cur_balance = new_balance;
 
-            this.payment_hashes.put(payment_hash);
-        });
+        this.payment_hashes.put(payment_hash);
     }
 
     /***************************************************************************
