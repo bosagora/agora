@@ -284,11 +284,11 @@ public class SlashPolicy
 // Test for getting the candidates to be slashed due to missing pre-images
 unittest
 {
-    import agora.common.crypto.Schnorr;
     import agora.consensus.data.Transaction;
     import agora.consensus.PreImage;
     import agora.consensus.state.UTXOSet;
     import agora.crypto.Hash;
+    import agora.crypto.Schnorr;
 
     import std.algorithm;
     import std.format;

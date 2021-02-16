@@ -17,7 +17,6 @@ import agora.common.Amount;
 import agora.common.Set;
 import agora.common.Types;
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Enrollment;
@@ -28,6 +27,7 @@ import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
                                             EnrollmentStatus;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 import agora.script.Lock;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;

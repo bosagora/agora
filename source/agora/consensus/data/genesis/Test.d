@@ -133,9 +133,9 @@ unittest
 {
     import std.algorithm;
     import agora.consensus.PreImage;
-    import agora.common.crypto.Schnorr;
     import agora.consensus.data.UTXO;
     import agora.crypto.ECC;
+    import agora.crypto.Schnorr;
 
     version (none)
     {

@@ -21,9 +21,9 @@ import agora.common.Config;
 import agora.common.Task;
 import agora.common.Types;
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
 import agora.crypto.ECC;
+import agora.crypto.Schnorr;
 import agora.test.Base;
 import agora.utils.SCPPrettyPrinter;
 import agora.utils.Log;
@@ -66,9 +66,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
 
     extern(D) override protected Sig createBlockSignature(const Block block) @trusted nothrow
     {
-        import agora.common.crypto.Schnorr;
         import agora.crypto.Hash;
-        import agora.utils.Test : WK;
 
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);

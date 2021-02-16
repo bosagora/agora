@@ -277,8 +277,8 @@ public class Validator : FullNode, API
 
     protected override bool acceptBlock(const ref Block block) @trusted
     {
-        import agora.common.crypto.Schnorr;
         import agora.common.BitField;
+        import agora.crypto.Schnorr;
         import std.algorithm;
         import std.range;
         import std.format;

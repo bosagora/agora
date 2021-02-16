@@ -16,8 +16,8 @@ module agora.consensus.data.ValidatorBlockSig;
 
 import agora.common.Types;
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr;
 import agora.crypto.ECC;
+import agora.crypto.Schnorr;
 
 import std.format;
 

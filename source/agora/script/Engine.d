@@ -20,11 +20,11 @@
 
 module agora.script.Engine;
 
-import Schnorr = agora.common.crypto.Schnorr;
 import agora.common.Types : Height;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import Schnorr = agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.ScopeCondition;
@@ -38,7 +38,7 @@ import std.traits;
 
 version (unittest)
 {
-    import agora.common.crypto.Schnorr;
+    import agora.crypto.Schnorr;
     import agora.utils.Test;
     import ocean.core.Test;
     import std.stdio : writefln, writeln;  // avoid importing LockType
