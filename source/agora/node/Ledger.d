@@ -1678,10 +1678,10 @@ unittest
 // create slashing data and check validity for that
 unittest
 {
-    import agora.common.crypto.Schnorr;
     import agora.consensus.data.genesis.Test;
     import agora.consensus.data.PreImageInfo;
     import agora.consensus.PreImage;
+    import agora.crypto.Schnorr;
 
     auto params = new immutable(ConsensusParams)(10);
     const(Block)[] blocks = [ GenesisBlock ];
@@ -1838,10 +1838,10 @@ unittest
 unittest
 {
     import std;
-    import agora.common.crypto.Schnorr;
     import agora.consensus.data.genesis.Test;
     import agora.consensus.data.PreImageInfo;
     import agora.consensus.PreImage;
+    import agora.crypto.Schnorr;
     import agora.utils.WellKnownKeys : CommonsBudget;
 
     ConsensusConfig config = { validator_cycle: 20, payout_period: 5 };

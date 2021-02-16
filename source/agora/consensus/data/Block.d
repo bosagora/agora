@@ -412,7 +412,7 @@ public struct Block
 ///
 unittest
 {
-    import agora.common.crypto.Schnorr;
+    import agora.crypto.Schnorr;
     immutable Hash merkle =
         Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413` ~
         `959ca4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
@@ -777,8 +777,8 @@ version (unittest)
         ulong delegate (PublicKey) cycleForValidator,
         KeyPair[] keys) @trusted nothrow
     {
-        import agora.common.crypto.Schnorr;
         import agora.crypto.ECC;
+        import agora.crypto.Schnorr;
         import std.format;
 
         auto validators = BitField!ubyte(keys.length);

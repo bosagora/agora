@@ -550,7 +550,7 @@ public static Scalar secretKeyToCurveScalar (SecretKey secret) nothrow @nogc
 // Test signing using Stellar seed
 unittest
 {
-    import agora.common.crypto.Schnorr;
+    import agora.crypto.Schnorr;
 
     KeyPair kp = KeyPair.fromSeed(
         Seed.fromString(
@@ -572,7 +572,7 @@ unittest
 // Test for converting from `Point` to `PublicKey`
 unittest
 {
-    import agora.common.crypto.Schnorr;
+    import agora.crypto.Schnorr;
 
     Pair pair = Pair.random();
     auto pubkey = PublicKey(pair.V[]);
