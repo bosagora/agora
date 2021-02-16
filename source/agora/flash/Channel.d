@@ -70,6 +70,9 @@ public class Channel
     /// The peer of the other end of the channel
     public FlashAPI peer;
 
+    /// The public key of the counter-party (for logging)
+    public Point peer_pk;
+
     /// Current state of the channel
     private ChannelState state;
 
@@ -167,11 +170,12 @@ public class Channel
         this.kp = kp;
         this.is_owner = conf.funder_pk == kp.V;
         this.peer = peer;
+        this.peer_pk = this.is_owner ? conf.peer_pk : conf.funder_pk;
         this.engine = engine;
         this.taskman = taskman;
         this.txPublisher = txPublisher;
         this.update_signer = new UpdateSigner(this.conf, this.kp, this.peer,
-            this.engine, this.taskman);
+            this.peer_pk, this.engine, this.taskman);
         this.paymentRouter = paymentRouter;
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
@@ -415,8 +419,8 @@ public class Channel
 
     private void onCloseTxExternalized (in Transaction tx)
     {
-        writefln("Received close tx: %s", tx.hashFull.prettify);
-        writefln("Tx is: %s", tx);
+        writefln("%s: Received close tx: %s", this.kp.V.prettify, tx.hashFull.prettify);
+        writefln("%s: Tx is: %s", this.kp.V.prettify, tx);
         // todo: can notify Node that it can destroy this channel instance later
         this.state = ChannelState.Closed;
     }
@@ -453,8 +457,8 @@ public class Channel
             // lock, need to determine the right time it should be published
             // and make sure a restart will still republish it.
             const settle_tx = this.channel_updates[$ - 1].settle_tx;
-            writefln("Publishing last settle tx %s: %s",
-                this.channel_updates.length, settle_tx.hashFull().prettify);
+            writefln("%s: Publishing last settle tx %s: %s",
+                this.kp.V.prettify, this.channel_updates.length, settle_tx.hashFull().prettify);
             this.txPublisher(cast()settle_tx);
         }
         else
@@ -462,8 +466,8 @@ public class Channel
             // either the trigger or an outdated update tx was published.
             // publish the latest update first.
             const update_tx = this.channel_updates[$ - 1].update_tx;
-            writefln("Publishing latest update tx %s: %s",
-                this.channel_updates.length, update_tx.hashFull().prettify);
+            writefln("%s: Publishing latest update tx %s: %s",
+                this.kp.V.prettify, this.channel_updates.length, update_tx.hashFull().prettify);
             this.txPublisher(cast()update_tx);
         }
     }
@@ -601,7 +605,8 @@ public class Channel
             is_collecting = this.peer.isCollectingSignatures(this.conf.chan_id);
             if (is_collecting.error || is_collecting.value)
             {
-                writefln("proposeNewUpdate: Peer is still collecting signatures. Trying again soon..");
+                writefln("%s: proposeNewUpdate: %s is still collecting signatures. Trying again soon..",
+                    this.kp.V.prettify, this.peer_pk.prettify);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -626,7 +631,7 @@ public class Channel
 
             if (result.error)
             {
-                writefln("ERROR PROPOSING UPDATE (trying again): %s", result);
+                writefln("%s: ERROR PROPOSING UPDATE (trying again): %s", this.kp.V.prettify, result);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -645,7 +650,8 @@ public class Channel
                 new_outputs, priv_nonce, peer_nonce,
                 this.channel_updates[0].update_tx);  // spend from trigger tx
 
-            writefln("%s: Got new pair! Balanced updated!", this.kp.V.prettify);
+            writefln("%s: Got new pair from %s! Balanced updated!",
+                this.kp.V.prettify, this.peer_pk.prettify);
             this.channel_updates ~= update_pair;
             this.cur_balance = new_balance;
         });
@@ -672,8 +678,8 @@ public class Channel
     public Result!PublicNonce onProposedUpdate (in uint seq_id,
         in Hash[] secrets, in PublicNonce peer_nonce, in Height height)
     {
-        writefln("%s: onProposedUpdate(%s, %s, %s)",
-            this.kp.V.prettify,
+        writefln("%s: onProposedUpdate from %s (%s, %s, %s)",
+            this.kp.V.prettify, this.peer_pk.prettify,
             seq_id, secrets.map!(s => s.prettify), height);
 
         if (!this.isOpen())
@@ -696,8 +702,8 @@ public class Channel
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
         auto new_balance = this.foldHTLCs(this.cur_balance, secrets, height);
-        writefln("Before folding: %s. After folding: %s", this.cur_balance,
-            new_balance);
+        writefln("%s: Before folding: %s. After folding: %s", this.kp.V.prettify,
+            this.cur_balance, new_balance);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
         this.taskman.setTimer(0.seconds,
@@ -707,12 +713,13 @@ public class Channel
                 new_outputs, priv_nonce, peer_nonce,
                 this.channel_updates[0].update_tx);  // spend from trigger tx
 
-            writefln("%s: Got new pair! Balance updated! %s",
-                this.kp.V.prettify, new_balance);
+            writefln("%s: Got new pair from %s! Balance updated! %s",
+                this.kp.V.prettify, this.peer_pk.prettify, new_balance);
             this.channel_updates ~= update_pair;
             this.cur_balance = new_balance;
 
-            writefln("Update complete! Secrets used: %s", secrets);
+            writefln("%s: Update complete! Secrets used: %s",
+                this.kp.V.prettify, secrets);
             foreach (secret; secrets)
                 this.payment_hashes.remove(secret.hashFull());
             this.onUpdateComplete(secrets);
@@ -750,7 +757,8 @@ public class Channel
             is_collecting = this.peer.isCollectingSignatures(this.conf.chan_id);
             if (is_collecting.error || is_collecting.value)
             {
-                writefln("routeNewPayment: Peer is still collecting signatures. Trying again soon..");
+                writefln("%s: routeNewPayment: %s is still collecting signatures. Trying again soon..",
+                    this.kp.V.prettify, this.peer_pk.prettify);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -769,7 +777,7 @@ public class Channel
             payment_hash, amount, lock_height, packet, pub_nonce, height);
         if (result.error)
         {
-            writefln("Error proposing payment: %s", result);
+            writefln("%s: Error proposing payment: %s", this.kp.V.prettify, result);
             return;
         }
 
@@ -785,7 +793,8 @@ public class Channel
                 new_outputs, priv_nonce, peer_nonce,
                 this.channel_updates[0].update_tx);  // spend from trigger tx
 
-            writefln("%s: Got new pair! Balanced updated!", this.kp.V.prettify);
+            writefln("%s: Got new pair from %s! Balanced updated!",
+                this.kp.V.prettify, this.peer_pk.prettify);
             this.channel_updates ~= update_pair;
             this.cur_balance = new_balance;
 
@@ -815,8 +824,8 @@ public class Channel
         in Hash payment_hash, in Amount amount, in Height lock_height,
         in Payload payload, in PublicNonce peer_nonce, in Height height )
     {
-        writefln("%s: proposePayment(%s, %s, %s, %s, %s)",
-            this.kp.V.prettify,
+        writefln("%s: onProposedPayment from %s (%s, %s, %s, %s, %s)",
+            this.kp.V.prettify, this.peer_pk.prettify,
             this.conf.chan_id, seq_id, payment_hash.prettify, amount,
             lock_height);
 
@@ -867,8 +876,8 @@ public class Channel
                 new_outputs, priv_nonce, peer_nonce,
                 this.channel_updates[0].update_tx);  // spend from trigger tx
 
-            writefln("%s: Got new pair! Balance updated! %s",
-                this.kp.V.prettify, new_balance);
+            writefln("%s: Got new pair from %s! Balance updated! %s",
+                this.kp.V.prettify, this.peer_pk.prettify, new_balance);
             this.channel_updates ~= update_pair;
             this.cur_balance = new_balance;
 
@@ -931,19 +940,19 @@ public class Channel
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                writefln("Fold: Folded time-expired HTLC: %s", payment_hash);
+                writefln("%s: Fold: Folded time-expired HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                writefln("Fold: Folded secret-revealed HTLC: %s", payment_hash);
+                writefln("%s: Fold: Folded secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("Fold: DID NOT FOLD HTLC: %s", payment_hash);
+                writefln("%s: Fold: DID NOT FOLD HTLC: %s", this.kp.V.prettify, payment_hash);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -982,13 +991,13 @@ public class Channel
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                writefln("Fold: Folded HTLC: %s", payment_hash);
+                writefln("%s: Fold: Folded HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("Fold: DID NOT FOLD HTLC: %s", payment_hash);
+                writefln("%s: Fold: DID NOT FOLD HTLC: %s", this.kp.V.prettify, payment_hash);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -1159,7 +1168,8 @@ public class Channel
         // node detects the trigger tx published to the blockchain and after
         // its relative lock time expires.
         const trigger_tx = this.channel_updates[0].update_tx;
-        writefln("Publishing trigger tx: %s", trigger_tx.hashFull().prettify);
+        writefln("%s: Publishing trigger tx: %s", this.kp.V.prettify,
+            trigger_tx.hashFull().prettify);
         this.txPublisher(cast()trigger_tx);
     }
 
@@ -1192,7 +1202,8 @@ public class Channel
             // todo: retry with bigger fee if smaller fee was rejected
             // todo: retry?
             // todo: try unilateral close after the configured timeout?
-            writefln("Closing tx signature request rejected: %s", close_res);
+            writefln("%s: Closing tx signature request rejected: %s",
+                this.kp.V.prettify, close_res);
             assert(0);
         }
 
@@ -1277,7 +1288,8 @@ public class Channel
         if (sig_res.error)
         {
             // todo: retry?
-            writefln("Closing signature request rejected: %s", sig_res);
+            writefln("%s: Closing signature request rejected: %s",
+                this.kp.V.prettify, sig_res);
             assert(0);
         }
 
@@ -1285,8 +1297,8 @@ public class Channel
             sig_res.value, priv_nonce, peer_nonce))
         {
             // todo: inform? ban?
-            writefln("Error during validation: %s. For closing signature: %s",
-                error, sig_res.value);
+            writefln("%s: Error during validation: %s. For closing signature: %s",
+                this.kp.V.prettify, error, sig_res.value);
             assert(0);
         }
 
@@ -1294,8 +1306,8 @@ public class Channel
         this.pending_close.validated = true;
 
         // todo: schedule this
-        writefln("Publishing close tx: %s",
-            this.pending_close.tx.hashFull.prettify);
+        writefln("%s: Publishing close tx: %s",
+            this.kp.V.prettify, this.pending_close.tx.hashFull.prettify);
         this.txPublisher(this.pending_close.tx);
     }
 
@@ -1455,8 +1467,8 @@ public class Channel
     {
         assert(this.channel_updates.length > index + 1);
         const update_tx = this.channel_updates[index].update_tx;
-        writefln("Publishing update tx %s: %s", index,
-            update_tx.hashFull().prettify);
+        writefln("%s: Publishing update tx index %s: %s",
+            this.kp.V.prettify, index, update_tx.hashFull().prettify);
         this.txPublisher(cast()update_tx);
         return cast()update_tx;
     }

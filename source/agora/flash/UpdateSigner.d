@@ -17,6 +17,7 @@
 
 module agora.flash.UpdateSigner;
 
+import agora.common.crypto.ECC;
 import agora.common.crypto.Schnorr;
 import agora.common.Serializer;
 import agora.common.Task;
@@ -49,6 +50,9 @@ public class UpdateSigner
 
     /// Peer we're communicating with
     private FlashAPI peer;
+
+    /// The public key of the peer (for logging)
+    private Point peer_pk;
 
     /// Execution engine
     private Engine engine;
@@ -120,17 +124,19 @@ public class UpdateSigner
             conf = the channel configuration
             kp = the node's own key-pair
             peer = a Flash client to the counter-party
+            peer_pk = public key of the counter-party
             engine = the execution engine
             taskman = the taskmanager to schedule tasks with
 
     ***************************************************************************/
 
     public this (in ChannelConfig conf, in Pair kp, FlashAPI peer,
-        Engine engine, TaskManager taskman)
+        Point peer_pk, Engine engine, TaskManager taskman)
     {
         this.conf = conf;
         this.kp = kp;
         this.peer = peer;
+        this.peer_pk = peer_pk;
         this.engine = engine;
         this.taskman = taskman;
     }
@@ -249,7 +255,8 @@ public class UpdateSigner
             if (settle_res.error)
             {
                 // todo: retry?
-                writefln("Settlement signature request rejected: %s", settle_res);
+                writefln("%s: Settlement signature request to %s rejected: %s",
+                    this.kp.V.prettify, this.peer_pk.prettify, settle_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -261,8 +268,10 @@ public class UpdateSigner
             settle_res.value, priv_nonce, peer_nonce))
         {
             // todo: inform? ban?
-            writefln("Error during validation: %s. For settle signature: %s",
-                error, settle_res.value);
+            writefln("%s: Error during validation: %s. For settle signature "
+                ~ "from %s: %s",
+                this.kp.V.prettify, error,
+                this.peer_pk.prettify, settle_res.value);
             assert(0);
         }
         this.pending_settle.peer_sig = settle_res.value;
@@ -282,7 +291,8 @@ public class UpdateSigner
             if (update_res.error)
             {
                 // todo: retry?
-                writefln("Update signature request rejected: %s", update_res);
+                writefln("%s: Update signature request to %s rejected: %s",
+                    this.kp.V.prettify, this.peer_pk.prettify, update_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -298,8 +308,10 @@ public class UpdateSigner
             update_res.value, priv_nonce, peer_nonce, prev_tx))
         {
             // todo: inform? ban?
-            writefln("Error during validation: %s. For update signature: %s",
-                error, update_res.value);
+            writefln("%s: Error during validation: %s. For update "
+                ~ "signature from %s: %s",
+                this.kp.V.prettify, error,
+                this.peer_pk.prettify, update_res.value);
             assert(0);
         }
         this.pending_update.peer_sig = update_res.value;

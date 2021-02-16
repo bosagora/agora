@@ -446,7 +446,8 @@ public abstract class FlashNode : FlashAPI
     {
         foreach (chan_id, channel; this.channels)
         {
-            writefln("Calling learnSecrets for %s", chan_id);
+            writefln("%s: Calling learnSecrets for %s", this.kp.V.prettify,
+                chan_id);
             channel.learnSecrets(secrets, this.last_block_height);
         }
     }
@@ -474,7 +475,8 @@ public abstract class FlashNode : FlashAPI
         // todo: what to do in this case?
         // todo: should probably check this before accepting the
         // initial payment
-        writefln("Could not find this channel ID: %s", chan_id);
+        writefln("%s Could not find this channel ID: %s", this.kp.V.prettify,
+            chan_id);
     }
 
     /***************************************************************************
