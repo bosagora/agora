@@ -226,65 +226,6 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         channel.beginCollaborativeClose();
     }
 
-    // total_amount will take into account the fees
-    public OnionPacket createOnionPacket (in Hash payment_hash,
-        in Height lock_height, in Amount amount, in Hop[] path,
-        out Amount total_amount)
-    {
-        assert(path.length >= 1);
-
-        // todo: setting fees should be part of the routing algorithm
-        total_amount = amount;
-        foreach (hop; path)
-        {
-            if (!total_amount.add(hop.fee))
-                assert(0);
-        }
-
-        Amount forward_amount = total_amount;
-        Height outgoing_lock_height = lock_height;
-        OnionPacket packet;
-        Hash next_chan_id;
-
-        // onion packets have to be created from the inside-out
-        auto range = path.retro;
-        foreach (hop; range)
-        {
-            Payload payload =
-            {
-                next_chan_id : next_chan_id,
-                forward_amount : forward_amount,
-                outgoing_lock_height : outgoing_lock_height,
-                next_packet : packet,
-            };
-
-            Pair ephemeral_kp = Pair.random();
-            auto encrypted_payload = encryptPayload(payload, ephemeral_kp,
-                hop.pub_key);
-
-            OnionPacket new_packet =
-            {
-                version_byte : 0,
-                ephemeral_pk : ephemeral_kp.V,
-                encrypted_payload : encrypted_payload,
-                hmac : Hash.init,
-            };
-
-            packet = new_packet;
-
-            if (!forward_amount.sub(hop.fee))
-                assert(0);
-
-            // todo: use htlc_delta config here from the channel config
-            assert(outgoing_lock_height != 0);
-            outgoing_lock_height = Height(outgoing_lock_height - 1);
-
-            next_chan_id = hop.chan_id;
-        }
-
-        return packet;
-    }
-
     ///
     private bool isValidInvoice (in Invoice invoice)
     {
@@ -311,7 +252,7 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         auto path = this.network.getPaymentPath(this.kp.V, invoice.destination,
             invoice.amount);
         Amount total_amount;
-        auto packet = this.createOnionPacket(invoice.payment_hash, lock_height,
+        auto packet = createOnionPacket(invoice.payment_hash, lock_height,
             invoice.amount, path, total_amount);
 
         writefln("%s: Paying invoice and routing packet", this.kp.V.prettify);
