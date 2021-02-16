@@ -778,7 +778,7 @@ version (unittest)
         KeyPair[] keys) @trusted nothrow
     {
         import agora.common.crypto.Schnorr;
-        import agora.common.crypto.ECC;
+        import agora.crypto.ECC;
         import std.format;
 
         auto validators = BitField!ubyte(keys.length);

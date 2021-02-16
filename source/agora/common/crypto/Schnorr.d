@@ -44,7 +44,7 @@
 module agora.common.crypto.Schnorr;
 
 import agora.common.Types;
-import agora.common.crypto.ECC;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 
 import std.algorithm;
@@ -134,8 +134,8 @@ public struct Sig
     public Signature toBlob () const pure nothrow @nogc @safe
     {
         typeof(return) ret;
-        ret[0 .. Point.sizeof][] = this.R.data[];
-        ret[Point.sizeof .. $][] = this.s.data[];
+        ret[0 .. Point.sizeof][] = this.R[];
+        ret[Point.sizeof .. $][] = this.s[];
         return ret;
     }
 

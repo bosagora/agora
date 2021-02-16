@@ -16,7 +16,6 @@ module agora.consensus.validation.Block;
 import agora.common.Amount;
 import agora.common.Set;
 import agora.common.Types;
-import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Block;
@@ -27,6 +26,7 @@ import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
                                             EnrollmentStatus;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.script.Lock;
 import VEn = agora.consensus.validation.Enrollment;
@@ -41,9 +41,6 @@ mixin AddLogger!();
 
 version (unittest)
 {
-    import agora.common.crypto.ECC;
-    import agora.common.crypto.Key;
-    import agora.common.crypto.Schnorr;
     import agora.consensus.data.genesis.Test;
     import agora.utils.Test;
 }

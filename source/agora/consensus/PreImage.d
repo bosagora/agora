@@ -13,8 +13,8 @@
 
 module agora.consensus.PreImage;
 
-import agora.common.crypto.ECC;
 import agora.common.Types;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 
 /*******************************************************************************

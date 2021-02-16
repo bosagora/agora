@@ -19,8 +19,8 @@ import agora.crypto.Hash;
 
 version (unittest)
 {
-    import agora.common.crypto.ECC;
     import agora.consensus.data.Enrollment;
+    import agora.crypto.ECC;
 
     import std.algorithm.mutation : reverse;
 }

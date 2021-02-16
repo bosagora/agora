@@ -20,10 +20,10 @@
 
 module agora.script.Engine;
 
-import agora.common.crypto.ECC;
 import Schnorr = agora.common.crypto.Schnorr;
 import agora.common.Types : Height;
 import agora.consensus.data.Transaction;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.script.Lock;
 import agora.script.Opcodes;
@@ -38,7 +38,6 @@ import std.traits;
 
 version (unittest)
 {
-    import agora.common.crypto.ECC;
     import agora.common.crypto.Schnorr;
     import agora.utils.Test;
     import ocean.core.Test;

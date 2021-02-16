@@ -14,9 +14,9 @@
 module agora.common.crypto.Key;
 
 import agora.common.crypto.Crc16;
-import agora.common.crypto.ECC;
 import agora.common.Types;
 import agora.common.Serializer;
+import agora.crypto.ECC;
 
 import geod24.bitblob;
 import base32;
@@ -541,7 +541,8 @@ unittest
 public static Scalar secretKeyToCurveScalar (SecretKey secret) nothrow @nogc
 {
     Scalar x25519_sk;
-    if (crypto_sign_ed25519_sk_to_curve25519(x25519_sk.data[].ptr, secret[].ptr) != 0)
+    // FIXME: We don't want to expose a mutable buffer but we need one here
+    if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), secret[].ptr) != 0)
         assert(0);
     return x25519_sk;
 }
@@ -561,7 +562,7 @@ unittest
 
     Pair pair = Pair.fromScalar(scalar);
 
-    assert(pair.V.data == kp.address.data);
+    assert(pair.V[] == kp.address[]);
     Signature enroll_sig = sign(pair, "BOSAGORA");
 
     Point point_Address = Point(kp.address);
@@ -575,5 +576,5 @@ unittest
 
     Pair pair = Pair.random();
     auto pubkey = PublicKey(pair.V[]);
-    assert(pubkey.data == pair.V.data);
+    assert(pubkey[] == pair.V[]);
 }
