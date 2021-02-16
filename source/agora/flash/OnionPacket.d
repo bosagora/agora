@@ -37,6 +37,7 @@ import agora.common.crypto.Schnorr;
 import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Types;
+import agora.flash.Route;
 import agora.script.Lock;
 import agora.script.Script;
 import agora.utils.Log;
@@ -44,6 +45,8 @@ import agora.utils.Log;
 import libsodium.randombytes;
 import libsodium.crypto_secretbox;
 import libsodium.crypto_generichash;
+
+import std.range;
 
 import core.stdc.time;
 
@@ -106,6 +109,90 @@ public struct Payload
 
     // todo: replace with actual HMAC
     public Hash hmac;
+}
+
+/*******************************************************************************
+
+    Create an onion packet for the given path. Each hop will contain an
+    ephemeral public key to derive a common secret with which the hop's
+    payload will be encrypted and may later be decrypted by the hop node
+    which owns their private key.
+
+    The onion packet is fixed in size, and uses encrypted padding bytes
+    to obfuscate its true size. When a node peels of their layer of the
+    encrypted packet, it adds additional pading to fill the packet size
+    back to its expected fixed length size.
+
+    Params:
+        payment_hash = the payment hash to use
+        lock_height = the initial lock height
+        amount = the amount for the payment
+        path = the individual hops (including destination hop)
+        total_amount = will contain the amount which needs to be paid to the
+            first channel along the route. Different to `amount` as it also
+            includes fees.
+
+    Returns:
+        the onion packet ready to be routed through the first payment path.
+
+*******************************************************************************/
+
+public OnionPacket createOnionPacket (in Hash payment_hash,
+    in Height lock_height, in Amount amount, in Hop[] path,
+    out Amount total_amount)
+{
+    assert(path.length >= 1);
+
+    // todo: setting fees should be part of the routing algorithm
+    total_amount = amount;
+    foreach (hop; path)
+    {
+        if (!total_amount.add(hop.fee))
+            assert(0);
+    }
+
+    Amount forward_amount = total_amount;
+    Height outgoing_lock_height = lock_height;
+    OnionPacket packet;
+    Hash next_chan_id;
+
+    // onion packets have to be created from the inside-out
+    auto range = path.retro;
+    foreach (hop; range)
+    {
+        Payload payload =
+        {
+            next_chan_id : next_chan_id,
+            forward_amount : forward_amount,
+            outgoing_lock_height : outgoing_lock_height,
+            next_packet : packet,
+        };
+
+        Pair ephemeral_kp = Pair.random();
+        auto encrypted_payload = encryptPayload(payload, ephemeral_kp,
+            hop.pub_key);
+
+        OnionPacket new_packet =
+        {
+            version_byte : 0,
+            ephemeral_pk : ephemeral_kp.V,
+            encrypted_payload : encrypted_payload,
+            hmac : Hash.init,
+        };
+
+        packet = new_packet;
+
+        if (!forward_amount.sub(hop.fee))
+            assert(0);
+
+        // todo: use htlc_delta config here from the channel config
+        assert(outgoing_lock_height != 0);
+        outgoing_lock_height = Height(outgoing_lock_height - 1);
+
+        next_chan_id = hop.chan_id;
+    }
+
+    return packet;
 }
 
 /*******************************************************************************
