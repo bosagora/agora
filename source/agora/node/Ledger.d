@@ -1311,64 +1311,6 @@ unittest
     }
 }
 
-version (unittest)
-private Transaction[] makeTransactionForFreezing (
-    const(KeyPair)[] in_key_pair,
-    KeyPair[] out_key_pair,
-    TxType tx_type,
-    Transaction[] prev_txs,
-    const Transaction default_tx)
-{
-    import std.conv;
-
-    assert(in_key_pair.length == Block.TxsInTestBlock);
-    assert(out_key_pair.length == Block.TxsInTestBlock);
-
-    assert(prev_txs.length == 0 || prev_txs.length == Block.TxsInTestBlock);
-    const TxCount = Block.TxsInTestBlock;
-
-    Transaction[] transactions;
-
-    // always use the same amount, for simplicity
-    const Amount AmountPerTx = Amount.MinFreezeAmount;
-
-    foreach (idx; 0 .. TxCount)
-    {
-        Input input;
-        if (prev_txs.length == 0)  // refering to genesis tx's outputs
-            input = Input(hashFull(default_tx), idx.to!uint);
-        else  // refering to tx's in the previous block
-            input = Input(hashFull(prev_txs[idx % Block.TxsInTestBlock]), 0);
-
-        Transaction tx =
-        {
-            tx_type,
-            [input],
-            [Output(AmountPerTx, out_key_pair[idx % Block.TxsInTestBlock].address)]  // send to the same address
-        };
-
-        auto signature = in_key_pair[idx % Block.TxsInTestBlock].secret.sign(hashFull(tx)[]);
-        tx.inputs[0].unlock = genKeyUnlock(signature);
-        transactions ~= tx;
-
-        // new transactions will refer to the just created transactions
-        // which will be part of the previous block after the block is created
-        if (Block.TxsInTestBlock == 1 ||  // special case
-            (idx > 0 && ((idx + 1) % Block.TxsInTestBlock == 0)))
-        {
-            // refer to tx'es which will be in the previous block
-            prev_txs = transactions[$ - Block.TxsInTestBlock .. $];
-        }
-    }
-    return transactions;
-}
-
-version (unittest)
-private KeyPair[] getRandomKeyPairs ()
-{
-    return WK.Keys.byRange().take(8).array();
-}
-
 unittest
 {
     import agora.consensus.data.genesis.Test;
