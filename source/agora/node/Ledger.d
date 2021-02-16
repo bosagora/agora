@@ -1304,37 +1304,6 @@ unittest
     assert(!ledger.externalize(data));
 }
 
-/// Situation : Create two blocks, one containing only `Payment` transactions,
-///             the other containing only `Freeze` ones
-/// Expectation: Block creation succeeds
-unittest
-{
-    scope ledger = new TestLedger(WK.Keys.NODE2);
-
-    // Generate payment transactions to the first 8 well-known keypairs
-    auto txs = genesisSpendable().enumerate()
-        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
-        .array();
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-    ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 1);
-    auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
-    assert(blocks.length == 2);
-    assert(blocks[1].header.height == 1);
-
-    // Now generate a block with only freezing transactions
-    txs.enumerate()
-        .map!(en => TxBuilder(en.value)
-              .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
-              .sign(TxType.Freeze))
-        .each!(tx => assert(ledger.acceptTransaction(tx)));
-    ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 2);
-    blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
-    assert(blocks.length == 3);
-    assert(blocks[2].header.height == 2);
-}
-
 // Return Genesis block plus 'count' number of blocks
 version (unittest)
 private immutable(Block)[] genBlocksToIndex (
