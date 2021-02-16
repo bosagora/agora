@@ -264,8 +264,8 @@ public class UpdateSigner
             if (settle_res.error)
             {
                 // todo: retry?
-                writefln("%s: Settlement signature request to %s rejected: %s",
-                    this.kp.V.prettify, this.peer_pk.prettify, settle_res);
+                writefln("%s: Settlement signature %s request to %s rejected: %s",
+                    this.kp.V.prettify, seq_id, this.peer_pk.prettify, settle_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -296,8 +296,8 @@ public class UpdateSigner
             if (update_res.error)
             {
                 // todo: retry?
-                writefln("%s: Update signature request to %s rejected: %s",
-                    this.kp.V.prettify, this.peer_pk.prettify, update_res);
+                writefln("%s: Update signature %s request to %s rejected: %s",
+                    this.kp.V.prettify, seq_id, this.peer_pk.prettify, update_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
