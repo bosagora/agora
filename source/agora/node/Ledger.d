@@ -1196,33 +1196,6 @@ unittest
     assert(ledger.getBlocksFrom(Height(1000)).take(10).walkLength() == 0);
 }
 
-// Reject a transaction whose output value is 0
-unittest
-{
-    scope ledger = new TestLedger(WK.Keys.Genesis);
-
-    // Valid case
-    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-    ledger.forceCreateBlock();
-    auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
-    assert(blocks.length == 2);
-
-    // Invalid case
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    foreach (ref tx; txs)
-    {
-        foreach (ref output; tx.outputs)
-            output.value = Amount(0);
-        foreach (ref input; tx.inputs)
-            input.unlock = genKeyUnlock(WK.Keys.Genesis.secret.sign(hashFull(tx)[]));
-    }
-
-    txs.each!(tx => assert(!ledger.acceptTransaction(tx)));
-    blocks = ledger.getBlocksFrom(Height(0)).take(10);
-    assert(blocks.length == 2);
-}
-
 /// basic block verification
 unittest
 {
