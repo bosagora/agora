@@ -225,6 +225,18 @@ public class Ledger
 
     /***************************************************************************
 
+        Returns:
+            The highest block height known to this Ledger
+
+    ***************************************************************************/
+
+    public Height getBlockHeight () @safe nothrow
+    {
+        return this.last_block.header.height;
+    }
+
+    /***************************************************************************
+
         Called when a consensus data set is externalized.
 
         This will create a new block and add it to the ledger.
@@ -844,18 +856,6 @@ public class Ledger
             block_timestamp_tolerance,
             &this.getCoinbaseTX,
             file, line);
-    }
-
-    /***************************************************************************
-
-        Returns:
-            latest block height
-
-    ***************************************************************************/
-
-    public Height getBlockHeight () @safe nothrow
-    {
-        return this.last_block.header.height;
     }
 
     /***************************************************************************
