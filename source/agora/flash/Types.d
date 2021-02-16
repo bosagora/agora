@@ -24,6 +24,15 @@ import agora.flash.ErrorCode;
 import std.conv;
 import std.format;
 
+public enum PaymentDirection
+{
+    /// refund towards us
+    TowardsOwner,
+
+    /// payment towards the counter-party
+    TowardsPeer
+}
+
 /// Tracks the current state of the channel.
 /// States can only move forwards, and never back.
 /// Once a channel is closed, it may never be re-opened again.
@@ -115,6 +124,9 @@ public struct Balance
 
     /// Payment to counter-party
     public Amount payment_amount;
+
+    /// HTLCs we've been offered by the counter-party in return for a secret
+    public HTLC[Hash] incoming_htlcs;
 
     /// HTLCs we're offering to the counter-party in return for a secret
     public HTLC[Hash] outgoing_htlcs;
