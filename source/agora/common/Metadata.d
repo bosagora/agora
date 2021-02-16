@@ -19,7 +19,7 @@ import agora.common.Types;
 
 import std.array;
 import std.file;
-import std.format;
+import std.path;
 import std.meta;
 import std.stdio;
 import std.typecons;
@@ -36,29 +36,20 @@ public abstract class Metadata
     public Set!Address peers;
 
     /// Load the metadata
-    public void load() { }
+    public abstract void load ();
 
     /// Dump the metadata
-    public void dump() { }
+    public abstract void dump ();
 }
 
 /// Metadata stored in memory (for unittests)
 public class MemMetadata : Metadata
 {
     ///
-    public this ()
-    {
-    }
+    public override void load () {}
 
     ///
-    public override void load ()
-    {
-    }
-
-    ///
-    public override void dump ()
-    {
-    }
+    public override void dump () {}
 }
 
 /// Metadata stored on disk (for persistence)
@@ -67,24 +58,23 @@ public class DiskMetadata : Metadata
     /// Path to the metadata on disk
     private string file_path;
 
-
     /***************************************************************************
 
         Constructor
 
         Params:
-            data_dir = path to the data directory
+            root = path to the data directory
 
     ***************************************************************************/
 
-    public this (string data_dir)
+    public this (string root)
     in
     {
-        assert(data_dir.length > 0);
+        assert(root.length > 0);
     }
-    body
+    do
     {
-        this.file_path = format("%s/%s", data_dir, "metadata.dat");
+        this.file_path = root.buildPath("metadata.dat");
     }
 
     /// Load metadata from disk
