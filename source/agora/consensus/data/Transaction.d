@@ -155,7 +155,7 @@ public struct Output
 
     @property public PublicKey address () const pure nothrow @safe @nogc
     {
-        import agora.common.crypto.ECC;
+        import agora.crypto.ECC;
 
         if (this.lock.type != LockType.Key)
             return PublicKey.init;

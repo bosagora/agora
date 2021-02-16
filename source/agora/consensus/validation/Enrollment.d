@@ -16,13 +16,13 @@ module agora.consensus.validation.Enrollment;
 
 import agora.common.Amount;
 import agora.common.Types;
-import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.consensus.data.Enrollment;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.state.ValidatorSet;
 import agora.consensus.data.PreImageInfo;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 
 import std.conv;

@@ -71,7 +71,7 @@ version (unittest)
 /// Ditto
 public class Ledger
 {
-    import agora.common.crypto.ECC : Point;
+    import agora.crypto.ECC : Point;
 
     /// data storage for all the blocks
     private IBlockStorage storage;

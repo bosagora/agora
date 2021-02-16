@@ -31,9 +31,9 @@
 
 module agora.script.Lock;
 
-import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.Types;
+import agora.crypto.ECC;
 
 import std.traits : EnumMembers;
 

@@ -13,7 +13,7 @@
 
 module agora.script.Script;
 
-import agora.common.crypto.ECC;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.script.Opcodes;
 import agora.script.Stack;

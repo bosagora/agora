@@ -165,7 +165,7 @@ public struct WK
 unittest
 {
     import std.string: representation;
-    import agora.common.crypto.ECC;
+    import agora.crypto.ECC;
     import agora.common.crypto.Schnorr;
 
     static assert(WK.Keys[0] == WK.Keys.A);

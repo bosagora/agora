@@ -14,7 +14,6 @@
 module agora.consensus.protocol.Nominator;
 
 import agora.common.BitField;
-import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
 import agora.common.crypto.Schnorr;
 import agora.common.Config;
@@ -32,6 +31,7 @@ import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.SCPEnvelopeStore;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.network.Clock;
 import agora.network.NetworkManager;
