@@ -355,7 +355,7 @@ public abstract class FlashNode : FlashAPI
                 "Channel ID not found");
 
         Payload payload;
-        if (!decryptPayload(packet.encrypted_payload, this.kp.v,
+        if (!decryptPayload(packet.encrypted_payloads[0], this.kp.v,
             packet.ephemeral_pk, payload))
         {
             writefln("%s --- ERROR: CANNOT DECRYPT PAYLOAD", this.kp.V.prettify);
@@ -369,7 +369,7 @@ public abstract class FlashNode : FlashAPI
                 ~ "unrecognized channel ID");
 
         return channel.onProposedPayment(seq_id, payment_hash, amount,
-            lock_height, payload, peer_nonce, height);
+            lock_height, packet, payload, peer_nonce, height);
     }
 
     /// See `FlashAPI.proposeUpdate`
