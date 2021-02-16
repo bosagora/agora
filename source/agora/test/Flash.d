@@ -166,7 +166,7 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         }
 
         while (!channel.isOpen())
-            this.taskman.wait(500.msecs);
+            this.taskman.wait(100.msecs);
     }
 
     ///
