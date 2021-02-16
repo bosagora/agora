@@ -29,6 +29,8 @@
 module agora.flash.OnionPacket;
 
 import agora.flash.ErrorCode;
+import agora.flash.Route;
+import agora.flash.Types;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
@@ -66,11 +68,10 @@ public struct OnionPacket
     // shared secret for decrypting
     public Point ephemeral_pk;
 
-    // encrypted payload, decrypts to a `Payload`
-    public EncryptedPayload encrypted_payload;
-
-    // todo: replace with actual HMAC
-    public Hash hmac;
+    // encrypted payload. The first one decrypts & deserializes to a `Payload`.
+    // the next payload may or may not be legitimate, but it depends entirely
+    // on the next node's ability to decrypt the payload.
+    public EncryptedPayload[20] encrypted_payloads;
 }
 
 /// Contains the encrypted payload and the nonce used to encrypt it
@@ -102,12 +103,6 @@ public struct Payload
     // need to verify:
     // cltv_expiry - cltv_expiry_delta >= outgoing_lock_height
     public Height outgoing_lock_height;
-
-    /// the packet to send to the next node
-    public OnionPacket next_packet;
-
-    // todo: replace with actual HMAC
-    public Hash hmac;
 }
 
 /*******************************************************************************
@@ -152,35 +147,29 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
 
     Amount forward_amount = total_amount;
     Height outgoing_lock_height = lock_height;
-    OnionPacket packet;
     Hash next_chan_id;
 
-    // onion packets have to be created from the inside-out
-    auto range = path.retro;
-    foreach (hop; range)
+    Pair ephemeral_kp = Pair.random();
+    OnionPacket packet = { version_byte : 0 };
+
+    // onion packets have to be created from right to left
+    assert(path.length <= 20);
+    ulong last_index = path.length - 1;
+
+    foreach (hop; path.retro)
     {
         Payload payload =
         {
             next_chan_id : next_chan_id,
             forward_amount : forward_amount,
             outgoing_lock_height : outgoing_lock_height,
-            next_packet : packet,
         };
 
-        Pair ephemeral_kp = Pair.random();
         auto encrypted_payload = encryptPayload(payload, ephemeral_kp,
             hop.pub_key);
 
-        OnionPacket new_packet =
-        {
-            version_byte : 0,
-            ephemeral_pk : ephemeral_kp.V,
-            encrypted_payload : encrypted_payload,
-            hmac : Hash.init,
-        };
-
-        packet = new_packet;
-
+        packet.encrypted_payloads[last_index] = encrypted_payload;
+        last_index--;
         if (!forward_amount.sub(hop.fee))
             assert(0);
 
@@ -189,9 +178,43 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
         outgoing_lock_height = Height(outgoing_lock_height - 1);
 
         next_chan_id = hop.chan_id;
+
+        // keep updating last valid ephemeral key
+        packet.ephemeral_pk = ephemeral_kp.V;
+
+        // todo: use hashing for derivation instead
+        auto next_secret = ephemeral_kp.v + Scalar(hashFull(1));
+        ephemeral_kp = Pair(next_secret, next_secret.toPoint());
     }
 
+    // fill out the rest with encrypted filler
+    foreach (ref payload; packet.encrypted_payloads[path.length .. $])
+        fillGarbage(payload);
+
     return packet;
+}
+
+/// Fill the payload with random encrypted data so it looks real but it ain't
+private void fillGarbage (ref EncryptedPayload payload)
+{
+    randombytes_buf(payload.nonce.ptr, payload.nonce.length);
+
+    auto ephemeral_kp = Pair.random();
+    ubyte[32] key_bytes = ephemeral_kp.v[][0 .. 32];
+
+    randombytes_buf_deterministic(payload.payload.ptr,
+        payload.payload.length, key_bytes);
+}
+
+/// Create the next packet for routing (if the next channel ID is not empty)
+public OnionPacket nextPacket (in OnionPacket packet)
+{
+    OnionPacket next = packet.serializeFull.deserializeFull!OnionPacket();
+    next.encrypted_payloads[0 .. $ - 1] = cast(EncryptedPayload[])packet.encrypted_payloads[1 .. $];
+    fillGarbage(next.encrypted_payloads[$ - 1]);
+    auto next_point = packet.ephemeral_pk - Scalar(hashFull(1)).toPoint;
+    next.ephemeral_pk = next_point;
+    return next;
 }
 
 /*******************************************************************************
@@ -282,8 +305,6 @@ unittest
         next_chan_id : hashFull(42),
         forward_amount : Amount(123),
         outgoing_lock_height : Height(100),
-        next_packet : OnionPacket.init,
-        hmac : hashFull(111),
     };
 
     Pair ephemeral_kp = Pair.random();
