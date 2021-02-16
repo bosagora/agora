@@ -56,47 +56,47 @@ public immutable Block GenesisBlock = {
         signature:   Signature.init,
 
         enrollments: [
-            // NODE6
+            // GDNODE6ZXW2NNOOQIGN24MBEZRO5226LSMHGQA3MUAMYQSTJVR7XT6GH
             Enrollment(
                 Hash(`0x1a1ae2be7afbe367e8e588474d93806b66b773c741b184dc5b4c59640e998644d2ebb0b866ac25dc053b06fd815a86d11c718f77c9e4d0fce1bdbb58486ee751`),
-                Hash(`0xaf43c67d9dd0f53de3eaede63cdcda8643422d62205df0b5af65706ec28b372adb785ce681d559d7a7137a4494ccbab4658ce11ec75a8ec84be5b73590bffceb`),
+                Hash(`0x3712f9aa91099107b563ee54315f9d8e90159b3e75395b4545fd594b9b7e23b4c1dec672f4d2341bb9e961de35b5ce1ed3d2e063b7c1f59ee1679621b087a428`),
                 20,
-                Signature(`0x02efb7bdfe591dc1e717cbdf4fe03d03d7df620b7fa345f212076274cf8d1ca07e3d4753b6b4ccdb35c2864be4195e83b7b8433ca1d27a57fb9f48a631001304`)),
+                Signature(`0x0d419a4c6d9afa1d6053990da9d0a94fc516422935576cea2eae21f9c00be5317e3d4753b6b4ccdb35c2864be4195e83b7b8433ca1d27a57fb9f48a631001304`)),
 
-            /// NODE3
+            /// GDNODE3EWQKF33TPK35DAQ3KXAYSOT4E4ACDOVJMDZQDVKP66IMJEACM
             Enrollment(
                 Hash(`0x25f5484830881b7e7d1247f8d607ead059344ade42abb56c68e63a4870303e165cbfd08078cca8e6be193848bc520c9538df4fadb8f551ea8db58792a17b8cf1`),
-                Hash(`0xdd1b9c62d4c62246ea124e5422d5a2e23d3ca9accb0eba0e46cd46708a4e7b417f46df34dc2e3cba9a57b1dc35a66dfc2d5ef239ebeaaa00299232bc7e3b7bfa`),
+                Hash(`0xa9123912972492f84182402a104f1f248e1aa1853ad365a2a65f4831d7567a8552c950c8d31bdf60d77a7dbfa70c88317cd0b797cd3e64fea3e4c3311e59a658`),
                 20,
-                Signature(`0x0d51673d57b315aefcd062c4baaa3ba8d381a5138351985641d4fc6f3b9e2ec55c71e74382a24b7e644d32b0306fe3cf14ecd7de5635c70aa592f4721aa74fe2`)),
+                Signature(`0x092d1e09e7aadd12eff90bc668bff1153e9ef8cb9fa85acfb752c3ef3d6b4b175c71e74382a24b7e644d32b0306fe3cf14ecd7de5635c70aa592f4721aa74fe2`)),
 
-            // NODE2
+            // GDNODE2IMTDH7SZHXWDS24EZCMYCEJMRZWB3S4HLRIUP6UNGKVVFLVHQ
             Enrollment(
                 Hash(`0x4fab6478e5283258dd749edcb303e48f4192f199d742e14b348711f4bbb116b197e63429c6fa608621681e625baf1b045a07ecf12f2e0b04c38bee449f5eacff`),
-                Hash(`0xa0502960ddbe816729f60aeaa480c7924fb020d864deec6a9db778b8e56dd2ff8e987be748ff6ca0a43597ecb575da5d532696e376dc70bb4567b5b1fa512cb4`),
+                Hash(`0xb4b9252dc29b16f9624d3d94fa5c3dc8c7b82e086327a89dfc08a32642ed62bbd7ec6edf040ab13b8719dab7ec7f67d9d4927cc2a9970107bfe397acfaceebb8`),
                 20,
-                Signature(`0x0f8f2876a05d3bbbc4359fdc6e83b7bf290f36e839d61687b714166f1b5a023ad79a36ace4d3097869dc009b8939fc83bdf940c8822c6931d5c09326aa746b31`)),
+                Signature(`0x014106f116cb4fd537e0c47c02bc9149c4730670170ee059b20624dc15d7fca5d79a36ace4d3097869dc009b8939fc83bdf940c8822c6931d5c09326aa746b31`)),
 
-            // NODE4
+            // GDNODE4KTE7VQUHVBLXIGD7VEFY57X4XV547P72D37SDG7UEO7MWOSNY
             Enrollment(
                 Hash(`0xbf150033f0c3123f0b851c3a97b6cf5335b2bc2f4e9f0c2f3d44b863b10c261614d79f72c2ec0b1180c9135893c3575d4a1e1951a0ba24a1a25bfe8737db0aef`),
-                Hash(`0x0a8201f9f5096e1ce8e8de4147694940a57a188b78293a55144fc8777a774f2349b3a910fb1fb208514fb16deaf49eb05882cdb6796a81f913c6daac3eb74328`),
+                Hash(`0x4e3900af87f47b5a2b73e0bf10d598a69e7f2d43211141fbb993e26d17cf1fd9e376db5d34039e03420da00bc5b8513af23943f533ac8dae2205d5cbfd1d727d`),
                 20,
-                Signature(`0x06b347fc8dd258d3f9ccb70bfec4912a01c035bb5c07a2f0b54f7388b7472cdadc8b89135fe3f5df9e2815b9bdb763c41b8b2dab5911e313acc82470c2147422`)),
+                Signature(`0x08c8d426a634a4980baa5bd16a28567f1e2c28655d753b6e0573f285d7a9eab1dc8b89135fe3f5df9e2815b9bdb763c41b8b2dab5911e313acc82470c2147422`)),
 
-            // NODDE7
+            // GDNODE7J5EUK7T6HLEO2FDUBWZEXVXHJO7C4AF5VZAKZENGQ4WR3IX2U
             Enrollment(
                 Hash(`0xc0abcbff07879bfdb1495b8fdb9a9e5d2b07a689c7b9b3c583459082259be35687c125a1ddd6bd28b4fe8533ff794d3dba466b5f91117bbf557c3f1b6ff50e5f`),
-                Hash(`0xd0348a88f9b7456228e4df5689a57438766f4774d760776ec450605c82348c461db84587c2c9b01c67c8ed17f297ee4008424ad3e0e5039179719d7e9df297c1`),
+                Hash(`0xa2c12a9fd9f4e2c5bb75dfdc90603d80c75a73d6d91624afa2ca47f4d8e710c79aa00a3da5a6b7391100b10ac256a7714c93fe8dcc933a98db3d0827510dcc13`),
                 20,
-                Signature(`0x0e1707cd39104bdb5ccb86f4cc41df58ef4100cc561bf430bbbbaf285680c49d2692d0b8b04133a34716169a4b1d33d77c3e585357d8a2a2c48a772275255c01`)),
+                Signature(`0x05aba63cb2b7783e940fa41ac587fd20bf594d92f4a5567016761220c25304972692d0b8b04133a34716169a4b1d33d77c3e585357d8a2a2c48a772275255c01`)),
 
-            // NODE5
+            // GDNODE5T7TWJ2S4UQSTM7KDHU2HQHCJUXFYLPZDDYGXIBUAH3U3PJQC2
             Enrollment(
                 Hash(`0xd827d6a201a4e7630dee1f19ed3670b6012610457c8c729a2077b4fcafcfcc7a48a640aac29ae79e25f80ca1cbf535b779eebb7609304041ec1f13ec21dcbc8d`),
-                Hash(`0xa24b7e6843220d3454523ceb7f9b43f037e56a01d2bee82958b080dc6350ebac2da12b561cbd96c6fb3f5ae5a3c8df0ac2c559ae1c45b11d42fdf866558112bc`),
+                Hash(`0x5ae7cd3f8b52ff6442cfa166d4c61bf6531b397d884859dc973a1b68e989f147bf19ac7ee2b86c559589a96b136322f65768cf1d880ee8beeb8076f12bdd2ee3`),
                 20,
-                Signature(`0x06bf56cf8a02b95d4f425c63efb0bdf4bbc54b00c83ae6cef400040f4a68b95ffd787c4518b78ab9ed73a3760741d557ac2aca631fc2796be86fcf391d3a6634`))
+                Signature(`0x060b7fcf3922889bee23a603b10d81454a8b629ca12850dc60ef5cd69aa69721fd787c4518b78ab9ed73a3760741d557ac2aca631fc2796be86fcf391d3a6634`))
         ]
     },
     merkle_tree: GenesisMerkleTree,

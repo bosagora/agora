@@ -1642,7 +1642,8 @@ unittest
     foreach (idx, kp; pairs)
     {
         auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
         cycle.getPreImage(pair.v, Height(1));
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
@@ -1743,7 +1744,8 @@ unittest
         assert(ledger.utxo_set.peekUTXO(key, stake));
         KeyPair kp = WK.Keys[stake.output.address];
         auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
         const preimage = PreImageInfo(key,
             cycle.getPreImage(pair.v, Height(params.ValidatorCycle)),
                 cast (ushort) (params.ValidatorCycle));

@@ -355,12 +355,12 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xb126...3364, Enrollments: [
-{ utxo: 0x1a1a...e751, seed: 0xaf43...fceb, cycles: 20, sig: 0x02ef...1304 }
-{ utxo: 0x25f5...8cf1, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d51...4fe2 }
-{ utxo: 0x4fab...acff, seed: 0xa050...2cb4, cycles: 20, sig: 0x0f8f...6b31 }
-{ utxo: 0xbf15...0aef, seed: 0x0a82...4328, cycles: 20, sig: 0x06b3...7422 }
-{ utxo: 0xc0ab...0e5f, seed: 0xd034...97c1, cycles: 20, sig: 0x0e17...5c01 }
-{ utxo: 0xd827...bc8d, seed: 0xa24b...12bc, cycles: 20, sig: 0x06bf...6634 }]
+{ utxo: 0x1a1a...e751, seed: 0x3712...a428, cycles: 20, sig: 0x0d41...1304 }
+{ utxo: 0x25f5...8cf1, seed: 0xa912...a658, cycles: 20, sig: 0x092d...4fe2 }
+{ utxo: 0x4fab...acff, seed: 0xb4b9...ebb8, cycles: 20, sig: 0x0141...6b31 }
+{ utxo: 0xbf15...0aef, seed: 0x4e39...727d, cycles: 20, sig: 0x08c8...7422 }
+{ utxo: 0xc0ab...0e5f, seed: 0xa2c1...cc13, cycles: 20, sig: 0x05ab...5c01 }
+{ utxo: 0xd827...bc8d, seed: 0x5ae7...2ee3, cycles: 20, sig: 0x060b...6634 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -398,12 +398,12 @@ private struct BlockFmt
 @safe unittest
 {
     static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xb126...3364, Enrollments: [
-{ utxo: 0x1a1a...e751, seed: 0xaf43...fceb, cycles: 20, sig: 0x02ef...1304 }
-{ utxo: 0x25f5...8cf1, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d51...4fe2 }
-{ utxo: 0x4fab...acff, seed: 0xa050...2cb4, cycles: 20, sig: 0x0f8f...6b31 }
-{ utxo: 0xbf15...0aef, seed: 0x0a82...4328, cycles: 20, sig: 0x06b3...7422 }
-{ utxo: 0xc0ab...0e5f, seed: 0xd034...97c1, cycles: 20, sig: 0x0e17...5c01 }
-{ utxo: 0xd827...bc8d, seed: 0xa24b...12bc, cycles: 20, sig: 0x06bf...6634 }]
+{ utxo: 0x1a1a...e751, seed: 0x3712...a428, cycles: 20, sig: 0x0d41...1304 }
+{ utxo: 0x25f5...8cf1, seed: 0xa912...a658, cycles: 20, sig: 0x092d...4fe2 }
+{ utxo: 0x4fab...acff, seed: 0xb4b9...ebb8, cycles: 20, sig: 0x0141...6b31 }
+{ utxo: 0xbf15...0aef, seed: 0x4e39...727d, cycles: 20, sig: 0x08c8...7422 }
+{ utxo: 0xc0ab...0e5f, seed: 0xa2c1...cc13, cycles: 20, sig: 0x05ab...5c01 }
+{ utxo: 0xd827...bc8d, seed: 0x5ae7...2ee3, cycles: 20, sig: 0x060b...6634 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -453,12 +453,12 @@ private struct RangeFmt (R)
     static immutable ResultStr = `
 ====================================================
 Height: 0, Prev: 0x0000...0000, Root: 0xb126...3364, Enrollments: [
-{ utxo: 0x1a1a...e751, seed: 0xaf43...fceb, cycles: 20, sig: 0x02ef...1304 }
-{ utxo: 0x25f5...8cf1, seed: 0xdd1b...7bfa, cycles: 20, sig: 0x0d51...4fe2 }
-{ utxo: 0x4fab...acff, seed: 0xa050...2cb4, cycles: 20, sig: 0x0f8f...6b31 }
-{ utxo: 0xbf15...0aef, seed: 0x0a82...4328, cycles: 20, sig: 0x06b3...7422 }
-{ utxo: 0xc0ab...0e5f, seed: 0xd034...97c1, cycles: 20, sig: 0x0e17...5c01 }
-{ utxo: 0xd827...bc8d, seed: 0xa24b...12bc, cycles: 20, sig: 0x06bf...6634 }]
+{ utxo: 0x1a1a...e751, seed: 0x3712...a428, cycles: 20, sig: 0x0d41...1304 }
+{ utxo: 0x25f5...8cf1, seed: 0xa912...a658, cycles: 20, sig: 0x092d...4fe2 }
+{ utxo: 0x4fab...acff, seed: 0xb4b9...ebb8, cycles: 20, sig: 0x0141...6b31 }
+{ utxo: 0xbf15...0aef, seed: 0x4e39...727d, cycles: 20, sig: 0x08c8...7422 }
+{ utxo: 0xc0ab...0e5f, seed: 0xa2c1...cc13, cycles: 20, sig: 0x05ab...5c01 }
+{ utxo: 0xd827...bc8d, seed: 0x5ae7...2ee3, cycles: 20, sig: 0x060b...6634 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -474,7 +474,7 @@ GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
 GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0x5a96...8163, Root: 0xd437...e2c9, Enrollments: []
+Height: 1, Prev: 0xf09e...9ce6, Root: 0xd437...e2c9, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],

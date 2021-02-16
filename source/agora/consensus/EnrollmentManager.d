@@ -151,7 +151,8 @@ public class EnrollmentManager
     {
         assert(params !is null);
         this.params = params;
-        this.cycle = PreImageCycle(params.ValidatorCycle);
+        this.cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
 
         this.db = new ManagedDatabase(db_path);
         this.validator_set = new ValidatorSet(this.db, params);
@@ -474,7 +475,8 @@ public class EnrollmentManager
         const kp = Pair.fromScalar(secretKeyToCurveScalar(key.secret));
 
         // Generate the random seed to use
-        auto cache = PreImageCache(PreImageCycle.SeedCount, cycle_length);
+        auto cache = PreImageCache(PreImageCycle.PreImageCount / cycle_length,
+            cycle_length);
         assert(offset < cache.length);
         cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
 
@@ -1238,7 +1240,8 @@ unittest
         Pair pair;
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
         const seed = cycle.getPreImage(pair.v, Height(1));
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
@@ -1370,7 +1373,8 @@ unittest
 
     // Note: This was copied from `EnrollmentManager` constructor and should
     // be kept in sync with it
-    auto cycle = PreImageCycle(params.ValidatorCycle);
+    auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+        params.ValidatorCycle);
 
     auto secret = Scalar.random();
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
@@ -1434,7 +1438,8 @@ unittest
         Pair pair;
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
         const seed = cycle.getPreImage(pair.v, Height(1));
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
@@ -1602,7 +1607,8 @@ unittest
         Pair pair;
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
 
         cycle.getPreImage(pair.v, Height(1));
         const enroll = EnrollmentManager.makeEnrollment(
@@ -1611,7 +1617,8 @@ unittest
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
-        auto cache = PreImageCache(PreImageCycle.SeedCount, params.ValidatorCycle);
+        auto cache = PreImageCache(PreImageCycle.PreImageCount / params.ValidatorCycle,
+            params.ValidatorCycle);
         cache.reset(hashMulti(pair.v, "consensus.preimages", 0));
 
         PreImageInfo preimage = { enroll_key : utxos[idx],
@@ -1623,15 +1630,15 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0xdc7a2c2b27784ab29d44ccb3b9ed1c02e75ac82f64eb8f5988f895d7c797f461040ae31c9f7fe1804dab829518dd4d0e889a027b5ad64af33f2bd6e44569d943`),
+        Hash(`0x7b2dff9433533f164bfdc35266f6a788fd0ea4566304929d5dede4fd910cdf47972a7ea2a9f0609a6dbcbc6d80bd93b79d00fe415c2b034572d16d90211c33bf`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(504)) ==
-        Hash(`0xd955dd08edefeb089ff024438e5e81e08db55f9c80665386d535a9573a0f217df3437627913eb696d48f7a16af9d447959da528e47812cfae7971160a3ccebf5`),
+        Hash(`0x597eb470d45dcfed0b23297321e8c40472691daae684664340b4e4454795a9dc575a58661751f1581962afd16ae416e2b3eff86b5300b3829205f7bef25817da`),
         man.getRandomSeed(utxos, Height(504)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(1008)) ==
-        Hash(`0x1d621824f744d74151ec770c4835f45fcdc58d2c29cece0b3039e4c2546d7ef16ab4e71c33db712984130c1cd9d287a4453f7d68e7f493dec6dba845c44035be`),
+        Hash(`0x77e8f821cacd4361452a88a68f8ac0f3ef8cd1dcc61820a983638603834c3bfaf2e367c856de5ae7b911d54b4421f0fdb4bad6d6385965c839785efaa3cc361f`),
         man.getRandomSeed(utxos, Height(1008)).to!string);
 }
 

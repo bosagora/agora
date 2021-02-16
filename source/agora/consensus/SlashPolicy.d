@@ -324,7 +324,8 @@ unittest
     foreach (idx, kp; pairs)
     {
         auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+            params.ValidatorCycle);
         cycle.getPreImage(pair.v, Height(1));
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(

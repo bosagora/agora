@@ -220,7 +220,8 @@ unittest
                                         &validator_set.findRecentEnrollment));
 
     const utxoPeek = &utxo_set.peekUTXO;
-    auto cycle = PreImageCycle(params.ValidatorCycle);
+    auto cycle = PreImageCycle(PreImageCycle.PreImageCount,
+        params.ValidatorCycle);
 
     auto n0_secret = secretKeyToCurveScalar(key_pairs[0].secret);
     enroll1.utxo_key = utxo_hash1;

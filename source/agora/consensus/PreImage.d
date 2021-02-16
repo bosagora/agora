@@ -276,14 +276,14 @@ public struct PreImageCycle
     @disable public this();
 
     /// Ditto
-    public this (uint seed_interval)
+    public this (ulong preimage_count, uint seed_interval)
     {
-        this.seeds = PreImageCache(PreImageCycle.SeedCount, seed_interval);
+        this.seeds = PreImageCache(preimage_count / seed_interval, seed_interval);
         this.preimages = PreImageCache(seed_interval, 1);
     }
 
-    /// The number of seeds for pre-images
-    public static immutable uint SeedCount = 100;
+    /// The total number of pre-images
+    public static immutable ulong PreImageCount = 5_040_000;
 
     /***************************************************************************
 
