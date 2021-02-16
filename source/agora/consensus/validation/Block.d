@@ -1038,7 +1038,7 @@ unittest
                               "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
     uint[] missing_validators = [];
 
-    auto block3 = makeNewTestBlock(block2, txs_3, enrollments, preimage_root,
+    auto block3 = makeNewTestBlock(block2, txs_3, preimage_root, enrollments,
         missing_validators);
     assert(block3.isValid(block2.header.height, hashFull(block2.header), findUTXO,
         Enrollment.MinValidatorCount, genesis_validator_keys.length, checker,
@@ -1179,7 +1179,7 @@ unittest
                                   "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
         uint[] missing_validators = [];
 
-        auto block3 = makeNewTestBlock(block2, txs_3, enrollments, preimage_root,
+        auto block3 = makeNewTestBlock(block2, txs_3, preimage_root, enrollments,
             missing_validators);
         assert(block3.header.enrollments.length == Enrollment.MinValidatorCount);
         assert(block3.isValid(block2.header.height, hashFull(block2.header),

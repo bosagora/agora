@@ -282,7 +282,7 @@ public class Ledger
         }
 
         const block = makeNewTestBlock(this.last_block,
-            externalized_tx_set, data.enrolls, random_seed,
+            externalized_tx_set, random_seed, data.enrolls,
             data.missing_validators, public_keys,
             (PublicKey pubkey)
             {
@@ -1408,9 +1408,8 @@ private immutable(Block)[] genBlocksToIndex (
     {
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
 
-        const NoEnrollments = null;
         auto cycle = blocks[$ - 1].header.height / params.ValidatorCycle;
-        blocks ~= makeNewTestBlock(blocks[$ - 1], txs, NoEnrollments);
+        blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
     }
 
     return blocks.assumeUnique;

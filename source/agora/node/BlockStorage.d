@@ -1093,8 +1093,8 @@ private void testStorage (IBlockStorage storage)
             txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
             Enrollment[] no_enrollments = null;
             uint[] no_missing_validator = null;
-            last_block = makeNewTestBlock(blocks[$ - 1], txs, no_enrollments,
-                Hash.init,
+            last_block = makeNewTestBlock(blocks[$ - 1], txs, Hash.init,
+                no_enrollments,
                 no_missing_validator,
                 genesis_validator_keys[0 .. $ - 1], // last validator will not sign
                 (PublicKey k)
