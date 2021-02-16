@@ -235,40 +235,6 @@ public class Ledger
         return this.last_block.header.height;
     }
 
-    /***************************************************************************
-
-        Called when a consensus data set is externalized.
-
-        This will create a new block and add it to the ledger.
-
-        Params:
-            data = the consensus data which was externalized
-
-        Returns:
-            true if the consensus data was accepted
-
-    ***************************************************************************/
-
-    public bool onExternalized (ConsensusData data)
-        @trusted
-    {
-        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight(),
-            data.missing_validators);
-
-        Transaction[] externalized_tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
-        {
-            log.info("Missing TXs, can not create new block at Height {} : {}",
-                this.getBlockHeight() + 1, prettify(data));
-            return false;
-        }
-
-        auto block = makeNewBlock(this.last_block,
-            externalized_tx_set, data.timestamp, random_seed, data.enrolls,
-            data.missing_validators);
-        return this.acceptBlock(block);
-    }
-
     version (unittest)
     private bool externalize (ConsensusData data,
         string file = __FILE__, size_t line = __LINE__)
