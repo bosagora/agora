@@ -314,7 +314,7 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         auto packet = this.createOnionPacket(invoice.payment_hash, lock_height,
             invoice.amount, path, total_amount);
 
-        writefln("%s Paying invoice and routing packet", this.kp.V.prettify);
+        writefln("%s: Paying invoice and routing packet", this.kp.V.prettify);
         this.paymentRouter(path.front.chan_id, invoice.payment_hash,
             total_amount, lock_height, packet);
     }
@@ -516,10 +516,6 @@ unittest
     const alice_pk = alice_pair.V;
     const bob_pk = bob_pair.V;
     const charlie_pk = charlie_pair.V;
-
-    writefln("alice: %s", alice_pk.prettify);
-    writefln("bob: %s", bob_pk.prettify);
-    writefln("charlie: %s", charlie_pk.prettify);
 
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0,
