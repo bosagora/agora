@@ -1047,7 +1047,6 @@ public class Ledger
 version (unittest)
 {
     import core.stdc.time : time;
-    import agora.network.Clock : MockClock;
 
     /// simulate block creation as if a nomination and externalize round completed
     private void forceCreateBlock (Ledger ledger, ulong max_txs = Block.TxsInTestBlock,
@@ -1384,10 +1383,6 @@ private immutable(Block)[] genBlocksToIndex (
 /// test enrollments in the genesis block
 unittest
 {
-    import agora.common.BitField;
-    import agora.common.Serializer;
-    import std.exception;
-
     // Default test genesis block has 6 validators
     {
         scope ledger = new TestLedger(WK.Keys.A);
@@ -1422,12 +1417,7 @@ unittest
 /// test atomicity of adding blocks and rolling back
 unittest
 {
-    import agora.common.crypto.Key;
-    import agora.common.Types;
-    import agora.crypto.Hash;
     import std.conv;
-    import std.exception;
-    import std.range;
     import core.stdc.time : time;
 
     static class ThrowingLedger : Ledger
@@ -1559,7 +1549,6 @@ unittest
 unittest
 {
     import agora.consensus.data.genesis.Test;
-    import std.conv;
     import agora.consensus.data.genesis.Coinnet : CoinGenesis = GenesisBlock;
 
     // ConsensusParams is instantiated by default with the test genesis block
@@ -1645,7 +1634,6 @@ unittest
 unittest
 {
     import agora.consensus.data.genesis.Test;
-    import agora.consensus.data.PreImageInfo;
     import agora.consensus.PreImage;
     import agora.crypto.Schnorr;
 
@@ -1803,9 +1791,7 @@ unittest
 
 unittest
 {
-    import std;
     import agora.consensus.data.genesis.Test;
-    import agora.consensus.data.PreImageInfo;
     import agora.consensus.PreImage;
     import agora.crypto.Schnorr;
     import agora.utils.WellKnownKeys : CommonsBudget;
@@ -1903,7 +1889,7 @@ unittest
 {
     import agora.utils.WellKnownKeys : CommonsBudget;
     import agora.consensus.data.genesis.Test;
-    import std;
+
     ConsensusConfig config = { validator_cycle: 20, payout_period: 1 };
     auto params = new immutable(ConsensusParams)(GenesisBlock,
         CommonsBudget.address, config);
