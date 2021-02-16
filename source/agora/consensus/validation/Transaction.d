@@ -26,6 +26,8 @@ import agora.script.Lock;
 version (unittest)
 {
     import agora.common.crypto.Key;
+
+    import std.format;
 }
 
 /*******************************************************************************
@@ -183,8 +185,6 @@ public bool isValid (in Transaction tx, scope UTXOFinder findUTXO,
 /// verify transaction data
 unittest
 {
-    import std.format;
-
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -274,8 +274,6 @@ unittest
 /// of the previous transaction to create and validate the input.
 unittest
 {
-    import std.format;
-
     scope storage = new TestUTXOSet;
 
     immutable(KeyPair)[] key_pairs;
@@ -632,7 +630,6 @@ unittest
 /// test for transactions having no input or no output
 unittest
 {
-    import std.format;
     import std.string;
     import std.algorithm.searching;
 
@@ -675,7 +672,6 @@ unittest
 /// test for transaction having combined inputs
 unittest
 {
-    import std.format;
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -719,7 +715,6 @@ unittest
 /// test for unknown transaction type
 unittest
 {
-    import std.format;
     Transaction[Hash] storage;
     TxType unknown_type = cast(TxType)100; // any number is OK for test except 0 and 1
     KeyPair key_pair = KeyPair.random;
@@ -744,7 +739,6 @@ unittest
 /// test for checking input overflow for Payment and Freeze type transactions
 unittest
 {
-    import std.format;
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -803,7 +797,6 @@ unittest
 /// test for checking output overflow for Payment type transaction
 unittest
 {
-    import std.format;
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -848,7 +841,6 @@ unittest
 /// test for transaction to store data
 unittest
 {
-    import std.format;
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
