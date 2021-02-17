@@ -61,7 +61,7 @@ public string isInvalidReason (
     if (tx.lock_height > height)
         return "Transaction: Not unlocked for this height";
 
-    foreach (output; tx.outputs)
+    foreach (idx, output; tx.outputs)
     {
         // disallow negative amounts
         if (!output.value.isValid())
@@ -70,6 +70,13 @@ public string isInvalidReason (
         // disallow 0 amount
         if (output.value == Amount(0))
             return "Transaction: Value of output is 0";
+
+        // Each output of a freezing transaction must have at least
+        // `Amount.MinFreezeAmount`, save for the first one which
+        // will be considered a refund if it is less than that.
+        if (tx.type == TxType.Freeze && idx > 0 &&
+            output.value < Amount.MinFreezeAmount)
+            return "Transaction: All non-refund outputs must be over the minimum freezing amount";
     }
 
     const tx_hash = hashFull(tx);

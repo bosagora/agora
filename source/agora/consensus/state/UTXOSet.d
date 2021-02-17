@@ -13,6 +13,7 @@
 
 module agora.consensus.state.UTXOSet;
 
+import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Serializer;
 import agora.common.Set;
@@ -82,11 +83,20 @@ abstract class UTXOCache
         {
             auto utxo_hash = UTXO.getHash(tx_hash, idx);
 
-            // Melting UTXOs will melt after 2016 blocks except ones that go to
-            // the CommonsBudget and others will melt at the next block.
-            auto utxo_value = UTXO((melting && output.address != commons_budget) ?
-                height + 2016 : height + 1, tx.type, output);
-            this.add(utxo_hash, utxo_value);
+            // In general, melting UTXOs will be available after 2016 blocks
+            // UTXOs which are towards the Commons Budget are excluded from this
+            // rule, and will be available from the next block.
+            if (melting && output.address != commons_budget)
+                this.add(utxo_hash, UTXO(height + 2016, tx.type, output));
+            // Additionally, if a transaction has two or more outputs,
+            // the first one is allowed to be under the minimum freezing amount.
+            // If it is, it will not be considered frozen.
+            else if (tx.type == TxType.Freeze && tx.outputs.length >= 2 &&
+                     (idx == 0 && output.value < Amount.MinFreezeAmount))
+                this.add(utxo_hash, UTXO(height + 1, TxType.Payment, output));
+            // Finally, the following is the most common case
+            else
+                this.add(utxo_hash, UTXO(height + 1, tx.type, output));
         }
     }
 
