@@ -1942,10 +1942,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto all_configs = validator_configs.chain(full_node_configs).array;
 
-    immutable string gen_block_hex = GenesisBlock
-        .serializeFull()
-        .toHexString();
-
     const test_start_time = time(null);
     foreach (ref conf; all_configs)
         conf.node.testing = true;
