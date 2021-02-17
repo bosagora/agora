@@ -288,9 +288,7 @@ public class Ledger
     public bool acceptBlock (const ref Block block, bool externalized = true,
         string file = __FILE__, size_t line = __LINE__) @safe
     {
-        if (auto fail_reason = block.header.height == 0
-            ? block.isGenesisBlockInvalidReason()
-            : this.validateBlock(block, file, line))
+        if (auto fail_reason = this.validateBlock(block, file, line))
         {
             if (externalized)
             {
@@ -800,6 +798,9 @@ public class Ledger
     public string validateBlock (const ref Block block,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
+        if (block.header.height == 0)
+            return block.isGenesisBlockInvalidReason();
+
         size_t active_enrollments = enroll_man.getValidatorCount(
                 block.header.height);
 
