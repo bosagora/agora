@@ -462,7 +462,7 @@ public struct TxBuilder
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
-            this.data.outputs ~= this.leftover;
+            this.data.outputs = [ this.leftover ] ~ this.data.outputs;
 
         this.data.payload = DataPayload(data);
 
@@ -740,11 +740,11 @@ unittest
     // 488M / 3
     const Amount ExpectedAmount      = Amount(162_666_666_6666_666L);
 
-    assert(result.outputs[0].value == ExpectedAmount);
     assert(result.outputs[1].value == ExpectedAmount);
     assert(result.outputs[2].value == ExpectedAmount);
+    assert(result.outputs[3].value == ExpectedAmount);
     // The first output is the remainder
-    assert(result.outputs[3].value == Amount(2));
+    assert(result.outputs[0].value == Amount(2));
 }
 
 /// Test with one output key
@@ -777,7 +777,7 @@ unittest
     assert(result.outputs.length == 4);
 
     assert(equal!((in Output outp, in KeyPair b) => outp.address == b.address)(
-               result.outputs, [ WK.Keys.A, WK.Keys.B, WK.Keys.C, WK.Keys.Z ]));
+               result.outputs, [ WK.Keys.Z, WK.Keys.A, WK.Keys.B, WK.Keys.C ]));
 }
 
 /// Test with a range of tuples
