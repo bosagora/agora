@@ -1643,11 +1643,11 @@ unittest
     {
         auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
         auto cycle = PreImageCycle(params.ValidatorCycle);
-        const seed = cycle.populate(pair.v, true);
+        cycle.getPreImage(pair.v, Height(1));
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxos[idx], params.ValidatorCycle,
-            seed, 0);
+            cycle.seeds[$ - 1], 0);
         assert(ledger.enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &ledger.utxo_set.peekUTXO));
         enrollments ~= enroll;

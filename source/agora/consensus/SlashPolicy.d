@@ -325,11 +325,11 @@ unittest
     {
         auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
         auto cycle = PreImageCycle(params.ValidatorCycle);
-        const seed = cycle.populate(pair.v, true);
+        cycle.getPreImage(pair.v, Height(1));
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
-            seed, idx);
+            cycle.seeds[$ - 1], idx);
         assert(enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &utxo_set.peekUTXO));
         enrollments ~= enroll;

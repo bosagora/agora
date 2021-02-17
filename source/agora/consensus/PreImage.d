@@ -287,18 +287,6 @@ public struct PreImageCycle
 
     /***************************************************************************
 
-        The number of the current cycle
-
-        This is the data used as a nonce in generating the cycle seed.
-        Named `nonce` to avoid any ambiguity. It is incremented once every
-        `EnrollPerCycle` period, currently 700 days.
-
-    ***************************************************************************/
-
-    public uint nonce;
-
-    /***************************************************************************
-
         The index of the enrollment within the current cycle
 
         This number is incremented every time a new Enrollment is accepted
@@ -332,74 +320,10 @@ public struct PreImageCycle
 
     /***************************************************************************
 
-        Populate the caches of pre-images
-
-        This will first populate the caches (seeds and preimages) as necessary,
-        then increase the `index` by one, or reset it to 0 and increase `nonce`
-        if necessary.
-
-        Note that the increment is done after the caches are populated,
-        so `populate` needs to be called once this node has confirmed it
-        is part of consensus. If the caches are only needed without the
-        increment, the `consume` parameter must be set to `false`.
-
-        Params:
-          secret = The secret key of the node, used as part of the hash
-                   to generate the cycle seeds
-          consume = If true, calculate the cycle index. Otherwise, just
-                   get the random seed which is the first pre-image
-
-        Returns:
-          The hash of the current enrollment round
-
-    ***************************************************************************/
-
-    public Hash populate (scope const ref Scalar secret, bool consume)
-        @safe nothrow
-    {
-        // Populate the nonce cache if necessary
-        if (this.index == 0)
-        {
-            const cycle_seed = hashMulti(
-                secret, "consensus.preimages", this.nonce);
-            this.seeds.reset(cycle_seed);
-        }
-
-        if (consume)
-        {
-            // Populate the current enrollment round cache
-            // The index into `seeds` is the absolute index of the cycle,
-            // not the number of round, hence why we use `byStrides`
-            // The alternative would be:
-            // [$ - (this.index + 1) * this.preimages.length]
-            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
-
-            // Increment index if there are rounds left in this cycle
-            this.index += 1;
-            if (this.index >= SeedCount)
-            {
-                this.index = 0;
-                this.nonce += 1;
-            }
-            return this.preimages[$ - 1];
-        }
-        else
-        {
-            // If this is used for getting initial pre-image for enrollment
-            // it just creates initial pre-image of the cycle seed.
-            auto next_images = PreImageCache(this.preimages.data.length,
-            this.preimages.interval);
-            next_images.reset(this.seeds.byStride[$ - 1 - this.index]);
-            return next_images[$ - 1];
-        }
-    }
-
-    /***************************************************************************
-
         Seek to the `PreImage`s at height `height`
 
-        This will calculate the `index` and `nonce` according to the given
-        height and populate the `seed` and `preimages` if neccesary.
+        This will calculate the `index` according to the given height and
+        populate the `seed` and `preimages` if neccesary.
 
         This will be particularly usefull since the PreImages will now be
         consumed not by new enrollments but creation of new blocks.
@@ -414,15 +338,13 @@ public struct PreImageCycle
     private void seek (scope const ref Scalar secret, Height height) @safe @nogc nothrow
     {
         uint seek_index = cast (uint) (height / this.preimages.length());
-        uint seek_nonce = seek_index / SeedCount;
         seek_index %= this.seeds.data.length;
 
-        if (this.seeds[0] == Hash.init || seek_nonce != this.nonce)
+        if (this.seeds[0] == Hash.init)
         {
-            this.nonce = seek_nonce;
             this.index = seek_index;
             const cycle_seed = hashMulti(
-                secret, "consensus.preimages", this.nonce);
+                secret, "consensus.preimages", 0);
             this.seeds.reset(cycle_seed);
             this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
         }
@@ -455,24 +377,5 @@ public struct PreImageCycle
         this.seek(secret, height);
         auto offset = height % this.preimages.length();
         return this.preimages[$ - offset - 1];
-    }
-}
-
-// Test `seek` and `populate` equivalence
-unittest
-{
-    const ValidatorCycle = 2;
-    auto secret = Scalar.random();
-    auto pop_cycle = PreImageCycle(ValidatorCycle);
-    auto seek_cycle = PreImageCycle(ValidatorCycle);
-
-    foreach (idx; 0..PreImageCycle.SeedCount + 2)
-    {
-        pop_cycle.populate(secret, true);
-        seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle));
-        assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
-        // A offset within the ValidatorCycle should not change cached PreImages
-        seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle + 1));
-        assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
     }
 }

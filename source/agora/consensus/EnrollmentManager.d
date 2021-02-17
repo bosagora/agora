@@ -1239,7 +1239,7 @@ unittest
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
         auto cycle = PreImageCycle(params.ValidatorCycle);
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.getPreImage(pair.v, Height(1));
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
             seed, idx);
@@ -1374,31 +1374,6 @@ unittest
 
     auto secret = Scalar.random();
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
-    foreach (uint cycleGroupCount; 0 .. 10)
-    {
-        foreach (outerIndex; 1 .. PreImageCycle.SeedCount + 1)
-        {
-            // Sanity check #1
-            assert(cycleGroupCount == cycle.nonce);
-            assert(outerIndex - 1  == cycle.index);
-            // Only provide `secret` on the first iteration
-            const commitment =
-                cycle.populate(outerIndex == 1 ? secret : fake_secret, true);
-            const lastInCycle = outerIndex == PreImageCycle.SeedCount;
-            // Sanity check #2
-            assert(cycleGroupCount + lastInCycle == cycle.nonce);
-            if (lastInCycle)
-                assert(0                         == cycle.index);
-            else
-                assert(outerIndex == cycle.index);
-            // The commitment (last+1 in the cache, first to be revealed)
-            // is the final pre-image revealed by the previous enrollment
-            // (preimages[0])
-            immutable SeedIndex = cycle.seeds.length
-                - outerIndex * params.ValidatorCycle;
-            assert(cycle.seeds.byStride[$ - outerIndex] == cycle.preimages[0]);
-        }
-    }
 
     // This check is quite expensive: 45s when it was written,
     // which doubled the total runtime of a `dub test` cycle.
@@ -1460,7 +1435,7 @@ unittest
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
         auto cycle = PreImageCycle(params.ValidatorCycle);
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.getPreImage(pair.v, Height(1));
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
             seed, idx);
@@ -1629,10 +1604,10 @@ unittest
 
         auto cycle = PreImageCycle(params.ValidatorCycle);
 
-        const seed = cycle.populate(pair.v, true);
+        cycle.getPreImage(pair.v, Height(1));
         const enroll = EnrollmentManager.makeEnrollment(
             pair, utxos[idx], params.ValidatorCycle,
-            seed, cycle.index);
+            cycle.seeds[$ - 1], cycle.index);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
