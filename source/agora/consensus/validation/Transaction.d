@@ -1,4 +1,3 @@
-
 /*******************************************************************************
 
     Contains validation routines for transactions
