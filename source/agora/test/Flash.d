@@ -452,8 +452,16 @@ unittest
     auto inv_1 = bob.createNewInvoice(Amount(5_000), time_t.max, "payment 1");
     alice.payInvoice(inv_1);
 
+    // wait until the invoices are paid
+    writefln("Sleeping for 6 seconds..");
+    Thread.sleep(6.seconds);
+
     auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
     alice.payInvoice(inv_2);
+
+    // wait until the invoices are paid
+    writefln("Sleeping for 6 seconds..");
+    Thread.sleep(6.seconds);
 
     // note the reverse payment from bob to alice. Can use this for refunds too.
     auto inv_3 = alice.createNewInvoice(Amount(2_000), time_t.max, "payment 3");
@@ -572,9 +580,17 @@ unittest
     // it has a direct channel to bob so it uses it.
     alice.payInvoice(inv_1);
 
+    // wait until the invoices are paid
+    writefln("Sleeping for 7 seconds..");
+    Thread.sleep(7.seconds);
+
     // Second payment attempt should fail because of insufficient funds
     auto inv_2 = charlie.createNewInvoice(Amount(4_000), time_t.max, "payment 2");
     alice.payInvoice(inv_2);
+
+    // wait until the invoices are paid
+    writefln("Sleeping for 7 seconds..");
+    Thread.sleep(7.seconds);
 
     //
     writefln("Beginning bob => charlie collaborative close..");
