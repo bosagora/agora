@@ -64,7 +64,7 @@ private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
     }
 }
 
-/// node which refuses to co-operate: signs with invalid R or block signature
+/// node for testing periodic catchup
 private class TestNode () : TestValidatorNode
 {
     mixin ForwardCtor!();
