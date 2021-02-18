@@ -727,10 +727,15 @@ public class Channel
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto new_balance = this.foldHTLCs(this.cur_balance, secrets, rev_htlcs,
+        // Filter out the htlcs that are not pending on this channel
+        auto rev_htlcs_filtered = rev_htlcs.filter!(payment_hash =>
+            payment_hash in this.payment_hashes).array;
+
+        const old_balance = this.cur_balance;
+        auto new_balance = this.foldHTLCs(old_balance, secrets, rev_htlcs_filtered,
             height);
         writefln("%s: Before folding: %s. After folding: %s", this.kp.V.prettify,
-            this.cur_balance, new_balance);
+            old_balance, new_balance);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
         this.taskman.setTimer(0.seconds,
@@ -746,10 +751,11 @@ public class Channel
             this.cur_balance = new_balance;
 
             writefln("%s: Update complete! Secrets used: %s dropped: %s",
-                this.kp.V.prettify, secrets, rev_htlcs);
+                this.kp.V.prettify, secrets, rev_htlcs_filtered);
             foreach (secret; secrets)
                 this.payment_hashes.remove(secret.hashFull());
-            this.onUpdateComplete(secrets, rev_htlcs);
+            rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
+            this.onUpdateComplete(secrets, rev_htlcs_filtered);
         });
 
         return Result!PublicNonce(pub_nonce);
