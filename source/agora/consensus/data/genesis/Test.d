@@ -51,7 +51,7 @@ public immutable Block GenesisBlock = {
         prev_block:  Hash.init,
         height:      Height(0),
         merkle_root: GenesisMerkleTree[$ - 1],
-        timestamp:   1596153600, // 2020.07.31 12:00:00AM
+        time_offset: 0, // In subsequent blocks this will be the offset in seconds from Genesis time
         validators:  BitField!ubyte(6),
         signature:   Signature.init,
 

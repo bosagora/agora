@@ -327,10 +327,7 @@ extern(D):
 
     /***************************************************************************
 
-        Gets the expected block nomination time.
-
-        Params:
-            height = the height to look up the expected time for
+        Gets the expected block nomination time offset from Genesis start time.
 
         Returns:
             the expected block nomination time for the provided height
@@ -339,7 +336,8 @@ extern(D):
 
     protected ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
-        return ledger.getLastBlock().header.timestamp +
+        return ledger.getLastBlock().header.time_offset +
+            this.params.GenesisTimestamp +
             this.params.BlockInterval.total!"seconds";
     }
 
@@ -364,17 +362,17 @@ extern(D):
             return;
 
         const cur_time = this.clock.networkTime();
-        const genesis_start_time = this.params.Genesis.header.timestamp;
-        if (cur_time < genesis_start_time)
+        const genesis_timestamp = this.params.GenesisTimestamp;
+
+        if (cur_time < genesis_timestamp)
         {
             log.fatal("Clock is out of sync. " ~
                 "Current time: {}. Genesis time: {}", cur_time,
-                genesis_start_time);
+                genesis_timestamp);
             return;
         }
 
-        const nom_time = this.getExpectedBlockTime();
-        if (cur_time < nom_time)
+        if (cur_time < this.getExpectedBlockTime())
             return;  // too early to nominate
 
         ConsensusData data;
@@ -536,7 +534,7 @@ extern(D):
                 return; // We dont have all the TXs for this block. Try to catchup
             }
             const Block proposed_block = makeNewBlock(last_block,
-                received_tx_set, con_data.timestamp, random_seed,
+                received_tx_set, con_data.time_offset, random_seed,
                 con_data.enrolls, con_data.missing_validators);
             const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
                 public_key, Scalar(envelope.statement.pledges.confirm_.value_sig));
@@ -724,7 +722,7 @@ extern(D):
         }
 
         const proposed_block = makeNewBlock(last_block,
-            signed_tx_set, con_data.timestamp, random_seed,
+            signed_tx_set, con_data.time_offset, random_seed,
             con_data.enrolls, con_data.missing_validators);
 
         const Sig sig = createBlockSignature(proposed_block);
@@ -883,7 +881,7 @@ extern(D):
                 return;
             }
             const block = makeNewBlock(last_block,
-                externalized_tx_set, data.timestamp, random_seed,
+                externalized_tx_set, data.time_offset, random_seed,
                 data.enrolls, data.missing_validators);
 
             // If we did not sign yet then add signature and gossip to other nodes

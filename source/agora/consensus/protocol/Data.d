@@ -31,7 +31,7 @@ public struct ConsensusData
     public uint[] missing_validators;
 
     /// The block time that is being nominated / voted on
-    public ulong timestamp;
+    public ulong time_offset;
 }
 
 /// ConsensusData type testSymmetry check
@@ -66,7 +66,7 @@ unittest
         tx_set:  GenesisBlock.txs.map!(tx => tx.hashFull()).array,
         enrolls: [ record, record, ],
         missing_validators : [ 1, 3, 5 ],
-        timestamp: 12345678
+        time_offset: 12345678
     };
 
     testSymmetry(data);

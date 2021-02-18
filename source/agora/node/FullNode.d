@@ -177,7 +177,7 @@ public class FullNode : API
             immutable Block result = {
                 header: {
                     merkle_root: TESTNET.GenesisBlock.header.merkle_root,
-                    timestamp: TESTNET.GenesisBlock.header.timestamp,
+                    time_offset: TESTNET.GenesisBlock.header.time_offset,
                     validators: typeof(BlockHeader.validators)(config.node.limit_test_validators),
                     enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.limit_test_validators],
                 },
@@ -204,7 +204,7 @@ public class FullNode : API
         this.fee_man = this.getFeeManager();
         this.ledger = new Ledger(params, this.utxo_set,
             this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
-            config.node.block_timestamp_tolerance, &this.onAcceptedBlock);
+            config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
 
         // Make `BlockExternalizedHandler` from config
         foreach (address;

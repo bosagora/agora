@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Tests the consensus algorithm on block timestamp creation
+    Tests the consensus algorithm on block time offset creation
 
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea
@@ -46,7 +46,6 @@ unittest
     ));
 
     const b0 = nodes[0].getBlocksFrom(0, 1)[0];
-    auto start_time = network.nodes[0].time();
 
     void checkHeight(Height height)
     {
@@ -54,8 +53,8 @@ unittest
             cast(ushort) (height - 1));
         network.setTimeFor(height);
         network.assertSameBlocks(height);
-        auto timestamp = nodes[0].getBlocksFrom(height, 1)[0].header.timestamp;
-        assert( timestamp == start_time + (conf.block_interval_sec)*height, "actual time: " ~ to!string(timestamp));
+        auto time_offset = nodes[0].getBlocksFrom(height, 1)[0].header.time_offset;
+        assert( time_offset == conf.block_interval_sec * height, "actual time offset in header for height " ~ height.to!string ~ ": " ~ to!string(time_offset));
     }
 
     // Check for adding blocks 1 to 4

@@ -451,12 +451,6 @@ extern(D):
         this.test_start_time = test_start_time;
     }
 
-    protected override ulong getExpectedBlockTime () @safe @nogc nothrow pure
-    {
-        return max(this.test_start_time, ledger.getLastBlock().header.timestamp) +
-            this.params.BlockInterval.total!"seconds";
-    }
-
     /// Overrides the default behavior and changes nomination behavior based
     /// on the TestConf 'txs_to_nominate' option
     protected override bool prepareNominatingSet (out ConsensusData data) @safe
@@ -568,7 +562,7 @@ public class TestAPIManager
         this.test_conf = test_conf;
         this.blocks = blocks;
         this.test_start_time = test_start_time;
-        this.initial_time = this.getBlockTime(blocks[$ - 1].header.height);
+        this.initial_time = test_start_time;
         this.reg.initialize();
         this.nreg.initialize();
         this.createNameRegistry();
@@ -711,7 +705,7 @@ public class TestAPIManager
     {
         static assert (isInputRange!Pairs);
 
-        const exp_time = this.getBlockTime(height);
+        const exp_time = test_start_time + this.getBlockTimeOffset(height);
         foreach (pair; pairs)
             pair.time = exp_time;
     }
@@ -738,13 +732,13 @@ public class TestAPIManager
             height = the requested block height
 
         Returns:
-            the expected timestamp for the given block height
+            the expected time_offset for the given block height
 
     ***************************************************************************/
 
-    public TimePoint getBlockTime (Height height)
+    public TimePoint getBlockTimeOffset (Height height)
     {
-        return this.test_start_time + (height * this.test_conf.block_interval_sec);
+        return height * this.test_conf.block_interval_sec;
     }
 
     /***************************************************************************
@@ -1757,6 +1751,7 @@ public struct TestConf
 
     /// The amount of a penalty for slashed validators
     Amount slash_penalty_amount = 10_000.coins;
+
 }
 
 /*******************************************************************************
@@ -1939,14 +1934,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto all_configs = validator_configs.chain(full_node_configs).array;
 
-    const test_start_time = time(null);
     foreach (ref conf; all_configs)
         conf.node.testing = true;
 
     immutable(Block)[] blocks = generateExtraBlocks(GenesisBlock,
         test_conf.extra_blocks);
 
-    auto net = new APIManager(blocks, test_conf, test_start_time);
+    auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp);
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
 

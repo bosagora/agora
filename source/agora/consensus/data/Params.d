@@ -49,6 +49,7 @@ public immutable class ConsensusParams
     mixin ROProperty!("ValidatorTXFeeCut", "validator_tx_fee_cut");
     mixin ROProperty!("PayoutPeriod", "payout_period");
     mixin ROProperty!("SlashPenaltyAmount", "slash_penalty_amount");
+    mixin ROProperty!("GenesisTimestamp", "genesis_timestamp");
 
     /***************************************************************************
 
@@ -78,6 +79,7 @@ public immutable class ConsensusParams
         uint validator_cycle = 1008, uint max_quorum_nodes = 7,
         uint quorum_threshold = 80)
     {
+        const genesis_timestamp = 1609459200;  // 2021-01-01:00:00:00 GMT
         import agora.consensus.data.genesis.Test : GenesisBlock;
         import agora.utils.WellKnownKeys;
         ConsensusConfig config = {
@@ -92,6 +94,8 @@ public immutable class ConsensusParams
 /// Ditto
 public struct ConsensusConfig
 {
+    public ulong genesis_timestamp = 1609459200; // 2021-01-01:00:00:00 GMT
+
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
 
