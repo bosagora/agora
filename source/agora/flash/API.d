@@ -259,4 +259,16 @@ public interface FlashAPI
     ***************************************************************************/
 
     public Result!Signature requestCloseSig (in Hash chan_id, in uint seq_id);
+
+    /***************************************************************************
+
+        Report a failed payment
+
+        Params:
+            chan_id = ID of the receiver channel
+            err = Description of the failure
+
+    ***************************************************************************/
+
+    public void reportPaymentError (in Hash chan_id, in OnionError err);
 }
