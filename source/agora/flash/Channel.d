@@ -99,6 +99,10 @@ public class Channel
     /// funding tx is externalized.
     private Balance cur_balance;
 
+    /// List of dropped HTLCS
+    /// Usefull when routing error packets back to the payment origin
+    private HTLC[Hash] dropped_htlcs;
+
     /// The closing transaction can spend from the funding transaction when
     /// the channel parties want to collaboratively close the channel.
     /// It requires both of the parties signatures. For safety reasons,
@@ -132,8 +136,8 @@ public class Channel
     /// When a payment has been completed we need to check whether we know
     /// the matching secret of the payment hash. Then we can propose a new
     /// channel update for the channel which uses this payment hash.
-    private void delegate (Hash chan_id, Hash payment_hash, bool success = true)
-        onPaymentComplete;
+    private void delegate (Hash chan_id, Hash payment_hash,
+        ErrorCode error = ErrorCode.None) onPaymentComplete;
 
     /// Called when a channel update has been completed.
     private void delegate (in Hash[] secrets, in Hash[] rev_htlcs) onUpdateComplete;
@@ -164,7 +168,7 @@ public class Channel
         TaskManager taskman, void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
-        void delegate (Hash, Hash, bool) onPaymentComplete,
+        void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
         void delegate (in Hash[], in Hash[] rev_htlcs) onUpdateComplete)
     {
         this.conf = conf;
@@ -754,6 +758,16 @@ public class Channel
             foreach (secret; secrets)
                 this.payment_hashes.remove(secret.hashFull());
             rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
+
+            // Save dropped htlcs
+            foreach (payment_hash; rev_htlcs_filtered)
+            {
+                auto htlc = payment_hash in old_balance.outgoing_htlcs ?
+                            old_balance.outgoing_htlcs[payment_hash] :
+                            old_balance.incoming_htlcs[payment_hash];
+                this.dropped_htlcs[payment_hash] = htlc;
+            }
+
             this.onUpdateComplete(secrets, rev_htlcs_filtered);
         });
 
@@ -773,11 +787,11 @@ public class Channel
                 counter-party.
 
         Returns:
-            our nonce to use in the signing process, or an error code
+            an error code
 
     ***************************************************************************/
 
-    public bool routeNewPayment (in Hash payment_hash, in Amount amount,
+    public ErrorCode routeNewPayment (in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet, in Height height)
     {
         // todo: need to check if the counter-party is still collecting
@@ -809,7 +823,7 @@ public class Channel
         if (result.error)
         {
             writefln("%s: Error proposing payment: %s", this.kp.V.prettify, result);
-            return false;
+            return result.error;
         }
 
         this.cur_seq_id = new_seq_id;
@@ -831,7 +845,7 @@ public class Channel
         this.cur_balance = new_balance;
 
         this.payment_hashes.put(payment_hash);
-        return true;
+        return ErrorCode.None;
     }
 
     /***************************************************************************
@@ -923,12 +937,11 @@ public class Channel
             {
                 writefln("%s: Routing to next channel: %s", this.kp.V.prettify,
                     payload.next_chan_id.prettify);
-                if (!this.paymentRouter(payload.next_chan_id, payment_hash,
+                if (auto err = this.paymentRouter(payload.next_chan_id, payment_hash,
                     payload.forward_amount, payload.outgoing_lock_height,
                     payload.next_packet))
                     // Routing to next chan failed.
-                    this.onPaymentComplete(this.conf.chan_id, payment_hash,
-                        false);
+                    this.onPaymentComplete(this.conf.chan_id, payment_hash, err);
             }
             else
                 // propose an update afterwards
@@ -1553,6 +1566,29 @@ public class Channel
 
         close.tx = close_tx;
         return null;
+    }
+
+    /***************************************************************************
+
+        Forwards the error information to previous node if this channel was
+        a part of the route
+
+        Params:
+            err = Description of the failure
+
+    ***************************************************************************/
+
+    public void forwardPaymentError (in OnionError error)
+    {
+        if (error.payment_hash in this.payment_hashes ||
+            error.payment_hash in this.dropped_htlcs)
+        {
+            this.dropped_htlcs.remove(error.payment_hash);
+            this.taskman.setTimer(0.seconds,
+            {
+                this.peer.reportPaymentError(this.conf.chan_id, error);
+            });
+        }
     }
 
     // forcefully publish an update transaction with the given index.
