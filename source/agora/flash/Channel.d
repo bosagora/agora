@@ -741,8 +741,7 @@ public class Channel
         this.taskman.setTimer(0.seconds,
         {
             auto update_pair = this.update_signer.collectSignatures(
-                this.cur_seq_id,
-                new_outputs, priv_nonce, peer_nonce,
+                seq_id, new_outputs, priv_nonce, peer_nonce,
                 this.channel_updates[0].update_tx);  // spend from trigger tx
 
             writefln("%s: Got new pair from %s! Balance updated! %s",
