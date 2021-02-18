@@ -401,6 +401,20 @@ public abstract class FlashNode : FlashAPI
         return Result!bool(channel.isCollectingSignatures());
     }
 
+    /// See `FlashAPI.reportPaymentError`
+    public override void reportPaymentError (in Hash chan_id, in OnionError err)
+    {
+        writeln(this.kp.V.prettify, " Got error: ", err);
+
+        if (auto secret = err.payment_hash in this.secrets)
+            // todo: retry
+            return;
+        else
+            foreach (id, channel; this.channels)
+                if (id != chan_id)
+                    channel.forwardPaymentError(err);
+    }
+
     /***************************************************************************
 
         Called by a channel once a payment has been completed.
@@ -415,7 +429,7 @@ public abstract class FlashNode : FlashAPI
     ***************************************************************************/
 
     protected void onPaymentComplete (Hash chan_id, Hash payment_hash,
-        bool success = true)
+        ErrorCode error = ErrorCode.None)
     {
         auto channel = chan_id in this.channels;
         if (channel is null)
@@ -428,11 +442,15 @@ public abstract class FlashNode : FlashAPI
         // our own secret (we are the payee)
         if (auto secret = payment_hash in this.secrets)
         {
-            assert(success); // Payee should never fail to receive
+            assert(!error); // Payee should never fail to receive
             channel.proposeNewUpdate([*secret], [], this.last_block_height);
         }
-        else if (!success)
+        else if (error)
+        {
             channel.proposeNewUpdate([], [payment_hash], this.last_block_height);
+            channel.peer.reportPaymentError(chan_id, OnionError(Hash.init,
+                payment_hash, this.kp.V, error));
+        }
     }
 
     /***************************************************************************
@@ -444,6 +462,7 @@ public abstract class FlashNode : FlashAPI
 
         Params:
             secrets = list of secrets revealed during an update
+            rev_htlcs = list of htlcs dropped during an update
 
     ***************************************************************************/
 
@@ -468,9 +487,12 @@ public abstract class FlashNode : FlashAPI
             lock_height = the lock the HTLC will use
             packet = the onion-encrypted packet for the channel counter-party
 
+        Returns:
+            Error code
+
     ***************************************************************************/
 
-    protected bool paymentRouter (in Hash chan_id, in Hash payment_hash,
+    protected ErrorCode paymentRouter (in Hash chan_id, in Hash payment_hash,
         in Amount amount, in Height lock_height, in OnionPacket packet)
     {
         if (auto channel = chan_id in this.channels)
@@ -482,7 +504,7 @@ public abstract class FlashNode : FlashAPI
         // initial payment
         writefln("%s Could not find this channel ID: %s", this.kp.V.prettify,
             chan_id);
-        return false;
+        return ErrorCode.InvalidChannelID;
     }
 
     /***************************************************************************
