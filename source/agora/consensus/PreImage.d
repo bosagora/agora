@@ -274,14 +274,16 @@ public struct PreImageCycle
 {
     /// Make sure we get initialized by disabling the default ctor
     @disable public this();
+
     /// Ditto
-    public this (typeof(PreImageCycle.tupleof) args)
+    public this (uint seed_interval)
     {
-        this.tupleof = args;
+        this.seeds = PreImageCache(PreImageCycle.SeedCount, seed_interval);
+        this.preimages = PreImageCache(seed_interval, 1);
     }
 
-    /// The number of cycles for a bulk of pre-images
-    public static immutable uint NumberOfCycles = 100;
+    /// The number of seeds for pre-images
+    public static immutable uint SeedCount = 100;
 
     /***************************************************************************
 
@@ -374,7 +376,7 @@ public struct PreImageCycle
 
             // Increment index if there are rounds left in this cycle
             this.index += 1;
-            if (this.index >= NumberOfCycles)
+            if (this.index >= SeedCount)
             {
                 this.index = 0;
                 this.nonce += 1;
@@ -412,8 +414,8 @@ public struct PreImageCycle
     private void seek (scope const ref Scalar secret, Height height) @safe @nogc nothrow
     {
         uint seek_index = cast (uint) (height / this.preimages.length());
-        uint seek_nonce = seek_index / NumberOfCycles;
-        seek_index %= NumberOfCycles;
+        uint seek_nonce = seek_index / SeedCount;
+        seek_index %= this.seeds.data.length;
 
         if (this.seeds[0] == Hash.init || seek_nonce != this.nonce)
         {
@@ -461,22 +463,10 @@ unittest
 {
     const ValidatorCycle = 2;
     auto secret = Scalar.random();
-    auto pop_cycle = PreImageCycle(
-            /* nonce: */ 0,
-            /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                ValidatorCycle),
-            /* preimages: */ PreImageCache(ValidatorCycle, 1)
-        );
-    auto seek_cycle = PreImageCycle(
-            /* nonce: */ 0,
-            /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                ValidatorCycle),
-            /* preimages: */ PreImageCache(ValidatorCycle, 1)
-        );
+    auto pop_cycle = PreImageCycle(ValidatorCycle);
+    auto seek_cycle = PreImageCycle(ValidatorCycle);
 
-    foreach (idx; 0..PreImageCycle.NumberOfCycles + 2)
+    foreach (idx; 0..PreImageCycle.SeedCount + 2)
     {
         pop_cycle.populate(secret, true);
         seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle));

@@ -151,15 +151,7 @@ public class EnrollmentManager
     {
         assert(params !is null);
         this.params = params;
-        this.cycle = PreImageCycle(
-            /* nounce: */ 0,
-            /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                this.params.ValidatorCycle),
-            // Since those pre-images might be accessed often,
-            // use an interval of 1 (no interval)
-            /* preimages: */ PreImageCache(this.params.ValidatorCycle, 1)
-        );
+        this.cycle = PreImageCycle(params.ValidatorCycle);
 
         this.db = new ManagedDatabase(db_path);
         this.validator_set = new ValidatorSet(this.db, params);
@@ -482,7 +474,7 @@ public class EnrollmentManager
         const kp = Pair.fromScalar(secretKeyToCurveScalar(key.secret));
 
         // Generate the random seed to use
-        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
+        auto cache = PreImageCache(PreImageCycle.SeedCount, cycle_length);
         assert(offset < cache.length);
         cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
 
@@ -1246,9 +1238,7 @@ unittest
         Pair pair;
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
-        auto cycle = PreImageCycle(
-            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(pair.v, true);
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
@@ -1380,19 +1370,13 @@ unittest
 
     // Note: This was copied from `EnrollmentManager` constructor and should
     // be kept in sync with it
-    auto cycle = PreImageCycle(
-        /* nounce: */ 0,
-        /* index:  */ 0,
-        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-            params.ValidatorCycle),
-        /* preimages: */ PreImageCache(params.ValidatorCycle, 1)
-    );
+    auto cycle = PreImageCycle(params.ValidatorCycle);
 
     auto secret = Scalar.random();
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
     foreach (uint cycleGroupCount; 0 .. 10)
     {
-        foreach (outerIndex; 1 .. PreImageCycle.NumberOfCycles + 1)
+        foreach (outerIndex; 1 .. PreImageCycle.SeedCount + 1)
         {
             // Sanity check #1
             assert(cycleGroupCount == cycle.nonce);
@@ -1400,7 +1384,7 @@ unittest
             // Only provide `secret` on the first iteration
             const commitment =
                 cycle.populate(outerIndex == 1 ? secret : fake_secret, true);
-            const lastInCycle = outerIndex == PreImageCycle.NumberOfCycles;
+            const lastInCycle = outerIndex == PreImageCycle.SeedCount;
             // Sanity check #2
             assert(cycleGroupCount + lastInCycle == cycle.nonce);
             if (lastInCycle)
@@ -1475,9 +1459,7 @@ unittest
         Pair pair;
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
-        auto cycle = PreImageCycle(
-            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(pair.v, true);
         auto enroll = EnrollmentManager.makeEnrollment(
             pair, utxo_hashes[idx], params.ValidatorCycle,
@@ -1645,9 +1627,7 @@ unittest
         Pair pair;
         pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
 
-        auto cycle = PreImageCycle(
-            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
 
         const seed = cycle.populate(pair.v, true);
         const enroll = EnrollmentManager.makeEnrollment(
@@ -1656,7 +1636,7 @@ unittest
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
-        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
+        auto cache = PreImageCache(PreImageCycle.SeedCount, params.ValidatorCycle);
         cache.reset(hashMulti(pair.v, "consensus.preimages", 0));
 
         PreImageInfo preimage = { enroll_key : utxos[idx],

@@ -324,10 +324,7 @@ unittest
     foreach (idx, kp; pairs)
     {
         auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
-        auto cycle = PreImageCycle(
-                0, 0,
-                PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-                PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(pair.v, true);
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
