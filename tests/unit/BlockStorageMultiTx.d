@@ -50,7 +50,7 @@ private void main ()
         .array();
     foreach (block_idx; 0 .. BlockCount)
     {
-        auto block = makeNewBlock(blocks[$ - 1], txs, blocks[$ - 1].header.timestamp, Hash.init);
+        auto block = makeNewBlock(blocks[$ - 1], txs, blocks[$ - 1].header.time_offset + 1, Hash.init);
         storage.saveBlock(block);
         blocks ~= block;
         // Prepare transactions for the next block

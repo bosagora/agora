@@ -268,7 +268,7 @@ public class BanManager
 
     /***************************************************************************
 
-        Get the un-ban unix timestamp of the provided address,
+        Get the un-ban unix time offset from Genesis timestamp of the provided address,
         or 0 if the address was never banned.
 
         Params:

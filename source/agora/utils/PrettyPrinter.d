@@ -478,7 +478,7 @@ GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000
 GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
 GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)
 ====================================================
-Height: 1, Prev: 0x5a96...8163, Root: 0xd437...e2c9, Enrollments: []
+Height: 1, Prev: 0x2451...7377, Root: 0xd437...e2c9, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],

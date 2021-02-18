@@ -39,7 +39,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
-import agora.consensus.validation.Block : validateBlockTimestamp;
+import agora.consensus.validation.Block : validateBlockTimeOffset;
 import agora.consensus.Fee;
 import agora.crypto.Hash;
 import agora.network.Clock;
@@ -119,9 +119,9 @@ public class Ledger
     /// The checker of transaction data payload
     private FeeManager fee_man;
 
-    /// The new block timestamp has to be greater than the previous block timestamp,
-    /// but less than current time + block_timestamp_tolerance
-    public Duration block_timestamp_tolerance;
+    /// The new block time_offset has to be greater than the previous block time_offset,
+    /// but less than current time + block_time_offset_tolerance
+    public Duration block_time_offset_tolerance;
 
     /***************************************************************************
 
@@ -135,8 +135,8 @@ public class Ledger
             pool = the transaction pool
             fee_man = the checker of data payload
             clock = the clock instance
-            block_timestamp_tolerance = the proposed block timestamp should be less
-                than curr_timestamp + block_timestamp_tolerance
+            block_time_offset_tolerance = the proposed block time_offset should be less
+                than curr_time_offset + block_time_offset_tolerance
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
@@ -146,7 +146,7 @@ public class Ledger
         UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         FeeManager fee_man, Clock clock,
-        Duration block_timestamp_tolerance = 60.seconds,
+        Duration block_time_offset_tolerance = 60.seconds,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
         this.params = params;
@@ -158,7 +158,7 @@ public class Ledger
         this.onAcceptedBlock = onAcceptedBlock;
         this.fee_man = fee_man;
         this.clock = clock;
-        this.block_timestamp_tolerance = block_timestamp_tolerance;
+        this.block_time_offset_tolerance = block_time_offset_tolerance;
         this.storage.load(params.Genesis);
 
         // ensure latest checksum can be read
@@ -272,7 +272,7 @@ public class Ledger
             {
                 return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
             },
-            data.timestamp);
+            data.time_offset);
         return this.acceptBlock(block, file, line);
     }
 
@@ -590,8 +590,15 @@ public class Ledger
         @safe
     {
         data = ConsensusData.init;
-        data.timestamp = max(clock.networkTime(), this.last_block.header.timestamp + 1);
-        log.trace("Going to nominate current timestamp [{}] or newer", clock.networkTime());
+        if (clock.networkTime < this.params.GenesisTimestamp)
+        {
+            log.error("Network time [{}] is before Genesis timestamp [{}]. Will not nominate yet.",
+                clock.networkTime, this.params.GenesisTimestamp);
+            return;
+        }
+        const genesis_offset =  clock.networkTime - this.params.GenesisTimestamp;
+        data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
+        log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
@@ -756,8 +763,8 @@ public class Ledger
                 return fail_reason;
         }
 
-        return validateBlockTimestamp(last_block.header.timestamp, data.timestamp,
-            clock.networkTime(), block_timestamp_tolerance);
+        return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
+            clock.networkTime(), block_time_offset_tolerance);
     }
 
     /***************************************************************************
@@ -844,9 +851,9 @@ public class Ledger
                 const PK = PublicKey(key[]);
                 return this.enroll_man.getCommitmentNonce(PK, block.header.height);
             },
-            this.last_block.header.timestamp,
-            cast(ulong) this.clock.networkTime(),
-            block_timestamp_tolerance,
+            this.last_block.header.time_offset,
+            cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
+            block_time_offset_tolerance,
             &this.getCoinbaseTX,
             file, line);
     }
@@ -1094,7 +1101,7 @@ version (unittest)
         public this (KeyPair key_pair,
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null,
-            Duration block_timestamp_tolerance_dur = 600.seconds,
+            Duration block_time_offset_tolerance_dur = 600.seconds,
             Clock mock_clock = new MockClock(time(null)))
         {
             const params = (params_ !is null)
@@ -1111,7 +1118,7 @@ version (unittest)
                 new TransactionPool(":memory:"),
                 new FeeManager(":memory:", params),
                 mock_clock,
-                block_timestamp_tolerance_dur);
+                block_time_offset_tolerance_dur);
         }
 
         ///
@@ -1281,12 +1288,11 @@ unittest
 {
     import agora.consensus.data.genesis.Test;
     ConsensusData data;
-    auto genesis_ts = GenesisBlock.header.timestamp;
     MockClock mock_clock = new MockClock(time(null));
 
     auto getLedger (Clock clock)
     {
-        auto ledger = new TestLedger(WK.Keys.NODE2, null, null, 600.seconds, clock);
+        auto ledger = new TestLedger(WK.Keys.NODE2, null, new immutable(ConsensusParams)(20, 7, 80), 600.seconds, clock);
         auto txs = genesisSpendable().enumerate()
             .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
             .array();
@@ -1298,37 +1304,37 @@ unittest
     // the clock has a time greater than the time in the latest block header
     auto ledger = getLedger(mock_clock);
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-    data.timestamp = genesis_ts + 1;
-    mock_clock.setTime(genesis_ts + 2000);
+    data.time_offset = 1;
+    mock_clock.setTime(ledger.params.GenesisTimestamp + 2000);
     assert(ledger.externalize(data));
 
-    // if the clock is behind of the timestamp of the new block and
-    // ahead of the timestamp of the last block and
+    // if the clock is behind of the time_offset of the new block and
+    // ahead of the time_offset of the last block and
     // and within the tolerance interval,
     // then we accept block
     ledger = getLedger(mock_clock);
-    data.timestamp = genesis_ts + 1000;
-    mock_clock.setTime(genesis_ts + 500);
+    data.time_offset = 1000;
+    mock_clock.setTime(ledger.params.GenesisTimestamp + 500);
     assert(ledger.externalize(data));
 
-    // if the clock is behind of the timestamp of the new block and
-    // ahead of the timestamp of the last block and
+    // if the clock is behind of the time_offset of the new block and
+    // ahead of the time_offset of the last block and
     // and NOT within the tolerance interval,
     // then we reject block
     ledger = getLedger(mock_clock);
-    data.timestamp = genesis_ts + 1000;
-    mock_clock.setTime(genesis_ts + 100);
+    data.time_offset = 1000;
+    mock_clock.setTime(ledger.params.GenesisTimestamp + 100);
     assert(!ledger.externalize(data));
     // if the time passes by and now we are within the tolerance interval, then
     // we will accept block
-    mock_clock.setTime(genesis_ts + 900);
+    mock_clock.setTime(ledger.params.GenesisTimestamp + 900);
     assert(ledger.externalize(data));
 
-    // if the clock is behind of the timestamp of the latest accepted block, then
+    // if the clock is behind of the time_offset of the latest accepted block, then
     // we reject the block regardless of the current time
     ledger = getLedger(mock_clock);
-    data.timestamp = genesis_ts -1;
-    mock_clock.setTime(genesis_ts + 100);
+    data.time_offset = -1;
+    mock_clock.setTime(ledger.params.GenesisTimestamp + 100);
     assert(!ledger.externalize(data));
 }
 
@@ -1889,6 +1895,6 @@ unittest
     assert(!ledger.externalize(data));
 
     auto last_block = ledger.getLastBlock();
-    const block = makeNewBlock(last_block, cb_tx_set, data.timestamp, getTestRandomSeed());
+    const block = makeNewBlock(last_block, cb_tx_set, data.time_offset, getTestRandomSeed());
     assert(ledger.validateBlock(block) == "Block: Must contain other transactions than Coinbase");
 }

@@ -165,9 +165,9 @@ public struct NodeConfig
     /// from all other nodes
     public Duration block_catchup_interval = 20.seconds;
 
-    /// The new block timestamp has to be greater than the previous block timestamp,
-    /// but less than current time + block_timestamp_tolerance
-    public Duration block_timestamp_tolerance = 60.seconds;
+    /// The new block time offset has to be greater than the previous block time offset,
+    /// but less than current time + block_time_offset_tolerance_secs
+    public Duration block_time_offset_tolerance = 60.seconds;
 }
 
 /// Validator config
@@ -428,7 +428,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
     auto port = get!(ushort, "node", "port")(cmdln, node);
     const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
-    const block_timestamp_tolerance_secs = opt!(uint, "node", "block_timestamp_tolerance_secs")(cmdln, node);
+    const block_time_offset_tolerance_secs = opt!(uint, "node", "block_time_offset_tolerance_secs")(cmdln, node);
     const block_catchup_interval = opt!(uint, "node", "block_catchup_interval_secs")(cmdln, node);
 
     NodeConfig result = {
@@ -445,7 +445,7 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             timeout : timeout,
             data_dir : data_dir,
             stats_listening_port : stats_listening_port,
-            block_timestamp_tolerance : block_timestamp_tolerance_secs.seconds,
+            block_time_offset_tolerance : block_time_offset_tolerance_secs.seconds,
             block_catchup_interval : block_catchup_interval.seconds,
     };
     return result;

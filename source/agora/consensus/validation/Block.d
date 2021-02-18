@@ -85,10 +85,10 @@ version (unittest)
             given height and index into map
         getCommitmentNonce = delegate to provide the commitment Nonce of the
             validator given by it's Point K
-        prev_timestamp = the timestamp of the of the direct ancestor of this block
-        curr_timestamp = the current timestamp
-        block_timestamp_tolerance_dur = the proposed block timestamp should be less
-                than curr_timestamp + block_timestamp_tolerance_dur
+        prev_time_offset = the time offset of the of the direct ancestor of this block
+        curr_time_offset = the current time offset
+        block_time_tolerance = the proposed block time offset should be less
+                than curr_time_offset + block_time_tolerance
         getCoinbaseTX = delegate to get the expected Coinbase TX for a given TX
             set
 
@@ -104,7 +104,7 @@ public string isInvalidReason (in Block block, Height prev_height,
     size_t enrolled_validators, in Hash random_seed,
     Point delegate (in Height, ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (in Point, in Height) nothrow @safe getCommitmentNonce,
-    ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
+    ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance,
     Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
                                nothrow @safe getCoinbaseTX,
     string file = __FILE__, size_t line = __LINE__) nothrow @safe
@@ -249,56 +249,52 @@ public string isInvalidReason (in Block block, Height prev_height,
             file, line, enrolled_validators);
         return "Block: Invalid schnorr signature";
     }
-    return validateBlockTimestamp(prev_timestamp, block.header.timestamp, curr_timestamp, block_timestamp_tolerance_dur);
+    return validateBlockTimeOffset(prev_time_offset, block.header.time_offset, curr_time_offset, block_time_tolerance);
 }
 
 /*******************************************************************************
 
-    Check the validity of the timestamp for a block
+    Check the validity of the `time offset` for a block
 
-    new_block_ts is valid if and only if
-    prev_block_ts < new_block_ts <= curr_timestamp + block_timestamp_tolerance_secs
+    new_block_offset is valid if and only if
+    prev_block_offset < new_block_offset <= curr_time_offset + block_time_offset_tolerance_secs
 
     Params:
-        prev_block_ts = the timestam of the block preceding the new block
-        new_block_ts  = the timestamp of the block we are trying to validate
-        curr_timestamp = the current clock timestamp
-        block_timestamp_tolerance_dur = the proposed block timestamp should be less
-                than curr_timestamp + block_timestamp_tolerance_dur
+        prev_block_offset = the timestam of the block preceding the new block
+        new_block_offset  = the time offset of the block we are trying to validate
+        curr_time_offset = the current time offset in seconds
+        block_time_tolerance = the proposed block new_block_offset should be less
+                than curr_time_offset + block_time_tolerance
 
     Returns:
-        `null` if the new_block_ts is valid, otherwise a string explaining
+        `null` if the new_block_offset is valid, otherwise a string explaining
         the reason it is invalid.
 
 *******************************************************************************/
 
-public string validateBlockTimestamp (ulong prev_block_ts, ulong new_block_ts, ulong curr_timestamp,
-        Duration block_timestamp_tolerance_dur) @safe nothrow
+public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_offset, ulong curr_time_offset,
+        Duration block_time_tolerance) @safe nothrow
 {
+    import std.format;
     string res;
     try
     {
         import std.conv : to;
-        import std.datetime.systime : SysTime, unixTimeToStdTime;
+        const block_time_offset_tolerance_secs = block_time_tolerance.total!"seconds";
 
-        const block_timestamp_tolerance_secs = block_timestamp_tolerance_dur.total!"seconds";
-
-        if (new_block_ts <= prev_block_ts)
-            res = "the timestamp in consensus data is not greater than the timestamp in the last block\n" ~
-                    "new block timestamp: " ~ to!string(SysTime(unixTimeToStdTime(new_block_ts))) ~ "\n" ~
-                    "previous block's timestamp: " ~ to!string(SysTime(unixTimeToStdTime(prev_block_ts)));
-        else if (new_block_ts > curr_timestamp + block_timestamp_tolerance_secs)
-            res =  "(the timestamp in consensus data) is greater than (the timestamp in the last block + tolerance)\n" ~
-                    "new block timestamp: " ~ to!string(SysTime(unixTimeToStdTime(new_block_ts))) ~ "\n" ~
-                    "current timestamp: " ~ to!string(SysTime(unixTimeToStdTime(curr_timestamp))) ~ "\n" ~
-                    "tolerance in seconds: " ~to!string(block_timestamp_tolerance_secs);
+        if (new_block_offset <= prev_block_offset)
+            res = format!"Proposed block time offset: [%s] is not greater than the time offset in the last block: [%s]"
+            (new_block_offset, prev_block_offset);
+        else if (new_block_offset > curr_time_offset + block_time_offset_tolerance_secs)
+            res =  format!"Proposed block time offset: [%s] is greater than current time offset: [%s] plus tolerance of %s secs"
+            (new_block_offset, curr_time_offset, block_time_offset_tolerance_secs);
     }
     catch (Exception e)
     {
-        return "Exception happened while validating timestamp";
+        return "Exception happened while validating block time offset";
     }
     if (res !is null)
-        log.warn("validateBlockTimestamp(): {}", res);
+        log.warn("validateBlockTimeOffset(): {}", res);
     return res;
 }
 
@@ -651,8 +647,8 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
-        ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
-        Duration block_timestamp_tolerance_dur = 100.seconds,
+        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
+        Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         if (random_seed == Hash.init)
@@ -671,8 +667,8 @@ version (unittest)
                     "consensus.signature.noise", enrollment_cycle))
                     .toPoint();
             },
-            prev_timestamp, (curr_timestamp == ulong.max) ? block.header.timestamp : curr_timestamp,
-            block_timestamp_tolerance_dur,
+            prev_time_offset, (curr_time_offset == ulong.max) ? block.header.time_offset : curr_time_offset,
+            block_time_tolerance,
             (in Transaction[] tx_set, in uint[] missing_validators)
             {
                 return (Transaction[]).init;
@@ -684,14 +680,14 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
-        ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
-        Duration block_timestamp_tolerance_dur = 100.seconds,
+        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
+        Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, prev_height, prev_hash, findUTXO,
             active_enrollments, enrolled_validators, checkFee, findEnrollment,
-            random_seed, enrollment_cycle, prev_timestamp, curr_timestamp,
-            block_timestamp_tolerance_dur);
+            random_seed, enrollment_cycle, prev_time_offset, curr_time_offset,
+            block_time_tolerance);
         if (reason !is null)
             log.trace("[{}:{}] block height {} is invalid: {}",
                 file, line, block.header.height, reason);
@@ -703,13 +699,13 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
-        ulong enrollment_cycle = 0, ulong prev_timestamp = 0, ulong curr_timestamp = ulong.max,
-        Duration block_timestamp_tolerance_dur = 100.seconds) nothrow @safe
+        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
+        Duration block_time_tolerance = 100.seconds) nothrow @safe
     {
         return isValidcheck(block, prev_height, prev_hash, findUTXO,
             active_enrollments, enrolled_validators, checkFee, findEnrollment,
-            random_seed, enrollment_cycle, prev_timestamp, curr_timestamp,
-            block_timestamp_tolerance_dur) !is null;
+            random_seed, enrollment_cycle, prev_time_offset, curr_time_offset,
+            block_time_tolerance) !is null;
     }
 }
 
