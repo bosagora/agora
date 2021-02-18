@@ -28,6 +28,8 @@
 
 module agora.flash.OnionPacket;
 
+import agora.flash.ErrorCode;
+
 import agora.common.Amount;
 import agora.common.crypto.Key;
 import agora.common.Serializer;
@@ -282,5 +284,22 @@ unittest
 
 /// OnionPacket payment router
 public alias PaymentRouter =
-    bool delegate (in Hash chan_id, in Hash payment_hash, in Amount amount,
+    ErrorCode delegate (in Hash chan_id, in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet);
+
+/// Routing failure packet
+public struct OnionError
+{
+    // todo: replace with actual HMAC
+    Hash hmac;
+
+    /// Failed payment hash
+    Hash payment_hash;
+
+    /// Point of failure
+    /// todo: maybe replace with a channel id?
+    Point erroring_node;
+
+    /// Error code
+    ErrorCode err;
+}
