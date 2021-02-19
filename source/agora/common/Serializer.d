@@ -99,6 +99,43 @@ import std.meta;
 import std.range;
 import std.traits;
 
+import agora.common.Amount;
+import agora.common.Types;
+import agora.crypto.Hash;
+
+import std.stdio;
+
+struct Payload
+{
+    ulong x;
+    Amount y;
+
+    void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.x, dg, CompactMode.No);
+        serializePart(this.y, dg, CompactMode.No);
+    }
+
+    static QT fromBinary (QT) (scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        auto x = deserializeFull!ulong(dg, opts);
+        auto y = deserializeFull!Amount(dg, opts);
+        return QT(x, y);
+    }
+}
+
+unittest
+{
+    // setting x to 0 fixes it
+    Payload payload = { x : ulong.max, y : Amount(200) };
+    auto serialized = serializeFull(payload);
+
+    const DeserializerOptions opts = { maxLength : DefaultMaxLength, compact : CompactMode.No };
+    scope DeserializeDg dg = (size) @safe { return serialized; };
+
+    auto deserialized = deserializeFull!Payload(dg, opts);
+}
+
 /// Pedestrian usage of serialization
 unittest
 {
