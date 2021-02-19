@@ -81,7 +81,19 @@ struct EncryptedPayload
     public ubyte[crypto_secretbox_NONCEBYTES] nonce;
 
     /// The serialized & encrypted payload
-    public ubyte[] payload;
+    public ubyte[crypto_secretbox_MACBYTES + SerializedPayloadSize] payload;
+}
+
+// Payload size without the encryption metadata
+private enum SerializedPayloadSize = 80;
+
+/// always same static size, no VarInt
+unittest
+{
+    assert(serializeFull(Payload(Hash.init, Amount.init, Height(0)))
+        .length == SerializedPayloadSize);
+    assert(serializeFull(Payload(Hash.init, Amount.init, Height(ulong.max)))
+        .length == SerializedPayloadSize);
 }
 
 /// Decrypted Payload which is originally stored encrypted in the OnionPacket
@@ -103,6 +115,24 @@ public struct Payload
     // need to verify:
     // cltv_expiry - cltv_expiry_delta >= outgoing_lock_height
     public Height outgoing_lock_height;
+
+    /// Serialization hook
+    public void serialize (scope SerializeDg dg) const @trusted
+    {
+        serializePart(this.next_chan_id, dg, CompactMode.No);
+        serializePart(this.forward_amount, dg, CompactMode.No);
+        serializePart(this.outgoing_lock_height.value, dg, CompactMode.No);
+    }
+
+    /// Deserialization hook
+    public static QT fromBinary (QT) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        auto next_chan_id = deserializeFull!Hash(dg, opts);
+        auto forward_amount = deserializeFull!Amount(dg, opts);
+        auto outgoing_lock_height = Height(deserializeFull!ulong(dg, opts));
+        return QT(next_chan_id, forward_amount, outgoing_lock_height);
+    }
 }
 
 /*******************************************************************************
@@ -241,7 +271,6 @@ public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
 
     const data = payload.serializeFull();
     auto ciphertext_len = crypto_secretbox_MACBYTES + data.length;
-    result.payload = new ubyte[](ciphertext_len);
 
     Point secret = generateSharedSecret(true, ephemeral_kp.v, target_pk);
     if (crypto_secretbox_easy(result.payload.ptr, data.ptr, data.length,
@@ -284,10 +313,26 @@ public bool decryptPayload (in EncryptedPayload encrypted,
             our_key, ephemeral_pk);
         return false;
     }
+    assert(decrypted.length == SerializedPayloadSize);
 
     try
     {
-        payload = deserializeFull!Payload(decrypted);
+        const DeserializerOptions opts = { maxLength : DefaultMaxLength,
+            compact : CompactMode.No };
+
+        import std.format;
+        scope DeserializeDg dg = (size) @safe
+        {
+            if (size > decrypted.length)
+                throw new Exception(
+                    format("Requested %d bytes but only %d bytes available", size, decrypted.length));
+
+            auto res = decrypted[0 .. size];
+            decrypted = decrypted[size .. $];
+            return res;
+        };
+
+        payload = deserializeFull!Payload(dg, opts);
         return true;
     }
     catch (Exception ex)
