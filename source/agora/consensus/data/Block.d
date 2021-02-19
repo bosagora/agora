@@ -45,11 +45,11 @@ public struct BlockHeader
     /// Hash of the previous block in the chain of blocks
     public Hash prev_block;
 
-    /// Block height (genesis is #0)
-    public Height height;
-
     /// The hash of the merkle root of the transactions
     public Hash merkle_root;
+
+    /// Hash of random seed of the preimages for this height
+    public Hash random_seed;
 
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
@@ -57,11 +57,11 @@ public struct BlockHeader
     /// Bitfield containing the validators' key indices which signed the block
     public BitField!ubyte validators;
 
+    /// Block height (genesis is #0)
+    public Height height;
+
     /// Enrolled validators
     public Enrollment[] enrollments;
-
-    /// Hash of random seed of the preimages for this height
-    public Hash random_seed;
 
     /// List of indices to the validator UTXO set which have not revealed the preimage
     public uint[] missing_validators;
@@ -173,12 +173,12 @@ public struct Block
         return Block(
             BlockHeader(
                 this.header.prev_block,
-                this.header.height,
                 this.header.merkle_root,
+                this.header.random_seed,
                 signature,
                 validators,
+                this.header.height,
                 this.header.enrollments.dup,
-                this.header.random_seed,
                 this.header.missing_validators.dup,
                 this.header.timestamp),
             // TODO: Optimize this by using dup for txs also
