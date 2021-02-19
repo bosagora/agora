@@ -383,10 +383,7 @@ public class BlockStorage : IBlockStorage
             if (this.height_idx.length > 0)
             {
                 last_pos = this.height_idx.back.position;
-
-                if (!this.readSizeT(last_pos, last_size))
-                    throw new Exception("BlockStorage: Failed to read a size_t");
-
+                last_size = this.readSizeT(last_pos);
                 this.length = last_pos + size_t.sizeof + last_size;
             }
             else
@@ -569,18 +566,16 @@ public class BlockStorage : IBlockStorage
 
         Params:
             pos = position of memory mapped file
-            value = type of `size_t`
 
         Returns:
-            Returns true if success, otherwise returns false.
+            The value read
 
     ***************************************************************************/
 
-    private bool readSizeT (size_t pos, ref size_t value) @trusted
+    private size_t readSizeT (size_t pos) @trusted
     {
         ubyte[] data = this.read(pos, pos+size_t.sizeof);
-        value = *cast(size_t*)(data.ptr);
-        return true;
+        return *cast(size_t*)(data.ptr);
     }
 
     /***************************************************************************
