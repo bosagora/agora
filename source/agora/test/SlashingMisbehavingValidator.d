@@ -39,12 +39,11 @@ private class MissingPreImageEM : EnrollmentManager
 {
     private shared bool* reveal_preimage;
 
-    mixin ForwardCtor!();
-
     ///
     public this (Parameters!(EnrollmentManager.__ctor) args,
         shared(bool)* reveal_preimage)
     {
+        assert(reveal_preimage !is null);
         this.reveal_preimage = reveal_preimage;
         super(args);
     }
@@ -53,7 +52,6 @@ private class MissingPreImageEM : EnrollmentManager
     public override bool getNextPreimage (out PreImageInfo preimage,
         Height height) @safe
     {
-        assert(this.reveal_preimage != null);
         if (*this.reveal_preimage == false)
             return false;
         else
@@ -67,8 +65,6 @@ private class NoPreImageVN : TestValidatorNode
 {
     public static shared UTXOSet utxo_set;
     private shared bool* reveal_preimage;
-
-    mixin ForwardCtor!();
 
     ///
     public this (Parameters!(TestValidatorNode.__ctor) args,
