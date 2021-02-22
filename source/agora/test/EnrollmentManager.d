@@ -190,15 +190,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 0)
-            {
-                auto time = new shared(TimePoint)(this.initial_time);
-                assert(conf.validator.enabled);
-                auto node = RemoteAPI!TestAPI.spawn!TestNode(
-                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, conf.node.timeout);
-                this.reg.register(conf.node.address, node.ctrl.listener());
-                this.nodes ~= NodePair(conf.node.address, node, time);
-            }
+                this.addNewNode!TestNode(conf, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
