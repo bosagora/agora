@@ -19,6 +19,17 @@ public enum ErrorCode : ushort
     /// No error.
     None = 0,
 
+    /// Updates with the same balance will be rejected
+    UpdateRejected,
+
+    /// A payment / update proposal is already in progress. If both parties
+    /// issue a request towards each other at the same time, only one of the
+    /// requests can be accepted. The node with priority will have its request
+    /// proceed, while the other request will be rescheduled for later.
+    /// The nodes use alternating priorities based on the sequence ID,
+    /// e.g. [seq 1: N1, seq2: N2, seq 3: N1, seq 4: N2, ...]
+    ProposalInProgress,
+
     /// Requested an update transaction before the matching settlement was signed.
     SettleNotReceived,
 
