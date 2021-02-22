@@ -177,10 +177,7 @@ private class ByzantineManager (bool addSpyValidator = false,
     shared(EnvelopeTypeCounts) envelope_type_counts;
 
     ///
-    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint test_start_time)
-    {
-        super(blocks, test_conf, test_start_time);
-    }
+    mixin ForwardCtor!();
 
     public override void createNewNode (Config conf,
         string file = __FILE__, int line = __LINE__)
