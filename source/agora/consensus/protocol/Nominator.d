@@ -579,7 +579,7 @@ extern(D):
                     block_sig.signature, block_sig.height, block_sig.public_key);
                 return;
             }
-            this.ledger.updateBlockMultiSig(signed_block);
+            this.ledger.updateBlockMultiSig(signed_block.header);
         }
     }
 

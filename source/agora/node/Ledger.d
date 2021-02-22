@@ -328,19 +328,19 @@ public class Ledger
         in the Ledger.
 
         Params:
-            height = height of block to be updated
+            header = block header to be updated
 
         Returns:
             true if the block was updated
 
     ***************************************************************************/
 
-    public void updateBlockMultiSig (const ref Block block) @safe
+    public void updateBlockMultiSig (const ref BlockHeader header) @safe
     {
-        this.storage.updateBlockSig(block.header.height, block.hashFull(),
-            block.header.signature, block.header.validators);
+        this.storage.updateBlockSig(header.height, header.hashFull(),
+            header.signature, header.validators);
 
-        if (block.header.height == this.last_block.header.height)
+        if (header.height == this.last_block.header.height)
             this.last_block = this.storage.readLastBlock();
     }
 
