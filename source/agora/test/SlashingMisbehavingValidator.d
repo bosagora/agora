@@ -28,6 +28,7 @@ import agora.network.NetworkManager;
 import agora.utils.Test;
 import agora.test.Base;
 
+import core.atomic;
 import core.stdc.stdint;
 import core.thread;
 
@@ -52,10 +53,10 @@ private class MissingPreImageEM : EnrollmentManager
     public override bool getNextPreimage (out PreImageInfo preimage,
         Height height) @safe
     {
-        if (*this.reveal_preimage == false)
+        if (!atomicLoad(*this.reveal_preimage))
             return false;
-        else
-            return super.getNextPreimage(preimage, height);
+
+        return super.getNextPreimage(preimage, height);
     }
 }
 
@@ -182,14 +183,10 @@ unittest
 {
     static class LazyAPIManager : TestAPIManager
     {
-        public static shared bool reveal_preimage = false;
+        public shared bool reveal_preimage = false;
 
         ///
-        public this (immutable(Block)[] blocks, TestConf test_conf,
-            TimePoint initial_time)
-        {
-            super(blocks, test_conf, initial_time);
-        }
+        mixin ForwardCtor!();
 
         ///
         public override void createNewNode (Config conf, string file, int line)
@@ -199,7 +196,7 @@ unittest
                 auto time = new shared(TimePoint)(this.initial_time);
                 auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
                     conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, &reveal_preimage, conf.node.timeout);
+                    time, &this.reveal_preimage, conf.node.timeout);
                 this.reg.register(conf.node.address, api.ctrl.listener());
                 this.nodes ~= NodePair(conf.node.address, api, time);
             }
@@ -230,7 +227,7 @@ unittest
     network.expectBlock(Height(1));
 
     // all the validators start revealing pre-images
-    LazyAPIManager.reveal_preimage = true;
+    atomicStore(network.reveal_preimage, true);
 
     // block 2 created with no slashed validator
     network.expectBlock(Height(2));
