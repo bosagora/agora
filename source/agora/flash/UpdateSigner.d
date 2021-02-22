@@ -116,6 +116,9 @@ public class UpdateSigner
     /// a new one should not be started.
     private bool is_collecting;
 
+    /// Set when the peer has confirmed collecting signatures for this update
+    private bool peer_confirmed_update;
+
     /***************************************************************************
 
         Constructor
@@ -152,6 +155,27 @@ public class UpdateSigner
     {
         return this.is_collecting;
     }
+
+    /***************************************************************************
+
+        Called when the peer has confirmed collecting signatures for this update
+
+    ***************************************************************************/
+
+    public void onConfirmedChannelUpdate ()
+    {
+        writefln("%s: Peer %s has confirmed collecting signatures for seq %s.",
+                this.kp.V.prettify, this.peer_pk.prettify, seq_id);
+
+        this.peer_confirmed_update = true;
+    }
+
+    /***************************************************************************
+
+        Returns:
+            The sequence ID of the currently running signer
+
+    ***************************************************************************/
 
     public uint getSeqID ()
     {
@@ -242,10 +266,9 @@ public class UpdateSigner
         in PrivateNonce priv_nonce, in PublicNonce peer_nonce,
         in Transaction prev_tx)
     {
-        // note: don't clear on exit, counter-party may still await signatures.
         this.clearState();
-
         this.seq_id = seq_id;
+
         this.is_collecting = true;
         scope (exit) this.is_collecting = false;
 
@@ -273,6 +296,9 @@ public class UpdateSigner
             break;
         }
 
+        writefln("%s: Settlement signature %s from %s received",
+            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+
         if (auto error = this.isInvalidSettleMultiSig(this.pending_settle,
             settle_res.value, priv_nonce, peer_nonce))
         {
@@ -283,6 +309,10 @@ public class UpdateSigner
                 this.peer_pk.prettify, settle_res.value);
             assert(0);
         }
+
+        writefln("%s: Settlement signature %s from %s validated",
+            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+
         this.pending_settle.peer_sig = settle_res.value;
         this.pending_settle.validated = true;
 
@@ -305,6 +335,9 @@ public class UpdateSigner
             break;
         }
 
+        writefln("%s: Update signature %s from %s received",
+            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+
         // todo: retry? add a better status code like NotReady?
         if (update_res.value == Signature.init)
             assert(0);
@@ -321,6 +354,19 @@ public class UpdateSigner
         }
         this.pending_update.peer_sig = update_res.value;
         this.pending_update.validated = true;
+
+        writefln("%s: Update signature %s from %s validated",
+            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+
+        // confirm to the peer we're done, and await for peer's own confirmation
+        this.peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
+        while (!this.peer_confirmed_update)
+        {
+            writefln("%s: Peer %s is still collecting signatures for seq %s. "
+                ~ "Waiting before confirming update..",
+                this.kp.V.prettify, this.peer_pk.prettify, seq_id,);
+            this.taskman.wait(100.msecs);
+        }
 
         UpdatePair pair =
         {
@@ -593,5 +639,6 @@ public class UpdateSigner
     {
         this.pending_settle = PendingSettle.init;
         this.pending_update = PendingUpdate.init;
+        this.peer_confirmed_update = false;
     }
 }
