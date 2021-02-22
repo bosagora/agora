@@ -202,7 +202,7 @@ private class ByzantineManager (bool addSpyValidator = false,
                 assert(conf.validator.enabled);
                 auto node = RemoteAPI!TestAPI.spawn!SpyingValidator(
                     conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, &envelope_type_counts);
+                    time, &this.envelope_type_counts);
                 this.reg.register(conf.node.address, node.ctrl.listener());
                 this.nodes ~= NodePair(conf.node.address, node, time);
             }
@@ -316,6 +316,8 @@ unittest
     txes.each!(tx => node_1.putTransaction(tx));
     network.setTimeFor(Height(1));  // trigger consensus
     Thread.sleep(2.seconds);
-    assert(network.envelope_type_counts.confirm_count == 0, "The block should not have been confirmed!");
-    assert(network.envelope_type_counts.externalize_count == 0, "The block should not have been externalized!");
+    assert(atomicLoad(network.envelope_type_counts.confirm_count) == 0,
+           "The block should not have been confirmed!");
+    assert(atomicLoad(network.envelope_type_counts.externalize_count) == 0,
+           "The block should not have been externalized!");
 }
