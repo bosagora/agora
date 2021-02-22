@@ -54,6 +54,11 @@ import core.thread;
 /// the channel creation procedures and control each flash node's behavior.
 public interface TestFlashAPI : ControlFlashAPI
 {
+    /// Wait for the specified update index. Index 0 is the funding state.
+    /// Note that a payment also triggers an update later when the secret
+    /// is revealed, so the indexes passed are usually even numbers (2, 4, 6..)
+    public void waitForUpdateIndex (in Hash chan_id, in uint index);
+
     /// Force publishing an update tx with the given index to the blockchain.
     /// Used for testing and ensuring the counter-party detects the update tx
     /// and publishes the latest state to the blockchain.
@@ -255,7 +260,6 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         auto packet = createOnionPacket(invoice.payment_hash, lock_height,
             invoice.amount, path, total_amount);
 
-        writefln("%s: Paying invoice and routing packet", this.kp.V.prettify);
         this.paymentRouter(path.front.chan_id, invoice.payment_hash,
             total_amount, lock_height, packet);
     }
@@ -267,6 +271,14 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.getPublishUpdateIndex(index);
+    }
+
+    ///
+    public override void waitForUpdateIndex (in Hash chan_id, in uint index)
+    {
+        auto channel = chan_id in this.channels;
+        assert(channel !is null);
+        return channel.waitForUpdateIndex(index);
     }
 
     ///
@@ -389,32 +401,32 @@ unittest
     alice.waitChannelOpen(chan_id);
     bob.waitChannelOpen(chan_id);
 
+    auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
+
     /* do some off-chain transactions */
     auto inv_1 = bob.createNewInvoice(Amount(5_000), time_t.max, "payment 1");
     alice.payInvoice(inv_1);
 
-    // wait until the invoices are paid
-    writefln("Sleeping for 6 seconds..");
-    Thread.sleep(6.seconds);
+    alice.waitForUpdateIndex(chan_id, 2);
+    bob.waitForUpdateIndex(chan_id, 2);
 
     auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
     alice.payInvoice(inv_2);
 
-    // wait until the invoices are paid
-    writefln("Sleeping for 6 seconds..");
-    Thread.sleep(6.seconds);
+    // need to wait for invoices to be complete before we have the new balance
+    // to send in the other direction
+    alice.waitForUpdateIndex(chan_id, 4);
+    bob.waitForUpdateIndex(chan_id, 4);
 
     // note the reverse payment from bob to alice. Can use this for refunds too.
     auto inv_3 = alice.createNewInvoice(Amount(2_000), time_t.max, "payment 3");
     bob.payInvoice(inv_3);
 
-    // wait until the invoices are paid
-    writefln("Sleeping for 6 seconds..");
-    Thread.sleep(6.seconds);
+    alice.waitForUpdateIndex(chan_id, 6);
+    bob.waitForUpdateIndex(chan_id, 6);
 
     // alice is acting bad
     writefln("Alice unilaterally closing the channel..");
-    auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
     network.expectBlock(Height(10), network.blocks[0].header);
     auto tx_10 = node_1.getBlocksFrom(10, 1)[0].txs[0];
     assert(tx_10 == update_tx);
@@ -500,7 +512,7 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id = bob.openNewChannel(
-        bob_utxo, Amount(6_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
     writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
@@ -514,24 +526,28 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // begin off-chain transactions
-    auto inv_1 = charlie.createNewInvoice(Amount(4_000), time_t.max, "payment 1");
+    auto inv_1 = charlie.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
 
     // here we assume bob sent the invoice to alice through some means,
     // e.g. QR code. Alice scans it and proposes the payment.
     // it has a direct channel to bob so it uses it.
     alice.payInvoice(inv_1);
 
-    // wait until the invoices are paid
-    writefln("Sleeping for 7 seconds..");
-    Thread.sleep(7.seconds);
+    // wait for payment + folding update indices
+    alice.waitForUpdateIndex(alice_bob_chan_id, 2);
+    bob.waitForUpdateIndex(alice_bob_chan_id, 2);
+    bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
 
     // Second payment attempt should fail because of insufficient funds
     auto inv_2 = charlie.createNewInvoice(Amount(4_000), time_t.max, "payment 2");
     alice.payInvoice(inv_2);
 
-    // wait until the invoices are paid
-    writefln("Sleeping for 7 seconds..");
-    Thread.sleep(7.seconds);
+    // wait for payment + folding update indices
+    alice.waitForUpdateIndex(alice_bob_chan_id, 4);
+    bob.waitForUpdateIndex(alice_bob_chan_id, 4);
+    bob.waitForUpdateIndex(bob_charlie_chan_id, 4);
+    charlie.waitForUpdateIndex(bob_charlie_chan_id, 4);
 
     //
     writefln("Beginning bob => charlie collaborative close..");

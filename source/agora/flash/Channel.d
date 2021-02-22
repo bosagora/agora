@@ -129,6 +129,63 @@ public class Channel
     /// Route payments to another channel
     private PaymentRouter paymentRouter;
 
+    /// Queued incoming payment
+    private static struct IncomingPayment
+    {
+        private uint seq_id;
+        private PrivateNonce priv_nonce;
+        private PublicNonce peer_nonce;
+        private OnionPacket packet;
+        private Payload payload;
+        private Hash payment_hash;
+        private Amount amount;
+        private Height height;
+        private Height lock_height;
+    }
+
+    /// Queued incoming update
+    private static struct IncomingUpdate
+    {
+        private uint seq_id;
+        private Output[] outputs;
+        private Balance balance;
+        private PrivateNonce priv_nonce;
+        private PublicNonce peer_nonce;
+        private const(Hash)[] secrets;
+        private const(Hash)[] revert_htlcs;
+    }
+
+    /// Incoming payments
+    private IncomingPayment[] incoming_payments;
+
+    /// Incoming updates
+    private IncomingUpdate[] incoming_updates;
+
+    /// Outgoing payment
+    private static struct OutgoingPayment
+    {
+        private Hash payment_hash;
+        private Amount amount;
+        private Height lock_height;
+        private OnionPacket packet;
+        private Height height;
+    }
+
+    /// Outgoing payments
+    private OutgoingPayment[] outgoing_payments;
+
+    /// Whether there is currently an outbound proposal in progress
+    private bool outbound_in_progress;
+
+    /// Last known block height
+    private Height height;
+
+    /// Learned secrets that match pending HTLCs
+    private const(Hash)[] secrets;
+
+    /// Any HTLCs which still need to be reverted
+    private const(Hash)[] revert_htlcs;
+
     /// Called when the channel has been open
     /// (the funding transaction has been externalized)
     private void delegate (ChannelConfig conf) onChannelOpen;
@@ -140,7 +197,7 @@ public class Channel
         ErrorCode error = ErrorCode.None) onPaymentComplete;
 
     /// Called when a channel update has been completed.
-    private void delegate (in Hash[] secrets, in Hash[] rev_htlcs) onUpdateComplete;
+    private void delegate (in Hash[] secrets, in Hash[] revert_htlcs) onUpdateComplete;
 
 
     /***************************************************************************
@@ -169,7 +226,7 @@ public class Channel
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
-        void delegate (in Hash[], in Hash[] rev_htlcs) onUpdateComplete)
+        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete)
     {
         this.conf = conf;
         this.kp = kp;
@@ -266,7 +323,7 @@ public class Channel
 
     ***************************************************************************/
 
-    public void learnSecrets (in Hash[] secrets, in Hash[] rev_htlcs,
+    public void learnSecrets (in Hash[] secrets, in Hash[] revert_htlcs,
         in Height height)
     {
         writefln("%s: learnSecrets(%s, hashes: %s, known: %s, drop: %s %s)",
@@ -274,15 +331,18 @@ public class Channel
             secrets.map!(s => s.prettify),
             secrets.map!(s => s.hashFull.prettify),
             this.payment_hashes[].map!(s => s.prettify),
-            rev_htlcs.map!(s => s.prettify),
+            revert_htlcs.map!(s => s.prettify),
             height);
+
+        if (this.height < height)
+            this.height = height;
 
         Hash[] matching_secrets, matching_rev_htlcs;
         foreach (secret; secrets)
             if (secret.hashFull() in this.payment_hashes)
                 matching_secrets ~= secret;
 
-        foreach (htlc; rev_htlcs)
+        foreach (htlc; revert_htlcs)
             if (htlc in this.payment_hashes)
                 matching_rev_htlcs ~= htlc;
 
@@ -294,7 +354,8 @@ public class Channel
         if (matching_secrets.length == 0)
             return;
 
-        this.proposeNewUpdate(matching_secrets, matching_rev_htlcs, height);
+        this.secrets = matching_secrets;
+        this.revert_htlcs = revert_htlcs;
     }
 
     /***************************************************************************
@@ -330,9 +391,56 @@ public class Channel
         const Balance balance = { refund_amount : this.conf.capacity };
         const Output[] outputs = this.buildBalanceOutputs(balance);
 
-        auto pair = this.update_signer.collectSignatures(seq_id, outputs,
+        auto pair = this.update_signer.collectSignatures(0, outputs,
             priv_nonce, peer_nonce, this.conf.funding_tx);
         this.onSetupComplete(pair);
+
+        // wait until the channel is open
+        while (this.state != ChannelState.Open)
+            this.taskman.wait(100.msecs);
+
+LOuter: while (1)
+        {
+            scope (success)
+                this.taskman.wait(100.msecs);
+
+            if (!this.incoming_updates.empty)
+            {
+                this.handleIncomingUpdate(this.incoming_updates.front);
+                this.incoming_updates.length = 0;
+                assumeSafeAppend(this.incoming_updates);
+            }
+
+            if (this.state == ChannelState.Closed)
+                break;
+
+            if (!this.incoming_payments.empty)
+            {
+                this.handleIncomingPayment(this.incoming_payments.front);
+                this.incoming_payments.length = 0;
+                assumeSafeAppend(this.incoming_payments);
+            }
+
+            if (this.state == ChannelState.Closed)
+                break;
+
+            while (!this.outgoing_payments.empty)
+            {
+                if (this.handleOutgoingPayment(this.outgoing_payments.front))
+                    this.outgoing_payments.popFront();
+                else
+                    continue LOuter;  // there are other requests in progress
+            }
+
+            if (this.state == ChannelState.Closed)
+                break;
+
+            // check if we can fold any HTLCs
+            this.checkProposeUpdate();
+
+            if (this.state == ChannelState.Closed)
+                break;
+        }
     }
 
     /***************************************************************************
@@ -605,40 +713,40 @@ public class Channel
         return this.update_signer.getUpdateSig();
     }
 
+    public void onConfirmedChannelUpdate (in uint seq_id)
+    {
+        if (seq_id != this.update_signer.getSeqID())
+            return;  // todo: return some kind of error if peer is out of sync
+
+        this.update_signer.onConfirmedChannelUpdate();
+    }
+
     /***************************************************************************
 
-        Propose a new update of this channel with the counter-party.
+        Check whether we should propose a new update, and if so propose it
+        with the counter-party.
 
         This folds any outgoing HTLCs for which we've either learned a secret
         for, or for which the HTLCs height locks have expired.
 
-        Params:
-            secrets = any newly discovered secrets
-            height = the latest known block height
-
     ***************************************************************************/
 
-    public void proposeNewUpdate (in Hash[] secrets, in Hash[] rev_htlcs,
-        in Height height)
+    private void checkProposeUpdate ()
     {
-        // todo: replace with a better retry mechanism
-        Result!bool is_collecting;
-        while (1)
-        {
-            is_collecting = this.peer.isCollectingSignatures(this.conf.chan_id);
-            if (is_collecting.error || is_collecting.value)
-            {
-                writefln("%s: proposeNewUpdate: %s is still collecting signatures. Trying again soon..",
-                    this.kp.V.prettify, this.peer_pk.prettify);
-                this.taskman.wait(100.msecs);
-                continue;
-            }
+        auto secrets = this.secrets;
+        auto revert_htlcs = this.revert_htlcs;
 
-            break;
-        }
+        Height update_height = this.height;
+        auto new_balance = this.foldHTLCs(this.cur_balance, this.secrets,
+            this.revert_htlcs, update_height);
+        auto new_outputs = this.buildBalanceOutputs(new_balance);
+        if (new_balance == cur_balance)
+            return;  // nothing to propose yet
+
+        this.outbound_in_progress = true;
+        scope (exit) this.outbound_in_progress = false;
 
         uint new_seq_id = this.cur_seq_id + 1;
-
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
@@ -646,43 +754,66 @@ public class Channel
         Result!PublicNonce result;
         while (1)
         {
+            // re-fold
+            if (update_height != this.height)
+            {
+                secrets = this.secrets;
+                revert_htlcs = this.revert_htlcs;
+                update_height = this.height;
+                new_balance = this.foldHTLCs(this.cur_balance, this.secrets,
+                    this.revert_htlcs, update_height);
+                new_outputs = this.buildBalanceOutputs(new_balance);
+            }
+
             // todo: there may be a double call here if the first request timed-out
             // and the client sends this request again.
             result = this.peer.proposeUpdate(this.conf.chan_id, new_seq_id,
-                secrets, rev_htlcs, pub_nonce, height);
-
-            // there may have been a new payment just before the update proposal
-            if (this.cur_seq_id >= new_seq_id)
-                new_seq_id = this.cur_seq_id + 1;
+                this.secrets, this.revert_htlcs, pub_nonce, update_height);
 
             if (result.error)
             {
-                writefln("%s: ERROR PROPOSING UPDATE (trying again): %s", this.kp.V.prettify, result);
-                this.taskman.wait(100.msecs);
+                // peer has priority
+                if (result.error == ErrorCode.ProposalInProgress)
+                    return;
+
+                writefln("%s: Error proposing update with %s: %s",
+                    this.kp.V.prettify, this.peer_pk.prettify, result);
+                this.taskman.wait(500.msecs);
                 continue;
             }
 
             break;
         }
 
+        const old_balance = this.cur_balance;
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
-        auto new_balance = this.foldHTLCs(this.cur_balance, secrets, rev_htlcs,
-            height);
-        const new_outputs = this.buildBalanceOutputs(new_balance);
+        auto update_pair = this.update_signer.collectSignatures(new_seq_id,
+            new_outputs, priv_nonce, peer_nonce,
+            this.channel_updates[0].update_tx);  // spend from trigger tx
 
-        this.taskman.setTimer(0.seconds,
+        writefln("%s: +Update+ Got new pair from %s! Balanced updated: %s",
+            this.kp.V.prettify, this.peer_pk.prettify, new_balance);
+        this.channel_updates ~= update_pair;
+        this.cur_balance = new_balance;
+
+        // Filter out the htlcs that are not pending on this channel
+        auto rev_htlcs_filtered = revert_htlcs.filter!(payment_hash =>
+            payment_hash in this.payment_hashes).array;
+        foreach (secret; secrets)
+            this.payment_hashes.remove(secret.hashFull());
+        rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
+
+        // Save dropped htlcs
+        foreach (payment_hash; rev_htlcs_filtered)
         {
-            auto update_pair = this.update_signer.collectSignatures(
-                this.cur_seq_id,
-                new_outputs, priv_nonce, peer_nonce,
-                this.channel_updates[0].update_tx);  // spend from trigger tx
+            auto htlc = payment_hash in old_balance.outgoing_htlcs ?
+                        old_balance.outgoing_htlcs[payment_hash] :
+                        old_balance.incoming_htlcs[payment_hash];
+            this.dropped_htlcs[payment_hash] = htlc;
+        }
 
-            writefln("%s: Got new pair from %s! Balanced updated!",
-                this.kp.V.prettify, this.peer_pk.prettify);
-            this.channel_updates ~= update_pair;
-            this.cur_balance = new_balance;
-        });
+        this.onUpdateComplete(secrets, rev_htlcs_filtered);
     }
 
     /***************************************************************************
@@ -690,6 +821,8 @@ public class Channel
         Called by a counter-party when it wants to fold HTLCs by revealing
         secrets or when forced to spend HTLCs for which the time locks have
         expired.
+
+        Schedules this request for later.
 
         Params:
             seq_id = the new sequence ID
@@ -704,14 +837,9 @@ public class Channel
     ***************************************************************************/
 
     public Result!PublicNonce onProposedUpdate (in uint seq_id,
-        in Hash[] secrets, in Hash[] rev_htlcs, in PublicNonce peer_nonce,
+        in Hash[] secrets, in Hash[] revert_htlcs, in PublicNonce peer_nonce,
         in Height height)
     {
-        writefln("%s: onProposedUpdate from %s (%s, %s, %s, %s)",
-            this.kp.V.prettify, this.peer_pk.prettify,
-            seq_id, secrets.map!(s => s.prettify),
-            rev_htlcs.map!(s => s.prettify), height);
-
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
                 "This channel is not open");
@@ -721,63 +849,227 @@ public class Channel
                 "This channel is still collecting signatures for a "
                 ~ "previous sequence ID");
 
+        // we already have an outbound request and we're the leader for this round
+        if (this.outbound_in_progress)
+            return Result!PublicNonce(ErrorCode.ProposalInProgress);
+
+        // calling node proposed update & payment at the same time,
+        // something's wrong with that node
+        if (!this.incoming_payments.empty)
+            return Result!PublicNonce(ErrorCode.ProposalInProgress);
+
         // we force new sequences to be exactly the next in sequence to avoid
         // running out of sequence IDs
         if (seq_id != this.cur_seq_id + 1)
             return Result!PublicNonce(ErrorCode.InvalidSequenceID,
                 "Proposed sequence ID must be +1 of the previous sequence ID");
 
-        this.cur_seq_id = seq_id;
-        PrivateNonce priv_nonce = genPrivateNonce();
-        PublicNonce pub_nonce = priv_nonce.getPublicNonce();
-
         // Filter out the htlcs that are not pending on this channel
-        auto rev_htlcs_filtered = rev_htlcs.filter!(payment_hash =>
+        auto rev_htlcs_filtered = revert_htlcs.filter!(payment_hash =>
             payment_hash in this.payment_hashes).array;
 
         const old_balance = this.cur_balance;
         auto new_balance = this.foldHTLCs(old_balance, secrets, rev_htlcs_filtered,
             height);
+
+        if (new_balance == cur_balance)
+            return Result!PublicNonce(ErrorCode.UpdateRejected,
+                "Proposed balance is the same as current one");
+
+        writefln("%s: onProposedUpdate from %s accepted (%s, %s, %s, %s)",
+            this.kp.V.prettify, this.peer_pk.prettify,
+            seq_id, secrets.map!(s => s.prettify),
+            revert_htlcs.map!(s => s.prettify), height);
+
+        auto new_outputs = this.buildBalanceOutputs(new_balance);
+
+        PrivateNonce priv_nonce = genPrivateNonce();
+        PublicNonce pub_nonce = priv_nonce.getPublicNonce();
+
         writefln("%s: Before folding: %s. After folding: %s", this.kp.V.prettify,
             old_balance, new_balance);
-        const new_outputs = this.buildBalanceOutputs(new_balance);
 
-        this.taskman.setTimer(0.seconds,
-        {
-            auto update_pair = this.update_signer.collectSignatures(
-                seq_id, new_outputs, priv_nonce, peer_nonce,
-                this.channel_updates[0].update_tx);  // spend from trigger tx
-
-            writefln("%s: Got new pair from %s! Balance updated! %s",
-                this.kp.V.prettify, this.peer_pk.prettify, new_balance);
-            this.channel_updates ~= update_pair;
-            this.cur_balance = new_balance;
-
-            writefln("%s: Update complete! Secrets used: %s dropped: %s",
-                this.kp.V.prettify, secrets, rev_htlcs_filtered);
-            foreach (secret; secrets)
-                this.payment_hashes.remove(secret.hashFull());
-            rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
-
-            // Save dropped htlcs
-            foreach (payment_hash; rev_htlcs_filtered)
-            {
-                auto htlc = payment_hash in old_balance.outgoing_htlcs ?
-                            old_balance.outgoing_htlcs[payment_hash] :
-                            old_balance.incoming_htlcs[payment_hash];
-                this.dropped_htlcs[payment_hash] = htlc;
-            }
-
-            this.onUpdateComplete(secrets, rev_htlcs_filtered);
-        });
+        // let the work fiber handle it next
+        this.incoming_updates ~= IncomingUpdate(seq_id, new_outputs,
+            new_balance, priv_nonce, peer_nonce, secrets, rev_htlcs_filtered);
 
         return Result!PublicNonce(pub_nonce);
     }
 
     /***************************************************************************
 
-        Route a payment through the channel. This could be for our own payment,
-        or forwarded from another node.
+        Start the signing process for an incoming payment.
+
+        Params:
+            payment = the incoming payment to sign
+
+    ***************************************************************************/
+
+    private void handleIncomingPayment (IncomingPayment payment)
+    {
+        const direction = this.is_owner ?
+            PaymentDirection.TowardsOwner : PaymentDirection.TowardsPeer;
+        auto new_balance = this.buildUpdatedBalance(direction,
+            this.cur_balance, payment.amount, payment.payment_hash,
+            payment.lock_height, payment.height);
+        auto new_outputs = this.buildBalanceOutputs(new_balance);
+
+        writefln("%s: Handling incoming payment balance request: %s",
+            this.kp.V.prettify, new_balance);
+
+        this.cur_seq_id = payment.seq_id;
+
+        auto update_pair = this.update_signer.collectSignatures(
+            payment.seq_id, new_outputs, payment.priv_nonce, payment.peer_nonce,
+            this.channel_updates[0].update_tx);  // spend from trigger tx
+
+        writefln("%s: Got new pair from %s! Balance updated! %s",
+            this.kp.V.prettify, this.peer_pk.prettify, new_balance);
+        this.channel_updates ~= update_pair;
+        this.cur_balance = new_balance;
+
+        // prepare for secrets
+        this.payment_hashes.put(payment.payment_hash);
+
+        // route to the next node
+        if (payment.payload.next_chan_id != Hash.init)
+        {
+            OnionPacket next_packet = nextPacket(payment.packet);
+
+            writefln("%s: Routing to next channel: %s", this.kp.V.prettify,
+                payment.payload.next_chan_id.prettify);
+            this.paymentRouter(payment.payload.next_chan_id,
+                payment.payment_hash,
+                payment.payload.forward_amount,
+                payment.payload.outgoing_lock_height,
+                next_packet);
+        }
+        else
+            // propose an update afterwards
+            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash);
+    }
+
+    /***************************************************************************
+
+        Start the signing process for an outgoing payment.
+
+        Params:
+            payment = the outgoing payment to sign
+
+    ***************************************************************************/
+
+    private bool handleOutgoingPayment (in OutgoingPayment payment)
+    {
+        const direction = this.is_owner ?
+            PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
+        const cur_amount = this.getBalance(direction);
+        if (cur_amount < payment.amount)
+        {
+            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
+                ErrorCode.ExceedsMaximumPayment);
+            return true;  // remove it from the queue
+        }
+
+        this.outbound_in_progress = true;
+        scope (exit) this.outbound_in_progress = false;
+
+        PrivateNonce priv_nonce = genPrivateNonce();
+        PublicNonce pub_nonce = priv_nonce.getPublicNonce();
+        const new_seq_id = this.cur_seq_id + 1;
+
+        Result!PublicNonce result;
+        while (1)
+        {
+            result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
+                payment.payment_hash, payment.amount, payment.lock_height,
+                payment.packet, pub_nonce, payment.height);
+
+            if (result.error)
+            {
+                // peer has priority
+                if (result.error == ErrorCode.ProposalInProgress)
+                    return false;
+
+                writefln("%s: Error proposing payment: %s", this.kp.V.prettify,
+                    result);
+                this.taskman.wait(100.msecs);
+                continue;
+            }
+
+            break;
+        }
+
+        this.cur_seq_id = new_seq_id;
+        const peer_nonce = result.value;
+        auto new_balance = this.buildUpdatedBalance(direction,
+            this.cur_balance, payment.amount, payment.payment_hash,
+            payment.lock_height, payment.height);
+        const new_outputs = this.buildBalanceOutputs(new_balance);
+
+        writefln("%s: Created outgoing payment balance request: %s",
+            this.kp.V.prettify, new_balance);
+
+        auto update_pair = this.update_signer.collectSignatures(
+            new_seq_id, new_outputs, priv_nonce, peer_nonce,
+            this.channel_updates[0].update_tx);  // spend from trigger tx
+
+        writefln("%s: Got new pair from %s! Balanced updated. New balance: %s",
+            this.kp.V.prettify, this.peer_pk.prettify, new_balance);
+        this.channel_updates ~= update_pair;
+        this.cur_balance = new_balance;
+
+        this.payment_hashes.put(payment.payment_hash);
+        return true;
+    }
+
+    /***************************************************************************
+
+        Start the signing process for an incoming update.
+
+        Params:
+            update = the incoming update to sign
+
+    ***************************************************************************/
+
+    private void handleIncomingUpdate (IncomingUpdate update)
+    {
+        const old_balance = this.cur_balance;
+
+        this.cur_seq_id = update.seq_id;
+        auto update_pair = this.update_signer.collectSignatures(
+            update.seq_id,
+            update.outputs, update.priv_nonce,
+            update.peer_nonce,
+            this.channel_updates[0].update_tx);  // spend from trigger tx
+
+        writefln("%s: Got new pair from %s! Balance updated: %s",
+            this.kp.V.prettify, this.peer_pk.prettify, update.balance);
+        this.channel_updates ~= update_pair;
+        this.cur_balance = update.balance;
+
+        // Filter out the htlcs that are not pending on this channel
+        auto rev_htlcs_filtered = update.revert_htlcs.filter!(payment_hash =>
+            payment_hash in this.payment_hashes).array;
+        foreach (secret; update.secrets)
+            this.payment_hashes.remove(secret.hashFull());
+        rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
+
+        // Save dropped htlcs
+        foreach (payment_hash; rev_htlcs_filtered)
+        {
+            auto htlc = payment_hash in old_balance.outgoing_htlcs ?
+                        old_balance.outgoing_htlcs[payment_hash] :
+                        old_balance.incoming_htlcs[payment_hash];
+            this.dropped_htlcs[payment_hash] = htlc;
+        }
+
+        this.onUpdateComplete(update.secrets, update.revert_htlcs);
+    }
+
+    /***************************************************************************
+
+        Queue a payment to be routed through this channel.
+        This could be for our own payment, or forwarded from another node.
 
         Params:
             payment_hash = the invoice payment hash
@@ -786,71 +1078,23 @@ public class Channel
             packet = the packet which contains the encrypted payload for the
                 counter-party.
 
-        Returns:
-            an error code
-
     ***************************************************************************/
 
-    public ErrorCode routeNewPayment (in Hash payment_hash, in Amount amount,
+    public void queueNewPayment (in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet, in Height height)
     {
-        // todo: need to check if the counter-party is still collecting
-        // signatures, as they will otherwise reject this new request.
-        // currently handled by retries
-        Result!bool is_collecting;
-        while (1)
-        {
-            is_collecting = this.peer.isCollectingSignatures(this.conf.chan_id);
-            if (is_collecting.error || is_collecting.value)
-            {
-                writefln("%s: routeNewPayment: %s is still collecting signatures. Trying again soon..",
-                    this.kp.V.prettify, this.peer_pk.prettify);
-                this.taskman.wait(100.msecs);
-                continue;
-            }
+        writefln("%s: Queued new payment: %s", this.kp.V.prettify,
+            payment_hash.prettify);
 
-            break;
-        }
-
-        const uint new_seq_id = this.cur_seq_id + 1;
-
-        PrivateNonce priv_nonce = genPrivateNonce();
-        PublicNonce pub_nonce = priv_nonce.getPublicNonce();
-
-        // todo: work on retries
-        auto result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
-            payment_hash, amount, lock_height, packet, pub_nonce, height);
-        if (result.error)
-        {
-            writefln("%s: Error proposing payment: %s", this.kp.V.prettify, result);
-            return result.error;
-        }
-
-        this.cur_seq_id = new_seq_id;
-        const peer_nonce = result.value;
-        const direction = this.is_owner ?
-            PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
-        auto new_balance = this.buildUpdatedBalance(direction,
-            this.cur_balance, amount, payment_hash, lock_height, height);
-        const new_outputs = this.buildBalanceOutputs(new_balance);
-
-        auto update_pair = this.update_signer.collectSignatures(this.
-            cur_seq_id,
-            new_outputs, priv_nonce, peer_nonce,
-            this.channel_updates[0].update_tx);  // spend from trigger tx
-
-        writefln("%s: Got new pair from %s! Balanced updated!",
-            this.kp.V.prettify, this.peer_pk.prettify);
-        this.channel_updates ~= update_pair;
-        this.cur_balance = new_balance;
-
-        this.payment_hashes.put(payment_hash);
-        return ErrorCode.None;
+        this.outgoing_payments ~= OutgoingPayment(payment_hash, amount,
+            lock_height, packet, height);
     }
 
     /***************************************************************************
 
         Called by a counter-party node when it wants to propose a new payment.
+
+        Schedules the payment to be handled later.
 
         Params:
             seq_id = the new sequence ID
@@ -871,11 +1115,6 @@ public class Channel
         in OnionPacket packet, in Payload payload, in PublicNonce peer_nonce,
         in Height height )
     {
-        writefln("%s: onProposedPayment from %s (%s, %s, %s, %s, %s)",
-            this.kp.V.prettify, this.peer_pk.prettify,
-            this.conf.chan_id, seq_id, payment_hash.prettify, amount,
-            lock_height);
-
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
                 "This channel is not open");
@@ -884,6 +1123,14 @@ public class Channel
             return Result!PublicNonce(ErrorCode.SigningInProcess,
                 "This channel is still collecting signatures for a "
                 ~ "previous sequence ID");
+
+        if (this.outbound_in_progress)
+            return Result!PublicNonce(ErrorCode.ProposalInProgress);
+
+        // calling node proposed update & payment at the same time,
+        // something's wrong with that node
+        if (!this.incoming_updates.empty)
+            return Result!PublicNonce(ErrorCode.ProposalInProgress);
 
         // Forwarding HTLC. Check balance first.
         // todo: check the owner balance first
@@ -910,46 +1157,18 @@ public class Channel
             return Result!PublicNonce(ErrorCode.InvalidSequenceID,
                 "Proposed sequence ID must be +1 of the previous sequence ID");
 
-        this.cur_seq_id = seq_id;
+        writefln("%s: onProposedPayment from %s accepted (%s, %s, %s, %s, %s)",
+            this.kp.V.prettify, this.peer_pk.prettify,
+            this.conf.chan_id, seq_id, payment_hash.prettify, amount,
+            lock_height);
+
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto new_balance = this.buildUpdatedBalance(direction,
-            this.cur_balance, amount, payment_hash, lock_height, height);
-        const new_outputs = this.buildBalanceOutputs(new_balance);
-
-        this.taskman.setTimer(0.seconds,
-        {
-            auto update_pair = this.update_signer.collectSignatures(
-                this.cur_seq_id,
-                new_outputs, priv_nonce, peer_nonce,
-                this.channel_updates[0].update_tx);  // spend from trigger tx
-
-            writefln("%s: Got new pair from %s! Balance updated! %s",
-                this.kp.V.prettify, this.peer_pk.prettify, new_balance);
-            this.channel_updates ~= update_pair;
-            this.cur_balance = new_balance;
-
-            // prepare for secrets
-            this.payment_hashes.put(payment_hash);
-
-            // route to the next node
-            if (payload.next_chan_id != Hash.init)
-            {
-                OnionPacket next_packet = nextPacket(packet);
-
-                writefln("%s: Routing to next channel: %s", this.kp.V.prettify,
-                    payload.next_chan_id.prettify);
-                if (auto err = this.paymentRouter(payload.next_chan_id, payment_hash,
-                    payload.forward_amount, payload.outgoing_lock_height,
-                    next_packet))
-                    // Routing to next chan failed.
-                    this.onPaymentComplete(this.conf.chan_id, payment_hash, err);
-            }
-            else
-                // propose an update afterwards
-                this.onPaymentComplete(this.conf.chan_id, payment_hash);
-        });
+        // let the work fiber handle it next
+        this.incoming_payments ~= IncomingPayment(seq_id, priv_nonce,
+            peer_nonce, packet, payload, payment_hash, amount, height,
+            lock_height);
 
         return Result!PublicNonce(pub_nonce);
     }
@@ -972,7 +1191,7 @@ public class Channel
     ***************************************************************************/
 
     public Balance foldHTLCs (in Balance old_balance, in Hash[] secrets,
-        in Hash[] rev_htlcs, in Height height)
+        in Hash[] revert_htlcs, in Height height)
     {
         Balance new_balance;
         new_balance.refund_amount = old_balance.refund_amount;
@@ -991,7 +1210,7 @@ public class Channel
         // fold outgoing HTLCs
         foreach (payment_hash, htlc; old_balance.outgoing_htlcs)
         {
-            if (htlc.lock_height < height || rev_htlcs.canFind(payment_hash))
+            if (htlc.lock_height < height || revert_htlcs.canFind(payment_hash))
             {
                 writefln("%s: Fold: Folded outgoing time-expired/dropped HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
@@ -999,13 +1218,13 @@ public class Channel
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                writefln("%s: Fold: Folded outgoing secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded outgoing secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash.prettify);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.prettify, payment_hash);
+                //writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.prettify, payment_hash.prettify);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -1013,7 +1232,7 @@ public class Channel
         // fold incoming HTLCs
         foreach (payment_hash, htlc; old_balance.incoming_htlcs)
         {
-            if (htlc.lock_height < height || rev_htlcs.canFind(payment_hash))
+            if (htlc.lock_height < height || revert_htlcs.canFind(payment_hash))
             {
                 writefln("%s: Fold: Folded incoming time-expired/dropped HTLC: %s", this.kp.V.prettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
@@ -1021,13 +1240,13 @@ public class Channel
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                writefln("%s: Fold: Folded incoming secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash);
+                writefln("%s: Fold: Folded incoming secret-revealed HTLC: %s", this.kp.V.prettify, payment_hash.prettify);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.prettify, payment_hash);
+                //writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.prettify, payment_hash.prettify);
                 new_balance.incoming_htlcs[payment_hash] = htlc;
             }
         }
@@ -1128,6 +1347,8 @@ public class Channel
 
     public void onBlockExternalized (in Block block)
     {
+        this.height = block.header.height;
+
         foreach (tx; block.txs)
         {
             if (tx.hashFull() == this.conf.funding_tx_hash)
@@ -1298,11 +1519,11 @@ public class Channel
         const Fee = Amount(100);  // todo: coordinate based on return value
         Pair priv_nonce = Pair.random();
 
-        this.taskman.setTimer(0.seconds,
+        Result!Point close_res;
+        while (1)
         {
-            auto close_res = this.peer.closeChannel(this.conf.chan_id,
+            close_res = this.peer.closeChannel(this.conf.chan_id,
                 this.cur_seq_id, priv_nonce.V, Fee);
-
             if (close_res.error)
             {
                 // todo: retry with bigger fee if smaller fee was rejected
@@ -1310,11 +1531,14 @@ public class Channel
                 // todo: try unilateral close after the configured timeout?
                 writefln("%s: Closing tx signature request rejected: %s",
                     this.kp.V.prettify, close_res);
-                assert(0);
+                this.taskman.wait(100.msecs);
+                continue;
             }
 
-            this.collectCloseSignatures(priv_nonce, close_res.value);
-        });
+            break;
+        }
+
+        this.collectCloseSignatures(priv_nonce, close_res.value);
     }
 
     /***************************************************************************
@@ -1594,12 +1818,28 @@ public class Channel
         }
     }
 
+    version (unittest)
+    public void waitForUpdateIndex (in uint index)
+    {
+        // wait until this index is available
+        while (index >= this.channel_updates.length)
+            this.taskman.wait(100.msecs);
+
+        if (index < this.channel_updates.length)
+            writefln("waitForUpdateIndex: index %s is OK compared to updates %s",
+                index, this.channel_updates.length);
+    }
+
     // forcefully publish an update transaction with the given index.
     // for use with tests
     version (unittest)
     public Transaction getPublishUpdateIndex (uint index)
     {
-        assert(this.channel_updates.length > index + 1);
+        // wait until this update is complete
+        while (index >= this.channel_updates.length)
+            this.taskman.wait(100.msecs);
+
+        assert(index < this.channel_updates.length);
         const update_tx = this.channel_updates[index].update_tx;
         writefln("%s: Publishing update tx index %s: %s",
             this.kp.V.prettify, index, update_tx.hashFull().prettify);

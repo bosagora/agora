@@ -115,22 +115,6 @@ public interface FlashAPI
 
     /***************************************************************************
 
-        Checks whether the counter-party is still collecting signatures for
-        the given channel ID. Until it collects all signatures, the calling
-        node cannot initiate any new payment / update proposals.
-
-        Params:
-            chan_id = an open channel ID
-
-        Returns:
-            true if the node is busy collecting signatures
-
-    ***************************************************************************/
-
-    public Result!bool isCollectingSignatures (in Hash chan_id);
-
-    /***************************************************************************
-
         Proposes a payment through this channel. This may be a direct payment,
         or an indirect routed payment. Both types of payments use this API.
 
@@ -240,6 +224,21 @@ public interface FlashAPI
     ***************************************************************************/
 
     public Result!Signature requestUpdateSig (in Hash chan_id, in uint seq_id);
+
+    /***************************************************************************
+
+        Called by the peer when it has finished collecting the
+        settlement & update transactions. It signals to the called node
+        that the peer is ready for any new payments / updates.
+
+        Params:
+            chan_id = A previously seen pending channel ID provided
+                by the funder node through the call to `openChannel()`
+            seq_id = the sequence ID just used for signing
+
+    ***************************************************************************/
+
+    public void confirmChannelUpdate (in Hash chan_id, in uint seq_id);
 
     /***************************************************************************
 

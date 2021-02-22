@@ -258,15 +258,18 @@ public abstract class FlashNode : FlashAPI
     ///
     protected void onChannelOpen (ChannelConfig conf)
     {
-        writefln("%s: onChannelOpen() with channel %s",
-            this.kp.V.prettify, conf.chan_id);
+        this.taskman.setTimer(0.seconds,
+        {
+            writefln("%s: onChannelOpen() with channel %s",
+                this.kp.V.prettify, conf.chan_id);
 
-        this.known_channels[conf.chan_id] = conf;
-        this.network.addChannel(conf);
+            this.known_channels[conf.chan_id] = conf;
+            this.network.addChannel(conf);
 
-        // todo: should not gossip this to counterparty of the just opened channel
-        foreach (peer; this.known_peers.byValue())
-            peer.gossipChannelsOpen([conf]);
+            // todo: should not gossip this to counterparty of the just opened channel
+            foreach (peer; this.known_peers.byValue())
+                peer.gossipChannelsOpen([conf]);
+        });
     }
 
     /// See `FlashAPI.gossipChannelsOpen`
@@ -343,6 +346,16 @@ public abstract class FlashNode : FlashAPI
             "Channel ID not found");
     }
 
+    /// See `FlashAPI.confirmChannelUpdate`
+    public override void confirmChannelUpdate (in Hash chan_id,
+        in uint seq_id)
+    {
+        if (auto channel = chan_id in this.channels)
+            return channel.onConfirmedChannelUpdate(seq_id);
+
+        //return;  // todo: return error on invalid channel ID
+    }
+
     /// See `FlashAPI.proposePayment`
     public override Result!PublicNonce proposePayment (in Hash chan_id,
         in uint seq_id, in Hash payment_hash, in Amount amount,
@@ -384,21 +397,11 @@ public abstract class FlashNode : FlashAPI
 
         if (block_height != this.last_block_height)
             return Result!PublicNonce(ErrorCode.MismatchingBlockHeight,
-                "Mismatching block height!");
+                format("Mismatching block height! Our: %s Their %s",
+                    this.last_block_height, block_height));
 
         return channel.onProposedUpdate(seq_id, secrets, rev_htlcs, peer_nonce,
             block_height);
-    }
-
-    /// See `FlashAPI.isCollectingSignatures`
-    public override Result!bool isCollectingSignatures (in Hash chan_id)
-    {
-        auto channel = chan_id in this.channels;
-        if (channel is null)
-            return Result!bool(ErrorCode.InvalidChannelID,
-                "Channel ID not found");
-
-        return Result!bool(channel.isCollectingSignatures());
     }
 
     /// See `FlashAPI.reportPaymentError`
@@ -443,11 +446,11 @@ public abstract class FlashNode : FlashAPI
         if (auto secret = payment_hash in this.secrets)
         {
             assert(!error); // Payee should never fail to receive
-            channel.proposeNewUpdate([*secret], [], this.last_block_height);
+            channel.learnSecrets([*secret], [], this.last_block_height);
         }
         else if (error)
         {
-            channel.proposeNewUpdate([], [payment_hash], this.last_block_height);
+            channel.learnSecrets([], [payment_hash], this.last_block_height);
             channel.peer.reportPaymentError(chan_id, OnionError(Hash.init,
                 payment_hash, this.kp.V, error));
         }
@@ -492,19 +495,17 @@ public abstract class FlashNode : FlashAPI
 
     ***************************************************************************/
 
-    protected ErrorCode paymentRouter (in Hash chan_id, in Hash payment_hash,
+    protected void paymentRouter (in Hash chan_id, in Hash payment_hash,
         in Amount amount, in Height lock_height, in OnionPacket packet)
     {
         if (auto channel = chan_id in this.channels)
-            return channel.routeNewPayment(payment_hash, amount, lock_height,
+            return channel.queueNewPayment(payment_hash, amount, lock_height,
                 packet, this.last_block_height);
 
-        // todo: what to do in this case?
-        // todo: should probably check this before accepting the
-        // initial payment
         writefln("%s Could not find this channel ID: %s", this.kp.V.prettify,
             chan_id);
-        return ErrorCode.InvalidChannelID;
+        this.onPaymentComplete(chan_id, payment_hash,
+            ErrorCode.InvalidChannelID);
     }
 
     /***************************************************************************
