@@ -292,4 +292,19 @@ public interface API
     ***************************************************************************/
 
     public Transaction[] getTransactions (Set!Hash tx_hashes);
+
+    /***************************************************************************
+
+        API:
+            GET /block_headers
+
+        Params:
+            heights = A set of block heights to fetch headers for
+
+        Returns:
+            Block headers for requested heights
+
+    ***************************************************************************/
+
+    public BlockHeader[] getBlockHeaders (Set!ulong heights);
 }

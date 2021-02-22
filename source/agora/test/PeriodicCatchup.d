@@ -17,8 +17,10 @@ module agora.test.PeriodicCatchup;
 
 version (unittest):
 
+import agora.common.BitField;
 import agora.common.Config;
 import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.test.Base;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
@@ -41,12 +43,24 @@ private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
 
     public override void valueExternalized (uint64_t slot_idx, ref const(Value) value) nothrow
     {
-        if (slot_idx == 2)
+        try
         {
-            log.trace("Do not externalize this block to test periodic catchup");
-            return;
+            if (slot_idx == 2)
+            {
+                log.trace("Remove signatures for block 1 to test signature catchup");
+                BlockHeader header = super.ledger.getBlocksFrom(Height(1)).front.header;
+                header.validators = BitField!ubyte(6);
+                header.signature = Signature.init;
+                super.ledger.updateBlockMultiSig(header);
+                log.trace("Do not externalize block 2 to test periodic catchup of blocks");
+                return;
+            }
+            super.valueExternalized(slot_idx, value);
         }
-        super.valueExternalized(slot_idx, value);
+        catch (Exception e)
+        {
+            assert(0, format!"PeriodicCatchup exception thrown during test: %s"(e));
+        }
     }
 }
 
@@ -99,6 +113,5 @@ unittest
     network.waitForDiscovery();
     auto target_height = Height(3);
     network.generateBlocks(target_height);
-    Thread.sleep(conf.block_catchup_interval); // Give time for catchup to have taken place
     network.assertSameBlocks(target_height);
 }

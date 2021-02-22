@@ -916,6 +916,85 @@ public class NetworkManager
         }
     }
 
+    /***************************************************************************
+
+        Retrieve any missing block signatures from last 3 blocks from the
+        connected nodes.
+
+    ***************************************************************************/
+
+    public void getMissingBlockSigs (Ledger ledger) @safe nothrow
+    {
+        import std.algorithm;
+        import std.conv;
+        import std.range;
+        import std.typecons;
+
+        // block count to check before the current block
+        const recent_block_count = 2;
+
+        size_t[Height] signed_validators;
+
+        try
+        {
+            auto start_height = Height(max(1, ledger.getBlockHeight - recent_block_count));
+            BlockHeader[] headers = ledger.getBlocksFrom(start_height).map!(block => block.header).array;
+            size_t[Height] enrolled_validators = headers.map!(header =>
+                tuple(header.height, ledger.enrollment_manager().getCountOfValidators(header.height))).assocArray;
+
+            Set!ulong heightsMissingSigs ()
+            {
+                signed_validators =
+                    headers.map!(header =>
+                        tuple(header.height,
+                            iota(0, enrolled_validators[header.height]).filter!(i =>
+                                header.validators[i]).count()
+                        )
+                    ).assocArray;
+
+                return Set!ulong.from(headers.map!(h => h.height).filter!(height => signed_validators[height] < enrolled_validators[height]));
+            }
+
+            void doCatchUp ()
+            {
+                auto missing_heights = heightsMissingSigs();
+                if (!missing_heights.empty)
+                {
+                    foreach (peer; this.peers[])
+                    {
+                        foreach (header; peer.client.getBlockHeaders(missing_heights))
+                        {
+                            auto sig_signed_validators = iota(enrolled_validators[header.height]).filter!(i =>
+                                header.validators[i]).count();
+                            if (sig_signed_validators > signed_validators[header.height])
+                            {
+                                try
+                                {
+                                    ledger.updateBlockMultiSig(header);
+                                }
+                                catch (Exception e)
+                                {
+                                    log.error("getMissingBlockSigs: Exception thrown updating block signature at height {}: {}", header.height, e.msg);
+                                }
+                            }
+                        }
+                        missing_heights = heightsMissingSigs();
+                        if (missing_heights.empty)
+                            break;
+                    }
+                }
+            }
+
+            // Check last and recent_block_count blocks before last
+            doCatchUp();
+
+        }
+        catch (Exception e)
+        {
+            log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
+        }
+    }
+
     /// Dump the metadata
     public void dumpMetadata ()
     {

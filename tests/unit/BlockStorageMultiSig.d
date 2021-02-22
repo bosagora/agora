@@ -71,9 +71,7 @@ private void main ()
         block.header.signature = SIG1;
         block.header.validators = BitField!ubyte(6);
         block.header.validators[1] = true;
-
         storage.saveBlock(block);
-
         // Prepare transactions for the next block
         txs = txs
             .map!(tx => TxBuilder(tx).refund(WK.Keys[h + 1].address).sign())
@@ -91,13 +89,9 @@ private void main ()
         block2.header.validators[0] = true;
         storage.updateBlockSig(Height(h), block2.hashFull(), SIG2, block2.header.validators);
         block = storage.readBlock(Height(h));
-        assert(block == block2, format!"read block at height %s:\n%s\n\n"(h, prettify(block)));
-        assert(block.header.validators[0] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
-        assert(block.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
-        assert(block.header.signature == SIG2, format!"block at height %s:\n%s\n\n%s != %s"
+        assert(block.header.signature == SIG2, format!"Signature not updated for block at height %s:\n%s\n\n%s != %s"
             (h, prettify(block), block.header.signature, SIG2));
     }
-
     /// Update each block adding an updated block multisig and set validator 0
     /// as also signed
     iota(1, BlockCount).each!(h => signBlockSig2(Height(h)));

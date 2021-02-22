@@ -309,6 +309,7 @@ public class FullNode : API
                     Height(this.ledger.getBlockHeight() + 1),
                     &addBlocks);
                 this.network.getUnknownTXs(this.ledger);
+                this.network.getMissingBlockSigs(this.ledger);
             }
             catchup(); // avoid delay
             this.taskman.setTimer(this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);
@@ -866,5 +867,32 @@ public class FullNode : API
                 found_txs ~= tx;
         }
         return found_txs;
+    }
+
+    /***************************************************************************
+
+        Params:
+            heights = Set of block Heights to return header for
+
+        Returns:
+            BlockHeader if the client has that block
+
+    ***************************************************************************/
+
+    public BlockHeader[] getBlockHeaders (Set!ulong heights) @safe
+    {
+        import std.algorithm: min;
+        import std.conv;
+
+        BlockHeader[] headers;
+        if (!heights.empty)
+        {
+            foreach (block; this.ledger.getBlocksFrom(Height(heights[].front)))
+            {
+                if (block.header.height in heights)
+                    headers ~= block.header;
+            }
+        }
+        return headers;
     }
 }

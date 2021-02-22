@@ -371,6 +371,22 @@ class NetworkClient
 
     /***************************************************************************
 
+        Params:
+            heights = Set of block heights
+
+        Returns:
+            Block headers for the requested block heights
+
+    ***************************************************************************/
+
+    public BlockHeader[] getBlockHeaders (Set!ulong heights) @trusted nothrow
+    {
+        return this.attemptRequest!(API.getBlockHeaders, Throw.No)(this.api,
+            heights);
+    }
+
+    /***************************************************************************
+
         Get the array of pre-images starting from the `enrolled_height`.
 
         Params:

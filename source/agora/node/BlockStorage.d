@@ -1101,14 +1101,14 @@ private void testStorage (IBlockStorage storage)
     iota(0, 5).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set"(i)));
     assert(!block.header.validators[5], "validator bit 5 should not be set");
-    Block updated_block = multiSigTestBlock(block,
+    Block signed_block = multiSigTestBlock(block,
         (PublicKey key)
         {
             return 0;
         },
         genesis_validator_keys);
-    storage.updateBlockSig(updated_block.header.height, updated_block.hashFull(),
-        updated_block.header.signature, updated_block.header.validators);
+    storage.updateBlockSig(signed_block.header.height, signed_block.hashFull(),
+        signed_block.header.signature, signed_block.header.validators);
     block = storage.readBlock(Height(BlockCount - 1));
     iota(0, 6).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set after update"(i)));
