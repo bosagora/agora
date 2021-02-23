@@ -249,7 +249,9 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
 
         // todo: should not be hardcoded.
         // todo: isn't the payee supposed to set this?
-        Height lock_height = Height(this.last_block_height + 100);
+        // the lock height for the end node. The first hop will have the biggest
+        // lock height, gradually reducing with each hop until destination node.
+        Height end_lock_height = Height(this.last_block_height + 100);
 
         // find a route
         // todo: not implemented properly yet as capacity, individual balances, and
@@ -257,11 +259,12 @@ public class ControlFlashNode : FlashNode, TestFlashAPI
         auto path = this.network.getPaymentPath(this.kp.V, invoice.destination,
             invoice.amount);
         Amount total_amount;
-        auto packet = createOnionPacket(invoice.payment_hash, lock_height,
-            invoice.amount, path, total_amount);
+        Height use_lock_height;
+        auto packet = createOnionPacket(invoice.payment_hash, end_lock_height,
+            invoice.amount, path, total_amount, use_lock_height);
 
         this.paymentRouter(path.front.chan_id, invoice.payment_hash,
-            total_amount, lock_height, packet);
+            total_amount, use_lock_height, packet);
     }
 
     ///

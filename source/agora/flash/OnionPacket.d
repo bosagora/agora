@@ -163,7 +163,7 @@ public struct Payload
 
 public OnionPacket createOnionPacket (in Hash payment_hash,
     in Height lock_height, in Amount amount, in Hop[] path,
-    out Amount total_amount)
+    out Amount total_amount, out Height use_lock_height)
 {
     assert(path.length >= 1);
 
@@ -175,7 +175,7 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
             assert(0);
     }
 
-    Amount forward_amount = total_amount;
+    Amount forward_amount = amount;
     Height outgoing_lock_height = lock_height;
     Hash next_chan_id;
 
@@ -200,12 +200,11 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
 
         packet.encrypted_payloads[last_index] = encrypted_payload;
         last_index--;
-        if (!forward_amount.sub(hop.fee))
+        if (!forward_amount.add(hop.fee))
             assert(0);
 
         // todo: use htlc_delta config here from the channel config
-        assert(outgoing_lock_height != 0);
-        outgoing_lock_height = Height(outgoing_lock_height - 1);
+        outgoing_lock_height = Height(outgoing_lock_height + 1);
 
         next_chan_id = hop.chan_id;
 
@@ -217,11 +216,60 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
         ephemeral_kp = Pair(next_secret, next_secret.toPoint());
     }
 
+    use_lock_height = outgoing_lock_height;
+
     // fill out the rest with encrypted filler
     foreach (ref payload; packet.encrypted_payloads[path.length .. $])
         fillGarbage(payload);
 
     return packet;
+}
+
+///
+unittest
+{
+    Pair kp1 = Pair.random();
+    Pair kp2 = Pair.random();
+    Pair kp3 = Pair.random();
+    Pair kp4 = Pair.random();
+
+    Hop[] hops = [
+        Hop(kp1.V, hashFull(1), Amount(100)),
+        Hop(kp2.V, hashFull(2), Amount(200)),
+        Hop(kp3.V, hashFull(3), Amount(300)),
+        Hop(kp4.V, hashFull(4), Amount(400)),
+    ];
+
+    Amount total_amount;
+    Height use_lock_height;
+    auto packet = createOnionPacket(hashFull(42),
+        Height(100), Amount(1000), hops, total_amount, use_lock_height);
+    assert(total_amount == Amount(2000));
+    assert(use_lock_height == 104);
+
+    Payload payload;
+    assert(!decryptPayload(packet.encrypted_payloads[0],
+        kp2.v, packet.ephemeral_pk, payload));  // cannot decrypt with other keys
+    assert(decryptPayload(packet.encrypted_payloads[0],
+        kp1.v, packet.ephemeral_pk, payload));
+    assert(payload == Payload(hashFull(2), Amount(1900), Height(103)));
+
+    assert(!decryptPayload(packet.encrypted_payloads[1],
+        kp2.v, packet.ephemeral_pk, payload));  // cannot decrypt with same ephemeral key
+    packet = nextPacket(packet);  // switch ephemeral key
+    assert(decryptPayload(packet.encrypted_payloads[0],
+        kp2.v, packet.ephemeral_pk, payload));
+    assert(payload == Payload(hashFull(3), Amount(1700), Height(102)));
+
+    packet = nextPacket(packet);
+    assert(decryptPayload(packet.encrypted_payloads[0],
+        kp3.v, packet.ephemeral_pk, payload));
+    assert(payload == Payload(hashFull(4), Amount(1400), Height(101)));
+
+    packet = nextPacket(packet);
+    assert(decryptPayload(packet.encrypted_payloads[0],
+        kp4.v, packet.ephemeral_pk, payload));
+    assert(payload == Payload(Hash.init, Amount(1000), Height(100)));
 }
 
 /// Fill the payload with random encrypted data so it looks real but it ain't
