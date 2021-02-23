@@ -13,7 +13,7 @@ dub build -c client --skip-registry=all --compiler=${DC}
 dub build -b unittest-cov -c unittest --skip-registry=all --compiler=${DC}
 
 # Run this after unit tests have proven to compile ok
-rdmd --compiler=${DC} ./tests/runner.d --compiler=${DC} -cov
+${DC} -i -run ./tests/runner.d ${DC} -cov
 
 export dchatty=true
 export dsinglethreaded=true
