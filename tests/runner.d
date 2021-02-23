@@ -30,18 +30,20 @@ private int main (string[] args)
 {
     size_t count;
 
+    const compiler = args.length > 1 ? args[1] : "ldc2";
     const importPaths = getImportPaths();
     const lflags = getLflags();
     if (!importPaths.length || !lflags.length)
         return 1;
-    const Args = ["rdmd", "-vcolumns", "-i=stdx"] ~ args[1 .. $] ~
+    const Args = [compiler, "-i", "-vcolumns" ] ~
+        args[(args.length >= 2) + 1 .. $] ~
         importPaths.map!(v => "-I" ~ v).array ~
         lflags.map!(v => "-L" ~ v).array;
 
     foreach (test; dirEntries(UnitPath, SpanMode.shallow))
     {
         writeln("Running test on ", test);
-        auto pp = pipeProcess(Args ~ test);
+        auto pp = pipeProcess(Args ~ [ "-run", test ]);
         if (pp.pid.wait() != 0)
         {
             pp.stdout.byLine.each!(a => writeln("[stdout]\t", a));
