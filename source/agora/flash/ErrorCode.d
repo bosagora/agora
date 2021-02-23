@@ -22,6 +22,12 @@ public enum ErrorCode : ushort
     /// Updates with the same balance will be rejected
     UpdateRejected,
 
+    /// The forwarding amount is too small compared to the payload
+    AmountTooSmall,
+
+    /// The forwarding lock is too large compared to the payload
+    LockTooLarge,
+
     /// A payment / update proposal is already in progress. If both parties
     /// issue a request towards each other at the same time, only one of the
     /// requests can be accepted. The node with priority will have its request

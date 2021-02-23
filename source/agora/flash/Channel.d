@@ -1145,6 +1145,20 @@ LOuter: while (1)
                     ~ "Amount requested: %s. Available: %s. Balance: %s",
                     amount, cur_amount, this.cur_balance));
 
+        // todo: also check fees here
+        if (amount < payload.forward_amount /* + this.conf.payment_fee */)
+            return Result!PublicNonce(ErrorCode.AmountTooSmall,
+                format("Amount being forwarded is too small. Amount: %s. Forward amount: %s",
+                    amount, payload.forward_amount));
+
+        // incoming lock height must be greater than outgoing lock height
+        // todo: also take into account the desired delta
+        if (payload.next_chan_id != Hash.init
+            && lock_height <= payload.outgoing_lock_height /* + this.conf.cltv_delta */)
+            return Result!PublicNonce(ErrorCode.LockTooLarge,
+                format("Lock height is too high. Incoming: %s. Outgoing: %s",
+                    lock_height, payload.outgoing_lock_height));
+
         // todo
         version (none)
         if (amount > this.conf.max_payment_amount)
