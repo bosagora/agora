@@ -167,9 +167,9 @@ private struct PubKeyFmt
     {
         try
         {
-            // Public keys are 56 characters, only take the first and last 4
-            // Only format `0xABCD..EFGH`
-            enum StartUntil = 4;
+            // Public keys are 56 characters, only take the first 8 and last 4
+            // Only format `0xABCDEFGH..JKLM`
+            enum StartUntil = 8;
             enum EndFrom    = 56 - 4;
             size_t count;
             scope void delegate (in char[]) @safe wrapper = (scope data) @safe {
@@ -195,8 +195,8 @@ private struct PubKeyFmt
 @safe unittest
 {
     PublicKey pubkey;
-    assert(format("%s", PubKeyFmt(pubkey)) == "GAAA...AWHF");
-
+    immutable expected = format("%s", PubKeyFmt(pubkey));
+    assert(expected == "GAAAAAAA...AWHF", "Expected: " ~ expected);
 }
 
 /// Formatting struct for `Input`
@@ -260,7 +260,7 @@ private struct OutputFmt
 @safe unittest
 {
     Output output;
-    assert(format("%s", OutputFmt(output)) == "GAAA...AWHF(0)");
+    assert(format("%s", OutputFmt(output)) == "GAAAAAAA...AWHF(0)");
 }
 
 /// Format a whole transaction
@@ -306,16 +306,16 @@ private struct TransactionFmt
 {
     static immutable ResultStr0 = `Type : Freeze, Inputs: None
 Outputs (6):
-GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
-GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)`;
+GDNODE2I...LVHQ(2,000,000), GDNODE3E...EACM(2,000,000), GDNODE4K...OSNY(2,000,000),
+GDNODE5T...JQC2(2,000,000), GDNODE6Z...T6GH(2,000,000), GDNODE7J...IX2U(2,000,000)`;
     const actual0 = format("%s", TransactionFmt(GenesisBlock.frozens.front));
     assert(ResultStr0 == actual0, actual0);
 
     static immutable ResultStr1 = `Type : Payment, Inputs: None
 Outputs (8):
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)`;
     const actual1 = format("%s", TransactionFmt(GenesisBlock.payments.front));
     assert(ResultStr1 == actual1, actual1);
 }
@@ -411,13 +411,13 @@ Slashed validators: [],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
-GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
-GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)
+GDNODE2I...LVHQ(2,000,000), GDNODE3E...EACM(2,000,000), GDNODE4K...OSNY(2,000,000),
+GDNODE5T...JQC2(2,000,000), GDNODE6Z...T6GH(2,000,000), GDNODE7J...IX2U(2,000,000)
 Type : Payment, Inputs: None
 Outputs (8):
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)`;
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
     assert(ResultStr == actual, actual);
 }
@@ -466,13 +466,13 @@ Slashed validators: [],
 Transactions: 2
 Type : Freeze, Inputs: None
 Outputs (6):
-GDNO...LVHQ(2,000,000), GDNO...EACM(2,000,000), GDNO...OSNY(2,000,000),
-GDNO...JQC2(2,000,000), GDNO...T6GH(2,000,000), GDNO...IX2U(2,000,000)
+GDNODE2I...LVHQ(2,000,000), GDNODE3E...EACM(2,000,000), GDNODE4K...OSNY(2,000,000),
+GDNODE5T...JQC2(2,000,000), GDNODE6Z...T6GH(2,000,000), GDNODE7J...IX2U(2,000,000)
 Type : Payment, Inputs: None
 Outputs (8):
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000),
-GCOQ...LRIJ(61,000,000), GCOQ...LRIJ(61,000,000)
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
+GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)
 ====================================================
 Height: 1, Prev: 0x5a96...8163, Root: 0xd437...e2c9, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
@@ -481,9 +481,9 @@ Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs (1): 0x533f...5e2e:0xac4d...b604
-Outputs (1): GCOQ...LRIJ(61,000,000)
+Outputs (1): GCOQEOHA...LRIJ(61,000,000)
 Type : Payment, Inputs (1): 0x915d...fde1:0x4b11...5f86
-Outputs (1): GCOQ...LRIJ(61,000,000)
+Outputs (1): GCOQEOHA...LRIJ(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
@@ -648,7 +648,7 @@ unittest
                  PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5"),
                  PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])])]);
 
-    static immutable Res1 = `{ thresh: 2, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [{ thresh: 3, nodes: [GBFD...CEWN, GBYK...QCY5], subqs: [{ thresh: 4, nodes: [GBFD...CEWN, GBYK...QCY5, GBYK...QCY5], subqs: [] }] }] }`;
+    static immutable Res1 = `{ thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [{ thresh: 3, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [{ thresh: 4, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5, GBYK4I37...QCY5], subqs: [] }] }] }`;
 
     assert(Res1 == format("%s", prettify(quorum)),
                    format("%s", prettify(quorum)));
