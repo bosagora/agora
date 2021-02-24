@@ -41,6 +41,7 @@ import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
 import std.algorithm;
+import std.conv;
 import std.range;
 
 mixin AddLogger!();
@@ -285,7 +286,8 @@ public class SlashPolicy
         }
 
         if (local_missing_validators != missing_validators)
-            return "The list of missing validators does not match with the local one";
+            return "The list of missing validators does not match with the local one. " ~
+                "The local missing validators: " ~ to!string(local_missing_validators);
 
         return null;
     }
@@ -412,6 +414,12 @@ unittest
                 (missing_validators.length));
     assert(missing_validators.find(first_validator).empty());
     assert(missing_validators.find(second_validator).empty());
+
+    // check the error string for invalid missing validators
+    const expected_res = "The list of missing validators does not match with the local one. The local missing validators: [0, 1, 3, 4, 5, 7]";
+    uint[] fake_missing_validators = [];
+    auto actual_res = slash_man.isInvalidPreimageRootReason(Height(2), fake_missing_validators);
+    assert(actual_res == expected_res, actual_res);
 
     // get the UTXOs of the validators that do not reveals preimages
     Hash[] validators_utxos;
