@@ -15,8 +15,8 @@
 module agora.flash.ControlAPI;
 
 import agora.common.Amount;
-import agora.common.crypto.ECC;
 import agora.common.Types;
+import agora.crypto.ECC;
 import agora.flash.API;
 import agora.flash.Invoice;
 import agora.flash.Route;
