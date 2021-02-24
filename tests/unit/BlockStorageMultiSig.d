@@ -65,8 +65,8 @@ private void main ()
             "deadbeefdeadbeefdeadbeefdeadbeef" ~
             "deadbeefdeadbeefdeadbeefdeadbeef");
 
-    iota(1, BlockCount).each!(h => {
-        // Sign each block with signature and set validator 1 as signed
+    void signBlockSig1 (Height h)
+    {
         block = makeNewBlock(prev_block, txs, prev_block.header.timestamp + 1, Hash.init);
         block.header.signature = SIG1;
         block.header.validators = BitField!ubyte(6);
@@ -79,16 +79,12 @@ private void main ()
             .map!(tx => TxBuilder(tx).refund(WK.Keys[h + 1].address).sign())
             .array();
         prev_block = block;
-    }());
+    }
+    // Sign each block with signature and set validator 1 as signed
+    iota(1, BlockCount).each!(h => signBlockSig1(Height(h)));
 
-    iota(0, BlockCount).each!(h => {
-        block = storage.readBlock(Height(h));
-        writeln(format!"block at height %s:\n%s\n\n"(h, prettify(block)));
-        }());
-
-    /// Update each block adding an updated block multisig and set validator 0
-    /// as also signed
-    iota(1, BlockCount).each!((h) {
+    void signBlockSig2 (Height h)
+    {
         auto block2 = storage.readBlock(Height(h));
         assert(block2.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
         block2.header.signature = SIG2;
@@ -100,5 +96,9 @@ private void main ()
         assert(block.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
         assert(block.header.signature == SIG2, format!"block at height %s:\n%s\n\n%s != %s"
             (h, prettify(block), block.header.signature, SIG2));
-    });
+    }
+
+    /// Update each block adding an updated block multisig and set validator 0
+    /// as also signed
+    iota(1, BlockCount).each!(h => signBlockSig2(Height(h)));
 }
