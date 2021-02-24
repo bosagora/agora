@@ -79,47 +79,11 @@ mixin template AddGetAllIPs()
     }
 }
 
-version (OSX)
-{
-    static if (__VERSION__ < 2095)
-    {
-        extern (C):
-        nothrow:
-        @nogc:
-
-        struct ifaddrs
-        {
-            /// Next item in the list
-            ifaddrs* ifa_next;
-            /// Name of the interface
-            char* ifa_name;
-            /// Flags from SIOCGIFFLAGS
-            uint ifa_flags;
-            /// Address of interface
-            sockaddr* ifa_addr;
-            /// Netmask of interface
-            sockaddr* ifa_netmask;
-            /// Point-to-point destination addresss
-            sockaddr* if_dstaddr;
-            /// Address specific data
-            void* ifa_data;
-        }
-
-        /// Returns: linked list of ifaddrs structures describing interfaces
-        int getifaddrs(ifaddrs** );
-        /// Frees the linked list returned by getifaddrs
-        void freeifaddrs(ifaddrs* );
-    }
-    else
-    {
-        import core.sys.darwin.ifaddrs;
-    }
-}
-
 struct InetUtils
 {
 version (OSX)
 {
+    import core.sys.darwin.ifaddrs;
     import core.sys.posix.netdb;
     import core.sys.posix.netinet.in_;
     import core.sys.posix.sys.socket;

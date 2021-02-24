@@ -169,7 +169,7 @@ public class Ledger
             this.last_block.header.height.value);
 
         Block gen_block = this.storage.readBlock(Height(0));
-        if (gen_block != cast()params.Genesis)
+        if (gen_block != params.Genesis)
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
 
@@ -1237,15 +1237,16 @@ unittest
 {
     import agora.consensus.data.genesis.Test;
 
-    // Cannot use literals: https://issues.dlang.org/show_bug.cgi?id=20938
-    const(Block)[] blocks = [ GenesisBlock ];
-    auto txs = GenesisBlock.spendable().map!(txb => txb.sign()).array();
-    blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
+    const(Block)[] blocks = [
+        GenesisBlock,
+        makeNewTestBlock(GenesisBlock, GenesisBlock.spendable().map!(txb => txb.sign()))
+    ];
     // Make 3 more blocks to put in storage
     foreach (idx; 2 .. 5)
     {
-        txs = blocks[$ - 1].spendable().map!(txb => txb.sign()).array();
-        blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
+        blocks ~= makeNewTestBlock(
+            blocks[$ - 1],
+            blocks[$ - 1].spendable().map!(txb => txb.sign()));
     }
 
     // And provide it to the ledger
@@ -1259,7 +1260,7 @@ unittest
         auto findUTXO = ledger.utxo_set.getUTXOFinder();
         UTXO utxo;
         assert(
-            txs.all!(
+            blocks[$ - 1].txs.all!(
                 tx => iota(tx.outputs.length).all!(
                     (idx) {
                         return findUTXO(UTXO.getHash(tx.hashFull(), idx), utxo) &&
@@ -1446,7 +1447,7 @@ unittest
 
         auto next_block = blocks[$ - 1];
         ledger.addValidatedBlock(next_block);
-        assert(ledger.last_block == cast()next_block);
+        assert(ledger.last_block == next_block);
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == 1009));
@@ -1473,7 +1474,7 @@ unittest
         ledger.throw_in_update_utxo = true;
         auto next_block = blocks[$ - 1];
         assertThrown!Exception(ledger.addValidatedBlock(next_block));
-        assert(ledger.last_block == cast()blocks[$ - 2]);  // not updated
+        assert(ledger.last_block == blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
@@ -1500,7 +1501,7 @@ unittest
         ledger.throw_in_update_validators = true;
         auto next_block = blocks[$ - 1];
         assertThrown!Exception(ledger.addValidatedBlock(next_block));
-        assert(ledger.last_block == cast()blocks[$ - 2]);  // not updated
+        assert(ledger.last_block == blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
