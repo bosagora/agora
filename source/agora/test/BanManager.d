@@ -93,8 +93,7 @@ unittest
         left_txs ~= new_tx;
         new_tx.each!(tx => nodes[0].putTransaction(tx));
         network.expectBlock(iota(0, 4), Height(1 + block_idx + 1));
-        retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds,
-            format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
+        network.expectBlock(full_node_idx.only, Height(1));
     }
 
     // wait for full node to be banned and all putTransaction requests to time-out
@@ -104,7 +103,7 @@ unittest
     // it may only add to its ledger through the getBlocksFrom() API.
     nodes[full_node_idx].clearFilter();
     left_txs.each!(tx => nodes[full_node_idx].putTransaction(tx));
-    retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds);
+    network.expectBlock(full_node_idx.only, Height(1));
 
     // clear the filter
     nodes[0 .. GenesisValidators].each!(node => node.clearFilter());

@@ -34,26 +34,6 @@ import core.thread;
 
 import geod24.Registry;
 
-/*******************************************************************************
-
-    Verifies that the nodes have not generated a block at the given height.
-
-    Params:
-        clients = the nodes to be checked
-        height = the unexpected block height
-
-*******************************************************************************/
-
-private void unexpectBlock (Clients)(Clients clients, Height height)
-{
-    foreach (_; 0 .. 10)
-    {
-        clients.each!(node => retryFor(
-            node.getBlockHeight() < height, 1.seconds));
-        Thread.sleep(1.seconds);
-    }
-}
-
 private class MissingPreImageEM : EnrollmentManager
 {
     mixin ForwardCtor!();

@@ -146,20 +146,10 @@ unittest
     // Now we re-enroll the first validator with a new UTXO but it will fail
     // because an enrollment with same public key of the first validator is
     // already present in the validator set.
-    Enrollment new_enroll = nodes[0].createEnrollmentData();
-    nodes[0].enrollValidator(new_enroll);
-    Thread.sleep(3.seconds);  // enrollValidator() can take a while..
-    nodes.each!(node =>
-        retryFor(node.getEnrollment(new_enroll.utxo_key) == Enrollment.init, 1.seconds));
+    network.failEnroll(0);
 
     // Now we re-enroll other five validators
-    foreach (node; nodes[1 .. $])
-    {
-        Enrollment enroll = node.createEnrollmentData();
-        nodes[0].enrollValidator(enroll);
-        nodes.each!(node =>
-            retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
-    }
+    iota(1, nodes.length).each!(idx => network.enroll(idx));
 
     // Block 20
     new_txs = txs[$ - 2]
@@ -172,9 +162,7 @@ unittest
     assert(b20.header.enrollments.length == 5);
 
     // Now we retry re-enrolling the first validator with the new UTXO
-    nodes[0].enrollValidator(new_enroll);
-    nodes.each!(node =>
-        retryFor(node.getEnrollment(new_enroll.utxo_key) == new_enroll, 5.seconds));
+    auto new_enroll = network.enroll(0);
 
     // Block 21 created with the new enrollment
     new_txs = txs[$ - 1]

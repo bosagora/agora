@@ -24,6 +24,7 @@ import agora.common.Set;
 import agora.crypto.Hash;
 import agora.utils.PrettyPrinter;
 import agora.utils.Test;
+import agora.utils.Utility : retryFor;
 
 import vibe.web.rest;
 

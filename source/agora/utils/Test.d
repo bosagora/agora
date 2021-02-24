@@ -40,7 +40,6 @@ import agora.consensus.data.genesis.Test;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
-public import agora.utils.Utility : retryFor;
 
 import std.algorithm;
 import std.array;

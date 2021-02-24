@@ -381,9 +381,14 @@ public class NetworkManager
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
+    /// Called when the network state is complete
+    public void delegate () onMinPeersConnected;
+
     /// Ctor
-    public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
+    public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock,
+        void delegate () onMinPeersConnected)
     {
+        this.onMinPeersConnected = onMinPeersConnected;
         this.taskman = taskman;
         this.node_config = config.node;
         this.validator_config = config.validator;
@@ -436,6 +441,9 @@ public class NetworkManager
         this.discovery_task.add(node.client);
         this.metadata.peers.put(node.client.address);
         this.connection_tasks.remove(node.client.address);
+
+        if (this.minPeersConnected())
+            this.onMinPeersConnected();
 
         this.registerAsListener(node.client);
     }
@@ -659,6 +667,9 @@ public class NetworkManager
 
             return true;
         }
+
+        if (this.minPeersConnected())
+            this.onMinPeersConnected();
 
         while (!this.peerLimitReached())
         {

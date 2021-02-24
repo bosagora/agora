@@ -43,17 +43,16 @@ unittest
 
     // sanity check for the generated quorum config
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig().threshold == conf.max_quorum_nodes &&
+        assert(node.getQuorumConfig().threshold == conf.max_quorum_nodes &&
                 node.getQuorumConfig().nodes.length == conf.max_quorum_nodes,
-            5.seconds,
             format("Node #%s has invalid quorum config for test: %s",
                 idx, node.getQuorumConfig())));
 
     // Check the node local time
     void checkNodeLocalTime (ulong idx, ulong expected_height)
     {
-        retryFor(nodes[idx].getLocalTime() == expected_height +
-            network.test_start_time, 5.seconds,
+        assert(nodes[idx].getLocalTime() == expected_height +
+            network.test_start_time,
             format!"Expected node #%s would have time of height %s not %s"
                 (idx, expected_height,
                     nodes[idx].getLocalTime() - network.test_start_time));
@@ -62,8 +61,8 @@ unittest
     // Check the node network time
     void checkNodeNetworkTime (ulong idx, ulong expected_height)
     {
-        retryFor(nodes[idx].getNetworkTime() == expected_height +
-            network.test_start_time, 5.seconds,
+        assert(nodes[idx].getNetworkTime() == expected_height +
+            network.test_start_time,
             format!"Expected node #%s would have time of height %s not %s"
                 (idx, expected_height, nodes[idx].getNetworkTime() -
                     network.test_start_time));
@@ -89,10 +88,7 @@ unittest
 
     txs.take(2).each!(tx => nodes[0].putTransaction(tx));
     // wait for propagation
-    nodes.each!(node =>
-       txs.take(2).each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(4.seconds)
-    ));
+    txs.take(2).each!(tx => network.expectTransactionHash(hashFull(tx)));
     txs.popFrontN(2);
 
     // 6/6 nodes accepted
@@ -116,10 +112,7 @@ unittest
 
     txs.take(2).each!(tx => nodes[0].putTransaction(tx));
     // wait for propagation
-    nodes.each!(node =>
-       txs.take(2).each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(4.seconds)
-    ));
+    txs.take(2).each!(tx => network.expectTransactionHash(hashFull(tx)));
     txs.popFrontN(2);
 
     // calculated net clock is still at height 1 => no blocks created

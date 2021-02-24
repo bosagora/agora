@@ -67,7 +67,7 @@ unittest
         QuorumConfig[] quorums = nodes[0].getExpectedQuorums(keys, height);
         log.trace(quorums.fold!((a, b) => format!"%s\n%s"(a, b))(""));
         nodes.enumerate.each!((idx, client) =>
-            retryFor(client.getQuorumConfig() == quorums[idx], 5.seconds,
+            assert(client.getQuorumConfig() == quorums[idx],
                 format!"Node %s has quorum config %s. Expected: %s"
                     (idx, client.getQuorumConfig(), quorums[idx])));
         return quorums;

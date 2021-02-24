@@ -42,17 +42,14 @@ unittest
     // send it to tx to node
     send_txs.each!(tx => node_1.putTransaction(tx));
     // gossip was complete
-    nodes.each!(node =>
-       send_txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)
-    ));
+    send_txs.each!(tx => network.expectTransactionHash(hashFull(tx)));
     // When a block is created, the transaction is deleted from the transaction pool.
     node_1.putTransaction(txs[$-1]);
     network.expectBlock(Height(1));
 
     nodes.each!(node =>
         txs.each!(tx =>
-            (!node.hasTransactionHash(hashFull(tx))).retryFor(2.seconds)));
+            assert(!node.hasTransactionHash(hashFull(tx)))));
 }
 
 /// test gossiping behavior for an outsider node
@@ -76,8 +73,5 @@ unittest
 
     auto send_txs = txs[0 .. $ - 1];  // 1 short of making a block (don't start consensus)
     send_txs.each!(tx => node_1.putTransaction(tx));
-    nodes.each!(node =>
-       send_txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(5.seconds)
-    ));
+    send_txs.each!(tx => network.expectTransactionHash(hashFull(tx)));
 }

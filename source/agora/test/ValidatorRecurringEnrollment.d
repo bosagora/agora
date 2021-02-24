@@ -137,7 +137,8 @@ unittest
 
     Transaction[] txs;
 
-    void createAndExpectNewBlock (Height new_block_height)
+    void createAndExpectNewBlock (Height new_block_height, Duration timeout
+        = 10.seconds)
     {
         // create enough tx's for a single block
         txs = blocks[new_block_height - 1].spendable().map!(txb => txb.sign())
@@ -146,7 +147,8 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        network.expectBlock(new_block_height, blocks[0].header);
+        network.expectBlock!Exception(new_block_height, blocks[0].header,
+            timeout);
 
         // add next block
         blocks ~= node_1.getBlocksFrom(new_block_height, 1);
@@ -159,8 +161,8 @@ unittest
     }
 
     // Try creating one last block, should fail
-    assertThrown!AssertError(createAndExpectNewBlock(
-        Height(GenesisValidatorCycle)));
+    assertThrown!Exception(createAndExpectNewBlock(
+        Height(GenesisValidatorCycle), 1.seconds));
 }
 
 // Not all validators can enroll at the same height again. They should enroll

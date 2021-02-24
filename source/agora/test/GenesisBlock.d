@@ -33,9 +33,7 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
-    nodes.all!(node => node.getBlocksFrom(0, 1)[0] == network.blocks[0])
-        .retryFor(2.seconds);
-
+    nodes.each!(node => assert(node.getBlocksFrom(0, 1)[0] == network.blocks[0]));
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
     network.expectBlock(Height(1));

@@ -47,10 +47,7 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
 
     // wait for propagation
-    nodes.each!(node =>
-       txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(4.seconds)
-    ));
+    txs.each!(tx => network.expectTransactionHash(hashFull(tx)));
 
     // time updated, block height 1
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];

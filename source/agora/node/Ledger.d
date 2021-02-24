@@ -126,6 +126,9 @@ public class Ledger
     /// but less than current time + block_time_offset_tolerance
     public Duration block_time_offset_tolerance;
 
+    /// If non-null, called when a transaction has been added to the pool
+    public void delegate (Hash) @safe onAcceptedTransaction;
+
     /***************************************************************************
 
         Constructor
@@ -150,9 +153,11 @@ public class Ledger
         Engine engine, UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         FeeManager fee_man, Clock clock,
+        void delegate (Hash) @safe onAcceptedTransaction = null,
         Duration block_time_offset_tolerance = 60.seconds,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
+        this.onAcceptedTransaction = onAcceptedTransaction;
         this.params = params;
         this.engine = engine;
         this.utxo_set = utxo_set;
@@ -349,6 +354,8 @@ public class Ledger
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return false;
         }
+        if (this.onAcceptedTransaction !is null)
+            this.onAcceptedTransaction(tx.hashFull());
         // If we were looking for this TX, stop
         this.unknown_txs.remove(tx.hashFull());
 
@@ -994,10 +1001,12 @@ public class ValidatingLedger : Ledger
         EnrollmentManager enroll_man, TransactionPool pool,
         FeeManager fee_man, Clock clock,
         Duration block_timestamp_tolerance,
+        void delegate (Hash) @safe onAcceptedTransaction,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
         super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
-            clock, block_timestamp_tolerance, onAcceptedBlock);
+              clock, onAcceptedTransaction, block_timestamp_tolerance, 
+              onAcceptedBlock);
     }
 
     /***************************************************************************
@@ -1150,7 +1159,7 @@ version (unittest)
                 new TransactionPool(":memory:"),
                 new FeeManager(":memory:", params),
                 mock_clock,
-                block_time_offset_tolerance_dur, null);
+                block_time_offset_tolerance_dur, null, null);
         }
 
         ///

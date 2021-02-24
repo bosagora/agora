@@ -97,7 +97,7 @@ public class Validator : FullNode, API
         auto vledger = new ValidatingLedger(this.params, this.engine,
             this.utxo_set, this.storage, this.enroll_man, this.pool,
             this.fee_man, this.clock, config.node.block_time_offset_tolerance,
-            &this.onAcceptedBlock);
+            &this.onAcceptedTransaction, &this.onAcceptedBlock);
         this.ledger = vledger;
 
         this.nominator = this.getNominator(
@@ -509,6 +509,7 @@ public class Validator : FullNode, API
             this.enroll_man.addPreimage(preimage);
             this.network.peers.each!(p => p.client.sendPreimage(preimage));
             this.pushPreImage(preimage);
+            this.onAcceptedPreimage(preimage);
         }
     }
 

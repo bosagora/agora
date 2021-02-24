@@ -133,8 +133,7 @@ unittest
     txs.each!(tx => nodes[1].putTransaction(tx));
     network.expectBlock(iota(1), Height(GenesisValidatorCycle),
         b0.header);
-    retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
-        2.seconds);
+    assert(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1);
 
     network.restart(nodes[0]);
     network.waitForDiscovery();
@@ -151,9 +150,8 @@ unittest
     PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
 
     // Wait for the revelation of new pre-image to complete
-    PreImageInfo preimage_2;
-    retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(enroll.utxo_key)),
-        10.seconds);
+    PreImageInfo preimage_2 = nodes[0].getPreimage(enroll.utxo_key);
+    assert(preimage_2 != org_preimage);
 
     // Check if a new pre-image has been revealed from the restarted node
     assert(preimage_2.isValid(org_preimage, GenesisValidatorCycle));
@@ -359,9 +357,10 @@ unittest
     const e0 = b0.header.enrollments[0];
 
     // Wait for the revelation of new pre-image to complete
+    network.waitForPreimages(iota(GenesisValidators),
+        b0.header.enrollments, 1);
     const org_preimage = PreImageInfo(e0.utxo_key, e0.random_seed, 0);
-    PreImageInfo preimage_2;
-    retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(e0.utxo_key)),
-        15.seconds);
+    PreImageInfo preimage_2 = nodes[0].getPreimage(e0.utxo_key);
+    assert(preimage_2 != org_preimage);
     assert(preimage_2 != PreImageInfo.init);
 }

@@ -21,7 +21,7 @@ void manyValidators (size_t validators)
         makeTestNetwork;
     import agora.common.Types : Height;
     import agora.consensus.data.Transaction : TxType;
-    import agora.utils.Test : genesisSpendable, retryFor;
+    import agora.utils.Test : genesisSpendable;
     import std.algorithm;
     import std.format;
     import std.range;
@@ -71,7 +71,7 @@ void manyValidators (size_t validators)
 
     // check all validators are enrolled
     network.clients.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount() == validators, 5.seconds,
+        assert(node.getValidatorCount() == validators,
             format("Node %s has validator count %s. Expected: %s",
                 idx, node.getValidatorCount(), validators)));
 

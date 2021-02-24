@@ -132,7 +132,7 @@ unittest
     {
         scope (failure) printQuorums();
         nodes.enumerate.each!((idx, node) =>
-            retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
+            assert(node.getQuorumConfig() == quorums_1[idx],
                 format("Node %s has quorum config %s. Expected quorums_1: %s",
                     idx, node.getQuorumConfig(), quorums_1[idx])));
     }
@@ -251,7 +251,7 @@ unittest
     {
         scope (failure) printQuorums();
         nodes.enumerate.each!((idx, node) =>
-            retryFor(node.getQuorumConfig() == quorums_2[idx], 5.seconds,
+            assert(node.getQuorumConfig() == quorums_2[idx],
                 format("Node %s has quorum config %s. Expected quorums_2: %s",
                     idx, node.getQuorumConfig(), quorums_2[idx])));
     }
@@ -356,7 +356,7 @@ unittest
     {
         scope (failure) printQuorums();
         nodes.enumerate.each!((idx, node) =>
-            retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
+            assert(node.getQuorumConfig() == quorums_3[idx],
                 format("Node %s has quorum config %s. Expected quorums_3: %s",
                     idx, node.getQuorumConfig(), quorums_3[idx])));
     }

@@ -193,6 +193,7 @@ private class ByzantineManager (bool addSpyValidator = false,
         else
             // Add spying validator as last node
             if (addSpyValidator && this.nodes.length == GenesisValidators - 1)
+
                 this.addNewNode!SpyingValidator(conf, &this.envelope_type_counts, file, line);
             else
                 super.createNewNode(conf, file, line);
