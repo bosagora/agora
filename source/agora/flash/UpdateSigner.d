@@ -17,11 +17,11 @@
 
 module agora.flash.UpdateSigner;
 
-import agora.common.crypto.Schnorr;
-import agora.common.Serializer;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.crypto.ECC;
+import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
@@ -29,6 +29,7 @@ import agora.flash.Scripts;
 import agora.flash.Types;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 
 mixin AddLogger!();

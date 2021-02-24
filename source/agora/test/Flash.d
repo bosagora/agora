@@ -18,15 +18,14 @@ version (unittest):
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
 import agora.common.Types;
-import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr;
-import agora.common.Hash;
-import agora.common.Serializer;
 import agora.common.Task;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
+import agora.crypto.ECC;
+import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.ControlAPI;
 import agora.flash.Channel;
@@ -40,6 +39,7 @@ import agora.flash.Scripts;
 import agora.flash.Types;
 import agora.script.Lock;
 import agora.script.Script;
+import agora.serialization.Serializer;
 import agora.test.Base;
 
 import geod24.Registry;
@@ -509,9 +509,9 @@ unittest
     auto factory = new FlashNodeFactory(network.getRegistry());
     scope (exit) factory.shutdown();
 
-    const alice_pair = Pair.fromScalar(secretKeyToCurveScalar(WK.Keys[0].secret));
-    const bob_pair = Pair.fromScalar(secretKeyToCurveScalar(WK.Keys[1].secret));
-    const charlie_pair = Pair.fromScalar(secretKeyToCurveScalar(WK.Keys[2].secret));
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
 
     const alice_pk = alice_pair.V;
     const bob_pk = bob_pair.V;

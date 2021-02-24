@@ -30,13 +30,13 @@ module agora.flash.OnionPacket;
 
 import agora.common.Amount;
 import agora.common.crypto.Key;
-import agora.common.Serializer;
 import agora.common.Types;
 import agora.crypto.ECC;
-import agora.crypto.Schnorr;
 import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.script.Script;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 
 import libsodium.randombytes;

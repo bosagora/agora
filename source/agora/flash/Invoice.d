@@ -24,8 +24,8 @@
 module agora.flash.Invoice;
 
 import agora.common.Amount;
-import agora.common.crypto.ECC;
-import agora.common.Hash;
+import agora.crypto.ECC;
+import agora.crypto.Hash;
 
 import libsodium.randombytes;
 
