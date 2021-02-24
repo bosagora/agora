@@ -30,6 +30,9 @@ jobs:
           # Only generate when the latest ldc is used
           # IMPORTANT: Update this when the compiler support is changed!
           - { dc: ldc-1.25.0, artifacts: true }
+        exclude:
+          # Disabled due to https://github.com/dlang/dub/issues/2110
+          - { dc: ldc-master, os: windows-2019 }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60

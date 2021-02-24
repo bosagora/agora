@@ -77,7 +77,7 @@
 	"toolchainRequirements": {
 		"dmd": "no",
 		"gdc": "no",
-		"ldc": "~>1.19"
+		"ldc": "~>1.25"
 	},
 
     "configurations": [

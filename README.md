@@ -32,7 +32,7 @@ and make the port locally accessible (See http://127.0.0.1:4000/) .
 
 ## Dependencies
 
-You need a recent C++ compiler (g++ with N4387 fixed), a recent (>=1.19.0) version of the LDC compiler, and `dub`.
+You need a recent C++ compiler (g++ with N4387 fixed), a recent (>=1.25.0) version of the LDC compiler, and `dub`.
 On Linux, we recommend gcc-9. On OSX, the latest `llvm` package available on Homebrew.
 
 Additionally, the following are dependencies:
