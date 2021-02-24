@@ -955,10 +955,11 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         // Get the last block from the first client
-        auto lastBlock = this.clients[client_idxs.front].getAllBlocks()[$ -1];
+        auto client = this.clients[client_idxs.front];
+        const last_block = client.getBlock(client.getBlockHeight());
 
         // Call addBlock for each block to be externalised for these clients
-        iota(block_height - lastBlock.header.height)
+        iota(block_height - last_block.header.height)
             .each!(_ => this.addBlock(client_idxs, file, line));
     }
 
@@ -986,16 +987,13 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         auto first_client = this.clients[client_idxs.front];
-        auto all_blocks = first_client.getAllBlocks();
+        const last_block = first_client.getBlock(first_client.getBlockHeight());
 
         // traget height will be one more than previous block
-        Height target_height = all_blocks[$ - 1].header.height + 1;
-
-        assert(all_blocks.length > 0,
-            format!"[%s:%s] No blocks in first client!"(file, line));
+        Height target_height = last_block.header.height + 1;
 
         // Get spendables from last block
-        auto spendables = all_blocks[$ - 1].spendable().array;
+        auto spendables = last_block.spendable().array;
 
         // Ensure at least one tx will be taken
         auto tx_count = max(1, this.test_conf.txs_to_nominate);
@@ -1003,7 +1001,7 @@ public class TestAPIManager
         // Show the last block if not enough spendables
         assert(spendables.length >= tx_count,
             format!"[%s:%s] Less than %s spendables in block:\n%s"
-                (file, line, tx_count, prettify(all_blocks[$ - 1])));
+                (file, line, tx_count, prettify(last_block)));
 
         // Send transactions to the first client
         spendables.takeExactly(tx_count)
@@ -1020,8 +1018,9 @@ public class TestAPIManager
             format!"[%s:%s] Invalid enroll height calculated as %s"
                 (file, line, enrolled_height));
         // Check block is at target height for the participating clients
+        const enroll_block = first_client.getBlock(enrolled_height);
         expectBlock(client_idxs, target_height,
-            all_blocks[enrolled_height].header, 10.seconds, file, line);
+            enroll_block.header, 10.seconds, file, line);
     }
 
     /***************************************************************************
