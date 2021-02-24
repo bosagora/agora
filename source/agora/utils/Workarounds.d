@@ -16,12 +16,4 @@
 
 module agora.utils.Workarounds;
 
-version (CRuntime_Musl)
-{
-    import agora.utils.libunwind;
-    shared static this ()
-    {
-        import core.runtime;
-        Runtime.traceHandler = &libunwindDefaultTraceHandler;
-    }
-}
+// None so far!
