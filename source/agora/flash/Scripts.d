@@ -14,11 +14,11 @@
 module agora.flash.Scripts;
 
 import agora.common.Amount;
-import agora.common.crypto.ECC;
-import agora.common.crypto.Schnorr;
-import agora.common.Hash;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.crypto.ECC;
+import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 import agora.flash.Config;
 import agora.flash.Types;
 import agora.script.Lock;

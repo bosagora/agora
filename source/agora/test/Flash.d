@@ -18,15 +18,15 @@ version (unittest):
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
 import agora.common.Types;
-import agora.common.crypto.ECC;
 import agora.common.crypto.Key;
-import agora.common.crypto.Schnorr;
-import agora.common.Hash;
 import agora.common.Serializer;
 import agora.common.Task;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
+import agora.crypto.ECC;
+import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.ControlAPI;
 import agora.flash.Channel;

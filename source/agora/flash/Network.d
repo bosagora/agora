@@ -17,10 +17,10 @@ import agora.flash.Config;
 import agora.flash.Channel;
 import agora.flash.Route;
 
-import agora.common.crypto.ECC;
-import agora.common.Hash;
 import agora.common.Set;
 import agora.common.Amount;
+import agora.crypto.ECC;
+import agora.crypto.Hash;
 
 private struct NetworkNode
 {
