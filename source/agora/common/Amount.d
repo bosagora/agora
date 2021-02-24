@@ -2,9 +2,9 @@
 
    Defines a monetary type used in the blockchain
 
-   This struct can hold an amount between 0 and 500_000_000 * 10^7,
-   as there is an absolute maximum supply of 500M and each coin can be divided
-   in up to 10^7 units.
+   This struct can hold an amount between 0 and 4_950_000_000 * 10^7,
+   as there is an absolute maximum supply of 4_950_000_000 coins and
+   each coin can be divided in up to 10^7 units.
 
    This type exposes two ways to do binary operation:
    - The ideal way is to use `a.{add,sub,div,...}(b)`;
@@ -39,7 +39,7 @@ public struct Amount
     /// Number of units ('cents') per coins
     public static immutable Amount UnitPerCoin   = Amount(10_000_000, true);
     /// Maximum number of BOA coins that can ever be in circulation
-    public static immutable ulong  MaxCoinSupply = 500_000_000;
+    public static immutable ulong  MaxCoinSupply = 4_950_000_000;
     /// Maximum amount of money that can ever be in circulation
     public static immutable Amount MaxUnitSupply =
         Amount(UnitPerCoin.value * MaxCoinSupply, true);
@@ -476,8 +476,8 @@ nothrow pure @nogc @safe unittest
 @safe unittest
 {
     import std.exception;
-    assert(Amount.fromString(`5000000000000000`) == Amount.MaxUnitSupply);
-    assertThrown!Exception(Amount.fromString(`5000000000000001`));
+    assert(Amount.fromString(`49500000000000000`) == Amount.MaxUnitSupply);
+    assertThrown!Exception(Amount.fromString(`49500000000000001`));
     Amount maxv = Amount.MaxUnitSupply;
     assert(maxv.isValid());
     assert(!maxv.add(Amount(1)));
@@ -489,7 +489,7 @@ pure @safe nothrow @nogc unittest
     assert(Amount.UnitPerCoin.integral() == 1);
     assert(Amount.UnitPerCoin.decimal() == 0);
 
-    assert(Amount.MaxUnitSupply.integral() == 500_000_000);
+    assert(Amount.MaxUnitSupply.integral() == 4_950_000_000);
     assert(Amount.MaxUnitSupply.decimal() == 0);
 
     assert(Amount(500).integral() == 0);
