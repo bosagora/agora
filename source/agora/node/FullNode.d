@@ -377,7 +377,7 @@ public class FullNode : API
             timer.stop();
 
         this.taskman.logStats();
-        this.network.dumpMetadata();
+        this.network.shutdown();
         this.stopStatsServer();
         this.pool = null;
         this.utxo_set = null;

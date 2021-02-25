@@ -1012,9 +1012,11 @@ public class NetworkManager
         }
     }
 
-    /// Dump the metadata
-    public void dumpMetadata ()
+    /// Shut down timers & dump the metadata
+    public void shutdown ()
     {
+        foreach (peer; this.peers)
+            peer.client.shutdown();
         this.banman.dump();
         this.metadata.dump();
     }

@@ -32,6 +32,7 @@ import vibe.http.client;
 
 import std.algorithm;
 import std.array;
+import std.container : DList;
 import std.format;
 import std.random;
 
@@ -42,6 +43,62 @@ mixin AddLogger!();
 /// Used for communicating with a remote node
 public class NetworkClient
 {
+    /// Gossip type
+    enum GossipType
+    {
+        Tx,
+        Envelope,
+        ValidatorBlockSig,
+        Enrollment,
+        Preimage,
+    }
+
+    /// Outgoing gossip event
+    static struct GossipEvent
+    {
+        /// Union flag
+        GossipType type;
+
+        union
+        {
+            Transaction tx;
+            SCPEnvelope envelope;
+            ValidatorBlockSig block_sig;
+            Enrollment enrollment;
+            PreImageInfo preimage;
+        }
+
+        this (Transaction tx) nothrow
+        {
+            this.type = GossipType.Tx;
+            this.tx = tx;
+        }
+
+        this (SCPEnvelope envelope) nothrow
+        {
+            this.type = GossipType.Envelope;
+            this.envelope = envelope;
+        }
+
+        this (ValidatorBlockSig sig) nothrow
+        {
+            this.type = GossipType.ValidatorBlockSig;
+            this.block_sig = sig;
+        }
+
+        this (Enrollment enr) nothrow
+        {
+            this.type = GossipType.Enrollment;
+            this.enrollment = enr;
+        }
+
+        this (PreImageInfo preimage) nothrow
+        {
+            this.type = GossipType.Preimage;
+            this.preimage = preimage;
+        }
+    }
+
     /// Whether to throw an exception when attemptRequest() fails
     protected enum Throw
     {
@@ -75,6 +132,11 @@ public class NetworkClient
     /// Reusable exception
     private Exception exception;
 
+    /// List of outgoing gossip events
+    private DList!GossipEvent gossip_queue;
+
+    /// Timer used for gossiping
+    private ITimer gossip_timer;
 
     /***************************************************************************
 
@@ -102,6 +164,67 @@ public class NetworkClient
         this.exception = new Exception(
             format("Request failure to %s after %s attempts", address,
                 max_retries));
+        this.gossip_timer = this.taskman.setTimer(0.seconds, &this.gossipScheduler);
+    }
+
+    /// Shut down the gossiping timer
+    public void shutdown ()
+    {
+        this.gossip_timer.stop();
+    }
+
+    /// For gossiping we don't want to block the calling fiber, so we use
+    /// request queueing and a separate fiber to handle all the outgoing requests.
+    private void gossipScheduler ()
+    {
+        while (1)
+        {
+            while (!this.gossip_queue.empty)
+            {
+                auto event = this.gossip_queue.front;
+                this.gossip_queue.removeFront();
+                this.handleGossip(event);
+                // yield and reschedule for next event
+                this.taskman.wait(0.msecs);
+            }
+
+            this.taskman.wait(10.msecs);  // no events, yield with longer sleep
+        }
+    }
+
+    /// Handle an outgoing gossip event
+    private void handleGossip (GossipEvent event) nothrow
+    {
+        switch (event.type) with (GossipType)
+        {
+        case Tx:
+            this.attemptRequest!(API.putTransaction, Throw.No)(this.api,
+                event.tx);
+            break;
+
+        case Envelope:
+            this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
+                event.envelope);
+            break;
+
+        case ValidatorBlockSig:
+            this.attemptRequest!(API.receiveBlockSignature, Throw.No)(this.api,
+                event.block_sig);
+            break;
+
+        case Enrollment:
+            this.attemptRequest!(API.enrollValidator, Throw.No)(this.api,
+                event.enrollment);
+            break;
+
+        case Preimage:
+            this.attemptRequest!(API.receivePreimage, Throw.No)(this.api,
+                event.preimage);
+            break;
+
+        default:
+            assert(0);
+        }
     }
 
     /***************************************************************************
@@ -213,18 +336,7 @@ public class NetworkClient
 
     public void sendTransaction (Transaction tx) @trusted nothrow
     {
-        import agora.crypto.Hash;
-        const tx_hash = tx.hashFull();
-
-        this.taskman.runTask(
-        {
-            // if the node already has this tx, don't send it
-            if (this.attemptRequest!(API.hasTransactionHash, Throw.No,
-                LogLevel.Trace)(this.api, tx_hash))
-                return;
-
-            this.attemptRequest!(API.putTransaction, Throw.No)(this.api, tx);
-        });
+        this.gossip_queue.insertBack(GossipEvent(tx));
     }
 
 
@@ -239,12 +351,7 @@ public class NetworkClient
 
     public void sendEnvelope (SCPEnvelope envelope) nothrow
     {
-        // simulates schedule() under the hood
-        this.taskman.setTimer(0.seconds,
-        {
-            this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
-                envelope);
-        });
+        this.gossip_queue.insertBack(GossipEvent(envelope));
     }
 
     /***************************************************************************
@@ -258,12 +365,7 @@ public class NetworkClient
 
     public void sendBlockSignature (ValidatorBlockSig block_sig) nothrow
     {
-        // simulates schedule() under the hood
-        this.taskman.setTimer(0.seconds,
-        {
-            this.attemptRequest!(API.receiveBlockSignature, Throw.No)(this.api,
-                block_sig);
-        });
+        this.gossip_queue.insertBack(GossipEvent(block_sig));
     }
 
     /***************************************************************************
@@ -323,11 +425,7 @@ public class NetworkClient
 
     public void sendEnrollment (Enrollment enroll) @trusted nothrow
     {
-        this.taskman.runTask(
-        {
-            this.attemptRequest!(API.enrollValidator, Throw.No)(this.api,
-                enroll);
-        });
+        this.gossip_queue.insertBack(GossipEvent(enroll));
     }
 
     /***************************************************************************
@@ -345,11 +443,7 @@ public class NetworkClient
 
     public void sendPreimage (PreImageInfo preimage) @trusted nothrow
     {
-        this.taskman.runTask(
-        {
-            this.attemptRequest!(API.receivePreimage, Throw.No)(this.api,
-                preimage);
-        });
+        this.gossip_queue.insertBack(GossipEvent(preimage));
     }
 
     /***************************************************************************
