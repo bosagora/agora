@@ -447,7 +447,7 @@ public class Engine
                     return "HASH opcode requires an item on the stack";
 
                 const ubyte[] top = stack.pop();
-                const Hash hash = hashFull(top);
+                const Hash hash = HashNoLength(top).hashFull();
                 if (!stack.canPush(hash[]))  // e.g. hash(1 byte) => 64 bytes
                     return "Stack overflow while executing HASH";
                 stack.push(hash[]);
@@ -939,7 +939,7 @@ unittest
             Input.init),
         "HASH opcode requires an item on the stack");
     const ubyte[] bytes = [42];
-    const Hash hash = hashFull(bytes[]);
+    const Hash hash = HashNoLength(bytes).hashFull();
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(bytes)

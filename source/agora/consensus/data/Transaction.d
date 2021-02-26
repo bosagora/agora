@@ -281,7 +281,7 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0x6dbcc8c36bd1f95986d8b06a6bad320b0719e14bb1afe2cf824618c3311a23b5ac9c35f474dc67182cf17bb609f46e4049f793b996321f6fad88a2925badf198`);
+        `0xef5d99551a2d15e723f77a468fcd1d1a9635d0ff2eb6924445e8b005108e0c7007c60135014a46c4513bfaaa3c6e0ff826c28c86f63c8976f5c5527599d46bac`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -292,7 +292,7 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0xf028cecf9498bc615e3ac4ff18efa98c6428b8af1f26a2cfa73518d039a4f2ef4f600f28cd25403ad588f0d42e3987863bbd26cdd28b136fee4b80b7f0cc061a`);
+        `0x9f7f610a6b2689b2c88ec3c62bbd7cf393737700f660793d6642b2852773de0abc2c0d4bb3a7d4a807dfd869f88e91e28471f6a4d2c990442b9c250585c25051`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }

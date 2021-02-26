@@ -1334,53 +1334,45 @@ private struct SCPEnvelopeHash
     auto getStHash () @trusted { return SCPStatementHash(&st); }
 
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f" ~
-        "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986"),
+        "0xd0af1ceb655cb7f376076eaaee79b0c6cd5d99258e48c2a9393f3748fdc6c99f333d01433631664c993b39f18938ce98ae74fcf73647b0505a9fcdc0a9ff0201"),
         getStHash().hashFull().to!string);
 
     prep.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x22ba327a2b6cba19adf9b47b7bb2ea8f9dffbcd2749ec5719ca8cb6ea8c0599b6" ~
-        "c8512f516c6829ca081de8dc368f2fd241cafc27ba80810491267eacc78049d"),
+        "0x64db448aae015955a2c022d7b415619e71b56cb9ca8329f2620ae4468576ebb7bb323d38829d02b89185147c8ba6d0a30ef7630d6c31cdea4703dc8b5c23dc80"),
         getStHash().hashFull().to!string);
 
     prep_prime.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xaf62285b9bc882318eb69aa7905ac11f5dcdf8abd940d3f72f4e4e470ac6a36f7" ~
-        "fa2bc782576dfcb96f83ea38d290e5ce8191d10b5d5b7fa11265e0615fa155b"),
+        "0x150f1e058a1b4296cb5e2765d475f1183f15c49011a568dd95fe825049d3a8fddbb12fb2e37bbf12de4719afe452e1e9908dd4e88f7dd88200fab8a7ac0f29e9"),
         getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.prepare_.prepared = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x1512e21205de2f043bf9b206e6675daef9fa9126efa4d1221fe5cab8f3a67e382" ~
-        "0b5ebd89b29c5d92178ff7bf5e85e73ad5568889c5dbe0256c503c69e7c2639"),
+        "0x47b526fb78d939a2a1814fc2143e6aa9190b96ec37222c6e79ff038fa51ecc7bdf6e58f19b73c2236c9a3c24d21fa253f344c1e740dec225fdc3ccb2e1c8d5c8"),
         getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.prepare_.preparedPrime = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xd3dc2318365e55ea3a62b403fcbe22d447402741a5151a703326dbf852350dcd0" ~
-        "e020a762ae12a871473aed80d82f51c1cd3942c0b2360c2d609279a2867fe68"),
+        "0x932507364adead54419d46354f43da574c80461aa2ecddc0045e32709b84396cc8cfa024fa029638c61bb1d8cb82744a8270b65df5dc3cfca39a72474cee2e27"),
         getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x3eda5ff9f07c12a1e039048ebfbc6716019cb481bafe43ffb3009efd3c6fa3106" ~
-        "ef36b3e124e0760e5f1395fbf689e452e23451355c8625618da03219994d100"),
+        "0x3af032546fa5435d63902781b6d1d0432ce08a20b9989b1ad2aaa05a0dc7c161991fd5663fed875a1a72b7ffabbcea951d44ec20f5ecf0514620fcc36e62652c"),
         getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x37bdd725b95a333ece6ac157b4ec4cec448908fe84ef2fcd759dac3bab77ce6ae" ~
-        "c985025c80e8443f570553cfa6d21a7137d48068cf649d562ce9aec7b960aee"),
+        "0x6770df82a25becf382fa11a8dc23131b9b3559270d7b6936395db2986f91da4d70d148e105e22168110f41aa737d5eb246fdf3927a0c02a41840fb3f5ed597a3"),
         getStHash().hashFull().to!string);
 
     () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xbba4bdee0e083e6e5f56ddc2815afcd509f597f45d6ae5c83af747de2d568a26d" ~
-        "bc1f0792c8c6f990816bf9f2fc913ccc700c0a022644f8bd25835a6b439944c"),
+        "0x53bf3b4c096a94e0022a09bad1d02a7f447fe4a5060f4981afdcda86a82248a1c611825b2a311cca991d85a5514267d5839887fe52eb42afb4c305f67a92033f"),
         getStHash().hashFull().to!string);
 
     SCPEnvelope env;
@@ -1389,15 +1381,13 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xfd2ea2b85d2a315a9817e6661bc3c4378637de37649d2fdb9ca82d6e4172e9e46" ~
-        "af5a57113cfb7cb09d25eb7b4518eca9930c57231a29ffa396661822603c509"),
+        "0x3f5564eb9fb0586ff40d21fb72fc53001e64323b40fa1697113df3169d61d5251dfdae87cd34e16c9ee4604fd4214d0fd4562b81ac5bacbacecc445977855610"),
     getEnvHash().hashFull().to!string);
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x45d6b9adba8da9f2763f33960d7cd77b6c7e844fc11b0c7d793dfa47c99bc4377" ~
-        "4039907a44d671dbffe55ce9ae21f8eca7d218e6c87573c381ae20d96bf4a56"),
+        "0x256cdc6a2286a21d4ff4297d6a438939e60195016d15ad4693fd4e6dfa18dff1eac5b4237da250d1065293da9a0c947502c6dccc0cf85d6291da2ac5b36f55f5"),
     getEnvHash().hashFull().to!string);
 
     () @trusted
@@ -1410,7 +1400,6 @@ private struct SCPEnvelopeHash
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xdc5f04d1d3b156139964ad5aedd745197ddcde7237359b02cc5c9ce633a554da0" ~
-        "a113fc9798453df313ae9b5bf03966e2db6d4dd5678d7760eae067283f9f515"),
+        "0x6c8202a4a1c71ce3b07c9f300b86f1e602bee3b363fa6d756bcc844048bb7a690522ff610bb61a79acbf2a0aca65fb381753d74be50981a133b596bc16ea5615"),
     getEnvHash().hashFull().to!string);
 }
