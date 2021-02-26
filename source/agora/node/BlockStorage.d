@@ -405,7 +405,7 @@ public class BlockStorage : IBlockStorage
         this.is_saving = true;
         scope(exit) this.is_saving = false;
         size_t block_size = 0;
-        scope SerializeDg dg = (scope const(ubyte[]) data) @safe
+        scope SerializeDg dg = (in ubyte[] data) @safe
         {
             // write to memory
             if (!this.write(data_position + block_size, data))
@@ -468,7 +468,7 @@ public class BlockStorage : IBlockStorage
             assert(0);
 
         size_t block_size = ValidatorsOffset;
-        scope SerializeDg dg = (scope const(ubyte[]) data) @safe
+        scope SerializeDg dg = (in ubyte[] data) @safe
         {
             // write to memory
             if (!this.write(data_position + block_size, data))
@@ -684,10 +684,10 @@ public class BlockStorage : IBlockStorage
             File idx_file = File(this.index_path, "a+b");
             idx_file.seek(0, SEEK_END);
 
-            serializePart(height, (scope v) @trusted => idx_file.rawWrite(v),
+            serializePart(height, (in v) @trusted => idx_file.rawWrite(v),
                 CompactMode.No);
             () @trusted { idx_file.rawWrite(hash); }();
-            serializePart(pos, (scope v) @trusted => idx_file.rawWrite(v),
+            serializePart(pos, (in v) @trusted => idx_file.rawWrite(v),
                 CompactMode.No);
 
             idx_file.close();

@@ -139,7 +139,12 @@ public struct Output
     public this (Amount value, PublicKey key) inout pure nothrow @trusted
     {
         this.value = value;
-        this.lock = genKeyLock(key);
+        // Bug: Used to call `genLockKey` but `-preview=in` triggers:
+        // source/agora/consensus/data/Transaction.d(142,31):
+        // Error: cannot implicitly convert expression genKeyLock(key) of type Lock to inout(Lock)
+        // source/agora/consensus/data/genesis/Test.d(107,23):
+        // called from here: Output(Amount(0LU), Lock(LockType.Key, null)).this(Amount(0LU).this(20000000000000LU), NODE2.address)
+        this.lock = Lock(LockType.Key, key[].dup);
     }
 
     /***************************************************************************
