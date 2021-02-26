@@ -155,7 +155,7 @@ public class BanManager
     public void dump ()
     {
         auto ban_file = File(this.banfile_path, "wb");
-        serializePart(this.ips, (scope bytes) @trusted => ban_file.rawWrite(bytes));
+        serializePart(this.ips, (in bytes) @trusted => ban_file.rawWrite(bytes));
     }
 
     /***************************************************************************

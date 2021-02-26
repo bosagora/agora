@@ -68,7 +68,7 @@
         "source/scpp/build/uint128_t.obj"
     ],
 
-    "dflags": [ "-extern-std=c++14" ],
+    "dflags": [ "-extern-std=c++14", "-preview=in" ],
     "lflags-posix": [ "-lstdc++", "-lsqlite3" ],
     "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],
     "libs-windows": [ "iphlpapi" ],
@@ -206,15 +206,15 @@
     ],
 
     "dependencies": {
-        "barcode":          { "version": "*" },
-        "base32":           { "version": "*" },
-        "bitblob":          { "version": "*" },
-        "crypto":           { "version": "*" },
-        "d2sqlite3":        { "version": "*" },
-        "dyaml":            { "version": "*" },
-        "libsodiumd":       { "version": "*" },
-        "localrest":        { "version": "*" },
-        "ocean":            { "version": "*" },
-        "vibe-d":           { "version": "*" }
+        "barcode":          { "version": "*", "dflags" : ["-preview=in"] },
+        "base32":           { "version": "*", "dflags" : ["-preview=in"] },
+        "bitblob":          { "version": "*", "dflags" : ["-preview=in"] },
+        "crypto":           { "version": "*", "dflags" : ["-preview=in"] },
+        "d2sqlite3":        { "version": "*", "dflags" : ["-preview=in"] },
+        "dyaml":            { "version": "*", "dflags" : ["-preview=in"] },
+        "libsodiumd":       { "version": "*", "dflags" : ["-preview=in"] },
+        "localrest":        { "version": "*", "dflags" : ["-preview=in"] },
+        "ocean":            { "version": "*", "dflags" : ["-preview=in"] },
+        "vibe-d":           { "version": "*", "dflags" : ["-preview=in"] }
     }
 }

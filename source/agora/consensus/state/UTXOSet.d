@@ -260,7 +260,7 @@ public class TestUTXOSet : UTXOCache
     }
 
     ///
-    protected override void add (in Hash utxo, in UTXO value) @safe
+    protected override void add (in Hash utxo, UTXO value) @safe
     {
         this.storage[utxo] = value;
     }

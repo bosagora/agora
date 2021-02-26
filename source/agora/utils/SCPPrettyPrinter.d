@@ -5,6 +5,10 @@
     As the integration test-suite imports into PrettyPrinter,
     we want to avoid adding a dependency to SCP.
 
+    Note:
+      This module currently does not use `in` sink as Phobos does not recognize
+      them when `-preview=in` is used.
+
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea
         All rights reserved.
@@ -57,7 +61,7 @@ public struct SCPBallotFmt
 {
     private const(SCPBallot) ballot;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @trusted nothrow
     {
         try
         {
@@ -94,7 +98,7 @@ private struct QuorumFmt
     private const(Hash) hash;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink)
+    public void toString (scope void delegate (scope const char[]) @safe sink)
         @trusted nothrow
     {
         try
@@ -128,7 +132,7 @@ private struct PrepareFmt
     private const(SCPStatement._pledges_t._prepare_t) prepare;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -166,7 +170,7 @@ private struct ConfirmFmt
     private const(SCPStatement._pledges_t._confirm_t) confirm;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -191,7 +195,7 @@ private struct ExternalizeFmt
     private const(SCPStatement._pledges_t._externalize_t) externalize;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -214,7 +218,7 @@ private struct SCPNominationFmt
     private const(SCPNomination) nominate;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink)
+    public void toString (scope void delegate (scope const char[]) @safe sink)
         scope @trusted nothrow
     {
         try
@@ -262,7 +266,7 @@ private struct PledgesFmt
     private const(SCPStatement._pledges_t) pledges;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @trusted nothrow
     {
         try
         {
@@ -295,7 +299,7 @@ private struct SCPStatementFmt
     private const(SCPStatement) statement;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
     {
         try
         {
@@ -348,7 +352,7 @@ private struct SCPEnvelopeFmt
 
     ***************************************************************************/
 
-    public void toString (scope void delegate (in char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
     {
         try
         {
