@@ -74,11 +74,11 @@
     "libs-windows": [ "iphlpapi" ],
     "buildRequirements": [ "allowWarnings" ],
 
-	"toolchainRequirements": {
-		"dmd": "no",
-		"gdc": "no",
-		"ldc": "~>1.25"
-	},
+    "toolchainRequirements": {
+	"dmd": "no",
+	"gdc": "no",
+	"ldc": "~>1.25"
+    },
 
     "configurations": [
         {
