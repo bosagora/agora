@@ -158,6 +158,29 @@ struct SCPStatement {
             return ret;
         }
 
+        extern(D)
+        {
+            import agora.crypto.Hash : HashDg, hashPart;
+            /// Hashing support
+            public void computeHash (scope HashDg dg) const @trusted @nogc nothrow
+            {
+                hashPart(this.type_, dg);
+                switch (this.type_)
+                {
+                case SCPStatementType.SCP_ST_PREPARE:
+                    return hashPart(this.prepare_, dg);
+                case SCPStatementType.SCP_ST_CONFIRM:
+                    return hashPart(this.confirm_, dg);
+                case SCPStatementType.SCP_ST_EXTERNALIZE:
+                    return hashPart(this.externalize_, dg);
+                case SCPStatementType.SCP_ST_NOMINATE:
+                    return hashPart(this.nominate_, dg);
+                default:
+                    assert(0);
+                }
+            }
+        }
+
         ///
         extern(D) void serialize (scope SerializeDg dg) const @trusted
         {
@@ -302,7 +325,7 @@ struct SCPQuorumSet {
          PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")]));
 
     assert(qc1.hashFull() == Hash.fromString(
-        "0xc04848f147308156eebf4b9ecab13500f3d54ad0ef494b99f5a1c40b9f4625d13b7afd1a9d3a88ceaba16fea6730e63cc493f40632263d86c3afcaacfd0a6205"),
+        "0x7b56982f02dfbf3737ff560fe6511674e182d38475f0516cb8b0f338a3156543b0731e66c9a3ced01c238652b12e51c95207ec2bf6eae237f24b08a357a1bd2a"),
         qc1.hashFull().to!string);
 
     const qc2 = toSCPQuorumSet(QuorumConfig(3,
@@ -310,7 +333,7 @@ struct SCPQuorumSet {
          PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")]));
 
     assert(qc2.hashFull() == Hash.fromString(
-        "0x203c5f249c25bc28ac8b482fe458c047a995491a5ed861f34c5b3feefc390778b5d69b697c512b6ead2b6c791f64e1910241bf33de7fc4a2a4ef1d479165a635"),
+        "0x05711002a8fc1c0b8c757fb2ddb60505af0ee49fa64af6e4d808aedc39af3eb911cf0b4a481c98ffdc4717e0d6a815b27b0bbac1eea85c5b61ba3f0ca66d8d15"),
         qc2.hashFull().to!string);
 
     const qc3 = toSCPQuorumSet(QuorumConfig(2,
@@ -321,7 +344,7 @@ struct SCPQuorumSet {
              PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])]));
 
     assert(qc3.hashFull() == Hash.fromString(
-        "0x5a12d796400f9d2f8a4e7b988ad56d2c820dd34ac52e7332800304bd686feeb2c91474c0e3fecf08136c1c14f038281209e6cc0583951336cfbeb3daa34981d3"),
+        "0xbd1a17a20ce1df92e3cb2eca3e3fd9c40cf5a3b5f4cf492c52f0d43588f59a9720b1c020264325e279ad0d719180dd919bb28268040cb357a787859f95a4da26"),
         qc3.hashFull().to!string);
 
     const qc4 = toSCPQuorumSet(QuorumConfig(2,
@@ -332,7 +355,7 @@ struct SCPQuorumSet {
              PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])]));
 
     assert(qc4.hashFull() == Hash.fromString(
-        "0x0f7ab32ff495d99e34730bce47a9bf18025cb5e677b2aa28f8f391ff80d844e53854410eae1f1da53fdae7af873a9ca020fc37b0b680ea3fdbb6882d60af1b10"),
+        "0x05dbab4600c1f61044179fefc3372be33eaae218240f9a2a87bee720594c6f39486c10b6be57320fb9e036c709f0dc387d34dcb8f56674449c7ed21f5bb8c638"),
         qc4.hashFull().to!string);
 }
 static assert(SCPQuorumSet.sizeof == 56);

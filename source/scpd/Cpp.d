@@ -26,6 +26,7 @@
 module scpd.Cpp;
 
 import agora.common.Serializer;
+import agora.crypto.Hash;
 
 //import core.stdcpp.exception;
 import core.stdcpp.xutility;
@@ -354,6 +355,11 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             foreach (ref item; array)
                 vec.push_back(item);
             return vec;
+        }
+
+        void computeHash (scope HashDg dg) const nothrow @safe @nogc
+        {
+            hashPart(this.opSlice(), dg);
         }
 
         public void serialize (scope SerializeDg dg) const @safe

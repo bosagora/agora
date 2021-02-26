@@ -1734,7 +1734,8 @@ unittest
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
     assert(data.missing_validators.length == 3);
-    assert(data.missing_validators == [0, 1, 3]);
+    assert(data.missing_validators == [0, 1, 3],
+        format!"Expected missing validators: %s"(data.missing_validators));
 
     // check validity of slashing information
     assert(ledger.validateSlashingData(data) == null);
