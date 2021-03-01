@@ -171,7 +171,8 @@ public class EnrollmentManager
             "(key CHAR(128) PRIMARY KEY, val BLOB NOT NULL)");
 
         // create Pair object from KeyPair object
-        this.key_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
+        if (key_pair != KeyPair.init)
+            this.key_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
 
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
