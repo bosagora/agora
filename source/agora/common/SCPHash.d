@@ -36,27 +36,29 @@ extern(C++, `stellar`):
 
 *******************************************************************************/
 
-public uint512 getHashOf (ref const(SCPQuorumSet) qset)
+public uint512 getHashOf (in SCPQuorumSet qset)
 {
+    static assert(__traits(isRef, qset));
     return uint512(hashFull(qset));
 }
 
 /// Ditto
-public uint512 getHashOf (ref const(Value) value)
+public uint512 getHashOf (in Value value)
 {
+    static assert(__traits(isRef, value));
     return uint512(hashFull(value));
 }
 
 /// Ditto
-public uint512 getHashOf (uint64_t slot_idx, ref const(Value) prev, uint32_t hash,
-    int32_t round_num, ref const(NodeID) node_id)
+public uint512 getHashOf (uint64_t slot_idx, in Value prev, uint32_t hash,
+    int32_t round_num, in NodeID node_id)
 {
     return uint512(hashMulti(slot_idx, prev[], hash, round_num, node_id));
 }
 
 /// Ditto
-public uint512 getHashOf (uint64_t slot_idx, ref const(Value) prev, uint32_t hash,
-    int32_t round_num, ref const(Value) value)
+public uint512 getHashOf (uint64_t slot_idx, in Value prev, uint32_t hash,
+    int32_t round_num, in Value value)
 {
     return uint512(hashMulti(slot_idx, prev[], hash, round_num, value[]));
 }
