@@ -616,7 +616,7 @@ private void verifyQuorumsIntersect (QuorumConfig[PublicKey] quorums)
     {
         auto scp = toSCPQuorumSet(quorum);
         auto scp_quorum = makeSharedSCPQuorumSet(scp);
-        auto scp_key = NodeID(uint256(key));
+        auto scp_key = NodeID(uint256(key[][0 .. uint256.sizeof]));
         qm[scp_key] = scp_quorum;
     }
 

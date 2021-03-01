@@ -17,6 +17,8 @@ import agora.common.crypto.Crc16;
 import agora.common.Types;
 import agora.common.Serializer;
 import agora.crypto.ECC;
+import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 
 import geod24.bitblob;
 import base32;
@@ -62,13 +64,18 @@ public struct KeyPair
     public const Seed seed;
 
     /// Create a keypair from a `Seed`
-    public static KeyPair fromSeed (Seed seed) nothrow @nogc
+    public static KeyPair fromSeed (const Seed seed) nothrow @nogc
     {
-        SecretKey sk;
-        PublicKey pk;
-        if (crypto_sign_seed_keypair(pk[].ptr, sk[].ptr, seed[].ptr) != 0)
+        BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) sk_data;
+        BitBlob!(crypto_core_ed25519_BYTES * 8) pk;
+        if (crypto_sign_seed_keypair(pk[].ptr, sk_data[].ptr, seed[].ptr) != 0)
             assert(0);
-        return KeyPair(pk, sk, seed);
+
+        Scalar x25519_sk;
+        if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), sk_data[].ptr) != 0)
+            assert(0);
+        SecretKey sk = SecretKey(x25519_sk[]);
+        return KeyPair(PublicKey(pk[]), sk, seed);
     }
 
     ///
@@ -81,14 +88,19 @@ public struct KeyPair
     /// Generate a new, random, keypair
     public static KeyPair random () @nogc
     {
-        SecretKey sk;
-        PublicKey pk;
+        BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) sk_data;
+        BitBlob!(crypto_core_ed25519_BYTES * 8) pk;
         Seed seed;
-        if (crypto_sign_keypair(pk[].ptr, sk[].ptr) != 0)
+        if (crypto_sign_keypair(pk[].ptr, sk_data[].ptr) != 0)
             assert(0);
-        if (crypto_sign_ed25519_sk_to_seed(seed[].ptr, sk[].ptr) != 0)
+        if (crypto_sign_ed25519_sk_to_seed(seed[].ptr, sk_data[].ptr) != 0)
             assert(0);
-        return KeyPair(pk, sk, seed);
+
+        Scalar x25519_sk;
+        if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), sk_data[].ptr) != 0)
+            assert(0);
+        SecretKey sk = SecretKey(x25519_sk[]);
+        return KeyPair(PublicKey(pk[]), sk, seed);
     }
 }
 
@@ -102,14 +114,11 @@ unittest
 /// Represent a public key / address
 public struct PublicKey
 {
-    /// Alias to the BitBlob type
-    private alias DataType = BitBlob!(crypto_sign_ed25519_PUBLICKEYBYTES * 8);
-
-    /*private*/ DataType data;
+    /*private*/ Point data;
     alias data this;
 
     /// Construct an instance from binary data
-    public this (const DataType args) pure nothrow @safe @nogc
+    public this (const Point args) pure nothrow @safe @nogc
     {
         this.data = args;
     }
@@ -123,7 +132,7 @@ public struct PublicKey
     /// Uses Stellar's representation instead of hex
     public string toString () const @trusted nothrow
     {
-        ubyte[1 + PublicKey.Width + 2] bin;
+        ubyte[1 + PublicKey.sizeof + 2] bin;
         bin[0] = VersionByte.AccountID;
         bin[1 .. $ - 2] = this.data[];
         bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
@@ -133,7 +142,7 @@ public struct PublicKey
     /// Make sure the sink overload of BitBlob is not picked
     public void toString (scope void delegate(const(char)[]) sink) const @trusted
     {
-        ubyte[1 + PublicKey.Width + 2] bin;
+        ubyte[1 + PublicKey.sizeof + 2] bin;
         bin[0] = VersionByte.AccountID;
         bin[1 .. $ - 2] = this.data[];
         bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
@@ -169,7 +178,7 @@ public struct PublicKey
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         const bin = Base32.decode(str);
-        enforce(bin.length == 1 + PublicKey.Width + 2);
+        enforce(bin.length == 1 + PublicKey.sizeof + 2);
         enforce(bin[0] == VersionByte.AccountID);
         enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
         return PublicKey(typeof(this.data)(bin[1 .. $ - 2]));
@@ -245,12 +254,7 @@ public struct PublicKey
     public bool verify (Signature signature, scope const(ubyte)[] msg)
         const nothrow @nogc @trusted
     {
-        // The underlying function does not expose a safe interface,
-        // but we know (thanks to tests and careful inspection)
-        // that our data type match and they are unlikely to change
-        return 0 ==
-            crypto_sign_ed25519_verify_detached(
-                signature[].ptr, msg.ptr, msg.length, this.data[].ptr);
+        return agora.crypto.Schnorr.verify(this.data, signature, msg);
     }
 }
 
@@ -259,14 +263,11 @@ public struct PublicKey
 /// this does not expose any Stellar serialization shenanigans.
 public struct SecretKey
 {
-    /// Alias to the BitBlob type
-    private alias DataType = BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8);
-
-    /*private*/ DataType data;
+    /*private*/ Scalar data;
     alias data this;
 
     /// Construct an instance from binary data
-    public this (const DataType args) pure nothrow @safe @nogc
+    public this (const Scalar args) pure nothrow @safe @nogc
     {
         this.data = args;
     }
@@ -302,7 +303,7 @@ public struct SecretKey
             break;
 
         case PrintMode.Clear:
-            formattedWrite(sink, "%s", this.data);
+            formattedWrite(sink, "%s", this.data.toString(PrintMode.Clear));
             break;
         }
     }
@@ -324,8 +325,7 @@ public struct SecretKey
 
         assert(sk.toString(PrintMode.Obfuscated) == "**SECRET**");
         assert(sk.toString(PrintMode.Clear) ==
-               "0xbca6b465149f8d3f4bc1794c246b2df64dcab0e65beb1862c5a0843d3e06e2f5" ~
-               "6ee7ca148718de68bd5b15d73d71d77f38197ff59e4a1bb19697fa47c8d492e0");
+               "0x599b284c194093e3aeb239c5a106fa6a0c17ba9e6344795616192cfa5e68f710");
 
         // Test default formatting behavior with writeln, log, etc...
         import std.format : phobos_format = format;
@@ -348,12 +348,7 @@ public struct SecretKey
 
     public Signature sign (scope const(ubyte)[] msg) const nothrow @nogc
     {
-        Signature result;
-        // The second argument, `siglen_p`, a pointer to the length of the
-        // signature, is always set to `64U` and supports `null`
-        if (crypto_sign_ed25519_detached(result[].ptr, null, msg.ptr, msg.length, this.data[].ptr) != 0)
-            assert(0);
-        return result;
+        return agora.crypto.Schnorr.sign(Pair.fromScalar(this.data), msg);
     }
 }
 
@@ -540,33 +535,7 @@ unittest
 
 public static Scalar secretKeyToCurveScalar (SecretKey secret) nothrow @nogc
 {
-    Scalar x25519_sk;
-    // FIXME: We don't want to expose a mutable buffer but we need one here
-    if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), secret[].ptr) != 0)
-        assert(0);
-    return x25519_sk;
-}
-
-// Test signing using Stellar seed
-unittest
-{
-    import agora.crypto.Schnorr;
-
-    KeyPair kp = KeyPair.fromSeed(
-        Seed.fromString(
-            "SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4"));
-
-    Scalar scalar = secretKeyToCurveScalar(kp.secret);
-    assert(scalar ==
-        Scalar(`0x44245dd23bd7453bf5fe07ec27a29be3dfe8e18d35bba28c7b222b71a4802db8`));
-
-    Pair pair = Pair.fromScalar(scalar);
-
-    assert(pair.V[] == kp.address[]);
-    Signature enroll_sig = sign(pair, "BOSAGORA");
-
-    Point point_Address = Point(kp.address);
-    assert(verify(point_Address, enroll_sig, "BOSAGORA"));
+    return secret.data;
 }
 
 // Test for converting from `Point` to `PublicKey`

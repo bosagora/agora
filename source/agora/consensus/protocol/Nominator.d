@@ -161,7 +161,7 @@ extern(D):
         this.network = network;
         this.empty_value = ConsensusData.init.serializeFull().toVec();
         this.schnorr_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
-        auto node_id = NodeID(uint256(key_pair.address));
+        auto node_id = NodeID(uint256(key_pair.address.data[][0 .. uint256.sizeof]));
         this.node_public_key = PublicKey(this.schnorr_pair.V[]);
         const IsValidator = true;
         const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
@@ -477,7 +477,7 @@ extern(D):
                 envelope.statement.slotIndex, last_block.header.height.value);
             return;  // slot was already externalized or envelope is too new
         }
-        PublicKey public_key = PublicKey(envelope.statement.nodeID);
+        PublicKey public_key = PublicKey(envelope.statement.nodeID[]);
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         Point V = Point(public_key[]);
         if (!V.isValid())
@@ -1395,11 +1395,13 @@ private struct SCPEnvelopeHash
         auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
         auto pair = KeyPair.fromSeed(Seed.fromString(seed));
         auto msg = getStHash().hashFull();
-        env.signature = pair.secret.sign(msg[]);
+        env.signature = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+                              "c2467c18e38b36367be78000000000000000000016f60" ~
+                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     }();
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x6c8202a4a1c71ce3b07c9f300b86f1e602bee3b363fa6d756bcc844048bb7a690522ff610bb61a79acbf2a0aca65fb381753d74be50981a133b596bc16ea5615"),
+        "0xbc41f121214f3c6d7b518054f0894893f6bd3d96f1e20a0ea370259b566ec7e79e880812c3fe1585b4c8ee59a4658ca0538e296d424779060167c8bba15ca731"),
     getEnvHash().hashFull().to!string);
 }

@@ -66,7 +66,7 @@ public string isInvalidReason (const ref Enrollment enrollment,
     if (utxo_set_value.type != typeof(utxo_set_value.type).Freeze)
         return "Enrollment: UTXO is not frozen";
 
-    Point address = Point(utxo_set_value.output.address);
+    Point address = utxo_set_value.output.address;
     if (!address.isValid())
         return "Enrollment: Address is not a valid point on Curve25519";
 

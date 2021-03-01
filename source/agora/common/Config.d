@@ -765,7 +765,7 @@ public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
 
     foreach (ref const node; quorum_conf.nodes)
     {
-        auto pub_key = NodeID(uint256(node));
+        auto pub_key = NodeID(uint256(node.data[][0 .. uint256.sizeof]));
         quorum.validators.push_back(pub_key);
     }
 
