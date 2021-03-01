@@ -243,7 +243,7 @@ unittest
     };
 
     immutable ex = Example([1, 2, 3]);
-    assert(Example.fromBinary!(immutable(Example))(dg, DeserializerOptions.Default)
+    assert(Example.fromBinary!(immutable(Example))(dg, DeserializerOptions.init)
            ==  ex);
 }
 
@@ -298,8 +298,7 @@ private enum hasFromBinaryFunction (T) = is(T == struct)
 
 *******************************************************************************/
 
-public ubyte[] serializeToBuffer (T) (scope const auto ref T record,
-                                      scope return ref ubyte[] buffer)
+public ubyte[] serializeToBuffer (T) (in T record, scope return ref ubyte[] buffer)
     @safe
 {
     buffer.length = 0;
@@ -360,7 +359,7 @@ unittest
 
 *******************************************************************************/
 
-public ubyte[] serializeFull (T) (scope const auto ref T record)
+public ubyte[] serializeFull (T) (in T record)
     @safe
 {
     ubyte[] buffer;
@@ -403,7 +402,7 @@ unittest
 }
 
 /// Ditto
-public void serializePart (T) (scope const auto ref T record, scope SerializeDg dg,
+public void serializePart (T) (in T record, scope SerializeDg dg,
                                CompactMode compact = CompactMode.Yes)
     @safe
 {
@@ -503,9 +502,6 @@ unittest
 /// Options that configure the behavior of the deserializer
 public struct DeserializerOptions
 {
-    /// Default value, need to be a lvalue to be passed as `ref`
-    static immutable DeserializerOptions Default = DeserializerOptions();
-
     /// The bound to apply to a length deserialization (e.g. for arrays)
     public size_t maxLength = DefaultMaxLength;
 
@@ -593,7 +589,7 @@ public T deserializeFull (T) (scope const(ubyte)[] data) @safe
 
 /// Ditto
 public T deserializeFull (T) (scope DeserializeDg dg,
-    in DeserializerOptions opts = DeserializerOptions.Default) @safe
+    in DeserializerOptions opts = DeserializerOptions.init) @safe
 {
     // Custom deserialization trumps everything
     static if (hasFromBinaryFunction!T)
@@ -778,7 +774,7 @@ unittest
         string name;
 
         // Need those for `testSymmetry`, other it compares pointer values
-        public bool opEquals (ref const OptionalHash o) const
+        public bool opEquals (in OptionalHash o) const
             pure @nogc nothrow @safe
         {
             return this.a == o.a &&
@@ -848,8 +844,7 @@ unittest
 
 *******************************************************************************/
 
-private void toVarInt (T) (const T var, scope SerializeDg dg)
-    @trusted
+private void toVarInt (T) (in T var, scope SerializeDg dg) @trusted
     if (isUnsigned!T)
 {
     assert(var >= 0);
@@ -1029,7 +1024,7 @@ public void testSymmetry (T) (auto ref T value = T.init)
 }
 
 /// Ditto
-private void testSymmetryImpl (T) (const auto ref T value, string typename)
+private void testSymmetryImpl (T) (in T value, string typename)
 {
     import std.stdio;
 
