@@ -76,7 +76,6 @@ import core.atomic : atomicLoad, atomicStore;
 import core.exception;
 import core.runtime;
 import core.stdc.time;
-import core.stdc.stdlib : abort;
 
 /* The following imports are frequently needed in tests */
 
@@ -135,8 +134,7 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
             cast(int) exc_name.length, exc_name.ptr,
             cast(int) file.length, file.ptr, line, cast(int) msg.length, msg.ptr);
     }
-    // TODO: Using `abort` here would give use a core dump,
-    // but this gives us a stack trace.
+    // We still want a stack trace, so throw anyway
     throw new AssertError(msg, file, line);
 }
 
