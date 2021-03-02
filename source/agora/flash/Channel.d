@@ -351,7 +351,7 @@ public class Channel
             matching_secrets.map!(s => s.prettify),
             matching_rev_htlcs.map!(s => s.prettify));
 
-        if (matching_secrets.length == 0)
+        if (matching_secrets.length == 0 && matching_rev_htlcs.length == 0)
             return;
 
         this.secrets = matching_secrets;
