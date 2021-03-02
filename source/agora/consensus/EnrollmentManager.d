@@ -197,9 +197,9 @@ public class EnrollmentManager
         if (keys.length == 0)
             log.error("No Active validator public keys at height {}", height);
 
+        log.trace("Update validator lookup maps at height {}: {}", height, keys);
         foreach (idx, key; keys)
         {
-            log.trace("Update validator lookup maps at height {} for index {} pubkey {}", height, idx, key);
             const K = Point(key[]);
             this.key_to_index[height][K] = idx;
             this.index_to_key[height][idx] = K;
