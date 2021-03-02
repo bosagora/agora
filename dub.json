@@ -3,10 +3,8 @@
     "description": "Node implementation for BOA CoinNet",
 
     "license": "MIT",
-    "authors": [
-        "Mathias 'Geod24' Lang"
-    ],
-    "copyright": "Copyright © 2019, BOS Platform Foundation Korea",
+    "authors": [ "BPF Korea dev team" ],
+    "copyright": "Copyright © 2019-2021, BOS Platform Foundation Korea",
 
     "targetType": "executable",
     "targetPath": "build",
