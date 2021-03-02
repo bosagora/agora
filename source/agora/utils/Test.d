@@ -799,3 +799,48 @@ unittest
     assert(result.outputs.length == 1);
     assert(result.outputs[0].value == Amount(1000));
 }
+
+/*******************************************************************************
+
+    A little utility to ensure a function is only called once
+
+    Can be used in initialization functions to ensure no double initialization,
+    and will produce a readable output on error.
+    Note that while this is typically used within a function, it could be
+    used to ensure a branch of a function is only executed once.
+
+    Params:
+      TLS = Whether the check should be thread-local or global (default: true)
+      file = The file this is called from, used for deduplication
+      line = The line this is called from, used for deduplication
+
+*******************************************************************************/
+
+public void ensureSingleCall (
+    bool TLS = true, string file = __FILE__, int line = __LINE__) ()
+{
+    import core.atomic;
+    import std.stdio;
+
+    static if (TLS)
+        static Exception isInitialized;
+    else
+        __gshared Exception isInitialized;
+
+    if (isInitialized !is null)
+    {
+        writeln("==================== Double call ====================");
+        writeln("Source: ", file, ":", line);
+        writeln("\t\t", isInitialized);
+        try
+            throw new Exception("Duplicated call originated from here");
+        catch (Exception e)
+            writeln("\t\t", e);
+        assert(0);
+    }
+
+    try
+        throw new Exception("Initial call originated from here");
+    catch (Exception e)
+        isInitialized = e;
+}
