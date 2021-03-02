@@ -100,7 +100,7 @@ public class Validator : FullNode, API
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
-        this.regenerateQuorums(Height(0));
+        this.regenerateQuorums(this.ledger.getBlockHeight());
 
         this.admin_interface = new AdminInterface(config,
             this.config.validator.key_pair, this.clock);
