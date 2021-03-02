@@ -497,8 +497,7 @@ public struct OnionError
     Hash payment_hash;
 
     /// Point of failure
-    /// todo: maybe replace with a channel id?
-    Point erroring_node;
+    Hash chan_id;
 
     /// Error code
     ErrorCode err;
