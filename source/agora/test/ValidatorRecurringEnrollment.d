@@ -302,8 +302,8 @@ unittest
     {
         mixin ForwardCtor!();
 
-        protected override void invalidNominationHandler (const ref ConsensusData data,
-            const ref string msg) @safe
+        protected override void invalidNominationHandler (in ConsensusData data,
+            in string msg) @safe
         {
             // Unlike the regular validator, dont check the config. BatValidator
             // always answers a cry for help.

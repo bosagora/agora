@@ -197,7 +197,7 @@ public class SlashPolicy
     ***************************************************************************/
 
     public Hash getExternalizedRandomSeed (in Height height,
-        const ref uint[] missing_validators) @safe nothrow
+        in uint[] missing_validators) @safe nothrow
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
@@ -260,8 +260,8 @@ public class SlashPolicy
 
     ***************************************************************************/
 
-    public string isInvalidPreimageRootReason (Height height,
-        const ref uint[] missing_validators) @safe
+    public string isInvalidPreimageRootReason (in Height height,
+        in uint[] missing_validators) @safe
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)

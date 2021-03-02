@@ -64,7 +64,8 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
         this.reason = reason;
     }
 
-    extern(D) override protected Sig createBlockSignature(const Block block) @trusted nothrow
+    extern(D) override protected Sig createBlockSignature(in Block block)
+        @trusted nothrow
     {
         import agora.crypto.Hash;
 
@@ -88,7 +89,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
         }
     }
 
-    extern(D) override protected void verifyBlock (const Block signed_block)
+    extern(D) override protected void verifyBlock (in Block signed_block)
     {
         // Do nothing for this byzantine node
     }

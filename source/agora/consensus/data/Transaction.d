@@ -91,15 +91,9 @@ public struct Transaction
     }
 
     /// Support for sorting transactions
-    public int opCmp (ref const(Transaction) other) const nothrow @safe @nogc
+    public int opCmp (in Transaction other) const nothrow @safe @nogc
     {
         return hashFull(this).opCmp(hashFull(other));
-    }
-
-    /// Ditto
-    public int opCmp (const(Transaction) other) const nothrow @safe @nogc
-    {
-        return this.opCmp(other);
     }
 }
 
@@ -199,7 +193,7 @@ public struct Input
     }
 
     /// Ctor which does hashing based on index
-    public this (Hash txhash, ulong index, uint unlock_age = 0) nothrow @safe
+    public this (in Hash txhash, ulong index, uint unlock_age = 0) nothrow @safe
     {
         this.utxo = hashMulti(txhash, index);
         this.unlock_age = unlock_age;
@@ -213,7 +207,7 @@ public struct Input
     }
 
     /// Ctor to create dummy inputs for Coinbase TXs
-    public this (Height height) nothrow @safe
+    public this (in Height height) nothrow @safe
     {
         this.utxo = hashFull(height);
     }
@@ -317,7 +311,7 @@ unittest
 
 *******************************************************************************/
 
-public bool getSumOutput (const Transaction tx, ref Amount acc)
+public bool getSumOutput (in Transaction tx, ref Amount acc)
     nothrow pure @safe @nogc
 {
     foreach (ref o; tx.outputs)

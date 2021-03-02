@@ -98,15 +98,15 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (const ref Block block, Height prev_height,
+public string isInvalidReason (in Block block, Height prev_height,
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
     scope EnrollmentFinder findEnrollment, size_t active_enrollments,
     size_t enrolled_validators, in Hash random_seed,
-    Point delegate (Height, ulong) nothrow @safe getValidatorAtIndex,
-    Point delegate (const ref Point, const Height) nothrow @safe getCommitmentNonce,
+    Point delegate (in Height, ulong) nothrow @safe getValidatorAtIndex,
+    Point delegate (in Point, in Height) nothrow @safe getCommitmentNonce,
     ulong prev_timestamp, ulong curr_timestamp, Duration block_timestamp_tolerance_dur,
-    Transaction[] delegate (const ref Transaction[] tx_set, const ref uint[]
-    missing_validators) nothrow @safe getCoinbaseTX,
+    Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
+                               nothrow @safe getCoinbaseTX,
     string file = __FILE__, size_t line = __LINE__) nothrow @safe
 {
     import std.algorithm;
@@ -660,11 +660,11 @@ version (unittest)
 
         return isInvalidReason(block, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, active_enrollments, enrolled_validators,
-            random_seed, (Height h, ulong i) @safe nothrow
+            random_seed, (in Height h, ulong i) @safe nothrow
             {
                 return Point(genesis_validator_keys[i].address[]);
             },
-            (const ref Point key, const Height height) @trusted nothrow
+            (in Point key, in Height height) @trusted nothrow
             {
                 return Scalar(hashMulti(
                     secretKeyToCurveScalar(lookupSecretKeyFromPoint(key)),
@@ -673,14 +673,14 @@ version (unittest)
             },
             prev_timestamp, (curr_timestamp == ulong.max) ? block.header.timestamp : curr_timestamp,
             block_timestamp_tolerance_dur,
-            (const ref Transaction[] tx_set, const ref uint[] missing_validators)
+            (in Transaction[] tx_set, in uint[] missing_validators)
             {
-                return cast(Transaction[]) [];
+                return (Transaction[]).init;
             });
     }
 
     /// Ditto but returns `bool` and logs reason if fails, only usable in unittests
-    public bool isValid (const ref Block block, Height prev_height,
+    public bool isValid (in Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
@@ -699,7 +699,7 @@ version (unittest)
     }
 
     /// Ditto but returns `bool`, only usable in unittests
-    public bool isNotValid (const ref Block block, Height prev_height,
+    public bool isNotValid (in Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,

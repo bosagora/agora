@@ -128,8 +128,8 @@ public extern (C++) class Nominator : SCPDriver
     public EnrollmentManager enroll_man;
 
     /// Delegate called when node's own nomination is invalid
-    extern (D) public void delegate(const ref ConsensusData data, const ref
-        string msg) @safe onInvalidNomination = null;
+    public extern (D) void delegate (in ConsensusData data, in string msg)
+        @safe onInvalidNomination;
 
 extern(D):
 
@@ -394,7 +394,7 @@ extern(D):
 
     ***************************************************************************/
 
-    private static SCPQuorumSet buildSCPConfig (ref const QuorumConfig config)
+    private static SCPQuorumSet buildSCPConfig (in QuorumConfig config)
         @safe nothrow
     {
         import scpd.scp.QuorumSetUtils;
@@ -414,7 +414,7 @@ extern(D):
 
     ***************************************************************************/
 
-    protected void nominate (ulong slot_idx, ConsensusData next) @trusted
+    protected void nominate (ulong slot_idx, in ConsensusData next) @trusted
     {
         log.info("{}(): Proposing tx set for slot {}", __FUNCTION__, slot_idx);
 
@@ -555,7 +555,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public void receiveBlockSignature (scope ref const(ValidatorBlockSig) block_sig) @trusted
+    public void receiveBlockSignature (in ValidatorBlockSig block_sig) @trusted
     {
         const cur_height = this.ledger.getBlockHeight();
         log.trace("Received BLOCK SIG {} from node {} for block {}",
@@ -641,7 +641,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public Sig createBlockSignature(const Block block) @trusted nothrow
+    public Sig createBlockSignature (in Block block) @trusted nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
@@ -911,7 +911,7 @@ extern(D):
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
-    extern(D) protected void verifyBlock (const Block signed_block)
+    extern(D) protected void verifyBlock (in Block signed_block)
     {
         if (!this.ledger.acceptBlock(signed_block))
         {
@@ -921,7 +921,8 @@ extern(D):
     }
 
     /// function for gossip of block sig which can be overriden in byzantine unit tests
-    extern(D) protected void gossipBlockSignature(ValidatorBlockSig block_sig) nothrow
+    extern(D) protected void gossipBlockSignature (in ValidatorBlockSig block_sig)
+        nothrow
     {
         // Send to other nodes in the network
         this.network.gossipBlockSignature(block_sig);

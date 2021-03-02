@@ -434,7 +434,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected final override void onAcceptedBlock (const ref Block block,
+    protected final override void onAcceptedBlock (in Block block,
         bool validators_changed) @safe
     {
         assert(block.header.height >= this.last_shuffle_height);
@@ -583,8 +583,8 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected void invalidNominationHandler (const ref ConsensusData data,
-        const ref string msg) @safe
+    protected void invalidNominationHandler (in ConsensusData data, in string msg)
+        @safe
     {
         // Network needs Validators, see if we can enroll
         if (this.config.validator.recurring_enrollment &&

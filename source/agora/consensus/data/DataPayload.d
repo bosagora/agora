@@ -133,7 +133,7 @@ public struct DataPayload
     ***************************************************************************/
 
     public static DataPayloadT fromBinary (DataPayloadT = DataPayload) (
-        scope DeserializeDg dg, const ref DeserializerOptions opts) @safe
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
     {
         return DataPayload(deserializeFull!(ubyte[])(dg, opts));
     }

@@ -166,8 +166,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public void remove (const ref Transaction tx,
-        bool rm_double_spent = true) @trusted
+    public void remove (in Transaction tx, bool rm_double_spent = true) @trusted
     {
         auto tx_hash = tx.hashFull();
         if (!this.hasTransactionHash(tx_hash))
@@ -194,8 +193,7 @@ public class TransactionPool
     }
 
     /// Ditto
-    public void remove (Hash tx_hash,
-        bool rm_double_spent = true) @trusted
+    public void remove (in Hash tx_hash, bool rm_double_spent = true) @trusted
     {
         if (!this.hasTransactionHash(tx_hash))
             return;
@@ -219,7 +217,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private void updateSpenderList (const ref Transaction tx) @safe
+    private void updateSpenderList (in Transaction tx) @safe
     {
         auto tx_hash = tx.hashFull();
 
@@ -247,7 +245,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private bool gatherDoubleSpentTXs (const ref Transaction tx,
+    private bool gatherDoubleSpentTXs (in Transaction tx,
         ref Set!Hash double_spent_txs)
     {
         double_spent_txs.clear();
@@ -409,7 +407,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private bool isValidTransaction (const ref Transaction tx) @trusted
+    private bool isValidTransaction (in Transaction tx) @trusted
     {
         // Transaction pool should never deal with CoinBase TXs
         assert(tx.type != TxType.Coinbase);

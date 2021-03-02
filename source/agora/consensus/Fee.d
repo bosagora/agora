@@ -357,7 +357,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public void accumulateFees (ref const Block block, UTXO[] stakes,
+    public void accumulateFees (in Block block, UTXO[] stakes,
         scope UTXOFinder peekUTXO) nothrow @trusted
     {
         if (block.header.height % this.params.PayoutPeriod == 0)
@@ -407,7 +407,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount[PublicKey] getAccumulatedFees (Height height) nothrow @safe
+    public Amount[PublicKey] getAccumulatedFees (in Height height) nothrow @safe
     {
         return height % this.params.PayoutPeriod == 0 ? this.accumulated_fees : null;
     }
@@ -437,7 +437,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public void getTXSetFees (const ref Transaction[] tx_set,
+    public void getTXSetFees (in Transaction[] tx_set,
         scope UTXOFinder peekUTXO, ref Amount tot_fee, ref Amount tot_data_fee)
         nothrow @safe
     {
