@@ -71,7 +71,7 @@ public struct Amount
     }
 
     /// Pretty-print this value
-    public void toString (SinkT dg) const @safe
+    public void toString (scope SinkT dg) const @safe
     {
         import std.format;
         formattedWrite(dg, "%d", this.value);
