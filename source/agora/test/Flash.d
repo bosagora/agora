@@ -515,7 +515,7 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id = bob.openNewChannel(
-        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
     writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
@@ -549,8 +549,7 @@ unittest
     // wait for payment + folding update indices
     alice.waitForUpdateIndex(alice_bob_chan_id, 4);
     bob.waitForUpdateIndex(alice_bob_chan_id, 4);
-    bob.waitForUpdateIndex(bob_charlie_chan_id, 4);
-    charlie.waitForUpdateIndex(bob_charlie_chan_id, 4);
+    // bob -> charlie channel will never create a new update
 
     //
     writefln("Beginning bob => charlie collaborative close..");
