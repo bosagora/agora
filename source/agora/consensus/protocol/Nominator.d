@@ -899,14 +899,14 @@ extern(D):
                     this.slot_sigs[height][this.schnorr_pair.V].s));
                 return;
             }
-            verifyBlock(signed_block);
+            this.verifyBlock(signed_block);
         }
         catch (Exception exc)
         {
             log.fatal("Externalization of SCP data failed: {}", exc);
             abort();
         }
-        gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
+        this.gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
                     this.slot_sigs[height][this.schnorr_pair.V].s));
     }
 
