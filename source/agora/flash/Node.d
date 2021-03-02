@@ -451,7 +451,7 @@ public abstract class FlashNode : FlashAPI
         else if (error)
         {
             channel.learnSecrets([], [payment_hash], this.last_block_height);
-            channel.peer.reportPaymentError(chan_id, OnionError(Hash.init,
+            this.reportPaymentError(chan_id, OnionError(Hash.init,
                 payment_hash, this.kp.V, error));
         }
     }
