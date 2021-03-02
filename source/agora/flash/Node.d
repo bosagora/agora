@@ -452,7 +452,7 @@ public abstract class FlashNode : FlashAPI
         {
             channel.learnSecrets([], [payment_hash], this.last_block_height);
             this.reportPaymentError(chan_id, OnionError(Hash.init,
-                payment_hash, this.kp.V, error));
+                payment_hash, chan_id, error));
         }
     }
 
