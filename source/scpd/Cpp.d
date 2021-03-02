@@ -306,8 +306,10 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             return this._start[start .. end];
         }
 
-        public bool opEquals (const ref vector rhs) const pure nothrow @nogc @safe
+        public bool opEquals (in vector rhs) const pure nothrow @nogc @safe
         {
+            static assert(__traits(isRef, rhs));
+
             import std.range : zip;
             if (this.length != rhs.length)
                 return false;
@@ -362,7 +364,7 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
         }
 
         static QT fromBinary (QT) (scope DeserializeDg data,
-            scope const ref DeserializerOptions opts) @safe
+            in DeserializerOptions opts) @safe
         {
             import std.traits;
             import scpd.types.Utils;

@@ -151,7 +151,7 @@ public struct Amount
     ***************************************************************************/
 
     pragma(inline, true)
-    public bool add (Amount other)
+    public bool add (in Amount other)
     {
         bool overflow;
         this.value = addu(this.value, other.value, overflow);
@@ -205,7 +205,7 @@ public struct Amount
     ***************************************************************************/
 
     pragma(inline, true)
-    public bool sub (Amount other)
+    public bool sub (in Amount other)
     {
         // Check for validity before calling `addu`,
         // because the value could be invalid and the substraction
@@ -279,7 +279,7 @@ public struct Amount
     ***************************************************************************/
 
     pragma(inline, true)
-    public ulong count (Amount other)
+    public ulong count (in Amount other)
     {
         assert(other.value > 0);
         return this.value / other.value;
@@ -299,7 +299,7 @@ public struct Amount
 
     /// Convenience version of `add` which asserts in case of overflow
     /// Prefer using this only in `unittest`s
-    public ref Amount mustAdd (Amount other) return
+    public ref Amount mustAdd (in Amount other) return
     {
         this.add(other) || assert(0);
         return this;
@@ -307,7 +307,7 @@ public struct Amount
 
     /// Convenience version of `sub` which asserts in case of underflow
     /// Prefer using this only in `unittest`s
-    public ref Amount mustSub (Amount other) return
+    public ref Amount mustSub (in Amount other) return
     {
         this.sub(other) || assert(0);
         return this;
@@ -315,7 +315,7 @@ public struct Amount
 
     /// Support for comparison
     pragma(inline, true)
-    public int opCmp (Amount other) const pure nothrow @nogc
+    public int opCmp (in Amount other) const pure nothrow @nogc
     {
         return this.value < other.value ? -1 : (this.value > other.value ? 1 : 0);
     }

@@ -322,7 +322,7 @@ private string isInvalidPushReason (OP op)(ref const(ubyte)[] bytes,
 *******************************************************************************/
 
 version (unittest)
-public Script createLockP2PKH (Hash key_hash) pure nothrow @safe
+public Script createLockP2PKH (in Hash key_hash) pure nothrow @safe
 {
     return Script([ubyte(OP.DUP), ubyte(OP.HASH)]
         ~ [ubyte(64)] ~ key_hash[]
@@ -343,7 +343,7 @@ public Script createLockP2PKH (Hash key_hash) pure nothrow @safe
 *******************************************************************************/
 
 version (unittest)
-public Script createUnlockP2PKH (Signature sig, Point pub_key)
+public Script createUnlockP2PKH (in Signature sig, in Point pub_key)
     pure nothrow @safe
 {
     return Script([ubyte(64)] ~ sig[] ~ [ubyte(32)] ~ pub_key[]);
@@ -434,7 +434,7 @@ unittest
 *******************************************************************************/
 
 version (unittest)
-public Script makeScript (in ubyte[] opcodes) pure nothrow @safe @nogc
+public Script makeScript (return const ubyte[] opcodes) pure nothrow @safe @nogc
 {
     return Script(opcodes);
 }

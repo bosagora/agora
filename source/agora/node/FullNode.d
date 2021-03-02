@@ -747,8 +747,8 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void onAcceptedBlock (const ref Block block,
-        bool validators_changed) @safe
+    protected void onAcceptedBlock (in Block block, bool validators_changed)
+        @safe
     {
         this.pushBlock(block);
     }

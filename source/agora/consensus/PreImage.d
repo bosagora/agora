@@ -164,7 +164,7 @@ public struct PreImageCache
 
     ***************************************************************************/
 
-    public void reset (Hash seed, size_t length)
+    public void reset (in Hash seed, size_t length)
     {
         // Set the length, so that extra entries are not accessible through
         // `opIndex`
@@ -352,7 +352,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public Hash populate (scope const ref Scalar secret, bool consume)
+    public Hash populate (in Scalar secret, bool consume)
         @safe nothrow
     {
         // Populate the nonce cache if necessary
@@ -409,7 +409,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    private void seek (scope const ref Scalar secret, Height height) @safe @nogc nothrow
+    private void seek (in Scalar secret, in Height height) @safe @nogc nothrow
     {
         uint seek_index = cast (uint) (height / this.preimages.length());
         uint seek_nonce = seek_index / NumberOfCycles;
@@ -448,7 +448,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public Hash getPreImage (scope const ref Scalar secret, Height height) @safe @nogc nothrow
+    public Hash getPreImage (in Scalar secret, in Height height) @safe @nogc nothrow
     {
         this.seek(secret, height);
         auto offset = height % this.preimages.length();

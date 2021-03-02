@@ -167,8 +167,8 @@ public struct Block
 
     ***************************************************************************/
 
-    public Block updateSignature (const Signature signature,
-        BitField!ubyte validators) const @safe
+    public Block updateSignature (in Signature signature, BitField!ubyte validators)
+        const @safe
     {
         return Block(
             BlockHeader(
@@ -271,7 +271,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public static Hash buildMerkleTree (const(Transaction)[] txs,
+    public static Hash buildMerkleTree (in Transaction[] txs,
         ref Hash[] merkle_tree) nothrow @safe
     in
     {
@@ -290,7 +290,7 @@ public struct Block
 
     /// Ditto
     private static Hash buildMerkleTreeImpl (in size_t pow2_size,
-        const(Transaction)[] txs, ref Hash[] merkle_tree)
+        in Transaction[] txs, ref Hash[] merkle_tree)
         nothrow @safe @nogc
     in
     {
@@ -368,7 +368,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public static Hash checkMerklePath (Hash hash, Hash[] merkle_path, size_t index) @safe
+    public static Hash checkMerklePath (Hash hash, in Hash[] merkle_path, size_t index) @safe
     {
         foreach (const ref otherside; merkle_path)
         {
@@ -396,7 +396,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public size_t findHashIndex (Hash hash) const @safe nothrow
+    public size_t findHashIndex (in Hash hash) const @safe nothrow
     {
         immutable pow2_size = getPow2Aligned(this.txs.length);
         assert(this.merkle_tree.length == (pow2_size * 2) - 1,

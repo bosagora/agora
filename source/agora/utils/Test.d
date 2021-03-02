@@ -447,9 +447,9 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public Transaction sign (TxType type = TxType.Payment, const(ubyte)[] data = [],
+    public Transaction sign (in TxType type = TxType.Payment, const(ubyte)[] data = [],
         scope KeyPair delegate(PublicKey pubkey) @safe nothrow lookupDg = toDelegate(&WK.Keys.opIndex),
-        Height lock_height = Height(0), uint unlock_age = 0) @safe nothrow
+        in Height lock_height = Height(0), uint unlock_age = 0) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
@@ -505,7 +505,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) refund (scope const PublicKey toward)
+    public ref typeof(this) refund (in PublicKey toward)
         @safe return
     {
         assert(this.inputs.length > 0);

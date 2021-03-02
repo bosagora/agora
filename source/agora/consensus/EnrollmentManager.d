@@ -259,7 +259,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Point getValidatorAtIndex (Height height, ulong index) nothrow @safe
+    public Point getValidatorAtIndex (in Height height, ulong index) nothrow @safe
     {
         if (height !in this.index_to_key || index !in this.index_to_key[height])
             return Point.init;
