@@ -95,7 +95,7 @@ public class Ledger
     private EnrollmentManager enroll_man;
 
     /// Property for Enrollment manager
-    @property public EnrollmentManager enrollment_manager() @safe
+    @property public EnrollmentManager enrollment_manager () @safe
     {
         return this.enroll_man;
     }
@@ -447,7 +447,7 @@ public class Ledger
     }
 
     /// Stats helper: return the total unspent amount
-    private ulong getUnspentAmount (TxRange)(ref TxRange transactions)
+    private ulong getUnspentAmount (TxRange) (ref TxRange transactions)
     {
         Amount tx_amount;
         foreach (const ref Transaction tx; transactions)
@@ -793,7 +793,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool checkSelfSlashing(in ConsensusData data) @safe nothrow
+    public bool checkSelfSlashing (in ConsensusData data) @safe nothrow
     {
         auto enroll_index = this.enroll_man.getIndexOfEnrollment();
         if (enroll_index != ulong.max &&
@@ -1058,7 +1058,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Hash getRandomSeed() nothrow @safe
+    public Hash getRandomSeed () nothrow @safe
     {
         return this.slash_man.getRandomSeed(this.last_block.header.height);
     }
@@ -1131,7 +1131,7 @@ version (unittest)
         }
 
         ///
-        public override Hash getRandomSeed() nothrow @safe
+        public override Hash getRandomSeed () nothrow @safe
         {
             return getTestRandomSeed();
         }
@@ -1422,7 +1422,7 @@ unittest
         }
 
         ///
-        public override Hash getRandomSeed() nothrow @safe
+        public override Hash getRandomSeed () nothrow @safe
         {
             return getTestRandomSeed();
         }
