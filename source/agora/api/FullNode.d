@@ -22,6 +22,7 @@ import agora.common.Types;
 import agora.common.Set;
 import agora.serialization.Serializer;
 import agora.consensus.data.Transaction;
+import agora.flash.API;
 
 import vibe.data.serialization;
 import vibe.http.common;
@@ -42,6 +43,13 @@ public struct NodeInfo
 
     /// Partial or full view of the addresses of the node's quorum (based on is_complete)
     public Set!string addresses;
+}
+
+/// Used with `runner.d`
+@path("/")
+@serializationPolicy!(Base64ArrayPolicy)
+public interface FlashFullNodeAPI : API, ExtendedFlashAPI
+{
 }
 
 /*******************************************************************************

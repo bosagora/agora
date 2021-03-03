@@ -220,6 +220,6 @@ public string flashPrettify (T)(T input)
 /// Clone any type via the serializer
 public T clone (T)(in T input)
 {
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
     return input.serializeFull.deserializeFull!T;
 }

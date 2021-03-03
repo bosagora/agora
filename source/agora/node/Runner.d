@@ -17,6 +17,9 @@ import agora.api.FullNode;
 import agora.api.Validator;
 import agora.common.Config;
 import agora.common.Task : Periodic;
+import agora.flash.API;
+import agora.node.FlashFullNode;
+import agora.node.FlashValidator;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;
@@ -65,18 +68,38 @@ public NodeListenerTuple runNode (Config config)
     mkdirRecurse(config.node.data_dir);
 
     FullNode node;
-    if (config.validator.enabled)
+    if (config.flash.enabled)
     {
-        log.trace("Started Validator...");
-        auto inst = new Validator(config);
-        router.registerRestInterface!(agora.api.Validator.API)(inst);
-        node = inst;
+        if (config.validator.enabled)
+        {
+            log.trace("Started FlashValidator...");
+            auto inst = new FlashValidator(config);
+            router.registerRestInterface!(FlashValidatorAPI)(inst);
+            node = inst;
+        }
+        else
+        {
+            log.trace("Started FlashFullNode...");
+            auto inst = new FlashFullNode(config);
+            router.registerRestInterface!(FlashFullNodeAPI)(inst);
+            node = inst;
+        }
     }
     else
     {
-        log.trace("Started FullNode...");
-        node = new FullNode(config);
-        router.registerRestInterface!(agora.api.FullNode.API)(node);
+        if (config.validator.enabled)
+        {
+            log.trace("Started Validator...");
+            auto inst = new Validator(config);
+            router.registerRestInterface!(agora.api.Validator.API)(inst);
+            node = inst;
+        }
+        else
+        {
+            log.trace("Started FullNode...");
+            node = new FullNode(config);
+            router.registerRestInterface!(agora.api.FullNode.API)(node);
+        }
     }
     settings.rejectConnectionPredicate = (in address) nothrow @safe
             {return node.getAlreadyCreatedBanManager().isBanned(address.toAddressString());};
