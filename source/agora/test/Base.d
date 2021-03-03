@@ -1194,12 +1194,6 @@ public class TestNetworkManager : NetworkManager
         this.nregistry = nreg;
     }
 
-    /// No "http://" in unittests, we just use the string as-is
-    protected final override string getAddress ()
-    {
-        return this.node_config.address;
-    }
-
     ///
     protected final override TestAPI getClient (Address address,
         Duration timeout)
