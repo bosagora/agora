@@ -101,7 +101,7 @@ unittest
     // current validators and previous validators except themselves.
     set_b.each!(node =>
         retryFor(node.getNodeInfo().addresses.length ==
-            GenesisValidators + conf.outsider_validators - 1,
+            GenesisValidators + conf.outsider_validators,
             5.seconds));
 
     // Make all the validators of the set A disable to respond

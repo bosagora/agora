@@ -720,8 +720,7 @@ public class NetworkManager
 
     private bool shouldEstablishConnection (Address address)
     {
-        return !this.isOurOwnAddress(address) &&
-            !this.banman.isBanned(address) &&
+        return !this.banman.isBanned(address) &&
             address !in this.connected_peers &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses;
@@ -740,12 +739,10 @@ public class NetworkManager
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
 
-        // we do not include our own address in list of known,
-        // however we do included banned addresses.
-        // reasoning: while *we* cannot establish a connection with
+        // We include banned addresses in known address,
+        // because while *we* cannot establish a connection with
         // a node it's possible other nodes in the network might be able to.
-        if (!this.isOurOwnAddress(address))
-            this.known_addresses.put(address);
+        this.known_addresses.put(address);
     }
 
     /***************************************************************************
@@ -1157,35 +1154,6 @@ public class NetworkManager
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.public_key);
         this.validators().each!(v => v.client.sendBlockSignature(block_sig));
-    }
-
-    /***************************************************************************
-
-        Params:
-            address = the address to check against ours
-
-        Returns:
-            true if the given address matches our own
-
-    ***************************************************************************/
-
-    private bool isOurOwnAddress (Address address)
-    {
-        return address == this.getAddress();
-    }
-
-    /***************************************************************************
-
-        Returns:
-            the address of this node (can be overriden in unittests)
-
-    ***************************************************************************/
-
-    protected string getAddress ()
-    {
-        // allocates, called infrequently though
-        return format("http://%s:%s", this.node_config.address,
-            this.node_config.port);
     }
 
     /***************************************************************************

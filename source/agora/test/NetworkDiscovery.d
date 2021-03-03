@@ -30,7 +30,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == GenesisValidators - 1,
+        assert(addresses.sort.uniq.count == GenesisValidators,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
@@ -54,7 +54,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == 9,
+        assert(addresses.sort.uniq.count == 10,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
@@ -76,7 +76,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count == 5,
+        assert(addresses.sort.uniq.count == 6,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
