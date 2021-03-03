@@ -780,7 +780,8 @@ LOuter: while (1)
             // todo: there may be a double call here if the first request timed-out
             // and the client sends this request again.
             result = this.peer.proposeUpdate(this.conf.chan_id, new_seq_id,
-                this.secrets, this.revert_htlcs, pub_nonce, update_height);
+                cast(Hash[])this.secrets, cast(Hash[])this.revert_htlcs,
+                pub_nonce, update_height);
 
             if (result.error)
             {
@@ -852,7 +853,7 @@ LOuter: while (1)
 
     public Result!PublicNonce onProposedUpdate (in uint seq_id,
         in Hash[] secrets, in Hash[] revert_htlcs, in PublicNonce peer_nonce,
-        in Height height)
+        in Height height) @trusted
     {
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
@@ -1131,7 +1132,7 @@ LOuter: while (1)
     public Result!PublicNonce onProposedPayment (in uint seq_id,
         in Hash payment_hash, in Amount amount, in Height lock_height,
         in OnionPacket packet, in Payload payload, in PublicNonce peer_nonce,
-        in Height height, in Point shared_secret)
+        in Height height, in Point shared_secret) @trusted
     {
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
@@ -1377,7 +1378,7 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public void onBlockExternalized (in Block block)
+    public void onBlockExternalized (in Block block) @trusted
     {
         this.height = block.header.height;
 
@@ -1837,7 +1838,7 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public void forwardPaymentError (OnionError error)
+    public void forwardPaymentError (OnionError error) @trusted
     {
         if (error.payment_hash in this.payment_hashes ||
             error.payment_hash in this.dropped_htlcs)
