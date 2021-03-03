@@ -1842,10 +1842,14 @@ LOuter: while (1)
         if (error.payment_hash in this.payment_hashes ||
             error.payment_hash in this.dropped_htlcs)
         {
+            const shared_secret = error.payment_hash in this.payment_hashes ?
+                                    this.payment_hashes[error.payment_hash] :
+                                    this.dropped_htlcs[error.payment_hash].shared_secret;
             this.dropped_htlcs.remove(error.payment_hash);
             this.taskman.setTimer(0.seconds,
             {
-                this.peer.reportPaymentError(this.conf.chan_id, error);
+                this.peer.reportPaymentError(this.conf.chan_id,
+                    error.obfuscate(shared_secret));
             });
         }
     }
