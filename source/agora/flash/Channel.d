@@ -232,8 +232,8 @@ public class Channel
 
     ***************************************************************************/
 
-    public this (in ChannelConfig conf, in Pair kp, in PrivateNonce priv_nonce,
-        in PublicNonce peer_nonce, FlashAPI peer, Engine engine,
+    public this (in ChannelConfig conf, in Pair kp, PrivateNonce priv_nonce,
+        PublicNonce peer_nonce, FlashAPI peer, Engine engine,
         TaskManager taskman, void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
@@ -1714,7 +1714,7 @@ LOuter: while (1)
     ***************************************************************************/
 
     public Result!Point requestCloseChannel (in uint seq_id,
-        in Point peer_nonce, in Amount fee)
+        Point peer_nonce, in Amount fee)
     {
         if (this.state != ChannelState.Open)
             return Result!Point(ErrorCode.ChannelNotOpen,
@@ -1837,7 +1837,7 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public void forwardPaymentError (in OnionError error)
+    public void forwardPaymentError (OnionError error)
     {
         if (error.payment_hash in this.payment_hashes ||
             error.payment_hash in this.dropped_htlcs)
