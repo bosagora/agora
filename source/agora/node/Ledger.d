@@ -525,8 +525,8 @@ public class Ledger
 
     protected void updateValidatorSet (in Block block) @safe
     {
-        this.enroll_man.clearExpiredValidators(block.header.height);
         this.enroll_man.updateValidatorIndexMaps(Height(block.header.height));
+        this.enroll_man.clearExpiredValidators(block.header.height);
         PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
         UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
         foreach (idx, ref enrollment; block.header.enrollments)
