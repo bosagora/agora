@@ -96,7 +96,7 @@ int main (string[] args)
                 else
                 {
                     writefln("%s %s is at block height %s", PREFIX, nodeFromClientIndex(idx), node_height);
-                    const blocks = client.getBlocksFrom(node_height + 1, 10);
+                    const blocks = client.getBlocksFrom(height, 10);
                     writefln("%s %s has blocks:\n%s", PREFIX, nodeFromClientIndex(idx), prettify(blocks));
                     writefln("%s ----------------------------------------", PREFIX);
                 }
