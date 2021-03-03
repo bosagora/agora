@@ -86,8 +86,9 @@ public class Channel
     /// The list of any off-chain updates which happened on this channel
     private UpdatePair[] channel_updates;
 
-    /// Unresolved payment hashes which are part of existing HTLCs
-    private Set!Hash payment_hashes;
+    /// Unresolved payment hashes and their associated shared secret
+    /// which are part of existing HTLCs
+    private Point[Hash] payment_hashes;
 
     /// Valid when `channel_updates` is not empty, used for the watchtower
     private Hash trigger_utxo;
@@ -99,9 +100,19 @@ public class Channel
     /// funding tx is externalized.
     private Balance cur_balance;
 
+    /// Metadata about dropped HTLCs
+    private static struct DroppedHTLC
+    {
+        /// HTLC
+        HTLC htlc;
+
+        /// Shared secret
+        Point shared_secret;
+    }
+
     /// List of dropped HTLCS
     /// Usefull when routing error packets back to the payment origin
-    private HTLC[Hash] dropped_htlcs;
+    private DroppedHTLC[Hash] dropped_htlcs;
 
     /// The closing transaction can spend from the funding transaction when
     /// the channel parties want to collaboratively close the channel.
@@ -141,6 +152,7 @@ public class Channel
         private Amount amount;
         private Height height;
         private Height lock_height;
+        private Point shared_secret;
     }
 
     /// Queued incoming update
@@ -330,7 +342,7 @@ public class Channel
             this.kp.V.prettify,
             secrets.map!(s => s.prettify),
             secrets.map!(s => s.hashFull.prettify),
-            this.payment_hashes[].map!(s => s.prettify),
+            this.payment_hashes.byKey.map!(s => s.prettify),
             revert_htlcs.map!(s => s.prettify),
             height);
 
@@ -800,9 +812,6 @@ LOuter: while (1)
         // Filter out the htlcs that are not pending on this channel
         auto rev_htlcs_filtered = revert_htlcs.filter!(payment_hash =>
             payment_hash in this.payment_hashes).array;
-        foreach (secret; secrets)
-            this.payment_hashes.remove(secret.hashFull());
-        rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
         // Save dropped htlcs
         foreach (payment_hash; rev_htlcs_filtered)
@@ -810,8 +819,13 @@ LOuter: while (1)
             auto htlc = payment_hash in old_balance.outgoing_htlcs ?
                         old_balance.outgoing_htlcs[payment_hash] :
                         old_balance.incoming_htlcs[payment_hash];
-            this.dropped_htlcs[payment_hash] = htlc;
+            this.dropped_htlcs[payment_hash] = DroppedHTLC(htlc,
+                this.payment_hashes[payment_hash]);
         }
+
+        foreach (secret; secrets)
+            this.payment_hashes.remove(secret.hashFull());
+        rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
         this.onUpdateComplete(secrets, rev_htlcs_filtered);
     }
@@ -929,7 +943,7 @@ LOuter: while (1)
         this.cur_balance = new_balance;
 
         // prepare for secrets
-        this.payment_hashes.put(payment.payment_hash);
+        this.payment_hashes[payment.payment_hash] = payment.shared_secret;
 
         // route to the next node
         if (payment.payload.next_chan_id != Hash.init)
@@ -1018,7 +1032,8 @@ LOuter: while (1)
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
 
-        this.payment_hashes.put(payment.payment_hash);
+        if (payment.payment_hash !in this.payment_hashes)
+            this.payment_hashes[payment.payment_hash] = Point.init;
         return true;
     }
 
@@ -1050,9 +1065,6 @@ LOuter: while (1)
         // Filter out the htlcs that are not pending on this channel
         auto rev_htlcs_filtered = update.revert_htlcs.filter!(payment_hash =>
             payment_hash in this.payment_hashes).array;
-        foreach (secret; update.secrets)
-            this.payment_hashes.remove(secret.hashFull());
-        rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
         // Save dropped htlcs
         foreach (payment_hash; rev_htlcs_filtered)
@@ -1060,8 +1072,13 @@ LOuter: while (1)
             auto htlc = payment_hash in old_balance.outgoing_htlcs ?
                         old_balance.outgoing_htlcs[payment_hash] :
                         old_balance.incoming_htlcs[payment_hash];
-            this.dropped_htlcs[payment_hash] = htlc;
+            this.dropped_htlcs[payment_hash] = DroppedHTLC(htlc,
+                this.payment_hashes[payment_hash]);
         }
+
+        foreach (secret; update.secrets)
+            this.payment_hashes.remove(secret.hashFull());
+        rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
         this.onUpdateComplete(update.secrets, update.revert_htlcs);
     }
@@ -1104,6 +1121,7 @@ LOuter: while (1)
             payload = the decrypted payload
             peer_nonce = the public nonce the counter-party will use for signing
             height = the current known block height
+            shared_secret = secret used to decrypt the payload
 
         Returns:
             the public nonce this node will use, or an error
@@ -1113,7 +1131,7 @@ LOuter: while (1)
     public Result!PublicNonce onProposedPayment (in uint seq_id,
         in Hash payment_hash, in Amount amount, in Height lock_height,
         in OnionPacket packet, in Payload payload, in PublicNonce peer_nonce,
-        in Height height )
+        in Height height, in Point shared_secret)
     {
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
@@ -1182,7 +1200,7 @@ LOuter: while (1)
         // let the work fiber handle it next
         this.incoming_payments ~= IncomingPayment(seq_id, priv_nonce,
             peer_nonce, packet, payload, payment_hash, amount, height,
-            lock_height);
+            lock_height, shared_secret);
 
         return Result!PublicNonce(pub_nonce);
     }
