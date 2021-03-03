@@ -602,6 +602,11 @@ public class NetworkManager
         if (this.registry_client !is null)
         {
             foreach (key; this.required_peer_keys)
+            {
+                // Do not query the registry about ourself
+                if (key == this.validator_config.key_pair.address)
+                    continue;
+
                 taskman.runTask
                 ({
                     retry!
@@ -624,6 +629,7 @@ public class NetworkManager
                     },
                     )(taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
                 });
+            }
         }
 
         // actually just runs it once, but we need the scheduler to run first
