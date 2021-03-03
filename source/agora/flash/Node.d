@@ -18,12 +18,14 @@ import agora.common.Amount;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.Channel;
 import agora.flash.Config;
+import agora.flash.ControlAPI;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.Network;
@@ -38,11 +40,14 @@ import vibe.web.rest;
 import core.stdc.time;
 import core.time;
 
+import std.algorithm;
+import std.conv;
 import std.format;
+import std.range;
 import std.stdio;
 
 /// Ditto
-public abstract class FlashNode : FlashAPI
+public abstract class FlashNode : ControlFlashAPI
 {
     /// Schnorr key-pair belonging to this node
     protected const Pair kp;
@@ -90,6 +95,9 @@ public abstract class FlashNode : FlashAPI
 
     /// Flash network topology
     protected Network network;
+
+    /// hash of secret => Invoice
+    private Invoice[Hash] invoices;
 
     /***************************************************************************
 
@@ -571,5 +579,139 @@ public abstract class FlashNode : FlashAPI
 
             this.taskman.wait(0.msecs);  // yield
         }
+    }
+
+    ///
+    public override void start ()
+    {
+        this.startMonitoring();
+    }
+
+    ///
+    public override void beginCollaborativeClose (in Hash chan_id)
+    {
+        auto channel = chan_id in this.channels;
+        assert(channel !is null);
+        channel.beginCollaborativeClose();
+    }
+
+    ///
+    public override Hash openNewChannel (in Hash funding_utxo,
+        in Amount capacity, in uint settle_time, in Point peer_pk)
+    {
+        writefln("%s: openNewChannel(%s, %s, %s)", this.kp.V.prettify,
+            capacity, settle_time, peer_pk.prettify);
+
+        // todo: move to initialization stage!
+        auto peer = this.getFlashClient(peer_pk, Duration.init);
+        const pair_pk = this.kp.V + peer_pk;
+
+        // create funding, don't sign it yet as we'll share it first
+        auto funding_tx = createFundingTx(funding_utxo, capacity,
+            pair_pk);
+
+        const funding_tx_hash = hashFull(funding_tx);
+        const Hash chan_id = funding_tx_hash;
+        const num_peers = 2;
+
+        const ChannelConfig chan_conf =
+        {
+            gen_hash        : this.genesis_hash,
+            funder_pk       : this.kp.V,
+            peer_pk         : peer_pk,
+            pair_pk         : this.kp.V + peer_pk,
+            num_peers       : num_peers,
+            update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
+            funding_tx      : funding_tx,
+            funding_tx_hash : funding_tx_hash,
+            funding_utxo    : UTXO.getHash(funding_tx.hashFull(), 0),
+            capacity        : capacity,
+            settle_time     : settle_time,
+        };
+
+        PrivateNonce priv_nonce = genPrivateNonce();
+        PublicNonce pub_nonce = priv_nonce.getPublicNonce();
+
+        auto result = peer.openChannel(chan_conf, pub_nonce);
+        assert(result.error == ErrorCode.None, result.to!string);
+
+        auto channel = new Channel(chan_conf, this.kp, priv_nonce, result.value,
+            peer, this.engine, this.taskman, &this.agora_node.putTransaction,
+            &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
+            &this.onUpdateComplete);
+        this.channels[chan_id] = channel;
+
+        return chan_id;
+    }
+
+    ///
+    public override void waitChannelOpen (in Hash chan_id)
+    {
+        auto channel = chan_id in this.channels;
+        assert(channel !is null);
+
+        const state = channel.getState();
+        if (state >= ChannelState.PendingClose)
+        {
+            writefln("%s: Error: waitChannelOpen(%s) called on channel state %s",
+                this.kp.V.prettify, chan_id.prettify, state);
+            return;
+        }
+
+        while (!channel.isOpen())
+            this.taskman.wait(100.msecs);
+    }
+
+    ///
+    public override Invoice createNewInvoice (in Amount amount,
+        in time_t expiry, in string description = null)
+    {
+        writefln("%s: createNewInvoice(%s, %s, %s)", this.kp.V.prettify,
+            amount, expiry, description);
+
+        auto pair = createInvoice(this.kp.V, amount, expiry, description);
+        this.invoices[pair.invoice.payment_hash] = pair.invoice;
+        this.secrets[pair.invoice.payment_hash] = pair.secret;
+
+        return pair.invoice;
+    }
+
+    /// Finds a payment path for the invoice and attempts to pay it
+    public override void payInvoice (in Invoice invoice)
+    {
+        if (!this.isValidInvoice(invoice))
+            assert(0);  // todo: should just reject it when we write test for it
+
+        // todo: should not be hardcoded.
+        // todo: isn't the payee supposed to set this?
+        // the lock height for the end node. The first hop will have the biggest
+        // lock height, gradually reducing with each hop until destination node.
+        Height end_lock_height = Height(this.last_block_height + 100);
+
+        // find a route
+        // todo: not implemented properly yet as capacity, individual balances, and
+        // fees are not taken into account yet. Only up to two channels assumed here.
+        auto path = this.network.getPaymentPath(this.kp.V, invoice.destination,
+            invoice.amount);
+        Amount total_amount;
+        Height use_lock_height;
+
+        Point[] cur_shared_secrets;
+        auto packet = createOnionPacket(invoice.payment_hash, end_lock_height,
+            invoice.amount, path, total_amount, use_lock_height, cur_shared_secrets);
+        this.shared_secrets[invoice.payment_hash] = cur_shared_secrets.reverse;
+        this.payment_path[invoice.payment_hash] = path;
+        this.paymentRouter(path.front.chan_id, invoice.payment_hash,
+            total_amount, use_lock_height, packet);
+    }
+
+    ///
+    private bool isValidInvoice (in Invoice invoice)
+    {
+        // paying to ourself doesn't make sense
+        if (invoice.destination == this.kp.V)
+            return false;
+
+        return true;
     }
 }
