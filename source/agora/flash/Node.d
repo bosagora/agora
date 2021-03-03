@@ -17,6 +17,7 @@ import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
 import agora.common.Task;
 import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
@@ -46,6 +47,215 @@ import std.format;
 import std.range;
 import std.stdio;
 
+/// A thin Flash node which itself is not a FullNode / Validator but instead
+/// interacts with another FullNode / Validator for queries to the blockchain.
+public abstract class ThinFlashNode : FlashNode
+{
+    /// random agora node (for sending tx's)
+    protected FullNodeAPI agora_node;
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            kp = The key-pair of this node
+            genesis_hash = the hash of the genesis block to use
+            taskman = the task manager ot use
+            agora_address = IP address of an Agora node to monitor the
+                blockchain and publish new on-chain transactions to it.
+
+    ***************************************************************************/
+
+    public this (const Pair kp, Hash genesis_hash, TaskManager taskman,
+        string agora_address)
+    {
+        Duration timeout;  // infinite timeout (todo: fixup)
+        this.agora_node = this.getAgoraClient(agora_address, timeout);
+        super(kp, genesis_hash, taskman);
+    }
+
+    /***************************************************************************
+
+        Start monitoring the blockchain for any new externalized blocks.
+
+    ***************************************************************************/
+
+    public void start ()
+    {
+        // todo: 200 msecs is ok only in tests
+        // todo: should additionally register as pushBlock() listener
+        this.taskman.setTimer(200.msecs, &this.monitorBlockchain, Periodic.Yes);
+    }
+
+    /***************************************************************************
+
+        Monitors the blockchain for any new externalized blocks.
+
+        If a funding / closing / trigger / update / settlement transaction
+        belong to a channel is detected, it will trigger that channel's
+        handler for this event.
+
+        This enables changing the channel's state from open to closed.
+
+        TODO: replace by having FullNode inherit from FlashNode and getting
+        everything block-related for free.
+
+        TODO: Must check HTLC timeouts in any of the channels, and then
+        propose an update via proposeUpdate().
+
+    ***************************************************************************/
+
+    private void monitorBlockchain ()
+    {
+        while (1)
+        {
+            auto latest_height = this.agora_node.getBlockHeight();
+            if (this.last_block_height < latest_height)
+            {
+                auto next_block = this.agora_node.getBlocksFrom(
+                    this.last_block_height + 1, 1)[0];
+
+                foreach (channel; this.channels)
+                    channel.onBlockExternalized(next_block);
+
+                this.last_block_height++;
+            }
+
+            this.taskman.wait(0.msecs);  // yield
+        }
+    }
+
+    /***************************************************************************
+
+        Get an instance of an Agora client.
+
+        Params:
+            address = The address (IPv4, IPv6, hostname) of the Agora node.
+            timeout = the timeout duration to use for requests.
+
+        Returns:
+            the Agora FullNode client
+
+    ***************************************************************************/
+
+    protected FullNodeAPI getAgoraClient (Address address, Duration timeout)
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!FullNodeAPI(settings);
+    }
+
+    /***************************************************************************
+
+        Send the transaction via the connected agora node.
+
+        Params:
+            tx = the transaction to send
+
+    ***************************************************************************/
+
+    protected override void putTransaction (Transaction tx)
+    {
+        this.agora_node.putTransaction(tx);
+    }
+}
+
+/// A FullNode / Validator should embed this class if they enabled Flash
+public class AgoraFlashNode : FlashNode
+{
+    /// random agora node (for sending tx's)
+    protected FullNodeAPI agora_node;
+
+    /// get a Flash client for the given public key
+    protected FlashAPI delegate (in Point peer_pk, Duration timeout)
+        flashClientGetter;
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            kp = The key-pair of this node
+            genesis_hash = the hash of the genesis block to use
+            taskman = the task manager ot use
+            agora_address = IP address of an Agora node to monitor the
+                blockchain and publish new on-chain transactions to it.
+
+    ***************************************************************************/
+
+    public this (const Pair kp, Hash genesis_hash, TaskManager taskman,
+        FullNodeAPI agora_node,
+        FlashAPI delegate (in Point, Duration) flashClientGetter)
+    {
+        this.agora_node = agora_node;
+        this.flashClientGetter = flashClientGetter;
+        super(kp, genesis_hash, taskman);
+    }
+
+    /// No-op, FullNode will notify us of externalized blocks
+    public void start ()
+    {
+    }
+
+    /// Called by a FullNode once a block has been externalized
+    public void onExternalizedBlock (const ref Block block) @safe
+    {
+        this.last_block_height = block.header.height;
+
+        foreach (channel; this.channels)
+            channel.onBlockExternalized(block);
+    }
+
+    /***************************************************************************
+
+        Send the transaction via the connected agora node.
+
+        Params:
+            tx = the transaction to send
+
+    ***************************************************************************/
+
+    protected override void putTransaction (Transaction tx)
+    {
+        this.agora_node.putTransaction(tx);
+    }
+
+    /***************************************************************************
+
+        Get an instance of a Flash client for the given public key.
+
+        TODO: What if we don't have an IP mapping?
+
+        Params:
+            peer_pk = the public key of the Flash node.
+            timeout = the timeout duration to use for requests.
+
+        Returns:
+            the Flash client
+
+    ***************************************************************************/
+
+    protected override FlashAPI getFlashClient (in Point peer_pk,
+        Duration timeout) @trusted
+    {
+        if (auto peer = peer_pk in this.known_peers)
+            return *peer;
+
+        auto peer = this.flashClientGetter(peer_pk, timeout);
+        this.known_peers[peer_pk] = peer;
+        peer.gossipChannelsOpen(this.known_channels.values);
+
+        return peer;
+    }
+}
+
 /// Ditto
 public abstract class FlashNode : ControlFlashAPI
 {
@@ -54,9 +264,6 @@ public abstract class FlashNode : ControlFlashAPI
 
     /// Hash of the genesis block
     protected const Hash genesis_hash;
-
-    /// random agora node
-    protected FullNodeAPI agora_node;
 
     /// Execution engine
     protected Engine engine;
@@ -101,22 +308,19 @@ public abstract class FlashNode : ControlFlashAPI
 
     /***************************************************************************
 
-        Get an instance of an Agora client.
+        Constructor
 
         Params:
             kp = The key-pair of this node
             genesis_hash = the hash of the genesis block to use
             taskman = the task manager ot use
-            agora_address = IP address of an Agora node to monitor the
-                blockchain and publish new on-chain transactions to it.
 
         Returns:
             the Agora FullNode client
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, TaskManager taskman,
-        string agora_address)
+    public this (const Pair kp, Hash genesis_hash, TaskManager taskman)
     {
         this.genesis_hash = genesis_hash;
         const TestStackMaxTotalSize = 16_384;
@@ -124,8 +328,6 @@ public abstract class FlashNode : ControlFlashAPI
         this.engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
         this.kp = kp;
         this.taskman = taskman;
-        Duration timeout;
-        this.agora_node = this.getAgoraClient(agora_address, timeout);
         this.network = new Network((Hash chan_id) {
             if (auto chan = chan_id in this.channels)
                 return *chan;
@@ -135,36 +337,10 @@ public abstract class FlashNode : ControlFlashAPI
 
     /***************************************************************************
 
-        Get an instance of an Agora client.
+        Get an instance of a Flash client for the given public key.
 
         Params:
-            address = The address (IPv4, IPv6, hostname) of the Agora node.
-            timeout = the timeout duration to use for requests.
-
-        Returns:
-            the Agora FullNode client
-
-    ***************************************************************************/
-
-    protected FullNodeAPI getAgoraClient (Address address, Duration timeout)
-    {
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-
-        return new RestInterfaceClient!FullNodeAPI(settings);
-    }
-
-    /***************************************************************************
-
-        Get an instance of a Flash client.
-
-        Params:
-            address = The address (IPv4, IPv6, hostname) of the Flash node.
+            peer_pk = the public key of the Flash node.
             timeout = the timeout duration to use for requests.
 
         Returns:
@@ -172,44 +348,12 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    protected FlashAPI getFlashClient (in Point peer_pk, Duration timeout)
-    {
-        if (auto peer = peer_pk in this.known_peers)
-            return *peer;
-
-        import vibe.http.client;
-        import std.conv : to;
-
-        auto settings = new RestInterfaceSettings;
-        // todo: this is obviously wrong, need proper connection handling later
-        settings.baseURL = URL(peer_pk.to!string);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-
-        auto peer = new RestInterfaceClient!FlashAPI(settings);
-        this.known_peers[peer_pk] = peer;
-        peer.gossipChannelsOpen(this.known_channels.values);
-
-        return peer;
-    }
-
-    /***************************************************************************
-
-        Start monitoring the blockchain for any new externalized blocks.
-
-    ***************************************************************************/
-
-    public void startMonitoring ()
-    {
-        // todo: 200 msecs is ok only in tests
-        // todo: should additionally register as pushBlock() listener
-        this.taskman.setTimer(200.msecs, &this.monitorBlockchain, Periodic.Yes);
-    }
+    protected abstract FlashAPI getFlashClient (in Point peer_pk,
+        Duration timeout) @trusted;
 
     /// See `FlashAPI.openChannel`
-    public override Result!PublicNonce openChannel (in ChannelConfig chan_conf,
-        in PublicNonce peer_nonce)
+    public override Result!PublicNonce openChannel (
+        /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
     {
         // todo: verify `chan_conf.funding_utxo`
         writefln("%s: openChannel()", this.kp.V.flashPrettify);
@@ -242,7 +386,7 @@ public abstract class FlashNode : ControlFlashAPI
 
         PrivateNonce priv_nonce = genPrivateNonce();
         auto channel = new Channel(chan_conf, this.kp, priv_nonce, peer_nonce,
-            peer, this.engine, this.taskman, &this.agora_node.putTransaction,
+            peer, this.engine, this.taskman, &this.putTransaction,
             &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
             &this.onUpdateComplete);
 
@@ -259,9 +403,13 @@ public abstract class FlashNode : ControlFlashAPI
         return Result!PublicNonce(pub_nonce);
     }
 
+    /// Overriden by ThinFlashNode or FullNode
+    protected abstract void putTransaction (Transaction tx);
+
     /// See `FlashAPI.closeChannel`
-    public override Result!Point closeChannel (in Hash chan_id,
-        in uint seq_id, in Point peer_nonce, in Amount fee )
+    public override Result!Point closeChannel (/* in */ Hash chan_id,
+        /* in */ uint seq_id, /* in */ Point peer_nonce, /* in */ Amount fee )
+        @trusted
     {
         if (auto channel = chan_id in this.channels)
             return channel.requestCloseChannel(seq_id, peer_nonce, fee);
@@ -319,8 +467,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.requestCloseSig`
-    public override Result!Signature requestCloseSig (in Hash chan_id,
-        in uint seq_id)
+    public override Result!Signature requestCloseSig (/* in */ Hash chan_id,
+        /* in */ uint seq_id) @trusted
     {
         if (auto channel = chan_id in this.channels)
             return channel.requestCloseSig(seq_id);
@@ -330,7 +478,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.getChannelState`
-    public override Result!ChannelState getChannelState (in Hash chan_id)
+    public override Result!ChannelState getChannelState (/* in */ Hash chan_id)
+        @trusted
     {
         if (auto channel = chan_id in this.channels)
             return Result!ChannelState(channel.getState());
@@ -340,8 +489,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.requestSettleSig`
-    public override Result!Signature requestSettleSig (in Hash chan_id,
-        in uint seq_id)
+    public override Result!Signature requestSettleSig (/* in */ Hash chan_id,
+        /* in */ uint seq_id) @trusted
     {
         if (auto channel = chan_id in this.channels)
             return channel.onRequestSettleSig(seq_id);
@@ -351,8 +500,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.requestUpdateSig`
-    public override Result!Signature requestUpdateSig (in Hash chan_id,
-        in uint seq_id)
+    public override Result!Signature requestUpdateSig (/* in */ Hash chan_id,
+        /* in */ uint seq_id) @trusted
     {
         if (auto channel = chan_id in this.channels)
             return channel.onRequestUpdateSig(seq_id);
@@ -362,8 +511,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.confirmChannelUpdate`
-    public override void confirmChannelUpdate (in Hash chan_id,
-        in uint seq_id)
+    public override void confirmChannelUpdate (/* in */ Hash chan_id,
+        /* in */ uint seq_id) @trusted
     {
         if (auto channel = chan_id in this.channels)
             return channel.onConfirmedChannelUpdate(seq_id);
@@ -372,10 +521,11 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.proposePayment`
-    public override Result!PublicNonce proposePayment (in Hash chan_id,
-        in uint seq_id, in Hash payment_hash, in Amount amount,
-        in Height lock_height, in OnionPacket packet, in PublicNonce peer_nonce,
-        in Height height)
+    public override Result!PublicNonce proposePayment (/* in */ Hash chan_id,
+        /* in */ uint seq_id, /* in */ Hash payment_hash,
+        /* in */ Amount amount, /* in */ Height lock_height,
+        /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
+        /* in */ Height height) @trusted
     {
         auto channel = chan_id in this.channels;
         if (channel is null)
@@ -402,9 +552,9 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.proposeUpdate`
-    public override Result!PublicNonce proposeUpdate (in Hash chan_id,
-        in uint seq_id, in Hash[] secrets, in Hash[] rev_htlcs,
-        in PublicNonce peer_nonce, in Height block_height)
+    public override Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
+        /* in */ uint seq_id, /* in */ Hash[] secrets, /* in */ Hash[] rev_htlcs,
+        /* in */ PublicNonce peer_nonce, /* in */ Height block_height) @trusted
     {
         auto channel = chan_id in this.channels;
         if (channel is null)
@@ -421,7 +571,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.reportPaymentError`
-    public override void reportPaymentError (in Hash chan_id, in OnionError err)
+    public override void reportPaymentError (/* in */ Hash chan_id,
+        /* in */ OnionError err)
     {
         import std.algorithm : map;
         import std.algorithm.searching : canFind;
@@ -504,7 +655,8 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    protected void onUpdateComplete (in Hash[] secrets, in Hash[] rev_htlcs)
+    protected void onUpdateComplete (in Hash[] secrets,
+        in Hash[] rev_htlcs)
     {
         foreach (chan_id, channel; this.channels)
         {
@@ -530,8 +682,9 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    protected void paymentRouter (in Hash chan_id, in Hash payment_hash,
-        in Amount amount, in Height lock_height, in OnionPacket packet)
+    protected void paymentRouter (in Hash chan_id,
+        in Hash payment_hash, in Amount amount,
+        in Height lock_height, in OnionPacket packet)
     {
         if (auto channel = chan_id in this.channels)
             return channel.queueNewPayment(payment_hash, amount, lock_height,
@@ -543,52 +696,8 @@ public abstract class FlashNode : ControlFlashAPI
             ErrorCode.InvalidChannelID);
     }
 
-    /***************************************************************************
-
-        Monitors the blockchain for any new externalized blocks.
-
-        If a funding / closing / trigger / update / settlement transaction
-        belong to a channel is detected, it will trigger that channel's
-        handler for this event.
-
-        This enables changing the channel's state from open to closed.
-
-        TODO: replace by having FullNode inherit from FlashNode and getting
-        everything block-related for free.
-
-        TODO: Must check HTLC timeouts in any of the channels, and then
-        propose an update via proposeUpdate().
-
-    ***************************************************************************/
-
-    private void monitorBlockchain ()
-    {
-        while (1)
-        {
-            auto latest_height = this.agora_node.getBlockHeight();
-            if (this.last_block_height < latest_height)
-            {
-                auto next_block = this.agora_node.getBlocksFrom(
-                    this.last_block_height + 1, 1)[0];
-
-                foreach (channel; this.channels)
-                    channel.onBlockExternalized(next_block);
-
-                this.last_block_height++;
-            }
-
-            this.taskman.wait(0.msecs);  // yield
-        }
-    }
-
     ///
-    public override void start ()
-    {
-        this.startMonitoring();
-    }
-
-    ///
-    public override void beginCollaborativeClose (in Hash chan_id)
+    public override void beginCollaborativeClose (/* in */ Hash chan_id)
     {
         auto channel = chan_id in this.channels;
         assert(channel !is null);
@@ -596,8 +705,9 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    public override Hash openNewChannel (in Hash funding_utxo,
-        in Amount capacity, in uint settle_time, in Point peer_pk)
+    public override Hash openNewChannel (/* in */ Hash funding_utxo,
+        /* in */ Amount capacity, /* in */ uint settle_time,
+        /* in */ Point peer_pk)
     {
         writefln("%s: openNewChannel(%s, %s, %s)", this.kp.V.flashPrettify,
             capacity, settle_time, peer_pk.flashPrettify);
@@ -632,11 +742,11 @@ public abstract class FlashNode : ControlFlashAPI
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto result = peer.openChannel(chan_conf, pub_nonce);
+        auto result = peer.openChannel(cast(ChannelConfig)chan_conf, pub_nonce);
         assert(result.error == ErrorCode.None, result.to!string);
 
         auto channel = new Channel(chan_conf, this.kp, priv_nonce, result.value,
-            peer, this.engine, this.taskman, &this.agora_node.putTransaction,
+            peer, this.engine, this.taskman, &this.putTransaction,
             &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
             &this.onUpdateComplete);
         this.channels[chan_id] = channel;
@@ -645,7 +755,7 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    public override void waitChannelOpen (in Hash chan_id)
+    public override void waitChannelOpen (/* in */ Hash chan_id)
     {
         auto channel = chan_id in this.channels;
         assert(channel !is null);
@@ -663,8 +773,8 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    public override Invoice createNewInvoice (in Amount amount,
-        in time_t expiry, in string description = null)
+    public override Invoice createNewInvoice (/* in */ Amount amount,
+        /* in */ time_t expiry, /* in */ string description = null)
     {
         writefln("%s: createNewInvoice(%s, %s, %s)", this.kp.V.flashPrettify,
             amount, expiry, description);
@@ -677,7 +787,7 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// Finds a payment path for the invoice and attempts to pay it
-    public override void payInvoice (in Invoice invoice)
+    public override void payInvoice (/* in */ Invoice invoice)
     {
         if (!this.isValidInvoice(invoice))
             assert(0);  // todo: should just reject it when we write test for it
@@ -706,7 +816,7 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    private bool isValidInvoice (in Invoice invoice)
+    private bool isValidInvoice (/* in */ Invoice invoice)
     {
         // paying to ourself doesn't make sense
         if (invoice.destination == this.kp.V)
