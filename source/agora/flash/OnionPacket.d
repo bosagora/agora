@@ -338,6 +338,7 @@ public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
         our_key = the target node's private key
         ephemeral_pk = the ephemeral public key
         payload = on success will contain the decrypted payload
+        shared_secret = secret used to decrypt the payload
 
     Returns:
         true if decryption and deserialization succeeded
@@ -345,17 +346,18 @@ public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
 *******************************************************************************/
 
 public bool decryptPayload (in EncryptedPayload encrypted,
-    in Scalar our_key, in Point ephemeral_pk, out Payload payload)
+    in Scalar our_key, in Point ephemeral_pk, out Payload payload,
+    out Point shared_secret)
 {
     if (encrypted.payload.length <= crypto_secretbox_MACBYTES)
         return false;
 
-    Point secret = generateSharedSecret(false, our_key, ephemeral_pk);
+    shared_secret = generateSharedSecret(false, our_key, ephemeral_pk);
 
     ubyte[] decrypted
         = new ubyte[](encrypted.payload.length - crypto_secretbox_MACBYTES);
     if (crypto_secretbox_open_easy(decrypted.ptr, encrypted.payload.ptr,
-        encrypted.payload.length, encrypted.nonce.ptr, secret[].ptr) != 0)
+        encrypted.payload.length, encrypted.nonce.ptr, shared_secret[].ptr) != 0)
     {
         log.info("Decrypting failed for key {} and ephemeral key {}",
             our_key, ephemeral_pk);
@@ -388,6 +390,14 @@ public bool decryptPayload (in EncryptedPayload encrypted,
         log.info("Failed to deserialize decrtyped payload: {}", ex);
         return false;
     }
+}
+
+/// Ditto
+public bool decryptPayload (in EncryptedPayload encrypted,
+    in Scalar our_key, in Point ephemeral_pk, out Payload payload)
+{
+    Point shared_secret;
+    return decryptPayload (encrypted, our_key, ephemeral_pk, payload, shared_secret);
 }
 
 ///
