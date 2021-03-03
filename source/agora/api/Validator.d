@@ -46,6 +46,7 @@ import agora.common.crypto.Key;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
+import agora.flash.API;
 static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
@@ -56,6 +57,12 @@ import vibe.web.rest;
 ///
 public import agora.api.FullNode;
 
+/// Used with `runner.d`
+@path("/")
+@serializationPolicy!(Base64ArrayPolicy)
+public interface FlashValidatorAPI : API, ExtendedFlashAPI
+{
+}
 
 /*******************************************************************************
 

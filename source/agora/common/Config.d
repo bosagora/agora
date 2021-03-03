@@ -93,6 +93,9 @@ public struct Config
     /// The validator config
     public ValidatorConfig validator;
 
+    /// Flash configuration
+    public FlashConfig flash;
+
     /// The administrator interface config
     public AdminConfig admin;
 
@@ -107,6 +110,23 @@ public struct Config
 
     /// Event handler config
     public EventHandlerConfig event_handlers;
+}
+
+/// Flash configuration
+public struct FlashConfig
+{
+    /// Whether or not this node should support the Flash API
+    public bool enabled;
+
+    /// In testing mode the node will open arbitrary channels with other nodes
+    /// and send & receive Flash transactions. If `true` then
+    /// `NodeConfig.testing` must also be true or else configuration will fail.
+    public bool testing = false;
+
+    /// The seed to use for the keypair of this Flash node. If this value is
+    /// empty and `enabled` is true then the same key-pair will be used as
+    /// the one set in `validator.key_pair`.
+    public immutable KeyPair key_pair;
 }
 
 /// Node config
@@ -366,12 +386,16 @@ private const(string)[] parseSequence (string section, in CommandLine cmdln,
 /// ditto
 private Config parseConfigImpl (in CommandLine cmdln, Node root)
 {
+    auto validator = parseValidatorConfig("validator" in root, cmdln);
+    auto node = parseNodeConfig("node" in root, cmdln);
+
     Config conf =
     {
         banman : parseBanManagerConfig("banman" in root, cmdln),
-        node : parseNodeConfig("node" in root, cmdln),
+        node : node,
         consensus: parseConsensusConfig("consensus" in root, cmdln),
-        validator : parseValidatorConfig("validator" in root, cmdln),
+        validator : validator,
+        flash : parseFlashConfig("flash" in root, cmdln, node, validator),
         network : assumeUnique(parseSequence("network", cmdln, root, true)),
         dns_seeds : assumeUnique(parseSequence("dns", cmdln, root, true)),
         logging: parseLoggingSection("logging" in root, cmdln),
@@ -559,6 +583,32 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
         addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
         recurring_enrollment : recurring_enrollment,
         preimage_reveal_interval : preimage_reveal_interval,
+    };
+    return result;
+}
+
+/// Parse the flash config section
+private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
+    in NodeConfig node_config, in ValidatorConfig validator_config)
+{
+    const enabled = get!(bool, "validator", "enabled")(cmdln, node);
+    if (!enabled)
+        return FlashConfig(false);
+
+    immutable KeyPair kp = validator_config.enabled
+        ? validator_config.key_pair
+        : KeyPair.fromSeed(Seed.fromString(get!(string, "flash", "seed")(
+            cmdln, node)));
+
+    const bool testing = opt!(bool, "flash", "testing")(cmdln, node);
+    if (testing)
+        enforce(node_config.testing,
+            "Cannot enable 'flash.testing' if 'node.testing' is disabled");
+
+    FlashConfig result = {
+        enabled: true,
+        testing: testing,
+        key_pair: kp,
     };
     return result;
 }

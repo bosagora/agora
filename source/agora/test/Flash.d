@@ -71,8 +71,8 @@ public interface TestFlashAPI : ControlFlashAPI
     public Transaction getLastSettleTx (in Hash chan_id);
 }
 
-///
-public class TestFlashNode : FlashNode, TestFlashAPI
+/// A thin localrest flash node which itself is not a FullNode / Validator
+public class TestFlashNode : ThinFlashNode, TestFlashAPI
 {
     ///
     protected Registry!TestAPI* agora_registry;
@@ -101,7 +101,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
 
     ///
     protected override TestFlashAPI getFlashClient (in Point peer_pk,
-        Duration timeout)
+        Duration timeout) @trusted
     {
         if (auto peer = peer_pk in this.known_peers)
         {

@@ -47,7 +47,7 @@ public interface ControlFlashAPI : FlashAPI
 
     ***************************************************************************/
 
-    public void beginCollaborativeClose (in Hash chan_id);
+    public void beginCollaborativeClose (/* in */ Hash chan_id);
 
     /***************************************************************************
 
@@ -62,8 +62,9 @@ public interface ControlFlashAPI : FlashAPI
 
     ***************************************************************************/
 
-    public Hash openNewChannel (in Hash funding_utxo, in Amount capacity,
-        in uint settle_time, in Point peer_pk);
+    public Hash openNewChannel (/* in */ Hash funding_utxo,
+        /* in */ Amount capacity, /* in */ uint settle_time,
+        /* in */ Point peer_pk);
 
     /***************************************************************************
 
@@ -79,7 +80,7 @@ public interface ControlFlashAPI : FlashAPI
 
     ***************************************************************************/
 
-    public void waitChannelOpen (in Hash chan_id);
+    public void waitChannelOpen (/* in */ Hash chan_id);
 
     /***************************************************************************
 
@@ -97,8 +98,8 @@ public interface ControlFlashAPI : FlashAPI
 
     ***************************************************************************/
 
-    public Invoice createNewInvoice (in Amount amount,
-        in time_t expiry, in string description = null);
+    public Invoice createNewInvoice (/* in */ Amount amount,
+        /* in */ time_t expiry, /* in */ string description = null);
 
     /***************************************************************************
 
@@ -111,5 +112,5 @@ public interface ControlFlashAPI : FlashAPI
 
     ***************************************************************************/
 
-    public void payInvoice (in Invoice invoice);
+    public void payInvoice (/* in */ Invoice invoice);
 }

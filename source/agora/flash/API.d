@@ -17,12 +17,31 @@ import agora.common.Amount;
 import agora.common.Types;
 import agora.crypto.ECC;
 import agora.flash.Config;
+import agora.flash.Invoice;
 import agora.flash.OnionPacket;
 import agora.flash.Types;
 
+import vibe.data.serialization;
+import vibe.http.common;
+import vibe.web.rest;
+
+/// The extended Flash API supports higher-level wallet-like constructs
+/// such as sharing invoices with another party. This strictly does not
+/// need to inherit FlashAPI, only used for convenience & testing.
+@path("/")
+@serializationPolicy!(Base64ArrayPolicy)
+public interface ExtendedFlashAPI : FlashAPI
+{
+@safe:
+    void receiveInvoice (Invoice invoice);
+}
+
 /// This is the API that each Flash node must implement.
+@path("/")
+@serializationPolicy!(Base64ArrayPolicy)
 public interface FlashAPI
 {
+@safe:
     /***************************************************************************
 
         Requests opening a channel with this Flash node.
@@ -38,8 +57,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce openChannel (in ChannelConfig chan_conf,
-        in PublicNonce peer_nonce);
+    public Result!PublicNonce openChannel (/* in */ ChannelConfig chan_conf,
+        /* in */ PublicNonce peer_nonce);
 
     /***************************************************************************
 
@@ -72,8 +91,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Point closeChannel (in Hash chan_id, in uint seq_id,
-        in Point peer_nonce, in Amount fee);
+    public Result!Point closeChannel (/* in */ Hash chan_id,
+        /* in */ uint seq_id, /* in */ Point peer_nonce, /* in */ Amount fee);
 
     /***************************************************************************
 
@@ -111,7 +130,7 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!ChannelState getChannelState (in Hash chan_id);
+    public Result!ChannelState getChannelState (/* in */ Hash chan_id);
 
     /***************************************************************************
 
@@ -141,9 +160,11 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce proposePayment (in Hash chan_id, in uint seq_id,
-        in Hash payment_hash, in Amount amount, in Height lock_height,
-        in OnionPacket packet, in PublicNonce peer_nonce, in Height height);
+    public Result!PublicNonce proposePayment (/* in */ Hash chan_id,
+        /* in */ uint seq_id, /* in */ Hash payment_hash,
+        /* in */ Amount amount, /* in */ Height lock_height,
+        /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
+        /* in */ Height height);
 
     /***************************************************************************
 
@@ -177,9 +198,10 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce proposeUpdate (in Hash chan_id, in uint seq_id,
-        in Hash[] secrets, in Hash[] rev_htlcs, in PublicNonce peer_nonce,
-        in Height block_height);
+    public Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
+        /* in */ uint seq_id, /* in */ Hash[] secrets,
+        /* in */ Hash[] rev_htlcs, /* in */ PublicNonce peer_nonce,
+        /* in */ Height block_height);
 
     /***************************************************************************
 
@@ -199,7 +221,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestSettleSig (in Hash chan_id, in uint seq_id);
+    public Result!Signature requestSettleSig (/* in */ Hash chan_id,
+        /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -223,7 +246,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestUpdateSig (in Hash chan_id, in uint seq_id);
+    public Result!Signature requestUpdateSig (/* in */ Hash chan_id,
+        /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -238,7 +262,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public void confirmChannelUpdate (in Hash chan_id, in uint seq_id);
+    public void confirmChannelUpdate (/* in */ Hash chan_id,
+        /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -257,7 +282,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestCloseSig (in Hash chan_id, in uint seq_id);
+    public Result!Signature requestCloseSig (/* in */ Hash chan_id,
+        /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -269,5 +295,6 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public void reportPaymentError (in Hash chan_id, in OnionError err);
+    public void reportPaymentError (/* in */ Hash chan_id,
+        /* in */ OnionError err);
 }
