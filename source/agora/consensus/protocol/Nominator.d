@@ -676,9 +676,8 @@ extern(D):
 
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         envelope.signature = sign(this.schnorr_pair, challenge);
-        log.trace("SIGN Envelope signature {} \nfor public key {} \n" ~
-            "envelope {}", envelope.signature, this.node_public_key,
-            scpPrettify(&envelope), challenge);
+        log.trace("SIGN Envelope signature {}: {}", envelope.signature,
+                  scpPrettify(&envelope));
     }
 
     /***************************************************************************
