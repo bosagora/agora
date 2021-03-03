@@ -476,8 +476,8 @@ public abstract class FlashNode : FlashAPI
         }
         else if (error)
         {
-            foreach (id, channel; this.channels)
-                channel.learnSecrets([], [payment_hash], this.last_block_height);
+            foreach (id, chan; this.channels)
+                chan.learnSecrets([], [payment_hash], this.last_block_height);
             this.reportPaymentError(chan_id, OnionError(Hash.init,
                 payment_hash, chan_id, error));
         }
