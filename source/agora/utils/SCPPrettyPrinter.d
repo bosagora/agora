@@ -36,6 +36,8 @@ import scpd.Cpp;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : StellarHash = Hash;
 
+import Ocean = ocean.text.convert.Formatter;
+
 import std.algorithm;
 import std.format;
 import std.range;
@@ -61,7 +63,8 @@ public struct SCPBallotFmt
 {
     private const(SCPBallot) ballot;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @trusted nothrow
     {
         try
         {
@@ -99,7 +102,7 @@ private struct QuorumFmt
     private const(GetQSetDg) getQSet;
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @trusted nothrow
+        const scope @trusted nothrow
     {
         try
         {
@@ -132,7 +135,8 @@ private struct PrepareFmt
     private const(SCPStatement._pledges_t._prepare_t) prepare;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @safe nothrow
     {
         try
         {
@@ -170,7 +174,8 @@ private struct ConfirmFmt
     private const(SCPStatement._pledges_t._confirm_t) confirm;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @safe nothrow
     {
         try
         {
@@ -195,7 +200,8 @@ private struct ExternalizeFmt
     private const(SCPStatement._pledges_t._externalize_t) externalize;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @safe nothrow
     {
         try
         {
@@ -219,7 +225,7 @@ private struct SCPNominationFmt
     private const(GetQSetDg) getQSet;
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        scope @trusted nothrow
+        const scope @trusted nothrow
     {
         try
         {
@@ -266,7 +272,8 @@ private struct PledgesFmt
     private const(SCPStatement._pledges_t) pledges;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @trusted nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @trusted nothrow
     {
         try
         {
@@ -299,7 +306,8 @@ private struct SCPStatementFmt
     private const(SCPStatement) statement;
     private const(GetQSetDg) getQSet;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @safe nothrow
     {
         try
         {
@@ -352,7 +360,8 @@ private struct SCPEnvelopeFmt
 
     ***************************************************************************/
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const scope @safe nothrow
     {
         try
         {
@@ -368,7 +377,33 @@ private struct SCPEnvelopeFmt
     }
 }
 
-/// ditto
+/// Helper function for unittests
+version (unittest)
+    private void testAssert (T) (string expected, in T toFmt, int line = __LINE__)
+    {
+        import std.stdio;
+
+        auto phobosResult = format("%s", toFmt);
+        auto oceanResult = Ocean.format("{}", toFmt);
+
+        if (expected != phobosResult)
+        {
+            stderr.writeln("\tPhobos result doesn't match expected output");
+            stderr.writeln("\tTest is located at ", __FILE__, ":", line);
+            stderr.writeln("\tExpected: ", expected);
+            stderr.writeln("\tPhobos:   ", phobosResult);
+            stderr.writeln("\tOcean:    ", oceanResult);
+            assert(0);
+        }
+        if (expected != oceanResult)
+        {
+            stderr.writeln("\tOcean result doesn't match expected output (but Phobos do)");
+            stderr.writeln("\tExpected: ", expected);
+            stderr.writeln("\tOcean:    ", oceanResult);
+            assert(0);
+        }
+    }
+
 unittest
 {
     import agora.common.Config;
@@ -445,8 +480,7 @@ unittest
     // missing signature
     static immutable MissingSig = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xc048...6205, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...0000 }`;
 
-    assert(MissingSig == format("%s", scpPrettify(&env)),
-                         format("%s", scpPrettify(&env)));
+    testAssert(MissingSig, scpPrettify(&env));
 
     env.signature = pair.secret.sign(hashFull(0)[]);
 
@@ -462,29 +496,21 @@ unittest
     // 'preparedPrime' pointer is set
     static immutable PrepareRes4 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0xc048...6205, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prepPrime: { counter: 42, value: { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nc: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
 
-    assert(PrepareRes1 == format("%s", scpPrettify(&env)),
-                          format("%s", scpPrettify(&env)));
-
-    assert(PrepareRes1 == format("%s", scpPrettify(&env, null)),
-                          format("%s", scpPrettify(&env, null)));
-
-    assert(PrepareRes1 == format("%s", scpPrettify(&env, &getQSet)),
-                          format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(PrepareRes1, scpPrettify(&env));
+    testAssert(PrepareRes1, scpPrettify(&env, null));
+    testAssert(PrepareRes1, scpPrettify(&env, &getQSet));
 
     // add the quorum hash mapping, it should change the output
     qmap[quorum_hash] = qset;
-    assert(PrepareRes2 == format("%s", scpPrettify(&env, &getQSet)),
-                          format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(PrepareRes2, scpPrettify(&env, &getQSet));
 
     // set 'prepared' pointer
     env.statement.pledges.prepare_.prepared = &env.statement.pledges.prepare_.ballot;
-    assert(PrepareRes3 == format("%s", scpPrettify(&env, &getQSet)),
-                          format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(PrepareRes3, scpPrettify(&env, &getQSet));
 
     // set 'preparedPrime' pointer
     env.statement.pledges.prepare_.preparedPrime = &env.statement.pledges.prepare_.ballot;
-    assert(PrepareRes4 == format("%s", scpPrettify(&env, &getQSet)),
-                          format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(PrepareRes4, scpPrettify(&env, &getQSet));
 
     /** SCP CONFIRM */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
@@ -503,18 +529,15 @@ unittest
     // un-deserializable value
     static immutable ConfirmRes3 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0xc048...6205, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0af7...b5ab }`;
     // unknown hash
-    assert(ConfirmRes1 == format("%s", scpPrettify(&env, &getQSet)),
-                         format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(ConfirmRes1,scpPrettify(&env, &getQSet));
 
     // known hash
     env.statement.pledges.confirm_.quorumSetHash = quorum_hash;
-    assert(ConfirmRes2 == format("%s", scpPrettify(&env, &getQSet)),
-                         format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(ConfirmRes2,scpPrettify(&env, &getQSet));
 
     // un-deserializable value
     env.statement.pledges.confirm_.ballot = SCPBallot.init;
-    assert(ConfirmRes3 == format("%s", scpPrettify(&env, &getQSet)),
-                         format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(ConfirmRes3,scpPrettify(&env, &getQSet));
 
     // unknown hash
     static immutable ExtRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x0000...0000, quorum: <unknown> }, commit: { counter: 42, value: { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0af7...b5ab }`;
@@ -530,18 +553,15 @@ unittest
     env.statement.pledges.externalize_.nH = 100;
 
     // unknown hash
-    assert(ExtRes1 == format("%s", scpPrettify(&env, &getQSet)),
-                      format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(ExtRes1, scpPrettify(&env, &getQSet));
 
     // known hash
     env.statement.pledges.externalize_.commitQuorumSetHash = quorum_hash;
-    assert(ExtRes2 == format("%s", scpPrettify(&env, &getQSet)),
-                      format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(ExtRes2, scpPrettify(&env, &getQSet));
 
     // un-deserializable value
     env.statement.pledges.externalize_.commit = SCPBallot.init;
-    assert(ExtRes3 == format("%s", scpPrettify(&env, &getQSet)),
-                      format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(ExtRes3, scpPrettify(&env, &getQSet));
 
     // unknown hash
     static immutable NomRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Nominate { qset: { hash: 0x0000...0000, quorum: <unknown> }, votes: [{ tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }], accepted: [{ tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb3aa...873b], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }] } }, sig: 0x0af7...b5ab }`;
@@ -560,11 +580,9 @@ unittest
     env.statement.pledges.nominate_.accepted.push_back(value);
 
     // unknown hash
-    assert(NomRes1 == format("%s", scpPrettify(&env, &getQSet)),
-                      format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(NomRes1, scpPrettify(&env, &getQSet));
 
     // known hash
     env.statement.pledges.nominate_.quorumSetHash = quorum_hash;
-    assert(NomRes2 == format("%s", scpPrettify(&env, &getQSet)),
-                      format("%s", scpPrettify(&env, &getQSet)));
+    testAssert(NomRes2, scpPrettify(&env, &getQSet));
 }
