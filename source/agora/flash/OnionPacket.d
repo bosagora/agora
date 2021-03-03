@@ -512,3 +512,49 @@ public struct OnionError
     /// Error code
     ErrorCode err;
 }
+
+/*******************************************************************************
+
+    Obfuscate/deobfuscate an OnionError with the given secret.
+
+    Params:
+        error = Error to obfuscate/deobfuscate
+        secret = Shared secret
+
+    Returns:
+        Obfuscated/deobfuscated OnionError
+
+*******************************************************************************/
+
+public OnionError obfuscate (OnionError error, Point secret) @trusted
+{
+    import libsodium.crypto_stream_chacha20;
+
+    const key = hashFull(secret);
+    assert(key[].length >= crypto_stream_chacha20_KEYBYTES);
+    assert(error.payment_hash[].length >= crypto_stream_chacha20_NONCEBYTES);
+
+    ubyte[OnionError.sizeof] stream;
+    crypto_stream_chacha20(stream.ptr, stream.length, error.payment_hash[].ptr, key[].ptr);
+    // Don't obfuscate payment_hash
+    stream[OnionError.payment_hash.offsetof ..
+            OnionError.payment_hash.offsetof + OnionError.payment_hash.sizeof] = 0;
+
+    ubyte* obfuscated_array = cast(ubyte*) &error;
+    foreach (idx; 0 .. OnionError.sizeof)
+        obfuscated_array[idx] ^= stream[idx];
+    return error;
+}
+
+unittest
+{
+    auto org = OnionError(hashFull(1), hashFull(2),
+        hashFull(3), ErrorCode.LockTooLarge);
+    const secret = Pair.random.V;
+
+    auto obfuscated = org.obfuscate(secret);
+    assert(org != obfuscated);
+    assert(org.payment_hash == obfuscated.payment_hash);
+    auto deobfuscated = obfuscated.obfuscate(secret);
+    assert(org == deobfuscated);
+}
