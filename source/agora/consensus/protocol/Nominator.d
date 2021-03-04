@@ -127,6 +127,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Enrollment manager
     public EnrollmentManager enroll_man;
 
+    /// Used as "prev_value" when nominating
+    private const Value empty_value;
+
     /// Delegate called when node's own nomination is invalid
     public extern (D) void delegate (in ConsensusData data, in string msg)
         @safe onInvalidNomination;
@@ -156,6 +159,7 @@ extern(D):
         this.params = params;
         this.clock = clock;
         this.network = network;
+        this.empty_value = ConsensusData.init.serializeFull().toVec();
         this.schnorr_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
         auto node_id = NodeID(uint256(key_pair.address));
         this.node_public_key = PublicKey(this.schnorr_pair.V[]);
@@ -418,11 +422,9 @@ extern(D):
     {
         log.info("{}(): Proposing tx set for slot {}", __FUNCTION__, slot_idx);
 
-        auto prev_value = ConsensusData.init.serializeFull().toVec();
         auto next_value = next.serializeFull().toVec();
-        auto prev_dup = duplicate_value(&prev_value);
         auto next_dup = duplicate_value(&next_value);
-        if (this.scp.nominate(slot_idx, next_dup, prev_dup))
+        if (this.scp.nominate(slot_idx, next_dup, this.empty_value))
         {
             log.info("{}(): Tx set triggered new nomination", __FUNCTION__);
         }
