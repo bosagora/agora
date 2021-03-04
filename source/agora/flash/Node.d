@@ -300,6 +300,9 @@ public abstract class FlashNode : ControlFlashAPI
     /// Path that is currently being tried for a payment
     protected Hop[][Hash] payment_path;
 
+    /// Errors that are received for payments
+    protected OnionError[][Hash] payment_errors;
+
     /// Flash network topology
     protected Network network;
 
@@ -594,7 +597,7 @@ public abstract class FlashNode : ControlFlashAPI
             if (chans.canFind(deobfuscated.chan_id))
             {
                 writeln(this.kp.V.flashPrettify, " Got error: ", deobfuscated);
-                // todo: retry
+                this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
             }
         }
         else
