@@ -15,6 +15,7 @@ module agora.flash.Node;
 
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
+import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -641,6 +642,8 @@ public abstract class FlashNode : ControlFlashAPI
                 chan.learnSecrets([], [payment_hash], this.last_block_height);
             this.reportPaymentError(chan_id, OnionError(Hash.init,
                 payment_hash, chan_id, error));
+            if (auto invoice = payment_hash in this.invoices)
+                this.payInvoice(*invoice); // Retry
         }
     }
 
@@ -670,10 +673,8 @@ public abstract class FlashNode : ControlFlashAPI
         }
 
         foreach (payment_hash; rev_htlcs)
-            if (payment_hash in this.payment_path)
-            {
-                // todo: retry
-            }
+            if (auto invoice = payment_hash in this.invoices)
+                this.payInvoice(*invoice); // Retry
 
         foreach (chan_id, channel; this.channels)
         {
@@ -815,19 +816,24 @@ public abstract class FlashNode : ControlFlashAPI
         // lock height, gradually reducing with each hop until destination node.
         Height end_lock_height = Height(this.last_block_height + 100);
 
+        Set!Hash ignore_chans;
+        if (auto error = invoice.payment_hash in this.payment_errors)
+            ignore_chans = Set!Hash.from((*error).map!(err => err.chan_id));
+
         // find a route
         // todo: not implemented properly yet as capacity, individual balances, and
         // fees are not taken into account yet. Only up to two channels assumed here.
         auto path = this.network.getPaymentPath(this.kp.V, invoice.destination,
-            invoice.amount);
+            invoice.amount, ignore_chans);
         Amount total_amount;
         Height use_lock_height;
-
         Point[] cur_shared_secrets;
         auto packet = createOnionPacket(invoice.payment_hash, end_lock_height,
             invoice.amount, path, total_amount, use_lock_height, cur_shared_secrets);
         this.shared_secrets[invoice.payment_hash] = cur_shared_secrets.reverse;
         this.payment_path[invoice.payment_hash] = path;
+        this.invoices[invoice.payment_hash] = invoice;
+
         this.paymentRouter(path.front.chan_id, invoice.payment_hash,
             total_amount, use_lock_height, packet);
     }
