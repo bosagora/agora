@@ -415,11 +415,29 @@ public abstract class FlashNode : FlashAPI
     /// See `FlashAPI.reportPaymentError`
     public override void reportPaymentError (in Hash chan_id, in OnionError err)
     {
-        writeln(this.kp.V.prettify, " Got error: ", err);
+        import std.algorithm : map;
+        import std.algorithm.searching : canFind;
 
-        if (auto secret = err.payment_hash in this.secrets)
-            // todo: retry
-            return;
+        if (auto path = err.payment_hash in this.payment_path)
+        {
+            auto shared_secrets = this.shared_secrets[err.payment_hash];
+            assert(shared_secrets.length == path.length);
+
+            auto chans = (*path).map!(hop => hop.chan_id);
+            OnionError deobfuscated = err;
+            foreach (secret; shared_secrets)
+            {
+                if (chans.canFind(deobfuscated.chan_id))
+                    break;
+                deobfuscated = deobfuscated.obfuscate(secret);
+            }
+
+            if (chans.canFind(deobfuscated.chan_id))
+            {
+                writeln(this.kp.V.prettify, " Got error: ", deobfuscated);
+                // todo: retry
+            }
+        }
         else
             foreach (id, channel; this.channels)
                 if (id != chan_id)
