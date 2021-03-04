@@ -577,7 +577,6 @@ public abstract class FlashNode : ControlFlashAPI
     public override void reportPaymentError (/* in */ Hash chan_id,
         /* in */ OnionError err)
     {
-        import std.algorithm : map;
         import std.algorithm.searching : canFind;
 
         if (auto path = err.payment_hash in this.payment_path)
@@ -661,6 +660,21 @@ public abstract class FlashNode : ControlFlashAPI
     protected void onUpdateComplete (in Hash[] secrets,
         in Hash[] rev_htlcs)
     {
+        foreach (payment_hash; secrets.map!(secret => secret.hashFull()))
+        {
+            this.secrets.remove(payment_hash);
+            this.shared_secrets.remove(payment_hash);
+            this.payment_path.remove(payment_hash);
+            this.payment_errors.remove(payment_hash);
+            this.invoices.remove(payment_hash);
+        }
+
+        foreach (payment_hash; rev_htlcs)
+            if (payment_hash in this.payment_path)
+            {
+                // todo: retry
+            }
+
         foreach (chan_id, channel; this.channels)
         {
             writefln("%s: Calling learnSecrets for %s", this.kp.V.flashPrettify,
