@@ -305,6 +305,7 @@ public OnionPacket nextPacket (in OnionPacket packet)
         ephemeral_kp = the ephemeral key-pair that's generated uniquely for
             each new payload
         target_pk = the target node's public key
+        shared_secret = secret used to encrypt the payload
 
     Returns:
         the serialized and encrypted payload
@@ -312,7 +313,7 @@ public OnionPacket nextPacket (in OnionPacket packet)
 *******************************************************************************/
 
 public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
-    Point target_pk)
+    Point target_pk, out Point shared_secret)
 {
     EncryptedPayload result;
     randombytes_buf(result.nonce.ptr, result.nonce.length);
@@ -320,12 +321,20 @@ public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
     const data = payload.serializeFull();
     auto ciphertext_len = crypto_secretbox_MACBYTES + data.length;
 
-    Point secret = generateSharedSecret(true, ephemeral_kp.v, target_pk);
+    shared_secret = generateSharedSecret(true, ephemeral_kp.v, target_pk);
     if (crypto_secretbox_easy(result.payload.ptr, data.ptr, data.length,
-        result.nonce.ptr, secret[].ptr) != 0)
+        result.nonce.ptr, shared_secret[].ptr) != 0)
         assert(0);  // this should never fail
 
     return result;
+}
+
+/// Ditto
+public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
+    Point target_pk)
+{
+    Point shared_secret;
+    return encryptPayload (payload, ephemeral_kp, target_pk, shared_secret);
 }
 
 /*******************************************************************************
