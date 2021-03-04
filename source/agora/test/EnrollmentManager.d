@@ -234,7 +234,6 @@ unittest
     import agora.consensus.data.genesis.Test;
     import agora.node.Ledger;
     import agora.node.Validator;
-    import agora.network.NetworkManager;
 
     import geod24.Registry;
     import core.atomic;

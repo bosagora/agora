@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Definitions of the BlockExternalizedHandler
+    Definitions of the PreImageReceivedHandler
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea
@@ -11,29 +11,29 @@
 
 *******************************************************************************/
 
-module agora.api.handler.BlockExternalizedHandler;
+module agora.api.handler.PreImage;
 
-import agora.consensus.data.Block;
+import agora.consensus.data.PreImageInfo;
 
 import vibe.data.serialization;
 import vibe.web.rest;
 import vibe.http.common;
 
 @serializationPolicy!(Base64ArrayPolicy)
-public interface BlockExternalizedHandler
+public interface PreImageReceivedHandler
 {
 // The REST generator requires @safe methods
 @safe:
 
     /***************************************************************************
 
-        Externalize block data in JSON format with HTTP POST
+        Push a preImage in JSON format with HTTP POST
 
         API:
-            See config.event_handlers.block_externalized_handler_addresses
+            See config.event_handlers.preimage_updated_handler_addresses
 
     ***************************************************************************/
 
     @path("/")
-    public void pushBlock (const Block block);
+    public void pushPreImage (const PreImageInfo preimage);
 }

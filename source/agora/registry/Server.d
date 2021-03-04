@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Definitions of the name registry API Implementation
+    Definitions of the name registry API implementation
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea
@@ -11,12 +11,12 @@
 
 *******************************************************************************/
 
-module agora.registry.NameRegistryImpl;
+module agora.registry.Server;
 
 import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.crypto.Hash;
-import agora.registry.NameRegistryAPI;
+import agora.registry.API;
 import agora.utils.Log;
 
 import vibe.core.core;
@@ -26,7 +26,7 @@ import vibe.web.rest;
 mixin AddLogger!();
 
 /// Implementation of `NameRegistryAPI` using associative arrays
-public final class NameRegistryImpl: NameRegistryAPI
+public final class NameRegistry: NameRegistryAPI
 {
     ///
     private RegistryPayload[PublicKey] registry_map;

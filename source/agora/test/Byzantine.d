@@ -29,8 +29,6 @@ import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.crypto.Schnorr;
 import agora.network.Clock;
-import agora.network.NetworkClient;
-import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.test.Base;
 import agora.utils.SCPPrettyPrinter;

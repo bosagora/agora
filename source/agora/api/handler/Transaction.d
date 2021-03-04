@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Definitions of the PreImageReceivedHandler
+    Definitions of the TransactionReceivedHandler
 
     Copyright:
         Copyright (c) 2019-2020 BOS Platform Foundation Korea
@@ -11,29 +11,29 @@
 
 *******************************************************************************/
 
-module agora.api.handler.PreImageReceivedHandler;
+module agora.api.handler.Transaction;
 
-import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.Transaction;
 
 import vibe.data.serialization;
 import vibe.web.rest;
 import vibe.http.common;
 
 @serializationPolicy!(Base64ArrayPolicy)
-public interface PreImageReceivedHandler
+public interface TransactionReceivedHandler
 {
 // The REST generator requires @safe methods
 @safe:
 
     /***************************************************************************
 
-        Push a preImage in JSON format with HTTP POST
+        Push a transaction in JSON format with HTTP POST
 
         API:
-            See config.event_handlers.preimage_updated_handler_addresses
+            See config.event_handlers.transaction_received_handler_addresses
 
     ***************************************************************************/
 
     @path("/")
-    public void pushPreImage (const PreImageInfo preimage);
+    public void pushTransaction (const Transaction tx);
 }

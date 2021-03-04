@@ -23,9 +23,9 @@
 module agora.node.FullNode;
 
 import agora.api.FullNode;
-import agora.api.handler.BlockExternalizedHandler;
-import agora.api.handler.PreImageReceivedHandler;
-import agora.api.handler.TransactionReceivedHandler;
+import agora.api.handler.Block;
+import agora.api.handler.PreImage;
+import agora.api.handler.Transaction;
 import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -45,9 +45,9 @@ import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.crypto.Hash;
+import agora.network.Client;
 import agora.network.Clock;
-import agora.network.NetworkClient;
-import agora.network.NetworkManager;
+import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
 import agora.node.TransactionPool;

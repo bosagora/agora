@@ -47,15 +47,15 @@ import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
 import agora.consensus.Fee;
 import agora.crypto.Hash;
+import agora.network.Client;
 import agora.network.Clock;
-import agora.network.NetworkClient;
-import agora.network.NetworkManager;
+import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.node.Validator;
-import agora.registry.NameRegistryAPI;
-import agora.registry.NameRegistryImpl;
+import agora.registry.API;
+import agora.registry.Server;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
@@ -786,7 +786,7 @@ public class TestAPIManager
 
     public void createNameRegistry ()
     {
-        auto registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistryImpl();
+        auto registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistry();
         this.nreg.register("name.registry", registry.ctrl.listener());
     }
 
@@ -1143,9 +1143,9 @@ public class TestNetworkClient : NetworkClient
 
 public class TestNetworkManager : NetworkManager
 {
-    import agora.api.handler.BlockExternalizedHandler;
-    import agora.api.handler.PreImageReceivedHandler;
-    import agora.api.handler.TransactionReceivedHandler;
+    import agora.api.handler.Block;
+    import agora.api.handler.PreImage;
+    import agora.api.handler.Transaction;
 
     ///
     public Registry!TestAPI* registry;
