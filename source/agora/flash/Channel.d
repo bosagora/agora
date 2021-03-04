@@ -100,19 +100,9 @@ public class Channel
     /// funding tx is externalized.
     private Balance cur_balance;
 
-    /// Metadata about dropped HTLCs
-    private static struct DroppedHTLC
-    {
-        /// HTLC
-        HTLC htlc;
-
-        /// Shared secret
-        Point shared_secret;
-    }
-
     /// List of dropped HTLCS
     /// Usefull when routing error packets back to the payment origin
-    private DroppedHTLC[Hash] dropped_htlcs;
+    private Point[Hash] dropped_htlcs;
 
     /// The closing transaction can spend from the funding transaction when
     /// the channel parties want to collaboratively close the channel.
@@ -816,14 +806,7 @@ LOuter: while (1)
 
         // Save dropped htlcs
         foreach (payment_hash; rev_htlcs_filtered)
-        {
-            auto htlc = payment_hash in old_balance.outgoing_htlcs ?
-                        old_balance.outgoing_htlcs[payment_hash] :
-                        old_balance.incoming_htlcs[payment_hash];
-            this.dropped_htlcs[payment_hash] = DroppedHTLC(htlc,
-                this.payment_hashes[payment_hash]);
-        }
-
+            this.dropped_htlcs[payment_hash] = this.payment_hashes[payment_hash];
         foreach (secret; secrets)
             this.payment_hashes.remove(secret.hashFull());
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
@@ -1069,14 +1052,7 @@ LOuter: while (1)
 
         // Save dropped htlcs
         foreach (payment_hash; rev_htlcs_filtered)
-        {
-            auto htlc = payment_hash in old_balance.outgoing_htlcs ?
-                        old_balance.outgoing_htlcs[payment_hash] :
-                        old_balance.incoming_htlcs[payment_hash];
-            this.dropped_htlcs[payment_hash] = DroppedHTLC(htlc,
-                this.payment_hashes[payment_hash]);
-        }
-
+            this.dropped_htlcs[payment_hash] = this.payment_hashes[payment_hash];
         foreach (secret; update.secrets)
             this.payment_hashes.remove(secret.hashFull());
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
@@ -1845,7 +1821,7 @@ LOuter: while (1)
         {
             const shared_secret = error.payment_hash in this.payment_hashes ?
                                     this.payment_hashes[error.payment_hash] :
-                                    this.dropped_htlcs[error.payment_hash].shared_secret;
+                                    this.dropped_htlcs[error.payment_hash];
             this.dropped_htlcs.remove(error.payment_hash);
             this.taskman.setTimer(0.seconds,
             {
