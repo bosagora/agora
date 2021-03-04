@@ -419,3 +419,119 @@ unittest
     writefln("alice closing tx: %s", alice.getClosingTx(alice_bob_chan_id));
     assert(block12.txs[0] == alice.getClosingTx(alice_bob_chan_id));
 }
+
+/// Test path probing
+unittest
+{
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+
+    const alice_pair = Pair.fromScalar(secretKeyToCurveScalar(WK.Keys[0].secret));
+    const bob_pair = Pair.fromScalar(secretKeyToCurveScalar(WK.Keys[1].secret));
+    const charlie_pair = Pair.fromScalar(secretKeyToCurveScalar(WK.Keys[2].secret));
+
+    const alice_pk = alice_pair.V;
+    const bob_pk = bob_pair.V;
+    const charlie_pk = charlie_pair.V;
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+    auto alice = factory.create(alice_pair, address);
+    auto bob = factory.create(bob_pair, address);
+    auto charlie = factory.create(charlie_pair, address);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+    //const Settle_10_Blocks = 10;
+
+    /+ OPEN ALICE => BOB CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_bob_chan_id = alice.openNewChannel(
+        alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+    writefln("Alice bob channel ID: %s", alice_bob_chan_id);
+
+    // await alice & bob channel funding transaction
+    network.expectBlock(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(alice_bob_chan_id);
+    bob.waitChannelOpen(alice_bob_chan_id);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    /+ OPEN BOB => CHARLIE CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
+    const bob_charlie_chan_id = bob.openNewChannel(
+        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+    writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
+
+    // await bob & bob channel funding transaction
+    network.expectBlock(Height(10), network.blocks[0].header);
+    const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
+    assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
+
+    // wait for the parties to detect the funding tx
+    bob.waitChannelOpen(bob_charlie_chan_id);
+    charlie.waitChannelOpen(bob_charlie_chan_id);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    /+ CHARLIE BOB => ALICE CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const charlie_utxo = UTXO.getHash(hashFull(txs[2]), 0);
+    const charlie_alice_chan_id = charlie.openNewChannel(
+        charlie_utxo, Amount(10_000), Settle_1_Blocks, alice_pk);
+    writefln("Charlie Alice channel ID: %s", charlie_alice_chan_id);
+
+    // await bob & bob channel funding transaction
+    network.expectBlock(Height(11), network.blocks[0].header);
+    const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
+    assert(block_11.txs.any!(tx => tx.hashFull() == charlie_alice_chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(charlie_alice_chan_id);
+    charlie.waitChannelOpen(charlie_alice_chan_id);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+
+    // begin off-chain transactions
+    auto inv_1 = charlie.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
+
+    // here we assume bob sent the invoice to alice through some means,
+
+    // Alice has a direct channel to charlie, but it does not have enough funds
+    // to complete the payment in that direction. Alice will first naively try
+    // that route and fail. In the second try, alice will route the payment through bob.
+    alice.payInvoice(inv_1);
+
+    bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
+}
