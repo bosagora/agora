@@ -809,7 +809,8 @@ extern(D):
 
             if (this.ledger.checkSelfSlashing(data))
             {
-                log.error("validateValue(): Slasing itself");
+                log.warn("validateValue(): Marking {} for data slashing us as invalid",
+                         nomination ? "nomination" : "vote");
                 return ValidationLevel.kInvalidValue;
             }
 
