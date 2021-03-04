@@ -78,5 +78,11 @@ services:
   faucet:
     image: "bpfk/faucet:latest"
     depends_on:
+      - node-0
+      - node-2
+      - node-3
+      - node-4
+      - node-5
+      - node-6
       - node-7
     command: http://node-7:7826
