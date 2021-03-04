@@ -28,7 +28,6 @@ import agora.consensus.SCPEnvelopeStore;
 import agora.node.Ledger;
 import agora.node.Validator;
 import agora.network.Clock;
-import agora.network.NetworkManager;
 import agora.test.Base;
 
 import geod24.Registry;

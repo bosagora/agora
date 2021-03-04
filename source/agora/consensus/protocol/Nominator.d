@@ -34,7 +34,7 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.network.Clock;
-import agora.network.NetworkManager;
+import agora.network.Manager;
 import agora.node.Ledger;
 import agora.utils.Log;
 import agora.utils.SCPPrettyPrinter;

@@ -29,7 +29,6 @@ import agora.common.crypto.Key;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.network.Clock;
-import agora.network.NetworkManager;
 import agora.node.Ledger;
 import agora.test.Base;
 

@@ -20,12 +20,12 @@
 
 *******************************************************************************/
 
-module agora.network.NetworkManager;
+module agora.network.Manager;
 
 import agora.api.Validator;
-import agora.api.handler.BlockExternalizedHandler;
-import agora.api.handler.PreImageReceivedHandler;
-import agora.api.handler.TransactionReceivedHandler;
+import agora.api.handler.Block;
+import agora.api.handler.PreImage;
+import agora.api.handler.Transaction;
 import agora.common.BanManager;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
@@ -39,9 +39,9 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.crypto.Hash;
 import agora.network.Clock;
-import agora.network.NetworkClient;
+import agora.network.Client;
 import agora.node.Ledger;
-import agora.registry.NameRegistryAPI;
+import agora.registry.API;
 import agora.utils.InetUtils;
 import agora.utils.Log;
 import agora.utils.Utility;

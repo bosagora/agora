@@ -13,8 +13,8 @@
 
 module agora.registry.main;
 
-import agora.registry.NameRegistryAPI;
-import agora.registry.NameRegistryImpl;
+import agora.registry.API;
+import agora.registry.Server;
 
 import vibe.core.core;
 import vibe.http.router;
@@ -66,7 +66,7 @@ private int main (string[] args)
     }
 
     auto router = new URLRouter();
-    router.registerRestInterface(new NameRegistryImpl());
+    router.registerRestInterface(new NameRegistry());
 
     auto settings = new HTTPServerSettings;
     settings.port = cmdline_args.bind_port;

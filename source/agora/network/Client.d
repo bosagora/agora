@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.network.NetworkClient;
+module agora.network.Client;
 
 import agora.api.Validator;
 import agora.common.BanManager;
@@ -40,7 +40,7 @@ import core.time;
 mixin AddLogger!();
 
 /// Used for communicating with a remote node
-class NetworkClient
+public class NetworkClient
 {
     /// Whether to throw an exception when attemptRequest() fails
     protected enum Throw
