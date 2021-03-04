@@ -28,6 +28,7 @@ import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.Network;
 import agora.flash.OnionPacket;
+import agora.flash.Route;
 import agora.flash.Scripts;
 import agora.flash.Types;
 import agora.script.Engine;
@@ -80,6 +81,12 @@ public abstract class FlashNode : FlashAPI
     /// but is then revealed back towards the payer through
     /// any intermediaries.
     protected Hash[Hash] secrets;
+
+    /// Shared secrets used to encrypt the OnionPacket
+    protected Point[][Hash] shared_secrets;
+
+    /// Path that is currently being tried for a payment
+    protected Hop[][Hash] payment_path;
 
     /// Flash network topology
     protected Network network;

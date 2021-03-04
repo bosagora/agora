@@ -155,6 +155,7 @@ public struct Payload
         total_amount = will contain the amount which needs to be paid to the
             first channel along the route. Different to `amount` as it also
             includes fees.
+        shared_secrets = shared secret used in each hop. (in reverse)
 
     Returns:
         the onion packet ready to be routed through the first payment path.
@@ -163,7 +164,7 @@ public struct Payload
 
 public OnionPacket createOnionPacket (in Hash payment_hash,
     in Height lock_height, in Amount amount, in Hop[] path,
-    out Amount total_amount, out Height use_lock_height)
+    out Amount total_amount, out Height use_lock_height, out Point[] shared_secrets)
 {
     assert(path.length >= 1);
 
@@ -195,8 +196,10 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
             outgoing_lock_height : outgoing_lock_height,
         };
 
+        Point shared_secret;
         auto encrypted_payload = encryptPayload(payload, ephemeral_kp,
-            hop.pub_key);
+            hop.pub_key, shared_secret);
+        shared_secrets ~= shared_secret;
 
         packet.encrypted_payloads[last_index] = encrypted_payload;
         last_index--;
@@ -242,33 +245,39 @@ unittest
 
     Amount total_amount;
     Height use_lock_height;
+    Point[] shared_secrets;
     auto packet = createOnionPacket(hashFull(42),
-        Height(100), Amount(1000), hops, total_amount, use_lock_height);
+        Height(100), Amount(1000), hops, total_amount, use_lock_height, shared_secrets);
     assert(total_amount == Amount(2000));
     assert(use_lock_height == 104);
 
+    Point shared_secret;
     Payload payload;
     assert(!decryptPayload(packet.encrypted_payloads[0],
         kp2.v, packet.ephemeral_pk, payload));  // cannot decrypt with other keys
     assert(decryptPayload(packet.encrypted_payloads[0],
-        kp1.v, packet.ephemeral_pk, payload));
+        kp1.v, packet.ephemeral_pk, payload, shared_secret));
+    assert(shared_secrets[3] == shared_secret);
     assert(payload == Payload(hashFull(2), Amount(1900), Height(103)));
 
     assert(!decryptPayload(packet.encrypted_payloads[1],
         kp2.v, packet.ephemeral_pk, payload));  // cannot decrypt with same ephemeral key
     packet = nextPacket(packet);  // switch ephemeral key
     assert(decryptPayload(packet.encrypted_payloads[0],
-        kp2.v, packet.ephemeral_pk, payload));
+        kp2.v, packet.ephemeral_pk, payload, shared_secret));
+    assert(shared_secrets[2] == shared_secret);
     assert(payload == Payload(hashFull(3), Amount(1700), Height(102)));
 
     packet = nextPacket(packet);
     assert(decryptPayload(packet.encrypted_payloads[0],
-        kp3.v, packet.ephemeral_pk, payload));
+        kp3.v, packet.ephemeral_pk, payload, shared_secret));
+    assert(shared_secrets[1] == shared_secret);
     assert(payload == Payload(hashFull(4), Amount(1400), Height(101)));
 
     packet = nextPacket(packet);
     assert(decryptPayload(packet.encrypted_payloads[0],
-        kp4.v, packet.ephemeral_pk, payload));
+        kp4.v, packet.ephemeral_pk, payload, shared_secret));
+    assert(shared_secrets[0] == shared_secret);
     assert(payload == Payload(Hash.init, Amount(1000), Height(100)));
 }
 
