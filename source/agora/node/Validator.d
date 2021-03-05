@@ -442,7 +442,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected final override void onAcceptedBlock (in Block block,
+    protected override void onAcceptedBlock (in Block block,
         bool validators_changed) @safe
     {
         assert(block.header.height >= this.last_shuffle_height);
