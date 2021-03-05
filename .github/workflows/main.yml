@@ -25,11 +25,11 @@ jobs:
         dc: [ ldc-master, ldc-1.25.0 ]
         # Define job-specific parameters
         include:
-          # By default, don't generate artifacts for push
-          - { artifacts: false }
+          # By default, don't generate artifacts nor run vtable checks for push
+          - { artifacts: false, run_vtable_checks: false }
           # Only generate when the latest ldc is used
           # IMPORTANT: Update this when the compiler support is changed!
-          - { dc: ldc-1.25.0, artifacts: true }
+          - { dc: ldc-1.25.0, artifacts: true, run_vtable_checks: true }
         exclude:
           # Disabled due to https://github.com/dlang/dub/issues/2110
           - { dc: ldc-master, os: windows-2019 }
@@ -106,6 +106,12 @@ jobs:
       run: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
+
+    - name: Check vtable offset
+      if: matrix.run_vtable_checks && runner.os != 'Windows'
+      env:
+        AGORA_VERSION: HEAD
+      run: ci/check_vtable_test.d
 
     - name: 'Upload code coverage'
       uses: codecov/codecov-action@v1
