@@ -14,8 +14,10 @@ import core.sys.posix.signal;
 /// Root of the repository
 immutable RootPath = __FILE_FULL_PATH__.dirName.dirName;
 immutable IntegrationPath = RootPath.buildPath("tests").buildPath("system");
-/// Configuration file for docker-compose
+// Can't use `--project-directory` because it is completely broken:
+// https://github.com/docker/compose/issues/6310
 immutable ComposeFile = IntegrationPath.buildPath("docker-compose.yml");
+immutable EnvFile = IntegrationPath.buildPath("environment.sh");
 
 /+ ***************************** Commands to run **************************** +/
 /// A simple test to ensure that the container works correctly,
@@ -23,9 +25,10 @@ immutable ComposeFile = IntegrationPath.buildPath("docker-compose.yml");
 immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
                        "-t", "agora", RootPath, ];
 immutable TestContainer = [ "docker", "run", "agora", "--help", ];
-immutable DockerComposeUp = [ "docker-compose", "-f", ComposeFile, "up", "--abort-on-container-exit", ];
-immutable DockerComposeDown = [ "docker-compose", "-f", ComposeFile, "down", "-t", "30", ];
-immutable DockerComposeLogs = [ "docker-compose", "-f", ComposeFile, "logs", "-t", ];
+immutable DockerCompose = [ "docker-compose", "-f", ComposeFile, "--env-file", EnvFile ];
+immutable DockerComposeUp = DockerCompose ~ [ "up", "--abort-on-container-exit", ];
+immutable DockerComposeDown = DockerCompose ~ [ "down", "-t", "30", ];
+immutable DockerComposeLogs = DockerCompose ~ [ "logs", "-t", ];
 immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
                                     "http://127.0.0.1:4000",
                                     "http://127.0.0.1:4002",
