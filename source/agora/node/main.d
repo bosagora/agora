@@ -24,6 +24,7 @@ else:
 
 import agora.common.Config;
 import agora.common.FileBasedLock;
+import agora.node.admin.Setup;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
@@ -34,6 +35,7 @@ import vibe.core.core;
 import vibe.http.server;
 
 import std.getopt;
+import std.path : absolutePath;
 import std.stdio;
 import std.typecons : Nullable;
 
@@ -67,17 +69,33 @@ private int main (string[] args)
         return 1;
     }
 
-    Nullable!Config config = ()
+    // Run setup interface if needed
+    if (cmdln.initialize)
+    {
+        if (cmdln.config_check)
         {
-            try
-                return Nullable!Config(parseConfigFile(cmdln));
-            catch (Exception ex)
-            {
-                writefln("Failed to parse config file '%s'. Error: %s",
-                         cmdln.config_path, ex.message);
-                return Nullable!Config();
-            }
-        }();
+            writeln("Error: Cannot have both `--initialize` and `--config-check` switch");
+            return 1;
+        }
+        writeln("Setup interface listening to http://127.0.0.1:2827 and will write to: ",
+                cmdln.config_path.absolutePath());
+        scope setup = new SetupInterface(cmdln.config_path);
+        setup.start();
+        if (auto ret = runEventLoop())
+            return ret;
+    }
+
+    Nullable!Config config = ()
+    {
+        try
+            return Nullable!Config(parseConfigFile(cmdln));
+        catch (Exception ex)
+        {
+            writefln("Failed to parse config file '%s'. Error: %s",
+                     cmdln.config_path, ex.message);
+            return Nullable!Config();
+        }
+    }();
     if (config.isNull)
         return 1;
 
