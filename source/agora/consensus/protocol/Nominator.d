@@ -809,7 +809,7 @@ extern(D):
 
             if (this.ledger.checkSelfSlashing(data))
             {
-                log.error("validateValue(): Slasing itself");
+                log.error("validateValue(): Slashing itself");
                 return ValidationLevel.kInvalidValue;
             }
 
