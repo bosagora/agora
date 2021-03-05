@@ -96,7 +96,12 @@ struct opaque_array(uint32_t N = XDR_MAX_LEN)
     BitBlob!(N * 8) base;
     alias base this;
 
-    public this (BitBlob!(N * 8) val)
+    extern(D) public this (BitBlob!(N * 8) val)
+    {
+        this.base = val;
+    }
+
+    extern(D) public this (in ubyte[N] val)
     {
         this.base = val;
     }
