@@ -203,7 +203,7 @@ public struct Result (T)
 }
 
 /// Helper routine
-public string prettify (T)(T input)
+public string flashPrettify (T)(T input)
 {
     // some well-known key-pairs used in the flash tests
     static if (is(T : Point))
