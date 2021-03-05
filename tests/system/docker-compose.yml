@@ -12,6 +12,7 @@ services:
 
   node-2:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4002:2826"
     volumes:
@@ -21,6 +22,7 @@ services:
 
   node-3:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4003:3826"
     volumes:
@@ -30,6 +32,7 @@ services:
 
   node-4:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4004:4826"
     volumes:
@@ -39,6 +42,7 @@ services:
 
   node-5:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4005:5826"
     volumes:
@@ -48,6 +52,7 @@ services:
 
   node-6:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4006:6826"
     volumes:
@@ -57,6 +62,7 @@ services:
 
   node-7:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4007:7826"
     volumes:
@@ -67,6 +73,7 @@ services:
   # non-validator node
   node-0:
     image: "agora:latest"
+    env_file: environment.sh
     ports:
       - "4000:1826"
     volumes:

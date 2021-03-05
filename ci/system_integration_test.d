@@ -95,12 +95,12 @@ private int main (string[] args)
     }
 
     upPid.kill(SIGINT);
+    runCmd(DockerComposeDown);
     if (auto upCode = upPid.wait())
     {
         writeln("docker-compose up returned error code: ", upCode);
         code = 1;
     }
-    runCmd(DockerComposeDown);
 
     return code;
 }
