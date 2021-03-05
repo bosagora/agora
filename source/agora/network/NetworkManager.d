@@ -185,7 +185,18 @@ public class NetworkManager
 
             const is_validator = key != PublicKey.init;
             if (is_validator)
+            {
+                if (key == this.outer.validator_config.key_pair.address)
+                {
+                    // either we connected to ourself, or someone else is pretending
+                    // to be us
+                    this.outer.connection_tasks.remove(address);
+                    this.outer.banman.ban(address);
+                    return;
+                }
+
                 log.info("Found new Validator: {} (key: {})", address, key);
+            }
             else
                 log.info("Found new FullNode: {}", address);
 
