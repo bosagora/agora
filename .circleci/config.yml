@@ -42,12 +42,6 @@ jobs:
             sudo ldconfig # Refresh cache
             popd
       - run:
-          name: Check virtual method offset
-          command: |
-            source $HOME/dlang/ldc-1.25.0/activate
-            ci/check_vtable_test.d
-          no_output_timeout: 10m
-      - run:
           name: Build & test docker image
           command: |
             source $HOME/dlang/ldc-1.25.0/activate
