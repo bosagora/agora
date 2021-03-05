@@ -1,0 +1,42 @@
+# Run the system integration tests
+
+name: CI
+on: [ push, pull_request ]
+
+jobs:
+  main:
+    name: Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        # For Codecov
+        fetch-depth: 2
+        submodules: true
+
+    - name: Prepare compiler
+      uses: dlang-community/setup-dlang@v1
+      with:
+          compiler: ldc-latest
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install g++-9 libsodium-dev libsqlite3-dev
+
+    - name: Test
+      run: |
+        ./ci/system_integration_test.d
+
+    - name: Change permission on lst files
+      run: |
+        # Work around druntime setting the permissions to 600..
+        # Need to iterate on the directory to avoid 'list arguments too long'
+        find tests/system/node/ -name '*.lst' | xargs sudo chmod 644
+
+    - name: 'Upload code coverage'
+      uses: codecov/codecov-action@v1
+      with:
+        flags: integration
