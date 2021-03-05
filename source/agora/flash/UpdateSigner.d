@@ -165,7 +165,7 @@ public class UpdateSigner
     public void onConfirmedChannelUpdate ()
     {
         writefln("%s: Peer %s has confirmed collecting signatures for seq %s.",
-                this.kp.V.prettify, this.peer_pk.prettify, seq_id);
+                this.kp.V.flashPrettify, this.peer_pk.flashPrettify, seq_id);
 
         this.peer_confirmed_update = true;
     }
@@ -288,7 +288,7 @@ public class UpdateSigner
             {
                 // todo: retry?
                 writefln("%s: Settlement signature %s request to %s rejected: %s",
-                    this.kp.V.prettify, seq_id, this.peer_pk.prettify, settle_res);
+                    this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify, settle_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -297,7 +297,7 @@ public class UpdateSigner
         }
 
         writefln("%s: Settlement signature %s from %s received",
-            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         if (auto error = this.isInvalidSettleMultiSig(this.pending_settle,
             settle_res.value, priv_nonce, peer_nonce))
@@ -305,13 +305,13 @@ public class UpdateSigner
             // todo: inform? ban?
             writefln("%s: Error during validation: %s. For settle signature "
                 ~ "from %s: %s",
-                this.kp.V.prettify, error,
-                this.peer_pk.prettify, settle_res.value);
+                this.kp.V.flashPrettify, error,
+                this.peer_pk.flashPrettify, settle_res.value);
             assert(0);
         }
 
         writefln("%s: Settlement signature %s from %s validated",
-            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         this.pending_settle.peer_sig = settle_res.value;
         this.pending_settle.validated = true;
@@ -327,7 +327,7 @@ public class UpdateSigner
             {
                 // todo: retry?
                 writefln("%s: Update signature %s request to %s rejected: %s",
-                    this.kp.V.prettify, seq_id, this.peer_pk.prettify, update_res);
+                    this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify, update_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -336,7 +336,7 @@ public class UpdateSigner
         }
 
         writefln("%s: Update signature %s from %s received",
-            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // todo: retry? add a better status code like NotReady?
         if (update_res.value == Signature.init)
@@ -348,15 +348,15 @@ public class UpdateSigner
             // todo: inform? ban?
             writefln("%s: Error during validation: %s. For update "
                 ~ "signature from %s: %s",
-                this.kp.V.prettify, error,
-                this.peer_pk.prettify, update_res.value);
+                this.kp.V.flashPrettify, error,
+                this.peer_pk.flashPrettify, update_res.value);
             assert(0);
         }
         this.pending_update.peer_sig = update_res.value;
         this.pending_update.validated = true;
 
         writefln("%s: Update signature %s from %s validated",
-            this.kp.V.prettify, seq_id, this.peer_pk.prettify);
+            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // confirm to the peer we're done, and await for peer's own confirmation
         this.peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
@@ -364,7 +364,7 @@ public class UpdateSigner
         {
             writefln("%s: Peer %s is still collecting signatures for seq %s. "
                 ~ "Waiting before confirming update..",
-                this.kp.V.prettify, this.peer_pk.prettify, seq_id,);
+                this.kp.V.flashPrettify, this.peer_pk.flashPrettify, seq_id,);
             this.taskman.wait(100.msecs);
         }
 
