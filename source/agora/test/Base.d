@@ -645,23 +645,6 @@ public class TestAPIManager
             file, line);
     }
 
-    /// Ditto
-    public void expectBlock (Throwable = AssertError, Idxs)(Idxs clients_idxs,
-        Height height, Duration timeout = 10.seconds,
-        string file = __FILE__, int line = __LINE__)
-    {
-        static assert (isInputRange!Idxs);
-
-        string[] awaiting = clients_idxs.map!(idx => this.nodes[idx].address).array;
-        ulong req_id = this.test_thread.prepareForWait(awaiting);
-        clients_idxs.each!(idx => clients[idx].notifyOnAcceptedBlock(
-            req_id, height));
-        this.setTimeFor(height);
-        const diag = format("%s(%s): expectBlock(%s)", file, line, height);
-        if (!this.test_thread.waitCondition(timeout.total!"msecs"))
-            throw new Throwable(diag);
-    }
-
     /***************************************************************************
 
         Checks the needed pre-images are revealed, sets the clock time to the
@@ -700,6 +683,23 @@ public class TestAPIManager
         waitForPreimages(clients_idxs, enroll_header.enrollments,
             distance, timeout, file, line);
         this.expectBlock!Throwable(clients_idxs, height, timeout, file, line);
+    }
+
+    /// Ditto
+    public void expectBlock (Throwable = AssertError, Idxs)(Idxs clients_idxs,
+        Height height, Duration timeout = 10.seconds,
+        string file = __FILE__, int line = __LINE__)
+    {
+        static assert (isInputRange!Idxs);
+
+        string[] awaiting = clients_idxs.map!(idx => this.nodes[idx].address).array;
+        ulong req_id = this.test_thread.prepareForWait(awaiting);
+        clients_idxs.each!(idx => clients[idx].notifyOnAcceptedBlock(
+            req_id, height));
+        this.setTimeFor(height);
+        const diag = format("%s(%s): expectBlock(%s)", file, line, height);
+        if (!this.test_thread.waitCondition(timeout.total!"msecs"))
+            throw new Throwable(diag);
     }
 
     /***************************************************************************
