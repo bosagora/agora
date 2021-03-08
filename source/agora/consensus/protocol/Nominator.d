@@ -160,7 +160,7 @@ extern(D):
         this.clock = clock;
         this.network = network;
         this.empty_value = ConsensusData.init.serializeFull().toVec();
-        this.schnorr_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
+        this.schnorr_pair = Pair.fromScalar(key_pair.secret);
         auto node_id = NodeID(uint256(key_pair.address.data[][0 .. uint256.sizeof]));
         this.node_public_key = PublicKey(this.schnorr_pair.V[]);
         const IsValidator = true;

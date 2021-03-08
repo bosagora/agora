@@ -152,7 +152,7 @@ unittest
 
     Pair signature_noise = Pair.random;
 
-    Pair node_key_pair_1 = Pair.fromScalar(secretKeyToCurveScalar(key_pairs[0].secret));
+    Pair node_key_pair_1 = Pair.fromScalar(key_pairs[0].secret);
 
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
@@ -160,7 +160,7 @@ unittest
     enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
-    Pair node_key_pair_2 = Pair.fromScalar(secretKeyToCurveScalar(key_pairs[1].secret));
+    Pair node_key_pair_2 = Pair.fromScalar(key_pairs[1].secret);
 
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
@@ -168,7 +168,7 @@ unittest
     enroll2.cycle_length = 1008;
     enroll2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll2);
 
-    Pair node_key_pair_3 = Pair.fromScalar(secretKeyToCurveScalar(key_pairs[2].secret));
+    Pair node_key_pair_3 = Pair.fromScalar(key_pairs[2].secret);
 
     Enrollment enroll3;
     enroll3.utxo_key = utxo_hash3;
@@ -230,9 +230,8 @@ unittest
         /* preimages: */ PreImageCache(params.ValidatorCycle, 1)
     );
 
-    auto n0_secret = secretKeyToCurveScalar(key_pairs[0].secret);
     enroll1.utxo_key = utxo_hash1;
-    enroll1.random_seed = cycle.getPreImage(n0_secret, Height(0));
+    enroll1.random_seed = cycle.getPreImage(key_pairs[0].secret, Height(0));
     enroll1.cycle_length = params.ValidatorCycle;
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
@@ -245,7 +244,7 @@ unittest
     // First 2 iterations should fail because commitment is wrong
     foreach (offset; [-1, +1, 0])
     {
-        enroll1.random_seed = cycle.getPreImage(n0_secret,
+        enroll1.random_seed = cycle.getPreImage(key_pairs[0].secret,
                                         Height(params.ValidatorCycle + offset));
         enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
         assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),

@@ -79,8 +79,8 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
                 const Point R = r.toPoint();
                 return Sig(R, multiSigSign(r, this.schnorr_pair.v, challenge));
             case ByzantineReason.BadSignature:
-                const Scalar rc = Scalar(hashMulti(secretKeyToCurveScalar(WK.Keys.NODE2.secret),
-                "consensus.signature.noise", 0));
+                const Scalar rc = Scalar(hashMulti(WK.Keys.NODE2.secret,
+                    "consensus.signature.noise", 0));
                 const Scalar r = rc + challenge;
                 const Point R = r.toPoint();
                 // Sign with random in place of validator secret key
