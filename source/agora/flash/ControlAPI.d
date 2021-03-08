@@ -113,4 +113,17 @@ public interface ControlFlashAPI : FlashAPI
     ***************************************************************************/
 
     public void payInvoice (/* in */ Invoice invoice);
+
+    /***************************************************************************
+
+        Broadcast a channel update to change the fees
+
+        Params:
+            chan_id = channel ID
+            fixed_fee = Fixed fee that should paid for each payment
+            proportional_fee = Proportional fee that should paid for each BOA
+
+    ***************************************************************************/
+
+    public void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee);
 }

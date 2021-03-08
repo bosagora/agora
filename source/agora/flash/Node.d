@@ -283,6 +283,9 @@ public abstract class FlashNode : ControlFlashAPI
     /// counterparty of. With this information we can derive payment paths.
     protected ChannelConfig[Hash] known_channels;
 
+    /// Most recent update received for this channel
+    protected ChannelUpdate[PaymentDirection][Hash] channel_updates;
+
     /// All known connected peers (used for gossiping)
     protected FlashAPI[Point] known_peers;
 
@@ -433,9 +436,20 @@ public abstract class FlashNode : ControlFlashAPI
             this.known_channels[conf.chan_id] = conf;
             this.network.addChannel(conf);
 
+            const dir = this.kp.V == conf.funder_pk ?
+                PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
+            // Set the initial fees
+            // todo: this should be configurable
+            auto update = ChannelUpdate(conf.chan_id, dir,
+                Amount(1), Amount(1));
+            update.sig = sign(this.kp, update);
+            this.channel_updates[conf.chan_id][dir] = update;
             // todo: should not gossip this to counterparty of the just opened channel
             foreach (peer; this.known_peers.byValue())
+            {
                 peer.gossipChannelsOpen([conf]);
+                peer.gossipChannelUpdates([this.channel_updates[conf.chan_id][dir]]);
+            }
         });
     }
 
@@ -468,6 +482,37 @@ public abstract class FlashNode : ControlFlashAPI
         // also gossip new channels to peers
         foreach (peer; this.known_peers.byValue())
             peer.gossipChannelsOpen(to_gossip);
+    }
+
+    /// See `FlashAPI.gossipChannelUpdates`
+    public void gossipChannelUpdates (ChannelUpdate[] chan_updates)
+    {
+        writefln("%s: gossipChannelUpdates() with %s channels",
+            this.kp.V.flashPrettify, chan_updates.length);
+
+        ChannelUpdate[] to_gossip;
+        foreach (update; chan_updates)
+        {
+            if (auto conf = update.chan_id in this.known_channels)
+            {
+                auto pk = update.direction == PaymentDirection.TowardsPeer ?
+                                                conf.funder_pk : conf.peer_pk;
+                if (auto chan_update = update.chan_id in this.channel_updates)
+                    if (auto dir_update = update.direction in *chan_update)
+                        if (*dir_update == update)
+                            continue;
+                if (!verify(pk, update.sig, update))
+                    continue;
+                this.channel_updates[update.chan_id][update.direction] = update;
+                to_gossip ~= update;
+            }
+        }
+
+        if (!to_gossip.length)
+            return;
+
+        foreach (peer; this.known_peers.byValue())
+            peer.gossipChannelUpdates(to_gossip);
     }
 
     /// See `FlashAPI.requestCloseSig`
