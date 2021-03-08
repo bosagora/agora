@@ -395,15 +395,6 @@ unittest
     bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
     charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
 
-    // Second payment attempt should fail because of insufficient funds
-    auto inv_2 = charlie.createNewInvoice(Amount(4_000), time_t.max, "payment 2");
-    alice.payInvoice(inv_2);
-
-    // wait for payment + folding update indices
-    alice.waitForUpdateIndex(alice_bob_chan_id, 4);
-    bob.waitForUpdateIndex(alice_bob_chan_id, 4);
-    // bob -> charlie channel will never create a new update
-
     //
     writefln("Beginning bob => charlie collaborative close..");
     bob.beginCollaborativeClose(bob_charlie_chan_id);
