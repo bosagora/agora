@@ -370,6 +370,13 @@ public class FlashValidator : Validator, FlashValidatorAPI
     }
 
     ///
+    public override void gossipChannelUpdates (ChannelUpdate[] chan_updates)
+        @trusted
+    {
+        this.flash.gossipChannelUpdates(chan_updates);
+    }
+
+    ///
     public override Result!ChannelState getChannelState (/* in */ Hash chan_id)
         @trusted
     {

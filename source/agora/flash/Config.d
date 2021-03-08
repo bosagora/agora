@@ -13,10 +13,13 @@
 
 module agora.flash.Config;
 
+import agora.flash.Types;
+
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
+import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 
 import core.time;
@@ -79,4 +82,50 @@ public struct ChannelConfig
 
     /// The channel's ID is derived from the hash of the funding transaction.
     public alias chan_id = funding_tx_hash;
+}
+
+/// Channel update. Peers can update some channel attributes on the fly.
+public struct ChannelUpdate
+{
+    /// The channel ID
+    public Hash chan_id;
+
+    /// Indicated which peer is updating it's end
+    public PaymentDirection direction;
+
+    /// Fixed fee that should paid for each payment
+    public Amount fixed_fee;
+
+    /// Proportional fee that should paid for each BOA
+    public Amount proportional_fee;
+
+    /// Signature of the channel peer
+    public Signature sig;
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.chan_id, dg);
+        hashPart(this.direction, dg);
+        hashPart(this.fixed_fee, dg);
+        hashPart(this.proportional_fee, dg);
+    }
+}
+
+unittest
+{
+    Pair kp = Pair.random();
+    auto update = ChannelUpdate(Hash.init,
+        PaymentDirection.TowardsOwner,
+        Amount(44), Amount(37));
+    update.sig = sign(kp, update);
+    assert(verify(kp.V, update.sig, update));
 }
