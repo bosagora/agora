@@ -172,7 +172,7 @@ public class EnrollmentManager
 
         // create Pair object from KeyPair object
         if (key_pair != KeyPair.init)
-            this.key_pair = Pair.fromScalar(secretKeyToCurveScalar(key_pair.secret));
+            this.key_pair = Pair.fromScalar(key_pair.secret);
 
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
@@ -477,7 +477,7 @@ public class EnrollmentManager
         @trusted nothrow
     {
         // Convert stellar-type keypair to curve scalars
-        const kp = Pair.fromScalar(secretKeyToCurveScalar(key.secret));
+        const kp = Pair.fromScalar(key.secret);
 
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
@@ -1270,7 +1270,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         Pair pair;
-        pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        pair = Pair.fromScalar(kp.secret);
 
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
@@ -1499,7 +1499,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         Pair pair;
-        pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        pair = Pair.fromScalar(kp.secret);
 
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
@@ -1669,7 +1669,7 @@ unittest
     foreach (idx, kp; pairs)
     {
         Pair pair;
-        pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        pair = Pair.fromScalar(kp.secret);
 
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),

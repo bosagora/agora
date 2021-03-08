@@ -663,7 +663,7 @@ version (unittest)
             (in Point key, in Height height) @trusted nothrow
             {
                 return Scalar(hashMulti(
-                    secretKeyToCurveScalar(lookupSecretKeyFromPoint(key)),
+                    lookupSecretKeyFromPoint(key),
                     "consensus.signature.noise", enrollment_cycle))
                     .toPoint();
             },
@@ -1003,7 +1003,7 @@ unittest
     }
 
     Pair signature_noise = Pair.random;
-    Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
+    Pair node_key_pair = Pair.fromScalar(keypair.secret);
 
     auto utxo_hash1 = UTXO.getHash(hashFull(txs_2[0]), 0);
     Enrollment enroll1;
@@ -1127,7 +1127,7 @@ unittest
         }
 
         Pair signature_noise = Pair.random;
-        Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
+        Pair node_key_pair = Pair.fromScalar(keypair.secret);
 
         auto block3 = makeNewTestBlock(block2, txs_3);
         assert(block3.header.enrollments.length == 0);
@@ -1153,7 +1153,7 @@ unittest
         }
 
         Pair signature_noise = Pair.random;
-        Pair node_key_pair = Pair.fromScalar(secretKeyToCurveScalar(keypair.secret));
+        Pair node_key_pair = Pair.fromScalar(keypair.secret);
 
         auto utxo_hash1 = UTXO.getHash(hashFull(txs_2[1]), 0);
         Enrollment enroll1;

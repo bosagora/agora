@@ -1708,7 +1708,7 @@ unittest
     auto pairs = iota(4).map!(idx => WK.Keys[idx]).array;
     foreach (idx, kp; pairs)
     {
-        auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        auto pair = Pair.fromScalar(kp.secret);
         auto cycle = PreImageCycle(
                 0, 0,
                 PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
@@ -1813,7 +1813,7 @@ unittest
         UTXO stake;
         assert(ledger.utxo_set.peekUTXO(key, stake));
         KeyPair kp = WK.Keys[stake.output.address];
-        auto pair = Pair.fromScalar(secretKeyToCurveScalar(kp.secret));
+        auto pair = Pair.fromScalar(kp.secret);
         auto cycle = PreImageCycle(
             0, 0,
             PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),

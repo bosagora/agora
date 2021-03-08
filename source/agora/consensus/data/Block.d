@@ -800,14 +800,13 @@ version (unittest)
 
         void validatorSign (ulong i, KeyPair key)
         {
-            Scalar v = secretKeyToCurveScalar(key.secret);
             // rc = r used in signing the commitment
-            const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise",
+            const Scalar rc = Scalar(hashMulti(key.secret, "consensus.signature.noise",
                 cycleForValidator(key.address)));
             const Scalar r = rc + challenge; // make it unique each challenge
             const Pair R = Pair.fromScalar(r);
             const K = Point(key.address[]);
-            Scalar sig = multiSigSign(r, v, challenge);
+            Scalar sig = multiSigSign(r, key.secret, challenge);
             log.trace("multiSigTestBlock: cycle {} index {}. (R, s) for validator {} is ({}, {})",
                 cycleForValidator(key.address), i, key.address, rc.toPoint(), sig);
             sigs ~= Sig(R.V, sig);

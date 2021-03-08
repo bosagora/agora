@@ -352,7 +352,6 @@ public struct SecretKey
     }
 }
 
-
 // Test (de)serialization
 unittest
 {
@@ -517,25 +516,6 @@ unittest
     import std.string : representation;
     Signature sig = kp.secret.sign("Hello World".representation);
     assert(kp.address.verify(sig, "Hello World".representation));
-}
-
-/*******************************************************************************
-
-    Util to convert SecretKey(Ed25519) to Scalar(X25519)
-    The secretKeyToCurveScalar() function converts an SecretKey(Ed25519)
-    to a Scalar(X25519) secret key and stores it into x25519_sk.
-
-    Params:
-      secret = Secretkey in Ed25519 format
-
-    Returns:
-      Converted X25519 secret key
-
-*******************************************************************************/
-
-public static Scalar secretKeyToCurveScalar (SecretKey secret) nothrow @nogc
-{
-    return secret.data;
 }
 
 // Test for converting from `Point` to `PublicKey`
