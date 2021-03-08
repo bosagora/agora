@@ -85,6 +85,23 @@ public struct KeyPair
         KeyPair kp = KeyPair.fromSeed(Seed.fromString(seedStr));
     }
 
+    /***************************************************************************
+
+        Signs a message with this keypair's private key
+
+        Params:
+          msg = The message to sign
+
+        Returns:
+          The signature of `msg` using `this`
+
+    ***************************************************************************/
+
+    public Signature sign (scope const(ubyte)[] msg) const nothrow @nogc
+    {
+        return this.secret.sign(msg);
+    }
+
     /// Generate a new, random, keypair
     public static KeyPair random () @nogc
     {
