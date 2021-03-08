@@ -788,7 +788,7 @@ public class NetworkManager
             }
         };
 
-        payload.signPayload(this.validator_config.key_pair.secret);
+        payload.signPayload(this.validator_config.key_pair);
 
         try
         {

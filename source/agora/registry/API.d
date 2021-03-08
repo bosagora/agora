@@ -43,9 +43,9 @@ public struct RegistryPayload
     public Signature signature;
 
     ///
-    public void signPayload (in SecretKey secret_key) nothrow
+    public void signPayload (in KeyPair kp) nothrow
     {
-        this.signature = secret_key.sign(hashFull(this.data)[]);
+        this.signature = kp.sign(hashFull(this.data)[]);
     }
 
     ///
