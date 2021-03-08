@@ -43,13 +43,13 @@ public struct RegistryPayload
     public Signature signature;
 
     ///
-    public void signPayload (const ref SecretKey secret_key) nothrow
+    public void signPayload (in SecretKey secret_key) nothrow
     {
         this.signature = secret_key.sign(hashFull(this.data)[]);
     }
 
     ///
-    public bool verifySignature (const ref PublicKey public_key) const nothrow @nogc @safe
+    public bool verifySignature (in PublicKey public_key) const nothrow @nogc @safe
     {
         return public_key.verify(this.signature, hashFull(this.data)[]);
     }
