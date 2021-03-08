@@ -69,6 +69,9 @@ public interface TestFlashAPI : ControlFlashAPI
 
     /// Get the expected settlement tx when a trigger was published to the chain
     public Transaction getLastSettleTx (in Hash chan_id);
+
+    /// Get the channel update
+    public ChannelUpdate getChannelUpdate (Hash chan_id, PaymentDirection dir);
 }
 
 /// A thin localrest flash node which itself is not a FullNode / Validator
@@ -151,6 +154,24 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.getLastSettleTx();
+    }
+
+    ///
+    public override void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee)
+    {
+        const dir = this.kp.V == this.known_channels[chan_id].funder_pk ?
+            PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
+        auto update = this.channel_updates[chan_id][dir];
+        update.fixed_fee = fixed_fee;
+        update.proportional_fee = proportional_fee;
+        update.sig = sign(this.kp, update);
+        this.gossipChannelUpdates([update]);
+    }
+
+    ///
+    public ChannelUpdate getChannelUpdate (Hash chan_id, PaymentDirection dir)
+    {
+        return this.channel_updates[chan_id][dir];
     }
 }
 
@@ -525,4 +546,15 @@ unittest
 
     bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
     charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
+
+    alice.changeFees(charlie_alice_chan_id, Amount(1337), Amount(1));
+    auto update = alice.getChannelUpdate(charlie_alice_chan_id, PaymentDirection.TowardsOwner);
+    assert(update.fixed_fee == Amount(1337));
+    assert(update.proportional_fee == Amount(1));
+    update = bob.getChannelUpdate(charlie_alice_chan_id, PaymentDirection.TowardsOwner);
+    assert(update.fixed_fee == Amount(1337));
+    assert(update.proportional_fee == Amount(1));
+    update = charlie.getChannelUpdate(charlie_alice_chan_id, PaymentDirection.TowardsOwner);
+    assert(update.fixed_fee == Amount(1337));
+    assert(update.proportional_fee == Amount(1));
 }

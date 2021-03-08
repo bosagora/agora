@@ -111,6 +111,17 @@ public interface FlashAPI
 
     /***************************************************************************
 
+        Gossips channels attribute updates to this node.
+
+        Params:
+            chan_updates = the list of channel updates
+
+    ***************************************************************************/
+
+    public void gossipChannelUpdates (ChannelUpdate[] chan_updates);
+
+    /***************************************************************************
+
         Get the state of a channel with the given channel ID.
 
         Note that the node reports its own view of this channel.
