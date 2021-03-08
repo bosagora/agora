@@ -111,6 +111,9 @@ unittest
     testSymmetry(KeyPair.random());
 }
 
+private immutable int VersionWidth = 1;
+private immutable int ChecksumWidth = 2;
+
 /// Represent a public key / address
 public struct PublicKey
 {
@@ -132,20 +135,20 @@ public struct PublicKey
     /// Uses Stellar's representation instead of hex
     public string toString () const @trusted nothrow
     {
-        ubyte[1 + PublicKey.sizeof + 2] bin;
+        ubyte[VersionWidth + PublicKey.sizeof + ChecksumWidth] bin;
         bin[0] = VersionByte.AccountID;
-        bin[1 .. $ - 2] = this.data[];
-        bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
+        bin[VersionWidth .. $ - ChecksumWidth] = this.data[];
+        bin[$ - ChecksumWidth .. $] = checksum(bin[0 .. $ - ChecksumWidth]);
         return Base32.encode(bin).assumeUnique;
     }
 
     /// Make sure the sink overload of BitBlob is not picked
     public void toString (scope void delegate(const(char)[]) sink) const @trusted
     {
-        ubyte[1 + PublicKey.sizeof + 2] bin;
+        ubyte[VersionWidth + PublicKey.sizeof + ChecksumWidth] bin;
         bin[0] = VersionByte.AccountID;
-        bin[1 .. $ - 2] = this.data[];
-        bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
+        bin[VersionWidth .. $ - ChecksumWidth] = this.data[];
+        bin[$ - ChecksumWidth .. $] = checksum(bin[0 .. $ - ChecksumWidth]);
         Base32.encode(bin, sink);
     }
 
@@ -178,10 +181,10 @@ public struct PublicKey
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         const bin = Base32.decode(str);
-        enforce(bin.length == 1 + PublicKey.sizeof + 2);
+        enforce(bin.length == VersionWidth + PublicKey.sizeof + ChecksumWidth);
         enforce(bin[0] == VersionByte.AccountID);
-        enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
-        return PublicKey(typeof(this.data)(bin[1 .. $ - 2]));
+        enforce(validate(bin[0 .. $ - ChecksumWidth], bin[$ - ChecksumWidth .. $]));
+        return PublicKey(typeof(this.data)(bin[VersionWidth .. $ - ChecksumWidth]));
     }
 
     ///
@@ -405,10 +408,10 @@ public struct Seed
             break;
 
         case PrintMode.Clear:
-            ubyte[1 + Seed.Width + 2] bin;
+            ubyte[VersionWidth + Seed.Width + ChecksumWidth] bin;
             bin[0] = VersionByte.Seed;
-            bin[1 .. $ - 2] = this.data[];
-            bin[$ - 2 .. $] = checksum(bin[0 .. $ - 2]);
+            bin[VersionWidth .. $ - ChecksumWidth] = this.data[];
+            bin[$ - ChecksumWidth .. $] = checksum(bin[0 .. $ - ChecksumWidth]);
             formattedWrite(sink, "%s", Base32.encode(bin));
             break;
         }
@@ -454,10 +457,10 @@ public struct Seed
     public static Seed fromString (scope const(char)[] str)
     {
         const bin = Base32.decode(str);
-        enforce(bin.length == 1 + Seed.Width + 2);
+        enforce(bin.length == VersionWidth + Seed.Width + ChecksumWidth);
         enforce(bin[0] == VersionByte.Seed);
-        enforce(validate(bin[0 .. $ - 2], bin[$ - 2 .. $]));
-        return Seed(typeof(this.data)(bin[1 .. $ - 2]));
+        enforce(validate(bin[0 .. $ - ChecksumWidth], bin[$ - ChecksumWidth .. $]));
+        return Seed(typeof(this.data)(bin[VersionWidth .. $ - ChecksumWidth]));
     }
 
     ///
