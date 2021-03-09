@@ -182,9 +182,7 @@ private class ByzantineManager (bool addSpyValidator = false,
     {
         if (this.nodes.length < byzantine_not_signing_count + byzantine_bad_signing_count)
         {
-            auto time = new shared(TimePoint)(this.initial_time);
             assert(conf.validator.enabled);
-            RemoteAPI!TestAPI node;
             if (this.nodes.length < byzantine_not_signing_count)
                 this.addNewNode!(ByzantineNode!(ByzantineReason.NotSigningEnvelope))
                     (conf, file, line);
@@ -195,15 +193,7 @@ private class ByzantineManager (bool addSpyValidator = false,
         else
             // Add spying validator as last node
             if (addSpyValidator && this.nodes.length == GenesisValidators - 1)
-            {
-                auto time = new shared(TimePoint)(this.initial_time);
-                assert(conf.validator.enabled);
-                auto node = RemoteAPI!TestAPI.spawn!SpyingValidator(
-                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, &this.envelope_type_counts);
-                this.reg.register(conf.node.address, node.ctrl.listener());
-                this.nodes ~= NodePair(conf.node.address, node, time);
-            }
+                this.addNewNode!SpyingValidator(conf, &this.envelope_type_counts, file, line);
             else
                 super.createNewNode(conf, file, line);
     }

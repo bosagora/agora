@@ -758,13 +758,35 @@ public class TestAPIManager
             this.addNewNode!TestFullNode(conf, file, line);
     }
 
-    /// Convenience templated function to be called from overriding classes
-    public TestAPI addNewNode (NodeType : TestAPI) (
-        Config conf, string file = __FILE__, int line = __LINE__)
+    /***************************************************************************
+
+        Convenience templated function to be called from overriding classes
+
+        Params:
+          conf = The configuration for this node (usually forwarded from
+                 within `createNewNode`)
+          eArgs = The arguments `NodeType` has which are after `TestFullNode`'s
+                  (or `TestValidatorNode`'s) constructor arguments.
+          file = File this function is called for, forwarded to localrest for
+                 better debugging output.
+          line = Line this function is called for, forwarded to localrest for
+                 better debugging output.
+
+        Note:
+          The "extra arguments" parameter, `eArgs`, makes a few assumptions
+          which might not hold in the future, most importantly:
+          - `TestFullNode` and `TestValidatorNode` have the same ctor args;
+          - Arguments for `NodeType` are in the same order as its parent;
+
+    ***************************************************************************/
+
+    public TestAPI addNewNode (NodeType : TestAPI) (Config conf,
+        Parameters!(NodeType.__ctor)[Parameters!(TestValidatorNode.__ctor).length .. $] eArgs,
+        string file = __FILE__, int line = __LINE__)
     {
         auto time = new shared(TimePoint)(this.initial_time);
         auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg, &this.nreg,
-            this.blocks, this.test_conf, time,
+            this.blocks, this.test_conf, time, eArgs,
             conf.node.timeout, file, line);
 
         this.reg.register(conf.node.address, api.listener());

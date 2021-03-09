@@ -119,34 +119,19 @@ unittest
         /// see base class
         public override void createNewNode (Config conf, string file, int line)
         {
-            RemoteAPI!TestAPI api;
-            auto time = new shared(TimePoint)(this.initial_time);
-
             // the test has 8 nodes:
             // 6 validators => used for creating blocks
+            // 1 good FullNode => it accepts only the valid blockchain
             // 1 byzantine FullNode => lies about the blockchain
             //   (returns syntactically invalid data)
-            // 1 good FullNode => it accepts only the valid blockchain
-            if (conf.validator.enabled)
-            {
-                api = RemoteAPI!TestAPI.spawn!TestValidatorNode(
-                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, conf.node.timeout);
-            }
+            if (this.nodes.length <= 6)
+                super.createNewNode(conf, file, line);
             else
             {
-                if (this.nodes.length == 6)  // 7th good FN, 8th bad FN
-                    api = RemoteAPI!TestAPI.spawn!TestFullNode(conf,
-                        &this.reg, &this.nreg, this.blocks, this.test_conf,
-                        time, conf.node.timeout);
-                else
-                    api = RemoteAPI!TestAPI.spawn!BadNode(conf,
-                        &this.reg, &this.nreg, this.blocks, this.test_conf,
-                        time, conf.node.timeout);
+                assert(this.nodes.length == 7);
+                assert(conf.validator.enabled == false);
+                this.addNewNode!BadNode(conf, file, line);
             }
-
-            this.reg.register(conf.node.address, api.ctrl.listener());
-            this.nodes ~= NodePair(conf.node.address, api, time);
         }
     }
 

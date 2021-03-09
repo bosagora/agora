@@ -88,14 +88,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 0)
-            {
-                auto time = new shared(TimePoint)(this.initial_time);
-                auto api = RemoteAPI!TestAPI.spawn!CustomValidator(
-                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, conf.node.timeout);
-                this.reg.register(conf.node.address, api.ctrl.listener());
-                this.nodes ~= NodePair(conf.node.address, api, time);
-            }
+                this.addNewNode!CustomValidator(conf, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
