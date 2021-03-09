@@ -23,7 +23,7 @@ module agora.utils.SCPPrettyPrinter;
 import agora.common.Types;
 import agora.common.Amount;
 import agora.common.Config;
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
@@ -407,7 +407,7 @@ version (unittest)
 unittest
 {
     import agora.common.Config;
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
     import agora.common.Set;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.genesis.Test;

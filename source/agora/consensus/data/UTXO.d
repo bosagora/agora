@@ -14,7 +14,7 @@
 
 module agora.consensus.data.UTXO;
 
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;

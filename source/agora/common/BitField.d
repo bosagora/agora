@@ -29,7 +29,7 @@
 
 module agora.common.BitField;
 
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.crypto.Hash;
 

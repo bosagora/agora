@@ -42,7 +42,7 @@ public immutable Block GenesisBlock =
 ///
 unittest
 {
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
     import std.conv;
     import std.algorithm.sorting : isSorted;
 
@@ -176,7 +176,7 @@ unittest
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
     testSymmetry(GenesisTransactions);
     testSymmetry(GenesisBlock);
 }

@@ -16,7 +16,7 @@ module agora.node.TransactionPool;
 
 import agora.common.ManagedDatabase;
 import agora.common.Types;
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;

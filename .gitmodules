@@ -55,3 +55,6 @@
 [submodule "tracy"]
 	path = submodules/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "serialization"]
+	path = submodules/serialization
+	url = https://github.com/bpfkorea/serialization.git

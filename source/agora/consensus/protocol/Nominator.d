@@ -18,7 +18,7 @@ import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.SCPHash;
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;

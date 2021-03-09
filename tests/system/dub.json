@@ -5,7 +5,7 @@
     "dflags": [ "-i" ],
     "libs-posix": [ "sodium", "sqlite3" ],
     "libs-windows": [ "libsodium", "libsqlite3" ],
-    "versions": 
+    "versions":
     [
         "Have_base32",
         "Have_bitblob",
@@ -16,6 +16,7 @@
         "Have_libsodiumd",
         "Have_mir_linux_kernel",
         "Have_ocean",
+        "Have_serialization",
         "Have_stdx_allocator",
         "Have_systemtest_simple",
         "Have_taggedalgebraic",
@@ -38,12 +39,13 @@
     "versions-linux": [ "EventcoreEpollDriver" ],
     "versions-osx":   [ "EventcoreCFRunLoopDriver" ],
     "lflags-osx":     [ "-framework", "CoreFoundation",  "-framework", "CoreServices" ],
-    "importPaths": 
+    "importPaths":
     [
         "../../source",
         "../../submodules/base32/src",
         "../../submodules/bitblob/source",
         "../../submodules/crypto/source",
+        "../../submodules/serialization/source",
         "../../submodules/d2sqlite3/source",
         "../../submodules/diet-ng/source",
         "../../submodules/eventcore/source",

@@ -17,6 +17,7 @@
 		"mir-linux-kernel": {"path":"submodules/mir-linux-kernel/"},
 		"ocean": {"path":"submodules/ocean/"},
 		"openssl": {"path":"submodules/openssl/"},
+		"serialization": {"path":"submodules/serialization/"},
 		"stdx-allocator": {"path":"submodules/stdx-allocator/"},
 		"taggedalgebraic": {"path":"submodules/taggedalgebraic/"},
 		"tinyendian": {"path":"submodules/tinyendian/"},

@@ -16,7 +16,7 @@
 
 module agora.test.Crypto;
 
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.crypto.Types;
 import agora.crypto.ECC;
 import agora.crypto.Schnorr;
@@ -38,7 +38,7 @@ unittest
 // Test serialization for types in `agora.crypto.ECC`
 unittest
 {
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
     testSymmetry!Scalar();
     testSymmetry(Scalar.random());
     testSymmetry!Point();

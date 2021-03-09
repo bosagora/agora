@@ -79,7 +79,7 @@ unittest
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
 
     testSymmetry!Enrollment();
 

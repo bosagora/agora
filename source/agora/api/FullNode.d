@@ -20,7 +20,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.common.Types;
 import agora.common.Set;
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.consensus.data.Transaction;
 
 import vibe.data.serialization;
