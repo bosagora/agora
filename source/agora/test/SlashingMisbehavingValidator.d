@@ -95,7 +95,6 @@ private class NoPreImageVN : TestValidatorNode
 ///     validators with the 10K of the fund going to the `CommonsBudget` address.
 unittest
 {
-    import agora.script.Lock;
     static class BadAPIManager : TestAPIManager
     {
         public static shared bool reveal_preimage = false;
@@ -106,14 +105,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 5)
-            {
-                auto time = new shared(TimePoint)(this.initial_time);
-                auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
-                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, &reveal_preimage, conf.node.timeout);
-                this.reg.register(conf.node.address, api.ctrl.listener());
-                this.nodes ~= NodePair(conf.node.address, api, time);
-            }
+                this.addNewNode!NoPreImageVN(conf, &reveal_preimage, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
@@ -191,14 +183,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             if (conf.validator.enabled == true)
-            {
-                auto time = new shared(TimePoint)(this.initial_time);
-                auto api = RemoteAPI!TestAPI.spawn!NoPreImageVN(
-                    conf, &this.reg, &this.nreg, this.blocks, this.test_conf,
-                    time, &this.reveal_preimage, conf.node.timeout);
-                this.reg.register(conf.node.address, api.ctrl.listener());
-                this.nodes ~= NodePair(conf.node.address, api, time);
-            }
+                this.addNewNode!NoPreImageVN(conf, &this.reveal_preimage, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
