@@ -1,6 +1,6 @@
 # Run the system integration tests
 
-name: CI
+name: Integration
 on: [ push, pull_request ]
 
 jobs:
