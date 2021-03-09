@@ -39,11 +39,3 @@ public import agora.consensus.validation.Block       : isGenesisBlockInvalidReas
 public import agora.consensus.validation.Enrollment  : isInvalidReason;
 public import agora.consensus.validation.PreImage    : isInvalidReason;
 public import agora.consensus.validation.Transaction : isInvalidReason;
-
-version (unittest)
-{
-    public import agora.consensus.validation.Block       : isValid;
-    public import agora.consensus.validation.Enrollment  : isValid;
-    public import agora.consensus.validation.PreImage    : isValid;
-    public import agora.consensus.validation.Transaction : isValid;
-}
