@@ -48,7 +48,7 @@ module agora.consensus.EnrollmentManager;
 
 import agora.common.crypto.Key;
 import agora.common.ManagedDatabase;
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;

@@ -15,7 +15,7 @@
 module agora.consensus.SCPEnvelopeStore;
 
 import agora.common.ManagedDatabase;
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.utils.Log;
 

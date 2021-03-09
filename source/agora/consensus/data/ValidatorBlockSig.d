@@ -91,7 +91,7 @@ public struct ValidatorBlockSig
 
 unittest
 {
-    import agora.common.Serializer;
+    import agora.serialization.Serializer;
 
     testSymmetry!ValidatorBlockSig();
 

@@ -214,6 +214,7 @@
         "libsodiumd":       { "version": "*", "dflags" : ["-preview=in"] },
         "localrest":        { "version": "*", "dflags" : ["-preview=in"] },
         "ocean":            { "version": "*", "dflags" : ["-preview=in"] },
+        "serialization":    { "version": "*", "dflags" : ["-preview=in"] },
         "vibe-d":           { "version": "*", "dflags" : ["-preview=in"] }
     }
 }

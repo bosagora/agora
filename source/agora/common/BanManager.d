@@ -14,7 +14,7 @@
 
 module agora.common.BanManager;
 
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.network.Clock;
 import agora.utils.InetUtils;

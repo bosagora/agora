@@ -13,7 +13,7 @@
 
 module agora.common.Metadata;
 
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.common.Set;
 import agora.common.Types;
 

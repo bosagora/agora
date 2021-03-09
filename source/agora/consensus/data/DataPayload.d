@@ -13,7 +13,7 @@
 
 module agora.consensus.data.DataPayload;
 
-import agora.common.Serializer;
+import agora.serialization.Serializer;
 import agora.crypto.Hash;
 
 import std.algorithm.iteration;
