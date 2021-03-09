@@ -81,7 +81,7 @@ public string isInvalidReason (
 
     const tx_hash = hashFull(tx);
 
-    string isInvalidInput (const ref Input input, ref UTXO utxo_value,
+    string isInvalidInput (in Input input, ref UTXO utxo_value,
         ref Amount sum_unspent)
     {
         if (!findUTXO(input.utxo, utxo_value))

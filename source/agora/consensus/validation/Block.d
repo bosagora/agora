@@ -321,7 +321,7 @@ public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_
 
 *******************************************************************************/
 
-public string isGenesisBlockInvalidReason (const ref Block block) nothrow @safe
+public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
 {
     if (block.header.height != 0)
         return "GenesisBlock: The height of the block is not 0";
@@ -458,7 +458,7 @@ unittest
     Transaction[] txs =
         GenesisBlock.txs.serializeFull.deserializeFull!(Transaction[]);
 
-    void checkValidity (const ref Block block)
+    void checkValidity (in Block block)
     {
         auto reason = block.isGenesisBlockInvalidReason();
         assert(reason is null, reason);
@@ -628,7 +628,7 @@ unittest
 /// Ditto but returns `bool`, only usable in unittests
 /// Only the genesis block Validation
 version (unittest)
-public bool isGenesisBlockValid (const ref Block genesis_block)
+public bool isGenesisBlockValid (in Block genesis_block)
     nothrow @safe
 {
     return isGenesisBlockInvalidReason(genesis_block) is null;
@@ -643,7 +643,7 @@ version (unittest)
             .find!(key => key.address == PublicKey(point[]))[0].secret;
     }
 
-    public string isValidcheck (const ref Block block, Height prev_height,
+    public string isValidcheck (in Block block, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
