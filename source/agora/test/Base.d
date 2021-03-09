@@ -22,30 +22,31 @@ module agora.test.Base;
 
 version (unittest):
 
+import agora.api.FullNode : NodeInfo, NetworkState;
+import agora.api.Validator : ValidatorAPI = API;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitField;
 import agora.common.Config;
-import agora.common.Types;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
-import agora.node.TransactionPool;
+import agora.common.Types;
 import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
-import agora.consensus.protocol.Data;
+import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
-import agora.consensus.state.UTXODB;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.data.genesis.Test;
-import agora.consensus.SCPEnvelopeStore;
+import agora.consensus.protocol.Data;
+import agora.consensus.Fee;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
-import agora.consensus.Fee;
+import agora.consensus.SCPEnvelopeStore;
+import agora.consensus.state.UTXODB;
 import agora.crypto.Hash;
 import agora.network.Client;
 import agora.network.Clock;
@@ -53,6 +54,7 @@ import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
+import agora.node.TransactionPool;
 import agora.node.Validator;
 import agora.registry.API;
 import agora.registry.Server;
@@ -60,8 +62,6 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
 import agora.utils.Workarounds;
-import agora.api.FullNode : NodeInfo, NetworkState;
-import agora.api.Validator : ValidatorAPI = API;
 
 import scpd.types.Stellar_SCP;
 
@@ -102,7 +102,7 @@ public const size_t GenesisValidators = GenesisBlock.header.enrollments.count();
 public const uint GenesisValidatorCycle = GenesisBlock
     .header.enrollments[0].cycle_length;
 
-shared static this()
+shared static this ()
 {
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
 }
