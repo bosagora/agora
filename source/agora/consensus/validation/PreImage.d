@@ -47,8 +47,8 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (const ref PreImageInfo new_image,
-    const ref PreImageInfo prev_image, uint validator_cycle) nothrow @safe
+public string isInvalidReason (in PreImageInfo new_image,
+    in PreImageInfo prev_image, uint validator_cycle) nothrow @safe
 {
     if (new_image.enroll_key != prev_image.enroll_key)
         return "The pre-image's enrollment key differs from its descendant";
@@ -70,8 +70,8 @@ public string isInvalidReason (const ref PreImageInfo new_image,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValid (const ref PreImageInfo prev_image,
-    const ref PreImageInfo new_image, uint validator_cycle) nothrow @safe
+public bool isValid (in PreImageInfo prev_image,
+    in PreImageInfo new_image, uint validator_cycle) nothrow @safe
 {
     return isInvalidReason(prev_image, new_image, validator_cycle) is null;
 }
