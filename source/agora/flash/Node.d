@@ -280,7 +280,6 @@ public abstract class FlashNode : ControlFlashAPI
     /// transaction is externalized, the Channel channel gets promoted
     /// to a Channel with a unique ID derived from the hash of the funding tx.
     protected Channel[Hash] channels;
-    protected Channel[][Hash] channels_by_key;
 
     /// These are the known channels of which we may not necessary be a
     /// counterparty of. With this information we can derive payment paths.
@@ -402,13 +401,6 @@ public abstract class FlashNode : ControlFlashAPI
 
         this.channels[chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
-
-        // todo: simplify
-        if (chan_conf.chan_id in this.channels_by_key)
-            this.channels_by_key[chan_conf.chan_id] = [channel];
-        else
-            this.channels_by_key[chan_conf.chan_id] ~= channel;
-
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
         return Result!PublicNonce(pub_nonce);
     }
