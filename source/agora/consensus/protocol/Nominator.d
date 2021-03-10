@@ -91,7 +91,7 @@ public extern (C++) class Nominator : SCPDriver
     public PublicKey node_public_key;
 
     /// Task manager
-    private TaskManager taskman;
+    private ITaskManager taskman;
 
     /// Ledger instance
     protected ValidatingLedger ledger;
@@ -154,7 +154,7 @@ extern(D):
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
         Clock clock, NetworkManager network, ValidatingLedger ledger,
-        EnrollmentManager enroll_man, TaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, ITaskManager taskman, string data_dir)
     {
         this.params = params;
         this.clock = clock;

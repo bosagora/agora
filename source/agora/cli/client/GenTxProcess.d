@@ -19,7 +19,7 @@ import agora.api.FullNode;
 import agora.client.Result;
 import agora.common.Amount;
 import agora.common.crypto.Key;
-import agora.common.Task;
+import agora.common.VibeTask;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
@@ -147,7 +147,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
     // connect to the node
     string ip_address = format("http://%s:%s", op.host, op.port);
     auto node = api_maker(ip_address);
-    auto taskman = new TaskManager;
+    auto taskman = new VibeTaskManager;
     auto last_block = node.getBlocksFrom(node.getBlockHeight(), 1)[0];
     auto txs = last_block.spendable().take(op.count)
                          .map!(txb => txb.split(

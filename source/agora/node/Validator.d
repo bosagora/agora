@@ -394,7 +394,7 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     protected Nominator getNominator (Clock clock, NetworkManager network,
-        ValidatingLedger ledger, EnrollmentManager enroll_man, TaskManager taskman)
+        ValidatingLedger ledger, EnrollmentManager enroll_man, ITaskManager taskman)
     {
         return new Nominator(
             this.params, this.config.validator.key_pair, clock, network, ledger,
@@ -415,7 +415,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override Clock getClock (TaskManager taskman)
+    protected override Clock getClock (ITaskManager taskman)
     {
         return new Clock((out long time_offset)
             {

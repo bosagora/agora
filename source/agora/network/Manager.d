@@ -335,7 +335,7 @@ public class NetworkManager
     protected const ConsensusConfig consensus_config = ConsensusConfig.init;
 
     /// Task manager
-    private TaskManager taskman;
+    private ITaskManager taskman;
 
     /// Never-ending address discovery task
     protected AddressDiscoveryTask discovery_task;
@@ -382,7 +382,7 @@ public class NetworkManager
     private enum MaxConnectionTasks = 10;
 
     /// Ctor
-    public this (in Config config, Metadata metadata, TaskManager taskman, Clock clock)
+    public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
     {
         this.taskman = taskman;
         this.node_config = config.node;
@@ -1135,7 +1135,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public NetworkClient getNetworkClient (TaskManager taskman,
+    public NetworkClient getNetworkClient (ITaskManager taskman,
         BanManager banman, Address address, API api, Duration retry,
         size_t max_retries)
     {

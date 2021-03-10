@@ -334,7 +334,7 @@ public alias RemoteAPI (APIType) = geod24.LocalRest.RemoteAPI!(APIType, Serializ
 
 *******************************************************************************/
 
-public class LocalRestTaskManager : TaskManager
+public class LocalRestTaskManager : ITaskManager
 {
     static import geod24.LocalRest;
 
@@ -1223,7 +1223,7 @@ public class TestNetworkManager : NetworkManager
 
     ///
     protected final override TestNetworkClient getNetworkClient (
-        TaskManager taskman, BanManager banman, Address address,
+        ITaskManager taskman, BanManager banman, Address address,
         ValidatorAPI api, Duration retry, size_t max_retries)
     {
         return new TestNetworkClient(taskman, banman, address, api, retry,
@@ -1450,14 +1450,14 @@ private mixin template TestNodeMixin ()
     }
 
     /// Return a LocalRest-backed task manager
-    protected override TaskManager getTaskManager ()
+    protected override ITaskManager getTaskManager ()
     {
         return new LocalRestTaskManager();
     }
 
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager getNetworkManager (
-        Metadata metadata, TaskManager taskman, Clock clock)
+        Metadata metadata, ITaskManager taskman, Clock clock)
     {
         assert(taskman !is null);
         return new TestNetworkManager(
@@ -1503,7 +1503,7 @@ public class TestClock : Clock
     private shared(TimePoint)* cur_time;
 
     ///
-    public this (TaskManager taskman, GetNetTimeOffset getNetTimeOffset,
+    public this (ITaskManager taskman, GetNetTimeOffset getNetTimeOffset,
         shared(TimePoint)* cur_time)
     {
         super(getNetTimeOffset,
@@ -1548,7 +1548,7 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock getClock (TaskManager taskman)
+    protected override TestClock getClock (ITaskManager taskman)
     {
         return new TestClock(this.taskman,
             (out long time_offset) { return true; }, this.cur_time);
@@ -1659,7 +1659,7 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock getClock (TaskManager taskman)
+    protected override TestClock getClock (ITaskManager taskman)
     {
         return new TestClock(this.taskman,
             (out long time_offset)
