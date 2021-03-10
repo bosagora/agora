@@ -16,7 +16,6 @@ module agora.consensus.Quorum;
 import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.Config;
-import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
@@ -24,6 +23,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.state.UTXOSet;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;

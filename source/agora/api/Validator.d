@@ -42,10 +42,10 @@
 
 module agora.api.Validator;
 
-import agora.common.crypto.Key;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.flash.API;
 static import agora.api.FullNode;
 

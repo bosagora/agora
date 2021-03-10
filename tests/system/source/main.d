@@ -19,7 +19,6 @@ import agora.consensus.data.genesis;
 import TestGenesis = agora.consensus.data.genesis.Test;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
-import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.crypto.Hash;
 import agora.utils.PrettyPrinter;

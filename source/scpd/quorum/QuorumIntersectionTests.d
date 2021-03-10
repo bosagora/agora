@@ -26,8 +26,8 @@ import scpd.types.Stellar_types : uint256, NodeID;
 import scpd.types.Utils;
 import scpd.types.XDRBase;
 import agora.common.Config;
-import agora.common.crypto.Key;
 import agora.common.Types;
+import agora.crypto.Key;
 import agora.utils.Log;
 
 mixin AddLogger!();

@@ -26,12 +26,12 @@ module agora.utils.PrettyPrinter;
 import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.Types;
-import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 version (unittest) import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
+import agora.crypto.Key;
 
 import std.algorithm;
 import std.format;
@@ -590,9 +590,9 @@ private struct ConsensusDataFmt
 ///
 unittest
 {
-    import agora.serialization.Serializer;
     import agora.common.Set;
     import agora.crypto.Hash;
+    import agora.serialization.Serializer;
 
     Hash quorumSetHash;
 

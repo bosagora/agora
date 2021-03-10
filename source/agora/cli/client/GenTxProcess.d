@@ -18,7 +18,6 @@ module agora.client.GenTxProcess;
 import agora.api.FullNode;
 import agora.client.Result;
 import agora.common.Amount;
-import agora.common.crypto.Key;
 import agora.common.VibeTask;
 import agora.common.Types;
 import agora.consensus.data.Block;

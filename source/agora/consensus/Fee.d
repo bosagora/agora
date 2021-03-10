@@ -15,13 +15,13 @@ module agora.consensus.Fee;
 
 import agora.common.Types;
 import agora.common.Amount;
-import agora.common.crypto.Key;
 import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.Params;
 import agora.consensus.state.UTXOSet;
+import agora.crypto.Key;
 import agora.utils.Log;
 
 import std.math;

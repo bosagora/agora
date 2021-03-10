@@ -33,11 +33,11 @@ import agora.flash.Route;
 import agora.flash.Types;
 
 import agora.common.Amount;
-import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Schnorr;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.script.Lock;
 import agora.script.Script;
 import agora.serialization.Serializer;

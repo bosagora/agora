@@ -17,7 +17,6 @@ module agora.test.RestoreSlashingInfo;
 version (unittest):
 
 import agora.api.FullNode;
-import agora.common.crypto.Key;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.test.Base;

@@ -14,8 +14,8 @@
 module agora.registry.Server;
 
 import agora.common.Types;
-import agora.common.crypto.Key;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.registry.API;
 import agora.utils.Log;
 

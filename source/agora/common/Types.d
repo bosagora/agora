@@ -13,7 +13,7 @@
 
 module agora.common.Types;
 
-import agora.common.crypto.Key;
+import agora.crypto.Key;
 public import agora.crypto.Types;
 
 /// Represents a specific point in time, it should be changed to time_t

@@ -25,8 +25,8 @@
 
 module scpd.Cpp;
 
-import agora.serialization.Serializer;
 import agora.crypto.Hash;
+import agora.serialization.Serializer;
 
 //import core.stdcpp.exception;
 import core.stdcpp.xutility;

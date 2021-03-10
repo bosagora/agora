@@ -17,8 +17,6 @@ module agora.test.Ledger;
 version (unittest):
 
 import agora.common.Amount;
-import agora.common.crypto.Key;
-import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
@@ -29,6 +27,7 @@ import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.serialization.Serializer;
 import agora.test.Base;
 
 import core.thread;

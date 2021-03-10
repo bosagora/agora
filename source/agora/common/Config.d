@@ -17,10 +17,10 @@ module agora.common.Config;
 
 import agora.common.Amount;
 import agora.common.BanManager;
-import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Params;
+import agora.crypto.Key;
 import agora.utils.Log;
 
 import scpd.types.Stellar_SCP;

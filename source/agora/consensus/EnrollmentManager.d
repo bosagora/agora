@@ -46,9 +46,7 @@
 
 module agora.consensus.EnrollmentManager;
 
-import agora.common.crypto.Key;
 import agora.common.ManagedDatabase;
-import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -61,7 +59,9 @@ import agora.consensus.state.ValidatorSet;
 import agora.consensus.state.UTXOSet;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
+import agora.serialization.Serializer;
 import agora.stats.Utils;
 import agora.stats.Validator;
 import agora.utils.Log;

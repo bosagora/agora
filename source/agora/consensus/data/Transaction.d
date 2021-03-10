@@ -20,12 +20,12 @@
 module agora.consensus.data.Transaction;
 
 import agora.common.Amount;
-import agora.common.crypto.Key;
 import agora.common.Types;
-import agora.serialization.Serializer;
 import agora.consensus.data.DataPayload;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.script.Lock;
+import agora.serialization.Serializer;
 
 import std.algorithm;
 

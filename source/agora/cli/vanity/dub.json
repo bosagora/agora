@@ -7,8 +7,8 @@
     "mainSourceFile": "main.d",
     "importPaths": [ "../../../" ],
     "sourceFiles": [
-        "../../common/crypto/Crc16.d",
-        "../../common/crypto/Key.d"
+        "../../crypto/Crc16.d",
+        "../../crypto/Key.d"
     ],
 
     "dependencies": {

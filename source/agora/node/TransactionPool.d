@@ -16,10 +16,10 @@ module agora.node.TransactionPool;
 
 import agora.common.ManagedDatabase;
 import agora.common.Types;
-import agora.serialization.Serializer;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 
 import d2sqlite3.library;
@@ -35,6 +35,8 @@ import std.string;
 
 version (unittest)
 {
+    import agora.common.Amount;
+    import agora.crypto.Key;
     import agora.utils.Test;
 }
 
@@ -609,9 +611,6 @@ unittest
 /// test double-spending on the Transaction pool
 unittest
 {
-    import agora.common.Amount;
-    import agora.common.crypto.Key;
-
     auto seed1 = "SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ";
     auto seed2 = "SCTTRCMT7DVZHQS375GWIKYQYHKA3X4IC4EOBNPRGV7DFR3X6OM5VIWL";
     auto key_pair1 = KeyPair.fromSeed(Seed.fromString(seed1));
@@ -654,9 +653,6 @@ unittest
 // test addition and removal of double-spend txs
 unittest
 {
-    import agora.common.Amount;
-    import agora.common.crypto.Key;
-
     auto pool = new TransactionPool(":memory:");
 
     Transaction tx1 =
@@ -694,9 +690,6 @@ unittest
 // with a more complex relation betwween double-spend txs
 unittest
 {
-    import agora.common.Amount;
-    import agora.common.crypto.Key;
-
     auto pool = new TransactionPool(":memory:");
 
     Transaction tx1 =
@@ -739,9 +732,6 @@ unittest
 // test double-spend selection mechanism
 unittest
 {
-    import agora.common.Amount;
-    import agora.common.crypto.Key;
-
     // Pick the TX with max output value, assumes only one output
     size_t selector (Transaction[] txs)
     {
@@ -811,10 +801,6 @@ unittest
 
 unittest
 {
-    import agora.common.Amount;
-    import agora.common.crypto.Key;
-    import std.stdio;
-
     auto pool = new TransactionPool(":memory:");
 
     Transaction tx1 =
