@@ -83,7 +83,7 @@ services:
 
   # faucet
   faucet:
-    image: "drey08/faucet:flash"
+    image: "bpfk/faucet:latest"
     depends_on:
       - node-0
       - node-2
