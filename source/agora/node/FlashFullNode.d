@@ -235,10 +235,10 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         super(config);
         assert(this.config.flash.enabled);
         assert(!this.config.validator.enabled);
-
+        const flash_path = buildPath(this.config.node.data_dir, "flash.dat");
         this.flash = new AgoraFlashNode(this.config.flash.key_pair,
-            hashFull(this.params.Genesis),
-            this.engine, this.taskman, this, &this.getFlashClient);
+            flash_path, hashFull(this.params.Genesis), this.engine,
+            this.taskman, this, &this.getFlashClient);
     }
 
     public override void start ()
@@ -251,6 +251,11 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
             // `this.config.flash.key_pair`
             log.info("This flash node is in testing mode!");
         }
+    }
+
+    public override void shutdown ()
+    {
+        this.flash.shutdown();
     }
 
     public override void receiveInvoice (Invoice invoice)

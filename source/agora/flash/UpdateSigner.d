@@ -36,8 +36,9 @@ import agora.utils.Log;
 
 mixin AddLogger!();
 
-// todo: remove
-import std.stdio;
+import std.format;
+import std.stdio;  // todo: remove
+import std.traits;
 
 import core.time;
 
@@ -46,6 +47,12 @@ public class UpdateSigner
 {
     /// All the update signer metadata
     mixin UpdateSignerMetadata!() meta;
+
+    /// Database to load from
+    private ManagedDatabase db;
+
+    /// Serialization buffer
+    private ubyte[] serialize_buffer;
 
     /// Peer we're communicating with
     private FlashAPI peer;
@@ -71,7 +78,7 @@ public class UpdateSigner
     ***************************************************************************/
 
     public this (ChannelConfig conf, KeyPair kp, FlashAPI peer,
-        Point peer_pk, Engine engine, ITaskManager taskman)
+        Point peer_pk, Engine engine, ITaskManager taskman, ManagedDatabase db)
     {
         this.conf = conf;
         this.kp = kp;
@@ -79,6 +86,85 @@ public class UpdateSigner
         this.peer_pk = peer_pk;
         this.engine = engine;
         this.taskman = taskman;
+        this.db = db;
+
+        this.load();
+    }
+
+    /***************************************************************************
+
+        Load any update signer metadata from the database.
+
+    ***************************************************************************/
+
+    public void load ()
+    {
+        auto results = this.db.execute(
+            "SELECT update_signer FROM channels WHERE chan_id = ?",
+            this.conf.chan_id);
+        if (results.empty)
+            return;  // nothing to load
+
+        ubyte[] data = results.oneValue!(ubyte[]);
+
+        scope DeserializeDg dg = (size) @safe
+        {
+            if (size > data.length)
+                throw new Exception(
+                    format("Requested %d bytes but only %d bytes available",
+                        size, data.length));
+
+            auto res = data[0 .. size];
+            data = data[size .. $];
+            return res;
+        };
+
+        foreach (name; __traits(allMembers, this.meta))
+        {
+            alias Type = typeof(__traits(getMember, this.meta, name));
+            auto field = &__traits(getMember, this.meta, name);
+            static if (isAssociativeArray!Type)
+                *field = deserializeFull!(SerializeMap!Type)(dg)._map;
+            else static if (is(Type == KeyPair))
+            {
+                // key-pair embeds const but compiler doesn't recognize
+                // this as initialization rather than assignment
+                auto val = deserializeFull!Type(dg);
+                *cast(PublicKey*)&field.address = val.address;
+                *cast(SecretKey*)&field.secret = val.secret;
+            }
+            else
+                *field = deserializeFull!Type(dg);
+        }
+    }
+
+    /***************************************************************************
+
+        Serialize and dump the channel metadata to the database.
+
+    ***************************************************************************/
+
+    private void dump () @trusted
+    {
+        this.serialize_buffer.length = 0;
+        () @trusted { assumeSafeAppend(this.serialize_buffer); }();
+        scope SerializeDg dg = (in ubyte[] data) @safe
+        {
+            this.serialize_buffer ~= data;
+        };
+
+        foreach (name; __traits(allMembers, meta))
+        {
+            auto field = __traits(getMember, meta, name);
+            static if (isAssociativeArray!(typeof(field)))
+                serializePart(serializeMap(field), dg);
+            else
+                serializePart(field, dg);
+        }
+
+        this.db.execute(
+            "REPLACE INTO channels (chan_id, update_signer) VALUES (?, ?)",
+            this.conf.chan_id, this.serialize_buffer);
     }
 
     /***************************************************************************
