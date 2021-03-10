@@ -77,33 +77,10 @@ import core.time;
 
 mixin AddLogger!();
 
-///
-public class FlashFullNode : FullNode, FlashFullNodeAPI
+/// Common routines implemented by both FlashFullNode / FlashValidator.
+/// Cannot use multiple inheritance in D.
+public mixin template FlashNodeCommon ()
 {
-    /// Flash node
-    protected AgoraFlashNode flash;
-
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            config = Config instance
-
-    ***************************************************************************/
-
-    public this (const Config config)
-    {
-        super(config);
-        assert(this.config.flash.enabled);
-        assert(!this.config.validator.enabled);
-
-        immutable kp = Pair(this.config.flash.key_pair.secret,
-            this.config.flash.key_pair.secret.toPoint);
-        this.flash = new AgoraFlashNode(kp, hashFull(this.params.Genesis),
-            this.engine, this.taskman, this, &this.getFlashClient);
-    }
-
     private ExtendedFlashAPI getFlashClient (in Point peer_pk, Duration timeout)
     {
         // todo: need to retry later
@@ -123,23 +100,6 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         settings.httpClientSettings.readTimeout = timeout;
 
         return new RestInterfaceClient!ExtendedFlashAPI(settings);
-    }
-
-    public override void start ()
-    {
-        super.start();
-
-        if (this.config.flash.testing)
-        {
-            // we know we're a full node, and the key we use is in
-            // `this.config.flash.key_pair`
-            log.info("This flash node is in testing mode!");
-        }
-    }
-
-    public override void receiveInvoice (Invoice invoice)
-    {
-        // todo: no-op
     }
 
     /***************************************************************************
@@ -254,4 +214,51 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
     {
         this.flash.reportPaymentError(chan_id, err);
     }
+}
+
+///
+public class FlashFullNode : FullNode, FlashFullNodeAPI
+{
+    /// Flash node
+    protected AgoraFlashNode flash;
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            config = Config instance
+
+    ***************************************************************************/
+
+    public this (const Config config)
+    {
+        super(config);
+        assert(this.config.flash.enabled);
+        assert(!this.config.validator.enabled);
+
+        immutable kp = Pair(this.config.flash.key_pair.secret,
+            this.config.flash.key_pair.secret.toPoint);
+        this.flash = new AgoraFlashNode(kp, hashFull(this.params.Genesis),
+            this.engine, this.taskman, this, &this.getFlashClient);
+    }
+
+    public override void start ()
+    {
+        super.start();
+
+        if (this.config.flash.testing)
+        {
+            // we know we're a full node, and the key we use is in
+            // `this.config.flash.key_pair`
+            log.info("This flash node is in testing mode!");
+        }
+    }
+
+    public override void receiveInvoice (Invoice invoice)
+    {
+        // todo: no-op
+    }
+
+    mixin FlashNodeCommon!();
 }
