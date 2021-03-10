@@ -17,13 +17,13 @@ module agora.consensus.data.Block;
 
 import agora.common.Amount;
 import agora.common.BitField;
-import agora.common.crypto.Key;
 import agora.common.Types;
-import agora.serialization.Serializer;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.script.Lock;
+import agora.serialization.Serializer;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
@@ -99,7 +99,6 @@ public struct BlockHeader
 unittest
 {
     import std.conv : to;
-    import agora.common.crypto.Key;
     auto address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
     PublicKey pubkey = PublicKey.fromString(address);
 

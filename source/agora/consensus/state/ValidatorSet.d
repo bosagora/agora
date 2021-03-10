@@ -15,9 +15,7 @@
 
 module agora.consensus.state.ValidatorSet;
 
-import agora.common.crypto.Key;
 import agora.common.ManagedDatabase;
-import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -27,7 +25,9 @@ import agora.consensus.PreImage;
 import agora.consensus.state.UTXOSet;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 

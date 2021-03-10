@@ -18,7 +18,7 @@
 module agora.node.admin.AdminInterface;
 
 import agora.common.Config;
-import agora.common.crypto.Key;
+import agora.crypto.Key;
 import agora.node.admin.QRCodeInterface;
 import agora.utils.Log;
 import agora.network.Clock;

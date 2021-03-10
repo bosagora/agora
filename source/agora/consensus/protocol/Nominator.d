@@ -14,7 +14,6 @@
 module agora.consensus.protocol.Nominator;
 
 import agora.common.BitField;
-import agora.common.crypto.Key;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.SCPHash;
@@ -32,6 +31,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.SCPEnvelopeStore;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.network.Clock;
 import agora.network.Manager;

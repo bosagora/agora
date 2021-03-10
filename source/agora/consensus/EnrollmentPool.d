@@ -16,10 +16,9 @@
 
 module agora.consensus.EnrollmentPool;
 
-import agora.common.crypto.Key;
 import agora.common.ManagedDatabase;
-import agora.serialization.Serializer;
 import agora.common.Types;
+import agora.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
@@ -29,6 +28,7 @@ import agora.consensus.validation;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 

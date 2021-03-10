@@ -16,7 +16,6 @@ module agora.test.Script;
 version (unittest):
 
 import agora.api.Validator;
-import agora.common.crypto.Key;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.crypto.Schnorr;

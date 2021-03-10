@@ -23,13 +23,13 @@ module agora.utils.SCPPrettyPrinter;
 import agora.common.Types;
 import agora.common.Amount;
 import agora.common.Config;
-import agora.serialization.Serializer;
 import agora.common.Types;
-import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.Key;
+import agora.serialization.Serializer;
 import agora.utils.PrettyPrinter;
 
 import scpd.Cpp;
@@ -407,7 +407,6 @@ version (unittest)
 unittest
 {
     import agora.common.Config;
-    import agora.serialization.Serializer;
     import agora.common.Set;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.genesis.Test;

@@ -22,7 +22,6 @@ import agora.flash.Types;
 import agora.flash.UpdateSigner;
 
 import agora.common.Amount;
-import agora.common.crypto.Key;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;

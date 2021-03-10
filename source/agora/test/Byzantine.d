@@ -20,7 +20,6 @@ import agora.api.Validator;
 import agora.common.Config;
 import agora.common.Task;
 import agora.common.Types;
-import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.Params;

@@ -32,7 +32,6 @@ import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
-import agora.common.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.genesis.Test;
@@ -48,6 +47,7 @@ import agora.consensus.Quorum;
 import agora.consensus.SCPEnvelopeStore;
 import agora.consensus.state.UTXODB;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.network.Client;
 import agora.network.Clock;
 import agora.network.Manager;
@@ -1814,7 +1814,6 @@ public struct TestConf
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     (in TestConf test_conf, string file = __FILE__, int line = __LINE__)
 {
-    import agora.serialization.Serializer;
     import std.digest;
     import std.range;
 

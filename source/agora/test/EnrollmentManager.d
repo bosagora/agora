@@ -228,7 +228,6 @@ unittest
 {
     import agora.common.Config;
     import agora.common.Task;
-    import agora.common.crypto.Key;
     import agora.consensus.protocol.Nominator;
     import agora.consensus.protocol.Data;
     import agora.consensus.data.genesis.Test;

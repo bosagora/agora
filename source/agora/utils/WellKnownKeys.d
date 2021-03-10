@@ -18,7 +18,7 @@
 
 module agora.utils.WellKnownKeys;
 
-import agora.common.crypto.Key;
+import agora.crypto.Key;
 
 // Can't do this because then `public import` is useless
 //package:

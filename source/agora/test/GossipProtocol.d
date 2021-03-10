@@ -15,7 +15,6 @@ module agora.test.GossipProtocol;
 
 version (unittest):
 
-import agora.common.crypto.Key;
 import agora.common.Types;
 import agora.crypto.Hash;
 import agora.test.Base;

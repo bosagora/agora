@@ -19,7 +19,6 @@ import agora.consensus.Fee;
 import agora.common.Task;
 import agora.common.Config;
 import agora.common.Metadata;
-import agora.common.crypto.Key;
 import agora.crypto.Hash;
 import agora.node.Ledger;
 import agora.test.Base;

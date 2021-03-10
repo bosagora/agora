@@ -30,16 +30,16 @@
 module agora.utils.Test;
 
 import agora.common.Amount;
-import agora.common.crypto.Key;
-import agora.serialization.Serializer;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
+import agora.serialization.Serializer;
 public import agora.utils.Utility : retryFor;
 
 import std.algorithm;

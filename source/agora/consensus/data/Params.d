@@ -20,8 +20,8 @@
 module agora.consensus.data.Params;
 
 import agora.common.Amount;
-import agora.common.crypto.Key;
 import agora.consensus.data.Block;
+import agora.crypto.Key;
 
 import core.time;
 

@@ -19,7 +19,7 @@
 
 module agora.cli.vanity.main;
 
-import agora.common.crypto.Key;
+import agora.crypto.Key;
 
 import core.atomic;
 import std.parallelism;

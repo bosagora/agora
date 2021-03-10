@@ -26,7 +26,7 @@ import agora.crypto.Schnorr;
 
 version (unittest)
 {
-    import agora.common.crypto.Key;
+    import agora.crypto.Key;
 
     import std.format;
 }

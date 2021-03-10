@@ -19,9 +19,9 @@ module agora.node.BlockStorage;
 import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.Types;
-import agora.serialization.Serializer;
 import agora.consensus.data.Block;
 import agora.crypto.Hash;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 
 import std.algorithm;
@@ -1028,10 +1028,10 @@ unittest
 version (unittest)
 private void testStorage (IBlockStorage storage)
 {
-    import agora.common.crypto.Key;
     import agora.consensus.data.genesis.Test;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.Transaction;
+    import agora.crypto.Key;
     import agora.utils.Test;
     import std.algorithm.comparison;
     import std.range;
