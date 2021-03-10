@@ -91,7 +91,7 @@ unittest
                 last_block = block;
             }
 
-            auto signTx (Transaction tx) @trusted { return prev_key.secret.sign(hashFull(tx)[]); }
+            auto signTx (Transaction tx) @trusted { return prev_key.sign(hashFull(tx)[]); }
 
             foreach (block1; blocks)
             {

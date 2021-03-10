@@ -280,7 +280,7 @@ unittest
     };
     Hash send_txhash = hashFull(tx);
     auto key_pair = KeyPair.fromSeed(Seed.fromString(key));
-    tx.inputs[0].unlock = genKeyUnlock(key_pair.secret.sign(send_txhash[]));
+    tx.inputs[0].unlock = genKeyUnlock(key_pair.sign(send_txhash[]));
 
     foreach (ref line; outputs)
         writeln(line);

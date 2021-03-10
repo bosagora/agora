@@ -634,7 +634,7 @@ unittest
         tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
         tx.inputs[0].unlock = genKeyUnlock(
-            key_pairs[idx].secret.sign(last_hash[]));
+            key_pairs[idx].sign(last_hash[]));
         txs ~= tx;
     }
 
