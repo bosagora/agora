@@ -285,6 +285,25 @@ public struct Amount
         return this.value / other.value;
     }
 
+    /***************************************************************************
+
+        Calculate how much proportional fee should be paid for `this`
+        with the given `proportional_fee`
+
+        Params:
+            proportional_fee = fee per BOA
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public Amount proportionalFee (Amount proportional_fee)
+    {
+        Amount fee = this;
+        if (fee.mul(proportional_fee.value))
+            fee.div(Amount.UnitPerCoin.value);
+        return fee;
+    }
+
     /// Returns: The integral part of the amount (value / 1 BOA)
     public ulong integral () const
     {
@@ -491,4 +510,13 @@ unittest
     assert(amt.mul(44));
     assert(amt == Amount(4400));
     assert(!amt.mul(ulong.max));
+}
+
+unittest
+{
+    Amount coin = Amount.UnitPerCoin;
+    assert(coin.proportionalFee(Amount(44)) == Amount(44));
+    coin.div(2);
+    assert(coin.proportionalFee(Amount(44)) == Amount(22));
+    assert(!coin.proportionalFee(Amount.MaxUnitSupply).isValid());
 }
