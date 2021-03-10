@@ -65,18 +65,19 @@ public abstract class ThinFlashNode : FlashNode
         Params:
             kp = The key-pair of this node
             genesis_hash = the hash of the genesis block to use
+            engine = the execution engine to use
             taskman = the task manager ot use
             agora_address = IP address of an Agora node to monitor the
                 blockchain and publish new on-chain transactions to it.
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, TaskManager taskman,
-        string agora_address)
+    public this (const Pair kp, Hash genesis_hash, Engine engine,
+        TaskManager taskman, string agora_address)
     {
         Duration timeout;  // infinite timeout (todo: fixup)
         this.agora_node = this.getAgoraClient(agora_address, timeout);
-        super(kp, genesis_hash, taskman);
+        super(kp, genesis_hash, engine, taskman);
     }
 
     /***************************************************************************
@@ -188,19 +189,20 @@ public class AgoraFlashNode : FlashNode
         Params:
             kp = The key-pair of this node
             genesis_hash = the hash of the genesis block to use
+            engine = the execution engine to use
             taskman = the task manager ot use
             agora_address = IP address of an Agora node to monitor the
                 blockchain and publish new on-chain transactions to it.
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, TaskManager taskman,
-        FullNodeAPI agora_node,
+    public this (const Pair kp, Hash genesis_hash, Engine engine,
+        TaskManager taskman, FullNodeAPI agora_node,
         FlashAPI delegate (in Point, Duration) flashClientGetter)
     {
         this.agora_node = agora_node;
         this.flashClientGetter = flashClientGetter;
-        super(kp, genesis_hash, taskman);
+        super(kp, genesis_hash, engine, taskman);
     }
 
     /// No-op, FullNode will notify us of externalized blocks
@@ -322,6 +324,7 @@ public abstract class FlashNode : ControlFlashAPI
         Params:
             kp = The key-pair of this node
             genesis_hash = the hash of the genesis block to use
+            engine = the execution engine to use
             taskman = the task manager ot use
 
         Returns:
@@ -329,12 +332,11 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, TaskManager taskman)
+    public this (const Pair kp, Hash genesis_hash, Engine engine,
+        TaskManager taskman)
     {
         this.genesis_hash = genesis_hash;
-        const TestStackMaxTotalSize = 16_384;
-        const TestStackMaxItemSize = 512;
-        this.engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+        this.engine = engine;
         this.kp = kp;
         this.taskman = taskman;
         this.network = new Network((Hash chan_id) {

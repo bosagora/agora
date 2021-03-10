@@ -101,7 +101,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         immutable kp = Pair(this.config.flash.key_pair.secret,
             this.config.flash.key_pair.secret.toPoint);
         this.flash = new AgoraFlashNode(kp, hashFull(this.params.Genesis),
-            this.taskman, this, &this.getFlashClient);
+            this.engine, this.taskman, this, &this.getFlashClient);
     }
 
     private ExtendedFlashAPI getFlashClient (in Point peer_pk, Duration timeout)
