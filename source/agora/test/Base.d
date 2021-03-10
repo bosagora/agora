@@ -1101,9 +1101,11 @@ public class TestAPIManager
                     (file, line, height, idx,
                         this.clients[idx].getBlockHeight())));
 
-        retryFor(client_idxs.map!(idx =>
-            this.clients[idx].getAllBlocks()).uniq().count() == 1,
-            5.seconds,
+        Block[] all_blocks = cast(Block[])(client_idxs.map!(idx =>
+            this.clients[idx].getAllBlocks()).joiner.array);
+        all_blocks.sort!((a, b) => a.header.hashFull > b.header.hashFull);
+
+        assert(all_blocks.map!(b => b.header.hashFull).uniq().count() == height + 1,
             format!"[%s:%s] Clients %s blocks are not all the same: %s"
                 (file, line, client_idxs, client_idxs.fold!((s, i) =>
                     s ~ format!"\n\n========== Client #%s ==========%s"
