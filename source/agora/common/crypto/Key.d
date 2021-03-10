@@ -99,7 +99,8 @@ public struct KeyPair
 
     public Signature sign (scope const(ubyte)[] msg) const nothrow @nogc
     {
-        return this.secret.sign(msg);
+        return agora.crypto.Schnorr.sign(
+            Pair(this.secret.data, this.address.data), msg);
     }
 
     /// Generate a new, random, keypair
@@ -352,23 +353,6 @@ public struct SecretKey
         import ocean.text.convert.Formatter : ocean_format = format;
         assert(phobos_format("%s", sk) == "**SECRET**");
         assert(ocean_format("{}", sk) == "**SECRET**");
-    }
-
-    /***************************************************************************
-
-        Signs a message with this private key
-
-        Params:
-          msg = The message to sign
-
-        Returns:
-          The signature of `msg` using `this`
-
-    ***************************************************************************/
-
-    public Signature sign (scope const(ubyte)[] msg) const nothrow @nogc
-    {
-        return agora.crypto.Schnorr.sign(Pair.fromScalar(this.data), msg);
     }
 }
 

@@ -108,7 +108,7 @@ public class QRCodeInterface
         );
 
         login_info.voter_card.signature =
-            this.key_pair.secret.sign(hashFull(login_info.voter_card)[]);
+            this.key_pair.sign(hashFull(login_info.voter_card)[]);
 
         res.headers["Content-Type"] = "image/svg+xml";
         res.headers["Vary"] = "Accept-Encoding";
