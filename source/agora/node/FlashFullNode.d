@@ -108,9 +108,8 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
     {
         // todo: need to retry later
         // todo: need a key => IP mapping (maybe through the NameRegistryAPI?)
-        import std.stdio;
         auto pk = PublicKey(peer_pk[]);
-        writefln("getFlashClient searching peer: %s", pk);
+        log.info("getFlashClient searching peer: {}", pk);
         auto ip = this.network.getAddress(pk);
         enforce(ip !is null, "Could not find mapping of key => IP");
 
@@ -134,8 +133,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         {
             // we know we're a full node, and the key we use is in
             // `this.config.flash.key_pair`
-            import std.stdio;
-            writeln("This flash node is in testing mode!");
+            log.info("This flash node is in testing mode!");
         }
     }
 
