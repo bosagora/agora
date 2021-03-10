@@ -164,7 +164,7 @@ public class NetworkClient
         this.exception = new Exception(
             format("Request failure to %s after %s attempts", address,
                 max_retries));
-        this.gossip_timer = this.taskman.setTimer(0.seconds, &this.gossipScheduler);
+        this.gossip_timer = this.taskman.setTimer(10.msecs, &this.gossipTask, Periodic.Yes);
     }
 
     /// Shut down the gossiping timer
@@ -175,20 +175,14 @@ public class NetworkClient
 
     /// For gossiping we don't want to block the calling fiber, so we use
     /// request queueing and a separate fiber to handle all the outgoing requests.
-    private void gossipScheduler ()
+    private void gossipTask ()
     {
-        while (1)
+        while (!this.gossip_queue.empty)
         {
-            while (!this.gossip_queue.empty)
-            {
-                auto event = this.gossip_queue.front;
-                this.gossip_queue.removeFront();
-                this.handleGossip(event);
-                // yield and reschedule for next event
-                this.taskman.wait(0.msecs);
-            }
-
-            this.taskman.wait(10.msecs);  // no events, yield with longer sleep
+            auto event = this.gossip_queue.front;
+            this.gossip_queue.removeFront();
+            this.handleGossip(event);
+            // yield and reschedule for next event
         }
     }
 
