@@ -57,7 +57,6 @@ import scpd.types.Stellar_SCP;
 import std.algorithm : each, map;
 import std.exception;
 import std.range;
-import std.stdio;
 
 import core.stdc.stdlib : abort;
 import core.stdc.time;
@@ -97,7 +96,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
         // todo: need to retry later
         // todo: need a key => IP mapping (maybe through the NameRegistryAPI?)
         auto pk = PublicKey(peer_pk[]);
-        writefln("getFlashClient searching peer: %s", pk);
+        log.info("getFlashClient searching peer: {}", pk);
         auto ip = this.network.getAddress(pk);
         enforce(ip !is null, "Could not find mapping of key => IP");
 
@@ -145,7 +144,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
     // and opening a channel with Bob.
     private void runAliceTasks ()
     {
-        writeln("Running Alice tasks");
+        log.info("Running Alice tasks");
 
         auto keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4, WK.Keys.NODE5,
             WK.Keys.NODE6, WK.Keys.NODE7, WK.Keys.NODE7, WK.Keys.NODE7];
@@ -157,22 +156,22 @@ public class FlashValidator : Validator, FlashValidatorAPI
         while (this.network.getNetworkInfo().state != NetworkState.Complete)
             this.taskman.wait(20.msecs);
 
-        writeln("Alice: Network state complete!");
+        log.info("Alice: Network state complete!");
 
         // wait for the preimages
-        writeln("Alice: Waiting for preimages..");
+        log.info("Alice: Waiting for preimages..");
         this.taskman.wait(3.seconds);
 
         // gossip them
         foreach (idx, tx; txs)
         {
-            writefln("Alice: Gossiped: %s", idx);
+            log.info("Alice: Gossiped: {}", idx);
             this.putTransaction(tx);
             while (this.ledger.getBlockHeight() != idx + 1)
                 this.taskman.wait(20.msecs);
         }
 
-        writefln("Reached block %s", this.ledger.getBlockHeight());
+        log.info("Reached block {}", this.ledger.getBlockHeight());
 
         const alice_pair = Pair(WK.Keys.NODE2.secret,
             WK.Keys.NODE2.secret.toPoint);
@@ -190,8 +189,8 @@ public class FlashValidator : Validator, FlashValidatorAPI
         const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
         const alice_bob_chan_id = this.flash.openNewChannel(
             alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
-        writefln("Alice bob channel: %s", alice_bob_chan_id);
-        writefln("Alice bob channel ID: %s", alice_bob_chan_id);
+        log.info("Alice bob channel: {}", alice_bob_chan_id);
+        log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
         // await funding tx
         while (this.ledger.getBlockHeight() != 9)
@@ -202,14 +201,14 @@ public class FlashValidator : Validator, FlashValidatorAPI
         this.flash.waitChannelOpen(alice_bob_chan_id);
 
         // await invoice..
-        writeln("Alice: Channel with Bob open!..");
+        log.info("Alice: Channel with Bob open!..");
     }
 
     private void aliceReceivesInvoice (Invoice invoice) @trusted
     {
-        writefln("Alice: Received invoice: %s", invoice);
+        log.info("Alice: Received invoice: {}", invoice);
 
-        writeln("Alice: Paying invoice..");
+        log.info("Alice: Paying invoice..");
         this.flash.payInvoice(invoice);
 
         // todo: add fiber-blocking capability and await a signed update index
@@ -220,15 +219,15 @@ public class FlashValidator : Validator, FlashValidatorAPI
     // intermediate channel
     private void runBobTasks ()
     {
-        writeln("Running Bob tasks");
+        log.info("Running Bob tasks");
 
         while (this.network.getNetworkInfo().state != NetworkState.Complete)
             this.taskman.wait(20.msecs);
 
-        writeln("Bob: Network state complete!");
+        log.info("Bob: Network state complete!");
 
         // wait for the preimages
-        writeln("Bob: Waiting for preimages..");
+        log.info("Bob: Waiting for preimages..");
         this.taskman.wait(3.seconds);
 
         // wait for channel funding block
@@ -238,10 +237,10 @@ public class FlashValidator : Validator, FlashValidatorAPI
         // hardcoded for now..
         const alice_bob_chan_id = Hash.fromString("0x2b69840d0041fd482b466a5c6b23d35db9931506ec24477a842018ae42e76e9a1f153b3df24840a526d94713a93119a93c06942e7b941e55083627b8ab3a56f7");
 
-        writeln("Bob: Waiting for channel open..");
+        log.info("Bob: Waiting for channel open..");
         this.flash.waitChannelOpen(alice_bob_chan_id);
 
-        writeln("Bob: Channel with Alice is open!..");
+        log.info("Bob: Channel with Alice is open!..");
 
         // used to get some funding tx's (first already used)
         auto keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4, WK.Keys.NODE5,
@@ -266,7 +265,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
         const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
         const bob_charlie_chan_id = this.flash.openNewChannel(
             bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
-        writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
+        log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
         // await funding tx
         while (this.ledger.getBlockHeight() != 10)
@@ -275,14 +274,14 @@ public class FlashValidator : Validator, FlashValidatorAPI
         // wait for the parties to detect the funding tx
         this.flash.waitChannelOpen(bob_charlie_chan_id);
 
-        writeln("Bob: Channel with Charlie open!..");
-        writeln("Charlie chan id: %s", bob_charlie_chan_id);
+        log.info("Bob: Channel with Charlie open!..");
+        log.info("Charlie chan id: {}", bob_charlie_chan_id);
     }
 
     // destination channel
     private void runCharlieTasks ()
     {
-        writeln("Running Charlie tasks");
+        log.info("Running Charlie tasks");
 
         const alice_pair = Pair(WK.Keys.NODE2.secret,
             WK.Keys.NODE2.secret.toPoint);
@@ -300,26 +299,26 @@ public class FlashValidator : Validator, FlashValidatorAPI
             this.taskman.wait(20.msecs);
 
         // wait for the preimages
-        writeln("Charlie: Waiting for preimages..");
+        log.info("Charlie: Waiting for preimages..");
         this.taskman.wait(3.seconds);
 
         // hardcoded for now..
         const bob_charlie_chan_id = Hash.fromString("0x5f6f51639e089f3be4e97339f265167deb87c8331a135adb9d75f7b844cb49de768e9916edd60d2e86fce120cd9d524d43790e059d1d71fe51456a5ae2b4b9dc");
 
-        writeln("Charlie: Waiting for channel open..");
+        log.info("Charlie: Waiting for channel open..");
         this.flash.waitChannelOpen(bob_charlie_chan_id);
 
-        writeln("Charlie: Channel with Bob is open!..");
+        log.info("Charlie: Channel with Bob is open!..");
 
         // begin off-chain transactions
         auto inv_1 = this.flash.createNewInvoice(Amount(2_000), time_t.max,
             "payment 1");
-        writefln("Charlie's invoice is: %s", inv_1);
+        log.info("Charlie's invoice is: {}", inv_1);
 
         Duration duration;
         auto alice = this.getFlashClient(alice_pk, duration);
 
-        writefln("Charlie: Sending invoice to %s (%s):", alice_pk, alice);
+        log.info("Charlie: Sending invoice to {} ({}):", alice_pk, alice);
         alice.receiveInvoice(inv_1);
 
         // then use the extended flash API to send the invoice
