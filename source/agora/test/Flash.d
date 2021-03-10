@@ -41,6 +41,7 @@ import agora.script.Lock;
 import agora.script.Script;
 import agora.serialization.Serializer;
 import agora.test.Base;
+import agora.utils.Log;
 
 import geod24.Registry;
 
@@ -49,6 +50,8 @@ import std.exception;
 
 import core.stdc.time;
 import core.thread;
+
+mixin AddLogger!();
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
 /// and extracting update / closing / settle pairs, and forceful channel close.
@@ -72,6 +75,9 @@ public interface TestFlashAPI : ControlFlashAPI
 
     /// Get the channel update
     public ChannelUpdate getChannelUpdate (Hash chan_id, PaymentDirection dir);
+
+    /// Print out the contents of the log
+    public abstract void printLog ();
 }
 
 /// A thin localrest flash node which itself is not a FullNode / Validator
@@ -173,6 +179,17 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     {
         return this.channel_updates[chan_id][dir];
     }
+
+    /// Prints out the log contents for this node
+    public void printLog ()
+    {
+        auto output = stdout.lockingTextWriter();
+        output.formattedWrite("Log for Flash node %s:\n", this.kp.V.flashPrettify);
+        output.put("======================================================================\n");
+        CircularAppender!()().print(output);
+        output.put("======================================================================\n\n");
+        stdout.flush();
+    }
 }
 
 /// Is in charge of spawning the flash nodes
@@ -209,6 +226,42 @@ public class FlashNodeFactory
         this.flash_registry.register(pair.V.to!string, api.listener());
 
         return api;
+    }
+
+    /***************************************************************************
+
+        Print out the logs for each node
+
+    ***************************************************************************/
+
+    public void printLogs (string file = __FILE__, int line = __LINE__)
+    {
+        if (no_logs)
+            return;
+
+        synchronized  // make sure logging output is not interleaved
+        {
+            writeln("---------------------------- START OF LOGS ----------------------------");
+            writefln("%s(%s): Flash node logs:\n", file, line);
+            foreach (node; this.nodes)
+            {
+                try
+                {
+                    node.printLog();
+                }
+                catch (Exception ex)
+                {
+                    writefln("Could not print logs for node: %s", ex.message);
+                }
+            }
+        }
+
+        auto output = stdout.lockingTextWriter();
+        output.put("Flash log for tests\n");
+        output.put("======================================================================\n");
+        CircularAppender!()().print(output);
+        output.put("======================================================================\n\n");
+        stdout.flush();
     }
 
     /// Shut down all the nodes
@@ -250,6 +303,7 @@ unittest
 
     auto factory = new FlashNodeFactory(network.getRegistry());
     scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
 
     const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
@@ -303,7 +357,7 @@ unittest
     bob.waitForUpdateIndex(chan_id, 6);
 
     // alice is acting bad
-    writefln("Alice unilaterally closing the channel..");
+    log.info("Alice unilaterally closing the channel..");
     network.expectBlock(Height(10), network.blocks[0].header);
     auto tx_10 = node_1.getBlocksFrom(10, 1)[0].txs[0];
     assert(tx_10 == update_tx);
@@ -346,6 +400,7 @@ unittest
 
     auto factory = new FlashNodeFactory(network.getRegistry());
     scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
 
     const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
@@ -372,7 +427,7 @@ unittest
     const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_bob_chan_id = alice.openNewChannel(
         alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
-    writefln("Alice bob channel ID: %s", alice_bob_chan_id);
+    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
     network.expectBlock(Height(9), network.blocks[0].header);
@@ -390,7 +445,7 @@ unittest
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id = bob.openNewChannel(
         bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
-    writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
+    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
     network.expectBlock(Height(10), network.blocks[0].header);
@@ -417,18 +472,18 @@ unittest
     charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
 
     //
-    writefln("Beginning bob => charlie collaborative close..");
+    log.info("Beginning bob => charlie collaborative close..");
     bob.beginCollaborativeClose(bob_charlie_chan_id);
     network.expectBlock(Height(11), network.blocks[0].header);
     auto block11 = node_1.getBlocksFrom(11, 1)[0];
-    writefln("bob closing tx: %s", bob.getClosingTx(bob_charlie_chan_id));
+    log.info("bob closing tx: {}", bob.getClosingTx(bob_charlie_chan_id));
     assert(block11.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
 
-    writefln("Beginning alice => bob collaborative close..");
+    log.info("Beginning alice => bob collaborative close..");
     alice.beginCollaborativeClose(alice_bob_chan_id);
     network.expectBlock(Height(12), network.blocks[0].header);
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
-    writefln("alice closing tx: %s", alice.getClosingTx(alice_bob_chan_id));
+    log.info("alice closing tx: {}", alice.getClosingTx(alice_bob_chan_id));
     assert(block12.txs[0] == alice.getClosingTx(alice_bob_chan_id));
 }
 
@@ -459,6 +514,7 @@ unittest
 
     auto factory = new FlashNodeFactory(network.getRegistry());
     scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
 
     const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
@@ -485,7 +541,7 @@ unittest
     const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_bob_chan_id = alice.openNewChannel(
         alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
-    writefln("Alice bob channel ID: %s", alice_bob_chan_id);
+    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
     network.expectBlock(Height(9), network.blocks[0].header);
@@ -503,7 +559,7 @@ unittest
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id = bob.openNewChannel(
         bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
-    writefln("Bob Charlie channel ID: %s", bob_charlie_chan_id);
+    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
     network.expectBlock(Height(10), network.blocks[0].header);
@@ -521,7 +577,7 @@ unittest
     const charlie_utxo = UTXO.getHash(hashFull(txs[2]), 0);
     const charlie_alice_chan_id = charlie.openNewChannel(
         charlie_utxo, Amount(10_000), Settle_1_Blocks, alice_pk);
-    writefln("Charlie Alice channel ID: %s", charlie_alice_chan_id);
+    log.info("Charlie Alice channel ID: {}", charlie_alice_chan_id);
 
     // await bob & bob channel funding transaction
     network.expectBlock(Height(11), network.blocks[0].header);
