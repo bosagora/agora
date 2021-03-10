@@ -89,7 +89,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
         immutable kp = Pair(this.config.validator.key_pair.secret,
             this.config.validator.key_pair.secret.toPoint);
         this.flash = new AgoraFlashNode(kp, hashFull(this.params.Genesis),
-            this.taskman, this, &this.getFlashClient);
+            this.engine, this.taskman, this, &this.getFlashClient);
     }
 
     private ExtendedFlashAPI getFlashClient (in Point peer_pk, Duration timeout)

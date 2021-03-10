@@ -37,6 +37,7 @@ import agora.flash.OnionPacket;
 import agora.flash.Route;
 import agora.flash.Scripts;
 import agora.flash.Types;
+import agora.script.Engine;
 import agora.script.Lock;
 import agora.script.Script;
 import agora.serialization.Serializer;
@@ -96,7 +97,10 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         this.agora_registry = agora_registry;
         this.flash_registry = flash_registry;
         const genesis_hash = hashFull(GenesisBlock);
-        super(kp, genesis_hash, new LocalRestTaskManager(), agora_address);
+        const TestStackMaxTotalSize = 16_384;
+        const TestStackMaxItemSize = 512;
+        auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+        super(kp, genesis_hash, engine, new LocalRestTaskManager(), agora_address);
     }
 
     ///
