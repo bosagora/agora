@@ -35,6 +35,7 @@ import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
 import agora.serialization.Serializer;
+import agora.utils.Log;
 
 import std.array;
 import std.algorithm;
@@ -45,6 +46,8 @@ import std.typecons;
 import core.time;
 
 alias LockType = agora.script.Lock.LockType;
+
+mixin AddLogger!();
 
 /// Ditto
 public class Channel
@@ -328,7 +331,7 @@ public class Channel
     public void learnSecrets (in Hash[] secrets, in Hash[] revert_htlcs,
         in Height height)
     {
-        writefln("%s: learnSecrets(%s, hashes: %s, known: %s, drop: %s %s)",
+        log.info("{}: learnSecrets({}, hashes: {}, known: {}, drop: {} height: {})",
             this.kp.V.flashPrettify,
             secrets.map!(s => s.flashPrettify),
             secrets.map!(s => s.hashFull.flashPrettify),
@@ -348,7 +351,7 @@ public class Channel
             if (htlc in this.payment_hashes)
                 matching_rev_htlcs ~= htlc;
 
-        writefln("%s: learnSecrets matching: secrets: %s drop: %s",
+        log.info("{}: learnSecrets matching: secrets: {} drop: {}",
             this.kp.V.flashPrettify,
             matching_secrets.map!(s => s.flashPrettify),
             matching_rev_htlcs.map!(s => s.flashPrettify));
@@ -486,7 +489,7 @@ LOuter: while (1)
             this.funding_tx_signed.inputs[0].unlock
                 = genKeyUnlock(sign(this.kp, this.conf.funding_tx));
 
-            writeln("Publishing funding tx..");
+            log.info("Publishing funding tx..");
             this.txPublisher(this.funding_tx_signed);
         }
 
@@ -545,8 +548,8 @@ LOuter: while (1)
 
     private void onCloseTxExternalized (in Transaction tx)
     {
-        writefln("%s: Received close tx: %s", this.kp.V.flashPrettify, tx.hashFull.flashPrettify);
-        writefln("%s: Tx is: %s", this.kp.V.flashPrettify, tx);
+        log.info("{}: Received close tx: {}", this.kp.V.flashPrettify, tx.hashFull.flashPrettify);
+        log.info("{}: Tx is: {}", this.kp.V.flashPrettify, tx);
         // todo: can notify Node that it can destroy this channel instance later
         this.state = ChannelState.Closed;
     }
@@ -583,7 +586,7 @@ LOuter: while (1)
             // lock, need to determine the right time it should be published
             // and make sure a restart will still republish it.
             const settle_tx = this.channel_updates[$ - 1].settle_tx;
-            writefln("%s: Publishing last settle tx %s: %s",
+            log.info("{}: Publishing last settle tx {}: {}",
                 this.kp.V.flashPrettify, this.channel_updates.length, settle_tx.hashFull().flashPrettify);
             this.txPublisher(cast()settle_tx);
         }
@@ -592,7 +595,7 @@ LOuter: while (1)
             // either the trigger or an outdated update tx was published.
             // publish the latest update first.
             const update_tx = this.channel_updates[$ - 1].update_tx;
-            writefln("%s: Publishing latest update tx %s: %s",
+            log.info("{}: Publishing latest update tx {}: {}",
                 this.kp.V.flashPrettify, this.channel_updates.length, update_tx.hashFull().flashPrettify);
             this.txPublisher(cast()update_tx);
         }
@@ -779,7 +782,7 @@ LOuter: while (1)
                 if (result.error == ErrorCode.ProposalInProgress)
                     return;
 
-                writefln("%s: Error proposing update with %s: %s",
+                log.info("{}: Error proposing update with {}: {}",
                     this.kp.V.flashPrettify, this.peer_pk.flashPrettify, result);
                 this.taskman.wait(500.msecs);
                 continue;
@@ -795,7 +798,7 @@ LOuter: while (1)
             new_outputs, priv_nonce, peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
 
-        writefln("%s: +Update+ Got new pair from %s! Balanced updated: %s",
+        log.info("{}: +Update+ Got new pair from {}! Balanced updated: {}",
             this.kp.V.flashPrettify, this.peer_pk.flashPrettify, new_balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
@@ -874,7 +877,7 @@ LOuter: while (1)
             return Result!PublicNonce(ErrorCode.UpdateRejected,
                 "Proposed balance is the same as current one");
 
-        writefln("%s: onProposedUpdate from %s accepted (%s, %s, %s, %s)",
+        log.info("{}: onProposedUpdate from {} accepted ({}, {}, {}, {})",
             this.kp.V.flashPrettify, this.peer_pk.flashPrettify,
             seq_id, secrets.map!(s => s.flashPrettify),
             revert_htlcs.map!(s => s.flashPrettify), height);
@@ -884,7 +887,7 @@ LOuter: while (1)
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        writefln("%s: Before folding: %s. After folding: %s", this.kp.V.flashPrettify,
+        log.info("{}: Before folding: {}. After folding: {}", this.kp.V.flashPrettify,
             old_balance, new_balance);
 
         // let the work fiber handle it next
@@ -912,7 +915,7 @@ LOuter: while (1)
             payment.lock_height, payment.height);
         auto new_outputs = this.buildBalanceOutputs(new_balance);
 
-        writefln("%s: Handling incoming payment balance request: %s",
+        log.info("{}: Handling incoming payment balance request: {}",
             this.kp.V.flashPrettify, new_balance);
 
         this.cur_seq_id = payment.seq_id;
@@ -921,7 +924,7 @@ LOuter: while (1)
             payment.seq_id, new_outputs, payment.priv_nonce, payment.peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
 
-        writefln("%s: Got new pair from %s! Balance updated! %s",
+        log.info("{}: Got new pair from {}! Balance updated! {}",
             this.kp.V.flashPrettify, this.peer_pk.flashPrettify, new_balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
@@ -934,7 +937,7 @@ LOuter: while (1)
         {
             OnionPacket next_packet = nextPacket(payment.packet);
 
-            writefln("%s: Routing to next channel: %s", this.kp.V.flashPrettify,
+            log.info("{}: Routing to next channel: {}", this.kp.V.flashPrettify,
                 payment.payload.next_chan_id.flashPrettify);
             this.paymentRouter(payment.payload.next_chan_id,
                 payment.payment_hash,
@@ -988,7 +991,7 @@ LOuter: while (1)
                 if (result.error == ErrorCode.ProposalInProgress)
                     return false;
 
-                writefln("%s: Error proposing payment: %s", this.kp.V.flashPrettify,
+                log.info("{}: Error proposing payment: {}", this.kp.V.flashPrettify,
                     result);
                 this.taskman.wait(100.msecs);
                 continue;
@@ -1004,14 +1007,14 @@ LOuter: while (1)
             payment.lock_height, payment.height);
         const new_outputs = this.buildBalanceOutputs(new_balance);
 
-        writefln("%s: Created outgoing payment balance request: %s",
+        log.info("{}: Created outgoing payment balance request: {}",
             this.kp.V.flashPrettify, new_balance);
 
         auto update_pair = this.update_signer.collectSignatures(
             new_seq_id, new_outputs, priv_nonce, peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
 
-        writefln("%s: Got new pair from %s! Balanced updated. New balance: %s",
+        log.info("{}: Got new pair from {}! Balanced updated. New balance: {}",
             this.kp.V.flashPrettify, this.peer_pk.flashPrettify, new_balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
@@ -1041,7 +1044,7 @@ LOuter: while (1)
             update.peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
 
-        writefln("%s: Got new pair from %s! Balance updated: %s",
+        log.info("{}: Got new pair from {}! Balance updated: {}",
             this.kp.V.flashPrettify, this.peer_pk.flashPrettify, update.balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = update.balance;
@@ -1077,7 +1080,7 @@ LOuter: while (1)
     public void queueNewPayment (in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet, in Height height)
     {
-        writefln("%s: Queued new payment: %s", this.kp.V.flashPrettify,
+        log.info("{}: Queued new payment: {}", this.kp.V.flashPrettify,
             payment_hash.flashPrettify);
 
         this.outgoing_payments ~= OutgoingPayment(payment_hash, amount,
@@ -1166,7 +1169,7 @@ LOuter: while (1)
             return Result!PublicNonce(ErrorCode.InvalidSequenceID,
                 "Proposed sequence ID must be +1 of the previous sequence ID");
 
-        writefln("%s: onProposedPayment from %s accepted (%s, %s, %s, %s, %s)",
+        log.info("{}: onProposedPayment from {} accepted ({}, {}, {}, {}, {})",
             this.kp.V.flashPrettify, this.peer_pk.flashPrettify,
             this.conf.chan_id, seq_id, payment_hash.flashPrettify, amount,
             lock_height);
@@ -1221,19 +1224,19 @@ LOuter: while (1)
         {
             if (htlc.lock_height < height || revert_htlcs.canFind(payment_hash))
             {
-                writefln("%s: Fold: Folded outgoing time-expired/dropped HTLC: %s", this.kp.V.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded outgoing time-expired/dropped HTLC: {}", this.kp.V.flashPrettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                writefln("%s: Fold: Folded outgoing secret-revealed HTLC: %s", this.kp.V.flashPrettify, payment_hash.flashPrettify);
+                log.info("{}: Fold: Folded outgoing secret-revealed HTLC: {}", this.kp.V.flashPrettify, payment_hash.flashPrettify);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                //writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.flashPrettify, payment_hash.flashPrettify);
+                //log.info("{}: Fold: Did not fold outgoing HTLC: {}", this.kp.V.flashPrettify, payment_hash.flashPrettify);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -1243,19 +1246,19 @@ LOuter: while (1)
         {
             if (htlc.lock_height < height || revert_htlcs.canFind(payment_hash))
             {
-                writefln("%s: Fold: Folded incoming time-expired/dropped HTLC: %s", this.kp.V.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded incoming time-expired/dropped HTLC: {}", this.kp.V.flashPrettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                writefln("%s: Fold: Folded incoming secret-revealed HTLC: %s", this.kp.V.flashPrettify, payment_hash.flashPrettify);
+                log.info("{}: Fold: Folded incoming secret-revealed HTLC: {}", this.kp.V.flashPrettify, payment_hash.flashPrettify);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                //writefln("%s: Fold: Did not fold outgoing HTLC: %s", this.kp.V.flashPrettify, payment_hash.flashPrettify);
+                //log.info("{}: Fold: Did not fold outgoing HTLC: {}", this.kp.V.flashPrettify, payment_hash.flashPrettify);
                 new_balance.incoming_htlcs[payment_hash] = htlc;
             }
         }
@@ -1294,13 +1297,13 @@ LOuter: while (1)
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                writefln("%s: Fold: Folded outgoing HTLC: %s", this.kp.V.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded outgoing HTLC: {}", this.kp.V.flashPrettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("%s: Fold: Not folded outgoing HTLC: %s", this.kp.V.flashPrettify, payment_hash);
+                log.info("{}: Fold: Not folded outgoing HTLC: {}", this.kp.V.flashPrettify, payment_hash);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -1311,13 +1314,13 @@ LOuter: while (1)
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                writefln("%s: Fold: Folded incoming HTLC: %s", this.kp.V.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded incoming HTLC: {}", this.kp.V.flashPrettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                writefln("%s: Fold: Not folded incoming HTLC: %s", this.kp.V.flashPrettify, payment_hash);
+                log.info("{}: Fold: Not folded incoming HTLC: {}", this.kp.V.flashPrettify, payment_hash);
                 new_balance.incoming_htlcs[payment_hash] = htlc;
             }
         }
@@ -1362,28 +1365,28 @@ LOuter: while (1)
         {
             if (tx.hashFull() == this.conf.funding_tx_hash)
             {
-                writefln("%s: Funding tx externalized(%s)",
+                log.info("{}: Funding tx externalized({})",
                     this.kp.V.flashPrettify, tx.hashFull().flashPrettify);
                 this.onFundingTxExternalized(tx);
             }
             else
             if (this.isClosingTx(tx))
             {
-                writefln("%s: Close tx externalized(%s)",
+                log.info("{}: Close tx externalized({})",
                     this.kp.V.flashPrettify, tx.hashFull().flashPrettify);
                 this.onCloseTxExternalized(tx);
             }
             else
             if (this.isUpdateTx(tx))
             {
-                writefln("%s: Update tx externalized(%s)",
+                log.info("{}: Update tx externalized({})",
                     this.kp.V.flashPrettify, tx.hashFull().flashPrettify);
                 this.onUpdateTxExternalized(tx);
             }
             else
             if (this.isSettleTx(tx))
             {
-                writefln("%s: Settle tx externalized(%s)",
+                log.info("{}: Settle tx externalized({})",
                     this.kp.V.flashPrettify, tx.hashFull().flashPrettify);
                 this.onSettleTxExternalized(tx);
             }
@@ -1501,7 +1504,7 @@ LOuter: while (1)
         // node detects the trigger tx published to the blockchain and after
         // its relative lock time expires.
         const trigger_tx = this.channel_updates[0].update_tx;
-        writefln("%s: Publishing trigger tx: %s", this.kp.V.flashPrettify,
+        log.info("{}: Publishing trigger tx: {}", this.kp.V.flashPrettify,
             trigger_tx.hashFull().flashPrettify);
         this.txPublisher(cast()trigger_tx);
     }
@@ -1538,7 +1541,7 @@ LOuter: while (1)
                 // todo: retry with bigger fee if smaller fee was rejected
                 // todo: retry?
                 // todo: try unilateral close after the configured timeout?
-                writefln("%s: Closing tx signature request rejected: %s",
+                log.info("{}: Closing tx signature request rejected: {}",
                     this.kp.V.flashPrettify, close_res);
                 this.taskman.wait(100.msecs);
                 continue;
@@ -1629,7 +1632,7 @@ LOuter: while (1)
             if (sig_res.error)
             {
                 // todo: retry?
-                writefln("%s: Closing signature request rejected: %s",
+                log.info("{}: Closing signature request rejected: {}",
                     this.kp.V.flashPrettify, sig_res);
                 continue;
             }
@@ -1641,7 +1644,7 @@ LOuter: while (1)
             sig_res.value, priv_nonce, peer_nonce))
         {
             // todo: inform? ban?
-            writefln("%s: Error during validation: %s. For closing signature: %s",
+            log.info("{}: Error during validation: {}. For closing signature: {}",
                 this.kp.V.flashPrettify, error, sig_res.value);
             assert(0);
         }
@@ -1650,7 +1653,7 @@ LOuter: while (1)
         this.pending_close.validated = true;
 
         // todo: schedule this
-        writefln("%s: Publishing close tx: %s",
+        log.info("{}: Publishing close tx: {}",
             this.kp.V.flashPrettify, this.pending_close.tx.hashFull.flashPrettify);
         this.txPublisher(this.pending_close.tx);
     }
@@ -1839,7 +1842,7 @@ LOuter: while (1)
             this.taskman.wait(100.msecs);
 
         if (index < this.channel_updates.length)
-            writefln("waitForUpdateIndex: index %s is OK compared to updates %s",
+            log.info("waitForUpdateIndex: index {} is OK compared to updates {}",
                 index, this.channel_updates.length);
     }
 
@@ -1854,7 +1857,7 @@ LOuter: while (1)
 
         assert(index < this.channel_updates.length);
         const update_tx = this.channel_updates[index].update_tx;
-        writefln("%s: Publishing update tx index %s: %s",
+        log.info("{}: Publishing update tx index {}: {}",
             this.kp.V.flashPrettify, index, update_tx.hashFull().flashPrettify);
         this.txPublisher(cast()update_tx);
         return cast()update_tx;

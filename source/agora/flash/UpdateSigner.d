@@ -164,7 +164,7 @@ public class UpdateSigner
 
     public void onConfirmedChannelUpdate ()
     {
-        writefln("%s: Peer %s has confirmed collecting signatures for seq %s.",
+        log.info("{}: Peer {} has confirmed collecting signatures for seq {}.",
                 this.kp.V.flashPrettify, this.peer_pk.flashPrettify, seq_id);
 
         this.peer_confirmed_update = true;
@@ -287,7 +287,7 @@ public class UpdateSigner
             if (settle_res.error)
             {
                 // todo: retry?
-                writefln("%s: Settlement signature %s request to %s rejected: %s",
+                log.info("{}: Settlement signature {} request to {} rejected: {}",
                     this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify, settle_res);
                 this.taskman.wait(100.msecs);
                 continue;
@@ -296,21 +296,21 @@ public class UpdateSigner
             break;
         }
 
-        writefln("%s: Settlement signature %s from %s received",
+        log.info("{}: Settlement signature {} from {} received",
             this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         if (auto error = this.isInvalidSettleMultiSig(this.pending_settle,
             settle_res.value, priv_nonce, peer_nonce))
         {
             // todo: inform? ban?
-            writefln("%s: Error during validation: %s. For settle signature "
-                ~ "from %s: %s",
+            log.info("{}: Error during validation: {}. For settle signature "
+                ~ "from {}: {}",
                 this.kp.V.flashPrettify, error,
                 this.peer_pk.flashPrettify, settle_res.value);
             assert(0);
         }
 
-        writefln("%s: Settlement signature %s from %s validated",
+        log.info("{}: Settlement signature {} from {} validated",
             this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         this.pending_settle.peer_sig = settle_res.value;
@@ -326,7 +326,7 @@ public class UpdateSigner
             if (update_res.error)
             {
                 // todo: retry?
-                writefln("%s: Update signature %s request to %s rejected: %s",
+                log.info("{}: Update signature {} request to {} rejected: {}",
                     this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify, update_res);
                 this.taskman.wait(100.msecs);
                 continue;
@@ -335,7 +335,7 @@ public class UpdateSigner
             break;
         }
 
-        writefln("%s: Update signature %s from %s received",
+        log.info("{}: Update signature {} from {} received",
             this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // todo: retry? add a better status code like NotReady?
@@ -346,8 +346,8 @@ public class UpdateSigner
             update_res.value, priv_nonce, peer_nonce, prev_tx))
         {
             // todo: inform? ban?
-            writefln("%s: Error during validation: %s. For update "
-                ~ "signature from %s: %s",
+            log.info("{}: Error during validation: {}. For update "
+                ~ "signature from {}: {}",
                 this.kp.V.flashPrettify, error,
                 this.peer_pk.flashPrettify, update_res.value);
             assert(0);
@@ -355,14 +355,14 @@ public class UpdateSigner
         this.pending_update.peer_sig = update_res.value;
         this.pending_update.validated = true;
 
-        writefln("%s: Update signature %s from %s validated",
+        log.info("{}: Update signature {} from {} validated",
             this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // confirm to the peer we're done, and await for peer's own confirmation
         this.peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
         while (!this.peer_confirmed_update)
         {
-            writefln("%s: Peer %s is still collecting signatures for seq %s. "
+            log.info("{}: Peer {} is still collecting signatures for seq {}. "
                 ~ "Waiting before confirming update..",
                 this.kp.V.flashPrettify, this.peer_pk.flashPrettify, seq_id,);
             this.taskman.wait(100.msecs);
