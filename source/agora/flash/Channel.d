@@ -68,7 +68,7 @@ public class Channel
     private Engine engine;
 
     /// Task manager to spawn fibers with
-    public TaskManager taskman;
+    public ITaskManager taskman;
 
     /// The peer of the other end of the channel
     public FlashAPI peer;
@@ -227,7 +227,7 @@ public class Channel
 
     public this (in ChannelConfig conf, in Pair kp, PrivateNonce priv_nonce,
         PublicNonce peer_nonce, FlashAPI peer, Engine engine,
-        TaskManager taskman, void delegate (Transaction) txPublisher,
+        ITaskManager taskman, void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,

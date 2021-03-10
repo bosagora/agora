@@ -1,13 +1,14 @@
 /*******************************************************************************
 
-    Contains a task manager backed by vibe.d's event loop.
+    Contains the base definition for the task manager
 
-    Overriding classes can implement task routines to run
-    tasks in their own event loop - for example to be used
-    with LocalRest to simulate a network and avoid any I/O.
+    The `TaskManager` base class provides certain primitives that are modeled
+    after Vibe.d's primitives, such as `setTimer`, `sleep`, or `runTask`.
+    Overriding classes can implement task routines to run tasks in their
+    own event loop - mostly, to be used with LocalRest.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOS Platform Foundation Korea
         All rights reserved.
 
     License:
@@ -21,36 +22,38 @@ import agora.utils.Log;
 
 import core.time;
 
-mixin AddLogger!();
-
 /// Whether the timer periodic type
 public enum Periodic : bool
 {
     No,
-    Yes
+    Yes,
 }
 
-/// Exposes primitives to run tasks through Vibe.d
-public class TaskManager
+/// Exposes primitives to run tasks
+public abstract class ITaskManager
 {
     /// stats: total number of task started
     protected ulong tasks_started;
 
+    /// Logger used by this class
+    protected Logger log;
+
+    ///
+    public this () @trusted
+    {
+        this.log = Log.lookup(__MODULE__);
+    }
+
     /***************************************************************************
 
-        Run an asynchronous task in vibe.d's event loop
+        Run an asynchronous task in an event loop
 
         Params:
             dg = the delegate the task should run
 
     ***************************************************************************/
 
-    public void runTask (void delegate() dg) nothrow
-    {
-        static import vibe.core.core;
-        this.tasks_started++;
-        vibe.core.core.runTask(dg);
-    }
+    public abstract void runTask (void delegate() dg) nothrow;
 
     /***************************************************************************
 
@@ -61,18 +64,7 @@ public class TaskManager
 
     ***************************************************************************/
 
-    public void wait (Duration dur) nothrow
-    {
-        static import vibe.core.core;
-        try
-            vibe.core.core.sleep(dur);
-        catch (Exception exc)
-        {
-            log.fatal("Call to wait({}) failed: {}", dur, exc);
-            // TODO: Replace with a busy loop in non-debug mode ?
-            assert(0);
-        }
-    }
+    public void wait (Duration dur) nothrow;
 
     /***************************************************************************
 
@@ -80,6 +72,7 @@ public class TaskManager
 
         The task will first run after the given `timeout`, and
         can either repeat or run only once (the default).
+
         See_Also: https://vibed.org/api/vibe.core.core/setTimer
 
         Params:
@@ -94,13 +87,7 @@ public class TaskManager
     ***************************************************************************/
 
     public ITimer setTimer (Duration timeout, void delegate() dg,
-        Periodic periodic = Periodic.No) nothrow
-    {
-        this.tasks_started++;
-        assert(dg !is null, "Cannot call this delegate if null");
-        static import vibe.core.core;
-        return new VibedTimer(vibe.core.core.setTimer(timeout, dg, periodic));
-    }
+        Periodic periodic = Periodic.No) nothrow;
 
     /***************************************************************************
 
@@ -108,7 +95,7 @@ public class TaskManager
 
     ***************************************************************************/
 
-    public void logStats () @safe nothrow
+    public final void logStats () @safe nothrow
     {
         log.info("Tasks started: {}", this.tasks_started);
     }
@@ -129,28 +116,4 @@ public interface ITimer
     ***************************************************************************/
 
     public void stop () @safe nothrow;
-}
-
-/*******************************************************************************
-
-    Vibe.d timer
-
-*******************************************************************************/
-
-private final class VibedTimer : ITimer
-{
-    static import Vibe = vibe.core.core;
-
-    private Vibe.Timer timer;
-
-    public this (Vibe.Timer timer) @safe nothrow
-    {
-        this.timer = timer;
-    }
-
-    /// Ditto
-    public override void stop () @safe nothrow
-    {
-        this.timer.stop();
-    }
 }

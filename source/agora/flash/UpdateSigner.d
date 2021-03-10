@@ -58,7 +58,7 @@ public class UpdateSigner
     private Engine engine;
 
     /// Task manager
-    private TaskManager taskman;
+    private ITaskManager taskman;
 
     /// Sequence ID we're trying to sign for
     /// Todo: we should also have some kind of incremental ID to be able to
@@ -134,7 +134,7 @@ public class UpdateSigner
     ***************************************************************************/
 
     public this (in ChannelConfig conf, in Pair kp, FlashAPI peer,
-        Point peer_pk, Engine engine, TaskManager taskman)
+        Point peer_pk, Engine engine, ITaskManager taskman)
     {
         this.conf = conf;
         this.kp = kp;

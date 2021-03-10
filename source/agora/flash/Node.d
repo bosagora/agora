@@ -73,7 +73,7 @@ public abstract class ThinFlashNode : FlashNode
     ***************************************************************************/
 
     public this (const Pair kp, Hash genesis_hash, Engine engine,
-        TaskManager taskman, string agora_address)
+        ITaskManager taskman, string agora_address)
     {
         Duration timeout;  // infinite timeout (todo: fixup)
         this.agora_node = this.getAgoraClient(agora_address, timeout);
@@ -197,7 +197,7 @@ public class AgoraFlashNode : FlashNode
     ***************************************************************************/
 
     public this (const Pair kp, Hash genesis_hash, Engine engine,
-        TaskManager taskman, FullNodeAPI agora_node,
+        ITaskManager taskman, FullNodeAPI agora_node,
         FlashAPI delegate (in Point, Duration) flashClientGetter)
     {
         this.agora_node = agora_node;
@@ -275,7 +275,7 @@ public abstract class FlashNode : ControlFlashAPI
     protected Engine engine;
 
     /// for scheduling
-    protected TaskManager taskman;
+    protected ITaskManager taskman;
 
     /// Channels which are pending and not accepted yet.
     /// Once the channel handshake is complete and only after the funding
@@ -333,7 +333,7 @@ public abstract class FlashNode : ControlFlashAPI
     ***************************************************************************/
 
     public this (const Pair kp, Hash genesis_hash, Engine engine,
-        TaskManager taskman)
+        ITaskManager taskman)
     {
         this.genesis_hash = genesis_hash;
         this.engine = engine;

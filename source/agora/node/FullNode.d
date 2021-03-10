@@ -34,7 +34,7 @@ import agora.common.Metadata;
 import agora.common.crypto.Key;
 import agora.serialization.Serializer;
 import agora.common.Set;
-import agora.common.Task;
+import agora.common.VibeTask;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
@@ -104,7 +104,7 @@ public class FullNode : API
     protected immutable(ConsensusParams) params;
 
     /// Task manager
-    protected TaskManager taskman;
+    protected ITaskManager taskman;
 
     /// Clock instance
     protected Clock clock;
@@ -514,7 +514,7 @@ public class FullNode : API
     ***************************************************************************/
 
     protected NetworkManager getNetworkManager (Metadata metadata,
-        TaskManager taskman, Clock clock)
+        ITaskManager taskman, Clock clock)
     {
         return new NetworkManager(this.config, metadata, taskman, clock);
     }
@@ -531,9 +531,9 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected TaskManager getTaskManager ()
+    protected ITaskManager getTaskManager ()
     {
-        return new TaskManager();
+        return new VibeTaskManager();
     }
 
     /***************************************************************************
@@ -549,7 +549,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected Clock getClock (TaskManager taskman)
+    protected Clock getClock (ITaskManager taskman)
     {
         // non-synchronizing clock (for now)
         return new Clock(
