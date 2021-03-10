@@ -15,6 +15,7 @@ module agora.flash.Node;
 
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
+import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
@@ -37,6 +38,7 @@ import agora.flash.Route;
 import agora.flash.Scripts;
 import agora.flash.Types;
 import agora.script.Engine;
+import agora.serialization.Serializer;
 import agora.utils.Log;
 
 import vibe.web.rest;
@@ -49,6 +51,7 @@ import std.conv;
 import std.format;
 import std.range;
 import std.stdio;
+import std.traits;
 
 mixin AddLogger!();
 
@@ -68,6 +71,7 @@ public abstract class ThinFlashNode : FlashNode
 
         Params:
             kp = The key-pair of this node
+            db_path = path to the database (or in-memory if set to ":memory:")
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
             taskman = the task manager ot use
@@ -76,12 +80,12 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public this (const KeyPair kp, Hash genesis_hash, Engine engine,
-        ITaskManager taskman, string agora_address)
+    public this (const KeyPair kp, string db_path, Hash genesis_hash,
+        Engine engine, ITaskManager taskman, string agora_address)
     {
         Duration timeout;  // infinite timeout (todo: fixup)
         this.agora_node = this.getAgoraClient(agora_address, timeout);
-        super(kp, genesis_hash, engine, taskman);
+        super(kp, db_path, genesis_hash, engine, taskman);
     }
 
     /***************************************************************************
@@ -100,12 +104,13 @@ public abstract class ThinFlashNode : FlashNode
 
     /***************************************************************************
 
-        Shut down any timers
+        Shut down any timers and store latest data to the database
 
     ***************************************************************************/
 
-    public void shutdown ()
+    public override void shutdown ()
     {
+        super.shutdown();
         if (this.monitor_timer !is null)
             this.monitor_timer.stop();
     }
@@ -144,6 +149,7 @@ public abstract class ThinFlashNode : FlashNode
                         channel.onBlockExternalized(next_block);
 
                     this.last_block_height++;
+                    this.dump();
                 }
             }
             catch (Exception ex)
@@ -212,6 +218,7 @@ public class AgoraFlashNode : FlashNode
 
         Params:
             kp = The key-pair of this node
+            db_path = path to the database (or in-memory if set to ":memory:")
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
             taskman = the task manager ot use
@@ -220,13 +227,13 @@ public class AgoraFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public this (const KeyPair kp, Hash genesis_hash, Engine engine,
-        ITaskManager taskman, FullNodeAPI agora_node,
+    public this (const KeyPair kp, string db_path, Hash genesis_hash,
+        Engine engine, ITaskManager taskman, FullNodeAPI agora_node,
         FlashAPI delegate (in Point, Duration) flashClientGetter)
     {
         this.agora_node = agora_node;
         this.flashClientGetter = flashClientGetter;
-        super(kp, genesis_hash, engine, taskman);
+        super(kp, db_path, genesis_hash, engine, taskman);
     }
 
     /// No-op, FullNode will notify us of externalized blocks
@@ -298,6 +305,9 @@ public abstract class FlashNode : ControlFlashAPI
     /// All the node metadata
     mixin NodeMetadata!() meta;
 
+    /// Serialization buffer
+    private ubyte[] serialize_buffer;
+
     /// Execution engine
     protected Engine engine;
 
@@ -313,12 +323,16 @@ public abstract class FlashNode : ControlFlashAPI
     /// All known connected peers (used for gossiping)
     protected FlashAPI[Point] known_peers;
 
+    /// Metadata database
+    private ManagedDatabase db;
+
     /***************************************************************************
 
         Constructor
 
         Params:
             kp = The key-pair of this node
+            db_path = path to the database (or in-memory if set to ":memory:")
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
             taskman = the task manager ot use
@@ -328,13 +342,22 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    public this (const KeyPair kp, Hash genesis_hash, Engine engine,
-        ITaskManager taskman)
+    public this (const KeyPair kp, string db_path, Hash genesis_hash,
+        Engine engine, ITaskManager taskman)
     {
         this.genesis_hash = genesis_hash;
         this.engine = engine;
         this.kp = kp;
         this.taskman = taskman;
+        this.db = this.getManagedDatabase(db_path);
+        this.load();
+
+        this.channels = Channel.loadChannels(this.db,
+            &this.getFlashClient,engine, taskman,
+            &this.putTransaction, &this.paymentRouter,
+            &this.onChannelOpen,
+            &this.onPaymentComplete, &this.onUpdateComplete);
+
         this.network = new Network((Hash chan_id, Point from) {
             if (auto updates = chan_id in this.channel_updates)
             {
@@ -346,6 +369,108 @@ public abstract class FlashNode : ControlFlashAPI
             }
             return ChannelUpdate.init;
         });
+
+        foreach (_, chan; this.channels)
+            this.network.addChannel(chan.conf);
+    }
+
+    /***************************************************************************
+
+        Store all the node's and each channels' metadata to the DB
+
+    ***************************************************************************/
+
+    public void shutdown ()
+    {
+        this.dump();
+        foreach (chan; channels.byValue)
+            chan.dump();
+    }
+
+    /***************************************************************************
+
+        Overridable in tests to test restart behavior.
+
+        Params:
+            db_path = path to the database
+
+        Returns:
+            a ManagedDatabase instance for the given path
+
+    ***************************************************************************/
+
+    protected ManagedDatabase getManagedDatabase (string db_path)
+    {
+        return new ManagedDatabase(db_path);
+    }
+
+    /***************************************************************************
+
+        Serialize and dump the node metadata to the database.
+
+    ***************************************************************************/
+
+    private void dump () @trusted
+    {
+        this.serialize_buffer.length = 0;
+        () @trusted { assumeSafeAppend(this.serialize_buffer); }();
+        scope SerializeDg dg = (in ubyte[] data) @safe
+        {
+            this.serialize_buffer ~= data;
+        };
+
+        foreach (name; __traits(allMembers, this.meta))
+        {
+            auto field = __traits(getMember, this.meta, name);
+            static if (isAssociativeArray!(typeof(field)))
+                serializePart(serializeMap(field), dg);
+            else
+                serializePart(field, dg);
+        }
+
+        this.db.execute("REPLACE INTO flash_metadata (meta, data) VALUES (1, ?)",
+            this.serialize_buffer);
+    }
+
+    /***************************************************************************
+
+        Load any node metadata from the database.
+
+    ***************************************************************************/
+
+    private void load () @trusted
+    {
+        db.execute("CREATE TABLE IF NOT EXISTS flash_metadata " ~
+            "(meta BLOB NOT NULL PRIMARY KEY, data BLOB NOT NULL)");
+
+        auto results = this.db.execute(
+            "SELECT data FROM flash_metadata WHERE meta = 1");
+        if (results.empty)
+            return;  // nothing to load
+
+        ubyte[] data = results.oneValue!(ubyte[]);
+
+        scope DeserializeDg dg = (size) @safe
+        {
+            if (size > data.length)
+                throw new Exception(
+                    format("Requested %d bytes but only %d bytes available",
+                        size, data.length));
+
+            auto res = data[0 .. size];
+            data = data[size .. $];
+            return res;
+        };
+
+        foreach (name; __traits(allMembers, this.meta))
+        {
+            alias Type = typeof(__traits(getMember, this.meta, name));
+            auto field = &__traits(getMember, this.meta, name);
+            static if (isAssociativeArray!Type)
+                *field = deserializeFull!(SerializeMap!Type)(dg)._map;
+            else
+                *field = deserializeFull!Type(dg);
+        }
     }
 
     /***************************************************************************
@@ -401,7 +526,7 @@ public abstract class FlashNode : ControlFlashAPI
         auto channel = new Channel(chan_conf, this.kp, priv_nonce, peer_nonce,
             peer, this.engine, this.taskman, &this.putTransaction,
             &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
-            &this.onUpdateComplete);
+            &this.onUpdateComplete, this.db);
 
         this.channels[chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
@@ -449,6 +574,8 @@ public abstract class FlashNode : ControlFlashAPI
                 peer.gossipChannelsOpen([conf]);
                 peer.gossipChannelUpdates([this.channel_updates[conf.chan_id][dir]]);
             }
+
+            this.dump();
         });
     }
 
@@ -504,6 +631,7 @@ public abstract class FlashNode : ControlFlashAPI
                     continue;
                 this.channel_updates[update.chan_id][update.direction] = update;
                 to_gossip ~= update;
+                this.dump();
             }
         }
 
@@ -646,6 +774,7 @@ public abstract class FlashNode : ControlFlashAPI
             {
                 log.info(this.kp.address.flashPrettify, " Got error: ", deobfuscated);
                 this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
+                this.dump();
             }
         }
         else
@@ -814,7 +943,7 @@ public abstract class FlashNode : ControlFlashAPI
         auto channel = new Channel(chan_conf, this.kp, priv_nonce, result.value,
             peer, this.engine, this.taskman, &this.putTransaction,
             &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
-            &this.onUpdateComplete);
+            &this.onUpdateComplete, this.db);
         this.channels[chan_id] = channel;
 
         return chan_id;
@@ -848,6 +977,7 @@ public abstract class FlashNode : ControlFlashAPI
         auto pair = createInvoice(this.kp.address, amount, expiry, description);
         this.invoices[pair.invoice.payment_hash] = pair.invoice;
         this.secrets[pair.invoice.payment_hash] = pair.secret;
+        this.dump();
 
         return pair.invoice;
     }
@@ -884,6 +1014,7 @@ public abstract class FlashNode : ControlFlashAPI
 
         this.paymentRouter(path.front.chan_id, invoice.payment_hash,
             total_amount, use_lock_height, packet);
+        this.dump();
     }
 
     ///

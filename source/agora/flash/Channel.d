@@ -22,6 +22,7 @@ import agora.flash.Types;
 import agora.flash.UpdateSigner;
 
 import agora.common.Amount;
+import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
@@ -39,8 +40,11 @@ import agora.utils.Log;
 
 import std.array;
 import std.algorithm;
+import std.conv;
+import std.exception;
 import std.format;
 import std.stdio;  // todo: remove
+import std.traits;
 import std.typecons;
 
 import core.time;
@@ -55,6 +59,9 @@ public class Channel
     /// Used to publish funding / trigger / update / settlement txs to blockchain
     public const void delegate (Transaction) txPublisher;
 
+    /// Database
+    private ManagedDatabase db;
+
     /// The execution engine, used to validate all flash-layer transactions.
     private Engine engine;
 
@@ -66,6 +73,9 @@ public class Channel
 
     /// All the channel metadata
     mixin ChannelMetadata!() meta;
+
+    /// Serialization buffer
+    private ubyte[] serialize_buffer;
 
     /// The signer for an update / settle pair
     private UpdateSigner update_signer;
@@ -86,10 +96,14 @@ public class Channel
     /// Called when a channel update has been completed.
     private void delegate (in Hash[] secrets, in Hash[] revert_htlcs) onUpdateComplete;
 
+    /// @WORKAROUND@: LocalRest issue with timings and sleep not working until
+    /// node ctor is done (see Flash restart tests)
+    private FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient;
+
 
     /***************************************************************************
 
-        Constructor.
+        Constructor for new channels.
 
         Params:
             conf = the static channel configuration.
@@ -104,6 +118,7 @@ public class Channel
             txPublisher = used to publish transactions to the Agora network.
             paymentRouter = used to forward HTLCs to the next hop
             onUpdateComplete = called when a channel update has completed
+            db = the database to dump the channel metadata to
 
     ***************************************************************************/
 
@@ -113,24 +128,196 @@ public class Channel
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
-        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete)
+        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
+        ManagedDatabase db)
     {
         this.conf = conf;
         this.kp = kp;
         this.is_owner = conf.funder_pk == kp.address;
         this.peer = peer;
         this.peer_pk = this.is_owner ? conf.peer_pk : conf.funder_pk;
+        this.db = db;
+        this.priv_nonce = priv_nonce;
+        this.peer_nonce = peer_nonce;
         this.engine = engine;
         this.taskman = taskman;
         this.txPublisher = txPublisher;
         this.update_signer = new UpdateSigner(this.conf, this.kp, this.peer,
-            this.peer_pk, this.engine, this.taskman);
+            this.peer_pk, this.engine, this.taskman, db);
         this.paymentRouter = paymentRouter;
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
+
+        this.dump();
+
         this.taskman.setTimer(0.seconds,
             { this.start(priv_nonce, peer_nonce); });
+    }
+
+    /***************************************************************************
+
+        Constructor for loading existing channels from the DB.
+
+        Params:
+            chan_id = the channel ID to load from the DB.
+            engine = the execution engine
+            taskman = used to spawn tasks
+            txPublisher = used to publish transactions to the Agora network.
+            paymentRouter = used to forward HTLCs to the next hop
+            onUpdateComplete = called when a channel update has completed
+            db = the database to load the channel metadata from
+            getFlashClient = delegate to get the FlashAPI client from
+
+    ***************************************************************************/
+
+    public this (Hash chan_id, Engine engine, ITaskManager taskman,
+        void delegate (Transaction) txPublisher,
+        PaymentRouter paymentRouter,
+        void delegate (ChannelConfig conf) onChannelOpen,
+        void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
+        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
+        FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
+        ManagedDatabase db)
+    {
+        this.db = db;
+        this.getFlashClient = getFlashClient;
+        this.load(chan_id);
+
+        this.engine = engine;
+        this.taskman = taskman;
+        this.txPublisher = txPublisher;
+        this.paymentRouter = paymentRouter;
+        this.onChannelOpen = onChannelOpen;
+        this.onPaymentComplete = onPaymentComplete;
+        this.onUpdateComplete = onUpdateComplete;
+
+        this.taskman.setTimer(0.seconds,
+            (this.channel_updates.length == 0)
+            ? { this.start(this.priv_nonce, this.peer_nonce); }  // funding not done yet
+            : &this.eventLoop);  // funding already done
+    }
+
+    /***************************************************************************
+
+        Load all known channels from the database and return it in a map.
+
+        Params:
+            db = the DB to load from
+            getFlashClient = delegate to get the FlashAPI client from
+            engine = the execution engine
+            taskman = used to spawn tasks
+            txPublisher = used to publish transactions to the Agora network.
+            paymentRouter = used to forward HTLCs to the next hop
+            onUpdateComplete = called when a channel update has completed
+
+        Returns:
+            a map of any loaded channels
+
+    ***************************************************************************/
+
+    public static Channel[Hash] loadChannels (ManagedDatabase db,
+        FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
+        Engine engine, ITaskManager taskman,
+        void delegate (Transaction) txPublisher, PaymentRouter paymentRouter,
+        void delegate (ChannelConfig conf) onChannelOpen,
+        void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
+        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete )
+    {
+        Channel[Hash] channels;
+
+        db.execute("CREATE TABLE IF NOT EXISTS channels " ~
+            "(chan_id BLOB NOT NULL PRIMARY KEY, data BLOB NOT NULL, " ~
+            "update_signer BLOB)");
+
+        auto results = db.execute("SELECT chan_id FROM channels");
+        foreach (ref row; results)
+        {
+            const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(0));
+            channels[chan_id] = new Channel(chan_id, engine, taskman,
+                txPublisher, paymentRouter, onChannelOpen, onPaymentComplete,
+                onUpdateComplete, getFlashClient, db);
+        }
+
+        return channels;
+    }
+
+    /***************************************************************************
+
+        Serialize and dump the channel metadata to the database.
+
+    ***************************************************************************/
+
+    public void dump () @trusted
+    {
+        this.serialize_buffer.length = 0;
+        () @trusted { assumeSafeAppend(this.serialize_buffer); }();
+        scope SerializeDg dg = (in ubyte[] data) @safe
+        {
+            this.serialize_buffer ~= data;
+        };
+
+        foreach (name; __traits(allMembers, meta))
+        {
+            auto field = __traits(getMember, meta, name);
+            static if (isAssociativeArray!(typeof(field)))
+                serializePart(serializeMap(field), dg);
+            else
+                serializePart(field, dg);
+        }
+
+        this.db.execute("REPLACE INTO channels (chan_id, data) VALUES (?, ?)",
+            this.conf.chan_id.serializeFull, this.serialize_buffer);
+    }
+
+    /***************************************************************************
+
+        Load the channel metadata for the given channel ID from the database.
+
+        Params:
+            chan_id = the channel ID to load
+
+    ***************************************************************************/
+
+    private void load (Hash chan_id) @trusted
+    {
+        auto results = this.db.execute(
+            "SELECT data FROM channels WHERE chan_id = ?",
+            chan_id.serializeFull);
+        if (results.empty)
+            return;  // nothing to load
+
+        ubyte[] data = results.oneValue!(ubyte[]);
+
+        scope DeserializeDg dg = (size) @safe
+        {
+            if (size > data.length)
+                throw new Exception(
+                    format("Requested %d bytes but only %d bytes available",
+                        size, data.length));
+
+            auto res = data[0 .. size];
+            data = data[size .. $];
+            return res;
+        };
+
+        foreach (name; __traits(allMembers, this.meta))
+        {
+            alias Type = typeof(__traits(getMember, this.meta, name));
+            auto field = &__traits(getMember, this.meta, name);
+            static if (isAssociativeArray!Type)
+                *field = deserializeFull!(SerializeMap!Type)(dg)._map;
+            else static if (is(Type == KeyPair))
+            {
+                // key-pair embeds const but compiler doesn't recognize
+                // this as initialization rather than assignment
+                auto val = deserializeFull!Type(dg);
+                *cast(PublicKey*)&field.address = val.address;
+                *cast(SecretKey*)&field.secret = val.secret;
+            }
+            else
+                *field = deserializeFull!Type(dg);
+        }
     }
 
     /***************************************************************************
@@ -286,6 +473,30 @@ public class Channel
         while (this.state != ChannelState.Open)
             this.taskman.wait(100.msecs);
 
+        this.eventLoop();
+    }
+
+    /***************************************************************************
+
+        Process incoming and outgoing requests with the calling fiber until
+        the channel is closed.
+
+    ***************************************************************************/
+
+    private void eventLoop ()
+    {
+        if (this.getState == ChannelState.Closed)
+            return;
+
+        // if it's a preloaded channel we can only retrieve the flash client
+        // once the event loop is running (LocalRest issue)
+        if (this.peer is null)
+            this.peer = getFlashClient(this.peer_pk, Duration.init);
+
+        if (this.update_signer is null)
+            this.update_signer = new UpdateSigner(this.conf, this.kp, this.peer,
+                this.peer_pk, this.engine, this.taskman, db);
+
 LOuter: while (1)
         {
             scope (success)
@@ -379,7 +590,10 @@ LOuter: while (1)
         this.channel_updates ~= update_pair;
 
         if (this.state == ChannelState.Open)
+        {
             this.onChannelOpen(cast()this.conf);
+            this.dump();
+        }
     }
 
     /***************************************************************************
@@ -411,6 +625,7 @@ LOuter: while (1)
         this.cur_balance = expected_balance;
 
         this.onChannelOpen(cast()this.conf);
+        this.dump();
     }
 
     /***************************************************************************
@@ -700,6 +915,7 @@ LOuter: while (1)
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
         this.onUpdateComplete(secrets, rev_htlcs_filtered);
+        this.dump();
     }
 
     /***************************************************************************
@@ -833,6 +1049,8 @@ LOuter: while (1)
         else
             // propose an update afterwards
             this.onPaymentComplete(this.conf.chan_id, payment.payment_hash);
+
+        this.dump();
     }
 
     /***************************************************************************

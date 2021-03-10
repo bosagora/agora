@@ -60,6 +60,7 @@ import vibe.web.rest;
 
 import std.algorithm : each, map;
 import std.exception;
+import std.path : buildPath;
 import std.range;
 
 import core.stdc.stdlib : abort;
@@ -88,10 +89,10 @@ public class FlashValidator : Validator, FlashValidatorAPI
         super(config);
         assert(this.config.flash.enabled);
         assert(this.config.validator.enabled);
-
+        const flash_path = buildPath(this.config.node.data_dir, "flash.dat");
         this.flash = new AgoraFlashNode(this.config.validator.key_pair,
-            hashFull(this.params.Genesis),
-            this.engine, this.taskman, this, &this.getFlashClient);
+            flash_path, hashFull(this.params.Genesis), this.engine,
+            this.taskman, this, &this.getFlashClient);
     }
 
     public override void start ()
@@ -100,6 +101,11 @@ public class FlashValidator : Validator, FlashValidatorAPI
 
         if (this.config.flash.testing)
             this.taskman.setTimer(0.seconds, &this.startFlashTest);
+    }
+
+    public override void shutdown ()
+    {
+        this.flash.shutdown();
     }
 
     public override void receiveInvoice (Invoice invoice)

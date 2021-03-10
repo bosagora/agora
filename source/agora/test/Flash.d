@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
+import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Task;
 import agora.consensus.data.genesis.Test;
@@ -87,6 +88,16 @@ public interface TestFlashAPI : ControlFlashAPI
     public void shutdownNode ();
 }
 
+/// Controls behavior of database storage for the Flash layer
+enum DatabaseStorage : string
+{
+    /// db erased between restarts
+    Local = ":memory:",
+
+    /// db preserved between restarts
+    Static = ":static:",
+}
+
 /// A thin localrest flash node which itself is not a FullNode / Validator
 public class TestFlashNode : ThinFlashNode, TestFlashAPI
 {
@@ -98,7 +109,8 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
 
     ///
     public this (const KeyPair kp, Registry!TestAPI* agora_registry,
-        string agora_address, Registry!TestFlashAPI* flash_registry)
+        string agora_address, DatabaseStorage storage,
+        Registry!TestFlashAPI* flash_registry)
     {
         this.agora_registry = agora_registry;
         this.flash_registry = flash_registry;
@@ -106,7 +118,34 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         const TestStackMaxTotalSize = 16_384;
         const TestStackMaxItemSize = 512;
         auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-        super(kp, genesis_hash, engine, new LocalRestTaskManager(), agora_address);
+        super(kp, storage, genesis_hash, engine, new LocalRestTaskManager(),
+            agora_address);
+    }
+
+    /***************************************************************************
+
+        Get either a managed database local to the class, or a static one
+        which will survive restarts.
+
+        Params:
+            db_path = path to the database
+
+        Returns:
+            a ManagedDatabase instance for the given path
+
+    ***************************************************************************/
+
+    protected override ManagedDatabase getManagedDatabase (string db_path)
+    {
+        if (db_path == DatabaseStorage.Static)
+        {
+            static ManagedDatabase static_db;
+            if (static_db is null)
+                static_db = new ManagedDatabase(":memory:");
+            return static_db;
+        }
+
+        return new ManagedDatabase(db_path);
     }
 
     ///
@@ -239,11 +278,12 @@ public class FlashNodeFactory
 
     /// Create a new flash node user
     public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
-        (const Pair pair, string agora_address)
+        (const Pair pair, string agora_address,
+         DatabaseStorage storage = DatabaseStorage.Local)
     {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
-            this.agora_registry, agora_address, &this.flash_registry,
+            this.agora_registry, agora_address, storage, &this.flash_registry,
             5.seconds);  // timeout from main thread
         api.start();
 
