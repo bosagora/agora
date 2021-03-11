@@ -203,16 +203,23 @@ public struct Result (T)
 /// Helper routine
 public string flashPrettify (T)(T input)
 {
+    static struct WKName
+    {
+        string name;
+        Point address;
+    }
+
+    static immutable WKName[] wk = [
+        { "Alice",   Point.fromString("0x92a86f555ba8e490447793ef3348dfec9a91c94a1719901254e10c172676adc1"), },
+        { "Bob",     Point.fromString("0x81bca7587ce2a790cdc7d0a0bf850431bc55b7a08eb5c9d6b877dc693c41adc3"), },
+        { "Charlie", Point.fromString("0xdcafdacc6fa2cc329d2ecb82d0a7c947a0ccd5a0c8887f34c7967950a508adc5"), },
+    ];
+
     // some well-known key-pairs used in the flash tests
     static if (is(immutable(T) == immutable(Point)))
-    {
-        if (input == T.fromString("0x92a86f555ba8e490447793ef3348dfec9a91c94a1719901254e10c172676adc1"))
-            return "Alice";
-        else if (input == T.fromString("0x81bca7587ce2a790cdc7d0a0bf850431bc55b7a08eb5c9d6b877dc693c41adc3"))
-            return "Bob";
-        else if (input == T.fromString("0xdcafdacc6fa2cc329d2ecb82d0a7c947a0ccd5a0c8887f34c7967950a508adc5"))
-            return "Charlie";
-    }
+        foreach (const ref known; wk)
+            if (known.address == input)
+                return known.name;
 
     return input.to!string[0 .. 6];
 }
