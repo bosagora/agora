@@ -76,7 +76,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
                 const Scalar rc = Scalar.random(); // This is normally the enrollment commitment
                 const Scalar r = rc + challenge;
                 const Point R = r.toPoint();
-                return Sig(R, multiSigSign(r, this.schnorr_pair.v, challenge));
+                return Sig(R, multiSigSign(r, this.kp.secret, challenge));
             case ByzantineReason.BadSignature:
                 const Scalar rc = Scalar(hashMulti(WK.Keys.NODE2.secret,
                     "consensus.signature.noise", 0));
