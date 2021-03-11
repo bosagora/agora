@@ -237,9 +237,8 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         assert(this.config.flash.enabled);
         assert(!this.config.validator.enabled);
 
-        immutable kp = Pair(this.config.flash.key_pair.secret,
-            this.config.flash.key_pair.secret.toPoint);
-        this.flash = new AgoraFlashNode(kp, hashFull(this.params.Genesis),
+        this.flash = new AgoraFlashNode(this.config.flash.key_pair,
+            hashFull(this.params.Genesis),
             this.engine, this.taskman, this, &this.getFlashClient);
     }
 

@@ -89,9 +89,8 @@ public class FlashValidator : Validator, FlashValidatorAPI
         assert(this.config.flash.enabled);
         assert(this.config.validator.enabled);
 
-        immutable kp = Pair(this.config.validator.key_pair.secret,
-            this.config.validator.key_pair.secret.toPoint);
-        this.flash = new AgoraFlashNode(kp, hashFull(this.params.Genesis),
+        this.flash = new AgoraFlashNode(this.config.validator.key_pair,
+            hashFull(this.params.Genesis),
             this.engine, this.taskman, this, &this.getFlashClient);
     }
 
