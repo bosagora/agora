@@ -24,6 +24,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.ControlAPI;
@@ -93,7 +94,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     protected Registry!TestFlashAPI* flash_registry;
 
     ///
-    public this (const Pair kp, Registry!TestAPI* agora_registry,
+    public this (const KeyPair kp, Registry!TestAPI* agora_registry,
         string agora_address, Registry!TestFlashAPI* flash_registry)
     {
         this.agora_registry = agora_registry;
@@ -177,12 +178,12 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     ///
     public override void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee)
     {
-        const dir = this.kp.V == this.known_channels[chan_id].funder_pk ?
+        const dir = this.kp.address == this.known_channels[chan_id].funder_pk ?
             PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
         auto update = this.channel_updates[chan_id][dir];
         update.fixed_fee = fixed_fee;
         update.proportional_fee = proportional_fee;
-        update.sig = sign(this.kp, update);
+        update.sig = this.kp.sign(update);
         this.gossipChannelUpdates([update]);
     }
 
@@ -196,7 +197,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     public void printLog ()
     {
         auto output = stdout.lockingTextWriter();
-        output.formattedWrite("Log for Flash node %s:\n", this.kp.V.flashPrettify);
+        output.formattedWrite("Log for Flash node %s:\n", this.kp.address.flashPrettify);
         output.put("======================================================================\n");
         CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
@@ -229,7 +230,8 @@ public class FlashNodeFactory
     /// Create a new flash node user
     public RemoteAPI!TestFlashAPI create (const Pair pair, string agora_address)
     {
-        RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!TestFlashNode(pair,
+        RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!TestFlashNode(
+            KeyPair(PublicKey(pair.V), SecretKey(pair.v), Seed.init),
             this.agora_registry, agora_address, &this.flash_registry);
         api.start();
 

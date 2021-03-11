@@ -21,6 +21,7 @@ import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.Config;
@@ -46,7 +47,7 @@ public class UpdateSigner
     private const ChannelConfig conf;
 
     /// Key-pair used for signing and deriving update / settlement key-pairs
-    public const Pair kp;
+    public const KeyPair kp;
 
     /// Peer we're communicating with
     private FlashAPI peer;
@@ -133,7 +134,7 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public this (in ChannelConfig conf, in Pair kp, FlashAPI peer,
+    public this (in ChannelConfig conf, in KeyPair kp, FlashAPI peer,
         Point peer_pk, Engine engine, ITaskManager taskman)
     {
         this.conf = conf;
@@ -165,7 +166,7 @@ public class UpdateSigner
     public void onConfirmedChannelUpdate ()
     {
         log.info("{}: Peer {} has confirmed collecting signatures for seq {}.",
-                this.kp.V.flashPrettify, this.peer_pk.flashPrettify, seq_id);
+                this.kp.address.flashPrettify, this.peer_pk.flashPrettify, seq_id);
 
         this.peer_confirmed_update = true;
     }
@@ -288,7 +289,7 @@ public class UpdateSigner
             {
                 // todo: retry?
                 log.info("{}: Settlement signature {} request to {} rejected: {}",
-                    this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify, settle_res);
+                    this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify, settle_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -297,7 +298,7 @@ public class UpdateSigner
         }
 
         log.info("{}: Settlement signature {} from {} received",
-            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
+            this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         if (auto error = this.isInvalidSettleMultiSig(this.pending_settle,
             settle_res.value, priv_nonce, peer_nonce))
@@ -305,13 +306,13 @@ public class UpdateSigner
             // todo: inform? ban?
             log.info("{}: Error during validation: {}. For settle signature "
                 ~ "from {}: {}",
-                this.kp.V.flashPrettify, error,
+                this.kp.address.flashPrettify, error,
                 this.peer_pk.flashPrettify, settle_res.value);
             assert(0);
         }
 
         log.info("{}: Settlement signature {} from {} validated",
-            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
+            this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         this.pending_settle.peer_sig = settle_res.value;
         this.pending_settle.validated = true;
@@ -327,7 +328,7 @@ public class UpdateSigner
             {
                 // todo: retry?
                 log.info("{}: Update signature {} request to {} rejected: {}",
-                    this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify, update_res);
+                    this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify, update_res);
                 this.taskman.wait(100.msecs);
                 continue;
             }
@@ -336,7 +337,7 @@ public class UpdateSigner
         }
 
         log.info("{}: Update signature {} from {} received",
-            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
+            this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // todo: retry? add a better status code like NotReady?
         if (update_res.value == Signature.init)
@@ -348,7 +349,7 @@ public class UpdateSigner
             // todo: inform? ban?
             log.info("{}: Error during validation: {}. For update "
                 ~ "signature from {}: {}",
-                this.kp.V.flashPrettify, error,
+                this.kp.address.flashPrettify, error,
                 this.peer_pk.flashPrettify, update_res.value);
             assert(0);
         }
@@ -356,7 +357,7 @@ public class UpdateSigner
         this.pending_update.validated = true;
 
         log.info("{}: Update signature {} from {} validated",
-            this.kp.V.flashPrettify, seq_id, this.peer_pk.flashPrettify);
+            this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // confirm to the peer we're done, and await for peer's own confirmation
         this.peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
@@ -364,7 +365,7 @@ public class UpdateSigner
         {
             log.info("{}: Peer {} is still collecting signatures for seq {}. "
                 ~ "Waiting before confirming update..",
-                this.kp.V.flashPrettify, this.peer_pk.flashPrettify, seq_id,);
+                this.kp.address.flashPrettify, this.peer_pk.flashPrettify, seq_id,);
             this.taskman.wait(100.msecs);
         }
 
@@ -409,12 +410,12 @@ public class UpdateSigner
         // Note that an update tx with seq 0 do not exist.
         if (this.seq_id == 0)
         {
-            return sign(this.kp.v, this.conf.pair_pk, nonce_pair_pk,
+            return sign(this.kp.secret, this.conf.pair_pk, nonce_pair_pk,
                 priv_nonce.update.v, update_tx);
         }
         else
         {
-            const update_key = getUpdateScalar(this.kp.v,
+            const update_key = getUpdateScalar(this.kp.secret,
                 this.conf.funding_tx_hash);
             const challenge_update = getSequenceChallenge(update_tx,
                 this.seq_id, 0);  // todo: should not be hardcoded
@@ -482,7 +483,7 @@ public class UpdateSigner
         in Output[] outputs, in PrivateNonce priv_nonce,
         in PublicNonce peer_nonce)
     {
-        const settle_key = getSettleScalar(this.kp.v, this.conf.funding_tx_hash,
+        const settle_key = getSettleScalar(this.kp.secret, this.conf.funding_tx_hash,
             this.seq_id);
         const settle_pair_pk = getSettlePk(this.conf.pair_pk,
             this.conf.funding_tx_hash, this.seq_id, this.conf.num_peers);

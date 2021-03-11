@@ -23,6 +23,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.Channel;
@@ -75,7 +76,7 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, Engine engine,
+    public this (const KeyPair kp, Hash genesis_hash, Engine engine,
         ITaskManager taskman, string agora_address)
     {
         Duration timeout;  // infinite timeout (todo: fixup)
@@ -219,7 +220,7 @@ public class AgoraFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, Engine engine,
+    public this (const KeyPair kp, Hash genesis_hash, Engine engine,
         ITaskManager taskman, FullNodeAPI agora_node,
         FlashAPI delegate (in Point, Duration) flashClientGetter)
     {
@@ -289,7 +290,7 @@ public class AgoraFlashNode : FlashNode
 public abstract class FlashNode : ControlFlashAPI
 {
     /// Schnorr key-pair belonging to this node
-    protected const Pair kp;
+    protected const KeyPair kp;
 
     /// Hash of the genesis block
     protected const Hash genesis_hash;
@@ -355,7 +356,7 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    public this (const Pair kp, Hash genesis_hash, Engine engine,
+    public this (const KeyPair kp, Hash genesis_hash, Engine engine,
         ITaskManager taskman)
     {
         this.genesis_hash = genesis_hash;
@@ -390,7 +391,7 @@ public abstract class FlashNode : ControlFlashAPI
         /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
     {
         // todo: verify `chan_conf.funding_utxo`
-        log.info("{}: openChannel()", this.kp.V.flashPrettify);
+        log.info("{}: openChannel()", this.kp.address.flashPrettify);
 
         if (chan_conf.chan_id in this.channels)
             return Result!PublicNonce(ErrorCode.DuplicateChannelID,
@@ -451,18 +452,18 @@ public abstract class FlashNode : ControlFlashAPI
         this.taskman.setTimer(0.seconds,
         {
             log.info("{}: onChannelOpen() with channel {}",
-                this.kp.V.flashPrettify, conf.chan_id);
+                this.kp.address.flashPrettify, conf.chan_id);
 
             this.known_channels[conf.chan_id] = conf;
             this.network.addChannel(conf);
 
-            const dir = this.kp.V == conf.funder_pk ?
+            const dir = this.kp.address.data == conf.funder_pk ?
                 PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
             // Set the initial fees
             // todo: this should be configurable
             auto update = ChannelUpdate(conf.chan_id, dir,
                 Amount(1), Amount(1));
-            update.sig = sign(this.kp, update);
+            update.sig = this.kp.sign(update);
             this.channel_updates[conf.chan_id][dir] = update;
             // todo: should not gossip this to counterparty of the just opened channel
             foreach (peer; this.known_peers.byValue())
@@ -477,7 +478,7 @@ public abstract class FlashNode : ControlFlashAPI
     public override void gossipChannelsOpen ( ChannelConfig[] chan_configs )
     {
         log.info("{}: gossipChannelsOpen() with {} channels",
-            this.kp.V.flashPrettify, chan_configs.length);
+            this.kp.address.flashPrettify, chan_configs.length);
 
         ChannelConfig[] to_gossip;
         foreach (conf; chan_configs)
@@ -486,7 +487,7 @@ public abstract class FlashNode : ControlFlashAPI
                 continue;
 
             log.info("{}: gossipChannelsOpen(): Discovered: {}",
-                this.kp.V.flashPrettify, conf.chan_id.flashPrettify);
+                this.kp.address.flashPrettify, conf.chan_id.flashPrettify);
 
             // todo: need to verify the blockchain actually contains the
             // funding transaction, otherwise this becomes a point of DDoS.
@@ -508,7 +509,7 @@ public abstract class FlashNode : ControlFlashAPI
     public void gossipChannelUpdates (ChannelUpdate[] chan_updates)
     {
         log.info("{}: gossipChannelUpdates() with {} channels",
-            this.kp.V.flashPrettify, chan_updates.length);
+            this.kp.address.flashPrettify, chan_updates.length);
 
         ChannelUpdate[] to_gossip;
         foreach (update; chan_updates)
@@ -603,10 +604,10 @@ public abstract class FlashNode : ControlFlashAPI
 
         Payload payload;
         Point shared_secret;
-        if (!decryptPayload(packet.encrypted_payloads[0], this.kp.v,
+        if (!decryptPayload(packet.encrypted_payloads[0], this.kp.secret,
             packet.ephemeral_pk, payload, shared_secret))
         {
-            log.info("{} --- ERROR: CANNOT DECRYPT PAYLOAD", this.kp.V.flashPrettify);
+            log.info("{} --- ERROR: CANNOT DECRYPT PAYLOAD", this.kp.address.flashPrettify);
             return Result!PublicNonce(ErrorCode.CantDecrypt);
         }
 
@@ -661,7 +662,7 @@ public abstract class FlashNode : ControlFlashAPI
 
             if (chans.canFind(deobfuscated.chan_id))
             {
-                log.info(this.kp.V.flashPrettify, " Got error: ", deobfuscated);
+                log.info(this.kp.address.flashPrettify, " Got error: ", deobfuscated);
                 this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
             }
         }
@@ -743,7 +744,7 @@ public abstract class FlashNode : ControlFlashAPI
 
         foreach (chan_id, channel; this.channels)
         {
-            log.info("{}: Calling learnSecrets for {}", this.kp.V.flashPrettify,
+            log.info("{}: Calling learnSecrets for {}", this.kp.address.flashPrettify,
                 chan_id);
             channel.learnSecrets(secrets, rev_htlcs, this.last_block_height);
         }
@@ -773,7 +774,7 @@ public abstract class FlashNode : ControlFlashAPI
             return channel.queueNewPayment(payment_hash, amount, lock_height,
                 packet, this.last_block_height);
 
-        log.info("{} Could not find this channel ID: {}", this.kp.V.flashPrettify,
+        log.info("{} Could not find this channel ID: {}", this.kp.address.flashPrettify,
             chan_id);
         this.onPaymentComplete(chan_id, payment_hash,
             ErrorCode.InvalidChannelID);
@@ -792,12 +793,12 @@ public abstract class FlashNode : ControlFlashAPI
         /* in */ Amount capacity, /* in */ uint settle_time,
         /* in */ Point peer_pk)
     {
-        log.info("{}: openNewChannel({}, {}, {})", this.kp.V.flashPrettify,
+        log.info("{}: openNewChannel({}, {}, {})", this.kp.address.flashPrettify,
             capacity, settle_time, peer_pk.flashPrettify);
 
         // todo: move to initialization stage!
         auto peer = this.getFlashClient(peer_pk, Duration.init);
-        const pair_pk = this.kp.V + peer_pk;
+        const pair_pk = this.kp.address + peer_pk;
 
         // create funding, don't sign it yet as we'll share it first
         auto funding_tx = createFundingTx(funding_utxo, capacity,
@@ -810,9 +811,9 @@ public abstract class FlashNode : ControlFlashAPI
         const ChannelConfig chan_conf =
         {
             gen_hash        : this.genesis_hash,
-            funder_pk       : this.kp.V,
+            funder_pk       : this.kp.address,
             peer_pk         : peer_pk,
-            pair_pk         : this.kp.V + peer_pk,
+            pair_pk         : this.kp.address + peer_pk,
             num_peers       : num_peers,
             update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
             funding_tx      : funding_tx,
@@ -847,7 +848,7 @@ public abstract class FlashNode : ControlFlashAPI
         if (state >= ChannelState.PendingClose)
         {
             log.info("{}: Error: waitChannelOpen({}) called on channel state {}",
-                this.kp.V.flashPrettify, chan_id.flashPrettify, state);
+                this.kp.address.flashPrettify, chan_id.flashPrettify, state);
             return;
         }
 
@@ -859,10 +860,10 @@ public abstract class FlashNode : ControlFlashAPI
     public override Invoice createNewInvoice (/* in */ Amount amount,
         /* in */ time_t expiry, /* in */ string description = null)
     {
-        log.info("{}: createNewInvoice({}, {}, {})", this.kp.V.flashPrettify,
+        log.info("{}: createNewInvoice({}, {}, {})", this.kp.address.flashPrettify,
             amount, expiry, description);
 
-        auto pair = createInvoice(this.kp.V, amount, expiry, description);
+        auto pair = createInvoice(this.kp.address, amount, expiry, description);
         this.invoices[pair.invoice.payment_hash] = pair.invoice;
         this.secrets[pair.invoice.payment_hash] = pair.secret;
 
@@ -888,7 +889,7 @@ public abstract class FlashNode : ControlFlashAPI
         // find a route
         // todo: not implemented properly yet as capacity, individual balances, and
         // fees are not taken into account yet. Only up to two channels assumed here.
-        auto path = this.network.getPaymentPath(this.kp.V, invoice.destination,
+        auto path = this.network.getPaymentPath(this.kp.address, invoice.destination,
             invoice.amount, ignore_chans);
         Amount total_amount;
         Height use_lock_height;
@@ -907,7 +908,7 @@ public abstract class FlashNode : ControlFlashAPI
     private bool isValidInvoice (/* in */ Invoice invoice)
     {
         // paying to ourself doesn't make sense
-        if (invoice.destination == this.kp.V)
+        if (invoice.destination == this.kp.address)
             return false;
 
         return true;
