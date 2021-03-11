@@ -306,13 +306,13 @@ public class Validator : FullNode, API
         // Make sure the indexes are up to date
         this.nominator.enroll_man.updateValidatorIndexMaps(block.header.height);
         auto node_validator_index = this.nominator.enroll_man
-            .getIndexOfValidator(block.header.height, this.nominator.schnorr_pair.V);
+            .getIndexOfValidator(block.header.height, this.nominator.kp.address);
 
         // It can be a block before this validator was enrolled
         if (node_validator_index == ulong.max)
         {
             log.trace("This validator {} was not active at height {}",
-                this.nominator.node_public_key, block.header.height);
+                this.nominator.kp.address, block.header.height);
             return this.ledger.acceptBlock(block);
         }
         assert(node_validator_index < validators, format!"The validator index %s is invalid"(node_validator_index));
@@ -321,13 +321,13 @@ public class Validator : FullNode, API
             log.trace("This node's signature is already in the block signature");
             // Gossip this signature as it may have been only shared via ballot signing
             this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
-                this.nominator.node_public_key, sig.s));
+                this.nominator.kp.address, sig.s));
         }
         else
         {
             signed_validators[node_validator_index] = true;
             this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
-                this.nominator.node_public_key, sig.s));
+                this.nominator.kp.address, sig.s));
             log.trace("Periodic Catchup: ADD to block signature R: {} and s: {}",
                 sig.R, sig.s.toString(PrintMode.Clear));
             const signed_block = block.updateSignature(

@@ -84,11 +84,8 @@ public extern (C++) class Nominator : SCPDriver
     /// Network manager for gossiping SCPEnvelopes
     private NetworkManager network;
 
-    /// Schnorr key-pair of this node
-    public Pair schnorr_pair;
-
-    /// Public key of this node
-    public PublicKey node_public_key;
+    /// Key pair of this node
+    public KeyPair kp;
 
     /// Task manager
     private ITaskManager taskman;
@@ -160,9 +157,8 @@ extern(D):
         this.clock = clock;
         this.network = network;
         this.empty_value = ConsensusData.init.serializeFull().toVec();
-        this.schnorr_pair = Pair.fromScalar(key_pair.secret);
+        this.kp = key_pair;
         auto node_id = NodeID(uint256(key_pair.address.data[][0 .. uint256.sizeof]));
-        this.node_public_key = PublicKey(this.schnorr_pair.V[]);
         const IsValidator = true;
         const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
         this.scp = createSCP(this, node_id, IsValidator, no_quorum);
@@ -648,11 +644,11 @@ extern(D):
 
         // rc = r used in signing the commitment
         const Scalar rc = this.enroll_man.getCommitmentNonceScalar(block.header.height);
-        log.trace("createBlockSignature: Enrollment commitment CR for validator {} is {}", this.node_public_key, rc.toPoint());
+        log.trace("createBlockSignature: Enrollment commitment CR for validator {} is {}", this.kp.address, rc.toPoint());
         const Scalar r = rc + challenge; // make it unique each challenge
         const Point R = r.toPoint();
-        log.trace("createBlockSignature: Block signing commitment R for validator {} is {}", this.node_public_key, R);
-        return Sig(R, multiSigSign(r, this.schnorr_pair.v, challenge));
+        log.trace("createBlockSignature: Block signing commitment R for validator {} is {}", this.kp.address, R);
+        return Sig(R, multiSigSign(r, this.kp.secret, challenge));
     }
 
     extern (C++):
@@ -675,7 +671,7 @@ extern(D):
             this.signConfirmBallot(envelope);
 
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
-        envelope.signature = sign(this.schnorr_pair, challenge);
+        envelope.signature = this.kp.sign(challenge);
         log.trace("SIGN Envelope signature {}: {}", envelope.signature,
                   scpPrettify(&envelope));
     }
@@ -731,8 +727,8 @@ extern(D):
 
         // Store our block signature in the slot_sigs map
         log.trace("signConfirmBallot: ADD block signature at height {} for this node {}",
-            last_block.header.height + 1, this.node_public_key);
-        this.slot_sigs[last_block.header.height + 1][this.schnorr_pair.V] = sig;
+            last_block.header.height + 1, this.kp.address);
+        this.slot_sigs[last_block.header.height + 1][this.kp.address] = sig;
     }
 
     /***************************************************************************
@@ -886,17 +882,17 @@ extern(D):
                 data.enrolls, data.missing_validators);
 
             // If we did not sign yet then add signature and gossip to other nodes
-            if (this.schnorr_pair.V !in this.slot_sigs[height])
+            if (this.kp.address !in this.slot_sigs[height])
             {
-                log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.node_public_key);
-                this.slot_sigs[height][this.schnorr_pair.V] = this.createBlockSignature(block);
+                log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
+                this.slot_sigs[height][this.kp.address] = this.createBlockSignature(block);
             }
             const signed_block = this.updateMultiSignature(block);
             if (signed_block == Block.init)
             {
-                log.warn("Not ready to externalize this block at height {} on node {}", height, this.node_public_key);
-                gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
-                    this.slot_sigs[height][this.schnorr_pair.V].s));
+                log.warn("Not ready to externalize this block at height {} on node {}", height, this.kp.address);
+                gossipBlockSignature(ValidatorBlockSig(height, this.kp.address,
+                    this.slot_sigs[height][this.kp.address].s));
                 return;
             }
             this.verifyBlock(signed_block);
@@ -906,8 +902,8 @@ extern(D):
             log.fatal("Externalization of SCP data failed: {}", exc);
             abort();
         }
-        this.gossipBlockSignature(ValidatorBlockSig(height, this.node_public_key,
-                    this.slot_sigs[height][this.schnorr_pair.V].s));
+        this.gossipBlockSignature(ValidatorBlockSig(height, this.kp.address,
+                    this.slot_sigs[height][this.kp.address].s));
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
@@ -915,7 +911,7 @@ extern(D):
     {
         if (!this.ledger.acceptBlock(signed_block))
         {
-            log.error("Block was not accepted by node {}", this.node_public_key);
+            log.error("Block was not accepted by node {}", this.kp.address);
             assert(0, format!"Block was not accepted"());
         }
     }
