@@ -97,7 +97,7 @@ public struct KeyPair
 
     ***************************************************************************/
 
-    public Signature sign (scope const(ubyte)[] msg) const nothrow @nogc
+    public Signature sign (T) (in T msg) const nothrow @nogc
     {
         return agora.crypto.Schnorr.sign(
             Pair(this.secret.data, this.address.data), msg);
