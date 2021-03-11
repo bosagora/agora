@@ -58,6 +58,9 @@ public abstract class ThinFlashNode : FlashNode
     /// random agora node (for sending tx's)
     protected FullNodeAPI agora_node;
 
+    /// monitor timer
+    protected ITimer monitor_timer;
+
     /***************************************************************************
 
         Constructor
@@ -90,7 +93,20 @@ public abstract class ThinFlashNode : FlashNode
     {
         // todo: 200 msecs is ok only in tests
         // todo: should additionally register as pushBlock() listener
-        this.taskman.setTimer(200.msecs, &this.monitorBlockchain, Periodic.Yes);
+        this.monitor_timer = this.taskman.setTimer(200.msecs,
+            &this.monitorBlockchain, Periodic.Yes);
+    }
+
+    /***************************************************************************
+
+        Shut down any timers
+
+    ***************************************************************************/
+
+    public void shutdown ()
+    {
+        if (this.monitor_timer !is null)
+            this.monitor_timer.stop();
     }
 
     /***************************************************************************
@@ -115,16 +131,23 @@ public abstract class ThinFlashNode : FlashNode
     {
         while (1)
         {
-            auto latest_height = this.agora_node.getBlockHeight();
-            if (this.last_block_height < latest_height)
+            try
             {
-                auto next_block = this.agora_node.getBlocksFrom(
-                    this.last_block_height + 1, 1)[0];
+                auto latest_height = this.agora_node.getBlockHeight();
+                if (this.last_block_height < latest_height)
+                {
+                    auto next_block = this.agora_node.getBlocksFrom(
+                        this.last_block_height + 1, 1)[0];
 
-                foreach (channel; this.channels)
-                    channel.onBlockExternalized(next_block);
+                    foreach (channel; this.channels)
+                        channel.onBlockExternalized(next_block);
 
-                this.last_block_height++;
+                    this.last_block_height++;
+                }
+            }
+            catch (Exception ex)
+            {
+                // connection might be dropped
             }
 
             this.taskman.wait(0.msecs);  // yield

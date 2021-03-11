@@ -78,6 +78,9 @@ public interface TestFlashAPI : ControlFlashAPI
 
     /// Print out the contents of the log
     public abstract void printLog ();
+
+    /// Shut down any timers (forwards to ThinFlashNode.shutdown)
+    public void shutdownNode ();
 }
 
 /// A thin localrest flash node which itself is not a FullNode / Validator
@@ -100,6 +103,12 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         const TestStackMaxItemSize = 512;
         auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
         super(kp, genesis_hash, engine, new LocalRestTaskManager(), agora_address);
+    }
+
+    ///
+    public override void shutdownNode ()
+    {
+        super.shutdown();  // kill timers
     }
 
     ///
@@ -274,7 +283,10 @@ public class FlashNodeFactory
             enforce(this.flash_registry.unregister(address.to!string));
 
         foreach (node; this.nodes)
+        {
+            node.shutdownNode();
             node.ctrl.shutdown();
+        }
     }
 }
 
