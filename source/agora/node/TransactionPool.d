@@ -611,11 +611,6 @@ unittest
 /// test double-spending on the Transaction pool
 unittest
 {
-    auto seed1 = "SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ";
-    auto seed2 = "SCTTRCMT7DVZHQS375GWIKYQYHKA3X4IC4EOBNPRGV7DFR3X6OM5VIWL";
-    auto key_pair1 = KeyPair.fromSeed(Seed.fromString(seed1));
-    auto key_pair2 = KeyPair.fromSeed(Seed.fromString(seed2));
-
     // create first transaction pool
     auto pool = new TransactionPool(":memory:");
 
@@ -624,7 +619,7 @@ unittest
     {
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), key_pair1.address)]
+        [Output(Amount(0), WK.Keys.A.address)]
     };
 
     // create second transaction
@@ -632,7 +627,7 @@ unittest
     {
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), key_pair2.address)]
+        [Output(Amount(0), WK.Keys.B.address)]
     };
 
     // add txs to the pool
