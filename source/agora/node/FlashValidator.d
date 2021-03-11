@@ -155,22 +155,12 @@ public class FlashValidator : Validator, FlashValidatorAPI
 
         log.info("Reached block {}", this.ledger.getBlockHeight());
 
-        const alice_pair = Pair(WK.Keys.NODE2.secret,
-            WK.Keys.NODE2.secret.toPoint);
-        const bob_pair = Pair(WK.Keys.NODE3.secret,
-            WK.Keys.NODE3.secret.toPoint);
-        const charlie_pair = Pair(WK.Keys.NODE4.secret,
-            WK.Keys.NODE4.secret.toPoint);
-
-        const alice_pk = alice_pair.V;
-        const bob_pk = bob_pair.V;
-        const charlie_pk = charlie_pair.V;
-
+        const bob   = WK.Keys.NODE3;
         const Settle_1_Blocks = 0;
 
         const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
         const alice_bob_chan_id = this.flash.openNewChannel(
-            alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+            alice_utxo, Amount(10_000), Settle_1_Blocks, bob.address);
         log.info("Alice bob channel: {}", alice_bob_chan_id);
         log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
