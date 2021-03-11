@@ -85,7 +85,7 @@ public extern (C++) class Nominator : SCPDriver
     private NetworkManager network;
 
     /// Key pair of this node
-    public KeyPair kp;
+    protected KeyPair kp;
 
     /// Task manager
     private ITaskManager taskman;
