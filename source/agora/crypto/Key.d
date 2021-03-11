@@ -60,9 +60,6 @@ public struct KeyPair
     /// Secret key
     public const SecretKey secret;
 
-    /// Seed
-    public const Seed seed;
-
     /// Create a keypair from a `Seed`
     public static KeyPair fromSeed (const Seed seed) nothrow @nogc
     {
@@ -75,7 +72,7 @@ public struct KeyPair
         if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), sk_data[].ptr) != 0)
             assert(0);
         SecretKey sk = SecretKey(x25519_sk[]);
-        return KeyPair(PublicKey(pk[]), sk, seed);
+        return KeyPair(PublicKey(pk[]), sk);
     }
 
     ///
@@ -118,7 +115,7 @@ public struct KeyPair
         if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), sk_data[].ptr) != 0)
             assert(0);
         SecretKey sk = SecretKey(x25519_sk[]);
-        return KeyPair(PublicKey(pk[]), sk, seed);
+        return KeyPair(PublicKey(pk[]), sk);
     }
 }
 
@@ -483,7 +480,6 @@ public struct Seed
 unittest
 {
     testSymmetry!Seed();
-    testSymmetry(KeyPair.random().seed);
 }
 
 /// Discriminant for Stellar binary-encoded user-facing data
