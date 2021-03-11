@@ -204,7 +204,7 @@ public struct Result (T)
 public string flashPrettify (T)(T input)
 {
     // some well-known key-pairs used in the flash tests
-    static if (is(T : Point))
+    static if (is(immutable(T) == immutable(Point)))
     {
         if (input == T.fromString("0x92a86f555ba8e490447793ef3348dfec9a91c94a1719901254e10c172676adc1"))
             return "Alice";
