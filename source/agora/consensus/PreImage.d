@@ -116,7 +116,7 @@ public struct PreImageCache
 
     /// Default-initialized `PreImageCache` is not valid, make sure it can't
     /// be accidentally constructed (e.g. by embbeding it in another aggregate)
-    @disable public this();
+    @disable public this ();
 
     /// Construct an instance using already existing data
     public this (inout(Hash)[] data_, ulong sample_size) inout @nogc pure
@@ -269,13 +269,28 @@ unittest
     }
 }
 
-/// This struct holds all the cycle data together for better readability
+/*******************************************************************************
+
+    Combines two PreImageCache, allowing for faster lookup
+
+    Nodes generate a large amount of pre-images on startup, then will seek to
+    a certain position in their pre-image chain and use the values sequentially.
+    In order to reduce the space usage of nodes, while ensuring they don't
+    get random delays while seeking pre-images, this struct holds two caches.
+    The `seeds` are sparse values spawing the whole pre-image chain, while the
+    `preimages` are consecutive values for the current cycle.
+
+*******************************************************************************/
+
 public struct PreImageCycle
 {
+    @safe nothrow:
+
     /// Make sure we get initialized by disabling the default ctor
-    @disable public this();
-    /// Ditto
-    public this (typeof(PreImageCycle.tupleof) args)
+    @disable public this ();
+
+    /// Re-introduce the all-parameter default ctor
+    public this (typeof(PreImageCycle.tupleof) args) pure @nogc
     {
         this.tupleof = args;
     }
@@ -353,7 +368,6 @@ public struct PreImageCycle
     ***************************************************************************/
 
     public Hash populate (in Scalar secret, bool consume)
-        @safe nothrow
     {
         // Populate the nonce cache if necessary
         if (this.index == 0)
@@ -385,8 +399,8 @@ public struct PreImageCycle
         {
             // If this is used for getting initial pre-image for enrollment
             // it just creates initial pre-image of the cycle seed.
-            auto next_images = PreImageCache(this.preimages.data.length,
-            this.preimages.interval);
+            auto next_images = PreImageCache(
+                this.preimages.data.length, this.preimages.interval);
             next_images.reset(this.seeds.byStride[$ - 1 - this.index]);
             return next_images[$ - 1];
         }
@@ -409,7 +423,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    private void seek (in Scalar secret, in Height height) @safe @nogc nothrow
+    private void seek (in Scalar secret, in Height height) @nogc
     {
         uint seek_index = cast (uint) (height / this.preimages.length());
         uint seek_nonce = seek_index / NumberOfCycles;
@@ -448,7 +462,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public Hash getPreImage (in Scalar secret, in Height height) @safe @nogc nothrow
+    public Hash getPreImage (in Scalar secret, in Height height) @nogc
     {
         this.seek(secret, height);
         auto offset = height % this.preimages.length();
