@@ -14,11 +14,13 @@
     "dependencies": {
         "base32":           { "version": "*" },
         "bitblob":          { "version": "*" },
+        "crypto":           { "version": "*" },
         "d2sqlite3":        { "version": "*" },
         "dyaml":            { "version": "*" },
         "libsodiumd":       { "version": "*" },
         "localrest":        { "version": "*" },
         "ocean":            { "version": "*" },
+        "serialization":    { "version": "*" },
         "vibe-d":           { "version": "*" }
     }
 }
