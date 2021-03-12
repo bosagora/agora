@@ -631,3 +631,145 @@ unittest
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
 }
+
+/// Test path probing
+unittest
+{
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[3]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index / 2].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
+
+    const alice_pk = alice_pair.V;
+    const bob_pk = bob_pair.V;
+    const charlie_pk = charlie_pair.V;
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+    auto alice = factory.create(alice_pair, address);
+    auto bob = factory.create(bob_pair, address);
+    auto charlie = factory.create(charlie_pair, address);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+    //const Settle_10_Blocks = 10;
+
+    /+ OPEN ALICE => BOB CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_bob_chan_id = alice.openNewChannel(
+        alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
+
+    // await alice & bob channel funding transaction
+    network.expectBlock(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(alice_bob_chan_id);
+    bob.waitChannelOpen(alice_bob_chan_id);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    /+ OPEN BOB => CHARLIE CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const bob_utxo = UTXO.getHash(hashFull(txs[2]), 0);
+    const bob_charlie_chan_id = bob.openNewChannel(
+        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
+
+    // await bob & bob channel funding transaction
+    network.expectBlock(Height(10), network.blocks[0].header);
+    const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
+    assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
+
+    // wait for the parties to detect the funding tx
+    bob.waitChannelOpen(bob_charlie_chan_id);
+    charlie.waitChannelOpen(bob_charlie_chan_id);
+
+    bob.changeFees(bob_charlie_chan_id, Amount(100), Amount(1));
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    /+ OPEN SECOND BOB => CHARLIE CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const bob_utxo_2 = UTXO.getHash(hashFull(txs[3]), 0);
+    const bob_charlie_chan_id_2 = bob.openNewChannel(
+        bob_utxo_2, Amount(10_000), Settle_1_Blocks, charlie_pk);
+    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id_2);
+
+    // await bob & bob channel funding transaction
+    network.expectBlock(Height(11), network.blocks[0].header);
+    const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
+    assert(block_11.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id_2));
+
+    // wait for the parties to detect the funding tx
+    bob.waitChannelOpen(bob_charlie_chan_id_2);
+    charlie.waitChannelOpen(bob_charlie_chan_id_2);
+
+    bob.changeFees(bob_charlie_chan_id_2, Amount(10), Amount(1));
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    // begin off-chain transactions
+    auto inv_1 = charlie.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
+
+    // Alice is expected to route the payment through the channel
+    // with lower fee between Bob and Charlie
+    alice.payInvoice(inv_1);
+
+    // wait for payment + folding update indices
+    alice.waitForUpdateIndex(alice_bob_chan_id, 2);
+    bob.waitForUpdateIndex(alice_bob_chan_id, 2);
+    bob.waitForUpdateIndex(bob_charlie_chan_id_2, 2);
+    charlie.waitForUpdateIndex(bob_charlie_chan_id_2, 2);
+
+    bob.beginCollaborativeClose(bob_charlie_chan_id_2);
+    network.expectBlock(Height(12), network.blocks[0].header);
+    auto block12 = node_1.getBlocksFrom(12, 1)[0];
+    assert(block12.txs[0] == bob.getClosingTx(bob_charlie_chan_id_2));
+    assert(block12.txs[0].outputs.length == 2);
+    assert(block12.txs[0].outputs[0].value == Amount(8000)); // No fees
+    assert(block12.txs[0].outputs[1].value == Amount(2000));
+
+    alice.beginCollaborativeClose(alice_bob_chan_id);
+    network.expectBlock(Height(13), network.blocks[0].header);
+    auto block13 = node_1.getBlocksFrom(13, 1)[0];
+    assert(block13.txs[0] == alice.getClosingTx(alice_bob_chan_id));
+    assert(block13.txs[0].outputs.length == 2);
+    assert(block13.txs[0].outputs[0].value == Amount(7990)); // Fees
+    assert(block13.txs[0].outputs[1].value == Amount(2010));
+
+    bob.beginCollaborativeClose(bob_charlie_chan_id);
+    network.expectBlock(Height(14), network.blocks[0].header);
+    auto block14 = node_1.getBlocksFrom(14, 1)[0];
+    assert(block14.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
+    assert(block14.txs[0].outputs.length == 1); // No updates
+}
