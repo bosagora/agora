@@ -103,19 +103,9 @@ public struct KeyPair
     /// Generate a new, random, keypair
     public static KeyPair random () @nogc
     {
-        BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) sk_data;
-        BitBlob!(crypto_core_ed25519_BYTES * 8) pk;
-        Seed seed;
-        if (crypto_sign_keypair(pk[].ptr, sk_data[].ptr) != 0)
-            assert(0);
-        if (crypto_sign_ed25519_sk_to_seed(seed[].ptr, sk_data[].ptr) != 0)
-            assert(0);
-
-        Scalar x25519_sk;
-        if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), sk_data[].ptr) != 0)
-            assert(0);
-        SecretKey sk = SecretKey(x25519_sk[]);
-        return KeyPair(PublicKey(pk[]), sk);
+        Pair p = Pair.random();
+        assert(p.v.isValid());
+        return KeyPair(PublicKey(p.V), SecretKey(p.v));
     }
 }
 
