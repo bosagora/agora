@@ -8,7 +8,7 @@ RUN dub --version
 RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2 --config name-registry
 
 # Runner
-FROM alpine:3.12.0
+FROM alpine:edge
 RUN apk --no-cache add ldc-runtime llvm-libunwind libgcc libsodium libstdc++ sqlite-libs
 COPY --from=RegistryBuilder /root/agora/build/name-registry /usr/local/bin/name-registry
 WORKDIR /name-registry/
