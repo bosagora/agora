@@ -363,10 +363,16 @@ public abstract class FlashNode : ControlFlashAPI
         this.engine = engine;
         this.kp = kp;
         this.taskman = taskman;
-        this.network = new Network((Hash chan_id) {
-            if (auto chan = chan_id in this.channels)
-                return *chan;
-            return null;
+        this.network = new Network((Hash chan_id, Point from) {
+            if (auto updates = chan_id in this.channel_updates)
+            {
+                auto config = this.known_channels[chan_id];
+                auto dir = from == config.funder_pk ? PaymentDirection.TowardsPeer :
+                    PaymentDirection.TowardsOwner;
+                if (auto dir_update = dir in *updates)
+                    return *dir_update;
+            }
+            return ChannelUpdate.init;
         });
     }
 

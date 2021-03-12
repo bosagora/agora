@@ -16,6 +16,7 @@ module agora.flash.Network;
 import agora.flash.Config;
 import agora.flash.Channel;
 import agora.flash.Route;
+import agora.flash.Types;
 
 import agora.common.Set;
 import agora.common.Amount;
@@ -36,12 +37,12 @@ public class Network
     private NetworkNode[Point] nodes;
 
     /// Delegate to lookup Channels by their ID
-    private Channel delegate (Hash chan_id) @safe nothrow lookupChannel;
+    private ChannelUpdate delegate (Hash chan_id, Point from) @safe nothrow lookupUpdate;
 
     /// Ctor
-    public this (Channel delegate (Hash chan_id) @safe nothrow lookupChannel)
+    public this (ChannelUpdate delegate (Hash chan_id, Point from) @safe nothrow lookupUpdate)
     {
-        this.lookupChannel = lookupChannel;
+        this.lookupUpdate = lookupUpdate;
     }
 
     version (unittest) public this () { }
@@ -199,15 +200,18 @@ public class Network
                 if (peer_pk in unvisited)
                 {
                     auto chans = min_node.channels[peer_pk][]
-                        .filter!(chan => chan !in ignore_chans).array;
+                        .filter!(chan => chan !in ignore_chans);
+                    auto updates = chans.map!(chan => this.lookupUpdate(chan, min_pk))
+                        .filter!(update => update != ChannelUpdate.init);
+                    auto hop_fees = updates.map!(update => tuple(update.chan_id, update.getTotalFee(amount)))
+                        .filter!(tup => tup[1].isValid()).array;
 
-                    if (chans.length == 0)
+                    if (hop_fees.length == 0)
                         continue;
 
-                    // TODO: Pick the channel with the lowest fee from the list
-                    // TODO: Verify that the channel is open
-                    auto chan = chans[0];
-                    auto chan_fee = Amount(1);
+                    auto min_fee_hop = hop_fees.minElement!"a[1]";
+                    auto chan = min_fee_hop[0];
+                    auto chan_fee = min_fee_hop[1];
 
                     auto total_fee = fees[min_pk];
                     total_fee.mustAdd(chan_fee);
@@ -267,7 +271,9 @@ unittest
     import std.range;
     import std.algorithm;
 
-    auto ln = new Network();
+    auto ln = new Network((Hash chan_id, Point from) {
+        return ChannelUpdate(chan_id, PaymentDirection.TowardsPeer, Amount(1), Amount(0));
+    });
     Point[] pks;
     iota(5).each!(idx => pks ~= Scalar.random().toPoint());
 

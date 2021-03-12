@@ -129,3 +129,33 @@ unittest
     update.sig = sign(kp, update);
     assert(verify(kp.V, update.sig, update));
 }
+
+/***************************************************************************
+
+    Calculate total fee from the given update and payment total
+
+    Params:
+        update = latest update for the channel
+        total = payment total
+
+    Returns:
+        Total Amount of required fee
+
+***************************************************************************/
+
+public Amount getTotalFee (ChannelUpdate update, Amount total) @safe nothrow
+{
+    Amount fee = update.fixed_fee;
+    Amount proportional_fee = total.proportionalFee(update.proportional_fee);
+    if (!proportional_fee.isValid())
+        return proportional_fee;
+    fee.add(proportional_fee);
+    return fee;
+}
+
+unittest
+{
+    auto update = ChannelUpdate(Hash.init, PaymentDirection.TowardsOwner, 1.coins, 1.coins);
+    assert(update.getTotalFee(10.coins) == 11.coins);
+    assert(!update.getTotalFee(Amount.MaxUnitSupply).isValid());
+}
