@@ -7,6 +7,7 @@
     "mainSourceFile": "main.d",
     "importPaths": [ "../../../" ],
     "sourceFiles": [
+        "../../common/Types.d",
         "../../crypto/Crc16.d",
         "../../crypto/Key.d"
     ],
