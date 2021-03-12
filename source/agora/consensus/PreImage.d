@@ -284,13 +284,37 @@ unittest
 
 public struct PreImageCycle
 {
+    /// Make sure we get initializedby disabling the default ctor
+    @disable public this ();
+
+    /// Construct an instance with the provided cycle length
+    public this (uint cycle_length) @safe nothrow
+    {
+        this.impl = PreImageCycleImpl(
+            /* nonce: */ 0,
+            /* index: */ 0,
+            /* seeds: */ PreImageCache(PreImageCycleImpl.NumberOfCycles, cycle_length),
+            /* preimages: */ PreImageCache(cycle_length, 1),
+        );
+    }
+
+    ///
+    public alias impl this;
+
+    ///
+    public PreImageCycleImpl impl;
+}
+
+/// Ditto
+public struct PreImageCycleImpl
+{
     @safe nothrow:
 
     /// Make sure we get initialized by disabling the default ctor
     @disable public this ();
 
     /// Re-introduce the all-parameter default ctor
-    public this (typeof(PreImageCycle.tupleof) args) pure @nogc
+    public this (typeof(PreImageCycleImpl.tupleof) args) pure @nogc
     {
         this.tupleof = args;
     }
@@ -475,14 +499,14 @@ unittest
 {
     const ValidatorCycle = 2;
     auto secret = Scalar.random();
-    auto pop_cycle = PreImageCycle(
+    auto pop_cycle = PreImageCycleImpl(
             /* nonce: */ 0,
             /* index:  */ 0,
             /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
                 ValidatorCycle),
             /* preimages: */ PreImageCache(ValidatorCycle, 1)
         );
-    auto seek_cycle = PreImageCycle(
+    auto seek_cycle = PreImageCycleImpl(
             /* nonce: */ 0,
             /* index:  */ 0,
             /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
