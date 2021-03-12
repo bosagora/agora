@@ -335,15 +335,14 @@ unittest
     PreImageCache[] caches;
     foreach (idx, kp; pairs)
     {
-        auto pair = Pair.fromScalar(kp.secret);
         auto cycle = PreImageCycle(
                 0, 0,
                 PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
                 PreImageCache(params.ValidatorCycle, 1));
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.populate(kp.secret, true);
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
-            pair, utxo_hashes[idx], params.ValidatorCycle,
+            kp, utxo_hashes[idx], params.ValidatorCycle,
             seed, idx);
         assert(enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &utxo_set.peekUTXO));
