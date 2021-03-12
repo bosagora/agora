@@ -1651,7 +1651,6 @@ unittest
 {
     import agora.consensus.data.genesis.Test;
     import agora.consensus.PreImage;
-    import agora.crypto.Schnorr;
 
     auto params = new immutable(ConsensusParams)(10);
     const(Block)[] blocks = [ GenesisBlock ];
@@ -1809,7 +1808,6 @@ unittest
 {
     import agora.consensus.data.genesis.Test;
     import agora.consensus.PreImage;
-    import agora.crypto.Schnorr;
     import agora.utils.WellKnownKeys : CommonsBudget;
 
     ConsensusConfig config = { validator_cycle: 20, payout_period: 5 };
@@ -1828,13 +1826,12 @@ unittest
         UTXO stake;
         assert(ledger.utxo_set.peekUTXO(key, stake));
         KeyPair kp = WK.Keys[stake.output.address];
-        auto pair = Pair.fromScalar(kp.secret);
         auto cycle = PreImageCycle(
             0, 0,
             PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
             PreImageCache(params.ValidatorCycle, 1));
         const preimage = PreImageInfo(key,
-            cycle.getPreImage(pair.v, Height(params.ValidatorCycle)),
+            cycle.getPreImage(kp.secret, Height(params.ValidatorCycle)),
                 cast (ushort) (params.ValidatorCycle));
 
         ledger.enroll_man.addPreimage(preimage);
