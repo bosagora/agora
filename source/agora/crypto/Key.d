@@ -60,8 +60,8 @@ public struct KeyPair
     /// Secret key
     public const SecretKey secret;
 
-    /// Create a keypair from a `Seed`
-    public static KeyPair fromSeed (const Seed seed) nothrow @nogc
+    /// Create a keypair from a `SecretKey`
+    public static KeyPair fromSeed (const SecretKey seed) nothrow @nogc
     {
         BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) sk_data;
         BitBlob!(crypto_core_ed25519_BYTES * 8) pk;
@@ -79,7 +79,7 @@ public struct KeyPair
     unittest
     {
         immutable seedStr = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
-        KeyPair kp = KeyPair.fromSeed(Seed.fromString(seedStr));
+        KeyPair kp = KeyPair.fromSeed(SecretKey.fromString(seedStr));
     }
 
     /***************************************************************************
@@ -288,94 +288,9 @@ public struct SecretKey
 
     /***************************************************************************
 
-        Print the secret key
+        Print the private key
 
-        By default, this function prints the hidden version of the secret key.
-        Changing the mode to `Clear` makes it print the original value.
-        This mode is intended for debugging.
-
-        Params:
-          sink = The sink to write the piecemeal string data to
-          mode = The `PrintMode` to use for printing the content.
-                 By default, the hidden value is printed.
-
-    ***************************************************************************/
-
-    public void toString (scope void delegate(const(char)[]) @safe sink,
-                          PrintMode mode = PrintMode.Obfuscated) const @safe
-    {
-        final switch (mode)
-        {
-        case PrintMode.Obfuscated:
-            formattedWrite(sink, "**SECRET**");
-            break;
-
-        case PrintMode.Clear:
-            formattedWrite(sink, "%s", this.data.toString(PrintMode.Clear));
-            break;
-        }
-    }
-
-    /// Ditto
-    public string toString (PrintMode mode = PrintMode.Obfuscated) const @safe
-    {
-        string result;
-        this.toString((data) { result ~= data; }, mode);
-        return result;
-    }
-
-    ///
-    unittest
-    {
-        auto sk = KeyPair.fromSeed(Seed.fromString(
-                  "SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS"))
-                  .secret;
-
-        assert(sk.toString(PrintMode.Obfuscated) == "**SECRET**");
-        assert(sk.toString(PrintMode.Clear) ==
-               "0x599b284c194093e3aeb239c5a106fa6a0c17ba9e6344795616192cfa5e68f710");
-
-        // Test default formatting behavior with writeln, log, etc...
-        import std.format : phobos_format = format;
-        import ocean.text.convert.Formatter : ocean_format = format;
-        assert(phobos_format("%s", sk) == "**SECRET**");
-        assert(ocean_format("{}", sk) == "**SECRET**");
-    }
-}
-
-// Test (de)serialization
-unittest
-{
-    testSymmetry!SecretKey();
-    testSymmetry(KeyPair.random().secret);
-}
-
-/// A Stellar seed
-public struct Seed
-{
-    /// Alias to the BitBlob type
-    private alias DataType = BitBlob!(crypto_sign_ed25519_SEEDBYTES * 8);
-
-    /*private*/ DataType data;
-    alias data this;
-
-    /// Construct an instance from binary data
-    public this (const DataType args) pure nothrow @safe @nogc
-    {
-        this.data = args;
-    }
-
-    /// Ditto
-    public this (const ubyte[] args) pure nothrow @safe @nogc
-    {
-        this.data = args;
-    }
-
-    /***************************************************************************
-
-        Print the seed
-
-        By default, this function prints the hidden version of the seed.
+        By default, this function does not prints it, using `**SECRET** instead.
         Changing the mode to `Clear` makes it print the original value.
         This mode is intended for debugging.
 
@@ -392,11 +307,11 @@ public struct Seed
         final switch (mode)
         {
         case PrintMode.Obfuscated:
-            formattedWrite(sink, "**SEED**");
+            formattedWrite(sink, "**SECRET**");
             break;
 
         case PrintMode.Clear:
-            ubyte[VersionWidth + Seed.Width + ChecksumWidth] bin;
+            ubyte[VersionWidth + SecretKey.sizeof + ChecksumWidth] bin;
             bin[0] = VersionByte.Seed;
             bin[VersionWidth .. $ - ChecksumWidth] = this.data[];
             bin[$ - ChecksumWidth .. $] = checksum(bin[0 .. $ - ChecksumWidth]);
@@ -416,17 +331,17 @@ public struct Seed
     ///
     unittest
     {
-        auto sd = Seed.fromString("SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS");
+        auto sd = SecretKey.fromString("SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS");
 
-        assert(sd.toString(PrintMode.Obfuscated) == "**SEED**");
+        assert(sd.toString(PrintMode.Obfuscated) == "**SECRET**");
         assert(sd.toString(PrintMode.Clear) ==
                "SDQJFVGII75JPFVRDNFJ55L7DE4H7V3RHXLRKW55NDPBRBYUZLTW4TJS");
 
         // Test default formatting behavior with writeln, log, etc...
         import std.format : phobos_format = format;
         import ocean.text.convert.Formatter : ocean_format = format;
-        assert(phobos_format("%s", sd) == "**SEED**");
-        assert(ocean_format("{}", sd) == "**SEED**");
+        assert(phobos_format("%s", sd) == "**SECRET**");
+        assert(ocean_format("{}", sd) == "**SECRET**");
     }
 
     /***************************************************************************
@@ -435,33 +350,33 @@ public struct Seed
             str = the string which should contain the seed
 
         Returns:
-            a Seed from from Stellar's string representation
+            a SecretKey from from Stellar's string representation
 
         Throws:
             an Exception if the input string is not well-formed
 
     ***************************************************************************/
 
-    public static Seed fromString (scope const(char)[] str)
+    public static SecretKey fromString (scope const(char)[] str)
     {
         const bin = Base32.decode(str);
-        enforce(bin.length == VersionWidth + Seed.Width + ChecksumWidth);
+        enforce(bin.length == VersionWidth + SecretKey.sizeof + ChecksumWidth);
         enforce(bin[0] == VersionByte.Seed);
         enforce(validate(bin[0 .. $ - ChecksumWidth], bin[$ - ChecksumWidth .. $]));
-        return Seed(typeof(this.data)(bin[VersionWidth .. $ - ChecksumWidth]));
+        return SecretKey(typeof(this.data)(bin[VersionWidth .. $ - ChecksumWidth]));
     }
 
     ///
     unittest
     {
         immutable seed_str = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
-        Seed seed = Seed.fromString(seed_str);
+        SecretKey seed = SecretKey.fromString(seed_str);
         assert(seed.toString(PrintMode.Clear) == seed_str);
-        assertThrown(Seed.fromString(  // bad length
+        assertThrown(SecretKey.fromString(  // bad length
             "SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7T"));
-        assertThrown(Seed.fromString(  // bad version byte
+        assertThrown(SecretKey.fromString(  // bad version byte
             "XBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ"));
-        assertThrown(Seed.fromString(  // bad checksum
+        assertThrown(SecretKey.fromString(  // bad checksum
             "SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TT"));
     }
 }
@@ -469,7 +384,8 @@ public struct Seed
 // Test (de)serialization
 unittest
 {
-    testSymmetry!Seed();
+    testSymmetry!SecretKey();
+    testSymmetry(KeyPair.random().secret);
 }
 
 /// Discriminant for Stellar binary-encoded user-facing data
@@ -500,7 +416,7 @@ unittest
     immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
     immutable seed    = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
 
-    KeyPair kp = KeyPair.fromSeed(Seed.fromString(seed));
+    KeyPair kp = KeyPair.fromSeed(SecretKey.fromString(seed));
     assert(kp.address.toString() == address);
 
     import std.string : representation;

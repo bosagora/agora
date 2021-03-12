@@ -1390,7 +1390,7 @@ private struct SCPEnvelopeHash
     () @trusted
     {
         auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
-        auto pair = KeyPair.fromSeed(Seed.fromString(seed));
+        auto pair = KeyPair.fromSeed(SecretKey.fromString(seed));
         auto msg = getStHash().hashFull();
         env.signature = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
