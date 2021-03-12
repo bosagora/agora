@@ -220,10 +220,10 @@ unittest
                                         &validator_set.findRecentEnrollment));
 
     const utxoPeek = &utxo_set.peekUTXO;
-    auto cycle = PreImageCycle(params.ValidatorCycle);
+    auto cycle = PreImageCycle(key_pairs[0].secret, params.ValidatorCycle);
 
     enroll1.utxo_key = utxo_hash1;
-    enroll1.random_seed = cycle.getPreImage(key_pairs[0].secret, Height(0));
+    enroll1.random_seed = cycle[Height(0)];
     enroll1.cycle_length = params.ValidatorCycle;
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
@@ -236,8 +236,7 @@ unittest
     // First 2 iterations should fail because commitment is wrong
     foreach (offset; [-1, +1, 0])
     {
-        enroll1.random_seed = cycle.getPreImage(key_pairs[0].secret,
-                                        Height(params.ValidatorCycle + offset));
+        enroll1.random_seed = cycle[Height(params.ValidatorCycle + offset)];
         enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
         assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),
                             utxoPeek, enroll1, key_pairs[0].address) is null));
