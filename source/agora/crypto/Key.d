@@ -206,20 +206,6 @@ public struct PublicKey
             "GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFF"));
     }
 
-    /***************************************************************************
-
-        Key Serialization
-
-        Params:
-            dg = Serialize function
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const @safe
-    {
-        dg(this.data[]);
-    }
-
     ///
     unittest
     {
