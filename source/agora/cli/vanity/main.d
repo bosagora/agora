@@ -19,7 +19,9 @@
 
 module agora.cli.vanity.main;
 
+import agora.crypto.ECC;
 import agora.crypto.Key;
+import agora.crypto.Types;
 
 import core.atomic;
 import std.parallelism;
@@ -56,8 +58,20 @@ enum size_t LastIdx = FirstIdx + MaxNameSize;
 immutable Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static assert(Alphabet.length == 26);
 
+immutable string[] SpecialNames = [
+    "GENESIS",
+    "COMMONS",
+    "NODE2",
+    "NODE3",
+    "NODE4",
+    "NODE5",
+    "NODE6",
+    "NODE7",
+];
+
 /// Stored globally to avoid large stack / TLS issues
-__gshared Seed[KeyCountTarget] result;
+__gshared Scalar[KeyCountTarget + SpecialNames.length] result;
+__gshared bool[KeyCountTarget + SpecialNames.length] foundMap;
 
 void main (string[] args)
 {
@@ -67,10 +81,10 @@ void main (string[] args)
     NextKey:
         while (atomicLoad(found) < result.length)
         {
-            auto tmp = KeyPair.random();
+            auto tmp = Pair.random();
 
             // TODO: Use binary to avoid `toString` call
-            const addr = tmp.address.toString();
+            const addr = PublicKey(tmp.V).toString();
 
             // Make sure we starts with `GD`
             if (addr[1] != FirstChar)
@@ -79,6 +93,21 @@ void main (string[] args)
             // Find match for letter(s)
             if (addr[2] < 'A' || addr[2] > 'Z')
                 continue;
+
+            if (auto index = specialNameIndex(addr))
+            {
+                // If already found, still print it as they are pretty rare
+                if (!found.onFound(index, tmp.v))
+                {
+                    stderr.writeln("\nFound another candidate for special names: ",
+                                 addr, SecretKey(tmp.v).toString(PrintMode.Clear));
+                    continue NextKey;
+                }
+
+                stderr.writeln("\nFound special name: ", addr, " - ",
+                               SecretKey(tmp.v).toString(PrintMode.Clear));
+                continue NextKey;
+            }
 
             size_t endMarkerSeen;
             immutable MarkerStart = LastIdx - FirstIdx;
@@ -94,14 +123,8 @@ void main (string[] args)
                     {
                         const name = addr[FirstIdx .. FirstIdx + 1 + idx - MarkerCount];
                         const index = nameIndex(name);
-                        // If already found, ignore
-                        if (!cas(&result[index][][0], ubyte.init, ubyte(1)))
-                            continue NextKey;
-                        atomicOp!("+=")(found, 1);
-                        result[index] = tmp.seed;
-                        //printKey(name, tmp);
-                        stderr.write("\rKeys found: ", atomicLoad(found), "/", KeyCountTarget);
-                        stderr.flush();
+                        // Whether we already found it or not, we go to the next key
+                        found.onFound(index, tmp.v);
                         continue NextKey;
                     }
                     continue Search;
@@ -120,20 +143,78 @@ void main (string[] args)
         }
     }
 
-    foreach (index, ref seed; result)
+    foreach (index, ref seed; result[0 .. KeyCountTarget])
     {
         const name = indexName(index);
-        auto kp = KeyPair.fromSeed(seed);
+        auto kp = Pair.fromScalar(seed);
         printKey(name, kp);
+    }
+
+    writeln("==================================================");
+    foreach (index, ref seed; result[KeyCountTarget .. $])
+    {
+        auto kp = Pair.fromScalar(seed);
+        printKey(SpecialNames[index], kp);
     }
 }
 
-/// Print the key to stdout
-private void printKey (const(char)[] name, KeyPair kp)
+/// Little helper function. Returns `false` if the key is already known
+private bool onFound (ref shared size_t found, size_t index, Scalar value)
 {
-    stdout.writefln("/// %s: %s", name, kp.address);
-    stdout.writefln("static immutable %s = KeyPair(PublicKey(%s), SecretKey(%s), Seed(%s));",
-                    name.strip, kp.address[], kp.secret[], kp.seed[]);
+    // If already found, still print it as they are pretty rare
+    if (!cas(&foundMap[index], false, true))
+        return false;
+
+    found.atomicOp!("+=")(1);
+    result[index] = value;
+    stderr.write("\rKeys found: ", atomicLoad(found), "/", foundMap.length);
+    stderr.flush();
+    return true;
+}
+
+/// Print the key to stdout
+private void printKey (const(char)[] name, Pair kp)
+{
+    stdout.writefln("/// %s: %s", name, PublicKey(kp.V));
+    stdout.writefln("static immutable %s = KeyPair(PublicKey(Point(%s)), SecretKey(Scalar(%s)));",
+                    name.strip, kp.V[], kp.v[]);
+}
+
+/// Check special target: GENESIS, COMMONS, NODE...
+private size_t specialNameIndex (const(char)[] name)
+{
+    static foreach (idx, n; SpecialNames)
+    {
+        if (name[2 .. 2 + n.length] == n)
+        {
+            static if (idx == 0 || idx == 1)
+                return (name[2 + n.length] >= '0' && name[2 + n.length] <= '9')
+                    ? idx + KeyCountTarget: 0;
+            else
+                return (name[2 + n.length] >= 'A' && name[2 + n.length] <= 'Z')
+                    ? idx + KeyCountTarget: 0;
+        }
+    }
+
+    return 0;
+}
+
+//
+unittest
+{
+    assert(specialNameIndex("GDGENESIS42") == KeyCountTarget + 0);
+    assert(specialNameIndex("GDCOMMONS42") == KeyCountTarget + 1);
+    assert(specialNameIndex("GDNODE2A")    == KeyCountTarget + 2);
+    assert(specialNameIndex("GDNODE3B")    == KeyCountTarget + 3);
+    assert(specialNameIndex("GDNODE4C")    == KeyCountTarget + 4);
+    assert(specialNameIndex("GDNODE5D")    == KeyCountTarget + 5);
+    assert(specialNameIndex("GDNODE6E")    == KeyCountTarget + 6);
+    assert(specialNameIndex("GDNODE7F")    == KeyCountTarget + 7);
+
+    assert(specialNameIndex("GDGENESISS123") == 0);
+    assert(specialNameIndex("GDCOMMONSA456") == 0);
+    assert(specialNameIndex("GDNODE74FF")    == 0);
+    assert(specialNameIndex("GDNODES24FF")   == 0);
 }
 
 /// Returns: The total number of keys for this range and all smaller ranges
