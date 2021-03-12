@@ -1723,10 +1723,7 @@ unittest
     auto pairs = iota(4).map!(idx => WK.Keys[idx]).array;
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(
-                0, 0,
-                PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-                PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(kp.secret, true);
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
@@ -1826,10 +1823,7 @@ unittest
         UTXO stake;
         assert(ledger.utxo_set.peekUTXO(key, stake));
         KeyPair kp = WK.Keys[stake.output.address];
-        auto cycle = PreImageCycle(
-            0, 0,
-            PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const preimage = PreImageInfo(key,
             cycle.getPreImage(kp.secret, Height(params.ValidatorCycle)),
                 cast (ushort) (params.ValidatorCycle));

@@ -220,15 +220,7 @@ unittest
                                         &validator_set.findRecentEnrollment));
 
     const utxoPeek = &utxo_set.peekUTXO;
-    auto cycle = PreImageCycle(
-        /* nounce: */ 0,
-        /* index:  */ 0,
-        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                                    params.ValidatorCycle),
-        // Since those pre-images might be accessed often,
-        // use an interval of 1 (no interval)
-        /* preimages: */ PreImageCache(params.ValidatorCycle, 1)
-    );
+    auto cycle = PreImageCycle(params.ValidatorCycle);
 
     enroll1.utxo_key = utxo_hash1;
     enroll1.random_seed = cycle.getPreImage(key_pairs[0].secret, Height(0));

@@ -152,15 +152,7 @@ public class EnrollmentManager
         assert(params !is null);
         this.params = params;
         this.key_pair = key_pair;
-        this.cycle = PreImageCycle(
-            /* nounce: */ 0,
-            /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                this.params.ValidatorCycle),
-            // Since those pre-images might be accessed often,
-            // use an interval of 1 (no interval)
-            /* preimages: */ PreImageCache(this.params.ValidatorCycle, 1)
-        );
+        this.cycle = PreImageCycle(params.ValidatorCycle);
 
         this.db = new ManagedDatabase(db_path);
         this.validator_set = new ValidatorSet(this.db, params);
@@ -1263,9 +1255,7 @@ unittest
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto cycle = PreImageCycle(
-            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
             kp, utxo_hashes[idx], params.ValidatorCycle,
@@ -1397,13 +1387,7 @@ unittest
 
     // Note: This was copied from `EnrollmentManager` constructor and should
     // be kept in sync with it
-    auto cycle = PreImageCycle(
-        /* nounce: */ 0,
-        /* index:  */ 0,
-        /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-            params.ValidatorCycle),
-        /* preimages: */ PreImageCache(params.ValidatorCycle, 1)
-    );
+    auto cycle = PreImageCycle(params.ValidatorCycle);
 
     auto secret = Scalar.random();
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
@@ -1489,9 +1473,7 @@ unittest
     Enrollment[] enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto cycle = PreImageCycle(
-            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
             kp, utxo_hashes[idx], params.ValidatorCycle,
@@ -1656,9 +1638,7 @@ unittest
 
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(
-            0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-            PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
 
         const seed = cycle.populate(kp.secret, true);
         const enroll = EnrollmentManager.makeEnrollment(

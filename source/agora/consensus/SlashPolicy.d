@@ -335,10 +335,7 @@ unittest
     PreImageCache[] caches;
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(
-                0, 0,
-                PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
-                PreImageCache(params.ValidatorCycle, 1));
+        auto cycle = PreImageCycle(params.ValidatorCycle);
         const seed = cycle.populate(kp.secret, true);
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
