@@ -288,8 +288,9 @@ public struct PreImageCycle
     @disable public this ();
 
     /// Construct an instance with the provided cycle length
-    public this (uint cycle_length) @safe nothrow
+    public this (in Scalar secret, uint cycle_length) @safe nothrow
     {
+        this.secret = secret;
         this.impl = PreImageCycleImpl(
             /* nonce: */ 0,
             /* index: */ 0,
@@ -297,6 +298,32 @@ public struct PreImageCycle
             /* preimages: */ PreImageCache(cycle_length, 1),
         );
     }
+
+    /***************************************************************************
+
+        Get a pre-mage at the specified height.
+
+        This routine might first need to seek to the given `height`,
+        hence calls might have various latency depending if the image is
+        cached or not.
+
+        Params:
+          height = Requested height
+
+        Returns:
+            Pre-image at `height`
+
+    ***************************************************************************/
+
+    public Hash opIndex (in Height height) @safe nothrow @nogc
+    {
+        this.impl.seek(this.secret, height);
+        auto offset = height % this.impl.preimages.length();
+        return this.impl.preimages[$ - offset - 1];
+    }
+
+    ///
+    private Scalar secret;
 
     ///
     public alias impl this;
@@ -468,30 +495,6 @@ public struct PreImageCycleImpl
             this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
         }
     }
-
-    /***************************************************************************
-
-        Get PreImage at height `height`
-
-        This will first seek to the given `height` and return the expected
-        PreImage
-
-        Params:
-          secret = The secret key of the node, used as part of the hash
-                   to generate the cycle seeds
-          height = Requested height
-
-        Returns:
-            PreImage at `height`
-
-    ***************************************************************************/
-
-    public Hash getPreImage (in Scalar secret, in Height height) @nogc
-    {
-        this.seek(secret, height);
-        auto offset = height % this.preimages.length();
-        return this.preimages[$ - offset - 1];
-    }
 }
 
 // Test `seek` and `populate` equivalence
@@ -517,10 +520,10 @@ unittest
     foreach (idx; 0..PreImageCycle.NumberOfCycles + 2)
     {
         pop_cycle.populate(secret, true);
-        seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle));
+        seek_cycle.seek(secret, Height(idx * ValidatorCycle));
         assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
         // A offset within the ValidatorCycle should not change cached PreImages
-        seek_cycle.getPreImage(secret, Height(idx * ValidatorCycle + 1));
+        seek_cycle.seek(secret, Height(idx * ValidatorCycle + 1));
         assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
     }
 }

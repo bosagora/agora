@@ -152,7 +152,7 @@ public class EnrollmentManager
         assert(params !is null);
         this.params = params;
         this.key_pair = key_pair;
-        this.cycle = PreImageCycle(params.ValidatorCycle);
+        this.cycle = PreImageCycle(key_pair.secret, params.ValidatorCycle);
 
         this.db = new ManagedDatabase(db_path);
         this.validator_set = new ValidatorSet(this.db, params);
@@ -406,7 +406,7 @@ public class EnrollmentManager
     public Enrollment createEnrollment (in Hash utxo, Height height) @safe nothrow
     {
         // X, final seed data and preimages of hashes
-        const seed = this.cycle.getPreImage(this.key_pair.secret, height);
+        const seed = this.cycle[height];
         const enroll = makeEnrollment(
             this.key_pair, utxo, this.params.ValidatorCycle,
             seed, this.cycle.index);
@@ -646,7 +646,7 @@ public class EnrollmentManager
         preimage.enroll_key = this.enroll_key;
         preimage.distance = cast(ushort)next_dist;
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
-        preimage.hash = this.cycle.getPreImage(this.key_pair.secret, enrolled + next_dist);
+        preimage.hash = this.cycle[enrolled + next_dist];
         return true;
     }
 
@@ -1255,7 +1255,7 @@ unittest
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
         const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
             kp, utxo_hashes[idx], params.ValidatorCycle,
@@ -1385,11 +1385,12 @@ unittest
 {
     auto params = new immutable(ConsensusParams)();
 
+    auto secret = Scalar.random();
+
     // Note: This was copied from `EnrollmentManager` constructor and should
     // be kept in sync with it
-    auto cycle = PreImageCycle(params.ValidatorCycle);
+    auto cycle = PreImageCycle(secret, params.ValidatorCycle);
 
-    auto secret = Scalar.random();
     Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
     foreach (uint cycleGroupCount; 0 .. 10)
     {
@@ -1473,7 +1474,7 @@ unittest
     Enrollment[] enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
         const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
             kp, utxo_hashes[idx], params.ValidatorCycle,
@@ -1638,7 +1639,7 @@ unittest
 
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(params.ValidatorCycle);
+        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
 
         const seed = cycle.populate(kp.secret, true);
         const enroll = EnrollmentManager.makeEnrollment(
