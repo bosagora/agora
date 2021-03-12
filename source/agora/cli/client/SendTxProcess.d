@@ -182,7 +182,7 @@ public int sendTxProcess (string[] args, ref string[] outputs,
         return CLIENT_INVALID_ARGUMENTS;
 
     // create the transaction
-    auto key_pair = KeyPair.fromSeed(Seed.fromString(op.key));
+    auto key_pair = KeyPair.fromSeed(SecretKey.fromString(op.key));
 
     Transaction tx =
     {
@@ -277,7 +277,7 @@ unittest
         [Output(Amount(amount), PublicKey.fromString(address))]
     };
     Hash send_txhash = hashFull(tx);
-    auto key_pair = KeyPair.fromSeed(Seed.fromString(key));
+    auto key_pair = KeyPair.fromSeed(SecretKey.fromString(key));
     tx.inputs[0].unlock = genKeyUnlock(key_pair.sign(send_txhash[]));
 
     foreach (ref line; outputs)

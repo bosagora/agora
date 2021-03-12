@@ -443,7 +443,7 @@ unittest
     ballot.counter = 42;
     ballot.value = cd.serializeFull[].toVec();
 
-    auto pair = KeyPair.fromSeed(Seed.fromString("SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ"));
+    auto pair = KeyPair.fromSeed(SecretKey.fromString("SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ"));
 
     auto qc = QuorumConfig(2,
         [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),

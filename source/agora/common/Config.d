@@ -578,7 +578,7 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
     ValidatorConfig result = {
         enabled: true,
         key_pair:
-            KeyPair.fromSeed(Seed.fromString(get!(string, "validator", "seed")(cmdln, node))),
+            KeyPair.fromSeed(SecretKey.fromString(get!(string, "validator", "seed")(cmdln, node))),
         registry_address: registry_address,
         addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
         recurring_enrollment : recurring_enrollment,
@@ -597,7 +597,7 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
 
     immutable KeyPair kp = validator_config.enabled
         ? validator_config.key_pair
-        : KeyPair.fromSeed(Seed.fromString(get!(string, "flash", "seed")(
+        : KeyPair.fromSeed(SecretKey.fromString(get!(string, "flash", "seed")(
             cmdln, node)));
 
     const bool testing = opt!(bool, "flash", "testing")(cmdln, node);
@@ -633,7 +633,7 @@ validator:
         assert(config.enabled);
         assert(config.preimage_reveal_interval == 99.seconds);
         assert(config.key_pair == KeyPair.fromSeed(
-            Seed.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
+            SecretKey.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
         assert(!config.recurring_enrollment);
     }
     {
