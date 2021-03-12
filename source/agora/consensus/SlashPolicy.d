@@ -299,8 +299,8 @@ unittest
     import agora.consensus.data.Transaction;
     import agora.consensus.PreImage;
     import agora.consensus.state.UTXOSet;
+    import agora.crypto.ECC;
     import agora.crypto.Hash;
-    import agora.crypto.Schnorr;
 
     import std.algorithm;
     import std.format;
