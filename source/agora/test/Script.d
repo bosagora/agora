@@ -49,13 +49,11 @@ unittest
 
     const block_5 = node_1.getBlocksFrom(5, 1)[0];
 
-    auto kp = Pair(WK.Keys.Genesis.secret, WK.Keys.Genesis.secret.toPoint());
-
     const height_3 = nativeToLittleEndian(ulong(3));
     Lock lock = Lock(LockType.Script,
         toPushOpcode(height_3)
         ~ [ubyte(OP.VERIFY_LOCK_HEIGHT)]
-        ~ [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]);
+        ~ [ubyte(32)] ~ WK.Keys.Genesis.address[] ~ [ubyte(OP.CHECK_SIG)]);
 
     auto lock_txs = block_5.txs
         .filter!(tx => tx.type == TxType.Payment)
@@ -68,7 +66,7 @@ unittest
 
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
-        auto sig = Schnorr.sign(kp, tx);
+        auto sig = WK.Keys.Genesis.sign(tx);
         return Unlock([ubyte(64)] ~ sig[]);
     }
 
@@ -111,13 +109,11 @@ unittest
     auto txs = genesisSpendable().map!(txb => txb.split(
         WK.Keys.Genesis.address.repeat.take(8)).sign()).array;
 
-    auto kp = Pair(WK.Keys.Genesis.secret, WK.Keys.Genesis.secret.toPoint());
-
     const age_3 = nativeToLittleEndian(uint(3));
     Lock key_lock = Lock(LockType.Script,
         toPushOpcode(age_3)
         ~ [ubyte(OP.VERIFY_UNLOCK_AGE)]
-        ~ [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]);
+        ~ [ubyte(32)] ~ WK.Keys.Genesis.address[] ~ [ubyte(OP.CHECK_SIG)]);
 
     // rewrite this tx's outputs to be encumbered by an age lock
     txs[3] = genesisSpendable().array[3]
@@ -159,7 +155,7 @@ unittest
 
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
-        auto sig = Schnorr.sign(kp, tx);
+        auto sig = WK.Keys.Genesis.sign(tx);
         return Unlock([ubyte(64)] ~ sig[]);
     }
 
@@ -202,17 +198,15 @@ unittest
     auto txs = genesisSpendable().map!(txb => txb.split(
         WK.Keys.Genesis.address.repeat.take(8)).sign()).array;
 
-    auto kp = Pair(WK.Keys.Genesis.secret, WK.Keys.Genesis.secret.toPoint());
-
     /// using two different key pairs for the IF / ELSE branch
-    auto kp_a = Pair(WK.Keys[42].secret, WK.Keys[42].secret.toPoint());
-    auto kp_b = Pair(WK.Keys[69].secret, WK.Keys[69].secret.toPoint());
+    auto kp_a = WK.Keys[42];
+    auto kp_b = WK.Keys[69];
 
     Lock key_lock = Lock(LockType.Script,
         [ubyte(OP.IF)]
-            ~ [ubyte(32)] ~ kp_a.V[] ~ [ubyte(OP.CHECK_SIG)]
+            ~ [ubyte(32)] ~ kp_a.address[] ~ [ubyte(OP.CHECK_SIG)]
         ~ [ubyte(OP.ELSE)]
-            ~ [ubyte(32)] ~ kp_b.V[] ~ [ubyte(OP.CHECK_SIG)]
+            ~ [ubyte(32)] ~ kp_b.address[] ~ [ubyte(OP.CHECK_SIG)]
         ~ [ubyte(OP.END_IF)]);
 
     // rewrite these two tx's outputs to be encumbered by a script with a conditional
@@ -244,7 +238,7 @@ unittest
             .sign(TxType.Payment, null, Height(0), 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = Schnorr.sign(kp_a, tx);
+                    auto sig = kp_a.sign(tx);
                     return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.TRUE)]);
                 }))
         .array();
@@ -255,7 +249,7 @@ unittest
             .sign(TxType.Payment, null, Height(0), 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = Schnorr.sign(kp_b, tx);
+                    auto sig = kp_b.sign(tx);
                     return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.TRUE)]);
                 }))
         .array();
@@ -274,7 +268,7 @@ unittest
             .sign(TxType.Payment, null, Height(0), 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = Schnorr.sign(kp_a, tx);
+                    auto sig = kp_a.sign(tx);
                     return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.FALSE)]);
                 }))
         .array();
@@ -285,7 +279,7 @@ unittest
             .sign(TxType.Payment, null, Height(0), 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = Schnorr.sign(kp_b, tx);
+                    auto sig = kp_b.sign(tx);
                     return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.FALSE)]);
                 }))
         .array();

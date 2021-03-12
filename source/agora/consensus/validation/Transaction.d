@@ -34,8 +34,7 @@ version (unittest)
 version (unittest)
 public Unlock signUnlock (KeyPair key_pair, Transaction tx)
 {
-    auto kp = Pair(key_pair.secret, key_pair.secret.toPoint());
-    return genKeyUnlock(sign(kp, tx));
+    return genKeyUnlock(key_pair.sign(tx));
 }
 
 /*******************************************************************************
