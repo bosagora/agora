@@ -90,7 +90,7 @@ public class EnrollmentManager
     private ManagedDatabase db;
 
     /// Node's key pair
-    private Pair key_pair;
+    private KeyPair key_pair;
 
     /// Key used for enrollment which is actually an UTXO hash
     private Hash enroll_key;
@@ -151,6 +151,7 @@ public class EnrollmentManager
     {
         assert(params !is null);
         this.params = params;
+        this.key_pair = key_pair;
         this.cycle = PreImageCycle(
             /* nounce: */ 0,
             /* index:  */ 0,
@@ -169,10 +170,6 @@ public class EnrollmentManager
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
             "(key CHAR(128) PRIMARY KEY, val BLOB NOT NULL)");
-
-        // create Pair object from KeyPair object
-        if (key_pair != KeyPair.init)
-            this.key_pair = Pair.fromScalar(key_pair.secret);
 
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
@@ -417,7 +414,7 @@ public class EnrollmentManager
     public Enrollment createEnrollment (in Hash utxo, Height height) @safe nothrow
     {
         // X, final seed data and preimages of hashes
-        const seed = this.cycle.getPreImage(this.key_pair.v, height);
+        const seed = this.cycle.getPreImage(this.key_pair.secret, height);
         const enroll = makeEnrollment(
             this.key_pair, utxo, this.params.ValidatorCycle,
             seed, this.cycle.index);
@@ -454,7 +451,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public static Enrollment makeEnrollment (
-        Pair key, in Hash utxo, uint cycle_length, in Hash seed, ulong offset)
+        KeyPair key, in Hash utxo, uint cycle_length, in Hash seed, ulong offset)
         @safe nothrow @nogc
     {
         Enrollment result = {
@@ -464,10 +461,10 @@ public class EnrollmentManager
         };
 
         // Generate signature noise
-        const Pair noise = Pair.fromScalar(Scalar(hashMulti(key.v, "consensus.signature.noise", offset)));
+        const Pair noise = Pair.fromScalar(Scalar(hashMulti(key.secret, "consensus.signature.noise", offset)));
 
         // We're done, sign & return
-        result.enroll_sig = sign(key, noise, result);
+        result.enroll_sig = Pair(key.secret, key.address).sign(noise, result);
         return result;
     }
 
@@ -476,15 +473,12 @@ public class EnrollmentManager
         KeyPair key, in Hash utxo, uint cycle_length, uint offset = 0)
         @trusted nothrow
     {
-        // Convert stellar-type keypair to curve scalars
-        const kp = Pair.fromScalar(key.secret);
-
         // Generate the random seed to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
         assert(offset < cache.length);
-        cache.reset(hashMulti(kp.v, "consensus.preimages", offset));
+        cache.reset(hashMulti(key.secret, "consensus.preimages", offset));
 
-        return makeEnrollment(kp, utxo, cycle_length, cache[$ - offset - 1], offset);
+        return makeEnrollment(key, utxo, cycle_length, cache[$ - offset - 1], offset);
     }
 
     /***************************************************************************
@@ -521,7 +515,7 @@ public class EnrollmentManager
     public Scalar getCommitmentNonceScalar (Height height) nothrow
     {
         ulong index = ulong((height - 1) / this.cycle.preimages.length());
-        return Scalar(hashMulti(this.key_pair.v, "consensus.signature.noise", index));
+        return Scalar(hashMulti(this.key_pair.secret, "consensus.signature.noise", index));
     }
 
     /***************************************************************************
@@ -660,7 +654,7 @@ public class EnrollmentManager
         preimage.enroll_key = this.enroll_key;
         preimage.distance = cast(ushort)next_dist;
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
-        preimage.hash = this.cycle.getPreImage(this.key_pair.v, enrolled + next_dist);
+        preimage.hash = this.cycle.getPreImage(this.key_pair.secret, enrolled + next_dist);
         return true;
     }
 
@@ -821,7 +815,7 @@ public class EnrollmentManager
 
     public PublicKey getEnrollmentPublicKey () @safe nothrow
     {
-        return PublicKey(this.key_pair.V[]);
+        return this.key_pair.address;
     }
 
     /***************************************************************************
@@ -1269,15 +1263,12 @@ unittest
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        Pair pair;
-        pair = Pair.fromScalar(kp.secret);
-
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
             PreImageCache(params.ValidatorCycle, 1));
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
-            pair, utxo_hashes[idx], params.ValidatorCycle,
+            kp, utxo_hashes[idx], params.ValidatorCycle,
             seed, idx);
 
         assert(man.addEnrollment(enroll, kp.address, Height(1), &utxo_set.peekUTXO));
@@ -1498,15 +1489,12 @@ unittest
     Enrollment[] enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        Pair pair;
-        pair = Pair.fromScalar(kp.secret);
-
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
             PreImageCache(params.ValidatorCycle, 1));
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
-            pair, utxo_hashes[idx], params.ValidatorCycle,
+            kp, utxo_hashes[idx], params.ValidatorCycle,
             seed, idx);
         enrollments ~= enroll;
     }
@@ -1668,22 +1656,19 @@ unittest
 
     foreach (idx, kp; pairs)
     {
-        Pair pair;
-        pair = Pair.fromScalar(kp.secret);
-
         auto cycle = PreImageCycle(
             0, 0, PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle),
             PreImageCache(params.ValidatorCycle, 1));
 
-        const seed = cycle.populate(pair.v, true);
+        const seed = cycle.populate(kp.secret, true);
         const enroll = EnrollmentManager.makeEnrollment(
-            pair, utxos[idx], params.ValidatorCycle,
+            kp, utxos[idx], params.ValidatorCycle,
             seed, cycle.index);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
-        cache.reset(hashMulti(pair.v, "consensus.preimages", 0));
+        cache.reset(hashMulti(kp.secret, "consensus.preimages", 0));
 
         PreImageInfo preimage = { enroll_key : utxos[idx],
             distance : cast(ushort)params.ValidatorCycle,
