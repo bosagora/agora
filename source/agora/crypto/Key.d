@@ -63,8 +63,8 @@ public struct KeyPair
     /// Create a keypair from a `SecretKey`
     public static KeyPair fromSeed (const SecretKey seed) nothrow @nogc
     {
-        BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES * 8) sk_data;
-        BitBlob!(crypto_core_ed25519_BYTES * 8) pk;
+        BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES) sk_data;
+        BitBlob!(crypto_core_ed25519_BYTES) pk;
         if (crypto_sign_seed_keypair(pk[].ptr, sk_data[].ptr, seed[].ptr) != 0)
             assert(0);
 

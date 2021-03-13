@@ -93,10 +93,10 @@ extern(D) static immutable XDR_MAX_LEN = 0xffff_fffc;
 ///
 struct opaque_array(uint32_t N = XDR_MAX_LEN)
 {
-    BitBlob!(N * 8) base;
+    BitBlob!(N) base;
     alias base this;
 
-    extern(D) public this (BitBlob!(N * 8) val)
+    extern(D) public this (BitBlob!(N) val)
     {
         this.base = val;
     }
