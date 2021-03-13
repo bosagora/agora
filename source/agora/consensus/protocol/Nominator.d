@@ -723,7 +723,7 @@ extern(D):
 
         const Sig sig = createBlockSignature(proposed_block);
 
-        envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!256(sig.s[]));
+        envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!32(sig.s[]));
 
         // Store our block signature in the slot_sigs map
         log.trace("signConfirmBallot: ADD block signature at height {} for this node {}",
