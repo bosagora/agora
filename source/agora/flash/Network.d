@@ -227,12 +227,14 @@ public class Network
             return null;
 
         Hop[] path;
+        Amount hop_fee;
         // Trace the path from destination to source
         do
         {
             auto hop = prev[to_pk];
-            path ~= Hop(to_pk, hop.chan_id, hop.fee);
+            path ~= Hop(to_pk, hop.chan_id, hop_fee);
             to_pk = hop.pub_key;
+            hop_fee = hop.fee;
         } while(to_pk != from_pk);
 
         return path.reverse();
