@@ -36,6 +36,20 @@ public class Network
     /// Nodes
     private NetworkNode[Point] nodes;
 
+    ///
+    private static struct ChannelRoutingInfo
+    {
+        /// Public key of the funder of the channel.
+        public Point funder_pk;
+
+        /// The total amount funded in this channel. This information is
+        /// derived from the Outputs of the funding transaction.
+        public Amount capacity;
+    }
+
+    /// Static information about channel that are useful for routing
+    private ChannelRoutingInfo[Hash] routing_info;
+
     /// Delegate to lookup Channels by their ID
     private ChannelUpdate delegate (Hash chan_id, Point from) @safe nothrow lookupUpdate;
 
@@ -60,6 +74,9 @@ public class Network
     {
         const funder_pk = chan_conf.funder_pk;
         const peer_pk = chan_conf.peer_pk;
+
+        this.routing_info[chan_conf.chan_id] = ChannelRoutingInfo(
+            chan_conf.funder_pk, chan_conf.capacity);
 
         this.addChannel(funder_pk, peer_pk, chan_conf);
         this.addChannel(peer_pk, funder_pk, chan_conf);
@@ -108,6 +125,8 @@ public class Network
     {
         const funder_pk = chan_conf.funder_pk;
         const peer_pk = chan_conf.peer_pk;
+
+        this.routing_info.remove(chan_conf.chan_id);
 
         this.removeChannel(funder_pk, peer_pk, chan_conf);
         this.removeChannel(peer_pk, funder_pk, chan_conf);
@@ -199,8 +218,17 @@ public class Network
             foreach (peer_pk; min_node.channels.byKey())
                 if (peer_pk in unvisited)
                 {
+                    auto channel_filter = (Hash chan_id) {
+                        if (chan_id in ignore_chans)
+                            return false;
+                        auto info = this.routing_info[chan_id];
+                        if (amount > info.capacity)
+                            return false;
+                        return true;
+                    };
+
                     auto chans = min_node.channels[peer_pk][]
-                        .filter!(chan => chan !in ignore_chans);
+                        .filter!(chan => channel_filter(chan));
                     auto updates = chans.map!(chan => this.lookupUpdate(chan, min_pk))
                         .filter!(update => update != ChannelUpdate.init);
                     auto hop_fees = updates.map!(update => tuple(update.chan_id, update.getTotalFee(amount)))
@@ -278,6 +306,7 @@ unittest
     iota(5).each!(idx => pks ~= Scalar.random().toPoint());
 
     ChannelConfig conf;
+    conf.capacity = 1.coins;
     conf.funder_pk = pks[0];
     conf.peer_pk = pks[1];
     conf.chan_id = hashFull(1);
@@ -344,4 +373,8 @@ unittest
     assert(path[0].chan_id == hashFull(1));
     assert(path[1].pub_key == pks[2]);
     assert(path[1].chan_id == hashFull(4));
+
+    // Can't route 2.coins
+    path = ln.getPaymentPath(pks[0], pks[2], 2.coins);
+    assert(path == null);
 }
