@@ -588,7 +588,7 @@ unittest
     charlie.waitChannelOpen(bob_charlie_chan_id);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    /+ CHARLIE BOB => ALICE CHANNEL +/
+    /+ OPEN CHARLIE => ALICE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const charlie_utxo = UTXO.getHash(hashFull(txs[2]), 0);
