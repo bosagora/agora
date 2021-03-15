@@ -2,10 +2,8 @@
 
 [Docker Hub image](https://hub.docker.com/r/bpfk/agora)
 
-[![CircleCI](https://circleci.com/gh/bpfkorea/agora.svg?style=svg)](https://circleci.com/gh/bpfkorea/agora)
+![Github CI](https://github.com/bpfkorea/agora/actions/workflows/main.yml/badge.svg)
 [![codecov](https://codecov.io/gh/bpfkorea/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bpfkorea/agora)
-[![](https://images.microbadger.com/badges/image/bpfk/agora.svg)](https://microbadger.com/images/bpfk/agora)
-[![](https://images.microbadger.com/badges/version/bpfk/agora.svg)](https://microbadger.com/images/bpfk/agora)
 [![License](https://img.shields.io/github/license/bpfkorea/agora)](LICENSE)
 [![Documentation](https://img.shields.io/badge/Docs-Github%20Pages-blue)](https://bpfkorea.github.io/agora/)
 
