@@ -49,8 +49,8 @@ public struct CommandLine
     /// Path to the config file
     public string config_path = "config.yaml";
 
-    /// Whether or not we want to initialize this node
-    public bool initialize = false;
+    /// If non-`null`, what address to bind the setup interface to
+    public string initialize;
 
     /// check state of config file and exit early
     public bool config_check;
@@ -260,7 +260,7 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
     return getopt(
         args,
         "initialize",
-            "The node will offer a web-based configuration interface at 127.0.0.1:2827",
+            "The address at which to offer a web-based configuration interface",
             &cmdline.initialize,
 
         "config|c",
