@@ -28,6 +28,7 @@ import vibe.data.json;
 import vibe.http.fileserver;
 import vibe.http.router;
 import vibe.http.server;
+import vibe.inet.url;
 import vibe.stream.operations;
 
 import std.format;
@@ -71,10 +72,10 @@ public class SetupInterface
     }
 
     /// Start listening for requests
-    public void start ()
+    public void start (URL url)
     {
-        auto settings = new HTTPServerSettings("127.0.0.1");
-        settings.port = 2827;
+        auto settings = new HTTPServerSettings(url.host);
+        settings.port = url.port;
         auto router = new URLRouter;
         router.post("/check", &this.handleCheck);
         router.match(HTTPMethod.OPTIONS, "*", &this.handleAllOptions);

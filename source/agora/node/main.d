@@ -32,6 +32,7 @@ import agora.utils.Log;
 import agora.utils.Workarounds;
 
 import vibe.core.core;
+import vibe.inet.url;
 import vibe.http.server;
 
 import std.getopt;
@@ -70,17 +71,40 @@ private int main (string[] args)
     }
 
     // Run setup interface if needed
-    if (cmdln.initialize)
+    if (cmdln.initialize.length)
     {
         if (cmdln.config_check)
         {
             writeln("Error: Cannot have both `--initialize` and `--config-check` switch");
             return 1;
         }
-        writeln("Setup interface listening to http://127.0.0.1:2827 and will write to: ",
+
+        URL url = (string s) {
+            // Will work if the user entered e.g. `http://127.0.0.1`
+            try return URL(s);
+            // Maybe the user entered `127.0.0.1`, so try this
+            // See: https://github.com/vibe-d/vibe.d/pull/2311
+            catch (Exception e)
+            {
+                try return URL("http://" ~ s);
+                catch (Exception e2) {}
+                return URL.init;
+            }
+        }(cmdln.initialize);
+
+        if (url == URL.init)
+        {
+            stderr.writeln("Could not initialize setup interface at address: ",
+                           cmdln.initialize);
+            stderr.writeln("Make sure it's a valid address, such as 'http://127.0.0.1:2827', " ~
+                           "or '0.0.0.0:2827'");
+            return 1;
+        }
+
+        writeln("Setup interface listening to ", url, " and will write to: ",
                 cmdln.config_path.absolutePath());
         scope setup = new SetupInterface(cmdln.config_path);
-        setup.start();
+        setup.start(url);
         if (auto ret = runEventLoop())
             return ret;
     }
