@@ -56,7 +56,7 @@ public class Network
 
     ***************************************************************************/
 
-    public void addChannel (const ref ChannelConfig chan_conf) @safe nothrow
+    public void addChannel (in ChannelConfig chan_conf) @safe nothrow
     {
         const funder_pk = chan_conf.funder_pk;
         const peer_pk = chan_conf.peer_pk;
@@ -67,7 +67,7 @@ public class Network
 
     ///
     private void addChannel (Point peer1_pk, Point peer2_pk,
-        const ref ChannelConfig chan_conf) @safe nothrow
+        in ChannelConfig chan_conf) @safe nothrow
     {
         const chan_id = chan_conf.chan_id;
 
@@ -89,7 +89,7 @@ public class Network
 
     ***************************************************************************/
 
-    public void addChannels (const ref ChannelConfig[] chns) @safe nothrow
+    public void addChannels (in ChannelConfig[] chns) @safe nothrow
     {
         foreach (chn; chns)
             this.addChannel(chn);
@@ -104,7 +104,7 @@ public class Network
 
     ***************************************************************************/
 
-    public void removeChannel (const ref ChannelConfig chan_conf) @safe nothrow
+    public void removeChannel (in ChannelConfig chan_conf) @safe nothrow
     {
         const funder_pk = chan_conf.funder_pk;
         const peer_pk = chan_conf.peer_pk;
@@ -115,7 +115,7 @@ public class Network
 
     ///
     private void removeChannel (Point peer1_pk, Point peer2_pk,
-        const ref ChannelConfig chan_conf) @safe nothrow
+        in ChannelConfig chan_conf) @safe nothrow
     {
         const chan_id = chan_conf.chan_id;
 
@@ -140,7 +140,7 @@ public class Network
 
     ***************************************************************************/
 
-    public void removeChannels (const ref ChannelConfig[] chns) @safe nothrow
+    public void removeChannels (in ChannelConfig[] chns) @safe nothrow
     {
         foreach (chn; chns)
             this.removeChannel(chn);
