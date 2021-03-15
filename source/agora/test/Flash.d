@@ -63,6 +63,9 @@ public interface TestFlashAPI : ControlFlashAPI
     /// is revealed, so the indexes passed are usually even numbers (2, 4, 6..)
     public void waitForUpdateIndex (in Hash chan_id, in uint index);
 
+    /// Wait until the specified channel ID has been gossiped to this node
+    public void waitForChannelDiscovery (in Hash chan_id);
+
     /// Force publishing an update tx with the given index to the blockchain.
     /// Used for testing and ensuring the counter-party detects the update tx
     /// and publishes the latest state to the blockchain.
@@ -157,6 +160,13 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.waitForUpdateIndex(index);
+    }
+
+    ///
+    public override void waitForChannelDiscovery (in Hash chan_id)
+    {
+        while (chan_id !in this.known_channels)
+            this.taskman.wait(100.msecs);
     }
 
     ///
@@ -474,6 +484,10 @@ unittest
     charlie.waitChannelOpen(bob_charlie_chan_id);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
+    // also wait for all parties to discover other channels on the network
+    alice.waitForChannelDiscovery(bob_charlie_chan_id);
+    charlie.waitForChannelDiscovery(alice_bob_chan_id);
+
     // begin off-chain transactions
     auto inv_1 = charlie.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
 
@@ -606,6 +620,10 @@ unittest
     charlie.waitChannelOpen(charlie_alice_chan_id);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
+    // also wait for all parties to discover other channels on the network
+    alice.waitForChannelDiscovery(bob_charlie_chan_id);
+    bob.waitForChannelDiscovery(charlie_alice_chan_id);
+    charlie.waitForChannelDiscovery(alice_bob_chan_id);
 
     // begin off-chain transactions
     auto inv_1 = charlie.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
