@@ -600,6 +600,7 @@ public class Ledger
         NotEnoughValidators = "Enrollment: Insufficient number of active validators",
         MayBeValid = "May be valid",
         OnlyCoinbaseTX = "Transaction set only includes a Coinbase transaction",
+        TooManyMPVs = "More MPVs than active enrollments",
     }
 
     /***************************************************************************
@@ -649,7 +650,10 @@ public class Ledger
             return fail_reason;
 
         size_t active_enrollments = enroll_man.getValidatorCount(expect_height);
-        assert(active_enrollments >= data.missing_validators.length);
+        assert(active_enrollments >= data.missing_validators.length,
+            InvalidConsensusDataReason.TooManyMPVs);
+        if (active_enrollments < data.missing_validators.length)
+            return InvalidConsensusDataReason.TooManyMPVs;
         active_enrollments -= data.missing_validators.length;
 
         if (data.enrolls.length + active_enrollments < Enrollment.MinValidatorCount)
