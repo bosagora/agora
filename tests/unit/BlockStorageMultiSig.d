@@ -22,6 +22,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
+import agora.crypto.Schnorr;
 import agora.node.BlockStorage;
 import agora.utils.Test;
 import agora.utils.PrettyPrinter;
@@ -55,11 +56,11 @@ private void main ()
     Transaction[] txs = iota(8)
         .map!(idx => TxBuilder(GenesisBlock.txs[1], idx).refund(WK.Keys.A.address).sign())
         .array();
-    const SIG1 = block.header.signature = Signature("0x000102030405060708090A0B0C0D0E0F" ~
+    const SIG1 = block.header.signature = Signature.fromString("0x000102030405060708090A0B0C0D0E0F" ~
             "000102030405060708090A0B0C0D0E0F" ~
             "000102030405060708090A0B0C0D0E0F" ~
             "000102030405060708090A0B0C0D0E0F");
-    const SIG2 = block.header.signature = Signature("0xdeadbeefdeadbeefdeadbeefdeadbeef" ~
+    const SIG2 = block.header.signature = Signature.fromString("0xdeadbeefdeadbeefdeadbeefdeadbeef" ~
             "deadbeefdeadbeefdeadbeefdeadbeef" ~
             "deadbeefdeadbeefdeadbeefdeadbeef" ~
             "deadbeefdeadbeefdeadbeefdeadbeef");

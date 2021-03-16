@@ -533,9 +533,8 @@ public class UpdateSigner
         in PublicNonce peer_nonce)
     {
         const nonce_pair_pk = priv_nonce.settle.V + peer_nonce.settle;
-        const settle_multi_sig = Sig(nonce_pair_pk,
-              Sig.fromBlob(settle.our_sig).s
-            + Sig.fromBlob(peer_sig).s).toBlob();
+        const settle_multi_sig = Signature(nonce_pair_pk,
+              settle.our_sig.s + peer_sig.s);
 
         Transaction settle_tx
             = settle.tx.serializeFull().deserializeFull!Transaction;
@@ -580,9 +579,8 @@ public class UpdateSigner
         in PublicNonce peer_nonce, in Transaction prev_tx)
     {
         const nonce_pair_pk = priv_nonce.update.V + peer_nonce.update;
-        const update_multi_sig = Sig(nonce_pair_pk,
-              Sig.fromBlob(update.our_sig).s
-            + Sig.fromBlob(peer_sig).s).toBlob();
+        const update_multi_sig = Signature(nonce_pair_pk,
+              update.our_sig.s + peer_sig.s);
 
         Transaction update_tx
             = update.tx.serializeFull().deserializeFull!Transaction;

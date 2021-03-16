@@ -13,8 +13,10 @@
 
 module agora.script.Script;
 
+import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
+import agora.crypto.Schnorr: Signature;
 import agora.script.Opcodes;
 import agora.script.Stack;
 
@@ -350,7 +352,7 @@ version (unittest)
 public Script createUnlockP2PKH (in Signature sig, in Point pub_key)
     pure nothrow @safe
 {
-    return Script([ubyte(64)] ~ sig[] ~ [ubyte(32)] ~ pub_key[]);
+    return Script([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(32)] ~ pub_key[]);
 }
 
 ///

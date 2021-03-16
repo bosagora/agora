@@ -50,7 +50,7 @@ unittest
 unittest
 {
     const KP = Pair.random();
-    auto signature = Sig(KP.V, KP.v).toBlob();
+    auto signature = Signature(KP.V, KP.v);
     auto bytes = signature.serializeFull();
     assert(bytes.deserializeFull!Signature == signature);
 }

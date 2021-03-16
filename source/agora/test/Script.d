@@ -67,7 +67,7 @@ unittest
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
         auto sig = WK.Keys.Genesis.sign(tx);
-        return Unlock([ubyte(64)] ~ sig[]);
+        return Unlock([ubyte(64)] ~ sig.toBlob()[]);
     }
 
     const block_6 = node_1.getBlocksFrom(6, 1)[0];
@@ -156,7 +156,7 @@ unittest
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
         auto sig = WK.Keys.Genesis.sign(tx);
-        return Unlock([ubyte(64)] ~ sig[]);
+        return Unlock([ubyte(64)] ~ sig.toBlob()[]);
     }
 
     // the protocol would allow both transactions (unlock time is fine),
@@ -239,7 +239,7 @@ unittest
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_a.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.TRUE)]);
+                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.TRUE)]);
                 }))
         .array();
 
@@ -250,7 +250,7 @@ unittest
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_b.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.TRUE)]);
+                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.TRUE)]);
                 }))
         .array();
 
@@ -269,7 +269,7 @@ unittest
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_a.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.FALSE)]);
+                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.FALSE)]);
                 }))
         .array();
 
@@ -280,7 +280,7 @@ unittest
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_b.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig[] ~ [ubyte(OP.FALSE)]);
+                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.FALSE)]);
                 }))
         .array();
 

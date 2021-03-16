@@ -21,11 +21,12 @@ import agora.common.BitField;
 import agora.common.Config;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.crypto.Schnorr: Signature;
 import agora.test.Base;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
-import scpd.types.Stellar_SCP;
+import scpd.types.Stellar_SCP: Value;
 
 import std.exception;
 import core.stdc.inttypes;

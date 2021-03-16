@@ -21,6 +21,7 @@ import agora.common.BitField;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.crypto.Hash;
+import agora.crypto.Schnorr: Signature;
 import agora.serialization.Serializer;
 import agora.utils.Log;
 
@@ -464,7 +465,7 @@ public class BlockStorage : IBlockStorage
         this.is_saving = true;
         scope(exit) this.is_saving = false;
 
-        if (!this.write(data_position + SignatureOffset, sig[]))
+        if (!this.write(data_position + SignatureOffset, sig.toBlob()[]))
             assert(0);
 
         size_t block_size = ValidatorsOffset;

@@ -238,14 +238,14 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
             file, line, active_enrollments, block.header.height);
         return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
     }
-    Sig sig = Sig.fromBlob(block.header.signature);
+    Signature sig = block.header.signature;
     if (sum_R != sig.R)
     {
         log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Sum of R mismatch",
             file, line, enrolled_validators);
         return "Block: Invalid schnorr signature";
     }
-    if (!multiSigVerify(sig, sum_K, challenge))
+    if (!verify(sig, challenge, sum_K))
     {
         log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Multisig failed verification",
             file, line, enrolled_validators);

@@ -45,8 +45,8 @@ unittest
     assert(!other.address.verify(sign, "Hello World".representation));
 
     // Signature can't be changed
-    sign[].ptr[0] = sign[].ptr[0] ? 0 : 1;
-    assert(!kp.address.verify(sign, "Hello World".representation));
+    Signature sign2 = kp.secret.sign("Hello".representation);
+    assert(!kp.address.verify(sign2, "Hello World".representation));
 }
 
 /// A structure to hold a secret key + public key + seed
