@@ -156,7 +156,7 @@ private immutable ubyte[] GenesisAddressUbyte = [
 unittest
 {
     assert(GenesisOutputAddress.toString()
-           == `GDGENYO6TWO6EZG2OXEBVDCNKLHCV2UFLLZY6TJMWTGR23UMJHVHLHKJ`);
+           == `boa1xrxydcw7nkw7yex6whyp4rzd2t8z4659ttec7nfvknx36m5vf8482hvnkxh`);
 }
 
 
@@ -173,7 +173,7 @@ private immutable ubyte[] CommonsBudgetUbyte = [
 unittest
 {
     assert(CommonsBudgetAddress.toString()
-           == `GCOMBBXA6ON7PT7APS4IWS4N53FCBQTLWBPIU4JR2DSOBCA72WEB4XU4`);
+           == `boa1xzwvpphq7wdl0nlq0jugkjudam9zpsntkp0g5uf36rjwpzql6kypuddc9vr`);
 }
 
 unittest

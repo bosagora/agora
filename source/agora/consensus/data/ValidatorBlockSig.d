@@ -96,14 +96,14 @@ unittest
     testSymmetry!ValidatorBlockSig();
 
     Height height = Height(100);
-    PublicKey public_key = PublicKey.fromString(`GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`);
+    PublicKey public_key = PublicKey.fromString(`boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`);
     Scalar signature = Scalar("0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778");
     ValidatorBlockSig sig = ValidatorBlockSig(height, public_key, signature);
     testSymmetry(sig);
 
     import vibe.data.json;
     assert(sig.serializeToJsonString() == "{\"height\":\"100\"," ~
-        "\"public_key\":\"GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW\"," ~
+        "\"public_key\":\"boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h\"," ~
         "\"signature\":\"0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778\"}",
         sig.serializeToJsonString());
 }

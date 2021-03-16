@@ -100,7 +100,7 @@ public struct BlockHeader
 unittest
 {
     import std.conv : to;
-    auto address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+    auto address = `boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`;
     PublicKey pubkey = PublicKey.fromString(address);
 
     Output[1] outputs = [ Output(Amount(100), pubkey) ];
@@ -429,7 +429,7 @@ unittest
         Hash(`0xdb6e67f59fe0b30676037e4970705df8287f0de38298dcc09e50a8e85413` ~
         `959ca4c52a9fa1edbe6a47cbb6b5e9b2a19b4d0877cc1f5955a7166fe6884eecd2c3`);
 
-    immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+    immutable address = `boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`;
     PublicKey pubkey = PublicKey.fromString(address);
 
     Transaction tx =

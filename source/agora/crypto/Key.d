@@ -14,6 +14,7 @@
 module agora.crypto.Key;
 
 import agora.common.Types;
+import agora.crypto.Bech32;
 import agora.crypto.Crc16;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
@@ -112,6 +113,7 @@ unittest
 
 private immutable int VersionWidth = 1;
 private immutable int ChecksumWidth = 2;
+private immutable char[3] HumanReadablePart = "boa";
 
 /// Represent a public key / address
 public struct PublicKey
@@ -134,27 +136,28 @@ public struct PublicKey
     /// Uses Stellar's representation instead of hex
     public string toString () const @trusted nothrow
     {
-        ubyte[VersionWidth + PublicKey.sizeof + ChecksumWidth] bin;
+        ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
-        bin[VersionWidth .. $ - ChecksumWidth] = this.data[];
-        bin[$ - ChecksumWidth .. $] = checksum(bin[0 .. $ - ChecksumWidth]);
-        return Base32.encode(bin).assumeUnique;
+        bin[VersionWidth .. $] = this.data[];
+        return encodeBech32(HumanReadablePart, bin, Encoding.Bech32m, true).
+            assumeUnique;
     }
 
     /// Make sure the sink overload of BitBlob is not picked
     public void toString (scope void delegate(const(char)[]) sink) const @trusted
     {
-        ubyte[VersionWidth + PublicKey.sizeof + ChecksumWidth] bin;
+        ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
-        bin[VersionWidth .. $ - ChecksumWidth] = this.data[];
-        bin[$ - ChecksumWidth .. $] = checksum(bin[0 .. $ - ChecksumWidth]);
-        Base32.encode(bin, sink);
+        bin[VersionWidth .. $] = this.data[];
+        string encoded = encodeBech32(HumanReadablePart, bin,
+            Encoding.Bech32m, true).assumeUnique;
+        sink(encoded);
     }
 
     ///
     unittest
     {
-        immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+        immutable address = `boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`;
         PublicKey pubkey = PublicKey.fromString(address);
 
         import std.array : appender;
@@ -179,25 +182,23 @@ public struct PublicKey
 
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
-        const bin = Base32.decode(str);
-        enforce(bin.length == VersionWidth + PublicKey.sizeof + ChecksumWidth);
-        enforce(bin[0] == VersionByte.AccountID);
-        enforce(validate(bin[0 .. $ - ChecksumWidth], bin[$ - ChecksumWidth .. $]));
-        return PublicKey(typeof(this.data)(bin[VersionWidth .. $ - ChecksumWidth]));
+        auto dec = decodeBech32(str, true);
+        enforce(dec.hrp == HumanReadablePart);
+        enforce(dec.data.length == VersionWidth + PublicKey.sizeof);
+        enforce(dec.data[0] == VersionByte.AccountID);
+        return PublicKey(typeof(this.data)(dec.data[VersionWidth .. $]));
     }
 
     ///
     unittest
     {
-        immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+        immutable address = `boa1xrv266cegdthdc87uche9zvj8842shz3sdyvw0qecpgeykyv4ynssuz4lg0`;
         PublicKey pubkey = PublicKey.fromString(address);
         assert(pubkey.toString() == address);
         assertThrown(PublicKey.fromString(  // bad length
-            "GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQF"));
+            "boa1xrv266cegdthdc87uche9zvj8842shz3sdyvw0qecpgeykyv4ynssuz4lg"));
         assertThrown(PublicKey.fromString(  // bad version byte
-            "XDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW"));
-        assertThrown(PublicKey.fromString(  // bad checksum
-            "GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFF"));
+            "boa1crv266cegdthdc87uche9zvj8842shz3sdyvw0qecpgeykyv4ynssuz4lg0"));
     }
 
     ///
@@ -206,7 +207,7 @@ public struct PublicKey
         import agora.crypto.Hash;
 
         immutable address =
-            `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
+            `boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`;
         PublicKey pubkey = PublicKey.fromString(address);
 
         () nothrow @safe @nogc
@@ -393,11 +394,11 @@ public enum VersionByte : ubyte
 // random data, so it changes every time
 unittest
 {
-    immutable address = `GDNODE2JBW65U6WVIOESR3OTJUFOHPHTEIL4GQINDB3MVB645KXAHG73`;
+    immutable address = `boa1xrdwry6fpk7a57k4gwyj3mwnf59w808nygtuxsgdrpmv4p7ua2hqx78z5en`;
     immutable seed    = `SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI`;
 
     KeyPair kp = KeyPair.fromSeed(SecretKey.fromString(seed));
-    assert(kp.address.toString() == address);
+    assert(kp.address.toString() == address, kp.address.toString());
 
     import std.string : representation;
     Signature sig = kp.secret.sign("Hello World".representation);

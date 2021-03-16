@@ -172,22 +172,22 @@ private struct PubKeyFmt
     {
         try
         {
-            // Public keys are 56 characters, only take the first 8 and last 4
-            // Only format `0xABCDEFGH..JKLM`
-            enum StartUntil = 8;
-            enum EndFrom    = 56 - 4;
-            size_t count;
+            // Public keys are 63 characters, only take the first 12 and last 4
+            // Only format `boa1acdefghi..6789`
+            enum StartUntil = 12;
+            enum EndFrom = 4;
             scope void delegate (scope const char[]) @safe wrapper = (scope const data) @safe {
-                    if (count < StartUntil)
-                    {
-                        sink(data);
-                        if (count + data.length >= StartUntil)
-                            sink("...");
-                    }
-                    if (count >= EndFrom)
-                        sink(data);
-                    count += data.length;
-                };
+                if (data.length <= StartUntil + EndFrom)
+                {
+                    sink(data);
+                }
+                else
+                {
+                    sink(data[0 .. StartUntil]);
+                    sink("...");
+                    sink(data[$ - EndFrom .. $]);
+                }
+            };
             this.value.toString(wrapper);
         }
         catch (Exception ex)
@@ -201,7 +201,7 @@ private struct PubKeyFmt
 {
     PublicKey pubkey;
     immutable expected = format("%s", PubKeyFmt(pubkey));
-    assert(expected == "GAAAAAAA...AWHF", "Expected: " ~ expected);
+    assert(expected == "boa1xqqqqqqq...jq8m", "Expected: " ~ expected);
 }
 
 /// Formatting struct for `Input`
@@ -265,7 +265,7 @@ private struct OutputFmt
 @safe unittest
 {
     Output output;
-    assert(format("%s", OutputFmt(output)) == "GAAAAAAA...AWHF(0)");
+    assert(format("%s", OutputFmt(output)) == "boa1xqqqqqqq...jq8m(0)");
 }
 
 /// Format a whole transaction
@@ -311,16 +311,16 @@ private struct TransactionFmt
 {
     static immutable ResultStr0 = `Type : Freeze, Inputs: None
 Outputs (6):
-GDNODE2J...HG73(2,000,000), GDNODE3O...27NU(2,000,000), GDNODE4X...NQO2(2,000,000),
-GDNODE5E...DSMG(2,000,000), GDNODE6M...2G3K(2,000,000), GDNODE7P...6ZQQ(2,000,000)`;
+boa1xrdwry6f...z5en(2,000,000), boa1xrdwrymw...q9ju(2,000,000), boa1xrdwryuh...5ecp(2,000,000),
+boa1xrdwryay...g39f(2,000,000), boa1xrdwry7v...2qjg(2,000,000), boa1xrdwryl0...akac(2,000,000)`;
     const actual0 = format("%s", TransactionFmt(GenesisBlock.frozens.front));
     assert(ResultStr0 == actual0, actual0);
 
     static immutable ResultStr1 = `Type : Payment, Inputs: None
 Outputs (8):
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000)`;
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000)`;
     const actual1 = format("%s", TransactionFmt(GenesisBlock.payments.front));
     assert(ResultStr1 == actual1, actual1);
 }
@@ -416,13 +416,13 @@ Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs: None
 Outputs (8):
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000)
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000)
 Type : Freeze, Inputs: None
 Outputs (6):
-GDNODE2J...HG73(2,000,000), GDNODE3O...27NU(2,000,000), GDNODE4X...NQO2(2,000,000),
-GDNODE5E...DSMG(2,000,000), GDNODE6M...2G3K(2,000,000), GDNODE7P...6ZQQ(2,000,000)`;
+boa1xrdwry6f...z5en(2,000,000), boa1xrdwrymw...q9ju(2,000,000), boa1xrdwryuh...5ecp(2,000,000),
+boa1xrdwryay...g39f(2,000,000), boa1xrdwry7v...2qjg(2,000,000), boa1xrdwryl0...akac(2,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
     assert(ResultStr == actual, actual);
 }
@@ -471,13 +471,13 @@ Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs: None
 Outputs (8):
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
-GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000)
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
+boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000)
 Type : Freeze, Inputs: None
 Outputs (6):
-GDNODE2J...HG73(2,000,000), GDNODE3O...27NU(2,000,000), GDNODE4X...NQO2(2,000,000),
-GDNODE5E...DSMG(2,000,000), GDNODE6M...2G3K(2,000,000), GDNODE7P...6ZQQ(2,000,000)
+boa1xrdwry6f...z5en(2,000,000), boa1xrdwrymw...q9ju(2,000,000), boa1xrdwryuh...5ecp(2,000,000),
+boa1xrdwryay...g39f(2,000,000), boa1xrdwry7v...2qjg(2,000,000), boa1xrdwryl0...akac(2,000,000)
 ====================================================
 Height: 1, Prev: 0x1f11...8cf0, Root: 0x0497...8fef, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
@@ -486,9 +486,9 @@ Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs (1): 0x1426...9ce5:0x4b6e...a32f
-Outputs (1): GDGENES4...EDT4(61,000,000)
+Outputs (1): boa1xrxydyju...j2yt(61,000,000)
 Type : Payment, Inputs (1): 0x25a5...31a5:0x4b6e...a32f
-Outputs (1): GDGENES4...EDT4(61,000,000)
+Outputs (1): boa1xrxydyju...j2yt(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
@@ -652,17 +652,17 @@ private struct QuorumConfigFmt
 unittest
 {
     auto quorum = immutable(QuorumConfig)(2,
-        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
         [immutable(QuorumConfig)(3,
-            [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-             PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+            [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+             PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
             [immutable(QuorumConfig)(4,
-                [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5"),
-                 PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])])]);
+                [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+                 PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2"),
+                 PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")])])]);
 
-    static immutable Res1 = `{ thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [{ thresh: 3, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [{ thresh: 4, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5, GBYK4I37...QCY5], subqs: [] }] }] }`;
+    static immutable Res1 = `{ thresh: 2, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2], subqs: [{ thresh: 3, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2], subqs: [{ thresh: 4, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2, boa1xpc2ugml...p0w2], subqs: [] }] }] }`;
 
     assert(Res1 == format("%s", prettify(quorum)),
                    format("%s", prettify(quorum)));
