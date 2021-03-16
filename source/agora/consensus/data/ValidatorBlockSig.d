@@ -73,7 +73,7 @@ public struct ValidatorBlockSig
     /// The public key of the validator
     public PublicKey public_key;
 
-    /// The block signature as s of Sig (R, s) for the validator
+    /// The block signature as s of Signature (R, s) for the validator
     public SigScalar signature;
 
     public this (Height height, PublicKey public_key, SigScalar signature) @safe @nogc nothrow

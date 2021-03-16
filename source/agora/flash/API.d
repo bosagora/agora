@@ -16,6 +16,7 @@ module agora.flash.API;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.crypto.ECC;
+import agora.crypto.Schnorr: Signature;
 import agora.flash.Config;
 import agora.flash.Invoice;
 import agora.flash.OnionPacket;

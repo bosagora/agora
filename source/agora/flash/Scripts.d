@@ -134,7 +134,7 @@ public Unlock createUnlockUpdate (Signature sig, in ulong seq_id)
 {
     // remember it's LIFO when popping, TRUE is pushed last
     const seq_bytes = nativeToLittleEndian(seq_id);
-    return Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(seq_bytes)
+    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(seq_bytes)
         ~ [ubyte(OP.TRUE)]);
 }
 
@@ -156,7 +156,7 @@ public Unlock createUnlockSettle (Signature sig, in ulong seq_id)
 {
     // remember it's LIFO when popping, FALSE is pushed last
     const seq_bytes = nativeToLittleEndian(seq_id);
-    return Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(seq_bytes)
+    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(seq_bytes)
         ~ [ubyte(OP.FALSE)]);
 }
 
@@ -519,7 +519,7 @@ public Lock createLockHTLC (Hash hash, Height lock_height, Point sender_pk,
 
 public Unlock createUnlockHTLC (Signature sig, Hash secret)
 {
-    return Unlock([ubyte(64)] ~ sig[] ~ toPushOpcode(secret[]));
+    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(secret[]));
 }
 
 ///

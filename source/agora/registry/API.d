@@ -16,6 +16,7 @@ module agora.registry.API;
 import agora.common.Types;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
 
 import vibe.http.common;
 import vibe.web.rest;

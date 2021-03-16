@@ -119,7 +119,7 @@ public extern (C++) class Nominator : SCPDriver
     protected SCPEnvelopeStore scp_envelope_store;
 
     // Height => Point (public key) => Signature
-    private Sig[Point][Height] slot_sigs;
+    private Signature[Point][Height] slot_sigs;
 
     /// Enrollment manager
     public EnrollmentManager enroll_man;
@@ -473,15 +473,15 @@ extern(D):
                 envelope.statement.slotIndex, last_block.header.height.value);
             return;  // slot was already externalized or envelope is too new
         }
-        PublicKey public_key = PublicKey(envelope.statement.nodeID[]);
+        const PublicKey public_key = PublicKey(envelope.statement.nodeID[]);
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
-        Point V = Point(public_key[]);
+        const Point V = Point(public_key[]);
         if (!V.isValid())
         {
             log.trace("Invalid point from public_key {}", public_key);
             return;
         }
-        if (!verify(V, envelope.signature, challenge))
+        if (!verify(V, envelope.signature.toSignature(), challenge))
         {
             log.trace("INVALID Envelope signature {} \nfor public key {} \n" ~
                 "envelope {}\nchallenge {}",
@@ -637,7 +637,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public Sig createBlockSignature (in Block block) @trusted nothrow
+    public Signature createBlockSignature (in Block block) @trusted nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
@@ -648,7 +648,7 @@ extern(D):
         const Scalar r = rc + challenge; // make it unique each challenge
         const Point R = r.toPoint();
         log.trace("createBlockSignature: Block signing commitment R for validator {} is {}", this.kp.address, R);
-        return Sig(R, multiSigSign(r, this.kp.secret, challenge));
+        return sign(this.kp.secret, R, r, challenge);
     }
 
     extern (C++):
@@ -671,7 +671,7 @@ extern(D):
             this.signConfirmBallot(envelope);
 
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
-        envelope.signature = this.kp.sign(challenge);
+        envelope.signature = this.kp.sign(challenge).toBlob();
         log.trace("SIGN Envelope signature {}: {}", envelope.signature,
                   scpPrettify(&envelope));
     }
@@ -721,7 +721,7 @@ extern(D):
             signed_tx_set, con_data.time_offset, random_seed,
             con_data.enrolls, con_data.missing_validators);
 
-        const Sig sig = createBlockSignature(proposed_block);
+        const Signature sig = createBlockSignature(proposed_block);
 
         envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!32(sig.s[]));
 
@@ -758,13 +758,13 @@ extern(D):
         // Fetch the R from enrollment commitment for signing validator
         const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
         // Determine the R of signature (R, s)
-        Point R = CR + block_challenge.toPoint();
+        const Point R = CR + block_challenge.toPoint();
         log.trace("collectBlockSignature: [{}] Enrollment commitment (CR): {}, signing commitment (R): {}",
                   block_sig.public_key, CR, R);
         // Compose the signature (R, s)
-        const sig = Sig(R, block_sig.signature.asScalar());
+        const sig = Signature(R, block_sig.signature.asScalar());
         // Check this signature is valid for this block and signing validator
-        if (!multiSigVerify(sig, K, block_challenge))
+        if (!verify(sig, block_challenge, K))
         {
             log.warn("collectBlockSignature: INVALID Block signature received for slot {} from node {}",
                 block_sig.height, block_sig.public_key);
@@ -773,7 +773,7 @@ extern(D):
         log.trace("collectBlockSignature: VALID block signature at height {} for node {}",
             block_sig.height, block_sig.public_key);
         // collect the signature
-        this.slot_sigs[block_sig.height][K] = Sig(R, block_sig.signature.asScalar());
+        this.slot_sigs[block_sig.height][K] = Signature(R, block_sig.signature.asScalar());
         return true;
     }
 
@@ -934,7 +934,7 @@ extern(D):
             log.warn("No signatures at height {}", block.header.height);
             return Block.init;
         }
-        const Sig[Point] block_sigs = this.slot_sigs[block.header.height];
+        const Signature[Point] block_sigs = this.slot_sigs[block.header.height];
 
         auto validator_mask = BitField!ubyte(all_validators);
         foreach (K; block_sigs.byKey())
@@ -948,7 +948,7 @@ extern(D):
             }
             validator_mask[idx] = true;
         }
-        const Sig[] sigs = block_sigs.values;
+        const Signature[] sigs = block_sigs.values;
         // There must exist signatures for at least half the validators to externalize
         if (sigs.length <= all_validators / 2)
         {
@@ -956,7 +956,7 @@ extern(D):
                 sigs.length, all_validators / 2, all_validators, block.header.height);
             return Block.init;
         }
-        Block signed_block = block.updateSignature(multiSigCombine(sigs).toBlob(), validator_mask);
+        Block signed_block = block.updateSignature(multiSigCombine(sigs), validator_mask);
         log.trace("Updated block signatures for block {}, mask: {}",
                 block.header.height, validator_mask);
         return signed_block;
@@ -1392,9 +1392,9 @@ private struct SCPEnvelopeHash
         auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
         auto pair = KeyPair.fromSeed(SecretKey.fromString(seed));
         auto msg = getStHash().hashFull();
-        env.signature = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+        env.signature = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
-                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
+                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78").toBlob();
     }();
 
     // with a signature

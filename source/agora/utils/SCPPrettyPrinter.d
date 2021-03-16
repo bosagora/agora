@@ -29,6 +29,7 @@ import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
 import agora.serialization.Serializer;
 import agora.utils.PrettyPrinter;
 
@@ -422,7 +423,7 @@ unittest
     Hash seed = Hash("0X4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E2CC77AB212" ~
                      "7B7AFDEDA33B4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E" ~
                      "2CC77AB2127B7AFDEDA33B");
-    Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+    Signature sig = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     const Enrollment record =
@@ -481,7 +482,7 @@ unittest
 
     testAssert(MissingSig, scpPrettify(&env));
 
-    env.signature = sig;
+    env.signature = sig.toBlob();
 
     // null quorum (hash not found)
     static immutable PrepareRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;

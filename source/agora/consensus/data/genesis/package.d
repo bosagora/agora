@@ -20,6 +20,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.validation.Block;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
 
 /*******************************************************************************
 
@@ -97,7 +98,7 @@ version (unittest) public void checkGenesisEnrollments (const Block genesisBlock
             sorted_enrollments
                 .fold!((s, e) =>
                     format!"%s\n%s"
-                    (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature(`%s`)),"
-                        (e.key, e.enrol.utxo_key, e.enrol.random_seed, e.enrol.cycle_length, e.enrol.enroll_sig)))
+                    (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature.fromString(`%s`)),"
+                        (e.key, e.enrol.utxo_key, e.enrol.random_seed, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
                     ("\n    enrollments: [")));
 }

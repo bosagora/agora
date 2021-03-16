@@ -22,6 +22,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
 import agora.script.Lock;
 import agora.serialization.Serializer;
 
@@ -792,7 +793,7 @@ version (unittest)
         import std.format;
 
         auto validators = BitField!ubyte(keys.length);
-        Sig[] sigs;
+        Signature[] sigs;
 
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
@@ -805,10 +806,10 @@ version (unittest)
             const Scalar r = rc + challenge; // make it unique each challenge
             const Pair R = Pair.fromScalar(r);
             const K = Point(key.address[]);
-            Scalar sig = multiSigSign(r, key.secret, challenge);
+            Scalar s = sign(key.secret, R.V, r, challenge).s;
             log.trace("multiSigTestBlock: cycle {} index {}. (R, s) for validator {} is ({}, {})",
-                cycleForValidator(key.address), i, key.address, rc.toPoint(), sig);
-            sigs ~= Sig(R.V, sig);
+                cycleForValidator(key.address), i, key.address, rc.toPoint(), s);
+            sigs ~= Signature(R.V, s);
             validators[i] = true;
         }
         try
@@ -820,7 +821,7 @@ version (unittest)
         }
         // Create new block with updates
         block.header.validators = validators;
-        block.header.signature = multiSigCombine(sigs).toBlob();
+        block.header.signature = multiSigCombine(sigs);
         return block;
     }
 }

@@ -32,6 +32,7 @@ import agora.consensus.data.Enrollment;
 version (unittest) import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
 
 import std.algorithm;
 import std.format;
@@ -359,12 +360,12 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x390f...4e1d, Enrollments: [
-{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x0038...d2fb }
-{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x08e5...b569 }
-{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0b31...96a6 }
-{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x0e88...3435 }
-{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x0be5...27d7 }
-{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0x0b0d...b016 }]
+{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x5f34...20b9 }
+{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x1218...ae2e }
+{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0bce...12c0 }
+{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x3ca9...59b0 }
+{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x826c...a067 }
+{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0xff95...7844 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -402,12 +403,12 @@ private struct BlockFmt
 @safe unittest
 {
     static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x390f...4e1d, Enrollments: [
-{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x0038...d2fb }
-{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x08e5...b569 }
-{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0b31...96a6 }
-{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x0e88...3435 }
-{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x0be5...27d7 }
-{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0x0b0d...b016 }]
+{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x5f34...20b9 }
+{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x1218...ae2e }
+{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0bce...12c0 }
+{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x3ca9...59b0 }
+{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x826c...a067 }
+{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0xff95...7844 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -457,12 +458,12 @@ private struct RangeFmt (R)
     static immutable ResultStr = `
 ====================================================
 Height: 0, Prev: 0x0000...0000, Root: 0x390f...4e1d, Enrollments: [
-{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x0038...d2fb }
-{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x08e5...b569 }
-{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0b31...96a6 }
-{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x0e88...3435 }
-{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x0be5...27d7 }
-{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0x0b0d...b016 }]
+{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x5f34...20b9 }
+{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x1218...ae2e }
+{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0bce...12c0 }
+{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x3ca9...59b0 }
+{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x826c...a067 }
+{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0xff95...7844 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -507,7 +508,7 @@ Outputs (1): GCOQEOHA...LRIJ(61,000,000)
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;
-    const signature = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+    const signature = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     const block2 = second_block.updateSignature(signature, validators);
@@ -530,7 +531,7 @@ private struct EnrollmentFmt
                 HashFmt(this.enroll.utxo_key),
                 HashFmt(this.enroll.random_seed),
                 this.enroll.cycle_length,
-                HashFmt(this.enroll.enroll_sig));
+                HashFmt(this.enroll.enroll_sig.toBlob()));
         }
         catch (Exception ex)
         {
@@ -549,7 +550,7 @@ unittest
     Hash seed = Hash("0X4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E2CC77AB212" ~
                      "7B7AFDEDA33B4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E" ~
                      "2CC77AB2127B7AFDEDA33B");
-    Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+    Signature sig = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     Enrollment enrollment =
@@ -602,7 +603,7 @@ unittest
     Hash seed = Hash("0X4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E2CC77AB212" ~
                      "7B7AFDEDA33B4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E" ~
                      "2CC77AB2127B7AFDEDA33B");
-    Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+    Signature sig = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     const Enrollment record =

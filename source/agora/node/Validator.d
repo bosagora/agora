@@ -298,7 +298,7 @@ public class Validator : FullNode, API
             return this.ledger.getBlockHeight() >= block.header.height;
         }
         auto sig = this.nominator.createBlockSignature(block);
-        auto multi_sig = Sig.fromBlob(block.header.signature);
+        auto multi_sig = block.header.signature;
         auto validators = this.enroll_man.getCountOfValidators(block.header.height);
         auto signed_validators = BitField!ubyte(validators);
         iota(0, validators).each!(i => signed_validators[i]= block.header.validators[i]);
@@ -331,7 +331,7 @@ public class Validator : FullNode, API
             log.trace("Periodic Catchup: ADD to block signature R: {} and s: {}",
                 sig.R, sig.s.toString(PrintMode.Clear));
             const signed_block = block.updateSignature(
-                multiSigCombine([ multi_sig, sig ]).toBlob(), signed_validators);
+                multiSigCombine([ multi_sig, sig ]), signed_validators);
             return this.ledger.acceptBlock(signed_block);
         }
         return this.ledger.acceptBlock(block);

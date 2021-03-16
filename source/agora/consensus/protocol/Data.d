@@ -39,6 +39,7 @@ unittest
 {
     import agora.serialization.Serializer;
     import agora.common.Types;
+    import agora.crypto.Schnorr: Signature;
     import agora.consensus.data.genesis.Test;
     import std.algorithm;
     import std.array;
@@ -51,7 +52,7 @@ unittest
     Hash seed = Hash("0X4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E2CC77AB212" ~
                      "7B7AFDEDA33B4A5E1E4BAAB89F3A32518A88C31BC87F618F76673E" ~
                      "2CC77AB2127B7AFDEDA33B");
-    Signature sig = Signature("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
+    Signature sig = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     const Enrollment record = {

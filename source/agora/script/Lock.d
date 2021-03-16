@@ -34,7 +34,7 @@ module agora.script.Lock;
 import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Key;
-
+import agora.crypto.Schnorr: Signature;
 import std.traits : EnumMembers;
 
 /// Contains a tag and either a Hash or set of opcodes
@@ -152,5 +152,5 @@ public Lock genKeyLock (in PublicKey key) pure nothrow @safe
 public Unlock genKeyUnlock (in Signature sig) pure nothrow @safe
 {
     // must dupe because it's a value on the stack..
-    return Unlock(sig[].dup);
+    return Unlock(sig.toBlob()[].dup);
 }

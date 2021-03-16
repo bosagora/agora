@@ -1784,9 +1784,8 @@ LOuter: while (1)
         in Signature peer_sig, in Pair priv_nonce, in Point peer_nonce)
     {
         const nonce_pair_pk = priv_nonce.V + peer_nonce;
-        const close_multi_sig = Sig(nonce_pair_pk,
-              Sig.fromBlob(close.our_sig).s
-            + Sig.fromBlob(peer_sig).s).toBlob();
+        const close_multi_sig = Signature(nonce_pair_pk,
+              close.our_sig.s + peer_sig.s);
 
         Transaction close_tx
             = close.tx.serializeFull().deserializeFull!Transaction;

@@ -13,8 +13,12 @@
 
 module agora.common.Types;
 
+import agora.crypto.ECC;
 import agora.crypto.Key;
+import agora.crypto.Schnorr;
 public import agora.crypto.Types;
+
+import geod24.bitblob;
 
 /// Represents a specific point in time, it should be changed to time_t
 /// after time_t became platform independent
@@ -103,4 +107,35 @@ unittest
 
     y += 5;
     assert(y == 17);
+}
+
+/// Converts a signature to a BitBlob
+public BitBlob!(Signature.sizeof) toBlob (in Signature signature) pure nothrow @nogc @safe
+{
+    typeof(return) ret;
+    ret[Scalar.sizeof .. $][] = signature.R[];
+    ret[0 .. Scalar.sizeof][] = signature.s[];
+    return ret;
+}
+
+/// Deserialize a binary blob into a signature
+public static Signature toSignature (in BitBlob!(Signature.sizeof) bytes) pure nothrow @nogc @safe
+{
+    return Signature(Point(bytes[Scalar.sizeof .. $]), Scalar(bytes[0 .. Scalar.sizeof]));
+}
+
+/// Deserialize a ubyte array into a signature
+public static Signature toSignature (in ubyte[] bytes) pure nothrow @nogc @safe
+{
+    return BitBlob!(Signature.sizeof)(bytes).toSignature();
+}
+
+///
+unittest
+{
+    auto kp = KeyPair.random();
+    static immutable string message = "Well Hello!";
+    auto sig = kp.secret.sign(message);
+    auto blob = sig.toBlob();
+    assert(sig == blob.toSignature());
 }

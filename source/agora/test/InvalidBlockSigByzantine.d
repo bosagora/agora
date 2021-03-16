@@ -63,7 +63,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
         this.reason = reason;
     }
 
-    extern(D) override protected Sig createBlockSignature(in Block block)
+    extern(D) override protected Signature createBlockSignature(in Block block)
         @trusted nothrow
     {
         import agora.crypto.Hash;
@@ -76,7 +76,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
                 const Scalar rc = Scalar.random(); // This is normally the enrollment commitment
                 const Scalar r = rc + challenge;
                 const Point R = r.toPoint();
-                return Sig(R, multiSigSign(r, this.kp.secret, challenge));
+                return sign(this.kp.secret, R, r, challenge);
             case ByzantineReason.BadSignature:
                 const Scalar rc = Scalar(hashMulti(WK.Keys.NODE2.secret,
                     "consensus.signature.noise", 0));
@@ -84,7 +84,7 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
                 const Point R = r.toPoint();
                 // Sign with random in place of validator secret key
                 const wrong_scalar_v = Scalar.random();
-                return Sig(R, multiSigSign(r, wrong_scalar_v, challenge));
+                return sign(wrong_scalar_v, R, r, challenge);
         }
     }
 

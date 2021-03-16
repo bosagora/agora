@@ -149,7 +149,7 @@ public class ValidatorSet
                     pubkey.toString(),
                     enroll.cycle_length, block_height.value, ZeroDistance,
                     enroll.random_seed.toString(),
-                    extractNonce(enroll.enroll_sig)[],
+                    enroll.enroll_sig.R[],
                     EnrollmentStatus.Active);
             }();
         }
