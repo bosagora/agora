@@ -321,38 +321,38 @@ struct SCPQuorumSet {
     import std.conv;
 
     const qc1 = toSCPQuorumSet(QuorumConfig(2,
-        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")]));
+        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")]));
 
     assert(qc1.hashFull() == Hash.fromString(
         "0x7b56982f02dfbf3737ff560fe6511674e182d38475f0516cb8b0f338a3156543b0731e66c9a3ced01c238652b12e51c95207ec2bf6eae237f24b08a357a1bd2a"),
         qc1.hashFull().to!string);
 
     const qc2 = toSCPQuorumSet(QuorumConfig(3,
-        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")]));
+        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")]));
 
     assert(qc2.hashFull() == Hash.fromString(
         "0x05711002a8fc1c0b8c757fb2ddb60505af0ee49fa64af6e4d808aedc39af3eb911cf0b4a481c98ffdc4717e0d6a815b27b0bbac1eea85c5b61ba3f0ca66d8d15"),
         qc2.hashFull().to!string);
 
     const qc3 = toSCPQuorumSet(QuorumConfig(2,
-        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
              [QuorumConfig(2,
-            [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-             PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])]));
+            [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+             PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")])]));
 
     assert(qc3.hashFull() == Hash.fromString(
         "0xbd1a17a20ce1df92e3cb2eca3e3fd9c40cf5a3b5f4cf492c52f0d43588f59a9720b1c020264325e279ad0d719180dd919bb28268040cb357a787859f95a4da26"),
         qc3.hashFull().to!string);
 
     const qc4 = toSCPQuorumSet(QuorumConfig(2,
-        [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-         PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")],
+        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
              [QuorumConfig(3,
-            [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
-             PublicKey.fromString("GBYK4I37MZKLL4A2QS7VJCTDIIJK7UXWQWKXKTQ5WZGT2FPCGIVIQCY5")])]));
+            [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
+             PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")])]));
 
     assert(qc4.hashFull() == Hash.fromString(
         "0x05dbab4600c1f61044179fefc3372be33eaae218240f9a2a87bee720594c6f39486c10b6be57320fb9e036c709f0dc387d34dcb8f56674449c7ed21f5bb8c638"),

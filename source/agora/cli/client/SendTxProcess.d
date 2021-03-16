@@ -246,7 +246,7 @@ unittest
     ~ `b4d46a3a6c2a81719dc953dd4d92b493281f8f7a6cef38beca135563d0fdd115`;
     uint index = 0;
     string key = "SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI";
-    string address = "GCKLKUWUDJNWPSTU7MEN55KFBKJMQIB7H5NQDJ7MGGQVNYIVHB5ZM5XP";
+    string address = "boa1xz2t25k5rfdk0jn5lvydaa29p2fvsgpl8adsrflvxxs4dcg48paev8mw3nr";
     ulong amount = 1000;
 
     string[] args =
