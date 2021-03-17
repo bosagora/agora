@@ -43,7 +43,7 @@ unittest
     // First create a block with single transaction
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
     network.assertSameBlocks(iota(network.nodes.length), Height(1));
 
     // Now create blocks until after the end of the first validator cycle

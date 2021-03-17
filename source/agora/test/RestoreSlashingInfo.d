@@ -84,5 +84,5 @@ unittest
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
     set_b.each!(node => network.restart(node));
-    network.expectBlock(Height(GenesisValidatorCycle + 1));
+    network.expectHeight(Height(GenesisValidatorCycle + 1));
 }

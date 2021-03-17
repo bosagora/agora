@@ -133,7 +133,7 @@ unittest
 
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     auto frozen_hash = utxo_set.getUTXOs(bad_address).keys[0];
     auto frozen_utxo = utxo_set.getUTXOs(bad_address).values[0];
@@ -144,7 +144,7 @@ unittest
     // block 2
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(2));
+    network.expectHeight(Height(2));
     auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
     assert(block2.header.missing_validators.length == 1);
     assert(nodes[0].getValidatorCount() == 5,
@@ -202,19 +202,19 @@ unittest
 
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     // block 2 must not be created because all the validators do not
     // reveal any pre-images after their enrollments.
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     // all the validators start revealing pre-images
     atomicStore(network.reveal_preimage, true);
 
     // block 2 created with no slashed validator
-    network.expectBlock(Height(2));
+    network.expectHeight(Height(2));
     auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
     assert(block2.header.missing_validators.length == 0);
 }

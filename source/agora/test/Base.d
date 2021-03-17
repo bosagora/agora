@@ -600,15 +600,15 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void expectBlock (Height height, Duration timeout = 10.seconds,
+    public void expectHeight (Height height, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        this.expectBlock(iota(this.clients.length), height, timeout,
+        this.expectHeight(iota(this.clients.length), height, timeout,
             file, line);
     }
 
     /// Ditto
-    public void expectBlock (Idxs)(Idxs clients_idxs, Height height,
+    public void expectHeight (Idxs)(Idxs clients_idxs, Height height,
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
@@ -638,16 +638,16 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void expectBlock (Height height, const(BlockHeader) enroll_header,
+    public void expectHeightAndPreImg (Height height, const(BlockHeader) enroll_header,
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        this.expectBlock(iota(GenesisValidators), height, enroll_header,
+        this.expectHeightAndPreImg(iota(GenesisValidators), height, enroll_header,
             timeout, file, line);
     }
 
     /// Ditto
-    public void expectBlock (Idxs)(Idxs clients_idxs, Height height,
+    public void expectHeightAndPreImg (Idxs)(Idxs clients_idxs, Height height,
         const(BlockHeader) enroll_header, Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
@@ -657,7 +657,7 @@ public class TestAPIManager
         auto distance = cast(ushort)(height - enroll_header.height - 1);
         waitForPreimages(clients_idxs, enroll_header.enrollments,
             distance, timeout);
-        this.expectBlock(clients_idxs, height, timeout, file, line);
+        this.expectHeight(clients_idxs, height, timeout, file, line);
     }
 
     /***************************************************************************
@@ -1049,7 +1049,7 @@ public class TestAPIManager
                 (file, line, enrolled_height));
         // Check block is at target height for the participating clients
         const enroll_block = first_client.getBlock(enrolled_height);
-        expectBlock(client_idxs, target_height,
+        expectHeightAndPreImg(client_idxs, target_height,
             enroll_block.header, 10.seconds, file, line);
     }
 

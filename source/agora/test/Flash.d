@@ -327,7 +327,7 @@ unittest
     foreach (idx, tx; txs)
     {
         node_1.putTransaction(tx);
-        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
     auto factory = new FlashNodeFactory(network.getRegistry());
@@ -353,7 +353,7 @@ unittest
         utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
 
     // await funding transaction
-    network.expectBlock(Height(9), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
     const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
@@ -387,16 +387,16 @@ unittest
 
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
-    network.expectBlock(Height(10), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     auto tx_10 = node_1.getBlocksFrom(10, 1)[0].txs[0];
     assert(tx_10 == update_tx);
 
     // at this point bob will automatically publish the latest update tx
-    network.expectBlock(Height(11), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
 
     // and then a settlement will be published (but only after time lock expires)
     auto settle_tx = bob.getLastSettleTx(chan_id);
-    network.expectBlock(Height(12), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
     auto tx_12 = node_1.getBlocksFrom(12, 1)[0].txs[0];
     //assert(tx_12 == settle_tx);
 }
@@ -424,7 +424,7 @@ unittest
     foreach (idx, tx; txs)
     {
         node_1.putTransaction(tx);
-        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
     auto factory = new FlashNodeFactory(network.getRegistry());
@@ -459,7 +459,7 @@ unittest
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
-    network.expectBlock(Height(9), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
     const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
@@ -477,7 +477,7 @@ unittest
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
-    network.expectBlock(Height(10), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
     assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
 
@@ -507,14 +507,14 @@ unittest
     //
     log.info("Beginning bob => charlie collaborative close..");
     bob.beginCollaborativeClose(bob_charlie_chan_id);
-    network.expectBlock(Height(11), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
     auto block11 = node_1.getBlocksFrom(11, 1)[0];
     log.info("bob closing tx: {}", bob.getClosingTx(bob_charlie_chan_id));
     assert(block11.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
 
     log.info("Beginning alice => bob collaborative close..");
     alice.beginCollaborativeClose(alice_bob_chan_id);
-    network.expectBlock(Height(12), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
     log.info("alice closing tx: {}", alice.getClosingTx(alice_bob_chan_id));
     assert(block12.txs[0] == alice.getClosingTx(alice_bob_chan_id));
@@ -542,7 +542,7 @@ unittest
     foreach (idx, tx; txs)
     {
         node_1.putTransaction(tx);
-        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
     auto factory = new FlashNodeFactory(network.getRegistry());
@@ -577,7 +577,7 @@ unittest
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
-    network.expectBlock(Height(9), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
     const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
@@ -595,7 +595,7 @@ unittest
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
-    network.expectBlock(Height(10), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
     assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
 
@@ -613,7 +613,7 @@ unittest
     log.info("Charlie Alice channel ID: {}", charlie_alice_chan_id);
 
     // await bob & bob channel funding transaction
-    network.expectBlock(Height(11), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
     const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
     assert(block_11.txs.any!(tx => tx.hashFull() == charlie_alice_chan_id));
 
@@ -674,7 +674,7 @@ unittest
     foreach (idx, tx; txs)
     {
         node_1.putTransaction(tx);
-        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
     auto factory = new FlashNodeFactory(network.getRegistry());
@@ -709,7 +709,7 @@ unittest
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
-    network.expectBlock(Height(9), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
     const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
@@ -727,7 +727,7 @@ unittest
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
-    network.expectBlock(Height(10), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
     assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
 
@@ -747,7 +747,7 @@ unittest
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id_2);
 
     // await bob & bob channel funding transaction
-    network.expectBlock(Height(11), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
     const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
     assert(block_11.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id_2));
 
@@ -772,7 +772,7 @@ unittest
     charlie.waitForUpdateIndex(bob_charlie_chan_id_2, 2);
 
     bob.beginCollaborativeClose(bob_charlie_chan_id_2);
-    network.expectBlock(Height(12), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
     assert(block12.txs[0] == bob.getClosingTx(bob_charlie_chan_id_2));
     assert(block12.txs[0].outputs.length == 2);
@@ -780,7 +780,7 @@ unittest
     assert(block12.txs[0].outputs[1].value == Amount(2000));
 
     alice.beginCollaborativeClose(alice_bob_chan_id);
-    network.expectBlock(Height(13), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(13), network.blocks[0].header);
     auto block13 = node_1.getBlocksFrom(13, 1)[0];
     assert(block13.txs[0] == alice.getClosingTx(alice_bob_chan_id));
     assert(block13.txs[0].outputs.length == 2);
@@ -788,7 +788,7 @@ unittest
     assert(block13.txs[0].outputs[1].value == Amount(2010));
 
     bob.beginCollaborativeClose(bob_charlie_chan_id);
-    network.expectBlock(Height(14), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(14), network.blocks[0].header);
     auto block14 = node_1.getBlocksFrom(14, 1)[0];
     assert(block14.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
     assert(block14.txs[0].outputs.length == 1); // No updates
@@ -829,7 +829,7 @@ unittest
     foreach (idx, tx; txs)
     {
         node_1.putTransaction(tx);
-        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
     auto factory = new FlashNodeFactory(network.getRegistry());
@@ -856,7 +856,7 @@ unittest
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
-    network.expectBlock(Height(9), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
     const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
@@ -873,7 +873,7 @@ unittest
     Thread.sleep(1.seconds);
 
     bob.beginCollaborativeClose(alice_bob_chan_id);
-    network.expectBlock(Height(10), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     auto block10 = node_1.getBlocksFrom(10, 1)[0];
     assert(block10.txs[0] == bob.getClosingTx(alice_bob_chan_id));
     assert(block10.txs[0].outputs.length == 1); // No updates

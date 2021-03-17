@@ -213,7 +213,7 @@ unittest
     assert(node_1.getQuorumConfig().threshold == 6); // We should need all 6 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }
 
 /// Block should be added if we have 5 of 6 valid signatures (1 not signing the envelope)
@@ -231,7 +231,7 @@ unittest
     assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }
 
 /// Block should be added if we have 5 of 6 valid signatures (1 signs envelope with invalid signature)
@@ -249,7 +249,7 @@ unittest
     assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }
 
 

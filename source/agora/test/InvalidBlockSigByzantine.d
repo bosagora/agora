@@ -150,7 +150,7 @@ unittest
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 
@@ -169,7 +169,7 @@ unittest
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 

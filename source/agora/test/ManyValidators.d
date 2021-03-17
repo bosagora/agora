@@ -55,7 +55,7 @@ void manyValidators (size_t validators)
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // make sure outsiders are up to date
-    network.expectBlock(iota(GenesisValidators, validators),
+    network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle - 1));
 
     // Now we enroll new validators and re-enroll the original validators
@@ -66,7 +66,7 @@ void manyValidators (size_t validators)
         Height(GenesisValidatorCycle));
 
     // make sure outsiders are up to date
-    network.expectBlock(iota(GenesisValidators, validators),
+    network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
 
     // check all validators are enrolled

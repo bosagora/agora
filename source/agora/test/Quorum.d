@@ -67,7 +67,7 @@ unittest
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // make sure outsiders are up to date
-    network.expectBlock(iota(GenesisValidators, validators),
+    network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle - 1));
 
     // re-enroll Genesis validators and enroll outsider validators
@@ -78,7 +78,7 @@ unittest
         Height(GenesisValidatorCycle));
 
     // make sure outsiders are up to date
-    network.expectBlock(iota(GenesisValidators, validators),
+    network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
 
     // these are no longer enrolled
@@ -93,6 +93,6 @@ unittest
         node.sleep(0.seconds, false));
 
     // all nodes should have same block height now
-    network.expectBlock(iota(nodes.length), Height(GenesisValidatorCycle + 1),
+    network.expectHeightAndPreImg(iota(nodes.length), Height(GenesisValidatorCycle + 1),
         nodes[0].getAllBlocks()[GenesisValidatorCycle].header);
 }

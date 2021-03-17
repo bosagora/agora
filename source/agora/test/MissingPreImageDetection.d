@@ -156,7 +156,7 @@ unittest
 
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }
 
 /// Situation: There is a validator does not reveal a pre-image for next
@@ -201,5 +201,5 @@ unittest
 
     // try to make block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }

@@ -35,7 +35,7 @@ unittest
     // height 1
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     const Height UnlockHeight_2 = Height(2);
     auto unlock_2_txs = txs.map!(tx => TxBuilder(tx).sign(TxType.Payment,
@@ -54,7 +54,7 @@ unittest
     // should be accepted
     unlock_2_txs.each!(tx => node_1.putTransaction(tx));
 
-    network.expectBlock(Height(2), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
     auto blocks = node_1.getBlocksFrom(2, 1);
     assert(blocks.length == 1);

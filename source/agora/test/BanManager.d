@@ -74,7 +74,7 @@ unittest
 
     genBlockTransactions(1).each!(tx => nodes[0].putTransaction(tx));
     // wait until the transactions were gossiped
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
 
     // full node will be banned if it cannot communicate
@@ -91,7 +91,7 @@ unittest
         auto new_tx = genBlockTransactions(1);
         left_txs ~= new_tx;
         new_tx.each!(tx => nodes[0].putTransaction(tx));
-        network.expectBlock(iota(0, 4), Height(1 + block_idx + 1));
+        network.expectHeight(iota(0, 4), Height(1 + block_idx + 1));
         retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds,
             format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
     }
@@ -113,5 +113,5 @@ unittest
     auto new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
     new_tx.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(6));
+    network.expectHeight(Height(6));
 }

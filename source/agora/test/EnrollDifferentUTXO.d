@@ -99,7 +99,7 @@ unittest
     // generate 16 blocks
     network.generateBlocks(Height(16));
     assert(network.blocks[0].header.enrollments.length >= 1);
-    network.expectBlock(Height(16), network.blocks[0].header, 5.seconds);
+    network.expectHeightAndPreImg(Height(16), network.blocks[0].header, 5.seconds);
 
     // Discarded UTXOs (just to trigger block creation)
     auto spendable = network.blocks[$ - 1].spendable().array;
@@ -115,7 +115,7 @@ unittest
 
     // Block 17
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(17), network.blocks[0].header, 10.seconds);
+    network.expectHeightAndPreImg(Height(17), network.blocks[0].header, 10.seconds);
 
     // Freeze builders
     auto freezable = txs[$ - 4]
@@ -133,7 +133,7 @@ unittest
 
     // Block 18
     freeze_txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(18), network.blocks[0].header, 5.seconds);
+    network.expectHeightAndPreImg(Height(18), network.blocks[0].header, 5.seconds);
 
     // Block 19
     auto new_txs = txs[$ - 3]
@@ -141,7 +141,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
     new_txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(19), network.blocks[0].header, 5.seconds);
+    network.expectHeightAndPreImg(Height(19), network.blocks[0].header, 5.seconds);
 
     // Now we re-enroll the first validator with a new UTXO but it will fail
     // because an enrollment with same public key of the first validator is
@@ -167,7 +167,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
     new_txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectBlock(Height(20), 5.seconds);
+    network.expectHeight(Height(20), 5.seconds);
     auto b20 = nodes[0].getBlocksFrom(20, 2)[0];
     assert(b20.header.enrollments.length == 5);
 
@@ -183,7 +183,7 @@ unittest
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
     new_txs.each!(tx => nodes[0].putTransaction(tx));
     network.waitForPreimages(b20.header.enrollments, 1, 2.seconds);
-    network.expectBlock(Height(21), 5.seconds);
+    network.expectHeight(Height(21), 5.seconds);
     auto b21 = nodes[0].getBlocksFrom(21, 2)[0];
     assert(b21.header.enrollments.length == 1);
     assert(b21.header.enrollments[0] == new_enroll);

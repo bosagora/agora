@@ -58,7 +58,7 @@ unittest
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
-        network.expectBlock(Height(block_idx + 1), blocks[0].header);
+        network.expectHeightAndPreImg(Height(block_idx + 1), blocks[0].header);
 
         blocks ~= node_1.getBlocksFrom(block_idx + 1, 1);
         block_txes ~= txs.sort.array;
@@ -104,11 +104,11 @@ unittest
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(2));
+    network.expectHeight(Height(2));
 }
 
 /// Merkle Proof
@@ -147,7 +147,7 @@ unittest
     const Hash expected_root = hashMulti(habcd, hefgh);
 
     // wait for transaction propagation
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     Hash[] merkle_path;
     foreach (node; nodes)
@@ -192,11 +192,11 @@ unittest
     // wait for preimages to be revealed before making blocks
     network.waitForPreimages(network.blocks[0].header.enrollments, 6);
 
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(2));
+    network.expectHeight(Height(2));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
 
@@ -226,10 +226,10 @@ unittest
     txs.each!(tx => node_1.putTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation
-    network.expectBlock(Height(2));  // no new block yet (1 rejected tx)
+    network.expectHeight(Height(2));  // no new block yet (1 rejected tx)
 
     node_1.putTransaction(backup_tx);
-    network.expectBlock(Height(3));  // new block finally created
+    network.expectHeight(Height(3));  // new block finally created
 }
 
 // Ensure that when creating a frozen UTXO, the refund is not frozen too
@@ -258,7 +258,7 @@ unittest
     network.clients[0].putTransaction(tx);
 
     // Wait for the block to be created
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
     const b1 = network.clients[0].getBlock(1);
     assert(b1.txs.length == 1);
 
@@ -267,6 +267,6 @@ unittest
     assert(tx2.outputs.length == 1);
 
     network.clients[0].putTransaction(tx2);
-    network.expectBlock(Height(2));
+    network.expectHeight(Height(2));
     assert(network.clients[0].getBlock(2).txs.length == 1);
 }

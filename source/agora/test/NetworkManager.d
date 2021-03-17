@@ -52,7 +52,7 @@ unittest
     nodes.take(GenesisValidators / 2).each!(node => node.clearFilter());
 
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
-    network.expectBlock(Height(1), b0.header);
+    network.expectHeightAndPreImg(Height(1), b0.header);
 }
 
 /// test behavior when a node sends bad block data
@@ -160,13 +160,13 @@ unittest
     // create genesis block
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
     last_txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock(iota(GenesisValidators), Height(1));
+    network.expectHeight(iota(GenesisValidators), Height(1));
 
     // create 1 additional block and enough `tx`es
     auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
     // send it to one node
     txs.each!(tx => node_validators[0].putTransaction(tx));
-    network.expectBlock(iota(GenesisValidators), Height(2));
+    network.expectHeight(iota(GenesisValidators), Height(2));
     last_txs = txs;
 
     // the validator node has 2 blocks, but bad node pretends to have 3

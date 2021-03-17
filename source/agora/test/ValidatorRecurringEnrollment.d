@@ -54,7 +54,7 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        network.expectBlock(new_block_height, blocks[0].header);
+        network.expectHeightAndPreImg(new_block_height, blocks[0].header);
 
         // add next block
         blocks ~= node_1.getBlocksFrom(new_block_height, 1);
@@ -146,7 +146,7 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        network.expectBlock(new_block_height, blocks[0].header);
+        network.expectHeightAndPreImg(new_block_height, blocks[0].header);
 
         // add next block
         blocks ~= node_1.getBlocksFrom(new_block_height, 1);
@@ -271,7 +271,7 @@ unittest
     // Wake one up right before cycle ends
     sleep_node_2.ctrl.sleep(0.seconds);
     // Let it catch up
-    network.expectBlock(iota(GenesisValidators - 1),
+    network.expectHeight(iota(GenesisValidators - 1),
         Height(GenesisValidatorCycle - 1));
 
     network.generateBlocks(iota(GenesisValidators - 1),
@@ -283,7 +283,7 @@ unittest
     // This nodes will wake up to an expired cycle, it should immediately enroll
     sleep_node_1.ctrl.sleep(0.seconds);
     // Let it catch up
-    network.expectBlock(Height(GenesisValidatorCycle));
+    network.expectHeight(Height(GenesisValidatorCycle));
 
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle + 1));
