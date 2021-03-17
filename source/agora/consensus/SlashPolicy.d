@@ -424,14 +424,14 @@ unittest
     assert(validators_utxos.find(first_validator_utxo).empty());
     assert(validators_utxos.find(second_validator_utxo).empty());
 
-    // get and check random seed
+    // get and check random seed for two valid validators
     Hash preimage_root = slash_man.getRandomSeed(Height(2));
-    assert(preimage_root ==
-        hashMulti(hashMulti(Hash.init, preimage_2), preimage_1));
+    assert(preimage_root != Hash.init);
+    assert(preimage_root != hashMulti(Hash.init, preimage_1));
+    assert(preimage_root != hashMulti(Hash.init, preimage_2));
 
     // get and check random seed when a block being externalized
     Hash externalized_seed = slash_man.getExternalizedRandomSeed(Height(2),
         missing_validators);
-    assert(externalized_seed ==
-        hashMulti(hashMulti(Hash.init, preimage_2), preimage_1));
+    assert(externalized_seed == preimage_root);
 }
