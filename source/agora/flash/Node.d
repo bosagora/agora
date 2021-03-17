@@ -603,6 +603,10 @@ public abstract class FlashNode : ControlFlashAPI
         /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
         /* in */ Height height) @trusted
     {
+        if (packet.version_byte != OnionVersion)
+            return Result!PublicNonce(ErrorCode.VersionMismatch,
+                "Protocol version mismatch");
+
         auto channel = chan_id in this.channels;
         if (channel is null)
             return Result!PublicNonce(ErrorCode.InvalidChannelID,

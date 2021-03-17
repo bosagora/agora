@@ -58,6 +58,9 @@ version (unittest)
 
 mixin AddLogger!();
 
+/// Onion protocol version
+public const enum OnionVersion = 0;
+
 /// Per-hop onion packet
 public struct OnionPacket
 {
@@ -181,7 +184,7 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
     Hash next_chan_id;
 
     Pair ephemeral_kp = Pair.random();
-    OnionPacket packet = { version_byte : 0 };
+    OnionPacket packet = { version_byte : OnionVersion };
 
     // onion packets have to be created from right to left
     assert(path.length <= 20);
