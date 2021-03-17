@@ -47,7 +47,7 @@ unittest
     ));
     // When a block is created, the transaction is deleted from the transaction pool.
     node_1.putTransaction(txs[$-1]);
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     nodes.each!(node =>
         txs.each!(tx =>

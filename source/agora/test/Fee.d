@@ -48,7 +48,7 @@ unittest
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        network.expectBlock(new_block_height, blocks[0].header);
+        network.expectHeightAndPreImg(new_block_height, blocks[0].header);
 
         // add next block
         blocks ~= node_1.getBlocksFrom(new_block_height, 1);
@@ -191,7 +191,7 @@ unittest
         // send it to one node
         txs.each!(tx => valid_node.putTransaction(tx));
 
-        network.expectBlock(iota(1, GenesisValidators),
+        network.expectHeightAndPreImg(iota(1, GenesisValidators),
             new_block_height, blocks[0].header);
 
         // add next block
@@ -250,9 +250,9 @@ unittest
         .deduct(Amount.UnitPerCoin).sign()).array();
     // Send a single TX with fees to a node
     node_1.putTransaction(txs[0]);
-    network.expectBlock(Height(1), blocks[0].header);
+    network.expectHeightAndPreImg(Height(1), blocks[0].header);
 
     // The fees from the last block should not trigger a new block creation
     Thread.sleep(1.seconds);
-    network.expectBlock(Height(1), blocks[0].header);
+    network.expectHeightAndPreImg(Height(1), blocks[0].header);
 }

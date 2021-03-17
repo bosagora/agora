@@ -121,7 +121,7 @@ unittest
                 .map!(ptx => TxBuilder(ptx).refund(WK.Keys[count].address).sign())
                 .array();
         txs.each!(tx => nodes[1].putTransaction(tx));
-        network.expectBlock(Height(count + 1), b0.header);
+        network.expectHeightAndPreImg(Height(count + 1), b0.header);
     }
 
     // Now create an Enrollment for nodes[0], create block #20, and restart nodes[0]
@@ -131,14 +131,14 @@ unittest
         .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
-    network.expectBlock(iota(1), Height(GenesisValidatorCycle),
+    network.expectHeightAndPreImg(iota(1), Height(GenesisValidatorCycle),
         b0.header);
     retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
         2.seconds);
 
     network.restart(nodes[0]);
     network.waitForDiscovery();
-    network.expectBlock(iota(1), Height(20));
+    network.expectHeight(iota(1), Height(20));
 
     // Now make a new block and make sure only nodes[0] signs it
     txs = txs
@@ -146,7 +146,7 @@ unittest
         .array();
     txs.each!(tx => nodes[1].putTransaction(tx));
     const b20 = nodes[0].getBlocksFrom(20, 2)[0];
-    network.expectBlock(iota(1), Height(21), b20.header);
+    network.expectHeightAndPreImg(iota(1), Height(21), b20.header);
 
     PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
 

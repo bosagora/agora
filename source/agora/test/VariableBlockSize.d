@@ -43,7 +43,7 @@ unittest
     foreach (block_idx, block_txs; txs.chunks(txs_to_nominate).enumerate)
     {
         block_txs.each!(tx => network.clients[0].putTransaction(tx));
-        network.expectBlock(Height(block_idx + 1), network.blocks[0].header,
+        network.expectHeightAndPreImg(Height(block_idx + 1), network.blocks[0].header,
             5.seconds);
     }
 

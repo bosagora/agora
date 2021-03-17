@@ -86,7 +86,7 @@ unittest
     txs.enumerate.each!((idx, tx) => network.clients[idx % network.clients.length]
         .putTransaction(tx));
 
-    network.expectBlock(Height(1), blocks[0].header);
+    network.expectHeightAndPreImg(Height(1), blocks[0].header);
 }
 
 // A node never receives the TXs that was externalized. It should be able to
@@ -163,5 +163,5 @@ unittest
     Thread.sleep(1.seconds);
     txs.each!(tx => assert(!picky_node.hasTransactionHash(tx.hashFull())));
 
-    network.expectBlock(Height(1), blocks[0].header);
+    network.expectHeightAndPreImg(Height(1), blocks[0].header);
 }

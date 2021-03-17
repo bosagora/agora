@@ -38,13 +38,13 @@ unittest
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     // Now shut down & restart one node
     auto restartMe = nodes[$-1];
     network.restart(restartMe);
     network.waitForDiscovery();
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }
 
 /// Node which has a persistent Ledger (restart always clear the local state)
@@ -132,12 +132,12 @@ unittest
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 
     // Now shut down & restart one node
     auto restartMe = nodes[$-1];
     scope(failure) restartMe.printLog();
     network.restart(restartMe);
     network.waitForDiscovery();
-    network.expectBlock(Height(1));
+    network.expectHeight(Height(1));
 }

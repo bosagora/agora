@@ -149,7 +149,7 @@ unittest
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // make sure outsiders are up to date
-    network.expectBlock(iota(GenesisValidators, validators),
+    network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle - 1));
 
     // Now we enroll new validators and re-enroll the original validators
@@ -160,7 +160,7 @@ unittest
         Height(GenesisValidatorCycle));
 
     // make sure outsiders are up to date
-    network.expectBlock(iota(GenesisValidators, validators),
+    network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
 
     enum quorums_2 = [

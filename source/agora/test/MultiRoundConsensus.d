@@ -113,7 +113,7 @@ unittest
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => validator.putTransaction(tx));
 
-    network.expectBlock(Height(1), conf.timeout + 5.seconds);
+    network.expectHeight(Height(1), conf.timeout + 5.seconds);
     assert(CustomNominator.round_number >= 2,
         format("The validator's round number is %s. Expected: above %s",
             CustomNominator.round_number, 2));
