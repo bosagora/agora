@@ -90,5 +90,8 @@ public enum ErrorCode : ushort
 
     /// The two counter-parties have mismatching block height information,
     /// which means one of the two nodes is out of sync with the blockchain.
-    MismatchingBlockHeight
+    MismatchingBlockHeight,
+
+    /// Receiving node implements a different version of the Onion protocol
+    VersionMismatch
 }

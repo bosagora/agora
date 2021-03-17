@@ -238,9 +238,10 @@ public class FlashNodeFactory
     }
 
     /// Create a new flash node user
-    public RemoteAPI!TestFlashAPI create (const Pair pair, string agora_address)
+    public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
+        (const Pair pair, string agora_address)
     {
-        RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!TestFlashNode(
+        RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
             this.agora_registry, agora_address, &this.flash_registry,
             5.seconds);  // timeout from main thread
@@ -791,4 +792,89 @@ unittest
     auto block14 = node_1.getBlocksFrom(14, 1)[0];
     assert(block14.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
     assert(block14.txs[0].outputs.length == 1); // No updates
+}
+
+unittest
+{
+    static class BleedingEdgeFlashNode : TestFlashNode
+    {
+        mixin ForwardCtor!();
+
+        ///
+        protected override void paymentRouter (in Hash chan_id,
+            in Hash payment_hash, in Amount amount,
+            in Height lock_height, in OnionPacket packet)
+        {
+            OnionPacket hijacked = packet;
+            hijacked.version_byte += 1;
+            super.paymentRouter(chan_id, payment_hash, amount,
+                lock_height, hijacked);
+        }
+    }
+
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectBlock(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    const bob_pk = bob_pair.V;
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+    auto alice = factory.create!BleedingEdgeFlashNode(alice_pair, address);
+    auto bob = factory.create(bob_pair, address);
+
+    /+ OPEN ALICE => BOB CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_bob_chan_id = alice.openNewChannel(
+        alice_utxo, Amount(10_000), 0, bob_pk);
+    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
+
+    // await alice & bob channel funding transaction
+    network.expectBlock(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(alice_bob_chan_id);
+    bob.waitChannelOpen(alice_bob_chan_id);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    // begin off-chain transactions
+    auto inv_1 = bob.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
+
+    // Bob will receive packets with a different version than it implements
+    alice.payInvoice(inv_1);
+    Thread.sleep(1.seconds);
+
+    bob.beginCollaborativeClose(alice_bob_chan_id);
+    network.expectBlock(Height(10), network.blocks[0].header);
+    auto block10 = node_1.getBlocksFrom(10, 1)[0];
+    assert(block10.txs[0] == bob.getClosingTx(alice_bob_chan_id));
+    assert(block10.txs[0].outputs.length == 1); // No updates
 }
