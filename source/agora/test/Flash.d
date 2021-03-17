@@ -242,7 +242,8 @@ public class FlashNodeFactory
     {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!TestFlashNode(
             KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
-            this.agora_registry, agora_address, &this.flash_registry);
+            this.agora_registry, agora_address, &this.flash_registry,
+            5.seconds);  // timeout from main thread
         api.start();
 
         this.addresses ~= pair.V;
