@@ -304,9 +304,9 @@ public class UpdateSigner
             settle_res.value, priv_nonce, peer_nonce))
         {
             // todo: inform? ban?
-            log.info("{}: Error during validation: {}. For settle signature "
-                ~ "from {}: {}",
-                this.kp.address.flashPrettify, error,
+            log.info("{}: Error during validation: {}. For settle signature {}"
+                ~ " from {}: {}",
+                this.kp.address.flashPrettify, error, seq_id,
                 this.peer_pk.flashPrettify, settle_res.value);
             assert(0);
         }
@@ -348,8 +348,8 @@ public class UpdateSigner
         {
             // todo: inform? ban?
             log.info("{}: Error during validation: {}. For update "
-                ~ "signature from {}: {}",
-                this.kp.address.flashPrettify, error,
+                ~ "signature {} from {}: {}",
+                this.kp.address.flashPrettify, error, seq_id,
                 this.peer_pk.flashPrettify, update_res.value);
             assert(0);
         }
