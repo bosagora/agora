@@ -757,7 +757,7 @@ LOuter: while (1)
 
         // todo: replace with a better retry mechanism
         Result!PublicNonce result;
-        while (1)
+        foreach (idx; 0 .. 3)
         {
             // re-fold
             if (update_height != this.height)
@@ -784,12 +784,15 @@ LOuter: while (1)
 
                 log.info("{}: Error proposing update with {}: {}",
                     this.kp.address.flashPrettify, this.peer_pk.flashPrettify, result);
-                this.taskman.wait(500.msecs);
+                this.taskman.wait((2 ^^ idx).seconds);
                 continue;
             }
 
             break;
         }
+
+        if (result.error)
+            return; // TODO: is further error recovery needed?
 
         const old_balance = this.cur_balance;
         this.cur_seq_id = new_seq_id;
@@ -979,7 +982,7 @@ LOuter: while (1)
         const new_seq_id = this.cur_seq_id + 1;
 
         Result!PublicNonce result;
-        while (1)
+        foreach (idx; 0 .. 3)
         {
             result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
                 payment.payment_hash, payment.amount, payment.lock_height,
@@ -993,11 +996,18 @@ LOuter: while (1)
 
                 log.info("{}: Error proposing payment: {}", this.kp.address.flashPrettify,
                     result);
-                this.taskman.wait(100.msecs);
+                this.taskman.wait((2 ^^ idx).seconds);
                 continue;
             }
 
             break;
+        }
+
+        if (result.error)
+        {
+            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
+                result.error);
+            return true;  // remove it from the queue
         }
 
         this.cur_seq_id = new_seq_id;
