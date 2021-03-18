@@ -17,7 +17,7 @@ import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-public import agora.consensus.state.UTXOSet;
+public import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.serialization.Serializer;

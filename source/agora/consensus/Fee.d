@@ -20,7 +20,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.Params;
-import agora.consensus.state.UTXOSet;
+import agora.consensus.state.UTXOCache;
 import agora.crypto.Key;
 import agora.utils.Log;
 
@@ -537,7 +537,7 @@ public class FeeManager
 
 unittest
 {
-    import agora.consensus.state.UTXOSet;
+    import agora.consensus.state.UTXOCache;
     import agora.crypto.Hash;
     import agora.utils.Test;
 

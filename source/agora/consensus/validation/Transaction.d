@@ -18,7 +18,7 @@ import agora.common.Types;
 import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
-import agora.consensus.state.UTXOSet;
+import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.script.Engine;
 import agora.script.Lock;

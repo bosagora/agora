@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.state.UTXOSet;
+module agora.consensus.state.UTXOCache;
 
 import agora.common.Amount;
 import agora.common.Set;

@@ -56,7 +56,7 @@ import agora.consensus.EnrollmentPool;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
 import agora.consensus.state.ValidatorSet;
-import agora.consensus.state.UTXOSet;
+import agora.consensus.state.UTXOCache;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;

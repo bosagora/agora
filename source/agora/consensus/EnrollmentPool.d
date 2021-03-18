@@ -22,7 +22,7 @@ import agora.crypto.Key;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
-import agora.consensus.state.UTXOSet;
+import agora.consensus.state.UTXOCache;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState;
 import agora.consensus.validation;
 import agora.crypto.ECC;
