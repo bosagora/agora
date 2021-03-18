@@ -35,7 +35,6 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
-import agora.consensus.state.UTXODB;
 import agora.crypto.Key;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
@@ -298,7 +297,7 @@ unittest
 {
     import agora.consensus.data.Transaction;
     import agora.consensus.PreImage;
-    import agora.consensus.state.UTXOSet;
+    import agora.consensus.state.UTXOCache;
     import agora.crypto.ECC;
     import agora.crypto.Hash;
 

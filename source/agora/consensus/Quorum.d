@@ -21,7 +21,7 @@ import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.state.UTXOSet;
+import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 

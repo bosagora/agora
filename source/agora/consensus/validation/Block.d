@@ -21,7 +21,7 @@ import agora.consensus.data.DataPayload;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
-import agora.consensus.state.UTXOSet;
+import agora.consensus.state.UTXOCache;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
                                             EnrollmentStatus;
 import agora.crypto.ECC;
