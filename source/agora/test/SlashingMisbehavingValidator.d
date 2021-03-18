@@ -22,7 +22,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.state.UTXODB;
+import agora.consensus.state.UTXOSet;
 import agora.crypto.Schnorr;
 import agora.utils.Test;
 import agora.test.Base;

@@ -51,8 +51,8 @@ unittest
 private class PersistentNode : TestValidatorNode
 {
     import agora.consensus.EnrollmentManager;
-    import agora.consensus.state.UTXODB;
     import agora.consensus.Fee;
+    import agora.consensus.state.UTXOSet;
     import agora.node.BlockStorage;
 
     mixin ForwardCtor!();
