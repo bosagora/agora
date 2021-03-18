@@ -61,7 +61,7 @@ int main (string[] args)
 
     // keep polling the nodes for a complete network discovery, until a timeout
     writefln("%s waitForDiscovery", PREFIX);
-    const discovery_duration = 20.seconds;
+    const discovery_duration = 60.seconds;
     clients.enumerate.each!((idx, client) =>
     {
         retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
