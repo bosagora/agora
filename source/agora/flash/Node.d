@@ -301,10 +301,7 @@ public abstract class FlashNode : ControlFlashAPI
     /// for scheduling
     protected ITaskManager taskman;
 
-    /// Channels which are pending and not accepted yet.
-    /// Once the channel handshake is complete and only after the funding
-    /// transaction is externalized, the Channel channel gets promoted
-    /// to a Channel with a unique ID derived from the hash of the funding tx.
+    /// All channels which we are the participants of (open / pending / closed)
     protected Channel[Hash] channels;
 
     /// These are the known channels of which we may not necessary be a
