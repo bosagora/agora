@@ -175,7 +175,7 @@ unittest
 
 private void assertValidatorsBitmask (const Block block)
 {
-    auto node2_enrollment_index = 3; // Check in agora.consensus.data.genesis.Test for position of NODE2
+    auto node2_enrollment_index = 0; // Check in agora.consensus.data.genesis.Test for position of NODE2
     assert(!block.header.validators[node2_enrollment_index], // clients are ordered by public key but validators use utxo for bitmask
         format!"The first validator signed with an invalid block signature so should not be included. mask=%s"
         (block.header.validators));

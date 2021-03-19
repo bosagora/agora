@@ -57,7 +57,7 @@ public immutable(Block) makeGenesis (
 /// This will not be used for the final Coinnet GenesisBlock which will use unknown key secrets. But can be useful for now.
 unittest
 {
-    import agora.consensus.data.genesis.Test : GenesisBlock;
+    import agora.consensus.data.genesis.Test;
 
     checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 20);
 }
@@ -65,13 +65,14 @@ unittest
 /// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Test.d)
 unittest
 {
-    import agora.consensus.data.genesis.Coinnet : GenesisBlock;
+    import agora.consensus.data.genesis.Coinnet;
 
     checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 1008);
 }
 
 /// Assert the enrollments of a GenesisBlock match expected values and are sorted by utxo (print the potential replacement set when not matching)
-version (unittest) public void checkGenesisEnrollments (const Block genesisBlock, KeyPair[] keys, uint cycle_length)
+version (unittest) public void checkGenesisEnrollments (
+    in Block genesisBlock, in KeyPair[] keys, uint cycle_length)
 {
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.Transaction : Transaction, TxType;
@@ -101,4 +102,16 @@ version (unittest) public void checkGenesisEnrollments (const Block genesisBlock
                     (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature.fromString(`%s`)),"
                         (e.key, e.enrol.utxo_key, e.enrol.random_seed, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
                     ("\n    enrollments: [")));
+}
+
+/// Can be used to update the config.yaml (e.g. tests/system/node/2/config.yaml)
+/// files used for system integration tests
+version (none) unittest
+{
+    import std.algorithm;
+    import std.stdio;
+
+    genesis_validator_keys.each!( k =>
+        writefln("  # Public address:  %s\n  seed: %s\n",
+            k.address, k.secret.toString(PrintMode.Clear) ));
 }

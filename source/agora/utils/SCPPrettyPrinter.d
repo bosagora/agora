@@ -412,6 +412,7 @@ unittest
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.genesis.Test;
     import agora.crypto.Hash;
+    import agora.utils.Test;
     import scpd.types.Stellar_types : NodeID, uint256, StellarHash = Hash;
     import scpd.types.Utils;
 
@@ -444,7 +445,7 @@ unittest
     ballot.counter = 42;
     ballot.value = cd.serializeFull[].toVec();
 
-    auto pair = KeyPair.fromSeed(SecretKey.fromString("SCFPAX2KQEMBHCG6SJ77YTHVOYKUVHEFDROVFCKTZUG7Z6Q5IKSNG6NQ"));
+    auto pair = WK.Keys.NODE2;
 
     auto qc = QuorumConfig(2,
         [PublicKey.fromString("GBFDLGQQDDE2CAYVELVPXUXR572ZT5EOTMGJQBPTIHSLPEOEZYQQCEWN"),
@@ -478,23 +479,23 @@ unittest
     env.signature = typeof(env.signature).init;
 
     // missing signature
-    static immutable MissingSig = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...0000 }`;
+    static immutable MissingSig = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...0000 }`;
 
     testAssert(MissingSig, scpPrettify(&env));
 
     env.signature = sig.toBlob();
 
     // null quorum (hash not found)
-    static immutable PrepareRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes1 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // with quorum mapping
-    static immutable PrepareRes2 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes2 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // 'prep' pointer is set
-    static immutable PrepareRes3 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes3 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // 'preparedPrime' pointer is set
-    static immutable PrepareRes4 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prepPrime: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes4 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Prepare { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prep: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, prepPrime: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     testAssert(PrepareRes1, scpPrettify(&env));
     testAssert(PrepareRes1, scpPrettify(&env, null));
@@ -521,13 +522,13 @@ unittest
     env.statement.pledges.confirm_.nH = 200;
 
     // confirm without a known hash
-    static immutable ConfirmRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0x0000...0000, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable ConfirmRes1 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Confirm { qset: { hash: 0x0000...0000, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // confirm with a known hash
-    static immutable ConfirmRes2 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable ConfirmRes2 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Confirm { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // un-deserializable value
-    static immutable ConfirmRes3 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Confirm { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable ConfirmRes3 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Confirm { qset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
     // unknown hash
     testAssert(ConfirmRes1,scpPrettify(&env, &getQSet));
 
@@ -540,11 +541,11 @@ unittest
     testAssert(ConfirmRes3,scpPrettify(&env, &getQSet));
 
     // unknown hash
-    static immutable ExtRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x0000...0000, quorum: <unknown> }, commit: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0000...be78 }`;
+    static immutable ExtRes1 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x0000...0000, quorum: <unknown> }, commit: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0000...be78 }`;
     // known hash
-    static immutable ExtRes2 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, commit: { counter: 42, value: { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0000...be78 }`;
+    static immutable ExtRes2 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, commit: { counter: 42, value: { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] } }, nh: 100 } }, sig: 0x0000...be78 }`;
     // un-deserializable value
-    static immutable ExtRes3 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0000...be78 }`;
+    static immutable ExtRes3 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [GBFDLGQQ...CEWN, GBYK4I37...QCY5], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0000...be78 }`;
 
     /** SCP EXTERNALIZE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
@@ -564,9 +565,9 @@ unittest
     testAssert(ExtRes3, scpPrettify(&env, &getQSet));
 
     // unknown hash
-    static immutable NomRes1 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Nominate { qset: { hash: 0x0000...0000, quorum: <unknown> }, votes: [{ tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }], accepted: [{ tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }] } }, sig: 0x0000...be78 }`;
+    static immutable NomRes1 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Nominate { qset: { hash: 0x0000...0000, quorum: <unknown> }, votes: [{ tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }], accepted: [{ tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }] } }, sig: 0x0000...be78 }`;
     // known hash
-    static immutable NomRes2 = `{ statement: { node: GBUVRIIB...KOEK, slotIndex: 0, pledge: Nominate { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, votes: [{ tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }], accepted: [{ tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }] } }, sig: 0x0000...be78 }`;
+    static immutable NomRes2 = `{ statement: { node: GDNODE2J...HG73, slotIndex: 0, pledge: Nominate { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, votes: [{ tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }], accepted: [{ tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }, { tx_set: [0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }] } }, sig: 0x0000...be78 }`;
 
     /** SCP NOMINATE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;

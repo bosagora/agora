@@ -412,7 +412,7 @@ unittest
 
     // check the error string for invalid missing validators
     // The first and second validators in agora.consensus.data.genesis.Test.GenesisBlock enrollments
-    const expected_res = "The list of missing validators does not match with the local one. The local missing validators: [0, 1, 2, 4, 6, 7]";
+    const expected_res = "The list of missing validators does not match with the local one. The local missing validators: [0, 1, 2, 3, 4, 7]";
     uint[] fake_missing_validators = [];
     auto actual_res = slash_man.isInvalidPreimageRootReason(Height(2), fake_missing_validators);
     assert(actual_res == expected_res, actual_res);

@@ -63,23 +63,17 @@ public struct KeyPair
     /// Create a keypair from a `SecretKey`
     public static KeyPair fromSeed (const SecretKey seed) nothrow @nogc
     {
-        BitBlob!(crypto_sign_ed25519_SECRETKEYBYTES) sk_data;
-        BitBlob!(crypto_core_ed25519_BYTES) pk;
-        if (crypto_sign_seed_keypair(pk[].ptr, sk_data[].ptr, seed[].ptr) != 0)
-            assert(0);
-
-        Scalar x25519_sk;
-        if (crypto_sign_ed25519_sk_to_curve25519(cast(ubyte*)(x25519_sk[].ptr), sk_data[].ptr) != 0)
-            assert(0);
-        SecretKey sk = SecretKey(x25519_sk[]);
-        return KeyPair(PublicKey(pk[]), sk);
+        assert(seed.data.isValid(), "SecretKey should always be valid Scalar!");
+        return KeyPair(PublicKey(seed.toPoint()), SecretKey(seed));
     }
 
     ///
     unittest
     {
-        immutable seedStr = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
+        immutable seedStr = `SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI`;
         KeyPair kp = KeyPair.fromSeed(SecretKey.fromString(seedStr));
+        assert(kp.secret.toString(PrintMode.Clear) == seedStr,
+            kp.secret.toString(PrintMode.Clear));
     }
 
     /***************************************************************************
@@ -399,8 +393,8 @@ public enum VersionByte : ubyte
 // random data, so it changes every time
 unittest
 {
-    immutable address = `GDD5RFGBIUAFCOXQA246BOUPHCK7ZL2NSHDU7DVAPNPTJJKVPJMNLQFW`;
-    immutable seed    = `SBBUWIMSX5VL4KVFKY44GF6Q6R5LS2Z5B7CTAZBNCNPLS4UKFVDXC7TQ`;
+    immutable address = `GDNODE2JBW65U6WVIOESR3OTJUFOHPHTEIL4GQINDB3MVB645KXAHG73`;
+    immutable seed    = `SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI`;
 
     KeyPair kp = KeyPair.fromSeed(SecretKey.fromString(seed));
     assert(kp.address.toString() == address);

@@ -311,16 +311,16 @@ private struct TransactionFmt
 {
     static immutable ResultStr0 = `Type : Freeze, Inputs: None
 Outputs (6):
-GDNODE2I...LVHQ(2,000,000), GDNODE3E...EACM(2,000,000), GDNODE4K...OSNY(2,000,000),
-GDNODE5T...JQC2(2,000,000), GDNODE6Z...T6GH(2,000,000), GDNODE7J...IX2U(2,000,000)`;
+GDNODE2J...HG73(2,000,000), GDNODE3O...27NU(2,000,000), GDNODE4X...NQO2(2,000,000),
+GDNODE5E...DSMG(2,000,000), GDNODE6M...2G3K(2,000,000), GDNODE7P...6ZQQ(2,000,000)`;
     const actual0 = format("%s", TransactionFmt(GenesisBlock.frozens.front));
     assert(ResultStr0 == actual0, actual0);
 
     static immutable ResultStr1 = `Type : Payment, Inputs: None
 Outputs (8):
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)`;
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000)`;
     const actual1 = format("%s", TransactionFmt(GenesisBlock.payments.front));
     assert(ResultStr1 == actual1, actual1);
 }
@@ -359,13 +359,13 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x390f...4e1d, Enrollments: [
-{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x5f34...20b9 }
-{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x1218...ae2e }
-{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0bce...12c0 }
-{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x3ca9...59b0 }
-{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x826c...a067 }
-{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0xff95...7844 }]
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xb33f...0e34, Enrollments: [
+{ utxo: 0x1da2...7ddf, seed: 0x87b8...eb7b, cycles: 20, sig: 0x7c07...9c99 }
+{ utxo: 0x3764...3533, seed: 0xa734...ae28, cycles: 20, sig: 0x3071...863a }
+{ utxo: 0x6100...2432, seed: 0xba5d...9b1a, cycles: 20, sig: 0xe2fd...3ec5 }
+{ utxo: 0x740c...d4f1, seed: 0x9a52...ebbd, cycles: 20, sig: 0xc1b5...c768 }
+{ utxo: 0xac29...5b8a, seed: 0x8299...ed9a, cycles: 20, sig: 0xfdf2...ce65 }
+{ utxo: 0xf86b...4411, seed: 0x9f61...73ca, cycles: 20, sig: 0x9f1b...7792 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -402,27 +402,27 @@ private struct BlockFmt
 
 @safe unittest
 {
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x390f...4e1d, Enrollments: [
-{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x5f34...20b9 }
-{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x1218...ae2e }
-{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0bce...12c0 }
-{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x3ca9...59b0 }
-{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x826c...a067 }
-{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0xff95...7844 }]
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xb33f...0e34, Enrollments: [
+{ utxo: 0x1da2...7ddf, seed: 0x87b8...eb7b, cycles: 20, sig: 0x7c07...9c99 }
+{ utxo: 0x3764...3533, seed: 0xa734...ae28, cycles: 20, sig: 0x3071...863a }
+{ utxo: 0x6100...2432, seed: 0xba5d...9b1a, cycles: 20, sig: 0xe2fd...3ec5 }
+{ utxo: 0x740c...d4f1, seed: 0x9a52...ebbd, cycles: 20, sig: 0xc1b5...c768 }
+{ utxo: 0xac29...5b8a, seed: 0x8299...ed9a, cycles: 20, sig: 0xfdf2...ce65 }
+{ utxo: 0xf86b...4411, seed: 0x9f61...73ca, cycles: 20, sig: 0x9f1b...7792 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Freeze, Inputs: None
-Outputs (6):
-GDNODE2I...LVHQ(2,000,000), GDNODE3E...EACM(2,000,000), GDNODE4K...OSNY(2,000,000),
-GDNODE5T...JQC2(2,000,000), GDNODE6Z...T6GH(2,000,000), GDNODE7J...IX2U(2,000,000)
 Type : Payment, Inputs: None
 Outputs (8):
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)`;
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000)
+Type : Freeze, Inputs: None
+Outputs (6):
+GDNODE2J...HG73(2,000,000), GDNODE3O...27NU(2,000,000), GDNODE4X...NQO2(2,000,000),
+GDNODE5E...DSMG(2,000,000), GDNODE6M...2G3K(2,000,000), GDNODE7P...6ZQQ(2,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
     assert(ResultStr == actual, actual);
 }
@@ -457,38 +457,38 @@ private struct RangeFmt (R)
 {
     static immutable ResultStr = `
 ====================================================
-Height: 0, Prev: 0x0000...0000, Root: 0x390f...4e1d, Enrollments: [
-{ utxo: 0x343e...c396, seed: 0xfa85...e681, cycles: 20, sig: 0x5f34...20b9 }
-{ utxo: 0x35b8...df61, seed: 0xebef...395b, cycles: 20, sig: 0x1218...ae2e }
-{ utxo: 0x6575...f0b0, seed: 0x4098...eddc, cycles: 20, sig: 0x0bce...12c0 }
-{ utxo: 0x8747...6dc8, seed: 0x6475...8814, cycles: 20, sig: 0x3ca9...59b0 }
-{ utxo: 0xa66b...7b44, seed: 0xb3d4...a2cd, cycles: 20, sig: 0x826c...a067 }
-{ utxo: 0xffab...4be6, seed: 0x91e8...f846, cycles: 20, sig: 0xff95...7844 }]
+Height: 0, Prev: 0x0000...0000, Root: 0xb33f...0e34, Enrollments: [
+{ utxo: 0x1da2...7ddf, seed: 0x87b8...eb7b, cycles: 20, sig: 0x7c07...9c99 }
+{ utxo: 0x3764...3533, seed: 0xa734...ae28, cycles: 20, sig: 0x3071...863a }
+{ utxo: 0x6100...2432, seed: 0xba5d...9b1a, cycles: 20, sig: 0xe2fd...3ec5 }
+{ utxo: 0x740c...d4f1, seed: 0x9a52...ebbd, cycles: 20, sig: 0xc1b5...c768 }
+{ utxo: 0xac29...5b8a, seed: 0x8299...ed9a, cycles: 20, sig: 0xfdf2...ce65 }
+{ utxo: 0xf86b...4411, seed: 0x9f61...73ca, cycles: 20, sig: 0x9f1b...7792 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Freeze, Inputs: None
-Outputs (6):
-GDNODE2I...LVHQ(2,000,000), GDNODE3E...EACM(2,000,000), GDNODE4K...OSNY(2,000,000),
-GDNODE5T...JQC2(2,000,000), GDNODE6Z...T6GH(2,000,000), GDNODE7J...IX2U(2,000,000)
 Type : Payment, Inputs: None
 Outputs (8):
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000),
-GCOQEOHA...LRIJ(61,000,000), GCOQEOHA...LRIJ(61,000,000)
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000),
+GDGENES4...EDT4(61,000,000), GDGENES4...EDT4(61,000,000)
+Type : Freeze, Inputs: None
+Outputs (6):
+GDNODE2J...HG73(2,000,000), GDNODE3O...27NU(2,000,000), GDNODE4X...NQO2(2,000,000),
+GDNODE5E...DSMG(2,000,000), GDNODE6M...2G3K(2,000,000), GDNODE7P...6ZQQ(2,000,000)
 ====================================================
-Height: 1, Prev: 0x3412...06c3, Root: 0x96a9...f1f7, Enrollments: []
+Height: 1, Prev: 0x1f11...8cf0, Root: 0x0497...8fef, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0x4edb...e530:0x4b6e...a32f
-Outputs (1): GCOQEOHA...LRIJ(61,000,000)
-Type : Payment, Inputs (1): 0xc8e8...3add:0x4b6e...a32f
-Outputs (1): GCOQEOHA...LRIJ(61,000,000)
+Type : Payment, Inputs (1): 0x1426...9ce5:0x4b6e...a32f
+Outputs (1): GDGENES4...EDT4(61,000,000)
+Type : Payment, Inputs (1): 0x25a5...31a5:0x4b6e...a32f
+Outputs (1): GDGENES4...EDT4(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
@@ -620,7 +620,7 @@ unittest
         enrolls: [ record, record, ],
     };
 
-    static immutable Res1 = `{ tx_set: [0x60c5...a038, 0xb14a...fd9e], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
+    static immutable Res1 = `{ tx_set: [0x4ef4...b11d, 0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));
