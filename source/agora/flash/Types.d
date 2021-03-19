@@ -20,9 +20,11 @@ import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
 import agora.crypto.Schnorr;
 import agora.flash.ErrorCode;
+import agora.serialization.Serializer;
 
 import std.conv;
 import std.format;
+import std.traits;
 
 public enum PaymentDirection
 {
@@ -130,6 +132,51 @@ public struct Balance
 
     /// HTLCs we're offering to the counter-party in return for a secret
     public HTLC[Hash] outgoing_htlcs;
+
+
+    /***************************************************************************
+
+        Serialization support
+
+        Params:
+            dg = Serialize delegate
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.refund_amount, dg);
+        serializePart(this.payment_amount, dg);
+        serializePart(serializeMap(this.incoming_htlcs), dg);
+        serializePart(serializeMap(this.outgoing_htlcs), dg);
+    }
+
+    /***************************************************************************
+
+        Returns a newly instantiated `Balance` of type `QT`
+
+        Params:
+            QT = Qualified type of `Balance` to return
+            dg   = Delegate to read binary data
+            opts = Deserialization options (should be forwarded)
+
+        Returns:
+            A new instance of type `QT`
+
+    ***************************************************************************/
+
+    public static QT fromBinary (QT) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        Balance balance =
+        {
+            refund_amount : deserializeFull!Amount(dg, opts),
+            payment_amount : deserializeFull!Amount(dg, opts),
+            incoming_htlcs : deserializeFull!(SerializeMap!(HTLC[Hash]))(dg, opts),
+            outgoing_htlcs : deserializeFull!(SerializeMap!(HTLC[Hash]))(dg, opts),
+        };
+        return (() @trusted => cast(QT)balance)();
+    }
 }
 
 /*******************************************************************************
@@ -229,4 +276,131 @@ public T clone (T)(in T input)
 {
     import agora.serialization.Serializer;
     return input.serializeFull.deserializeFull!T;
+}
+
+/// Rudimentary support for serializing hashmaps
+public struct SerializeMap (Value : Value[Key], Key)
+{
+    /// Type of the map
+    private alias Map = Value[Key];
+
+    /// The map
+    public Map _map;
+
+    ///
+    public alias _map this;
+
+    /***************************************************************************
+
+        Serialization support
+
+        Params:
+            dg = Serialize delegate
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this._map.length, dg);
+        foreach (const ref pair; this._map.byKeyValue)
+        {
+            serializePart(pair.key, dg);
+
+            // nested AA
+            static if (isAssociativeArray!Value)
+            {
+                serializePart(pair.value.length, dg);
+                foreach (key, val; pair.value)
+                {
+                    serializePart(key, dg);
+                    serializePart(val, dg);
+                }
+            }
+            else
+            {
+                serializePart(pair.value, dg);
+            }
+        }
+    }
+
+    /***************************************************************************
+
+        Returns a newly instantiated `SerializeMap` of type `QT`
+
+        Params:
+            QT = Qualified type of `SerializeMap` to return
+            dg   = Delegate to read binary data
+            opts = Deserialization options (should be forwarded)
+
+        Returns:
+            A new instance of type `QT`
+
+    ***************************************************************************/
+
+    public static QT fromBinary (QT) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        size_t length = deserializeLength(dg, opts.maxLength);
+        Map map;
+        foreach (_; 0 .. length)
+        {
+            auto key = deserializeFull!Key(dg, opts);
+
+            static if (isAssociativeArray!Value)
+            {
+                size_t inner_length = deserializeLength(dg, opts.maxLength);
+                alias IK = KeyType!Value;
+                alias IV = ValueType!Value;
+
+                Value val;
+                foreach (_i; 0 .. inner_length)
+                {
+                    auto k = deserializeFull!IK(dg, opts);
+                    auto v = deserializeFull!IV(dg, opts);
+                    val[k] = v;
+                }
+            }
+            else
+            {
+                auto val = deserializeFull!Value(dg, opts);
+            }
+
+            map[key] = val;
+        }
+
+        return (() @trusted => cast(QT)SerializeMap(map))();
+    }
+}
+
+/// Ditto
+auto serializeMap (K)(K val) @trusted
+{
+    alias InnerType = SerializeMap!K.Map;
+    return SerializeMap!K(cast(InnerType)val);
+}
+
+///
+unittest
+{
+    int[int] map;
+    map[1] = 10;
+    map[2] = 20;
+    auto map_data = serializeFull(serializeMap(map));
+    auto map_des = deserializeFull!(SerializeMap!(typeof(map)))(map_data);
+    assert(map_des.length == 2);
+    assert(map_des[1] == 10);
+    assert(map_des[2] == 20);
+
+    int[int][int] nested;
+    nested[1][1] = 10;
+    nested[1][2] = 20;
+    nested[2][1] = 30;
+    nested[2][2] = 40;
+    auto nested_data = serializeFull(serializeMap(nested));
+    auto nested_des = deserializeFull!(SerializeMap!(typeof(nested)))(nested_data);
+    assert(nested_des.length == 2);
+    assert(nested_des[1][1] == 10);
+    assert(nested_des[1][2] == 20);
+    assert(nested_des[2][1] == 30);
+    assert(nested_des[2][2] == 40);
 }
