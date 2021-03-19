@@ -295,48 +295,23 @@ public abstract class FlashNode : ControlFlashAPI
     /// Hash of the genesis block
     protected const Hash genesis_hash;
 
+    /// All the node metadata
+    mixin NodeMetadata!() meta;
+
     /// Execution engine
     protected Engine engine;
 
     /// for scheduling
     protected ITaskManager taskman;
 
-    /// All channels which we are the participants of (open / pending / closed)
-    protected Channel[Hash] channels;
-
-    /// These are the known channels of which we may not necessary be a
-    /// counterparty of. With this information we can derive payment paths.
-    protected ChannelConfig[Hash] known_channels;
-
-    /// Most recent update received for this channel
-    protected ChannelUpdate[PaymentDirection][Hash] channel_updates;
-
-    /// All known connected peers (used for gossiping)
-    protected FlashAPI[Point] known_peers;
-
-    /// The last read block height.
-    protected Height last_block_height;
-
-    /// secret hash => secret (preimage)
-    /// Only the Payee initially knows about the secret,
-    /// but is then revealed back towards the payer through
-    /// any intermediaries.
-    protected Hash[Hash] secrets;
-
-    /// Shared secrets used to encrypt the OnionPacket
-    protected Point[][Hash] shared_secrets;
-
-    /// Path that is currently being tried for a payment
-    protected Hop[][Hash] payment_path;
-
-    /// Errors that are received for payments
-    protected OnionError[][Hash] payment_errors;
-
     /// Flash network topology
     protected Network network;
 
-    /// hash of secret => Invoice
-    private Invoice[Hash] invoices;
+    /// All channels which we are the participants of (open / pending / closed)
+    protected Channel[Hash] channels;
+
+    /// All known connected peers (used for gossiping)
+    protected FlashAPI[Point] known_peers;
 
     /***************************************************************************
 
@@ -920,4 +895,36 @@ public abstract class FlashNode : ControlFlashAPI
 
         return true;
     }
+}
+
+/// All the node metadata which we keep in the DB for storage
+private mixin template NodeMetadata ()
+{
+    /// These are the known channels of which we may not necessary be a
+    /// counterparty of. With this information we can derive payment paths.
+    protected ChannelConfig[Hash] known_channels;
+
+    /// Most recent update received for this channel
+    protected ChannelUpdate[PaymentDirection][Hash] channel_updates;
+
+    /// The last read block height.
+    protected Height last_block_height;
+
+    /// secret hash => secret (preimage)
+    /// Only the Payee initially knows about the secret,
+    /// but is then revealed back towards the payer through
+    /// any intermediaries.
+    protected Hash[Hash] secrets;
+
+    /// Shared secrets used to encrypt the OnionPacket
+    protected Point[][Hash] shared_secrets;
+
+    /// Path that is currently being tried for a payment
+    protected Hop[][Hash] payment_path;
+
+    /// Errors that are received for payments
+    protected OnionError[][Hash] payment_errors;
+
+    /// hash of secret => Invoice
+    private Invoice[Hash] invoices;
 }
