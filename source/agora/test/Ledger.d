@@ -233,7 +233,7 @@ unittest
 }
 
 // Ensure that when creating a frozen UTXO, the refund is not frozen too
-// See https://github.com/bpfkorea/agora/issues/1440
+// See https://github.com/bosagora/agora/issues/1440
 unittest
 {
     TestConf conf = { txs_to_nominate: 1 };
