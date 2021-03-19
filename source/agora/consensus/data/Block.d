@@ -529,14 +529,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
 version (unittest)
 {
     import agora.utils.Test;
-
-    public KeyPair[] genesis_validator_keys = [
-        WK.Keys.NODE2,
-        WK.Keys.NODE3,
-        WK.Keys.NODE4,
-        WK.Keys.NODE5,
-        WK.Keys.NODE6,
-        WK.Keys.NODE7 ];
+    public import agora.consensus.data.genesis.Test : genesis_validator_keys;
 
     ulong defaultCycleZero (PublicKey key)
     {

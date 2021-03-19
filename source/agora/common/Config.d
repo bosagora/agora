@@ -336,7 +336,7 @@ validator:
 validator:
   enabled: true
   registry_address: http://127.0.0.1:3003
-  seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   recurring_enrollment: true
   preimage_reveal_interval: 10
 `;
@@ -349,7 +349,7 @@ validator:
 validator:
   enabled: true
   registry_address: disabled
-  seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   recurring_enrollment: true
   preimage_reveal_interval: 10
 `;
@@ -495,14 +495,14 @@ node:
   address: 0.0.0.0
   port: 2926
   data_dir: .cache
-  commons_budget_address: GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
+  commons_budget_address: GDCOMMO272NFWHV5TQAIQFEDLQZLBMVVOJTHC3F567ZX4ZSRQQQWGLI3
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
         assert(config.min_listeners == 2);
         assert(config.max_listeners == 10);
         assert(config.data_dir == ".cache");
-        assert(config.commons_budget_address.toString() == "GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ");
+        assert(config.commons_budget_address.toString() == "GDCOMMO272NFWHV5TQAIQFEDLQZLBMVVOJTHC3F567ZX4ZSRQQQWGLI3");
     }
 }
 
@@ -630,7 +630,7 @@ unittest
         immutable conf_example = `
 validator:
   enabled: true
-  seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  seed: SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   registry_address: http://127.0.0.1:3003
   recurring_enrollment : false
   preimage_reveal_interval: 99
@@ -640,7 +640,7 @@ validator:
         assert(config.enabled);
         assert(config.preimage_reveal_interval == 99.seconds);
         assert(config.key_pair == KeyPair.fromSeed(
-            SecretKey.fromString("SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4")));
+            SecretKey.fromString("SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI")));
         assert(!config.recurring_enrollment);
     }
     {

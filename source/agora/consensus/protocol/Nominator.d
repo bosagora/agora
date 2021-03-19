@@ -1387,18 +1387,16 @@ private struct SCPEnvelopeHash
         "0x256cdc6a2286a21d4ff4297d6a438939e60195016d15ad4693fd4e6dfa18dff1eac5b4237da250d1065293da9a0c947502c6dccc0cf85d6291da2ac5b36f55f5"),
     getEnvHash().hashFull().to!string);
 
-    () @trusted
-    {
-        auto seed = "SAI4SRN2U6UQ32FXNYZSXA5OIO6BYTJMBFHJKX774IGS2RHQ7DOEW5SJ";
-        auto pair = KeyPair.fromSeed(SecretKey.fromString(seed));
-        auto msg = getStHash().hashFull();
-        env.signature = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
-                              "c2467c18e38b36367be78000000000000000000016f60" ~
-                              "5ea9638d7bff58d2c0cc2467c18e38b36367be78").toBlob();
-    }();
+    // import agora.utils.Test;
+    // import std.stdio;
+    // writeln(WK.Keys.NODE5.sign(getStHash);
+    env.signature = Signature.fromString(
+        "0xdf167aadc11b25de15ca6fd4bfb04dc965dea837536a69883c7f3438707eac5d" ~
+        "0030310bb98c310134e53f3daf84674b32abd30f505126375a163587cf4008be")
+        .toBlob();
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xbc41f121214f3c6d7b518054f0894893f6bd3d96f1e20a0ea370259b566ec7e79e880812c3fe1585b4c8ee59a4658ca0538e296d424779060167c8bba15ca731"),
+        "0x5e6451029926ccc643c740376a618a60caeb271d62b91864113f6edbb0f0784177875cd2e56c65870d256752b6499f21e2955d605945f85e8527a64d1919f421"),
     getEnvHash().hashFull().to!string);
 }

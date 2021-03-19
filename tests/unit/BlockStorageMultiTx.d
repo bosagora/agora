@@ -44,9 +44,7 @@ private void main ()
     blocks ~= GenesisBlock;
 
     // For genesis, we need to use the outputs, not previous transactions
-    Transaction[] txs = iota(8)
-        .map!(idx => TxBuilder(GenesisBlock.txs[1], idx).refund(WK.Keys.A.address).sign())
-        .array();
+    Transaction[] txs = genesisSpendable().map!(txb => txb.refund(WK.Keys.A.address).sign()).array();
     foreach (block_idx; 0 .. BlockCount)
     {
         auto block = makeNewBlock(blocks[$ - 1], txs, blocks[$ - 1].header.time_offset + 1, Hash.init);

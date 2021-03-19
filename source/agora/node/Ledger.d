@@ -1773,13 +1773,13 @@ unittest
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
     assert(data.missing_validators.length == 3);
-    assert(data.missing_validators == [0, 1, 3],
+    assert(data.missing_validators == [1, 2, 3],
         format!"Expected missing validators: %s"(data.missing_validators));
 
     // check validity of slashing information
     assert(ledger.validateSlashingData(data) == null);
     ConsensusData forged_data = data;
-    forged_data.missing_validators = [1, 2, 3];
+    forged_data.missing_validators = [3, 2, 1];
     assert(ledger.validateSlashingData(forged_data) != null);
 
     // reveal preimages of all the validators

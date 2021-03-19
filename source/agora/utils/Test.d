@@ -192,6 +192,35 @@ unittest
     const sz = WK.Keys.Z.secret.sign("WK.Keys.Z".representation);
     assert(WK.Keys.Z.address.verify(sz, "WK.Keys.Z".representation));
 
+    // Test for valid ECC Scalar and Point for several keys
+    static void assertValidECC (KeyPair[] keys...)
+    {
+        foreach (keypair; keys)
+        {
+            assert(keypair.address.isValid(),
+                   format!"WK keypair (%s, %s) should have valid Point for PublicKey"
+                   (keypair.address, keypair.secret.toString(PrintMode.Clear)));
+            assert(keypair.secret.isValid(),
+                   format!"WK keypair (%s, %s) should have valid Scalar for Secretkey"
+                   (keypair.address, keypair.secret.toString(PrintMode.Clear)));
+            assert(keypair.secret.toPoint() == keypair.address,
+                   format!"WK secret %s should have Point as v.G: %s"
+                   (keypair.secret.toString(PrintMode.Clear), keypair.secret.toPoint()));
+        }
+    }
+
+    assertValidECC(WK.Keys.Genesis,
+                   WK.Keys.CommonsBudget,
+                   WK.Keys.NODE2,
+                   WK.Keys.NODE3,
+                   WK.Keys.NODE4,
+                   WK.Keys.NODE5,
+                   WK.Keys.NODE6,
+                   WK.Keys.NODE7,
+                   WK.Keys.A,
+                   WK.Keys.Q,
+                   WK.Keys.ZZ);
+
     // Also with the Schnorr functions
     {
         auto pa = Pair.fromScalar(WK.Keys.A.secret);

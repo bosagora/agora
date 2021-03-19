@@ -53,9 +53,7 @@ private void main ()
     Block prev_block = cast(Block) GenesisBlock;
 
     // For genesis, we need to use the outputs, not previous transactions
-    Transaction[] txs = iota(8)
-        .map!(idx => TxBuilder(GenesisBlock.txs[1], idx).refund(WK.Keys.A.address).sign())
-        .array();
+    Transaction[] txs = genesisSpendable().map!(txb => txb.refund(WK.Keys.A.address).sign()).array();
     const SIG1 = block.header.signature = Signature.fromString("0x000102030405060708090A0B0C0D0E0F" ~
             "000102030405060708090A0B0C0D0E0F" ~
             "000102030405060708090A0B0C0D0E0F" ~
