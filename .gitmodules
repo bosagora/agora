@@ -1,6 +1,6 @@
 [submodule "base32"]
 	path = submodules/base32
-	url = https://github.com/bpfkorea/d-base32.git
+	url = https://github.com/bosagora/d-base32.git
 [submodule "bitblob"]
 	path = submodules/bitblob
 	url = https://github.com/Geod24/bitblob.git
@@ -39,22 +39,22 @@
 	url = https://github.com/vibe-d/vibe-core.git
 [submodule "vibe.d"]
 	path = submodules/vibe.d
-	url = https://github.com/bpfkorea/vibe.d.git
+	url = https://github.com/bosagora/vibe.d.git
 [submodule "d2sqlite3"]
 	path = submodules/d2sqlite3
 	url = https://github.com/dlang-community/d2sqlite3.git
 [submodule "ocean"]
 	path = submodules/ocean
-	url = https://github.com/bpfkorea/ocean.git
+	url = https://github.com/bosagora/ocean.git
 [submodule "barcode"]
 	path = submodules/barcode
 	url = https://github.com/deviator/barcode.git
 [submodule "crypto"]
 	path = submodules/crypto
-	url = https://github.com/bpfkorea/crypto.git
+	url = https://github.com/bosagora/crypto.git
 [submodule "tracy"]
 	path = submodules/tracy
 	url = https://github.com/wolfpld/tracy.git
 [submodule "serialization"]
 	path = submodules/serialization
-	url = https://github.com/bpfkorea/serialization.git
+	url = https://github.com/bosagora/serialization.git
