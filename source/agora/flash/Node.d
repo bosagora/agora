@@ -818,7 +818,7 @@ public abstract class FlashNode : ControlFlashAPI
         const Hash chan_id = funding_tx_hash;
         const num_peers = 2;
 
-        const ChannelConfig chan_conf =
+        ChannelConfig chan_conf =
         {
             gen_hash        : this.genesis_hash,
             funder_pk       : this.kp.address,
@@ -836,7 +836,7 @@ public abstract class FlashNode : ControlFlashAPI
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto result = peer.openChannel(cast(ChannelConfig)chan_conf, pub_nonce);
+        auto result = peer.openChannel(chan_conf, pub_nonce);
         assert(result.error == ErrorCode.None, result.to!string);
 
         auto channel = new Channel(chan_conf, this.kp, priv_nonce, result.value,

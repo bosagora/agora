@@ -52,15 +52,6 @@ mixin AddLogger!();
 /// Ditto
 public class Channel
 {
-    /// The static information about this channel
-    public const ChannelConfig conf;
-
-    /// Key-pair used for signing and deriving update / settlement key-pairs
-    public const KeyPair kp;
-
-    /// Whether we are the funder of this channel (`funder_pk == this.kp.V`)
-    public const bool is_owner;
-
     /// Used to publish funding / trigger / update / settlement txs to blockchain
     public const void delegate (Transaction) txPublisher;
 
@@ -73,123 +64,14 @@ public class Channel
     /// The peer of the other end of the channel
     public FlashAPI peer;
 
-    /// The public key of the counter-party (for logging)
-    public Point peer_pk;
-
-    /// Current state of the channel
-    private ChannelState state;
-
-    /// Stored when the funding transaction is signed.
-    /// For peers they receive this from the blockchain.
-    public Transaction funding_tx_signed;
+    /// All the channel metadata
+    mixin ChannelMetadata!() meta;
 
     /// The signer for an update / settle pair
     private UpdateSigner update_signer;
 
-    /// The list of any off-chain updates which happened on this channel
-    private UpdatePair[] channel_updates;
-
-    /// Unresolved payment hashes and their associated shared secret
-    /// which are part of existing HTLCs
-    private Point[Hash] payment_hashes;
-
-    /// Valid when `channel_updates` is not empty, used for the watchtower
-    private Hash trigger_utxo;
-
-    /// The current sequence ID
-    private uint cur_seq_id;
-
-    /// The current balance of the channel. Initially empty until the
-    /// funding tx is externalized.
-    private Balance cur_balance;
-
-    /// List of dropped HTLCS
-    /// Usefull when routing error packets back to the payment origin
-    private Point[Hash] dropped_htlcs;
-
-    /// The closing transaction can spend from the funding transaction when
-    /// the channel parties want to collaboratively close the channel.
-    /// It requires both of the parties signatures. For safety reasons,
-    /// the closing transaction should only be signed once the node marks
-    /// the channel as 'PendingClose'.
-    private static struct PendingClose
-    {
-        /// The pending close transaction
-        private Transaction tx;
-
-        /// Our part of the multisig
-        private Signature our_sig;
-
-        /// The peer's part of the multisig
-        private Signature peer_sig;
-
-        /// True if the multisig has been validated
-        private bool validated;
-    }
-
-    /// Ditto
-    private PendingClose pending_close;
-
     /// Route payments to another channel
     private PaymentRouter paymentRouter;
-
-    /// Queued incoming payment
-    private static struct IncomingPayment
-    {
-        private uint seq_id;
-        private PrivateNonce priv_nonce;
-        private PublicNonce peer_nonce;
-        private OnionPacket packet;
-        private Payload payload;
-        private Hash payment_hash;
-        private Amount amount;
-        private Height height;
-        private Height lock_height;
-        private Point shared_secret;
-    }
-
-    /// Queued incoming update
-    private static struct IncomingUpdate
-    {
-        private uint seq_id;
-        private Output[] outputs;
-        private Balance balance;
-        private PrivateNonce priv_nonce;
-        private PublicNonce peer_nonce;
-        private const(Hash)[] secrets;
-        private const(Hash)[] revert_htlcs;
-    }
-
-    /// Incoming payments
-    private IncomingPayment[] incoming_payments;
-
-    /// Incoming updates
-    private IncomingUpdate[] incoming_updates;
-
-    /// Outgoing payment
-    private static struct OutgoingPayment
-    {
-        private Hash payment_hash;
-        private Amount amount;
-        private Height lock_height;
-        private OnionPacket packet;
-        private Height height;
-    }
-
-    /// Outgoing payments
-    private OutgoingPayment[] outgoing_payments;
-
-    /// Whether there is currently an outbound proposal in progress
-    private bool outbound_in_progress;
-
-    /// Last known block height
-    private Height height;
-
-    /// Learned secrets that match pending HTLCs
-    private const(Hash)[] secrets;
-
-    /// Any HTLCs which still need to be reverted
-    private const(Hash)[] revert_htlcs;
 
     /// Called when the channel has been open
     /// (the funding transaction has been externalized)
@@ -225,7 +107,7 @@ public class Channel
 
     ***************************************************************************/
 
-    public this (in ChannelConfig conf, in KeyPair kp, PrivateNonce priv_nonce,
+    public this (ChannelConfig conf, in KeyPair kp, PrivateNonce priv_nonce,
         PublicNonce peer_nonce, FlashAPI peer, Engine engine,
         ITaskManager taskman, void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
@@ -1883,4 +1765,135 @@ LOuter: while (1)
     {
         return this.pending_close.tx;
     }
+}
+
+/// The closing transaction can spend from the funding transaction when
+/// the channel parties want to collaboratively close the channel.
+/// It requires both of the parties signatures. For safety reasons,
+/// the closing transaction should only be signed once the node marks
+/// the channel as 'PendingClose'.
+private struct PendingClose
+{
+    /// The pending close transaction
+    private Transaction tx;
+
+    /// Our part of the multisig
+    private Signature our_sig;
+
+    /// The peer's part of the multisig
+    private Signature peer_sig;
+
+    /// True if the multisig has been validated
+    private bool validated;
+}
+
+/// Queued incoming payment
+private struct IncomingPayment
+{
+    private uint seq_id;
+    private PrivateNonce priv_nonce;
+    private PublicNonce peer_nonce;
+    private OnionPacket packet;
+    private Payload payload;
+    private Hash payment_hash;
+    private Amount amount;
+    private Height height;
+    private Height lock_height;
+    private Point shared_secret;
+}
+
+/// Queued incoming update
+private struct IncomingUpdate
+{
+    private uint seq_id;
+    private Output[] outputs;
+    private Balance balance;
+    private PrivateNonce priv_nonce;
+    private PublicNonce peer_nonce;
+    private const(Hash)[] secrets;
+    private const(Hash)[] revert_htlcs;
+}
+
+/// Outgoing payment
+private struct OutgoingPayment
+{
+    private Hash payment_hash;
+    private Amount amount;
+    private Height lock_height;
+    private OnionPacket packet;
+    private Height height;
+}
+
+/// All the channel metadata which we keep in the DB for storage
+private mixin template ChannelMetadata ()
+{
+    /// The static information about this channel
+    public ChannelConfig conf;
+
+    /// Key-pair used for signing and deriving update / settlement key-pairs
+    public KeyPair kp;
+
+    /// Whether we are the funder of this channel (`funder_pk == this.kp.V`)
+    public bool is_owner;
+
+    /// The public key of the counter-party (for logging)
+    public Point peer_pk;
+
+    /// Our private nonce for the first trigger tx
+    public PrivateNonce priv_nonce;
+
+    /// The public nonce of the counter-party for the first trigger tx
+    public PublicNonce peer_nonce;
+
+    /// Current state of the channel
+    private ChannelState state;
+
+    /// Stored when the funding transaction is signed.
+    /// For peers they receive this from the blockchain.
+    public Transaction funding_tx_signed;
+
+    /// The list of any off-chain updates which happened on this channel
+    private UpdatePair[] channel_updates;
+
+    /// Unresolved payment hashes and their associated shared secret
+    /// which are part of existing HTLCs
+    private Point[Hash] payment_hashes;
+
+    /// Valid when `channel_updates` is not empty, used for the watchtower
+    private Hash trigger_utxo;
+
+    /// The current sequence ID
+    private uint cur_seq_id;
+
+    /// The current balance of the channel. Initially empty until the
+    /// funding tx is externalized.
+    private Balance cur_balance;
+
+    /// List of dropped HTLCS
+    /// Usefull when routing error packets back to the payment origin
+    private Point[Hash] dropped_htlcs;
+
+    /// Ditto
+    private PendingClose pending_close;
+
+    /// Incoming payments
+    private IncomingPayment[] incoming_payments;
+
+    /// Incoming updates
+    private IncomingUpdate[] incoming_updates;
+
+    /// Outgoing payments
+    private OutgoingPayment[] outgoing_payments;
+
+    /// Whether there is currently an outbound proposal in progress
+    private bool outbound_in_progress;
+
+    /// Last known block height
+    private Height height;
+
+    /// Learned secrets that match pending HTLCs
+    private const(Hash)[] secrets;
+
+    /// Any HTLCs which still need to be reverted
+    private const(Hash)[] revert_htlcs;
 }
