@@ -14,7 +14,7 @@
     the network to maintain randomness. So we need a penalty as an incentive
     to make validators reveal them regularly. So this class manages all the
     policies for penalty and slashing.
-    See https://github.com/bpfkorea/agora/issues/1076.
+    See https://github.com/bosagora/agora/issues/1076.
 
     Copyright:
         Copyright (c) 2020 BOS Platform Foundation Korea

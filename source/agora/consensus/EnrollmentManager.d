@@ -1539,7 +1539,7 @@ unittest
     assert(man.getValidatorCount(block_height) == 0);
 }
 
-// https://github.com/bpfkorea/agora/pull/1010#issuecomment-654149650
+// https://github.com/bosagora/agora/pull/1010#issuecomment-654149650
 unittest
 {
     // Irrelevant for this test, the seed is only derived from the private key

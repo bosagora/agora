@@ -21,7 +21,7 @@ up into several distinct commits.
 
 - The commit title and description should follow some general rules:
 
-An example good commit: https://github.com/bpfkorea/agora/commit/71e7d1cc1da314d92eb76c1d02e04f43bc83784f
+An example good commit: https://github.com/bosagora/agora/commit/71e7d1cc1da314d92eb76c1d02e04f43bc83784f
 
 The commit title is: `Remove enforcement for expected_validators`
 

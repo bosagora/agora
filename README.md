@@ -2,10 +2,10 @@
 
 [Docker Hub image](https://hub.docker.com/r/bpfk/agora)
 
-![Github CI](https://github.com/bpfkorea/agora/actions/workflows/main.yml/badge.svg)
-[![codecov](https://codecov.io/gh/bpfkorea/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bpfkorea/agora)
-[![License](https://img.shields.io/github/license/bpfkorea/agora)](LICENSE)
-[![Documentation](https://img.shields.io/badge/Docs-Github%20Pages-blue)](https://bpfkorea.github.io/agora/)
+![Github CI](https://github.com/bosagora/agora/actions/workflows/main.yml/badge.svg)
+[![codecov](https://codecov.io/gh/bosagora/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bosagora/agora)
+[![License](https://img.shields.io/github/license/bosagora/agora)](LICENSE)
+[![Documentation](https://img.shields.io/badge/Docs-Github%20Pages-blue)](https://bosagora.github.io/agora/)
 
 Node implementation for BOA CoinNet
 
@@ -56,7 +56,7 @@ curl https://dlang.org/install.sh | bash -s ldc-1.25.0
 # Add LDC to the $PATH
 source ~/dlang/ldc-1.25.0/activate
 # Clone this repository
-git clone https://github.com/bpfkorea/agora.git
+git clone https://github.com/bosagora/agora.git
 # Use the git root as working directory
 cd agora/
 # Initialize and update the list of submodules

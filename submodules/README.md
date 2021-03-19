@@ -12,4 +12,4 @@ Due to [a bug in `dub`](https://github.com/dlang/dub/issues/1706), some folders 
 We have write access to - or ownership of - most of those dependencies,
 and will attempt to upstream any bugfix made for the sake of Agora.
 In the event that it isn't possible (e.g. `base32` where the author is AWOL),
-we will fork the dependency in the `bpfkorea` organization.
+we will fork the dependency in the `bosagora` organization.
