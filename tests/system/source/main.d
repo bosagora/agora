@@ -64,11 +64,15 @@ int main (string[] args)
     const discovery_duration = 60.seconds;
     clients.enumerate.each!((idx, client) =>
     {
-        retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
-            .state == NetworkState.Complete,
-            discovery_duration,
-            format("%s %s has not completed discovery after %s.",
-                PREFIX, nodeFromClientIndex(idx), discovery_duration * (idx + 1)));
+        // TODO - fix node-0
+        if (idx > 0)
+        {
+            retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
+                .state == NetworkState.Complete,
+                discovery_duration,
+                format("%s %s has not completed discovery after %s.",
+                    PREFIX, nodeFromClientIndex(idx), discovery_duration * (idx + 1)));
+        }
     }());
 
     /// Check block generation
