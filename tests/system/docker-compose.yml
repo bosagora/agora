@@ -83,7 +83,7 @@ services:
 
   # faucet
   faucet:
-    image: "bpfk/faucet:latest"
+    image: "hewisonchris/faucet:issue1776"
     depends_on:
       - node-0
       - node-2
