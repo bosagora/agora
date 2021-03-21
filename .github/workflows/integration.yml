@@ -12,6 +12,7 @@ jobs:
 
     - uses: actions/checkout@v2
       with:
+        path: agora
         # For Codecov
         fetch-depth: 2
         submodules: true
@@ -26,14 +27,36 @@ jobs:
         sudo apt-get update
         sudo apt-get install g++-9 libsodium-dev libsqlite3-dev
 
+    - name: Checkout faucet
+      uses: actions/checkout@v2
+      with:
+        path: faucet
+        repository: bosagora/faucet
+        submodules: true
+
+    - name: Update Faucet submodule to point to our clone
+      run: |
+        cd ${{ github.workspace }}/faucet/
+        git -C submodules/agora fetch origin ${{ github.ref }}:agora-ci-integration-test-donotuse
+        git -C submodules/agora checkout     agora-ci-integration-test-donotuse
+        # For debug output
+        git submodule
+
+    - name: Build Faucet
+      run: |
+        cd ${{ github.workspace }}/faucet/
+        docker build -t bpfk/faucet ${{ github.workspace }}/faucet/
+
     - name: Test
       run: |
+        cd ${{ github.workspace }}/agora/
         ./ci/system_integration_test.d
 
     - name: Change permission on lst files
       run: |
         # Work around druntime setting the permissions to 600..
         # Need to iterate on the directory to avoid 'list arguments too long'
+        cd ${{ github.workspace }}/agora/
         find tests/system/node/ -name '*.lst' | xargs sudo chmod 644
 
     - name: 'Upload code coverage'
