@@ -1255,11 +1255,8 @@ unittest
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        const seed = cycle.populate(kp.secret, true);
         auto enroll = EnrollmentManager.makeEnrollment(
-            kp, utxo_hashes[idx], params.ValidatorCycle,
-            seed, idx);
+            kp, utxo_hashes[idx], params.ValidatorCycle, cast(uint) idx);
 
         assert(man.addEnrollment(enroll, kp.address, Height(1), &utxo_set.peekUTXO));
         assert(man.enroll_pool.count() == idx + 1);
@@ -1474,12 +1471,8 @@ unittest
     Enrollment[] enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        const seed = cycle.populate(kp.secret, true);
-        auto enroll = EnrollmentManager.makeEnrollment(
-            kp, utxo_hashes[idx], params.ValidatorCycle,
-            seed, idx);
-        enrollments ~= enroll;
+        enrollments ~= EnrollmentManager.makeEnrollment(
+            kp, utxo_hashes[idx], params.ValidatorCycle, cast(uint)  idx);
     }
 
     Height block_height = Height(2);
@@ -1639,12 +1632,8 @@ unittest
 
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-
-        const seed = cycle.populate(kp.secret, true);
         const enroll = EnrollmentManager.makeEnrollment(
-            kp, utxos[idx], params.ValidatorCycle,
-            seed, cycle.index);
+            kp, utxos[idx], params.ValidatorCycle, 0);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
