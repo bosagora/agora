@@ -1814,6 +1814,8 @@ public struct TestConf
         APIManager = Type of API manager to instantiate
         test_conf = the test configuration
         params = the consensus-critical constants
+        eArgs = The arguments `APIManager` has which are after `TestAPIManager`'s
+                constructor arguments.
 
     Returns:
         The set of public key added to the node
@@ -1821,7 +1823,8 @@ public struct TestConf
 *******************************************************************************/
 
 public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
-    (in TestConf test_conf, string file = __FILE__, int line = __LINE__)
+    (in TestConf test_conf, Parameters!(APIManager.__ctor)[Parameters!(TestAPIManager.__ctor).length .. $] eArgs,
+    string file = __FILE__, int line = __LINE__)
 {
     import std.digest;
     import std.range;
@@ -1988,7 +1991,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     immutable(Block)[] blocks = generateExtraBlocks(GenesisBlock,
         test_conf.extra_blocks);
 
-    auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp);
+    auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp, eArgs);
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
 

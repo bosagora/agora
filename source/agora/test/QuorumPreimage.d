@@ -43,7 +43,7 @@ unittest
         outsider_validators : 2,
         max_listeners : 7,
         txs_to_nominate : 0 };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

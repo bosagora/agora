@@ -24,7 +24,7 @@ unittest
     {
         retry_delay : 100.msecs,
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -47,7 +47,7 @@ unittest
         full_nodes : 4,
         min_listeners : 9,
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
 
     network.start();
     scope(exit) network.shutdown();
@@ -70,7 +70,7 @@ unittest
         topology : NetworkTopology.MinimallyConnected,
         min_listeners : 1
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

@@ -35,7 +35,7 @@ unittest
         max_failed_requests : 4 * txs_to_nominate
     };
 
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

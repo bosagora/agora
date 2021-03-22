@@ -23,7 +23,7 @@ import agora.test.Base;
 unittest
 {
     TestConf conf = TestConf.init;
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -59,7 +59,7 @@ unittest
 {
     // node #7 is the outsider, so total foreign nodes may be 6
     TestConf conf = { max_listeners : 6, outsider_full_nodes : 1 };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

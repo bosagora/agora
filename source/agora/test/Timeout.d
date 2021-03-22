@@ -26,7 +26,7 @@ unittest
         max_retries : 2,
         timeout : 500.msecs,
         max_failed_requests : 1000 };  // never ban
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     auto nodes = network.clients;
 
     nodes[$-1].ctrl.sleep(2.seconds, false);

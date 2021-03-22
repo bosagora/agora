@@ -31,7 +31,7 @@ unittest
     TestConf conf = {
         recurring_enrollment : false,
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -64,7 +64,7 @@ unittest
     TestConf conf = {
         recurring_enrollment : false,
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
@@ -96,7 +96,7 @@ unittest
 unittest
 {
     TestConf conf = { recurring_enrollment : false };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
@@ -345,7 +345,7 @@ unittest
 unittest
 {
     TestConf conf = TestConf.init;
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

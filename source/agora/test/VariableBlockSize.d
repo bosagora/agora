@@ -24,7 +24,7 @@ unittest
 {
     const txs_to_nominate = 2;
     TestConf conf = { txs_to_nominate : txs_to_nominate };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
