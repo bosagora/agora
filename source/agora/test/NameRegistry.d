@@ -3,7 +3,7 @@
     Test for the NameRegistry functionality
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
     License:
         MIT License. See LICENSE for details.

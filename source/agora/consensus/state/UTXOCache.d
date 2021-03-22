@@ -3,7 +3,7 @@
     Contains the base class for a UTXO set and an AA-backed UTXO set.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

@@ -18,7 +18,7 @@
     NOTE: See https://medium.com/softblocks/lightning-network-in-depth-part-2-htlc-and-payment-routing-db46aea445a8
 
     Copyright:
-        Copyright (c) 2021 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

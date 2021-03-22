@@ -3,7 +3,7 @@
     Extra bindings for scp for D usage, and other SCP-specific symbols
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

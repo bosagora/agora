@@ -21,7 +21,7 @@
               last push will be read as the redeem script.
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

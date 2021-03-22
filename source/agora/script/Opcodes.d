@@ -3,7 +3,7 @@
     Contains the supported opcodes for the basic execution engine (non-webASM)
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

@@ -3,7 +3,7 @@
     Defines common types used by Agora
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

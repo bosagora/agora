@@ -5,7 +5,7 @@
     Create and store 1000 blocks and read again. And read 100 random.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

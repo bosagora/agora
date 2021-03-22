@@ -3,7 +3,7 @@
     Porting of Stellar's `Stellar_SCP.h`, itself derived from `Stellar_SCP.x`
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

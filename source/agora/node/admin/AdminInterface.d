@@ -7,7 +7,7 @@
     usually on a port adjacent to the node port (2827 by default).
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

@@ -3,7 +3,7 @@
     Defines metadata which is stored to disk (e.g. peer info)
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

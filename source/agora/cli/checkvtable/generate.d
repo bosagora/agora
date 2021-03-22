@@ -3,7 +3,7 @@
     The agora-checkvtable-gen for generating C++ source code
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:
@@ -182,7 +182,7 @@ private void writeHeader (ref string[] outputs)
         dub -c checkvtable-gen -- source/scpp/extra/DVMChecks.cpp
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

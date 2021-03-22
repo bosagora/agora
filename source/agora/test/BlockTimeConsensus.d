@@ -3,7 +3,7 @@
     Tests the consensus algorithm on block time offset creation
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

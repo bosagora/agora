@@ -10,7 +10,7 @@
     Build the single object `TracyClient.cpp`
 
     Copyright:
-        Copyright (c) 2021 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:
