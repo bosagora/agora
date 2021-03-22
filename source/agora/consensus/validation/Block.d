@@ -112,6 +112,10 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     if (block.header.height == 0)
         return "Block: Genesis block should be validated using isGenesisBlockInvalidReason";
 
+    assert(random_seed !is Hash.init);
+    // Validate this after the genesis check for better UX
+    assert(prev_hash !is Hash.init);
+
     if (block.header.height != prev_height + 1)
         return "Block: Height is not one more than previous block";
 
@@ -178,11 +182,8 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
             return fail_reason;
     }
 
-    if (block.header.random_seed == Hash.init
-        || block.header.random_seed != random_seed)
-    {
+    if (block.header.random_seed != random_seed)
         return "Block: Header's random seed does not match that of known pre-images";
-    }
 
     return validateBlockTimeOffset(prev_time_offset, block.header.time_offset,
                                    curr_time_offset, block_time_tolerance);
