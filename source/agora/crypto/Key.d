@@ -239,7 +239,7 @@ public struct PublicKey
 
     ***************************************************************************/
 
-    public bool verify (Signature signature, scope const(ubyte)[] msg)
+    public bool verify (T) (Signature signature, in T msg)
         const nothrow @nogc @trusted
     {
         return agora.crypto.Schnorr.verify(this.data, signature, msg);
