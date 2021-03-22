@@ -15,7 +15,7 @@
     2. Otherwise, the output of the `git describe` command will be used.
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

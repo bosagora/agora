@@ -4,7 +4,7 @@
 
     "license": "MIT",
     "authors": [ "BPF Korea dev team" ],
-    "copyright": "Copyright © 2019-2021, BOS Platform Foundation Korea",
+    "copyright": "Copyright © 2019-2021, BOSAGORA Foundation",
 
     "targetType": "executable",
     "targetPath": "build",

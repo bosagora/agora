@@ -6,7 +6,7 @@
     are cleanly destroyed after the thread shuts down.
 
     Copyright:
-        Copyright (c) 2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

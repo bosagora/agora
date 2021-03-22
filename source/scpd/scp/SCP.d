@@ -3,7 +3,7 @@
     Bindings for scp/SCP.h, the main class / entrypoint of the SCP protocol
 
     Copyright:
-        Copyright (c) 2019 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

@@ -5,7 +5,7 @@
     successfully externalize.
 
     Copyright:
-        Copyright (c) 2021 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

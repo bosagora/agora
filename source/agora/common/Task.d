@@ -8,7 +8,7 @@
     own event loop - mostly, to be used with LocalRest.
 
     Copyright:
-        Copyright (c) 2019-2021 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:

@@ -32,7 +32,7 @@
     Lastly, we plan to implement a generator which works directly on TCP/IP.
 
     Copyright:
-        Copyright (c) 2019-2020 BOS Platform Foundation Korea
+        Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
 
     License:
