@@ -45,6 +45,7 @@ import agora.serialization.Serializer;
 import agora.test.Base;
 import agora.utils.Log;
 
+import geod24.LocalRest : Listener;
 import geod24.Registry;
 
 import std.conv;
@@ -151,6 +152,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     ///
     public override void shutdownNode ()
     {
+        log.info("Shutting down node!");
         super.shutdown();  // kill timers
     }
 
@@ -174,7 +176,17 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
             return control_api;
         }
 
-        auto tid = this.flash_registry.locate(peer_pk.to!string);
+        // give some time to the other node to wake up and register
+        Listener!TestFlashAPI tid;
+        foreach (i; 0 .. 5)
+        {
+            tid = this.flash_registry.locate(peer_pk.to!string);
+            if (tid != typeof(tid).init)
+                break;
+
+            this.taskman.wait(500.msecs);
+        }
+
         assert(tid != typeof(tid).init, "Flash node not initialized");
 
         auto peer = new RemoteAPI!TestFlashAPI(tid, timeout);
@@ -285,11 +297,11 @@ public class FlashNodeFactory
             KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
             this.agora_registry, agora_address, storage, &this.flash_registry,
             5.seconds);  // timeout from main thread
-        api.start();
 
         this.addresses ~= pair.V;
         this.nodes ~= api;
         this.flash_registry.register(pair.V.to!string, api.listener());
+        api.start();
 
         return api;
     }
@@ -342,7 +354,18 @@ public class FlashNodeFactory
             node.ctrl.shutdown();
         }
     }
+
+    /// Shut down & restart all nodes
+    public void restart ()
+    {
+        foreach (node; this.nodes)
+        {
+            node.ctrl.restart((Object node) { (cast(TestFlashNode)node).shutdownNode(); });
+            node.ctrl.withTimeout(0.msecs, (scope ControlFlashAPI api) { api.start(); });
+        }
+    }
 }
+
 
 /// Test unilateral non-collaborative close (funding + update* + settle)
 //version (none)
@@ -917,4 +940,88 @@ unittest
     auto block10 = node_1.getBlocksFrom(10, 1)[0];
     assert(block10.txs[0] == bob.getClosingTx(alice_bob_chan_id));
     assert(block10.txs[0].outputs.length == 1); // No updates
+}
+/// Test node serialization & loading
+//version (none)
+unittest
+{
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+    auto alice = factory.create(alice_pair, address, DatabaseStorage.Static);
+    auto bob = factory.create(bob_pair, address, DatabaseStorage.Static);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id = alice.openNewChannel(
+        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+
+    // await funding transaction
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(chan_id);
+    bob.waitChannelOpen(chan_id);
+
+    auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
+
+    /* do some off-chain transactions */
+    auto inv_1 = bob.createNewInvoice(Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(inv_1);
+
+    alice.waitForUpdateIndex(chan_id, 2);
+    bob.waitForUpdateIndex(chan_id, 2);
+
+    auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(inv_2);
+
+    // need to wait for invoices to be complete before we have the new balance
+    // to send in the other direction
+    alice.waitForUpdateIndex(chan_id, 4);
+    bob.waitForUpdateIndex(chan_id, 4);
+
+    // restart the two nodes
+    factory.restart();
+
+    // note the reverse payment from bob to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(Amount(2_000), time_t.max, "payment 3");
+    bob.payInvoice(inv_3);
+
+    // next update index should be 6
+    alice.waitForUpdateIndex(chan_id, 6);
+    bob.waitForUpdateIndex(chan_id, 6);
 }
