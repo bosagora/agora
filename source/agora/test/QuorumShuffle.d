@@ -35,7 +35,7 @@ unittest
         quorum_shuffle_interval : 6,
         txs_to_nominate : 0
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

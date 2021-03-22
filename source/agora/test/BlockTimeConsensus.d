@@ -24,7 +24,7 @@ import agora.test.Base;
 unittest
 {
     TestConf conf = { txs_to_nominate : 2, block_interval_sec : 2 };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.setTimeFor(Height(0));
     network.start();
     scope(exit) network.shutdown();

@@ -22,7 +22,7 @@ import agora.test.Base;
 unittest
 {
     TestConf conf = { configure_network : false };  // use name registry instead
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

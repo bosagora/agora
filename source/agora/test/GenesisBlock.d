@@ -24,7 +24,7 @@ import agora.test.Base;
 /// ditto
 unittest
 {
-    auto network = makeTestNetwork(TestConf.init);
+    auto network = makeTestNetwork!TestAPIManager(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

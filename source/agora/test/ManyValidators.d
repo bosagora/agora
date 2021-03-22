@@ -18,7 +18,7 @@ version (unittest):
 void manyValidators (size_t validators)
 {
     import agora.test.Base : TestConf, GenesisValidators, GenesisValidatorCycle,
-        makeTestNetwork;
+        makeTestNetwork, TestAPIManager;
     import agora.common.Types : Height;
     import agora.consensus.data.Transaction : TxType;
     import agora.utils.Test : genesisSpendable, retryFor;
@@ -30,7 +30,7 @@ void manyValidators (size_t validators)
     TestConf conf = { outsider_validators : validators - GenesisValidators,
         txs_to_nominate : 0 };
 
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

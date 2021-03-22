@@ -31,7 +31,7 @@ unittest
     TestConf conf = {
         txs_to_nominate : 1,
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

@@ -17,6 +17,7 @@ module agora.test.SlashingMisbehavingValidator;
 version (unittest):
 
 import agora.common.Config;
+import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
@@ -26,6 +27,8 @@ import agora.consensus.state.UTXOSet;
 import agora.crypto.Schnorr;
 import agora.utils.Test;
 import agora.test.Base;
+
+import std.path : buildPath;
 
 import core.atomic;
 import core.stdc.stdint;
@@ -63,14 +66,15 @@ private class MissingPreImageEM : EnrollmentManager
 // `MissingPreImageEM` class
 private class NoPreImageVN : TestValidatorNode
 {
-    public static shared UTXOSet utxo_set;
+    public __gshared UTXOSet utxo_set;
     private shared bool* reveal_preimage;
 
     ///
     public this (Parameters!(TestValidatorNode.__ctor) args,
-        shared(bool)* reveal_preimage)
+        shared(bool)* reveal_preimage, UTXOSet utxo_set)
     {
         this.reveal_preimage = reveal_preimage;
+        this.utxo_set = utxo_set;
         super(args);
     }
 
@@ -80,10 +84,9 @@ private class NoPreImageVN : TestValidatorNode
             this.config.validator.key_pair, this.params, this.reveal_preimage);
     }
 
-    protected override UTXOSet getUtxoSet()
+    protected override UTXOSet getUtxoSet ()
     {
-        this.utxo_set = cast(shared UTXOSet)super.getUtxoSet();
-        return cast(UTXOSet)this.utxo_set;
+        return this.utxo_set;
     }
 }
 
@@ -97,14 +100,20 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         public static shared bool reveal_preimage = false;
+        public __gshared UTXOSet utxo_set;
 
-        mixin ForwardCtor!();
+        ///
+        public this (Parameters!(TestAPIManager.__ctor) args, UTXOSet utxo_set)
+        {
+            this.utxo_set = utxo_set;
+            super(args);
+        }
 
         ///
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 5)
-                this.addNewNode!NoPreImageVN(conf, &reveal_preimage, file, line);
+                this.addNewNode!NoPreImageVN(conf, &reveal_preimage, utxo_set, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
@@ -113,7 +122,8 @@ unittest
     TestConf conf = {
         recurring_enrollment : false,
     };
-    auto network = makeTestNetwork!BadAPIManager(conf);
+    auto utxo_set = new SyncedUTXOSet(new ManagedDatabase(":memory:"));
+    auto network = makeTestNetwork!BadAPIManager(conf, utxo_set);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -121,7 +131,6 @@ unittest
 
     auto nodes = network.clients;
     auto spendable = network.blocks[$ - 1].spendable().array;
-    auto utxo_set = cast(UTXOSet) NoPreImageVN.utxo_set;
     auto bad_address = nodes[5].getPublicKey();
 
     // discarded UTXOs (just to trigger block creation)
@@ -182,7 +191,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             if (conf.validator.enabled == true)
-                this.addNewNode!NoPreImageVN(conf, &this.reveal_preimage, file, line);
+                this.addNewNode!NoPreImageVN(conf, &this.reveal_preimage, new UTXOSet(new ManagedDatabase(":memory:")), file, line);
             else
                 super.createNewNode(conf, file, line);
         }

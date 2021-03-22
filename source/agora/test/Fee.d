@@ -24,7 +24,7 @@ unittest
     TestConf conf = {
         quorum_threshold : 100
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -231,7 +231,7 @@ unittest
         payout_period : 1,
         quorum_threshold : 100
     };
-    auto network = makeTestNetwork(conf);
+    auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
