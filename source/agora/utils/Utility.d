@@ -69,6 +69,41 @@ Nullable!(ReturnType!dg) retry (alias dg, T)(T waiter, long max_retries,
     return RetType();
 }
 
+/// returns the function attributues as a string
+public template FuncAttributes (alias Func)
+{
+    import std.array : join;
+    enum FuncAttributes = [__traits(getFunctionAttributes, Func)].join(" ");
+}
+
+/***************************************************************************
+
+    This template wraps the function's body inside a 'synchronized' statement,
+    so it can be called from multiple threads.
+
+    Params:
+        Func = alias to the function symbol
+        identifier = name of the function
+
+***************************************************************************/
+
+public mixin template SyncFunction (alias Func, string identifier = __traits(identifier, Func))
+{
+    import std.format : format;
+    import std.meta : AliasSeq;
+    import std.traits : ReturnType, Parameters;
+
+    alias UDA = AliasSeq!(__traits(getAttributes, Func));
+    mixin(q{
+            override @(UDA) ReturnType!Func %1$s(Parameters!Func params) %2$s {
+                synchronized
+                {
+                    return super.%1$s(params);
+                }
+            }
+         }.format(identifier, FuncAttributes!Func));
+}
+
 /*******************************************************************************
 
     Keeps retrying the 'check' condition until it is true,
