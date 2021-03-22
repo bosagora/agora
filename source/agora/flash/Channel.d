@@ -276,7 +276,7 @@ public class Channel
         // initial output allocates all the funds back to the channel creator
         const seq_id = 0;
         const Balance balance = { refund_amount : this.conf.capacity };
-        const Output[] outputs = this.buildBalanceOutputs(balance);
+        Output[] outputs = this.buildBalanceOutputs(balance);
 
         auto pair = this.update_signer.collectSignatures(0, outputs,
             priv_nonce, peer_nonce, this.conf.funding_tx);
@@ -897,7 +897,7 @@ LOuter: while (1)
         auto new_balance = this.buildUpdatedBalance(direction,
             this.cur_balance, payment.amount, payment.payment_hash,
             payment.lock_height, payment.height);
-        const new_outputs = this.buildBalanceOutputs(new_balance);
+        auto new_outputs = this.buildBalanceOutputs(new_balance);
 
         log.info("{}: Created outgoing payment balance request: {}",
             this.kp.address.flashPrettify, new_balance);
