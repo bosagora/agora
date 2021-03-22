@@ -17,6 +17,7 @@
 
 module agora.flash.UpdateSigner;
 
+import agora.common.ManagedDatabase;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
@@ -43,82 +44,17 @@ import core.time;
 /// Ditto
 public class UpdateSigner
 {
-    /// Channel configuration
-    private const ChannelConfig conf;
-
-    /// Key-pair used for signing and deriving update / settlement key-pairs
-    public const KeyPair kp;
+    /// All the update signer metadata
+    mixin UpdateSignerMetadata!() meta;
 
     /// Peer we're communicating with
     private FlashAPI peer;
-
-    /// The public key of the peer (for logging)
-    private Point peer_pk;
 
     /// Execution engine
     private Engine engine;
 
     /// Task manager
     private ITaskManager taskman;
-
-    /// Sequence ID we're trying to sign for
-    /// Todo: we should also have some kind of incremental ID to be able to
-    /// re-try the same sequence IDs
-    private uint seq_id;
-
-    /// Pending settlement transaction which must be singed by all parties
-    private static struct PendingSettle
-    {
-        /// The settlement transaction
-        private Transaction tx;
-
-        /// Our own signature
-        private Signature our_sig;
-
-        /// The counter-party's signature
-        private Signature peer_sig;
-
-        /// Whether the two signatures above are valid, which means we can
-        /// proceed to signing the update transaction.
-        private bool validated;
-    }
-
-    /// Pending update transaction which must be singed by all parties,
-    /// but should only be signed once the settlement transaction is signed.
-    private static struct PendingUpdate
-    {
-        /// The update transaction
-        private Transaction tx;
-
-        /// Our own signature
-        private Signature our_sig;
-
-        /// The counter-party's signature
-        private Signature peer_sig;
-
-        /// Whether the two signatures above are valid, which means we can
-        /// proceed to updating the channel balance state.
-        private bool validated;
-    }
-
-    /// Pending signatures for the settlement transaction.
-    /// Contains our own settlement signature, which is shared
-    /// when the counter-party requests it via `requestSettleSig()`.
-    private PendingSettle pending_settle;
-
-    /// Pending signatures for the update transaction.
-    /// Contains our own update signature, which is only shared
-    /// when counter-parties' settlement signatures are all received
-    /// and the settlement signature's multi-sig is considered valid.
-    private PendingUpdate pending_update;
-
-    /// Whether there is an active signature collecting process.
-    /// While there is an active uncancelled signature process,
-    /// a new one should not be started.
-    private bool is_collecting;
-
-    /// Set when the peer has confirmed collecting signatures for this update
-    private bool peer_confirmed_update;
 
     /***************************************************************************
 
@@ -134,7 +70,7 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public this (in ChannelConfig conf, in KeyPair kp, FlashAPI peer,
+    public this (ChannelConfig conf, KeyPair kp, FlashAPI peer,
         Point peer_pk, Engine engine, ITaskManager taskman)
     {
         this.conf = conf;
@@ -263,12 +199,16 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public UpdatePair collectSignatures (in uint seq_id, in Output[] outputs,
-        in PrivateNonce priv_nonce, in PublicNonce peer_nonce,
-        in Transaction prev_tx)
+    public UpdatePair collectSignatures (uint seq_id, Output[] outputs,
+        PrivateNonce priv_nonce, PublicNonce peer_nonce, Transaction prev_tx)
     {
         this.clearState();
+
         this.seq_id = seq_id;
+        this.outputs = outputs;
+        this.priv_nonce = priv_nonce;
+        this.peer_nonce = peer_nonce;
+        this.prev_tx = prev_tx;
 
         this.is_collecting = true;
         scope (exit) this.is_collecting = false;
@@ -640,4 +580,88 @@ public class UpdateSigner
         this.pending_update = PendingUpdate.init;
         this.peer_confirmed_update = false;
     }
+}
+
+/// Pending settlement transaction which must be singed by all parties
+private struct PendingSettle
+{
+    /// The settlement transaction
+    private Transaction tx;
+
+    /// Our own signature
+    private Signature our_sig;
+
+    /// The counter-party's signature
+    private Signature peer_sig;
+
+    /// Whether the two signatures above are valid, which means we can
+    /// proceed to signing the update transaction.
+    private bool validated;
+}
+
+/// Pending update transaction which must be singed by all parties,
+/// but should only be signed once the settlement transaction is signed.
+private struct PendingUpdate
+{
+    /// The update transaction
+    private Transaction tx;
+
+    /// Our own signature
+    private Signature our_sig;
+
+    /// The counter-party's signature
+    private Signature peer_sig;
+
+    /// Whether the two signatures above are valid, which means we can
+    /// proceed to updating the channel balance state.
+    private bool validated;
+}
+
+/// All the update signer metadata which we keep in the DB for storage
+private mixin template UpdateSignerMetadata ()
+{
+    /// Channel configuration
+    private ChannelConfig conf;
+
+    /// Key-pair used for signing and deriving update / settlement key-pairs
+    public KeyPair kp;
+
+    /// The public key of the peer (for logging)
+    private Point peer_pk;
+
+    /// Sequence ID we're trying to sign for
+    /// Todo: we should also have some kind of incremental ID to be able to
+    /// re-try the same sequence IDs
+    private uint seq_id;
+
+    /// Pending signatures for the settlement transaction.
+    /// Contains our own settlement signature, which is shared
+    /// when the counter-party requests it via `requestSettleSig()`.
+    private PendingSettle pending_settle;
+
+    /// Pending signatures for the update transaction.
+    /// Contains our own update signature, which is only shared
+    /// when counter-parties' settlement signatures are all received
+    /// and the settlement signature's multi-sig is considered valid.
+    private PendingUpdate pending_update;
+
+    /// Whether there is an active signature collecting process.
+    /// While there is an active uncancelled signature process,
+    /// a new one should not be started.
+    private bool is_collecting;
+
+    /// Set when the peer has confirmed collecting signatures for this update
+    private bool peer_confirmed_update;
+
+    /// Outputs we're in the process of signing
+    private Output[] outputs;
+
+    /// the private nonce pair used for signing
+    private PrivateNonce priv_nonce;
+
+    /// the public nonce pair the counter-party will use for signing
+    private PublicNonce peer_nonce;
+
+    /// The tx from which to spend from
+    private Transaction prev_tx;
 }
