@@ -798,7 +798,6 @@ version (unittest)
                 cycleForValidator(key.address)));
             const Scalar r = rc + challenge; // make it unique each challenge
             const Pair R = Pair.fromScalar(r);
-            const K = Point(key.address[]);
             Scalar s = sign(key.secret, R.V, r, challenge).s;
             log.trace("multiSigTestBlock: cycle {} index {}. (R, s) for validator {} is ({}, {})",
                 cycleForValidator(key.address), i, key.address, rc.toPoint(), s);
