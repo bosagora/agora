@@ -89,8 +89,8 @@ public enum ErrorCode : ushort
     /// than allocated in the funding transaction.
     RejectedBalanceRequest,
 
-    /// Cannot decrypt the payload
-    CantDecrypt,
+    /// Cannot decrypt the payload, or the packet contains invalid data
+    InvalidOnionPacket,
 
     /// The two counter-parties have mismatching block height information,
     /// which means one of the two nodes is out of sync with the blockchain.
