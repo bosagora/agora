@@ -347,4 +347,8 @@ unittest
     // Can't route 2.coins
     path = ln.getPaymentPath(pks[0], pks[2], 2.coins);
     assert(path == null);
+
+    // unknown keys
+    path = ln.getPaymentPath(Scalar.random().toPoint(), pks[1], Amount(1));
+    assert(path is null);
 }
