@@ -708,15 +708,15 @@ public abstract class FlashNode : ControlFlashAPI
             return Result!PublicNonce(ErrorCode.InvalidChannelID,
                 "Channel ID not found");
 
+        if (!packet.ephemeral_pk.isValid())
+            return Result!PublicNonce(ErrorCode.InvalidOnionPacket,
+                "Ephemeral public key in the onion packet is invalid");
+
         Payload payload;
         Point shared_secret;
         if (!decryptPayload(packet.encrypted_payloads[0], this.conf.key_pair.secret,
             packet.ephemeral_pk, payload, shared_secret))
-        {
-            log.info("{} --- ERROR: CANNOT DECRYPT PAYLOAD",
-                this.conf.key_pair.address.flashPrettify);
-            return Result!PublicNonce(ErrorCode.CantDecrypt);
-        }
+            return Result!PublicNonce(ErrorCode.InvalidOnionPacket);
 
         if (payload.next_chan_id != Hash.init
             && payload.next_chan_id !in this.channels)
