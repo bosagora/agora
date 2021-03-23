@@ -22,6 +22,7 @@ import agora.consensus.state.UTXODB;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.serialization.Serializer;
+import agora.utils.Utility;
 
 import std.file;
 
@@ -91,6 +92,25 @@ public class UTXOSet : UTXOCache
     {
         this.utxo_db[utxo] = value;
     }
+}
+
+/// Thread safe version of the UTXOSet, should only be used for testing
+public class SyncedUTXOSet : UTXOSet
+{
+    public this (ManagedDatabase db)
+    {
+        super(db);
+    }
+
+    mixin SyncFunction!(UTXOSet.length);
+    mixin SyncFunction!(UTXOSet.getUTXOs);
+    mixin SyncFunction!(UTXOSet.peekUTXO);
+    mixin SyncFunction!(UTXOSet.remove);
+    mixin SyncFunction!(UTXOSet.add);
+    mixin SyncFunction!(UTXOSet.updateUTXOCache);
+    mixin SyncFunction!(UTXOSet.getUTXO);
+    mixin SyncFunction!(UTXOSet.getUTXOFinder);
+    mixin SyncFunction!(UTXOSet.findUTXO);
 }
 
 /// test for get UTXOs with a node's public key
