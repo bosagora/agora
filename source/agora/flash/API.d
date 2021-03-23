@@ -123,29 +123,6 @@ public interface FlashAPI
 
     /***************************************************************************
 
-        Get the state of a channel with the given channel ID.
-
-        Note that the node reports its own view of this channel.
-
-        For example, when waiting for a funding transaction to be externalized
-        one peer may detect the externalization event sooner than the
-        counter-party. In this case one peer will report the channel as being
-        open, while the counter-party might report the channel's state
-        as `State.WaitingForFunding`.
-
-        Params:
-            chan_id = the channel ID to look up.
-
-        Returns:
-            the channel state for this channel ID,
-            or an error code with an optional error message.
-
-    ***************************************************************************/
-
-    public Result!ChannelState getChannelState (/* in */ Hash chan_id);
-
-    /***************************************************************************
-
         Proposes a payment through this channel. This may be a direct payment,
         or an indirect routed payment. Both types of payments use this API.
 

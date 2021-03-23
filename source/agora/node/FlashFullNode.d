@@ -150,13 +150,6 @@ public mixin template FlashNodeCommon ()
     }
 
     ///
-    public override Result!ChannelState getChannelState (/* in */ Hash chan_id)
-        @trusted
-    {
-        return this.flash.getChannelState(chan_id);
-    }
-
-    ///
     public override Result!PublicNonce proposePayment (/* in */ Hash chan_id,
         /* in */ uint seq_id, /* in */ Hash payment_hash,
         /* in */ Amount amount, /* in */ Height lock_height,
