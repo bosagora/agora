@@ -898,7 +898,7 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    public override Hash openNewChannel (/* in */ Hash funding_utxo,
+    public override Result!Hash openNewChannel (/* in */ Hash funding_utxo,
         /* in */ Amount capacity, /* in */ uint settle_time,
         /* in */ Point peer_pk)
     {
@@ -936,7 +936,8 @@ public abstract class FlashNode : ControlFlashAPI
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
         auto result = peer.openChannel(chan_conf, pub_nonce);
-        assert(result.error == ErrorCode.None, result.to!string);
+        if (result.error != ErrorCode.None)
+            return Result!Hash(result.error, result.message);
 
         auto channel = new Channel(chan_conf, this.kp, priv_nonce, result.value,
             peer, this.engine, this.taskman, &this.putTransaction,
@@ -944,7 +945,7 @@ public abstract class FlashNode : ControlFlashAPI
             &this.onUpdateComplete, this.db);
         this.channels[chan_id] = channel;
 
-        return chan_id;
+        return Result!Hash(chan_id);
     }
 
     ///

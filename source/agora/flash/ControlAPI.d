@@ -60,9 +60,12 @@ public interface ControlFlashAPI : FlashAPI
                 setup / update tx was published on the blockchain
             peer_pk = the public key of the counter-party flash node
 
+        Returns:
+            a hash of the channel ID, or an error if unsuccessful
+
     ***************************************************************************/
 
-    public Hash openNewChannel (/* in */ Hash funding_utxo,
+    public Result!Hash openNewChannel (/* in */ Hash funding_utxo,
         /* in */ Amount capacity, /* in */ uint settle_time,
         /* in */ Point peer_pk);
 

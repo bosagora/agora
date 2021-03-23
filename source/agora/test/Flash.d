@@ -412,8 +412,10 @@ unittest
 
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id = alice.openNewChannel(
+    const chan_id_res = alice.openNewChannel(
         utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
 
     // await funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -517,8 +519,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id = alice.openNewChannel(
+    const alice_bob_chan_id_res = alice.openNewChannel(
         alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+    assert(alice_bob_chan_id_res.error == ErrorCode.None,
+        alice_bob_chan_id_res.message);
+    const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
@@ -535,8 +540,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
-    const bob_charlie_chan_id = bob.openNewChannel(
+    const bob_charlie_chan_id_res = bob.openNewChannel(
         bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
+    assert(bob_charlie_chan_id_res.error == ErrorCode.None,
+        bob_charlie_chan_id_res.message);
+    const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
@@ -635,8 +643,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id = alice.openNewChannel(
+    const alice_bob_chan_id_res = alice.openNewChannel(
         alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+    assert(alice_bob_chan_id_res.error == ErrorCode.None,
+        alice_bob_chan_id_res.message);
+    const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
@@ -653,8 +664,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
-    const bob_charlie_chan_id = bob.openNewChannel(
+    const bob_charlie_chan_id_res = bob.openNewChannel(
         bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+    assert(bob_charlie_chan_id_res.error == ErrorCode.None,
+        bob_charlie_chan_id_res.message);
+    const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
@@ -671,8 +685,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const charlie_utxo = UTXO.getHash(hashFull(txs[2]), 0);
-    const charlie_alice_chan_id = charlie.openNewChannel(
+    const charlie_alice_chan_id_res = charlie.openNewChannel(
         charlie_utxo, Amount(10_000), Settle_1_Blocks, alice_pk);
+    assert(charlie_alice_chan_id_res.error == ErrorCode.None,
+        charlie_alice_chan_id_res.message);
+    const charlie_alice_chan_id = charlie_alice_chan_id_res.value;
     log.info("Charlie Alice channel ID: {}", charlie_alice_chan_id);
 
     // await bob & bob channel funding transaction
@@ -767,8 +784,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id = alice.openNewChannel(
+    const alice_bob_chan_id_res = alice.openNewChannel(
         alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+    assert(alice_bob_chan_id_res.error == ErrorCode.None,
+        alice_bob_chan_id_res.message);
+    const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
@@ -785,8 +805,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo = UTXO.getHash(hashFull(txs[2]), 0);
-    const bob_charlie_chan_id = bob.openNewChannel(
+    const bob_charlie_chan_id_res = bob.openNewChannel(
         bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+    assert(bob_charlie_chan_id_res.error == ErrorCode.None,
+        bob_charlie_chan_id_res.message);
+    const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
     // await bob & bob channel funding transaction
@@ -805,8 +828,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const bob_utxo_2 = UTXO.getHash(hashFull(txs[3]), 0);
-    const bob_charlie_chan_id_2 = bob.openNewChannel(
+    const bob_charlie_chan_id_2_res = bob.openNewChannel(
         bob_utxo_2, Amount(10_000), Settle_1_Blocks, charlie_pk);
+    assert(bob_charlie_chan_id_2_res.error == ErrorCode.None,
+        bob_charlie_chan_id_2_res.message);
+    const bob_charlie_chan_id_2 = bob_charlie_chan_id_2_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id_2);
 
     // await bob & bob channel funding transaction
@@ -914,8 +940,11 @@ unittest
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id = alice.openNewChannel(
+    const alice_bob_chan_id_res = alice.openNewChannel(
         alice_utxo, Amount(10_000), 0, bob_pk);
+    assert(alice_bob_chan_id_res.error == ErrorCode.None,
+        alice_bob_chan_id_res.message);
+    const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
     // await alice & bob channel funding transaction
@@ -985,8 +1014,11 @@ unittest
 
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id = alice.openNewChannel(
+    const chan_id_res = alice.openNewChannel(
         utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None,
+        chan_id_res.message);
+    const chan_id = chan_id_res.value;
 
     // await funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
