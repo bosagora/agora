@@ -1072,3 +1072,156 @@ unittest
     alice.waitForUpdateIndex(chan_id, 6);
     bob.waitForUpdateIndex(chan_id, 6);
 }
+
+/// test various error cases
+unittest
+{
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+
+    FlashConfig bob_conf = { enabled : true,
+        min_funding : Amount(1000),
+        max_funding : Amount(100_000_000),
+        min_settle_time : 10,
+        max_settle_time : 100,
+        key_pair : KeyPair(PublicKey(bob_pair.V), SecretKey(bob_pair.v)),
+    };
+    auto alice = factory.create(alice_pair, address);
+    auto bob = factory.create(bob_pair, bob_conf, address);
+
+    const Settle_10_Blocks = 10;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+
+    // error on mismatching genesis hash
+    ChannelConfig bad_conf = { funder_pk : alice_pair.V };
+    auto open_res = bob.openChannel(bad_conf, PublicNonce.init);
+    assert(open_res.error == ErrorCode.InvalidGenesisHash, open_res.to!string);
+
+    // error on capacity too low
+    auto res = alice.openNewChannel(
+        utxo, Amount(1), Settle_10_Blocks, bob_pair.V);
+    assert(res.error == ErrorCode.RejectedFundingAmount, res.to!string);
+
+    // error on capacity too high
+    res = alice.openNewChannel(
+        utxo, Amount(1_000_000_000), Settle_10_Blocks, bob_pair.V);
+    assert(res.error == ErrorCode.RejectedFundingAmount, res.to!string);
+
+    // error on settle time too low
+    res = alice.openNewChannel(
+        utxo, Amount(10_000), 5, bob_pair.V);
+    assert(res.error == ErrorCode.RejectedSettleTime, res.to!string);
+
+    // error on settle time too high
+    res = alice.openNewChannel(
+        utxo, Amount(10_000), 1000, bob_pair.V);
+    assert(res.error == ErrorCode.RejectedSettleTime, res.to!string);
+
+    const chan_id_res = alice.openNewChannel(
+        utxo, Amount(10_000), Settle_10_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+
+    // await funding transaction
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(chan_id);
+    bob.waitChannelOpen(chan_id);
+
+    // test what happens trying to open a new channel with the same funding tx
+    res = alice.openNewChannel(utxo, Amount(10_000), Settle_10_Blocks,
+        bob_pair.V);
+    assert(res.error == ErrorCode.DuplicateChannelID, res.to!string);
+
+    // test some update signer error cases
+    auto sig_res = alice.requestSettleSig(Hash.init, 0);
+    assert(sig_res.error == ErrorCode.InvalidChannelID, sig_res.to!string);
+
+    sig_res = alice.requestUpdateSig(Hash.init, 0);
+    assert(sig_res.error == ErrorCode.InvalidChannelID, sig_res.to!string);
+
+    /*** test invalid payment proposals ***/
+
+    // mismatching version byte
+    OnionPacket onion = { version_byte : ubyte.max };
+    auto pay_res = alice.proposePayment(Hash.init, 0, Hash.init, Amount.init,
+        Height.init, onion, PublicNonce.init, Height.init);
+    assert(pay_res.error == ErrorCode.VersionMismatch, pay_res.to!string);
+
+    // invalid channel ID
+    onion.version_byte = 0;
+    pay_res = alice.proposePayment(Hash.init, 0, Hash.init, Amount.init,
+        Height.init, onion, PublicNonce.init, Height.init);
+    assert(pay_res.error == ErrorCode.InvalidChannelID, pay_res.to!string);
+
+    // ephemeral pk is invalid
+    pay_res = alice.proposePayment(chan_id, 0, Hash.init, Amount.init,
+        Height.init, onion, PublicNonce.init, Height.init);
+    assert(pay_res.error == ErrorCode.InvalidOnionPacket, pay_res.to!string);
+
+    // onion packet cannot be decrypted
+    onion.ephemeral_pk = Scalar.random().toPoint();
+    pay_res = alice.proposePayment(chan_id, 0, Hash.init, Amount.init,
+        Height.init, onion, PublicNonce.init, Height.init);
+    assert(pay_res.error == ErrorCode.InvalidOnionPacket, pay_res.to!string);
+
+    // invalid next channel ID
+    Hop[] path = [
+        Hop(Point(alice_pair.V[]), chan_id, Amount(10)),
+        Hop(Scalar.random().toPoint(), hashFull(2), Amount(10))];
+    Amount total_amount;
+    Height use_lock_height;
+    Point[] shared_secrets;
+    onion = createOnionPacket(hashFull(42), Height(1000), Amount(100), path,
+        total_amount, use_lock_height, shared_secrets);
+    pay_res = alice.proposePayment(chan_id, 0, hashFull(42), total_amount,
+        use_lock_height, onion, PublicNonce.init, Height.init);
+    assert(pay_res.error == ErrorCode.InvalidChannelID, pay_res.to!string);
+
+    /*** test invalid update proposals ***/
+
+    // invalid channel ID
+    auto upd_res = alice.proposeUpdate(Hash.init, 0, null, null,
+        PublicNonce.init, Height.init);
+    assert(upd_res.error == ErrorCode.InvalidChannelID, upd_res.to!string);
+
+    // invalid height
+    upd_res = alice.proposeUpdate(chan_id, 0, null, null,
+        PublicNonce.init, Height(100));
+    assert(upd_res.error == ErrorCode.MismatchingBlockHeight, upd_res.to!string);
+}
