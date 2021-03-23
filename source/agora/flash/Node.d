@@ -68,7 +68,7 @@ public abstract class ThinFlashNode : FlashNode
         Constructor
 
         Params:
-            kp = The key-pair of this node
+            conf = Flash configuration
             db_path = path to the database (or in-memory if set to ":memory:")
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
@@ -78,12 +78,12 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public this (const KeyPair kp, string db_path, Hash genesis_hash,
+    public this (FlashConfig conf, string db_path, Hash genesis_hash,
         Engine engine, ITaskManager taskman, string agora_address)
     {
         Duration timeout;  // infinite timeout (todo: fixup)
         this.agora_node = this.getAgoraClient(agora_address, timeout);
-        super(kp, db_path, genesis_hash, engine, taskman);
+        super(conf, db_path, genesis_hash, engine, taskman);
     }
 
     /***************************************************************************
@@ -215,7 +215,7 @@ public class AgoraFlashNode : FlashNode
         Constructor
 
         Params:
-            kp = The key-pair of this node
+            conf = Flash configuration
             db_path = path to the database (or in-memory if set to ":memory:")
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
@@ -225,13 +225,13 @@ public class AgoraFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public this (const KeyPair kp, string db_path, Hash genesis_hash,
+    public this (FlashConfig conf, string db_path, Hash genesis_hash,
         Engine engine, ITaskManager taskman, FullNodeAPI agora_node,
         FlashAPI delegate (in Point, Duration) flashClientGetter)
     {
         this.agora_node = agora_node;
         this.flashClientGetter = flashClientGetter;
-        super(kp, db_path, genesis_hash, engine, taskman);
+        super(conf, db_path, genesis_hash, engine, taskman);
     }
 
     /// No-op, FullNode will notify us of externalized blocks
@@ -297,8 +297,8 @@ public abstract class FlashNode : ControlFlashAPI
     /// Logger instance
     protected Logger log;
 
-    /// Schnorr key-pair belonging to this node
-    protected const KeyPair kp;
+    /// Flash config which remains static after boot but may change after restart
+    protected FlashConfig conf;
 
     /// Hash of the genesis block
     protected const Hash genesis_hash;
@@ -332,7 +332,7 @@ public abstract class FlashNode : ControlFlashAPI
         Constructor
 
         Params:
-            kp = The key-pair of this node
+            conf = the configuration of this node
             db_path = path to the database (or in-memory if set to ":memory:")
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
@@ -343,13 +343,13 @@ public abstract class FlashNode : ControlFlashAPI
 
     ***************************************************************************/
 
-    public this (const KeyPair kp, string db_path, Hash genesis_hash,
+    public this (FlashConfig conf, string db_path, Hash genesis_hash,
         Engine engine, ITaskManager taskman)
     {
+        this.conf = conf;
         this.genesis_hash = genesis_hash;
         this.engine = engine;
-        this.kp = kp;
-        this.log = Logger(this.kp.address.flashPrettify());
+        this.log = Logger(this.conf.key_pair.address.flashPrettify());
         this.taskman = taskman;
         this.db = this.getManagedDatabase(db_path);
         this.load();
@@ -525,8 +525,8 @@ public abstract class FlashNode : ControlFlashAPI
         }
 
         PrivateNonce priv_nonce = genPrivateNonce();
-        auto channel = new Channel(chan_conf, this.kp, priv_nonce, peer_nonce,
-            peer, this.engine, this.taskman, &this.putTransaction,
+        auto channel = new Channel(chan_conf, this.conf.key_pair, priv_nonce,
+            peer_nonce, peer, this.engine, this.taskman, &this.putTransaction,
             &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
             &this.onUpdateComplete, this.db);
 
@@ -561,13 +561,13 @@ public abstract class FlashNode : ControlFlashAPI
             this.known_channels[conf.chan_id] = conf;
             this.network.addChannel(conf);
 
-            const dir = this.kp.address.data == conf.funder_pk ?
+            const dir = this.conf.key_pair.address.data == conf.funder_pk ?
                 PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
             // Set the initial fees
             // todo: this should be configurable
             auto update = ChannelUpdate(conf.chan_id, dir,
                 Amount(1), Amount(1));
-            update.sig = this.kp.sign(update);
+            update.sig = this.conf.key_pair.sign(update);
             this.channel_updates[conf.chan_id][dir] = update;
             // todo: should not gossip this to counterparty of the just opened channel
             foreach (peer; this.known_peers.byValue())
@@ -713,10 +713,11 @@ public abstract class FlashNode : ControlFlashAPI
 
         Payload payload;
         Point shared_secret;
-        if (!decryptPayload(packet.encrypted_payloads[0], this.kp.secret,
+        if (!decryptPayload(packet.encrypted_payloads[0], this.conf.key_pair.secret,
             packet.ephemeral_pk, payload, shared_secret))
         {
-            log.info("{} --- ERROR: CANNOT DECRYPT PAYLOAD", this.kp.address.flashPrettify);
+            log.info("{} --- ERROR: CANNOT DECRYPT PAYLOAD",
+                this.conf.key_pair.address.flashPrettify);
             return Result!PublicNonce(ErrorCode.CantDecrypt);
         }
 
@@ -771,7 +772,8 @@ public abstract class FlashNode : ControlFlashAPI
 
             if (chans.canFind(deobfuscated.chan_id))
             {
-                log.info(this.kp.address.flashPrettify, " Got error: ", deobfuscated);
+                log.info(this.conf.key_pair.address.flashPrettify, " Got error: ",
+                    deobfuscated);
                 this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
                 this.dump();
             }
@@ -883,8 +885,8 @@ public abstract class FlashNode : ControlFlashAPI
             return channel.queueNewPayment(payment_hash, amount, lock_height,
                 packet, this.last_block_height);
 
-        log.info("{} Could not find this channel ID: {}", this.kp.address.flashPrettify,
-            chan_id);
+        log.info("{} Could not find this channel ID: {}",
+            this.conf.key_pair.address.flashPrettify, chan_id);
         this.onPaymentComplete(chan_id, payment_hash,
             ErrorCode.InvalidChannelID);
     }
@@ -907,7 +909,7 @@ public abstract class FlashNode : ControlFlashAPI
 
         // todo: move to initialization stage!
         auto peer = this.getFlashClient(peer_pk, Duration.init);
-        const pair_pk = this.kp.address + peer_pk;
+        const pair_pk = this.conf.key_pair.address + peer_pk;
 
         // create funding, don't sign it yet as we'll share it first
         auto funding_tx = createFundingTx(funding_utxo, capacity,
@@ -920,9 +922,9 @@ public abstract class FlashNode : ControlFlashAPI
         ChannelConfig chan_conf =
         {
             gen_hash        : this.genesis_hash,
-            funder_pk       : this.kp.address,
+            funder_pk       : this.conf.key_pair.address,
             peer_pk         : peer_pk,
-            pair_pk         : this.kp.address + peer_pk,
+            pair_pk         : this.conf.key_pair.address + peer_pk,
             num_peers       : num_peers,
             update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
             funding_tx      : funding_tx,
@@ -939,8 +941,8 @@ public abstract class FlashNode : ControlFlashAPI
         if (result.error != ErrorCode.None)
             return Result!Hash(result.error, result.message);
 
-        auto channel = new Channel(chan_conf, this.kp, priv_nonce, result.value,
-            peer, this.engine, this.taskman, &this.putTransaction,
+        auto channel = new Channel(chan_conf, this.conf.key_pair, priv_nonce,
+            result.value, peer, this.engine, this.taskman, &this.putTransaction,
             &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
             &this.onUpdateComplete, this.db);
         this.channels[chan_id] = channel;
@@ -973,7 +975,7 @@ public abstract class FlashNode : ControlFlashAPI
         log.info("createNewInvoice({}, {}, {})",
             amount, expiry, description);
 
-        auto pair = createInvoice(this.kp.address, amount, expiry, description);
+        auto pair = createInvoice(this.conf.key_pair.address, amount, expiry, description);
         this.invoices[pair.invoice.payment_hash] = pair.invoice;
         this.secrets[pair.invoice.payment_hash] = pair.secret;
         this.dump();
@@ -1000,8 +1002,8 @@ public abstract class FlashNode : ControlFlashAPI
         // find a route
         // todo: not implemented properly yet as capacity, individual balances, and
         // fees are not taken into account yet. Only up to two channels assumed here.
-        auto path = this.network.getPaymentPath(this.kp.address, invoice.destination,
-            invoice.amount, ignore_chans);
+        auto path = this.network.getPaymentPath(this.conf.key_pair.address,
+            invoice.destination, invoice.amount, ignore_chans);
         Amount total_amount;
         Height use_lock_height;
         Point[] cur_shared_secrets;
@@ -1020,7 +1022,7 @@ public abstract class FlashNode : ControlFlashAPI
     private bool isValidInvoice (/* in */ Invoice invoice)
     {
         // paying to ourself doesn't make sense
-        if (invoice.destination == this.kp.address)
+        if (invoice.destination == this.conf.key_pair.address)
             return false;
 
         return true;

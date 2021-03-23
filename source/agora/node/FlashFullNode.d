@@ -237,7 +237,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         assert(this.config.flash.enabled);
         assert(!this.config.validator.enabled);
         const flash_path = buildPath(this.config.node.data_dir, "flash.dat");
-        this.flash = new AgoraFlashNode(this.config.flash.key_pair,
+        this.flash = new AgoraFlashNode(this.config.flash,
             flash_path, hashFull(this.params.Genesis), this.engine,
             this.taskman, this, &this.getFlashClient);
     }
