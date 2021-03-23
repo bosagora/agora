@@ -46,6 +46,12 @@ public struct FlashConfig
 
     /// Maximum funding allowed for a channel
     public Amount max_funding = Amount(100_000);
+
+    /// Minimum number of blocks before settling can begin after trigger published
+    public uint min_settle_time = 10;
+
+    /// Maximum number of blocks before settling can begin after trigger published
+    public uint max_settle_time = 100;
 }
 
 /// Channel configuration. These fields remain static throughout the

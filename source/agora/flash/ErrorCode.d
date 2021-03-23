@@ -72,6 +72,10 @@ public enum ErrorCode : ushort
     /// as to the minimum funding limits of the node.
     RejectedFundingAmount,
 
+    /// Counter-party disagrees with the settle time. The message in the
+    /// `Result` may have the node's specific reasoning.
+    RejectedSettleTime,
+
     /// The receiving node rejects routing this payment as it exceeds its
     /// current balance or its comfortable maximum payment amount it's willing
     /// to ever route through this channel
