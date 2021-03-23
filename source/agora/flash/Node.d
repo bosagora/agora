@@ -716,7 +716,8 @@ public abstract class FlashNode : ControlFlashAPI
         Point shared_secret;
         if (!decryptPayload(packet.encrypted_payloads[0], this.conf.key_pair.secret,
             packet.ephemeral_pk, payload, shared_secret))
-            return Result!PublicNonce(ErrorCode.InvalidOnionPacket);
+            return Result!PublicNonce(ErrorCode.InvalidOnionPacket,
+                "Cannot decrypt onion packet payload");
 
         if (payload.next_chan_id != Hash.init
             && payload.next_chan_id !in this.channels)
