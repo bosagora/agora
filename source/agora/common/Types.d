@@ -73,10 +73,18 @@ public struct Height
         return Height(this.value++);
     }
 
-    /// Allow to offset an height by a fixed number
+    /// Allow to offset height by an addition of a fixed number
     public Height opBinary (string op : "+") (ulong offset) const
     {
         return Height(this.value + offset);
+    }
+
+    /// Allow to offset height by a subtraction of a fixed number
+    public Height opBinary (string op : "-") (ulong offset) const
+    {
+        import std.conv : to;
+        assert(this.value - offset >= 0, "Attempt to subtract" ~ offset.to!string ~ " from height " ~ this.value.to!string);
+        return Height(this.value - offset);
     }
 
     /// Allow to offset an height by a fixed number
