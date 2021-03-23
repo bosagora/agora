@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
+import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Task;
@@ -109,7 +110,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     protected Registry!TestFlashAPI* flash_registry;
 
     ///
-    public this (const KeyPair kp, Registry!TestAPI* agora_registry,
+    public this (FlashConfig conf, Registry!TestAPI* agora_registry,
         string agora_address, DatabaseStorage storage,
         Registry!TestFlashAPI* flash_registry)
     {
@@ -119,7 +120,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         const TestStackMaxTotalSize = 16_384;
         const TestStackMaxItemSize = 512;
         auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-        super(kp, storage, genesis_hash, engine, new LocalRestTaskManager(),
+        super(conf, storage, genesis_hash, engine, new LocalRestTaskManager(),
             agora_address);
     }
 
@@ -239,12 +240,12 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     ///
     public override void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee)
     {
-        const dir = this.kp.address == this.known_channels[chan_id].funder_pk ?
+        const dir = this.conf.key_pair.address == this.known_channels[chan_id].funder_pk ?
             PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
         auto update = this.channel_updates[chan_id][dir];
         update.fixed_fee = fixed_fee;
         update.proportional_fee = proportional_fee;
-        update.sig = this.kp.sign(update);
+        update.sig = this.conf.key_pair.sign(update);
         this.gossipChannelUpdates([update]);
     }
 
@@ -258,7 +259,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     public void printLog ()
     {
         auto output = stdout.lockingTextWriter();
-        output.formattedWrite("Log for Flash node %s:\n", this.kp.address.flashPrettify);
+        output.formattedWrite("Log for Flash node %s:\n", this.conf.key_pair.address.flashPrettify);
         output.put("======================================================================\n");
         CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
@@ -293,9 +294,19 @@ public class FlashNodeFactory
         (const Pair pair, string agora_address,
          DatabaseStorage storage = DatabaseStorage.Local)
     {
+        FlashConfig conf = { enabled : true,
+            key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)) };
+        return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
+    }
+
+    /// ditto
+    public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
+        (const Pair pair, FlashConfig conf, string agora_address,
+         DatabaseStorage storage = DatabaseStorage.Local)
+    {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
-            KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
-            this.agora_registry, agora_address, storage, &this.flash_registry,
+            conf, this.agora_registry, agora_address, storage,
+            &this.flash_registry,
             5.seconds);  // timeout from main thread
 
         this.addresses ~= pair.V;
