@@ -295,6 +295,8 @@ public class FlashNodeFactory
          DatabaseStorage storage = DatabaseStorage.Local)
     {
         FlashConfig conf = { enabled : true,
+            min_funding : Amount(1000),
+            max_funding : Amount(100_000_000),
             key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)) };
         return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
     }

@@ -509,10 +509,11 @@ public abstract class FlashNode : ControlFlashAPI
             return Result!PublicNonce(ErrorCode.InvalidGenesisHash,
                 "Unrecognized blockchain genesis hash");
 
-        const min_funding = Amount(1000);
-        if (chan_conf.capacity < min_funding)
-            return Result!PublicNonce(ErrorCode.FundingTooLow,
-                format("Funding amount is too low. Want at least %s", min_funding));
+        if (chan_conf.capacity < this.conf.min_funding ||
+            chan_conf.capacity > this.conf.max_funding)
+            return Result!PublicNonce(ErrorCode.RejectedFundingAmount,
+                format("Funding amount rejected. Want between %s and %s",
+                    this.conf.min_funding, this.conf.max_funding));
 
         // todo: re-enable
         version (none)

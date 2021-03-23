@@ -40,6 +40,12 @@ public struct FlashConfig
     /// empty and `enabled` is true then the same key-pair will be used as
     /// the one set in `validator.key_pair`.
     public immutable KeyPair key_pair;
+
+    /// Minimum funding allowed for a channel
+    public Amount min_funding = Amount(0);
+
+    /// Maximum funding allowed for a channel
+    public Amount max_funding = Amount(100_000);
 }
 
 /// Channel configuration. These fields remain static throughout the

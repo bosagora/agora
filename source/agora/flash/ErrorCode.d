@@ -70,7 +70,7 @@ public enum ErrorCode : ushort
     /// Counter-party disagrees with the funding amount for this channel.
     /// The message in the `Result` may have the node's specific reasoning
     /// as to the minimum funding limits of the node.
-    FundingTooLow,
+    RejectedFundingAmount,
 
     /// The receiving node rejects routing this payment as it exceeds its
     /// current balance or its comfortable maximum payment amount it's willing
