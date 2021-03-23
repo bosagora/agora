@@ -649,17 +649,6 @@ public abstract class FlashNode : ControlFlashAPI
             "Channel ID not found");
     }
 
-    /// See `FlashAPI.getChannelState`
-    public override Result!ChannelState getChannelState (/* in */ Hash chan_id)
-        @trusted
-    {
-        if (auto channel = chan_id in this.channels)
-            return Result!ChannelState(channel.getState());
-
-        return Result!ChannelState(ErrorCode.InvalidChannelID,
-            "Channel ID not found");
-    }
-
     /// See `FlashAPI.requestSettleSig`
     public override Result!Signature requestSettleSig (/* in */ Hash chan_id,
         /* in */ uint seq_id) @trusted
