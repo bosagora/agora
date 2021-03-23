@@ -36,6 +36,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.flash.API;
 import agora.flash.Config;
+import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.Node;
 import agora.flash.OnionPacket;
@@ -162,8 +163,14 @@ public class FlashValidator : Validator, FlashValidatorAPI
         const Settle_1_Blocks = 0;
 
         const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
-        const alice_bob_chan_id = this.flash.openNewChannel(
+        const res = this.flash.openNewChannel(
             alice_utxo, Amount(10_000), Settle_1_Blocks, bob.address);
+        if (res.error != ErrorCode.None)
+        {
+            log.error("Cannot open channel with bob: {}", res);
+            assert(0);
+        }
+        const alice_bob_chan_id = res.value;
         log.info("Alice bob channel: {}", alice_bob_chan_id);
         log.info("Alice bob channel ID: {}", alice_bob_chan_id);
 
@@ -238,8 +245,14 @@ public class FlashValidator : Validator, FlashValidatorAPI
 
         const Settle_1_Blocks = 0;
         const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
-        const bob_charlie_chan_id = this.flash.openNewChannel(
+        const res = this.flash.openNewChannel(
             bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
+        if (res.error != ErrorCode.None)
+        {
+            log.error("Cannot open channel with charlie: {}", res);
+            assert(0);
+        }
+        const bob_charlie_chan_id = res.value;
         log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
 
         // await funding tx
