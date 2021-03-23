@@ -8,6 +8,25 @@
     consensus-critical constants are the protocol-level constants, so they
     shouldn't be modified outside of test environments.
 
+    Adding_a_new_value:
+    Values can be added to `ConsensusParams` when they represent constants
+    that are consensus-critical (changing them would break consensus).
+    An example of such a consensus-critical constant is the hash of the genesis
+    block, or the minimum time interval between blocks.
+    On the other hand, values that can differ between nodes without breaking
+    consensus should go in the node's configuration. This includes, for example,
+    the timeout a node will apply to its requests.
+
+    ConsensusParams_or_ConsensusConfig:
+    `ConsensusParams` also includes a `ConsensusConfig` struct. The goal of this
+    structure is to contain the values that can be tweaked between networks.
+    One example of such a tweak is to provide a different genesis block between
+    MainNet and TestNet. `ConsensusConfig` is used extensively to allow
+    in-memory testing without inducing too much overhead (e.g. by reducing the
+    value of `validator_cycle` to 20).
+    By default, new additions should go to `ConsensusParams`, and only be moved
+    to `ConsensusConfig` if a need for it arises.
+
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
         All rights reserved.
