@@ -99,21 +99,6 @@ public class Network
 
     /***************************************************************************
 
-        Add multiple Channels to the network
-
-        Params:
-            chns = List of ChannelConfig
-
-    ***************************************************************************/
-
-    public void addChannels (in ChannelConfig[] chns) @safe nothrow
-    {
-        foreach (chn; chns)
-            this.addChannel(chn);
-    }
-
-    /***************************************************************************
-
         Remove a Channel from the network
 
         Params:
@@ -148,21 +133,6 @@ public class Network
         // If no peers remain, remove the node
         if (this.nodes[peer1_pk].channels.length == 0)
             this.nodes.remove(peer1_pk);
-    }
-
-    /***************************************************************************
-
-        Remove multiple Channels from the network
-
-        Params:
-            chns = List of ChannelConfig
-
-    ***************************************************************************/
-
-    public void removeChannels (in ChannelConfig[] chns) @safe nothrow
-    {
-        foreach (chn; chns)
-            this.removeChannel(chn);
     }
 
     /***************************************************************************
