@@ -515,15 +515,11 @@ public abstract class FlashNode : ControlFlashAPI
                 format("Funding amount rejected. Want between %s and %s",
                     this.conf.min_funding, this.conf.max_funding));
 
-        // todo: re-enable
-        version (none)
-        {
-            const min_settle_time = 5;
-            const max_settle_time = 10;
-            if (chan_conf.settle_time < min_settle_time ||
-                chan_conf.settle_time > max_settle_time)
-                return OpenResult("Settle time is not within acceptable limits");
-        }
+        if (chan_conf.settle_time < this.conf.min_settle_time ||
+            chan_conf.settle_time > this.conf.max_settle_time)
+            return Result!PublicNonce(ErrorCode.RejectedSettleTime, format(
+                "Settle time rejecteds. Want between %s and %s",
+                this.conf.min_settle_time, this.conf.max_settle_time));
 
         PrivateNonce priv_nonce = genPrivateNonce();
         auto channel = new Channel(chan_conf, this.conf.key_pair, priv_nonce,

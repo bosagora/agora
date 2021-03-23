@@ -598,6 +598,8 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
 
     const min_funding = opt!(ulong, "flash", "min_funding")(cmdln, node);
     const max_funding = opt!(ulong, "flash", "max_funding")(cmdln, node);
+    const min_settle_time = opt!(uint, "flash", "min_settle_time")(cmdln, node);
+    const max_settle_time = opt!(uint, "flash", "max_settle_time")(cmdln, node);
 
     FlashConfig result = {
         enabled: true,
@@ -605,6 +607,8 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         key_pair: kp,
         min_funding: min_funding.coins,
         max_funding: max_funding.coins,
+        min_settle_time: min_settle_time,
+        max_settle_time: max_settle_time,
     };
     return result;
 }
