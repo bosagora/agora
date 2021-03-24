@@ -99,7 +99,7 @@ public class ValidatorSet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
             "(key TEXT, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
-            "distance INTEGER, preimage TEXT, nonce BLOB, active INTEGER, " ~
+            "distance INTEGER, preimage TEXT, nonce TEXT, active INTEGER, " ~
             "PRIMARY KEY (key, active))");
     }
 
@@ -149,7 +149,7 @@ public class ValidatorSet
                     pubkey.toString(),
                     enroll.cycle_length, block_height.value, ZeroDistance,
                     enroll.random_seed.toString(),
-                    enroll.enroll_sig.R[],
+                    enroll.enroll_sig.R,
                     EnrollmentStatus.Active);
             }();
         }
@@ -526,10 +526,10 @@ public class ValidatorSet
                 "and enrolled_height >= ?", key.toString(), height.value,
                     height.value <= this.params.ValidatorCycle ? 0 : height.value - this.params.ValidatorCycle);
 
-            if (!results.empty && results.oneValue!(ubyte[]).length != 0)
+            if (!results.empty && results.oneValue!(string).length != 0)
             {
                 auto row = results.front;
-                return Point(row.peek!(ubyte[])(0));
+                return Point(row.peek!(string)(0));
             }
         }
         catch (Exception ex)
