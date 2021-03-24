@@ -21,6 +21,7 @@ import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Params;
 import agora.crypto.Key;
+import agora.flash.Config;
 import agora.utils.Log;
 
 import scpd.types.Stellar_SCP;
@@ -113,23 +114,6 @@ public struct Config
 
     /// Event handler config
     public EventHandlerConfig event_handlers;
-}
-
-/// Flash configuration
-public struct FlashConfig
-{
-    /// Whether or not this node should support the Flash API
-    public bool enabled;
-
-    /// In testing mode the node will open arbitrary channels with other nodes
-    /// and send & receive Flash transactions. If `true` then
-    /// `NodeConfig.testing` must also be true or else configuration will fail.
-    public bool testing = false;
-
-    /// The seed to use for the keypair of this Flash node. If this value is
-    /// empty and `enabled` is true then the same key-pair will be used as
-    /// the one set in `validator.key_pair`.
-    public immutable KeyPair key_pair;
 }
 
 /// Node config
