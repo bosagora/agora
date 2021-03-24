@@ -71,6 +71,9 @@ public class Channel
     /// The peer of the other end of the channel
     public FlashAPI peer;
 
+    /// Global flash configuration (not channel-specific)
+    private FlashConfig flash_conf;
+
     /// All the channel metadata
     mixin ChannelMetadata!() meta;
 
@@ -122,15 +125,17 @@ public class Channel
 
     ***************************************************************************/
 
-    public this (ChannelConfig conf, in KeyPair kp, PrivateNonce priv_nonce,
-        PublicNonce peer_nonce, FlashAPI peer, Engine engine,
-        ITaskManager taskman, void delegate (Transaction) txPublisher,
+    public this (FlashConfig flash_conf, ChannelConfig conf, in KeyPair kp,
+        PrivateNonce priv_nonce, PublicNonce peer_nonce, FlashAPI peer,
+        Engine engine, ITaskManager taskman,
+        void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
         void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
         ManagedDatabase db)
     {
+        this.flash_conf = flash_conf;
         this.conf = conf;
         this.kp = kp;
         this.is_owner = conf.funder_pk == kp.address;
@@ -171,7 +176,8 @@ public class Channel
 
     ***************************************************************************/
 
-    public this (Hash chan_id, Engine engine, ITaskManager taskman,
+    public this (Hash chan_id, FlashConfig flash_conf, Engine engine,
+        ITaskManager taskman,
         void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         void delegate (ChannelConfig conf) onChannelOpen,
@@ -181,6 +187,7 @@ public class Channel
         ManagedDatabase db)
     {
         this.db = db;
+        this.flash_conf = flash_conf;
         this.getFlashClient = getFlashClient;
         this.load(chan_id);
 
@@ -216,7 +223,8 @@ public class Channel
 
     ***************************************************************************/
 
-    public static Channel[Hash] loadChannels (ManagedDatabase db,
+    public static Channel[Hash] loadChannels (FlashConfig flash_conf,
+        ManagedDatabase db,
         FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
         Engine engine, ITaskManager taskman,
         void delegate (Transaction) txPublisher, PaymentRouter paymentRouter,
@@ -234,9 +242,9 @@ public class Channel
         foreach (ref row; results)
         {
             const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(0));
-            channels[chan_id] = new Channel(chan_id, engine, taskman,
-                txPublisher, paymentRouter, onChannelOpen, onPaymentComplete,
-                onUpdateComplete, getFlashClient, db);
+            channels[chan_id] = new Channel(chan_id, flash_conf, engine,
+                taskman, txPublisher, paymentRouter, onChannelOpen,
+                onPaymentComplete, onUpdateComplete, getFlashClient, db);
         }
 
         return channels;
@@ -854,7 +862,7 @@ LOuter: while (1)
 
         // todo: replace with a better retry mechanism
         Result!PublicNonce result;
-        foreach (idx; 0 .. 3)
+        foreach (idx; 0 .. this.flash_conf.max_payment_retries)
         {
             // re-fold
             if (update_height != this.height)
@@ -1082,7 +1090,7 @@ LOuter: while (1)
         const new_seq_id = this.cur_seq_id + 1;
 
         Result!PublicNonce result;
-        foreach (idx; 0 .. 3)
+        foreach (idx; 0 .. this.flash_conf.max_payment_retries)
         {
             result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
                 payment.payment_hash, payment.amount, payment.lock_height,

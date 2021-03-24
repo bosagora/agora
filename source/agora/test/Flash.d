@@ -299,7 +299,8 @@ public class FlashNodeFactory
             max_funding : Amount(100_000_000),
             min_settle_time : 0,
             max_settle_time : 100,
-            key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)) };
+            key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
+            max_payment_retries : 3 };
         return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
     }
 

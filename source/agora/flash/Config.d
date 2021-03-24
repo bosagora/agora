@@ -52,6 +52,9 @@ public struct FlashConfig
 
     /// Maximum number of blocks before settling can begin after trigger published
     public uint max_settle_time = 100;
+
+    /// Maximum number of times a payment should be retried before failure
+    public uint max_payment_retries = 3;
 }
 
 /// Channel configuration. These fields remain static throughout the

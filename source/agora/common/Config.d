@@ -600,6 +600,9 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     const max_funding = opt!(ulong, "flash", "max_funding")(cmdln, node);
     const min_settle_time = opt!(uint, "flash", "min_settle_time")(cmdln, node);
     const max_settle_time = opt!(uint, "flash", "max_settle_time")(cmdln, node);
+    const max_payment_retries = opt!(uint, "flash", "max_payment_retries")(
+        cmdln, node);
+    assert(max_payment_retries >= 1);
 
     FlashConfig result = {
         enabled: true,
@@ -609,6 +612,7 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         max_funding: max_funding.coins,
         min_settle_time: min_settle_time,
         max_settle_time: max_settle_time,
+        max_payment_retries : max_payment_retries,
     };
     return result;
 }
