@@ -61,7 +61,6 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
-import agora.serialization.Serializer;
 import agora.stats.Utils;
 import agora.stats.Validator;
 import agora.utils.Log;
@@ -161,7 +160,7 @@ public class EnrollmentManager
 
         // create the table for enrollment data for a node itself
         this.db.execute("CREATE TABLE IF NOT EXISTS node_enroll_data " ~
-            "(key CHAR(128) PRIMARY KEY, val BLOB NOT NULL)");
+            "(key TEXT PRIMARY KEY, val TEXT NOT NULL)");
 
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
@@ -886,7 +885,7 @@ public class EnrollmentManager
                 "WHERE key = ?", "random_seed");
 
             if (!results.empty)
-                return results.oneValue!(ubyte[]).deserializeFull!(Hash);
+                return Hash(results.oneValue!(string));
         }
         catch (Exception ex)
         {
@@ -914,21 +913,10 @@ public class EnrollmentManager
     {
         this.random_seed = random_seed;
 
-        static ubyte[] buffer;
-        try
-        {
-            serializeToBuffer(this.random_seed, buffer);
-        }
-        catch (Exception ex)
-        {
-            log.warn("Serialization error of random_seed {}", ex.msg);
-            return;
-        }
-
         try
         {
             this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "random_seed", buffer);
+                "(key, val) VALUES (?, ?)", "random_seed", random_seed);
         }
         catch (Exception ex)
         {
@@ -958,7 +946,7 @@ public class EnrollmentManager
                 "WHERE key = ?", "enroll_key");
 
             if (!results.empty)
-                return results.oneValue!(ubyte[]).deserializeFull!(Hash);
+                return Hash(results.oneValue!(string));
         }
         catch (Exception ex)
         {
@@ -986,21 +974,10 @@ public class EnrollmentManager
     {
         this.enroll_key = enroll_key;
 
-        static ubyte[] buffer;
-        try
-        {
-            serializeToBuffer(this.enroll_key, buffer);
-        }
-        catch (Exception ex)
-        {
-            log.warn("Serialization error of enroll_key {}", ex.msg);
-            return;
-        }
-
         try
         {
             this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "enroll_key", buffer);
+                "(key, val) VALUES (?, ?)", "enroll_key", enroll_key);
         }
         catch (Exception ex)
         {
