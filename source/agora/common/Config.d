@@ -596,6 +596,7 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         enforce(node_config.testing,
             "Cannot enable 'flash.testing' if 'node.testing' is disabled");
 
+    const listener_address = get!(string, "flash", "listener_address")(cmdln, node);
     const min_funding = opt!(ulong, "flash", "min_funding")(cmdln, node);
     const max_funding = opt!(ulong, "flash", "max_funding")(cmdln, node);
     const min_settle_time = opt!(uint, "flash", "min_settle_time")(cmdln, node);
@@ -608,6 +609,7 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         enabled: true,
         testing: testing,
         key_pair: kp,
+        listener_address: listener_address,
         min_funding: min_funding.coins,
         max_funding: max_funding.coins,
         min_settle_time: min_settle_time,

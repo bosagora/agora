@@ -41,6 +41,9 @@ public struct FlashConfig
     /// the one set in `validator.key_pair`.
     public immutable KeyPair key_pair;
 
+    /// Address to the listener which will receive payment / update notifications
+    public string listener_address;
+
     /// Minimum funding allowed for a channel
     public Amount min_funding = Amount(0);
 

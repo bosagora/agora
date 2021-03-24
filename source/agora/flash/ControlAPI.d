@@ -106,8 +106,15 @@ public interface ControlFlashAPI : FlashAPI
 
     /***************************************************************************
 
-        Attempt to pay an invoice for the target peer's wallet key and the
-        given invoice, using the given (indirect) channel.
+        Attempt to find a payment path for the invoice and pay for the
+        invoice.
+
+        If a payment path cannot be found, or if the payment fails along
+        the payment path then the listener will be notified through the
+        `onPaymentFailure` endpoint.
+
+        If the payment succeeds the `onPaymentSuccess` endpoint will be
+        called on the listener.
 
         Params:
             invoice = the invoice to pay

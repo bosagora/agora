@@ -109,6 +109,7 @@ public class Channel
         Constructor for new channels.
 
         Params:
+            flash_conf = the global flash configuration.
             conf = the static channel configuration.
             kp = the node's key-pair.
             priv_nonce = the nonce that is used for signing the first
@@ -210,6 +211,7 @@ public class Channel
         Load all known channels from the database and return it in a map.
 
         Params:
+            flash_conf = the global flash configuration
             db = the DB to load from
             getFlashClient = delegate to get the FlashAPI client from
             engine = the execution engine
