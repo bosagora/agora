@@ -219,7 +219,7 @@ public class EnrollmentPool
         try
         {
             auto results = this.db.execute("SELECT key, val FROM enrollment_pool " ~
-                "WHERE key = ?", enroll_hash.toString());
+                "WHERE key = ?", enroll_hash);
 
             foreach (row; results)
             {
@@ -254,7 +254,7 @@ public class EnrollmentPool
         try
         {
             auto results = this.db.execute("SELECT avail_height " ~
-                "FROM enrollment_pool WHERE key = ?", enroll_hash.toString());
+                "FROM enrollment_pool WHERE key = ?", enroll_hash);
             if (results.empty)
                 return Height(0);
 
