@@ -354,7 +354,7 @@ public abstract class FlashNode : ControlFlashAPI
         this.db = this.getManagedDatabase(db_path);
         this.load();
 
-        this.channels = Channel.loadChannels(this.db,
+        this.channels = Channel.loadChannels(this.conf, this.db,
             &this.getFlashClient,engine, taskman,
             &this.putTransaction, &this.paymentRouter,
             &this.onChannelOpen,
@@ -522,10 +522,10 @@ public abstract class FlashNode : ControlFlashAPI
                 this.conf.min_settle_time, this.conf.max_settle_time));
 
         PrivateNonce priv_nonce = genPrivateNonce();
-        auto channel = new Channel(chan_conf, this.conf.key_pair, priv_nonce,
-            peer_nonce, peer, this.engine, this.taskman, &this.putTransaction,
-            &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
-            &this.onUpdateComplete, this.db);
+        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair, 
+            priv_nonce, peer_nonce, peer, this.engine, this.taskman, 
+            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen, 
+            &this.onPaymentComplete, &this.onUpdateComplete, this.db);
 
         this.channels[chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
@@ -928,10 +928,10 @@ public abstract class FlashNode : ControlFlashAPI
         if (result.error != ErrorCode.None)
             return Result!Hash(result.error, result.message);
 
-        auto channel = new Channel(chan_conf, this.conf.key_pair, priv_nonce,
-            result.value, peer, this.engine, this.taskman, &this.putTransaction,
-            &this.paymentRouter, &this.onChannelOpen, &this.onPaymentComplete,
-            &this.onUpdateComplete, this.db);
+        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair, 
+            priv_nonce, result.value, peer, this.engine, this.taskman, 
+            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen, 
+            &this.onPaymentComplete, &this.onUpdateComplete, this.db);
         this.channels[chan_id] = channel;
 
         return Result!Hash(chan_id);
