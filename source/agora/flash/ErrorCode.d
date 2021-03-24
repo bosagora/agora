@@ -19,6 +19,9 @@ public enum ErrorCode : ushort
     /// No error.
     None = 0,
 
+    /// Unknown error
+    Unknown,
+
     /// Updates with the same balance will be rejected
     UpdateRejected,
 

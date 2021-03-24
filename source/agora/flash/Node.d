@@ -52,6 +52,7 @@ import std.format;
 import std.range;
 import std.stdio;
 import std.traits;
+import std.typecons;
 
 /// A thin Flash node which itself is not a FullNode / Validator but instead
 /// interacts with another FullNode / Validator for queries to the blockchain.
@@ -210,6 +211,10 @@ public class AgoraFlashNode : FlashNode
     protected FlashAPI delegate (in Point peer_pk, Duration timeout)
         flashClientGetter;
 
+    /// get a Flash listener client for the given address
+    protected FlashListenerAPI delegate (in string address, Duration timeout)
+        flashListenerGetter;
+
     /***************************************************************************
 
         Constructor
@@ -222,15 +227,19 @@ public class AgoraFlashNode : FlashNode
             taskman = the task manager ot use
             agora_address = IP address of an Agora node to monitor the
                 blockchain and publish new on-chain transactions to it.
+            flashListenerGetter = getter for the Flash listener client
 
     ***************************************************************************/
 
     public this (FlashConfig conf, string db_path, Hash genesis_hash,
         Engine engine, ITaskManager taskman, FullNodeAPI agora_node,
-        FlashAPI delegate (in Point, Duration) flashClientGetter)
+        FlashAPI delegate (in Point, Duration) flashClientGetter,
+        FlashListenerAPI delegate (in string address, Duration timeout)
+            flashListenerGetter)
     {
         this.agora_node = agora_node;
         this.flashClientGetter = flashClientGetter;
+        this.flashListenerGetter = flashListenerGetter;
         super(conf, db_path, genesis_hash, engine, taskman);
     }
 
@@ -289,6 +298,25 @@ public class AgoraFlashNode : FlashNode
 
         return peer;
     }
+
+    /***************************************************************************
+
+        Get an instance of a FlashListenerAPI client for the given address.
+
+        Params:
+            address = the IP to use
+            timeout = the timeout duration to use for requests
+
+        Returns:
+            the FlashListenerAPI client
+
+    ***************************************************************************/
+
+    protected override FlashListenerAPI getFlashListenerClient (string address,
+        Duration timeout) @trusted
+    {
+        return this.flashListenerGetter(address, timeout);
+    }
 }
 
 /// Ditto
@@ -323,6 +351,9 @@ public abstract class FlashNode : ControlFlashAPI
 
     /// All known connected peers (used for gossiping)
     protected FlashAPI[Point] known_peers;
+
+    /// Any listener
+    protected FlashListenerAPI listener;
 
     /// Metadata database
     private ManagedDatabase db;
@@ -374,6 +405,12 @@ public abstract class FlashNode : ControlFlashAPI
 
         foreach (_, chan; this.channels)
             this.network.addChannel(chan.conf);
+
+        if (this.conf.listener_address.length != 0)
+            this.listener = this.getFlashListenerClient(
+                this.conf.listener_address, Duration.init);
+        else  // avoid null checks & segfaults
+            this.listener = new BlackHole!FlashListenerAPI();
     }
 
     /***************************************************************************
@@ -491,6 +528,22 @@ public abstract class FlashNode : ControlFlashAPI
     protected abstract FlashAPI getFlashClient (in Point peer_pk,
         Duration timeout) @trusted;
 
+    /***************************************************************************
+
+        Get an instance of a FlashListenerAPI client for the given address.
+
+        Params:
+            peer_pk = the public key of the Flash node.
+            timeout = the timeout duration to use for requests.
+
+        Returns:
+            the FlashListenerAPI client
+
+    ***************************************************************************/
+
+    protected abstract FlashListenerAPI getFlashListenerClient (string address,
+        Duration timeout) @trusted;
+
     /// See `FlashAPI.openChannel`
     public override Result!PublicNonce openChannel (
         /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
@@ -522,9 +575,9 @@ public abstract class FlashNode : ControlFlashAPI
                 this.conf.min_settle_time, this.conf.max_settle_time));
 
         PrivateNonce priv_nonce = genPrivateNonce();
-        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair, 
-            priv_nonce, peer_nonce, peer, this.engine, this.taskman, 
-            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen, 
+        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
+            priv_nonce, peer_nonce, peer, this.engine, this.taskman,
+            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
 
         this.channels[chan_conf.chan_id] = channel;
@@ -795,6 +848,14 @@ public abstract class FlashNode : ControlFlashAPI
             return;
         }
 
+        // we only report failures here. success is only reported after
+        // a successfull update
+        if (error != ErrorCode.None)
+        {
+            if (auto invoice = payment_hash in this.invoices)
+                this.listener.onPaymentFailure(*invoice, error);
+        }
+
         // our own secret (we are the payee)
         if (auto secret = payment_hash in this.secrets)
         {
@@ -807,8 +868,6 @@ public abstract class FlashNode : ControlFlashAPI
                 chan.learnSecrets([], [payment_hash], this.last_block_height);
             this.reportPaymentError(chan_id, OnionError(Hash.init,
                 payment_hash, chan_id, error));
-            if (auto invoice = payment_hash in this.invoices)
-                this.payInvoice(*invoice); // Retry
         }
     }
 
@@ -834,12 +893,29 @@ public abstract class FlashNode : ControlFlashAPI
             this.shared_secrets.remove(payment_hash);
             this.payment_path.remove(payment_hash);
             this.payment_errors.remove(payment_hash);
+
+            // get the invoice if it exists and not just the pointer (GC safety)
+            Invoice inv;
+            auto invoice = this.invoices.get(payment_hash, Invoice.init);
             this.invoices.remove(payment_hash);
+
+            if (invoice != Invoice.init)
+                this.listener.onPaymentSuccess(invoice);
         }
 
         foreach (payment_hash; rev_htlcs)
+        {
             if (auto invoice = payment_hash in this.invoices)
-                this.payInvoice(*invoice); // Retry
+            {
+                ErrorCode error;
+                if (auto errors = payment_hash in this.payment_errors)
+                    error = (*errors)[$ - 1].err;  // pick latest known reason
+                else
+                    error = ErrorCode.Unknown;
+
+                this.listener.onPaymentFailure(*invoice, error);
+            }
+        }
 
         foreach (chan_id, channel; this.channels)
         {
@@ -928,9 +1004,9 @@ public abstract class FlashNode : ControlFlashAPI
         if (result.error != ErrorCode.None)
             return Result!Hash(result.error, result.message);
 
-        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair, 
-            priv_nonce, result.value, peer, this.engine, this.taskman, 
-            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen, 
+        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
+            priv_nonce, result.value, peer, this.engine, this.taskman,
+            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
         this.channels[chan_id] = channel;
 

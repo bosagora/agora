@@ -18,6 +18,7 @@ import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Schnorr: Signature;
 import agora.flash.Config;
+import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.OnionPacket;
 import agora.flash.Types;
@@ -286,4 +287,35 @@ public interface FlashAPI
 
     public void reportPaymentError (/* in */ Hash chan_id,
         /* in */ OnionError err);
+}
+
+/// This is the API that each Flash listener must implement, for example wallets
+/// or other front-ends to Agora.
+@path("/")
+@serializationPolicy!(Base64ArrayPolicy)
+public interface FlashListenerAPI
+{
+@safe:
+    /***************************************************************************
+
+        Called when the payment for the given invoice has been successful.
+
+        Params:
+            invoice = the invoice that was paid
+
+    ***************************************************************************/
+
+    public void onPaymentSuccess (Invoice invoice);
+
+    /***************************************************************************
+
+        Called when the payment for the given invoice has failed.
+        The payment can be retried again with the `payInvoice()` Flash API.
+
+        Params:
+            invoice = the invoice that was paid
+
+    ***************************************************************************/
+
+    public void onPaymentFailure (Invoice invoice, ErrorCode error);
 }

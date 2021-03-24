@@ -57,6 +57,14 @@ import core.thread;
 
 mixin AddLogger!();
 
+/// Listener (wallet / front-end)
+public interface TestFlashListenerAPI : FlashListenerAPI
+{
+    /// wait until we get a signal that the payment for this invoice
+    /// has succeeded / failed, and return true / false for success
+    bool waitUntilNotified (Invoice);
+}
+
 /// In addition to the Flash APIs, we provide methods for conditional waits
 /// and extracting update / closing / settle pairs, and forceful channel close.
 public interface TestFlashAPI : ControlFlashAPI
@@ -110,12 +118,17 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     protected Registry!TestFlashAPI* flash_registry;
 
     ///
+    protected Registry!TestFlashListenerAPI* listener_registry;
+
+    ///
     public this (FlashConfig conf, Registry!TestAPI* agora_registry,
         string agora_address, DatabaseStorage storage,
-        Registry!TestFlashAPI* flash_registry)
+        Registry!TestFlashAPI* flash_registry,
+        Registry!TestFlashListenerAPI* listener_registry)
     {
         this.agora_registry = agora_registry;
         this.flash_registry = flash_registry;
+        this.listener_registry = listener_registry;
         const genesis_hash = hashFull(GenesisBlock);
         const TestStackMaxTotalSize = 16_384;
         const TestStackMaxItemSize = 512;
@@ -197,6 +210,14 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         return peer;
     }
 
+    protected override TestFlashListenerAPI getFlashListenerClient (
+        string address, Duration timeout) @trusted
+    {
+        auto tid = this.listener_registry.locate(address);
+        assert(tid != typeof(tid).init);
+        return new RemoteAPI!TestFlashListenerAPI(tid, timeout);
+    }
+
     ///
     public override Transaction getPublishUpdateIndex (in Hash chan_id,
         in uint index)
@@ -276,17 +297,27 @@ public class FlashNodeFactory
     /// we keep a separate LocalRest registry of the flash "nodes"
     private Registry!TestFlashAPI flash_registry;
 
+    /// and a registry of listener nodes (usually just one)
+    private Registry!TestFlashListenerAPI listener_registry;
+
     /// list of flash addresses
     private Point[] addresses;
 
+    /// list of listener addresses
+    private string[] listener_addresses;
+
     /// list of flash nodes
     private RemoteAPI!TestFlashAPI[] nodes;
+
+    /// list of FlashListenerAPI nodes
+    private RemoteAPI!TestFlashListenerAPI[] listener_nodes;
 
     /// Ctor
     public this (Registry!TestAPI* agora_registry)
     {
         this.agora_registry = agora_registry;
         this.flash_registry.initialize();
+        this.listener_registry.initialize();
     }
 
     /// Create a new flash node user
@@ -311,7 +342,7 @@ public class FlashNodeFactory
     {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             conf, this.agora_registry, agora_address, storage,
-            &this.flash_registry,
+            &this.flash_registry, &this.listener_registry,
             5.seconds);  // timeout from main thread
 
         this.addresses ~= pair.V;
@@ -319,6 +350,18 @@ public class FlashNodeFactory
         this.flash_registry.register(pair.V.to!string, api.listener());
         api.start();
 
+        return api;
+    }
+
+    /// Create a new FlashListenerAPI node
+    public RemoteAPI!TestFlashListenerAPI createFlashListener (
+        Listener : TestFlashListenerAPI)(string address)
+    {
+        RemoteAPI!TestFlashListenerAPI api
+            = RemoteAPI!TestFlashListenerAPI.spawn!Listener(5.seconds);
+        this.listener_registry.register(address, api.listener());
+        this.listener_addresses ~= address;
+        this.listener_nodes ~= api;
         return api;
     }
 
@@ -364,9 +407,17 @@ public class FlashNodeFactory
         foreach (address; this.addresses)
             enforce(this.flash_registry.unregister(address.to!string));
 
+        foreach (address; this.listener_addresses)
+            enforce(this.listener_registry.unregister(address));
+
         foreach (node; this.nodes)
         {
             node.shutdownNode();
+            node.ctrl.shutdown();
+        }
+
+        foreach (node; this.listener_nodes)
+        {
             node.ctrl.shutdown();
         }
     }
@@ -382,6 +433,41 @@ public class FlashNodeFactory
     }
 }
 
+/// Listens for Flash events (if registered with a Flash node)
+private class FlashListener : TestFlashListenerAPI
+{
+    bool[Invoice] invoices;
+    LocalRestTaskManager taskman;
+
+    public this ()
+    {
+        this.taskman = new LocalRestTaskManager();
+    }
+
+    public void onPaymentSuccess (Invoice invoice)
+    {
+        this.invoices[invoice] = true;
+    }
+
+    public void onPaymentFailure (Invoice invoice, ErrorCode error)
+    {
+        this.invoices[invoice] = false;
+    }
+
+    public bool waitUntilNotified (Invoice invoice)
+    {
+        while (1)
+        {
+            if (auto inv = invoice in this.invoices)
+            {
+                scope (exit) this.invoices.remove(invoice);
+                return *inv;
+            }
+
+            this.taskman.wait(200.msecs);
+        }
+    }
+}
 
 /// Test unilateral non-collaborative close (funding + update* + settle)
 //version (none)
@@ -644,10 +730,24 @@ unittest
     const bob_pk = bob_pair.V;
     const charlie_pk = charlie_pair.V;
 
+    const ListenerAddress = "flash-listener";
+    auto listener = factory.createFlashListener!FlashListener(ListenerAddress);
+
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0,
         WK.Keys.NODE2.address);
-    auto alice = factory.create(alice_pair, address);
+
+    FlashConfig alice_conf = { enabled : true,
+        min_funding : Amount(1000),
+        max_funding : Amount(100_000_000),
+        min_settle_time : 0,
+        max_settle_time : 100,
+        key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
+        listener_address : ListenerAddress,
+        max_payment_retries : 1,  // fail fast
+    };
+
+    auto alice = factory.create(alice_pair, alice_conf, address);
     auto bob = factory.create(bob_pair, address);
     auto charlie = factory.create(charlie_pair, address);
 
@@ -732,6 +832,11 @@ unittest
     // to complete the payment in that direction. Alice will first naively try
     // that route and fail. In the second try, alice will route the payment through bob.
     alice.payInvoice(inv_1);
+    auto res1 = listener.waitUntilNotified(inv_1);
+    assert(!res1);  // should fail at first
+    alice.payInvoice(inv_1);
+    auto res2 = listener.waitUntilNotified(inv_1);
+    assert(res2);  // should succeed the second time
 
     bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
     charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
@@ -1230,4 +1335,112 @@ unittest
     upd_res = alice.proposeUpdate(chan_id, 0, null, null,
         PublicNonce.init, Height(100));
     assert(upd_res.error == ErrorCode.MismatchingBlockHeight, upd_res.to!string);
+}
+
+/// test listener API and payment success / failures
+unittest
+{
+    static class RejectingFlashNode : TestFlashNode
+    {
+        mixin ForwardCtor!();
+
+        ///
+        public override Result!PublicNonce proposePayment (/* in */ Hash chan_id,
+            /* in */ uint seq_id, /* in */ Hash payment_hash,
+            /* in */ Amount amount, /* in */ Height lock_height,
+            /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
+            /* in */ Height height) @trusted
+        {
+            if (seq_id >= 2)
+                return Result!PublicNonce(ErrorCode.Unknown, "I'm a bad node");
+            else
+                return super.proposePayment(chan_id, seq_id, payment_hash,
+                    amount, lock_height, packet, peer_nonce, height);
+        }
+    }
+
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+    //scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    const ListenerAddress = "flash-listener";
+    auto listener = factory.createFlashListener!FlashListener(ListenerAddress);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+
+    FlashConfig alice_conf = { enabled : true,
+        min_funding : Amount(1000),
+        max_funding : Amount(100_000_000),
+        min_settle_time : 0,
+        max_settle_time : 100,
+        key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
+        listener_address : ListenerAddress,
+        max_payment_retries : 1,  // fail fast
+    };
+
+    auto alice = factory.create(alice_pair, alice_conf, address);
+    auto bob = factory.create!RejectingFlashNode(bob_pair, address);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id_res = alice.openNewChannel(
+        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+
+    // await funding transaction
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+
+    // wait for the parties to detect the funding tx
+    alice.waitChannelOpen(chan_id);
+    bob.waitChannelOpen(chan_id);
+
+    auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
+
+    /* do some off-chain transactions */
+    auto inv_1 = bob.createNewInvoice(Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(inv_1);
+
+    alice.waitForUpdateIndex(chan_id, 2);
+    bob.waitForUpdateIndex(chan_id, 2);
+
+    auto res = listener.waitUntilNotified(inv_1);
+    assert(res);  // should succeed
+
+    auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(inv_2);
+
+    res = listener.waitUntilNotified(inv_2);
+    assert(!res);  // should have failed
 }

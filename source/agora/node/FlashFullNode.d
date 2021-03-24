@@ -99,6 +99,21 @@ public mixin template FlashNodeCommon ()
         return new RestInterfaceClient!ExtendedFlashAPI(settings);
     }
 
+    private FlashListenerAPI getFlashListenerClient (in string address,
+        Duration timeout)
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        // todo: this is obviously wrong, need proper connection handling later
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!FlashListenerAPI(settings);
+    }
+
     /***************************************************************************
 
         Called when a block was externalized.
@@ -232,7 +247,8 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         const flash_path = buildPath(this.config.node.data_dir, "flash.dat");
         this.flash = new AgoraFlashNode(this.config.flash,
             flash_path, hashFull(this.params.Genesis), this.engine,
-            this.taskman, this, &this.getFlashClient);
+            this.taskman, this, &this.getFlashClient,
+            &this.getFlashListenerClient);
     }
 
     public override void start ()
