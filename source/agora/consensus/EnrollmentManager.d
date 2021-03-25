@@ -180,12 +180,7 @@ public class EnrollmentManager
 
     public void updateValidatorIndexMaps (in Height height) @safe
     {
-        PublicKey[] keys;
-        if (!this.getActiveValidatorPublicKeys(keys, height))
-            assert(0, "Database failure on fetching Validator Public Keys");
-
-        if (keys.length == 0)
-            log.error("No Active validator public keys at height {}", height);
+        auto keys = this.getActiveValidatorPublicKeys(height);
 
         log.trace("Update validator lookup maps at height {}: {}", height, keys);
         foreach (idx, key; keys)
@@ -536,18 +531,24 @@ public class EnrollmentManager
         Get all the enrolled validator's public keys.
 
         Params:
-            keys = will contain the set of public keys
             height = the height of proposed block
 
         Returns:
-            Return true if there was no error in getting the public keys
+            The set of public keys
+
+        Throws:
+            If no public keys were found
 
     ***************************************************************************/
 
-    public bool getActiveValidatorPublicKeys (ref PublicKey[] keys, in Height height)
-        @safe nothrow
+    public PublicKey[] getActiveValidatorPublicKeys (in Height height) @safe
     {
-        return this.validator_set.getActiveValidatorPublicKeys(keys, height);
+        PublicKey[] keys;
+        if (!this.validator_set.getActiveValidatorPublicKeys(keys, height))
+            assert(0);
+        if (!keys.length)
+            throw new Exception(format("No active validator public keys for height: %s", height));
+        return keys;
     }
 
     /***************************************************************************

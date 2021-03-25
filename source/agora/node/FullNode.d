@@ -401,8 +401,7 @@ public class FullNode : API
         if (this.ledger.acceptBlock(block))
         {
             ex_validators.each!(ex => this.network.unwhitelist(ex.pubkey));
-            PublicKey[] active_validators;
-            this.enroll_man.getActiveValidatorPublicKeys(active_validators, block.header.height);
+            PublicKey[] active_validators = this.enroll_man.getActiveValidatorPublicKeys(block.header.height);
             active_validators.each!(ex => this.network.whitelist(ex));
         }
         // We return if height in ledger is reached for this block to prevent fetching again
