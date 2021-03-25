@@ -104,7 +104,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
     scope EnrollmentFinder findEnrollment, size_t active_enrollments,
     size_t enrolled_validators, in Hash random_seed,
-    Point delegate (in Height, ulong) nothrow @safe getValidatorAtIndex,
+    Point delegate (in Height, in ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (in Point, in Height) nothrow @safe getCommitmentNonce,
     ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance,
     Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
@@ -666,7 +666,7 @@ version (unittest)
 
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, active_enrollments, enrolled_validators,
-            random_seed, (in Height h, ulong i) @safe nothrow
+            random_seed, (in Height h, in ulong i) @safe nothrow
             {
                 return Point(genesis_validator_keys[i].address[]);
             },
