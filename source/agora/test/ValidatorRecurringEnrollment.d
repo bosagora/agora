@@ -87,8 +87,8 @@ unittest
     {
         mixin ForwardCtor!();
 
-        public override Enrollment createEnrollment ( in Hash utxo,
-            Height height ) @safe nothrow
+        public override Enrollment createEnrollment (
+            in Hash utxo, in Height height) @safe nothrow
         {
             return super.createEnrollment(utxo, Height(0));
         }

@@ -50,7 +50,7 @@ private class MissingPreImageEM : EnrollmentManager
 
     /// This does not reveal pre-images intentionally
     public override bool getNextPreimage (out PreImageInfo preimage,
-        Height height) @safe
+        in Height height) @safe
     {
         if (!atomicLoad(*this.reveal_preimage))
             return false;
