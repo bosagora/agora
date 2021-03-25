@@ -338,8 +338,7 @@ unittest
         const seed = cycle.populate(kp.secret, true);
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
-            kp, utxo_hashes[idx], params.ValidatorCycle,
-            seed, idx);
+            utxo_hashes[idx], kp, seed, params.ValidatorCycle, idx);
         assert(enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &utxo_set.peekUTXO));
         enrollments ~= enroll;
