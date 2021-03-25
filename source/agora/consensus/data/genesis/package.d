@@ -14,6 +14,7 @@
 module agora.consensus.data.genesis;
 
 import agora.common.Amount;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
@@ -91,8 +92,8 @@ version (unittest) public void checkGenesisEnrollments (
     Hash txhash = hashFull(genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front);
     Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
     auto enrollments = utxos.enumerate.map!(en =>
-        NodeEnrollment(EnrollmentManager.makeEnrollment(en.value, keys[en.index], cycle_length, 0),
-            keys[en.index].address)).array;
+        NodeEnrollment(EnrollmentManager.makeEnrollment(en.value, keys[en.index], Height(0), cycle_length),
+        keys[en.index].address)).array;
     auto sorted_enrollments = enrollments.sort!((a,b) => a.enrol.utxo_key < b.enrol.utxo_key).array;
     assert(genesisBlock.header.enrollments == sorted_enrollments.map!(e => e.enrol).array,
         format!"%s\n    ],\n"(

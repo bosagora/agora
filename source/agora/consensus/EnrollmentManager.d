@@ -460,15 +460,12 @@ public class EnrollmentManager
 
     /// Ditto
     version (unittest) public static Enrollment makeEnrollment (
-        in Hash utxo, in KeyPair key, uint cycle_length, uint offset = 0)
+        in Hash utxo, in KeyPair key, in Height height, uint cycle_length)
         @trusted nothrow
     {
-        // Generate the commitment to use
-        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
-        assert(offset < cache.length);
-        cache.reset(hashMulti(key.secret, "consensus.preimages", offset));
-
-        return makeEnrollment(utxo, key, cache[$ - offset - 1], cycle_length, offset);
+        // Generate the random seed to use
+        auto cycle = PreImageCycle(key.secret, cycle_length);
+        return makeEnrollment(utxo, key, cycle[height], cycle_length, cycle.nonce);
     }
 
     /***************************************************************************
@@ -1137,6 +1134,8 @@ unittest
     // create an EnrollmentManager object
     auto params = new immutable(ConsensusParams)();
     auto man = new EnrollmentManager(key_pair, params);
+    // Useful constant
+    const EnrollAt1 = Height(1);
 
     // check the return value of `getEnrollmentPublicKey`
     assert(key_pair.address == man.getEnrollmentPublicKey());
@@ -1146,22 +1145,22 @@ unittest
 
     // The UTXO belongs to key_pair but we sign with genesis key pair
     Enrollment fail_enroll =
-        EnrollmentManager.makeEnrollment(utxo_hash, gen_key_pair, 1008);
-    assert(!man.addEnrollment(fail_enroll, gen_key_pair.address, Height(1),
+        EnrollmentManager.makeEnrollment(utxo_hash, gen_key_pair, EnrollAt1, params.ValidatorCycle);
+    assert(!man.addEnrollment(fail_enroll, gen_key_pair.address, EnrollAt1,
             utxo_set.getUTXOFinder()));
 
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, params.ValidatorCycle, 0);
+            utxo_hashes[idx], kp, EnrollAt1, params.ValidatorCycle);
 
-        assert(man.addEnrollment(enroll, kp.address, Height(1), &utxo_set.peekUTXO));
+        assert(man.addEnrollment(enroll, kp.address, EnrollAt1, &utxo_set.peekUTXO));
         assert(man.enroll_pool.count() == idx + 1);
         ordered_enrollments ~= enroll;
     }
 
-    Enrollment[] enrolls = man.getEnrollments(Height(1), &utxo_set.peekUTXO);
+    Enrollment[] enrolls = man.getEnrollments(EnrollAt1, &utxo_set.peekUTXO);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -1337,7 +1336,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         enrollments ~= EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, params.ValidatorCycle, 0);
+            utxo_hashes[idx], kp, Height(0), params.ValidatorCycle);
     }
 
     Height height = Height(2);
@@ -1403,8 +1402,8 @@ unittest
     // Irrelevant for this test, the seed is only derived from the private key
     // and the offset (which is 0 in both cases)
     Hash utxo;
-    auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, 10, 0);
-    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.B, 10, 0);
+    auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, Height(0), 10);
+    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.B, Height(0), 10);
     assert(e1.commitment != e2.commitment);
 }
 
@@ -1498,7 +1497,7 @@ unittest
     foreach (idx, kp; pairs)
     {
         const enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, params.ValidatorCycle, 0);
+            utxos[idx], kp, Height(0), params.ValidatorCycle);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
@@ -1674,9 +1673,9 @@ unittest
     auto man = new EnrollmentManager(WK.Keys.A,
         new immutable(ConsensusParams)(20));
     auto e1 = EnrollmentManager.makeEnrollment(
-        utxos[0], WK.Keys.A, man.params.ValidatorCycle, 0);
+        utxos[0], WK.Keys.A, Height(0), man.params.ValidatorCycle);
     auto e2 = EnrollmentManager.makeEnrollment(
-        utxos[1], WK.Keys.B, man.params.ValidatorCycle, 0);
+        utxos[1], WK.Keys.B, Height(0), man.params.ValidatorCycle);
 
     assert(man.addEnrollment(e1, WK.Keys.A.address, Height(1), &utxo_set.peekUTXO));
     assert(man.addEnrollment(e2, WK.Keys.B.address, Height(1), &utxo_set.peekUTXO));
