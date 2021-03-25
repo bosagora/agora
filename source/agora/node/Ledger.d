@@ -1726,8 +1726,7 @@ unittest
         const seed = cycle.populate(kp.secret, true);
         caches ~= cycle.preimages;
         auto enroll = EnrollmentManager.makeEnrollment(
-            kp, utxos[idx], params.ValidatorCycle,
-            seed, 0);
+            utxos[idx], kp, seed, params.ValidatorCycle, 0);
         assert(ledger.enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &ledger.utxo_set.peekUTXO));
         enrollments ~= enroll;

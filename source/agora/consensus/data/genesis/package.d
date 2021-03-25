@@ -91,7 +91,7 @@ version (unittest) public void checkGenesisEnrollments (
     Hash txhash = hashFull(genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front);
     Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
     auto enrollments = utxos.enumerate.map!(en =>
-        NodeEnrollment(EnrollmentManager.makeEnrollment(keys[en.index], en.value, cycle_length, 0),
+        NodeEnrollment(EnrollmentManager.makeEnrollment(en.value, keys[en.index], cycle_length, 0),
             keys[en.index].address)).array;
     auto sorted_enrollments = enrollments.sort!((a,b) => a.enrol.utxo_key < b.enrol.utxo_key).array;
     assert(genesisBlock.header.enrollments == sorted_enrollments.map!(e => e.enrol).array,
