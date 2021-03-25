@@ -1127,6 +1127,32 @@ public class ValidatingLedger : Ledger
                        this.getBlockHeight() + 1));
         }
     }
+
+    /// Generate a new block by creating transactions, then calling `forceCreateBlock`
+    private Transaction[] makeTestBlock (
+        Transaction[] last_txs, ulong txs = Block.TxsInTestBlock,
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        assert(txs > 0);
+
+        // Special case for genesis
+        if (!last_txs.length)
+        {
+            assert(this.getBlockHeight() == 0);
+
+            last_txs = genesisSpendable().take(Block.TxsInTestBlock).enumerate()
+                .map!(en => en.value.refund(WK.Keys.A.address).sign())
+                .array();
+            last_txs.each!(tx => this.acceptTransaction(tx));
+            this.forceCreateBlock(txs, file, line);
+            return last_txs;
+        }
+
+        last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+        last_txs.each!(tx => assert(this.acceptTransaction(tx)));
+        this.forceCreateBlock(txs, file, line);
+        return last_txs;
+    }
 }
 
 /// Note: these unittests historically assume a block always contains
@@ -1208,29 +1234,11 @@ unittest
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks[$ - 1] == ledger.params.Genesis);
 
-    // generate enough transactions to form a block
     Transaction[] last_txs;
     void genBlockTransactions (size_t count)
     {
-        assert(count > 0);
-
-        // Special case for genesis
-        if (!last_txs.length)
-        {
-            last_txs = genesisSpendable().take(Block.TxsInTestBlock).enumerate()
-                .map!(en => en.value.refund(WK.Keys.A.address).sign())
-                .array();
-            last_txs.each!(tx => ledger.acceptTransaction(tx));
-            ledger.forceCreateBlock();
-            count--;
-        }
-
         foreach (_; 0 .. count)
-        {
-            last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
-            last_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-            ledger.forceCreateBlock();
-        }
+            last_txs = ledger.makeTestBlock(last_txs);
     }
 
     genBlockTransactions(2);
