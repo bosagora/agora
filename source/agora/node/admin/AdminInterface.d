@@ -32,8 +32,6 @@ import std.format;
 import std.meta;
 import std.traits;
 
-mixin AddLogger!();
-
 /*******************************************************************************
 
     Class for Admin interface
@@ -53,6 +51,9 @@ mixin AddLogger!();
 
 public class AdminInterface
 {
+    /// Logger instance
+    protected Logger log;
+
     /// HTTP listener
     private HTTPListener listener;
 
@@ -78,6 +79,7 @@ public class AdminInterface
 
     public this (const Config config, const KeyPair key_pair, Clock clock)
     {
+        this.log = Logger(__MODULE__);
         this.config = config;
         this.key_pair = key_pair;
         this.clock = clock;

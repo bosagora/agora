@@ -28,12 +28,13 @@ import scpd.types.Stellar_SCP;
 import std.file : exists;
 import std.range;
 
-mixin AddLogger!();
-
 
 /// Ditto
 public class SCPEnvelopeStore
 {
+    /// Logger instance
+    protected Logger log;
+
     /// SQLite db instance
     private ManagedDatabase db;
 
@@ -49,6 +50,7 @@ public class SCPEnvelopeStore
 
     public this (in string db_path)
     {
+        this.log = Logger(__MODULE__);
         const db_exists = db_path.exists;
         if (db_exists)
             log.info("Loading database from: {}", db_path);

@@ -29,8 +29,6 @@ import core.stdc.stdlib;
 import core.stdc.time;
 import core.time;
 
-mixin AddLogger!();
-
 /// ditto
 public class BanManager
 {
@@ -94,6 +92,9 @@ public class BanManager
         }
     }
 
+    /// Logger instance
+    protected Logger log;
+
     /// configuration
     private const Config config;
 
@@ -106,6 +107,9 @@ public class BanManager
     /// Clock instance
     private Clock clock;
 
+    /// Avoid using the caller's module as our logger name
+    private static immutable string ThisModule = __MODULE__;
+
     /***************************************************************************
 
         Ctor.
@@ -114,12 +118,15 @@ public class BanManager
             config = the configuration
             clock = clock instance
             data_dir = path to the data directory
+            logger = Logger to use. Workaround for attributes' purpose.
 
     ***************************************************************************/
 
-    public this (Config config, Clock clock, cstring data_dir) @safe nothrow pure
+    public this (Config config, Clock clock, cstring data_dir,
+                 Logger logger = Logger(ThisModule)) @safe nothrow pure
     {
         this.config = config;
+        this.log = logger;
         this.clock = clock;
         this.banfile_path = buildPath(data_dir, "banned.dat");
     }

@@ -422,8 +422,8 @@ private final class LocalRestTimer : ITimer
 /// A ban manager not loading and dumping
 public class TestBanManager : BanManager
 {
-    /// Ctor
-    public this (Parameters!(BanManager.__ctor) args)
+    /// Ctor (exclude the 'Logger' default argument)
+    public this (Parameters!(BanManager.__ctor)[0 .. 3] args)
     {
         super(args);
     }

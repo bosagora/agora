@@ -35,8 +35,6 @@ import std.format;
 import std.meta;
 import std.traits;
 
-mixin AddLogger!();
-
 /*******************************************************************************
 
     Class dedicated to the setup part of the administrative interface
@@ -55,6 +53,8 @@ mixin AddLogger!();
 
 public class SetupInterface
 {
+    /// Logger instance
+    protected Logger log;
     /// Path at with to write the config file
     private string path;
     /// HTTP listener, to stop listening once we wrote the config file
@@ -69,6 +69,7 @@ public class SetupInterface
     do
     {
         this.path = config_path;
+        this.log = Logger(__MODULE__);
     }
 
     /// Start listening for requests

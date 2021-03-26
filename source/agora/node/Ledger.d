@@ -61,8 +61,6 @@ import std.range;
 
 import core.time : Duration, seconds;
 
-mixin AddLogger!();
-
 version (unittest)
 {
     //import agora.consensus.data.genesis.Test;
@@ -73,6 +71,10 @@ version (unittest)
 public class Ledger
 {
     import agora.crypto.ECC : Point;
+
+    /// Logger instance
+    protected Logger log;
+
     /// Script execution engine
     private Engine engine;
 
@@ -153,6 +155,7 @@ public class Ledger
         Duration block_time_offset_tolerance = 60.seconds,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
+        this.log = Logger(__MODULE__);
         this.params = params;
         this.engine = engine;
         this.utxo_set = utxo_set;

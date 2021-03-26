@@ -54,8 +54,6 @@ import agora.utils.Log;
 import core.stdc.time;
 import core.time;
 
-mixin AddLogger!();
-
 /// Delegate used to calculate the time offset to apply in `networkTime`
 public alias GetNetTimeOffset = bool delegate (out long) @safe nothrow;
 

@@ -20,7 +20,6 @@ import agora.consensus.data.PreImageInfo;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
-import agora.utils.Log;
 import agora.network.Clock;
 
 import barcode;
@@ -33,8 +32,6 @@ import std.datetime.timezone : UTC;
 import std.format;
 
 import core.time : days;
-
-mixin AddLogger!();
 
 /*******************************************************************************
 

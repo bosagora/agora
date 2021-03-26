@@ -61,8 +61,6 @@ import std.range : walkLength;
 import core.stdc.time;
 import core.time;
 
-mixin AddLogger!();
-
 /// Ditto
 public class NetworkManager
 {
@@ -325,6 +323,9 @@ public class NetworkManager
         }
     }
 
+    /// Logger instance
+    protected Logger log;
+
     /// Config instance
     public const NodeConfig node_config = NodeConfig.init;
 
@@ -384,6 +385,7 @@ public class NetworkManager
     /// Ctor
     public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
     {
+        this.log = Logger(__MODULE__);
         this.taskman = taskman;
         this.node_config = config.node;
         this.validator_config = config.validator;
@@ -410,7 +412,7 @@ public class NetworkManager
 
             // add the DNS seeds
             if (config.dns_seeds.length > 0)
-                this.addAddresses(resolveDNSSeeds(config.dns_seeds));
+                this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
         }
     }
 
@@ -1253,7 +1255,7 @@ public class NetworkManager
 
 *******************************************************************************/
 
-private Set!Address resolveDNSSeeds (in string[] dns_seeds)
+private Set!Address resolveDNSSeeds (in string[] dns_seeds, ref Logger log)
 {
     import std.conv;
     import std.string;

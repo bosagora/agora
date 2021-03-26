@@ -37,8 +37,6 @@ import std.typecons : Tuple, tuple;
 
 import core.time;
 
-mixin AddLogger!();
-
 ///
 public alias NodeListenerTuple = Tuple!(FullNode, "node", HTTPListener, "http_listener");
 
@@ -59,6 +57,7 @@ public NodeListenerTuple runNode (Config config)
 {
     setVibeLogLevel(config.logging.level);
     Log.root.level(config.logging.level, true);
+    auto log = Logger(__MODULE__);
     log.trace("Config is: {}", config);
 
     auto settings = new HTTPServerSettings(config.node.address);

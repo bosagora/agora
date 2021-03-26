@@ -36,11 +36,12 @@ import d2sqlite3.library;
 import d2sqlite3.results;
 import d2sqlite3.sqlite3;
 
-mixin AddLogger!();
-
 /// Ditto
 public class EnrollmentPool
 {
+    /// Logger instance
+    protected Logger log;
+
     /// SQLite DB instance
     private ManagedDatabase db;
 
@@ -56,6 +57,7 @@ public class EnrollmentPool
     public this (ManagedDatabase db)
     {
         this.db = db;
+        this.log = Logger(__MODULE__);
 
         // create the table for enrollment pool if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS enrollment_pool " ~
