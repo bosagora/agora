@@ -16,16 +16,13 @@
 
 module agora.common.ManagedDatabase;
 
-import agora.utils.Log;
-
 import d2sqlite3.database;
 import d2sqlite3.sqlite3;
 
 import std.conv : emplace;
 
-import core.stdc.stdlib : abort, free, malloc;
-
-mixin AddLogger!();
+import core.stdc.stdio : printf;
+import core.stdc.stdlib : free, malloc;
 
 /// Ditto
 public class ManagedDatabase
@@ -44,7 +41,8 @@ public class ManagedDatabase
             }
             catch (Exception ex)
             {
-                log.error("Error closing database handles: {}", ex.message);
+                printf("Error closing database handles: %.*s\n",
+                       cast(int) ex.message.length, ex.message.ptr);
             }
             finally
             {
@@ -120,9 +118,7 @@ public class ManagedDatabase
             {
                 // in most cases this would only trigger if there was a
                 // code-flow error
-                try log.fatal("SQLite BEGIN statement failed: {}", exc.message);
-                catch (Exception e) { /* Nothing more we can do at this point */ }
-                abort();
+                assert(0, "SQLite BEGIN statement failed: " ~ exc.message);
             }
         }
     }
@@ -140,9 +136,7 @@ public class ManagedDatabase
             {
                 // in most cases this would only trigger if there was a
                 // code-flow error
-                try log.fatal("SQLite COMMIT statement failed: {}", exc.message);
-                catch (Exception e) { /* Nothing more we can do at this point */ }
-                abort();
+                assert(0, "SQLite COMMIT statement failed: " ~ exc.message);
             }
         }
     }
@@ -160,9 +154,7 @@ public class ManagedDatabase
             {
                 // in most cases this would only trigger if there was a
                 // code-flow error
-                try log.fatal("SQLite ROLLBACK statement failed: {}", exc.message);
-                catch (Exception e) { /* Nothing more we can do at this point */ }
-                abort();
+                assert(0, "SQLite ROLLBACK statement failed: " ~ exc.message);
             }
         }
     }
