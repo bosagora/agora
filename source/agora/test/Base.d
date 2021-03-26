@@ -1751,6 +1751,9 @@ public struct TestConf
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
 
+    /// the default duration of a ban
+    Duration ban_duration = 300.seconds;
+
     /// max listener nodes. If set to 0, set to this.nodes - 1
     size_t max_listeners;
 
@@ -1857,7 +1860,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     BanManager.Config ban_conf =
     {
         max_failed_requests : test_conf.max_failed_requests,
-        ban_duration: 300.seconds,
+        ban_duration: test_conf.ban_duration,
     };
 
     immutable(Address[]) makeNetworkConfig (size_t idx, Address[] addresses)
