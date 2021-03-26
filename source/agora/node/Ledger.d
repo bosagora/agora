@@ -1413,7 +1413,6 @@ unittest
     // One block before `ValidatorCycle`, validator is still active
     {
         const ValidatorCycle = 10;
-        auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(ValidatorCycle - 1, params);
         scope ledger = new TestLedger(WK.Keys.A, blocks, params);
@@ -1425,7 +1424,6 @@ unittest
     // Past `ValidatorCycle`, validator is inactive
     {
         const ValidatorCycle = 20;
-        auto key_pair = KeyPair.random();
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(ValidatorCycle, params);
         // Enrollment: Insufficient number of active validators
@@ -1487,12 +1485,11 @@ unittest
 
     // normal test: UTXO set and Validator set updated
     {
-        auto key_pair = KeyPair.random();
         const blocks = genBlocksToIndex(params.ValidatorCycle, params);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
-            key_pair, blocks.takeExactly(params.ValidatorCycle), params);
+            WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 6);
@@ -1513,12 +1510,11 @@ unittest
     // throws in updateUTXOSet() => rollback() called, UTXO set reverted,
     // Validator set was not modified
     {
-        auto key_pair = KeyPair.random();
         const blocks = genBlocksToIndex(params.ValidatorCycle, params);
         assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
-            key_pair, blocks.takeExactly(params.ValidatorCycle), params);
+            WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 6);
@@ -1540,12 +1536,11 @@ unittest
     // throws in updateValidatorSet() => rollback() called, UTXO set and
     // Validator set reverted
     {
-        auto key_pair = KeyPair.random();
         const blocks = genBlocksToIndex(params.ValidatorCycle, params);
         assert(blocks.length == 1009);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
-            key_pair, blocks.takeExactly(params.ValidatorCycle), params);
+            WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 6);
