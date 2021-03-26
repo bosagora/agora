@@ -99,7 +99,10 @@ Functions have a space between their name and their opening parenthesis
 E.g. a function is: `void foobar ()`, not `void foobar()`.
 With parameters: `void foobar (int p1, void* p2)`.
 Templated functions are written as `void foobar (T) (T arg)`.
-This makes functions easy to `grep` for.
+This makes functions easy to `grep` for. Type constructors like `const`, `immutable`,
+`inout`, `shared` must appear before other attributes like `pure` or `@nogc`, so
+`void foobar () const @nogc pure` is correct, while `void foobar () pure const @nogc`
+ is not.
 
 ### Attributes (@trusted, @safe, @nogc, pure, etc)
 
