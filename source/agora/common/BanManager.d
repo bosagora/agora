@@ -15,6 +15,7 @@
 module agora.common.BanManager;
 
 import agora.serialization.Serializer;
+import agora.common.Config : BanConfig;
 import agora.common.Types;
 import agora.network.Clock;
 import agora.utils.InetUtils;
@@ -34,16 +35,6 @@ mixin AddLogger!();
 /// ditto
 public class BanManager
 {
-    /// Ban configuration
-    public struct Config
-    {
-        /// max failed requests until an address is banned
-        public size_t max_failed_requests = 1000;
-
-        /// How long does a ban lasts, in seconds (default: 1 day)
-        public Duration ban_duration = 1.days;
-    }
-
     ///
     private struct Status
     {
@@ -95,7 +86,7 @@ public class BanManager
     }
 
     /// configuration
-    private const Config config;
+    private const BanConfig config;
 
     /// per-address status
     private BannedList ips;
@@ -117,7 +108,7 @@ public class BanManager
 
     ***************************************************************************/
 
-    public this (Config config, Clock clock, cstring data_dir) @safe nothrow pure
+    public this (BanConfig config, Clock clock, cstring data_dir) @safe nothrow pure
     {
         this.config = config;
         this.clock = clock;
@@ -330,7 +321,7 @@ unittest
     class UnitBanMan : BanManager
     {
         TimePoint time;
-        this () { super(Config(10, 1.days), null, null); }
+        this () { super(BanConfig(10, 1.days), null, null); }
         protected override TimePoint getCurTime () const { return this.time; }
         public override void dump () { }
         public override void load () { }

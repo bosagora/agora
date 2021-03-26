@@ -1236,7 +1236,7 @@ public class TestNetworkManager : NetworkManager
 
     ***************************************************************************/
 
-    protected override TestBanManager getBanManager (in BanManager.Config conf,
+    protected override TestBanManager getBanManager (in BanConfig conf,
         Clock clock, cstring data_dir)
     {
         return new TestBanManager(conf, clock, data_dir);
@@ -1857,7 +1857,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
-    BanManager.Config ban_conf =
+    BanConfig ban_conf =
     {
         max_failed_requests : test_conf.max_failed_requests,
         ban_duration: test_conf.ban_duration,

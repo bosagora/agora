@@ -85,7 +85,7 @@ public struct Config
         "Type must be shareable accross threads");
 
     /// Ban manager config
-    public BanManager.Config banman;
+    public BanConfig banman;
 
     /// The node config
     public NodeConfig node;
@@ -213,6 +213,16 @@ public struct ValidatorConfig
 
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
+}
+
+/// Ban configuration
+public struct BanConfig
+{
+    /// max failed requests until an address is banned
+    public size_t max_failed_requests = 1000;
+
+    /// How long does a ban lasts, in seconds (default: 1 day)
+    public Duration ban_duration = 1.days;
 }
 
 /// Admin API config
@@ -654,9 +664,9 @@ validator:
 }
 
 /// Parse the banman config section
-private BanManager.Config parseBanManagerConfig (Node* node, in CommandLine cmdln)
+private BanConfig parseBanManagerConfig (Node* node, in CommandLine cmdln)
 {
-    BanManager.Config conf;
+    BanConfig conf;
     conf.max_failed_requests = get!(size_t, "banman", "max_failed_requests")(cmdln, node);
     conf.ban_duration = get!(Duration, "banman", "ban_duration",
                              str => str.to!ulong.seconds)(cmdln, node);

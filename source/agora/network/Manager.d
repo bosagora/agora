@@ -762,7 +762,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected BanManager getBanManager (in BanManager.Config banman_conf,
+    protected BanManager getBanManager (in BanConfig banman_conf,
         Clock clock, cstring data_dir)
     {
         return new BanManager(banman_conf, clock, data_dir);
