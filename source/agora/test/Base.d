@@ -172,6 +172,8 @@ private UnitTestResult customModuleUnitTester ()
         to!bool(environment["dnologs"]) : false;
     const all_single_threaded = ("dsinglethreaded" in environment) ?
         to!bool(environment["dsinglethreaded"]) : false;
+    const should_fail_early = ("dfailearly" in environment) ?
+        to!bool(environment["dfailearly"]) : true;
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
 
@@ -224,7 +226,7 @@ private UnitTestResult customModuleUnitTester ()
     shared size_t executed;
     shared size_t passed;
 
-    void runTest (ModTest mod)
+    bool runTest (ModTest mod)
     {
         atomicOp!"+="(executed, 1);
         try
@@ -238,6 +240,7 @@ private UnitTestResult customModuleUnitTester ()
 
             mod.test();
             atomicOp!"+="(passed, 1);
+            return true;
         }
         catch (Throwable ex)
         {
@@ -248,11 +251,15 @@ private UnitTestResult customModuleUnitTester ()
             CircularAppender!()().print(output);
             stdout.flush();
         }
+        return false;
     }
 
     // Run single-threaded tests
+    bool failed_early;
     foreach (mod; single_threaded)
-        runTest(mod);
+        if (!runTest(mod))
+            if ((failed_early = should_fail_early) == true)
+                break;
 
     auto available_cores = new Semaphore(totalCPUs);
     auto finished_tasks_num = new Semaphore(0);
@@ -292,8 +299,11 @@ private UnitTestResult customModuleUnitTester ()
         }
     }
 
-    runInParallel(parallel_tests);
-    runInParallel(heavy_tests);
+    if (!failed_early)
+    {
+        runInParallel(parallel_tests);
+        runInParallel(heavy_tests);
+    }
 
     //waiting for all parallel tasks to finish
     iota(parallel_tests.length + heavy_tests.length).each!(x => finished_tasks_num.wait());
@@ -302,6 +312,11 @@ private UnitTestResult customModuleUnitTester ()
     if (filtered > 0)
         writefln("Ran %s/%s tests (%s filtered)", result.executed,
             result.executed + filtered, filtered);
+    if (failed_early)
+    {
+        writefln("Single threaded test failed early. Only %s/%s tests have been run",
+                 executed, single_threaded.length + parallel_tests.length + heavy_tests.length);
+    }
 
     //result.summarize = true;
     result.runMain = false;
