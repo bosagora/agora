@@ -90,16 +90,12 @@ private void writeVersion ()
 ///
 public void main(string[] args)
 {
-    try
+    scope (failure)
     {
-        writeVersion();
+        writeln("Exception happened while trying to determine the version number!");
+        writeln("Please make sure you are building from a git repository or the environment variable ",
+                EnvVersionName, " is set to a non-empty string.");
     }
-    catch (Exception e)
-    {
-        writeln("Exception happened while trying to determine the version number: ", e,
-                "\n\nPlease make sure you are building from a git repository or the environment variable ",
-                 EnvVersionName, " is set to a non-empty string.");
-        throw e;
-    }
-    return;
+
+    writeVersion();
 }
