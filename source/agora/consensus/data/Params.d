@@ -98,7 +98,6 @@ public immutable class ConsensusParams
         uint validator_cycle = 1008, uint max_quorum_nodes = 7,
         uint quorum_threshold = 80)
     {
-        const genesis_timestamp = 1609459200;  // 2021-01-01:00:00:00 GMT
         import agora.consensus.data.genesis.Test : GenesisBlock;
         import agora.utils.WellKnownKeys;
         ConsensusConfig config = {
