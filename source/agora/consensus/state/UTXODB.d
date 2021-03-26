@@ -21,11 +21,8 @@ public import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.serialization.Serializer;
-import agora.utils.Log;
 
 import std.file;
-
-mixin AddLogger!();
 
 ///
 package class UTXODB
@@ -44,17 +41,10 @@ package class UTXODB
 
     public this (string utxo_db_path)
     {
-        const db_exists = utxo_db_path.exists;
-        if (db_exists)
-            log.info("Loading UTXO database from: {}", utxo_db_path);
-
         // todo: can fail. we would have to recover by either:
         // A) reconstructing it from our blockchain storage
         // B) requesting the UTXO set from our peers
         this.db = new ManagedDatabase(utxo_db_path);
-
-        if (db_exists)
-            log.info("Loaded database from: {}", utxo_db_path);
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~
