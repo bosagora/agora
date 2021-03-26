@@ -74,8 +74,6 @@ import std.range;
 
 import core.time;
 
-mixin AddLogger!();
-
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
 private enum uint MaxBatchBlocksSent = 20;
 
@@ -94,6 +92,9 @@ private enum uint MaxBatchTranscationsSent = 100;
 
 public class FullNode : API
 {
+    /// Loggger instance
+    protected Logger log;
+
     /// Metadata instance
     protected Metadata metadata;
 
@@ -169,6 +170,7 @@ public class FullNode : API
         import COINNET = agora.consensus.data.genesis.Coinnet;
 
         this.config = config;
+        this.log = this.makeLogger();
 
         auto commons_budget = config.node.testing ?
             TESTNET.CommonsBudgetAddress : COINNET.CommonsBudgetAddress;
@@ -494,6 +496,12 @@ public class FullNode : API
     protected StatsServer getStatsServer ()
     {
         return new StatsServer(this.config.node.stats_listening_port);
+    }
+
+    /// Returns: The Logger to use for this class
+    protected Logger makeLogger ()
+    {
+        return Logger(__MODULE__);
     }
 
     /***************************************************************************

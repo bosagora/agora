@@ -67,8 +67,6 @@ import core.stdc.stdlib : abort;
 import core.stdc.time;
 import core.time;
 
-mixin AddLogger!();
-
 ///
 public class FlashValidator : Validator, FlashValidatorAPI
 {
