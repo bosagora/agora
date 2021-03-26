@@ -74,8 +74,6 @@ import std.range;
 
 import core.time;
 
-mixin AddLogger!();
-
 /// Common routines implemented by both FlashFullNode / FlashValidator.
 /// Cannot use multiple inheritance in D.
 public mixin template FlashNodeCommon ()
@@ -218,6 +216,9 @@ public mixin template FlashNodeCommon ()
 ///
 public class FlashFullNode : FullNode, FlashFullNodeAPI
 {
+    /// Logger instance
+    private Logger log;
+
     /// Flash node
     protected AgoraFlashNode flash;
 

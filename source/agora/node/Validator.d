@@ -49,8 +49,6 @@ import std.algorithm : each;
 import core.stdc.stdlib : abort;
 import core.time;
 
-mixin AddLogger!();
-
 /*******************************************************************************
 
     Implementation of the Validator node
@@ -372,6 +370,12 @@ public class Validator : FullNode, API
     {
         endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_block_signature", "http");
         this.nominator.receiveBlockSignature(block_sig);
+    }
+
+    /// Returns: The Logger to use for this class
+    protected override Logger makeLogger ()
+    {
+        return Logger(this.config.validator.key_pair.address.toString());
     }
 
     /***************************************************************************
