@@ -11,8 +11,8 @@
     "stringImportPaths" : [ "build" ],
     "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/quorum/QuorumIntersectionTests.d" ],
     "preGenerateCommands": [
-        "$DUB source/agora/cli/version/main.d",
-        "$DUB source/scpp/build.d || sleep 5s || $DUB source/scpp/build.d"
+        "$DUB source/agora/cli/version/main.d || (sleep 5s && $DUB source/agora/cli/version/main.d)",
+        "$DUB source/scpp/build.d || (sleep 5s && $DUB source/scpp/build.d)"
     ],
     "sourceFiles-posix": [
         "source/scpp/build/BallotProtocol.o",
