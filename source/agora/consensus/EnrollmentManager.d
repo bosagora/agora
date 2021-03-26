@@ -75,8 +75,6 @@ import std.file;
 import std.path;
 import std.string;
 
-mixin AddLogger!();
-
 /*******************************************************************************
 
     Handle enrollment data and manage the validators set
@@ -85,6 +83,9 @@ mixin AddLogger!();
 
 public class EnrollmentManager
 {
+    /// Logger instance
+    private Logger log;
+
     /// SQLite db instance
     private ManagedDatabase db;
 
@@ -148,6 +149,7 @@ public class EnrollmentManager
     public this (string db_path, KeyPair key_pair,
         immutable(ConsensusParams) params)
     {
+        this.log = Logger(__MODULE__);
         assert(params !is null);
         this.params = params;
         this.key_pair = key_pair;
@@ -222,7 +224,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public ulong getIndexOfValidator (in Height height, in Point K) const nothrow @safe
+    public ulong getIndexOfValidator (in Height height, in Point K) nothrow @safe
     {
         if (height !in this.key_to_index)
         {

@@ -37,8 +37,6 @@ import std.path;
 import std.stdio;
 
 
-mixin AddLogger!();
-
 /*******************************************************************************
 
     Define the storage for blocks
@@ -195,6 +193,9 @@ private size_t findBlockPosition (IndexHeight self, Height height) @safe nothrow
 
 public class BlockStorage : IBlockStorage
 {
+    /// Logger instance
+    protected Logger log;
+
     /// Instance of memory mapped file
     private MmFile file;
 
@@ -222,12 +223,18 @@ public class BlockStorage : IBlockStorage
     /// Pre-allocated constant file path
     private immutable string index_path;
 
+    /// Avoid using the calling module's name for our logger
+    private static immutable string ThisModule = __MODULE__;
+
     /***************************************************************************
 
         Construct an instance of a `BlockStorage`
 
         Params:
             path = Path to the directory where the block files are stored
+            logger = Logger to use.
+                     This is used to keep the ctor `@safe pure nothrow`,
+                     despite the `Logger` constructor not being any of this.
 
         Note:
             The object is not usable after construction.
@@ -236,8 +243,10 @@ public class BlockStorage : IBlockStorage
 
     ***************************************************************************/
 
-    public this (string path) nothrow @safe pure
+    public this (string path, Logger logger = Logger(ThisModule))
+        nothrow @safe pure
     {
+        this.log = logger;
         this.root_path = path;
         this.file_index = ulong.max;
         this.length = ulong.max;

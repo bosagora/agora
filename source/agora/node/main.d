@@ -28,7 +28,6 @@ import agora.node.admin.Setup;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
-import agora.utils.Log;
 import agora.utils.Workarounds;
 
 import vibe.core.core;
@@ -39,8 +38,6 @@ import std.getopt;
 import std.path : absolutePath;
 import std.stdio;
 import std.typecons : Nullable;
-
-mixin AddLogger!();
 
 /// Application entry point
 private int main (string[] args)

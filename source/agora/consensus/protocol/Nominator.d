@@ -62,8 +62,6 @@ import std.format;
 import std.path : buildPath;
 import core.time : msecs, seconds;
 
-mixin AddLogger!();
-
 // TODO: The block should probably have a size limit rather than a maximum
 //  number of transactions.
 //  But for now set a maximum number of transactions to a thousand
@@ -72,6 +70,9 @@ enum MaxTransactionsPerBlock = 1000;
 /// Ditto
 public extern (C++) class Nominator : SCPDriver
 {
+    /// Logger instance
+    private Logger log;
+
     /// Consensus parameters
     protected immutable(ConsensusParams) params;
 
@@ -153,6 +154,7 @@ extern(D):
         Clock clock, NetworkManager network, ValidatingLedger ledger,
         EnrollmentManager enroll_man, ITaskManager taskman, string data_dir)
     {
+        this.log = Logger(__MODULE__);
         this.params = params;
         this.clock = clock;
         this.network = network;
@@ -925,7 +927,7 @@ extern(D):
     }
 
     /// If more than half have signed create a combined Schnorr multisig and return the updated block
-    private Block updateMultiSignature (const ref Block block) const
+    private Block updateMultiSignature (const ref Block block)
     {
         auto all_validators = this.enroll_man.getCountOfValidators(block.header.height);
 

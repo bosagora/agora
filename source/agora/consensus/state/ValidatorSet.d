@@ -37,8 +37,6 @@ import d2sqlite3.sqlite3;
 
 import std.typecons : Tuple;
 
-mixin AddLogger!();
-
 public enum EnrollmentStatus : int
 {
     Expired = 0,
@@ -74,6 +72,9 @@ public alias ExpiringValidator = Tuple!(Height, "enrolled_height",
 /// Ditto
 public class ValidatorSet
 {
+    /// Logger instance
+    protected Logger log;
+
     /// SQLite db instance
     private ManagedDatabase db;
 
@@ -94,6 +95,7 @@ public class ValidatorSet
     {
         this.db = db;
         this.params = params;
+        this.log = Logger(__MODULE__);
 
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
