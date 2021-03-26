@@ -407,6 +407,7 @@ class ConservativeGC : GC
         }
         gcx.leakDetector.log_malloc(p, size);
         bytesAllocated += alloc_size;
+        ___tracy_emit_memory_alloc_callstack(p, size, 32, true);
 
         debug(PRINTF) printf("  => p = %p\n", p);
         return p;
@@ -735,7 +736,6 @@ class ConservativeGC : GC
         if (off != base)
             return;
 
-        ___tracy_emit_memory_free(p, true);
         sentinel_Invariant(p);
         p = sentinel_sub(p);
 
@@ -773,6 +773,7 @@ class ConservativeGC : GC
         pool.clrBits(biti, ~BlkAttr.NONE);
 
         gcx.leakDetector.log_free(sentinel_add(p));
+        ___tracy_emit_memory_free(sentinel_add(p), true);
     }
 
 
@@ -1645,7 +1646,6 @@ struct Gcx
         auto ptr = size <= PAGESIZE/2 ? smallAlloc(size, alloc_size, bits, ti)
                                   : bigAlloc(size, alloc_size, bits, ti);
 
-        ___tracy_emit_memory_alloc_callstack(ptr, size, 32, true);
         return ptr;
     }
 
@@ -2492,7 +2492,7 @@ struct Gcx
 
                                     debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
                                     leakDetector.log_free(sentinel_add(p));
-                                    ___tracy_emit_memory_free(p, true);
+                                    ___tracy_emit_memory_free(sentinel_add(p), true);
 
                                     debug (MEMSTOMP) memset(p, 0xF3, size);
                                 }
