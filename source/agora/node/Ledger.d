@@ -1121,6 +1121,15 @@ public class ValidatingLedger : Ledger
         ConsensusData data;
         this.prepareNominatingSet(data, max_txs);
         assert(data.tx_set.length >= max_txs);
+        const expected_ts = this.params.GenesisTimestamp + data.time_offset;
+        if (this.clock.networkTime() < expected_ts ||
+            this.clock.networkTime() > (expected_ts + block_time_offset_tolerance.total!"seconds"))
+        {
+            if (auto mc = cast(MockClock) this.clock)
+                mc.setTime(this.params.GenesisTimestamp + data.time_offset);
+            else
+                assert(0, "Need a MockClock or time handled correctly to call forceCreateBlock");
+        }
         if (!this.externalize(data, file, line))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized!"(
@@ -1168,7 +1177,7 @@ version (unittest)
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null,
             Duration block_time_offset_tolerance_dur = 600.seconds,
-            Clock mock_clock = new MockClock(time(null)))
+            Clock mock_clock = null)
         {
             const params = (params_ !is null)
                 ? params_
@@ -1177,6 +1186,14 @@ version (unittest)
                    ? new immutable(ConsensusParams)(cast(immutable)blocks[0], WK.Keys.CommonsBudget.address)
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
+
+            // We assume the caller wants to create new blocks, so let's make
+            // the clock exactly at the right time. If the caller needs to
+            // create many blocks, they'll need to adjust the clock first.
+            if (mock_clock is null)
+                mock_clock = new MockClock(
+                    params.GenesisTimestamp +
+                    (blocks.length * params.BlockInterval.total!"seconds"));
 
             super(params,
                 new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
@@ -1464,7 +1481,8 @@ unittest
                 new EnrollmentManager(":memory:", kp, params),
                 new TransactionPool(":memory:"),
                 new FeeManager(),
-                new MockClock(time(null)));
+                new MockClock(params.GenesisTimestamp +
+                              (blocks.length * params.BlockInterval.total!"seconds")));
         }
 
         override void updateUTXOSet (in Block block) @safe
