@@ -843,7 +843,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public void accumulateFees (in Block block) nothrow @safe
+    public void accumulateFees (in Block block) @safe
     {
         if (block.header.height == Height(0))
         {

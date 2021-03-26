@@ -22,13 +22,10 @@ import agora.consensus.data.UTXO;
 import agora.consensus.data.Params;
 import agora.consensus.state.UTXOCache;
 import agora.crypto.Key;
-import agora.utils.Log;
 
 import std.math;
 import std.algorithm;
 import std.array;
-
-mixin AddLogger!();
 
 /// Delegate to check data payload
 public alias FeeChecker = string delegate (in Transaction tx,
@@ -358,7 +355,7 @@ public class FeeManager
     ***************************************************************************/
 
     public void accumulateFees (in Block block, UTXO[] stakes,
-        scope UTXOFinder peekUTXO) nothrow @trusted
+        scope UTXOFinder peekUTXO) @trusted
     {
         if (block.header.height % this.params.PayoutPeriod == 0)
             this.clearAccumulatedFees();
@@ -379,18 +376,9 @@ public class FeeManager
                 }
             );
 
-            try
-            {
-                auto new_fee = this.accumulated_fees[stake.output.address]
-                    .toString();
-                this.db.execute("REPLACE INTO accumulated_fees " ~
-                    "(fee, public_key) VALUES (?,?)", new_fee,
-                    stake.output.address.toString());
-            }
-            catch (Exception e)
-            {
-                log.error("ManagedDatabase operation error on accumulateFees");
-            }
+            this.db.execute(
+                "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
+                this.accumulated_fees[stake.output.address], stake.output.address);
         }
     }
 
@@ -413,14 +401,10 @@ public class FeeManager
     }
 
     /// Clears the accumulated fees
-    public void clearAccumulatedFees () nothrow @safe
+    public void clearAccumulatedFees () @safe
     {
         () @trusted {
-            try
-                this.db.execute("DELETE FROM accumulated_fees");
-            catch (Exception e)
-                log.error("ManagedDatabase operation error on clearAccumulatedFees");
-
+            this.db.execute("DELETE FROM accumulated_fees");
             this.accumulated_fees.clear();
         } ();
     }
