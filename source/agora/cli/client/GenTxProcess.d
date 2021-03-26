@@ -24,7 +24,6 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.crypto.Hash;
-import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 import agora.utils.Test;
 
@@ -38,8 +37,6 @@ import std.stdio;
 import core.time;
 
 import vibe.core.core;
-
-mixin AddLogger!();
 
 /// Option required to generate and send transactions
 private struct GenTxOption
@@ -130,7 +127,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
     }
     catch (Exception ex)
     {
-        log.info("Exception while generating transactions");
+        writeln("Exception while generating transactions: ", ex);
         printGenTxHelp(outputs);
         return CLIENT_EXCEPTION;
     }
