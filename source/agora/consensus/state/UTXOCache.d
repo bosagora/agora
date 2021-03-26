@@ -21,11 +21,8 @@ public import agora.consensus.data.UTXO;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.serialization.Serializer;
-import agora.utils.Log;
 
 import std.file;
-
-mixin AddLogger!();
 
 /// Delegate to find an unspent UTXO
 public alias UTXOFinder = bool delegate (in Hash utxo, out UTXO) nothrow @safe;
@@ -152,17 +149,13 @@ abstract class UTXOCache
     public bool findUTXO (in Hash utxo, out UTXO value) nothrow @safe
     {
         if (utxo in this.used_utxos)
-        {
-            log.trace("findUTXO: utxo_hash {} found in used_utxos: {}", utxo, used_utxos);
             return false;  // double-spend
-        }
 
         if (this.peekUTXO(utxo, value))
         {
             this.used_utxos.put(utxo);
             return true;
         }
-        log.trace("findUTXO: utxo_hash {} not found", utxo);
         return false;
     }
 

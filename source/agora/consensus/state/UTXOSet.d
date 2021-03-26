@@ -22,11 +22,8 @@ import agora.consensus.state.UTXODB;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.serialization.Serializer;
-import agora.utils.Log;
 
 import std.file;
-
-mixin AddLogger!();
 
 ///
 public class UTXOSet : UTXOCache
