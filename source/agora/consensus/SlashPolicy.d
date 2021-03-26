@@ -43,8 +43,6 @@ import std.algorithm;
 import std.conv;
 import std.range;
 
-mixin AddLogger!();
-
 /*******************************************************************************
 
     Manage the policy for slashing
@@ -98,10 +96,7 @@ public class SlashPolicy
 
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
+            assert(0, "Could not retrieve enrollments / no enrollments found");
 
         foreach (idx, utxo_key; keys)
         {
@@ -131,10 +126,7 @@ public class SlashPolicy
 
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys))
-        {
-            log.fatal("Could not retrieve enrollments");
-            assert(0);
-        }
+            assert(0, "Could not retrieve enrollments");
 
         foreach (idx; missing_validators)
         {
@@ -160,10 +152,7 @@ public class SlashPolicy
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
+            assert(0, "Could not retrieve enrollments / no enrollments found");
 
         Hash[] valid_keys;
         foreach (key; keys)
@@ -201,10 +190,7 @@ public class SlashPolicy
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
+            assert(0, "Could not retrieve enrollments / no enrollments found");
 
         Hash[] valid_keys;
         foreach (idx, key; keys)
@@ -265,17 +251,11 @@ public class SlashPolicy
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
+            assert(0, "Could not retrieve enrollments / no enrollments found");
 
         auto enroll_index = this.enroll_man.getIndexOfEnrollment();
         if (enroll_index != ulong.max && !missing_validators.find(enroll_index).empty)
-        {
-            log.fatal("The node is slashing itself.");
-            assert(0);
-        }
+            assert(0, "The node is slashing itself.");
 
         uint[] local_missing_validators;
         foreach (idx, key; keys)
