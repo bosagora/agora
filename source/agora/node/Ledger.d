@@ -688,7 +688,7 @@ public class Ledger
 
     public string validateConsensusData (in ConsensusData data) @trusted nothrow
     {
-        const expect_height = this.getBlockHeight() + 1;
+        const validating = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         if (!data.tx_set.length)
@@ -698,12 +698,35 @@ public class Ledger
         if (auto fail_reason = this.getValidTXSet(data, tx_set))
             return fail_reason;
 
-        size_t active_enrollments = enroll_man.countActiveIfExternalized(expect_height);
-        if (active_enrollments < data.missing_validators.length)
-            return InvalidConsensusDataReason.TooManyMPVs;
-        active_enrollments -= data.missing_validators.length;
+        // av   == active validators (this block)
+        // avnb == active validators next block
+        // The consensus data is for the creation of the next block,
+        // so 'this block' means "current height + 1". While the ConsensusData
+        // does not contain information about what block we are validating,
+        // we assume that it's the block after the currently externalized one.
+        size_t av   = enroll_man.countActive(validating);
+        size_t avnb = enroll_man.countActive(validating + 1);
 
-        if (data.enrolls.length + active_enrollments < Enrollment.MinValidatorCount)
+        // First we make sure that we do not slash too many validators,
+        // as slashed validators cannot sign a block.
+        // If there are 6 validators, and we're slashing 5 of them,
+        // av = 6, missing_validators.length = 5, and `6 < 5 + 1` is still `true`.
+        if (av < (data.missing_validators.length + Enrollment.MinValidatorCount))
+            return InvalidConsensusDataReason.NotEnoughValidators;
+
+        // We're trying to slash more validators that there are next block
+        // FIXME: this check isn't 100% correct: we should check which validators
+        // we are slashing. It could be that our of 5 validators, 3 are expiring
+        // this round, and none of them have revealed their pre-image, in which
+        // case the 3 validators we slash should not block externalization.
+        if (avnb < data.missing_validators.length)
+            return InvalidConsensusDataReason.TooManyMPVs;
+        // FIXME: See above comment
+        avnb -= data.missing_validators.length;
+
+        // We need to make sure that we externalize a block that allows for the
+        // chain to make progress, otherwise we'll be stuck forever.
+        if ((avnb + data.enrolls.length) < Enrollment.MinValidatorCount)
             return InvalidConsensusDataReason.NotEnoughValidators;
 
         foreach (const ref enroll; data.enrolls)
@@ -712,7 +735,7 @@ public class Ledger
             if (!this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value))
                 return InvalidConsensusDataReason.NoUTXO;
             if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
-                enroll, utxo_value.output.address, expect_height, utxo_finder))
+                enroll, utxo_value.output.address, validating, utxo_finder))
                 return fail_reason;
         }
 
