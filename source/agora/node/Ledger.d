@@ -545,6 +545,8 @@ public class Ledger
             block.header.missing_validators);
         foreach (utxo; validators_utxos)
         {
+            log.warn("Slashing validator UTXO {} at height {}",
+                     utxo, block.header.height);
             this.enroll_man.unenrollValidator(utxo);
         }
     }
