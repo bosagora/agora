@@ -407,32 +407,37 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Gets the number of active validators at the block height.
+        Gets the number of active validators at a given block height.
 
-        `height` is the height of the newly created block.
-        If the active validators are less than the specified value,
-        new blocks cannot be created.
+        This function finds validators that should be active at a given height,
+        provided they do not get slashed in between. Active validators are those
+        that can sign a block.
+
+        This can be used to look up arbitrary height in the future, as long as
+        the height is not over `ValidatorCycle` distance from the known state
+        of the ValidatorSet (in such case, 0 will always be returned).
 
         Params:
-            height = the height of proposed block
+            height = height at which to count the validators
 
         Returns:
             Returns the number of active validators when the block height is
-            `height`.
-            Returns 0 in case of error.
+            `block_height`, or 0 in case of error.
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (in Height height) @safe nothrow
+    public ulong countActive (in Height height) @safe nothrow
     {
         try
         {
-            const stored_height = (height >= this.params.ValidatorCycle) ?
-                height - this.params.ValidatorCycle + 1 : 0;
+            // E.g. for initial validators, enrolled at height 0,
+            // they will validate blocks [1 .. 20] if the cycle is 20.
+            const from_height = (height >= this.params.ValidatorCycle) ?
+                (height - this.params.ValidatorCycle) : 0;
             return () @trusted {
                 return this.db.execute(
                     "SELECT count(*) FROM validator_set WHERE " ~
-                    "enrolled_height >= ? AND active = ?", stored_height,
+                    "enrolled_height >= ? AND active = ?", from_height,
                     EnrollmentStatus.Active).oneValue!ulong;
             }();
         }
@@ -825,7 +830,7 @@ unittest
     // add enrollments
     auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
-    assert(set.getValidatorCount(Height(1)) == 1);
+    assert(set.countActive(Height(1)) == 1);
     ExpiringValidator[] ex_validators;
     assert(set.getExpiringValidators(
         Height(1 + set.params.ValidatorCycle), ex_validators).length == 1);
@@ -834,7 +839,7 @@ unittest
 
     auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
-    assert(set.getValidatorCount(Height(1)) == 2);
+    assert(set.countActive(Height(1)) == 2);
     assert(set.getExpiringValidators(
         Height(1 + set.params.ValidatorCycle), ex_validators).length == 2);
     // Too early
@@ -846,7 +851,7 @@ unittest
 
     auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
-    assert(set.getValidatorCount(Height(9)) == 3);
+    assert(set.countActive(Height(9)) == 3);
     assert(set.getExpiringValidators(
         Height(9 + set.params.ValidatorCycle), ex_validators).length == 1);
 
@@ -858,12 +863,12 @@ unittest
 
     // remove ValidatorSet
     set.unenroll(utxos[1]);
-    assert(set.getValidatorCount(Height(9)) == 2);
+    assert(set.countActive(Height(9)) == 2);
     assert(set.hasEnrollment(utxos[0]));
     set.unenroll(utxos[0]);
     assert(!set.hasEnrollment(utxos[0]));
     set.removeAll();
-    assert(set.getValidatorCount(Height(10)) == 0);
+    assert(set.countActive(Height(10)) == 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -909,21 +914,21 @@ unittest
     // add enrollment at the genesis block:
     // validates blocks [1 .. 1008] inclusively
     set.removeAll();  // clear all
-    assert(set.getValidatorCount(Height(10)) == 0);
+    assert(set.countActive(Height(10)) == 0);
     enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
     assert(set.add(Height(0), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // not cleared yet at height 1007
     set.clearExpiredValidators(Height(1007));
     keys.length = 0;
-    assert(set.getValidatorCount(Height(1007)) == 1);
+    assert(set.countActive(Height(1007)) == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
     // cleared after block height 1008 was externalized
     set.clearExpiredValidators(Height(1008));
-    assert(set.getValidatorCount(Height(1008)) == 0);
+    assert(set.countActive(Height(1008)) == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
     set.removeAll();  // clear all
@@ -935,14 +940,14 @@ unittest
     // not cleared yet at height 1008
     set.clearExpiredValidators(Height(1008));
     keys.length = 0;
-    assert(set.getValidatorCount(Height(1008)) == 1);
+    assert(set.countActive(Height(1008)) == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
     // cleared after block height 1009 was externalized
     set.clearExpiredValidators(Height(1009));
-    assert(set.getValidatorCount(Height(1009)) == 0);
+    assert(set.countActive(Height(1009)) == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
 }
