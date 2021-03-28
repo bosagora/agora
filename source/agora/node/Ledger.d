@@ -1026,10 +1026,9 @@ public class ValidatingLedger : Ledger
 
     ***************************************************************************/
 
-    public void prepareNominatingSet (ref ConsensusData data, ulong max_txs)
+    public void prepareNominatingSet (out ConsensusData data, ulong max_txs)
         @safe
     {
-        data = ConsensusData.init;
         if (clock.networkTime < this.params.GenesisTimestamp)
         {
             log.error("Network time [{}] is before Genesis timestamp [{}]. Will not nominate yet.",
