@@ -1415,7 +1415,7 @@ unittest
 
     // One block before `ValidatorCycle`, validator is still active
     {
-        const ValidatorCycle = 10;
+        const ValidatorCycle = 20;
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(ValidatorCycle - 1, params);
         scope ledger = new TestLedger(WK.Keys.A, blocks, params);
