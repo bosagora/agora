@@ -750,9 +750,6 @@ public class Ledger
         if (block.header.height == 0)
             return block.isGenesisBlockInvalidReason();
 
-        size_t active_enrollments = enroll_man.getValidatorCount(
-                block.header.height);
-
         return block.isInvalidReason(this.engine, this.last_block.header.height,
             this.last_block.header.hashFull,
             this.utxo_set.getUTXOFinder(),
