@@ -491,13 +491,6 @@ extern(D):
                 challenge.toString(PrintMode.Clear));
             return;
         }
-        else
-        {
-            log.trace("VALID Envelope signature {} \nfor public key {} \n" ~
-                "envelope {}\nchallenge {}",
-                envelope.signature, public_key, scpPrettify(&envelope),
-                challenge.toString(PrintMode.Clear));
-        }
         // we check confirmed statements before validating with
         // 'scp.receiveEnvelope()'
         // There are two reasons why:
