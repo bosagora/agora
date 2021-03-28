@@ -186,7 +186,9 @@ public class Ledger
             // clear validator set
             this.enroll_man.removeAllValidators();
 
-            foreach (height; 0 .. this.last_block.header.height + 1)
+            // Calling `addValidatedBlock` will reset this value
+            const HighestHeight = this.last_block.header.height;
+            foreach (height; 0 .. HighestHeight + 1)
             {
                 Block block = this.storage.readBlock(Height(height));
 
