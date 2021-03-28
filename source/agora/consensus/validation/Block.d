@@ -79,8 +79,9 @@ version (unittest)
         prev_hash = the hash of the direct ancestor of this block
         findUTXO = delegate to find the referenced unspent UTXOs with
         checkPayload = delegate for checking data payload
-        active_enrollments = the number of enrollments that do not expire
-            at the next block height (prev_height + 1).
+        active_validators_next_block = the number of validators that will be
+            active at the block the follows the one currently being validated,
+            provided none of them gets slashed this block.
         enrolled_validators = the number of validators enrolled at this height
         random_seed = Hash of random seed of the preimages
         getValidatorAtIndex = delegate to provide validator Point K for
@@ -102,7 +103,7 @@ version (unittest)
 
 public string isInvalidReason (in Block block, Engine engine, Height prev_height,
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
-    scope EnrollmentFinder findEnrollment, size_t active_enrollments,
+    scope EnrollmentFinder findEnrollment, size_t active_validators_next_block,
     size_t enrolled_validators, in Hash random_seed,
     Point delegate (in Height, in ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (in Point, in Height) nothrow @safe getCommitmentNonce,
@@ -128,7 +129,8 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     if (block.txs.length == 0)
         return "Block: Must contain at least one transaction";
 
-    if (block.header.enrollments.length + active_enrollments < Enrollment.MinValidatorCount)
+    if (block.header.enrollments.length + active_validators_next_block <
+        Enrollment.MinValidatorCount)
         return "Block: Insufficient number of active validators";
 
     if (!block.txs.isSorted())
@@ -233,7 +235,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     if (sum_K == Point.init)
     {
         log.error("[{}:{}] Block: Not able to check the multi sig schnorr signature for any of the {} active validators at height {}",
-            file, line, active_enrollments, block.header.height);
+            file, line, active_validators_next_block, block.header.height);
         return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
     }
     Signature sig = block.header.signature;
