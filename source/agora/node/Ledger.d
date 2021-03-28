@@ -164,6 +164,9 @@ public class Ledger
         if (gen_block != params.Genesis)
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
+        foreach (const ref e; gen_block.header.enrollments)
+            if (e.cycle_length != params.ValidatorCycle)
+                throw new Exception("ConsensusParams are not consistent with Genesis");
 
         if (this.utxo_set.length == 0
             || this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
@@ -1579,7 +1582,10 @@ version (unittest)
                 ? params_
                 : (blocks.length > 0
                    // Use the provided Genesis block
-                   ? new immutable(ConsensusParams)(cast(immutable)blocks[0], WK.Keys.CommonsBudget.address)
+                   ? new immutable(ConsensusParams)(
+                       cast(immutable)blocks[0], WK.Keys.CommonsBudget.address,
+                       ConsensusConfig(ConsensusConfig.init.genesis_timestamp,
+                                       blocks[0].header.enrollments[0].cycle_length))
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
 
