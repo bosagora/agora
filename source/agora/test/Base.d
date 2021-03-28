@@ -1922,6 +1922,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : makeNodeConfig(self_address),
+            consensus: makeConsensusConfig(),
             network : makeNetworkConfig(idx, addresses),
         };
 
