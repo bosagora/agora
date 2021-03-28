@@ -239,7 +239,7 @@ unittest
                                                 key_pairs[0].address) is null);
 
     validator_set.clearExpiredValidators(Height(params.ValidatorCycle));
-    assert(validator_set.getValidatorCount(Height(params.ValidatorCycle)) == 0);
+    assert(validator_set.countActive(Height(params.ValidatorCycle)) == 0);
 
     // First 2 iterations should fail because commitment is wrong
     foreach (offset; [-1, +1, 0])
@@ -249,7 +249,7 @@ unittest
         assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),
                             utxoPeek, enroll1, key_pairs[0].address) is null));
     }
-    assert(validator_set.getValidatorCount(Height(params.ValidatorCycle)) == 1);
+    assert(validator_set.countActive(Height(params.ValidatorCycle)) == 1);
 
     Enrollment invalid;
     assert(isInvalidReason(invalid,

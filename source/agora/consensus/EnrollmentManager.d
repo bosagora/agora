@@ -994,11 +994,22 @@ public class EnrollmentManager
             `height`.
             Returns 0 in case of error.
 
-    ***************************************************************************/
+     ***************************************************************************/
 
     public ulong getValidatorCount (in Height height) @safe nothrow
     {
-        return this.validator_set.getValidatorCount(height);
+        return this.validator_set.countActive(height + 1);
+    }
+
+    /***************************************************************************
+
+        See `ValidatorSet.countActive`
+
+    ***************************************************************************/
+
+    public ulong countActive (in Height height) @safe nothrow
+    {
+        return this.validator_set.countActive(height);
     }
 
     /***************************************************************************
