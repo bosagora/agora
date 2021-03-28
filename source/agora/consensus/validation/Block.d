@@ -128,8 +128,6 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     if (block.txs.length == 0)
         return "Block: Must contain at least one transaction";
 
-    log.trace("Number of validators still active next block will be {}. New enrollments this block {}",
-        active_enrollments, block.header.enrollments.length);
     if (block.header.enrollments.length + active_enrollments < Enrollment.MinValidatorCount)
         return "Block: Insufficient number of active validators";
 
