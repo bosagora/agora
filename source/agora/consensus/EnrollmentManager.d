@@ -1241,7 +1241,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, params.ValidatorCycle, cast(uint) idx);
+            utxo_hashes[idx], kp, params.ValidatorCycle, 0);
 
         assert(man.addEnrollment(enroll, kp.address, Height(1), &utxo_set.peekUTXO));
         assert(man.enroll_pool.count() == idx + 1);
@@ -1457,7 +1457,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         enrollments ~= EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, params.ValidatorCycle, cast(uint)  idx);
+            utxo_hashes[idx], kp, params.ValidatorCycle, 0);
     }
 
     Height block_height = Height(2);
