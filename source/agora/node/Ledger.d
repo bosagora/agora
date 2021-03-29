@@ -1881,8 +1881,10 @@ unittest
         assert(cb_txs.length == 1);
         // Payout block should pay the CommonsBudget + all validators (excl MPV)
         // other blocks should only pay CommonsBudget
-        assert(cb_txs[0].outputs.length == (blocks[$-1].header.height == params.PayoutPeriod
-            ? genesisEnrollKeys.length : 1));
+        if (blocks[$-1].header.height == params.PayoutPeriod)
+            assert(cb_txs[0].outputs.length == genesisEnrollKeys.length);
+        else
+            assert(cb_txs[0].outputs.length == 1);
 
         // MPV should never be paid
         UTXO mpv_stake;
