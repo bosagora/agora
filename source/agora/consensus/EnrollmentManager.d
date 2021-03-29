@@ -650,7 +650,7 @@ public class EnrollmentManager
         if (next_dist >= this.params.ValidatorCycle)
             return false;
 
-        preimage.enroll_key = this.enroll_key;
+        preimage.utxo = this.enroll_key;
         preimage.distance = cast(ushort)next_dist;
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
         preimage.hash = this.cycle[enrolled + next_dist];
@@ -662,7 +662,7 @@ public class EnrollmentManager
         Check if a pre-image exists
 
         Params:
-            enroll_key = The key for the enrollment in which the pre-image is
+            utxo = The UTXO for the enrollment in which the pre-image is
                 contained.
             distance = The distance of the preimage
 
@@ -671,10 +671,10 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public bool hasPreimage (in Hash enroll_key, in ushort distance) @safe
+    public bool hasPreimage (in Hash utxo, in ushort distance) @safe
         nothrow
     {
-        return this.validator_set.hasPreimage(enroll_key, distance);
+        return this.validator_set.hasPreimage(utxo, distance);
     }
 
     /***************************************************************************
@@ -722,8 +722,7 @@ public class EnrollmentManager
         Get validator's pre-image from the validator set.
 
         Params:
-            enroll_key = The key for the enrollment in which the pre-image is
-                contained.
+            utxo = The frozen UTXO used for enrollment.
 
         Returns:
             the PreImageInfo of the enrolled key if it exists,
@@ -731,10 +730,10 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public PreImageInfo getValidatorPreimage (in Hash enroll_key)
-        @trusted nothrow
+    public PreImageInfo getValidatorPreimage (in Hash utxo)
+        @safe nothrow
     {
-        return this.validator_set.getPreimage(enroll_key);
+        return this.validator_set.getPreimage(utxo);
     }
 
     /***************************************************************************
@@ -791,7 +790,7 @@ public class EnrollmentManager
         foreach (image; preimages)
         {
             auto stored_image =
-                this.validator_set.getPreimage(image.enroll_key);
+                this.validator_set.getPreimage(image.utxo);
             if (stored_image == PreImageInfo.init ||
                 stored_image.distance >= image.distance)
                 continue;
@@ -951,7 +950,7 @@ public class EnrollmentManager
         try
         {
             auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                "WHERE key = ?", "enroll_key");
+                "WHERE key = ?", "utxo");
 
             if (!results.empty)
                 return Hash(results.oneValue!(string));
@@ -966,26 +965,26 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Set the key for the enrollment for this node
+        Set the UTXO for the enrollment for this node
 
-        If saving an enrollment key fails, this displays a log messages and just
+        If saving to the database fails, this displays a log messages and just
         returns. The `enroll_key` stores the value anyway and it can be restored
         from the catch-up process later. If the database or serialization
         operation fails, it means that node is not in normal situation overall.
 
         Params:
-            enroll_key = the key for the enrollment
+            utxo = the key for the enrollment
 
     ***************************************************************************/
 
-    private void setEnrollmentKey (in Hash enroll_key) @trusted nothrow
+    private void setEnrollmentKey (in Hash utxo) @trusted nothrow
     {
-        this.enroll_key = enroll_key;
+        this.enroll_key = utxo;
 
         try
         {
             this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "enroll_key", enroll_key);
+                "(key, val) VALUES (?, ?)", "utxo", enroll_key);
         }
         catch (Exception ex)
         {
@@ -1595,7 +1594,7 @@ unittest
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
         cache.reset(hashMulti(kp.secret, "consensus.preimages", 0));
 
-        PreImageInfo preimage = { enroll_key : utxos[idx],
+        PreImageInfo preimage = { utxo : utxos[idx],
             distance : cast(ushort)params.ValidatorCycle,
             hash : cache[$ - params.ValidatorCycle - 1] };
 
