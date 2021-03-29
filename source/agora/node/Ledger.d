@@ -1572,12 +1572,11 @@ unittest
     import agora.consensus.data.genesis.Coinnet : CoinGenesis = GenesisBlock;
 
     // ConsensusParams is instantiated by default with the test genesis block
-    immutable params = new immutable(ConsensusParams)();
-    assert(CoinGenesis != params.Genesis);
+    immutable params = new immutable(ConsensusParams)(CoinGenesis, WK.Keys.CommonsBudget.address);
 
     try
     {
-        scope ledger = new TestLedger(WK.Keys.A, [CoinGenesis], params);
+        scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], params);
         assert(0);
     }
     catch (Exception ex)
@@ -1585,11 +1584,11 @@ unittest
         assert(ex.msg == "Genesis block loaded from disk is different from the one in the config file");
     }
 
-    immutable good_params = new immutable(ConsensusParams)(CoinGenesis, WK.Keys.CommonsBudget.address);
+    immutable good_params = new immutable(ConsensusParams)();
     // will not fail
-    scope ledger = new TestLedger(WK.Keys.A, [CoinGenesis], good_params);
+    scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], good_params);
     // Neither will the default
-    scope other_ledger = new TestLedger(WK.Keys.A, [CoinGenesis]);
+    scope other_ledger = new TestLedger(WK.Keys.A, [GenesisBlock]);
 }
 
 unittest
