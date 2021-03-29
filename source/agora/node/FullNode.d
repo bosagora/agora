@@ -825,7 +825,7 @@ public class FullNode : API
                 catch (Exception e)
                 {
                     log.error("Error sending preImage (enroll_key: {}) to {} :{}",
-                        pre_image.enroll_key, address, e);
+                        pre_image.utxo, address, e);
                 }
             });
         }

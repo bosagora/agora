@@ -50,8 +50,8 @@ version (unittest)
 public string isInvalidReason (in PreImageInfo new_image,
     in PreImageInfo prev_image, uint validator_cycle) nothrow @safe
 {
-    if (new_image.enroll_key != prev_image.enroll_key)
-        return "The pre-image's enrollment key differs from its descendant";
+    if (new_image.utxo != prev_image.utxo)
+        return "The pre-image's UTXO differs from its descendant";
 
     if (new_image.distance <= prev_image.distance)
         return "The height of new pre-image is not greater than that of the previous one";
@@ -92,7 +92,7 @@ unittest
     PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
     assert(new_image.isValid(prev_image, params.ValidatorCycle));
 
-    // invalid pre-image with wrong enrollment key
+    // invalid pre-image with wrong UTXO
     new_image = PreImageInfo(hashFull("xyz"), preimages[100], 101);
     assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 

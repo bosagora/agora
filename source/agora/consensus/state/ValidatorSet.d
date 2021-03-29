@@ -696,7 +696,7 @@ public class ValidatorSet
     {
         import agora.consensus.validation.PreImage : isInvalidReason;
 
-        const prev_preimage = this.getPreimage(preimage.enroll_key);
+        const prev_preimage = this.getPreimage(preimage.utxo);
 
         if (prev_preimage == PreImageInfo.init)
         {
@@ -723,7 +723,7 @@ public class ValidatorSet
             () @trusted {
                 this.db.execute("UPDATE validator_set SET preimage = ?, " ~
                     "distance = ? WHERE key = ? AND active = ?",
-                    preimage.hash, preimage.distance, preimage.enroll_key,
+                    preimage.hash, preimage.distance, preimage.utxo,
                     EnrollmentStatus.Active);
             }();
         }
@@ -988,7 +988,7 @@ unittest
         == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
     assert(set.getPreimageAt(utxos[0], Height(11)) == preimage);
     assert(set.getPreimageAt(utxos[0], Height(10)) ==
-        PreImageInfo(preimage.enroll_key, hashFull(preimage.hash),
+        PreImageInfo(preimage.utxo, hashFull(preimage.hash),
             cast(ushort)(preimage.distance - 1)));
 
     // test for clear up expired validators
