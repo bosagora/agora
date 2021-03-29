@@ -64,15 +64,11 @@ int main (string[] args)
     const discovery_duration = 60.seconds;
     clients.enumerate.each!((idx, client) =>
     {
-        // TODO - fix node-0
-        if (idx > 0)
-        {
-            retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
-                .state == NetworkState.Complete,
-                discovery_duration,
-                format("%s %s has not completed discovery after %s.",
-                    PREFIX, nodeFromClientIndex(idx), discovery_duration * (idx + 1)));
-        }
+        retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
+            .state == NetworkState.Complete,
+            discovery_duration,
+            format("%s %s has not completed discovery after %s.",
+                PREFIX, nodeFromClientIndex(idx), discovery_duration * (idx + 1)));
     }());
 
     /// Check block generation
@@ -83,8 +79,6 @@ int main (string[] args)
         const Duration max_duration = 30.seconds;
         foreach (idx, ref client; clients)
         {
-            // TODO: Fix node 0 issue
-            if (idx == 0) continue;
             writefln("%s Check block height is %s for %s", PREFIX, height, nodeFromClientIndex(idx));
             ulong node_height;
             Duration duration = 0.seconds;
