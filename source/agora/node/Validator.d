@@ -462,8 +462,10 @@ public class Validator : FullNode, API
         if (validators_changed || need_shuffle)
             this.regenerateQuorums(block.header.height);
 
-        // Re-enroll if our enrollment is about to expire
-        if (this.config.validator.recurring_enrollment)
+        // Re-enroll if our enrollment is about to expire and the block is recent enough
+        auto cur_offset = this.clock.networkTime() - this.params.GenesisTimestamp;
+        if (this.config.validator.recurring_enrollment &&
+            block.header.time_offset > cur_offset - 3 * this.params.BlockInterval.total!"seconds")
             this.checkAndEnroll(block.header.height);
 
         // note: may context switch, should be called last after quorums
