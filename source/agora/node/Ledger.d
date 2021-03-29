@@ -1655,7 +1655,7 @@ unittest
     import agora.consensus.data.genesis.Test;
     import agora.consensus.PreImage;
 
-    auto params = new immutable(ConsensusParams)(10);
+    auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
     scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
 
@@ -1714,7 +1714,7 @@ unittest
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 3);
 
-    foreach (height; 4 .. 10)
+    foreach (height; 4 .. params.ValidatorCycle)
     {
         new_txs = genGeneralBlock(new_txs);
         assert(ledger.getBlockHeight() == Height(height));
@@ -1742,20 +1742,20 @@ unittest
         assert(stored_enroll == enrollments[idx]);
     }
 
-    // create the 10th block to make the `Enrollment`s enrolled
+    // create the last block of the cycle to make the `Enrollment`s enrolled
     new_txs = genGeneralBlock(new_txs);
-    assert(ledger.getBlockHeight() == Height(10));
-    ledger.enroll_man.clearExpiredValidators(Height(10));
-    ledger.enroll_man.updateValidatorIndexMaps(Height(11));
-    auto b10 = ledger.getBlocksFrom(Height(10))[0];
-    assert(b10.header.enrollments.length == 4);
+    assert(ledger.getBlockHeight() == Height(20));
+    ledger.enroll_man.clearExpiredValidators(Height(20));
+    ledger.enroll_man.updateValidatorIndexMaps(Height(21));
+    auto b20 = ledger.getBlocksFrom(Height(20))[0];
+    assert(b20.header.enrollments.length == 4);
 
-    // block 11
+    // block 21
     new_txs = genGeneralBlock(new_txs);
-    assert(ledger.getBlockHeight() == Height(11));
+    assert(ledger.getBlockHeight() == Height(21));
 
     // check missing validators not revealing pre-images.
-    // there are three missing validators at the height of 11.
+    // there are three missing validators at the height of 21.
     auto temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
