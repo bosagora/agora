@@ -111,7 +111,6 @@ public interface ControlFlashAPI : FlashAPI
 
         Params:
             invoice = the invoice to pay
-            peer_pk =
 
     ***************************************************************************/
 
