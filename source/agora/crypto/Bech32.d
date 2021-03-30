@@ -85,15 +85,12 @@ struct DecodeResult
 
 *******************************************************************************/
 
-public char[] encodeBech32 (in char[] hrp, in ubyte[] values,
-    Encoding encoding, bool convert_base = false) pure nothrow @safe
+public char[] encodeBech32 (in char[] hrp, in ubyte[] values, Encoding encoding)
+    pure nothrow @safe
 {
     char[] encoded;
     ubyte[] conv;
-    if (convert_base)
-        convertBits(conv, values, 8, 5, true);
-    else
-        conv ~= values;
+    convertBits(conv, values, 8, 5, true);
 
     // First ensure that the HRP is all lowercase. BIP-173 requires an encoder
     // to return a lowercase Bech32 string, but if given an uppercase HRP, the
@@ -123,7 +120,7 @@ public char[] encodeBech32 (in char[] hrp, in ubyte[] values,
 
 *******************************************************************************/
 
-public DecodeResult decodeBech32 (in char[] str, bool convert_base = false)
+public DecodeResult decodeBech32 (in char[] str)
     @safe
 {
     import std.conv;
@@ -177,22 +174,15 @@ public DecodeResult decodeBech32 (in char[] str, bool convert_base = false)
         return DecodeResult.init;
     }
 
-    if (convert_base)
+    ubyte[] conv;
+    if (!convertBits(conv, values[0 .. $ - 6], 5, 8, false))
     {
-        ubyte[] conv;
-        if (!convertBits(conv, values[0 .. $ - 6], 5, 8, false))
-        {
-            log.error("Error decoding Bech32: Converting base failed, " ~
-                "Data: {}", str);
-            return DecodeResult.init;
-        }
+        log.error("Error decoding Bech32: Converting base failed, " ~
+            "Data: {}", str);
+        return DecodeResult.init;
+    }
 
-        return DecodeResult(encoding, hrp, conv);
-    }
-    else
-    {
-        return DecodeResult(encoding, hrp, values[0 .. $ - 6]);
-    }
+    return DecodeResult(encoding, hrp, conv);
 }
 
 /*******************************************************************************
@@ -478,7 +468,7 @@ unittest
 
     foreach (const ref input; invalid_checksum_bech32) {
         auto dec = decodeBech32(input);
-        assert(dec.encoding != Encoding.Bech32);
+        assert(dec == DecodeResult.init);
     }
 }
 
@@ -490,7 +480,6 @@ unittest
         "a1lqfn3a",
         "an83characterlonghumanreadablepartthatcontainsthetheexcludedcharactersbioandnumber11sg7hg6",
         "abcdef1l7aum6echk45nj3s0wdvt2fg8x9yrzpqzd3ryx",
-        "11llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllludsr8",
         "split1checkupstagehandshakeupstreamerranterredcaperredlc445v",
         "?1v759aa"
     ];
@@ -520,7 +509,7 @@ unittest
 
     foreach (const ref input; invalid_checksum_bech32m) {
         auto dec = decodeBech32(input);
-        assert(dec.encoding != Encoding.Bech32m);
+        assert(dec == DecodeResult.init);
     }
 }
 
@@ -639,10 +628,10 @@ unittest
         assert(convertBits(revert_data, conv_data, 5, 8, false));
         assert(revert_data[] == data_bin);
 
-        char[] addr_str = encodeBech32("boa", data_bin, Encoding.Bech32, true);
+        char[] addr_str = encodeBech32("boa", data_bin, Encoding.Bech32);
         assert(addr_str == input.address, addr_str);
 
-        auto dec = decodeBech32(input.address, true);
+        auto dec = decodeBech32(input.address);
         assert(dec.encoding == Encoding.Bech32);
         assert(dec.data == data_bin);
     }
@@ -757,10 +746,10 @@ unittest
         assert(convertBits(revert_data, conv_data, 5, 8, false));
         assert(revert_data[] == data_bin);
 
-        char[] addr_str = encodeBech32("boa", data_bin, Encoding.Bech32m, true);
+        char[] addr_str = encodeBech32("boa", data_bin, Encoding.Bech32m);
         assert(addr_str == input.address, addr_str);
 
-        auto dec = decodeBech32(input.address, true);
+        auto dec = decodeBech32(input.address);
         assert(dec.encoding == Encoding.Bech32m);
         assert(dec.data == data_bin);
     }

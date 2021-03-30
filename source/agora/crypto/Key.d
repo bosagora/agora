@@ -139,7 +139,7 @@ public struct PublicKey
         ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
         bin[VersionWidth .. $] = this.data[];
-        return encodeBech32(HumanReadablePart, bin, Encoding.Bech32m, true).
+        return encodeBech32(HumanReadablePart, bin, Encoding.Bech32m).
             assumeUnique;
     }
 
@@ -150,7 +150,7 @@ public struct PublicKey
         bin[0] = VersionByte.AccountID;
         bin[VersionWidth .. $] = this.data[];
         string encoded = encodeBech32(HumanReadablePart, bin,
-            Encoding.Bech32m, true).assumeUnique;
+            Encoding.Bech32m).assumeUnique;
         sink(encoded);
     }
 
@@ -182,7 +182,7 @@ public struct PublicKey
 
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
-        auto dec = decodeBech32(str, true);
+        auto dec = decodeBech32(str);
         enforce(dec.hrp == HumanReadablePart);
         enforce(dec.data.length == VersionWidth + PublicKey.sizeof);
         enforce(dec.data[0] == VersionByte.AccountID);
