@@ -243,10 +243,10 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private bool gatherDoubleSpentTXs (in Transaction tx,
-        ref Set!Hash double_spent_txs)
+    public bool gatherDoubleSpentTXs (in Transaction tx,
+        ref Set!Hash double_spent_txs) @safe
     {
-        double_spent_txs.clear();
+        () @trusted { double_spent_txs.clear(); }();
 
         const tx_hash = tx.hashFull();
         foreach (const ref input; tx.inputs)
