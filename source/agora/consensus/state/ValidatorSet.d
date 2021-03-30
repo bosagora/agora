@@ -65,6 +65,10 @@ public struct EnrollmentState
 /// Delegate type to query the history of Enrollments
 public alias EnrollmentFinder = bool delegate (in Hash enroll_key, out EnrollmentState state) @trusted nothrow;
 
+/// Delegate type to find the preimage for the validator
+public alias PreimageFinder = Hash delegate (in PublicKey public_key, in Height height) @safe nothrow;
+
+
 /// A Height and PublicKey pair to represent expiring Validators
 public alias ExpiringValidator = Tuple!(Height, "enrolled_height",
     PublicKey, "pubkey");
@@ -390,6 +394,34 @@ public class ValidatorSet
 
     /***************************************************************************
 
+        Get the utxo_key used for enrollemnt for the given public key
+
+        Params:
+            public_key = public key of the validator
+
+        Returns:
+            Return UTXO key as Hash
+
+    ***************************************************************************/
+
+    public Hash getEnrollmentForKey (in PublicKey public_key) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT key FROM validator_set " ~
+                "WHERE public_key = ? ORDER BY active DESC", public_key);
+            if (!results.empty && results.oneValue!(byte[]).length != 0)
+                return Hash(results.front.peek!(char[])(0));
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error: {}", ex.msg);
+        }
+        return Hash.init;
+    }
+
+    /***************************************************************************
+
         Clear up expired validators whose cycle for a validator ends
 
         The validator set clears up expired validators from the set based on
@@ -562,8 +594,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT preimage, distance FROM " ~
-                "validator_set WHERE key = ? AND active = ?", enroll_key.toString(),
-                EnrollmentStatus.Active);
+                "validator_set WHERE key = ? ORDER BY active DESC", enroll_key.toString());
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
@@ -651,9 +682,8 @@ public class ValidatorSet
             auto results = this.db.execute(
                 "SELECT preimage, enrolled_height, distance " ~
                 "FROM validator_set WHERE key = ? AND enrolled_height <= ? " ~
-                "AND enrolled_height + distance >= ? AND active = ?",
-                enroll_key.toString(), height.value, height.value,
-                EnrollmentStatus.Active);
+                "AND enrolled_height + distance >= ? ORDER BY active DESC",
+                enroll_key.toString(), height.value, height.value);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
@@ -713,8 +743,8 @@ public class ValidatorSet
         if (auto reason = isInvalidReason(preimage, prev_preimage,
             this.params.ValidatorCycle))
         {
-            log.info("Invalid pre-image data: {}. Pre-image: {}",
-                reason, preimage);
+            log.info("Invalid pre-image data: {}. Pre-image: {}, previous: {}",
+                reason, preimage, prev_preimage);
             return false;
         }
 

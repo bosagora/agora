@@ -23,7 +23,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXOCache;
 import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
-                                            EnrollmentStatus;
+                                            EnrollmentStatus, PreimageFinder;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -107,6 +107,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     size_t enrolled_validators, in Hash random_seed,
     Point delegate (in Height, in ulong) nothrow @safe getValidatorAtIndex,
     Point delegate (in Point, in Height) nothrow @safe getCommitmentNonce,
+    Hash delegate (in PublicKey, in Height) nothrow @safe findPreimage,
     ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance,
     Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
                                nothrow @safe getCoinbaseTX,
@@ -208,27 +209,35 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     foreach (idx; 0 .. enrolled_validators)
     {
         const K = getValidatorAtIndex(block.header.height, idx);
-        log.trace("idx {} PublicKey: {}", idx, PublicKey(K[]));
+        const public_key = PublicKey(K[]);
+        log.trace("idx {} PublicKey: {}", idx, public_key);
         if (K == Point.init)
         {
             log.error("[{}:{}] idx #{}: Validator {} not found for height {}",
-                file, line, idx, PublicKey(K[]), block.header.height);
+                file, line, idx, public_key, block.header.height);
             return "Block: Couldn't find a Validator for the given index "
                 ~ to!string(idx) ~ " at height " ~ to!string(block.header.height.value);
         }
         if (!block.header.validators[idx])
         {
             log.trace("[{}:{}] idx #{}: Validator {} has not yet signed block height {}",
-                file, line, idx, PublicKey(K[]), block.header.height);
+                file, line, idx, public_key, block.header.height);
             continue;  // this validator hasn't signed yet
         }
 
         const CR = getCommitmentNonce(K, block.header.height);  // commited R
-        log.trace("Block.isInvalidReason: Enrollment commitment CR for validator {} is {}", PublicKey(K[]), CR);
+        log.trace("Block.isInvalidReason: Enrollment commitment CR for validator {} is {}", public_key, CR);
         if (CR == Point.init)
             return "Block: Couldn't find commitment for this validator";
-        Point R = CR + challenge.toPoint();
-        log.trace("Block.isInvalidReason: Block signing commitment R for validator {} is {}", PublicKey(K[]), R);
+        const preimage = findPreimage(public_key, block.header.height);
+        if (preimage == Hash.init)
+        {
+            log.trace("[{}:{}] idx #{}: Validator {} has not yet sent preimage for block height {}",
+                file, line, idx, public_key, block.header.height);
+            continue;
+        }
+        Point R = CR + Scalar(preimage).toPoint();
+        log.trace("Block.isInvalidReason: Block signing commitment R for validator {} is {}", public_key, R);
         sum_K = sum_K == Point.init ? K : (sum_K + K);
         sum_R = sum_R == Point.init ? R : (sum_R + R);
     }
@@ -438,11 +447,13 @@ unittest
     scope fee_man = new FeeManager();
     scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
+    scope findGenesisValidatorPreimages = getGenesisValidatorPreimageFinder();
 
     // don't accept block height 0 from the network
     block.header.height = 0;
     block.assertValid!false(engine, Height(0), Hash.init, null,
-        Enrollment.MinValidatorCount, Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, Enrollment.MinValidatorCount, checker,
+        findGenesisEnrollments, findGenesisValidatorPreimages);
 
     // height check
     block.header.height = 1;
@@ -652,11 +663,12 @@ version (unittest)
         return genesis_validator_keys
             .find!(key => key.address == PublicKey(point[]))[0].secret;
     }
+    import agora.consensus.PreImage;
 
     public string isValidcheck (in Block block, Engine engine, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
-        scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
+        scope EnrollmentFinder findEnrollment, scope PreimageFinder findPreimage, Hash random_seed = Hash.init,
         ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
         Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
@@ -666,7 +678,8 @@ version (unittest)
 
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, active_enrollments, enrolled_validators,
-            random_seed, (in Height h, in ulong i) @safe nothrow
+            random_seed,
+            (in Height h, in ulong i) @safe nothrow
             {
                 return Point(genesis_validator_keys[i].address[]);
             },
@@ -677,6 +690,7 @@ version (unittest)
                     "consensus.signature.noise", enrollment_cycle))
                     .toPoint();
             },
+            findPreimage,
             prev_time_offset, (curr_time_offset == ulong.max) ? block.header.time_offset : curr_time_offset,
             block_time_tolerance,
             (in Transaction[] tx_set, in uint[] missing_validators)
@@ -690,13 +704,13 @@ version (unittest)
     public void assertValid (bool mustBeValid = true)
         (in Block block, Engine engine, Height prev_height, Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
-        scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
+        scope EnrollmentFinder findEnrollment, scope PreimageFinder findPreimage, Hash random_seed = Hash.init,
         ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
         Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, engine, prev_height, prev_hash, findUTXO,
-            active_enrollments, enrolled_validators, checkFee, findEnrollment,
+            active_enrollments, enrolled_validators, checkFee, findEnrollment, findPreimage,
             random_seed, enrollment_cycle, prev_time_offset, curr_time_offset,
             block_time_tolerance);
 
@@ -742,6 +756,22 @@ public EnrollmentFinder getGenesisEnrollmentFinder () nothrow @trusted
     };
 }
 
+version (unittest)
+{
+    public PreimageFinder getGenesisValidatorPreimageFinder () @safe nothrow
+    {
+        return (in PublicKey public_key, in Height height) @safe nothrow
+        {
+            foreach (key_pair; genesis_validator_keys)
+            {
+                if (key_pair.address == public_key)
+                    return getPreimageForValidator(key_pair, height);
+            }
+            return Hash.init;
+        };
+    }
+}
+
 ///
 unittest
 {
@@ -760,29 +790,32 @@ unittest
     assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
 
+    scope findGenesisValidatorPreimages = getGenesisValidatorPreimageFinder();
+
     GenesisBlock.txs.each!(tx => utxos.put(tx));
     auto block = GenesisBlock.makeNewTestBlock(genesisSpendable().map!(txb => txb.sign()));
 
     // height check
     block.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker,
+        findGenesisEnrollments, findGenesisValidatorPreimages);
 
     block.header.height = 100;
     block.assertValid!false(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length,  checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length,  checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     block.header.height = GenesisBlock.header.height + 1;
     block.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length,  checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length,  checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     /// .prev_block check
     block.header.prev_block = block.header.hashFull();
     block.assertValid!false(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     block.header.prev_block = gen_hash;
     block.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     /// Check consistency of `txs` field
     {
@@ -790,34 +823,34 @@ unittest
 
         block.txs = saved_txs[0 .. $ - 1];
         block.assertValid!false(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
         block.txs = (saved_txs ~ saved_txs).sort.array;
         block.assertValid!false(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
         block.txs = saved_txs;
         block.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
         /// Txs sorting check
         block.txs.reverse;
         block.assertValid!false(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
         block.txs.reverse;
         block.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     }
 
     /// no matching utxo => fail
     utxos.clear();
     block.assertValid!false(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     GenesisBlock.txs.each!(tx => utxos.put(tx));
     block.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     utxos.clear();  // genesis is spent
     auto prev_txs = block.txs;
@@ -826,7 +859,7 @@ unittest
     auto prev_block = block;
     block = block.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
     block.assertValid(engine, prev_block.header.height, prev_block.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     assert(prev_txs.length > 0);  // sanity check
     foreach (tx; prev_txs)
@@ -834,11 +867,11 @@ unittest
         // one utxo missing from the set => fail
         utxos.storage.remove(UTXO.getHash(tx.hashFull(), 0));
         block.assertValid!false(engine, prev_block.header.height, prev_block.header.hashFull(),
-            findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
         utxos.put(tx);
         block.assertValid(engine, prev_block.header.height, prev_block.header.hashFull(),
-            findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     }
 
     // the key is hashMulti(hash(prev_tx), index)
@@ -873,7 +906,7 @@ unittest
     // consumed all utxo => fail
     block = GenesisBlock.makeNewTestBlock(genesisSpendable().map!(txb => txb.sign()));
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-        findNonSpent, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findNonSpent, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     // All `payment` utxos have been consumed
     assert(GenesisBlock.frozens.front.type == TxType.Freeze);
@@ -887,37 +920,37 @@ unittest
     double_spend[$ - 1] = double_spend[$ - 2];
     block = makeNewTestBlock(GenesisBlock, double_spend);
     block.assertValid!false(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-            findNonSpent, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            findNonSpent, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     // we stopped validation due to a double-spend
     assert(used_set.length == double_spend.length - 1);
 
     block = GenesisBlock.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     // modify the last hex byte of the merkle root
     block.header.merkle_root[][$ - 1]++;
 
     block.assertValid!false(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     // now restore it back to what it was
     block.header.merkle_root[][$ - 1]--;
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     const last_root = block.header.merkle_root;
 
     block = GenesisBlock.makeNewTestBlock(prev_txs.enumerate.map!(en =>
         TxBuilder(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
 
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     // the previous merkle root should not match the new txs
     block.header.merkle_root = last_root;
     block.assertValid!false(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        findUTXO, Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 }
 
 ///
@@ -937,7 +970,7 @@ unittest
     scope fee_man = new FeeManager();
     scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
-
+    scope findGenesisValidatorPreimages = getGenesisValidatorPreimageFinder();
     auto gen_key = WK.Keys.Genesis;
     assert(GenesisBlock.isGenesisBlockValid());
     auto gen_hash = GenesisBlock.header.hashFull();
@@ -948,7 +981,7 @@ unittest
 
     auto block1 = makeNewTestBlock(GenesisBlock, txs_1);
     block1.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        genesis_validator_keys.length, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        genesis_validator_keys.length, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     foreach (ref tx; txs_1)
         utxo_set.put(tx);
@@ -991,7 +1024,7 @@ unittest
 
     auto block2 = makeNewTestBlock(block1, txs_2);
     block2.assertValid(engine, block1.header.height, hashFull(block1.header), findUTXO,
-        genesis_validator_keys.length, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        genesis_validator_keys.length, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     foreach (ref tx; txs_2)
         utxo_set.put(tx);
 
@@ -1044,13 +1077,13 @@ unittest
         missing_validators);
     block3.assertValid(engine, block2.header.height, hashFull(block2.header), findUTXO,
         Enrollment.MinValidatorCount, genesis_validator_keys.length, checker,
-        findGenesisEnrollments, preimage_root);
+        findGenesisEnrollments, findGenesisValidatorPreimages, preimage_root);
     enrollments.sort!("a.utxo_key > b.utxo_key");
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     block3.assertValid!false(engine, block2.header.height, hashFull(block2.header), findUTXO,
         Enrollment.MinValidatorCount, Enrollment.MinValidatorCount, checker,
-        findGenesisEnrollments, preimage_root);
+        findGenesisEnrollments, findGenesisValidatorPreimages, preimage_root);
 }
 
 /// test that there must always exist active validators
@@ -1070,6 +1103,7 @@ unittest
     scope fee_man = new FeeManager();
     scope checker = &fee_man.check;
     scope findGenesisEnrollments = getGenesisEnrollmentFinder();
+    scope findGenesisValidatorPreimages = getGenesisValidatorPreimageFinder();
 
     auto gen_key = WK.Keys.Genesis;
     assert(GenesisBlock.isGenesisBlockValid());
@@ -1081,7 +1115,7 @@ unittest
 
     auto block1 = makeNewTestBlock(GenesisBlock, txs_1);
     block1.assertValid(engine, GenesisBlock.header.height, gen_hash, findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
     foreach (ref tx; txs_1)
         utxo_set.put(tx);
@@ -1115,7 +1149,7 @@ unittest
 
     auto block2 = makeNewTestBlock(block1, txs_2);
     block2.assertValid(engine, block1.header.height, hashFull(block1.header), findUTXO,
-        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+        Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     foreach (ref tx; txs_2)
         utxo_set.put(tx);
 
@@ -1142,7 +1176,7 @@ unittest
         auto block3 = makeNewTestBlock(block2, txs_3);
         assert(block3.header.enrollments.length == 0);
         block3.assertValid!false(engine, block2.header.height, hashFull(block2.header),
-            findUTXO, 0, 0, checker, findGenesisEnrollments);
+            findUTXO, 0, 0, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     }
 
     // When all existing validators expire at the new block height but the number of enrollments
@@ -1187,7 +1221,7 @@ unittest
         assert(block3.header.enrollments.length == Enrollment.MinValidatorCount);
         block3.assertValid(engine, block2.header.height, hashFull(block2.header),
             findUTXO, 0, genesis_validator_keys.length, checker, findGenesisEnrollments,
-            preimage_root);
+            findGenesisValidatorPreimages, preimage_root);
     }
 
     // When there are still active validators at the new block height,
@@ -1211,10 +1245,10 @@ unittest
         assert(block3.header.enrollments.length == 0);
 
         block3.assertValid!false(engine, block2.header.height, hashFull(block2.header),
-            findUTXO, 0, Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
+            findUTXO, 0, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
 
         findUTXO = utxo_set.getUTXOFinder();
         block3.assertValid(engine, block2.header.height, hashFull(block2.header), findUTXO,
-            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments);
+            Enrollment.MinValidatorCount, genesis_validator_keys.length, checker, findGenesisEnrollments, findGenesisValidatorPreimages);
     }
 }

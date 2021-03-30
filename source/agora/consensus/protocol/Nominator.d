@@ -639,10 +639,15 @@ extern(D):
 
         // rc = r used in signing the commitment
         const Scalar rc = this.enroll_man.getCommitmentNonceScalar(block.header.height);
-        log.trace("createBlockSignature: Enrollment commitment CR for validator {} is {}", this.kp.address, rc.toPoint());
-        const Scalar r = rc + challenge; // make it unique each challenge
+        // make `r` unique for this node at this block height
+        const preimage = this.enroll_man.getPreimage(block.header.height);
+        assert(preimage != Hash.init, "This node should know it's own preimage!");
+        const reduced_preimage = Scalar(preimage);
+        const Scalar r = rc + reduced_preimage;
         const Point R = r.toPoint();
-        log.trace("createBlockSignature: Block signing commitment R for validator {} is {}", this.kp.address, R);
+        log.trace("createBlockSignature: Block signed for validator {}: " ~
+            "Validation should be with public info - Enrollment commitment CR {}, " ~
+            "commitment R {} and preimage {}", this.kp.address, rc.toPoint(), R, preimage);
         return sign(this.kp.secret, R, r, challenge);
     }
 
@@ -752,21 +757,24 @@ extern(D):
         const Scalar block_challenge = block_hash;
         // Fetch the R from enrollment commitment for signing validator
         const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
+        const preimage = this.enroll_man.getPreimage(block_sig.public_key, block_sig.height);
+        if (preimage == Hash.init)
+            return false;
         // Determine the R of signature (R, s)
-        const Point R = CR + block_challenge.toPoint();
-        log.trace("collectBlockSignature: [{}] Enrollment commitment (CR): {}, signing commitment (R): {}",
-                  block_sig.public_key, CR, R);
+        Point R = CR + Scalar(preimage).toPoint();
         // Compose the signature (R, s)
         const sig = Signature(R, block_sig.signature.asScalar());
         // Check this signature is valid for this block and signing validator
         if (!verify(sig, block_challenge, K))
         {
-            log.warn("collectBlockSignature: INVALID Block signature received for slot {} from node {}",
-                block_sig.height, block_sig.public_key);
+            log.warn("collectBlockSignature height {} node {}: INVALID Block signature " ~
+                "Enrollment commitment (CR): {}, signing commitment (R): {}, preimage: {}",
+                    block_sig.height, block_sig.public_key, CR, R, preimage);
             return false;
         }
-        log.trace("collectBlockSignature: VALID block signature at height {} for node {}",
-            block_sig.height, block_sig.public_key);
+        log.trace("collectBlockSignature height {} node {}: VALID block signature " ~
+            "- Enrollment commitment (CR): {}, signing commitment (R): {}, preimage: {}",
+                block_sig.height, block_sig.public_key, CR, R, preimage);
         // collect the signature
         this.slot_sigs[block_sig.height][K] = Signature(R, block_sig.signature.asScalar());
         return true;

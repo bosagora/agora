@@ -758,8 +758,10 @@ public class Ledger
             (in Point key, in Height height) @safe nothrow
             {
                 const PK = PublicKey(key[]);
-                return this.enroll_man.getCommitmentNonce(PK, block.header.height);
+                assert(height == block.header.height);
+                return this.enroll_man.getCommitmentNonce(PK, height);
             },
+            &this.enroll_man.getPreimage,
             this.last_block.header.time_offset,
             cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
             block_time_offset_tolerance,
@@ -1089,7 +1091,7 @@ public class ValidatingLedger : Ledger
             data.missing_validators);
 
         auto next_block = Height(this.last_block.header.height + 1);
-        KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
+        KeyPair[] key_pairs = iota(0, this.enroll_man.getCountOfValidators(next_block))
             .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
             .map!(K => WK.Keys[K])
             .array();
@@ -1101,10 +1103,10 @@ public class ValidatingLedger : Ledger
                 this.getBlockHeight() + 1, prettify(data));
             return false;
         }
-
+        simulatePreimages (this.log, this.enroll_man, key_pairs, next_block - 1);
         const block = makeNewTestBlock(this.last_block,
             externalized_tx_set, random_seed, data.enrolls,
-            data.missing_validators, public_keys,
+            data.missing_validators, key_pairs,
             (PublicKey pubkey)
             {
                 return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
@@ -1114,11 +1116,35 @@ public class ValidatingLedger : Ledger
     }
 }
 
+version (unittest) // Make sure the preimages are available when the block is validated
+private void simulatePreimages (Logger log, EnrollmentManager enroll_man, in KeyPair[] key_pairs, in Height height) @safe nothrow
+{
+    void addPreimages (in PublicKey public_key, in PreImageInfo preimage_info)
+    {
+        log.info("Adding test preimages at Height {} for validator {}: {}", height, public_key, preimage_info);
+        enroll_man.addPreimages([ preimage_info ]);
+    }
+
+    void addValidatorPreimages (in KeyPair key_pair)
+    {
+        const enroll_key = enroll_man.getEnrollmentForKey(key_pair.address);
+        addPreimages(
+            key_pair.address,
+            PreImageInfo(
+                enroll_key,
+                getPreimageForValidator(key_pair, height),
+                cast(ushort)(height - enroll_man.getEnrolledHeight(enroll_key))));
+    }
+
+    key_pairs.each!( kp => addValidatorPreimages(kp));
+}
+
 /// Note: these unittests historically assume a block always contains
 /// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
 {
     import core.stdc.time : time;
+    import agora.consensus.data.genesis.Test;
 
     /// simulate block creation as if a nomination and externalize round completed
     private void forceCreateBlock (ValidatingLedger ledger, ulong max_txs = Block.TxsInTestBlock,
@@ -1137,6 +1163,7 @@ version (unittest)
     private final class TestLedger : ValidatingLedger
     {
         public this (KeyPair key_pair,
+            const KeyPair[] key_pairs = genesis_validator_keys,    // Genesis key pairs
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null,
             Duration block_time_offset_tolerance_dur = 600.seconds,
@@ -1150,15 +1177,24 @@ version (unittest)
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
 
+            EnrollmentManager enroll_man = new EnrollmentManager(":memory:", key_pair, params);
             super(params,
                 new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new UTXOSet(":memory:"),
-                new MemBlockStorage(blocks),
-                new EnrollmentManager(":memory:", key_pair, params),
+                new MemBlockStorage(blocks ? blocks.takeExactly(1) : null),
+                enroll_man,
                 new TransactionPool(":memory:"),
                 new FeeManager(":memory:", params),
                 mock_clock,
                 block_time_offset_tolerance_dur, null);
+            if (blocks)
+            {
+                blocks[1 .. $].map!(b => b.header.height).each!(h => simulatePreimages(this.log, enroll_man, key_pairs, h - 1));
+                blocks[1 .. $].each!(b => {
+                    if (this.validateBlock(b) == null)  // i.e. no invalid reason
+                        this.addValidatedBlock(b);
+                }());
+            }
         }
 
         ///
@@ -1286,6 +1322,7 @@ unittest
     assert(!ledger.acceptBlock(invalid_block));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
+    simulatePreimages (ledger.log, ledger.enroll_man, genesis_validator_keys, Height(1));
     const block = makeNewTestBlock(ledger.params.Genesis, txs);
     assert(ledger.acceptBlock(block));
 }
@@ -1309,7 +1346,7 @@ unittest
     }
 
     // And provide it to the ledger
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks);
+    scope ledger = new TestLedger(WK.Keys.NODE2, genesis_validator_keys, blocks);
 
     assert(ledger.utxo_set.length
            == /* Genesis, Frozen */ 6 + 8 /* Block #1 Payments*/);
@@ -1339,7 +1376,7 @@ unittest
 
     auto getLedger (Clock clock)
     {
-        auto ledger = new TestLedger(WK.Keys.NODE2, null, new immutable(ConsensusParams)(20, 7, 80), 600.seconds, clock);
+        auto ledger = new TestLedger(WK.Keys.NODE2, genesis_validator_keys, null, new immutable(ConsensusParams)(20, 7, 80), 600.seconds, clock);
         auto txs = genesisSpendable().enumerate()
             .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
             .array();
@@ -1391,11 +1428,11 @@ private immutable(Block)[] genBlocksToIndex (
     size_t count, scope immutable(ConsensusParams) params)
 {
     const(Block)[] blocks = [ params.Genesis ];
-
-    foreach (_; 0 .. count)
+    scope ledger = new TestLedger(WK.Keys.NODE2);
+    foreach (h; 0 .. count)
     {
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-
+        simulatePreimages (ledger.log, ledger.enroll_man, genesis_validator_keys, Height(h));
         auto cycle = blocks[$ - 1].header.height / params.ValidatorCycle;
         blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
     }
@@ -1419,7 +1456,7 @@ unittest
         const ValidatorCycle = 20;
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(ValidatorCycle - 1, params);
-        scope ledger = new TestLedger(WK.Keys.A, blocks, params);
+        scope ledger = new TestLedger(WK.Keys.A, genesis_validator_keys, blocks, params);
         Hash[] keys;
         assert(ledger.enroll_man.getEnrolledUTXOs(keys));
         assert(keys.length == 6);
@@ -1431,7 +1468,9 @@ unittest
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(ValidatorCycle, params);
         // Enrollment: Insufficient number of active validators
-        assertThrown!Exception(new TestLedger(WK.Keys.A, blocks, params));
+        scope ledger = new TestLedger(WK.Keys.A, genesis_validator_keys, blocks, params);
+        assert(ledger.getBlockHeight() == ValidatorCycle - 1,
+            "Should not add block if it will result in Insufficient number of active validators");
     }
 }
 
@@ -1450,11 +1489,16 @@ unittest
         {
             super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new UTXOSet(":memory:"),
-                new MemBlockStorage(blocks),
+                new MemBlockStorage(blocks ? blocks.takeExactly(1) : null),
                 new EnrollmentManager(":memory:", kp, params),
                 new TransactionPool(":memory:"),
                 new FeeManager(),
                 new MockClock(time(null)));
+            if (blocks)
+            {
+                blocks[1 .. $].map!(b => b.header.height).each!(h => simulatePreimages(this.log, enroll_man, genesis_validator_keys, h));
+                blocks[1 .. $].each!(b => this.addValidatedBlock(b));
+            }
         }
 
         override void updateUTXOSet (in Block block) @safe
@@ -1575,7 +1619,7 @@ unittest
 
     try
     {
-        scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], params);
+        scope ledger = new TestLedger(WK.Keys.A, genesis_validator_keys, [GenesisBlock], params);
         assert(0);
     }
     catch (Exception ex)
@@ -1585,9 +1629,9 @@ unittest
 
     immutable good_params = new immutable(ConsensusParams)();
     // will not fail
-    scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], good_params);
+    scope ledger = new TestLedger(WK.Keys.A, genesis_validator_keys, [GenesisBlock], good_params);
     // Neither will the default
-    scope other_ledger = new TestLedger(WK.Keys.A, [GenesisBlock]);
+    scope other_ledger = new TestLedger(WK.Keys.A, genesis_validator_keys, [GenesisBlock]);
 }
 
 unittest
@@ -1656,7 +1700,7 @@ unittest
 
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+    scope ledger = new TestLedger(WK.Keys.NODE2, genesis_validator_keys, blocks, params);
 
     Transaction[] genTransactions (Transaction[] txs)
     {
@@ -1671,7 +1715,7 @@ unittest
     {
         auto new_txs = genTransactions(txs);
         new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-        ledger.forceCreateBlock(Block.TxsInTestBlock, file, line);
+        forceCreateBlock(ledger, Block.TxsInTestBlock, file, line);
         return new_txs;
     }
 
@@ -1718,7 +1762,6 @@ unittest
         new_txs = genGeneralBlock(new_txs);
         assert(ledger.getBlockHeight() == Height(height));
     }
-
     // add four new enrollments
     Enrollment[] enrollments;
     PreImageCache[] caches;
@@ -1758,39 +1801,24 @@ unittest
     auto temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
-    auto preimage = PreImageInfo(
-        enrollments[0].utxo_key,
-        caches[0][$ - 2],
-        1);
-    ledger.enroll_man.addPreimage(preimage);
-    auto gotten_image =
-        ledger.enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
-    assert(gotten_image == preimage);
+    auto preimages = iota(4).map!(i => PreImageInfo(utxos[i], caches[i][$ - 2], 1));
+    ledger.enroll_man.addPreimages(preimages.takeExactly(2).array);
 
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-    assert(data.missing_validators.length == 3);
-    assert(data.missing_validators == [1, 2, 3],
-        format!"Expected missing validators: %s"(data.missing_validators));
+    assert(data.missing_validators.length == 2,
+        format!"Expected 2 missing validators not %s"(data.missing_validators.length));
+    assert(data.missing_validators == [2, 3],
+        format!"Expected missing validators (depends on sorted utoxs created above): %s"(data.missing_validators));
 
     // check validity of slashing information
-    assert(ledger.validateSlashingData(data) == null);
+    assert(ledger.validateSlashingData(data) == null, ledger.validateSlashingData(data));
     ConsensusData forged_data = data;
-    forged_data.missing_validators = [3, 2, 1];
+    forged_data.missing_validators = [1, 2];
     assert(ledger.validateSlashingData(forged_data) != null);
 
-    // reveal preimages of all the validators
-    foreach (idx, cache; caches[1 .. $])
-    {
-        preimage = PreImageInfo(
-            enrollments[idx + 1].utxo_key,
-            cache[$ - 2],
-            1);
-        ledger.enroll_man.addPreimage(preimage);
-        gotten_image =
-            ledger.enroll_man.getValidatorPreimage(enrollments[idx + 1].utxo_key);
-        assert(gotten_image == preimage);
-    }
+    // reveal preimage of the missing validators
+    ledger.enroll_man.addPreimages(preimages.dropExactly(2).takeExactly(2).array);
 
     // there's no missing validator at the height of 11
     // after revealing preimages
@@ -1813,7 +1841,7 @@ unittest
         CommonsBudget.address, config);
 
     const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+    scope ledger = new TestLedger(WK.Keys.NODE2, genesis_validator_keys, blocks, params);
 
     Hash[] genesisEnrollKeys;
     ledger.enroll_man.getEnrolledUTXOs(genesisEnrollKeys);
@@ -1904,7 +1932,7 @@ unittest
         CommonsBudget.address, config);
 
     const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+    scope ledger = new TestLedger(WK.Keys.NODE2, genesis_validator_keys, blocks, params);
 
     auto txs = blocks[$-1].spendable.map!(txb =>
         txb.deduct(Amount.UnitPerCoin).sign()).array();

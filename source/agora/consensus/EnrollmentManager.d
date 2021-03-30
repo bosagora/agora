@@ -805,6 +805,53 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the pre-image hash for this validator
+
+        Params:
+            enroll_key = UTXO enrollemnt key
+            height = the block height of pre-image to be returned
+
+        Returns:
+            The preimage hash if found otherwise Hash.init
+
+    ***************************************************************************/
+
+    public Hash getPreimage (in Height height) @safe nothrow
+    {
+        return this.cycle[height];
+    }
+
+    /// Ditto
+    public Hash getPreimage (in PublicKey public_key, in Height height) @safe nothrow
+    {
+        return this.getPreimage(getEnrollmentForKey(public_key), height);
+    }
+
+    /// Ditto
+    public Hash getPreimage (in Hash enroll_key, in Height height) @safe nothrow
+    {
+        return this.validator_set.getPreimageAt(enroll_key, height).hash;
+    }
+
+    /***************************************************************************
+
+        Get the UTXO key enrollemnt for a validator
+
+        Params:
+            public_key = the public key of the validator
+
+        Returns:
+            UTXO enrollemnt key
+
+    ***************************************************************************/
+
+    public Hash getEnrollmentForKey (in PublicKey public_key) @safe nothrow
+    {
+        return this.validator_set.getEnrollmentForKey(public_key);
+    }
+
+    /***************************************************************************
+
         Get the public key of node that is used for a enrollment
 
         Returns:
