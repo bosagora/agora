@@ -1106,39 +1106,46 @@ public class TestAPIManager
         Assert all the nodes contain the same blocks
 
         This is a helper function to confirm all nodes have the same blocks
+        Note that the `from` and `to` are reversed to enable default value
 
         Params:
             client_idxs = client indices for the nodes to be checked
-            height = expected block height of the nodes
+            to = expected block height of the nodes
+            from = start of range for comparing the blocks
 
     ***************************************************************************/
 
-    void assertSameBlocks (Height height,
+    void assertSameBlocks (Height to, Height from = Height(0),
         string file = __FILE__, int line = __LINE__)
     {
-        assertSameBlocks(iota(GenesisValidators), height, file, line);
+        assertSameBlocks(iota(GenesisValidators), to, from, file, line);
     }
 
     /// Ditto
-    void assertSameBlocks (Idxs)(Idxs client_idxs, Height height,
-        string file = __FILE__, int line = __LINE__)
+    void assertSameBlocks (Idxs)(Idxs client_idxs, Height to,
+        Height from = Height(0), string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
+        const MaxBlocks = 1024;
+        assert(to >= from,
+            format!"[%s:%s] Please provide valid heights as params. Not %s .. %s"
+            (file, line, from, to));
 
         client_idxs.each!(idx =>
-            retryFor(Height(this.clients[idx].getBlockHeight()) == height,
+            retryFor(Height(this.clients[idx].getBlockHeight()) == to,
                 5.seconds,
                 format!"[%s:%s] Expected height %s for client #%s not %s"
-                    (file, line, height, idx,
+                    (file, line, to, idx,
                         this.clients[idx].getBlockHeight())));
 
-        retryFor(client_idxs.map!(idx =>
-            this.clients[idx].getAllBlocks()).uniq().count() == 1,
-            5.seconds,
-            format!"[%s:%s] Clients %s blocks are not all the same: %s"
-                (file, line, client_idxs, client_idxs.fold!((s, i) =>
+        // Compare blocks one at a time
+        iota(from, to + 1).each!(h =>
+            retryFor(client_idxs.map!(idx =>
+                this.clients[idx].getBlocksFrom(h, 1)).uniq().count() == 1, 5.seconds,
+                format!"[%s:%s] Clients %s blocks are not all the same for block %s: %s"
+                (file, line, client_idxs, h, client_idxs.fold!((s, i) =>
                     s ~ format!"\n\n========== Client #%s ==========%s"
-                        (i, prettify(this.clients[i].getAllBlocks())))("")));
+                        (i, prettify(this.clients[i].getBlocksFrom(h, 1))))(""))));
     }
 }
 
