@@ -577,9 +577,11 @@ private struct ConsensusDataFmt
     {
         try
         {
-            formattedWrite(sink, "{ tx_set: %s, enrolls: %s }",
+            formattedWrite(sink, "{ tx_set: %s, enrolls: %s, missing_validators: %s, time_offset: %s }",
                 this.data.tx_set.map!(tx => HashFmt(tx)),
-                this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)));
+                this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)),
+                this.data.missing_validators,
+                this.data.time_offset);
         }
         catch (Exception ex)
         {
@@ -618,9 +620,11 @@ unittest
     {
         tx_set: GenesisBlock.txs.map!(tx => tx.hashFull()).array,
         enrolls: [ record, record, ],
+        missing_validators: [0, 2, 4],
+        time_offset: 123,
     };
 
-    static immutable Res1 = `{ tx_set: [0x4ef4...b11d, 0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }] }`;
+    static immutable Res1 = `{ tx_set: [0x4ef4...b11d, 0xb8f5...f84f], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 123 }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));
