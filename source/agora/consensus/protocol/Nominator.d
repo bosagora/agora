@@ -304,7 +304,7 @@ extern(D):
         if (auto msg = this.ledger.validateConsensusData(data))
         {
             log.fatal("tryNominate(): Invalid consensus data: {}. Data: {}",
-                    msg, data);
+                    msg, data.prettify);
             if (this.onInvalidNomination)
                 this.onInvalidNomination(data, msg);
             return false;
@@ -314,7 +314,7 @@ extern(D):
         if (auto msg = this.ledger.validateSlashingData(data))
         {
             log.fatal("tryNominate(): Invalid preimage data: {}. Data: {}",
-                    msg, data);
+                    msg, data.prettify);
             if (this.onInvalidNomination)
                 this.onInvalidNomination(data, msg);
             return false;
@@ -377,7 +377,7 @@ extern(D):
         if (!this.prepareNominatingSet(data))
             return;
 
-        log.trace("Nominating {} at {}", data, cur_time);
+        log.trace("Nominating {} at {}", data.prettify, cur_time);
         this.is_nominating = true;
 
         // note: we are not passing the previous tx set as we don't really
@@ -794,7 +794,7 @@ extern(D):
             if (auto fail_reason = this.ledger.validateConsensusData(data))
             {
                 log.error("validateValue(): Validation failed: {}. Data: {}",
-                    fail_reason, data);
+                    fail_reason, data.prettify);
                 return ValidationLevel.kInvalidValue;
             }
 
@@ -809,7 +809,7 @@ extern(D):
             {
                 log.info("validateValue(): Preimage Validation failed, but " ~
                     "return kMaybeValidValue. Reason: {}, Data: {}",
-                    fail_reason, data);
+                    fail_reason, data.prettify);
                 return ValidationLevel.kMaybeValidValue;
             }
         }
@@ -1038,7 +1038,7 @@ extern(D):
                         msg));
 
                 log.info("combineCandidates: {}", slot_idx);
-                log.trace("Combined consensus data: {}", data);
+                log.trace("Combined consensus data: {}", data.prettify);
                 // todo: currently we just pick the first of the candidate values,
                 // but we should ideally pick tx's out of the combined set
                 return duplicate_value(&candidate);
