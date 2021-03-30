@@ -539,7 +539,7 @@ version (unittest)
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
         Transactions txs, Hash random_seed = Hash.init,
         Enrollment[] enrollments = null, uint[] missing_validators = null,
-        KeyPair[] keys = genesis_validator_keys,
+        KeyPair[] key_pairs = genesis_validator_keys,
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
         ulong time_offset = 0) @safe nothrow
     {
@@ -553,7 +553,7 @@ version (unittest)
         auto block = makeNewBlock(prev_block, txs,
                 time_offset ? time_offset : prev_block.header.time_offset + 1,
                 random_seed, enrollments, missing_validators);
-        return multiSigTestBlock(block, cycleForValidator, keys);
+        return multiSigTestBlock(block, cycleForValidator, key_pairs);
     }
 }
 
