@@ -58,17 +58,22 @@ private immutable byte[128] CHARSET_REV = [
      1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
 ];
 
-enum Encoding {
+public enum Encoding
+{
     Invalid,
-    Bech32,  // Bech32 encoding as defined in BIP173
-    Bech32m, // Bech32m encoding as defined in BIP350
+    Bech32,  /// Bech32 encoding as defined in BIP173
+    Bech32m, /// Bech32m encoding as defined in BIP350
 }
 
-struct DecodeResult
+/// Return type for `encodeBech32`
+public struct DecodeResult
 {
-    Encoding encoding;  // What encoding was detected in the result
-    char[] hrp;         // The human readable part
-    ubyte[] data;       // The payload (excluding checksum)
+    /// Encoding used by the input to `encodeBech32`
+    Encoding encoding;
+    // Human readable part
+    char[] hrp;
+    // Payload (excluding checksum)
+    ubyte[] data;
 }
 
 /*******************************************************************************
@@ -86,7 +91,7 @@ struct DecodeResult
 *******************************************************************************/
 
 public char[] encodeBech32 (in char[] hrp, in ubyte[] values, Encoding encoding)
-    pure nothrow @safe
+    @safe pure nothrow
 {
     char[] encoded;
     ubyte[] conv;
@@ -197,7 +202,7 @@ public DecodeResult decodeBech32 (in char[] str)
 
 *******************************************************************************/
 
-uint encodingConstant(Encoding encoding) pure nothrow @nogc @safe
+private uint encodingConstant (Encoding encoding) @safe pure nothrow @nogc
 {
     assert(encoding == Encoding.Bech32 || encoding == Encoding.Bech32m);
     return encoding == Encoding.Bech32 ? 1 : 0x2bc830a3;
@@ -217,7 +222,7 @@ uint encodingConstant(Encoding encoding) pure nothrow @nogc @safe
 
 *******************************************************************************/
 
-private uint polymod (in ubyte[] values) pure nothrow @nogc @safe
+private uint polymod (in ubyte[] values) @safe pure nothrow @nogc
 {
     // The input is interpreted as a list of coefficients of a polynomial over
     // F = GF(32), with an implicit 1 in front. If the input is [v0,v1,v2,v3,v4],
@@ -291,7 +296,7 @@ private uint polymod (in ubyte[] values) pure nothrow @nogc @safe
 
 /*******************************************************************************
 
-    Expand a HRP(Human Readable Part) for use in checksum computation.
+    Expand a HRP (Human Readable Part) for use in checksum computation.
 
     Params:
         hrp = human redable part
@@ -301,10 +306,9 @@ private uint polymod (in ubyte[] values) pure nothrow @nogc @safe
 
 *******************************************************************************/
 
-private ubyte[] expandHRP (in char[] hrp) pure nothrow @safe
+private ubyte[] expandHRP (in char[] hrp) @safe pure nothrow
 {
     ubyte[] ret;
-    ret.reserve(hrp.length + 90);
     ret.length = hrp.length * 2 + 1;
     for (size_t i = 0; i < hrp.length; ++i)
     {
@@ -331,7 +335,7 @@ private ubyte[] expandHRP (in char[] hrp) pure nothrow @safe
 *******************************************************************************/
 
 ubyte[] createChecksum (in char[] hrp, in ubyte[] values, Encoding encoding)
-    pure nothrow @safe
+    @safe pure nothrow
 {
     ubyte[] enc = expandHRP(hrp);
     enc ~= values;
@@ -360,7 +364,7 @@ ubyte[] createChecksum (in char[] hrp, in ubyte[] values, Encoding encoding)
 
 *******************************************************************************/
 
-Encoding verifyChecksum (in char[] hrp, in ubyte[] values) pure nothrow @safe
+Encoding verifyChecksum (in char[] hrp, in ubyte[] values) @safe pure nothrow
 {
     // PolyMod computes what value to xor into the final values to make the
     // checksum 0. However, if we required that the checksum was 0, it would
@@ -395,7 +399,7 @@ Encoding verifyChecksum (in char[] hrp, in ubyte[] values) pure nothrow @safe
 *******************************************************************************/
 
 bool convertBits (ref ubyte[] out_values, const(ubyte)[] in_values,
-    int frombits, int tobits, bool pad) pure nothrow @safe
+    int frombits, int tobits, bool pad) @safe pure nothrow
 {
     int acc = 0;
     int bits = 0;
