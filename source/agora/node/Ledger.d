@@ -153,7 +153,8 @@ public class Ledger
         EnrollmentManager enroll_man, TransactionPool pool,
         FeeManager fee_man, Clock clock,
         Duration block_time_offset_tolerance = 60.seconds,
-        void delegate (in Block, bool) @safe onAcceptedBlock = null)
+        void delegate (in Block, bool) @safe onAcceptedBlock = null,
+        string file = __FILE__, size_t line = __LINE__)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
@@ -191,10 +192,10 @@ public class Ledger
                 Block block = this.storage.readBlock(Height(height));
 
                 // Make sure our data on disk is valid
-                if (auto fail_reason = this.validateBlock(block))
+                if (auto fail_reason = this.validateBlock(block, file, line))
                     throw new Exception(
-                        "A block loaded from disk is invalid: " ~
-                        fail_reason);
+                        format!"[%s:%s]: A block loaded from disk is invalid: %s"
+                        (file, line, fail_reason));
 
                 this.addValidatedBlock(block);
             }
@@ -1001,10 +1002,11 @@ public class ValidatingLedger : Ledger
         EnrollmentManager enroll_man, TransactionPool pool,
         FeeManager fee_man, Clock clock,
         Duration block_timestamp_tolerance,
-        void delegate (in Block, bool) @safe onAcceptedBlock)
+        void delegate (in Block, bool) @safe onAcceptedBlock,
+        string file = __FILE__, size_t line = __LINE__)
     {
         super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
-            clock, block_timestamp_tolerance, onAcceptedBlock);
+            clock, block_timestamp_tolerance, onAcceptedBlock, file, line);
     }
 
     /***************************************************************************
