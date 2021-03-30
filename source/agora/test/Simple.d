@@ -46,8 +46,33 @@ unittest
     network.expectHeight(Height(1));
     network.assertSameBlocks(iota(network.nodes.length), Height(1));
 
-    // Now create blocks until after the end of the first validator cycle
-    auto target_height = Height(GenesisValidatorCycle + 2);
+    // Now create blocks until one block before the end of the first validator cycle
+    auto target_height = Height(GenesisValidatorCycle - 1);
     network.generateBlocks(target_height);
     network.assertSameBlocks(target_height);
+
+    // Now create last block of the first validator cycle
+    target_height++;
+    network.generateBlocks(target_height);
+    network.assertSameBlocks(target_height, target_height - 1);
+
+    // Now create first 2 blocks of the next validator cycle
+    target_height += 2;
+    network.generateBlocks(target_height);
+    network.assertSameBlocks(target_height, target_height - 2);
+
+    // Now create last block of the second validator cycle
+    target_height += 17;
+    network.generateBlocks(target_height);
+    network.assertSameBlocks(target_height, target_height - 17);
+
+    // Now create last block of the second validator cycle
+    target_height++;
+    network.generateBlocks(target_height);
+    network.assertSameBlocks(target_height, target_height - 1);
+
+    // Now create first 2 blocks of the third validator cycle
+    target_height += 2;
+    network.generateBlocks(target_height);
+    network.assertSameBlocks(target_height, target_height - 2);
 }

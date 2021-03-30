@@ -1109,34 +1109,35 @@ public class TestAPIManager
 
         Params:
             client_idxs = client indices for the nodes to be checked
-            height = expected block height of the nodes
+            to_height = expected block height of the nodes
+            from_height = start of range for comparing the blocks
 
     ***************************************************************************/
 
-    void assertSameBlocks (Height height,
+    void assertSameBlocks (Height to_height, Height from_height = Height(0),
         string file = __FILE__, int line = __LINE__)
     {
-        assertSameBlocks(iota(GenesisValidators), height, file, line);
+        assertSameBlocks(iota(GenesisValidators), to_height, from_height, file, line);
     }
 
     /// Ditto
-    void assertSameBlocks (Idxs)(Idxs client_idxs, Height height,
-        string file = __FILE__, int line = __LINE__)
+    void assertSameBlocks (Idxs)(Idxs client_idxs, Height to_height,
+        Height from_height = Height(0), string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
         client_idxs.each!(idx =>
-            retryFor(Height(this.clients[idx].getBlockHeight()) == height,
+            retryFor(Height(this.clients[idx].getBlockHeight()) == to_height,
                 5.seconds,
                 format!"[%s:%s] Expected height %s for client #%s not %s"
-                    (file, line, height, idx,
+                    (file, line, to_height, idx,
                         this.clients[idx].getBlockHeight())));
 
         retryFor(client_idxs.map!(idx =>
             this.clients[idx].getAllBlocks()).uniq().count() == 1,
             5.seconds,
-            format!"[%s:%s] Clients %s blocks are not all the same: %s"
-                (file, line, client_idxs, client_idxs.fold!((s, i) =>
+            format!"[%s:%s] Clients %s blocks are not all the same from block %s to %s: %s"
+                (file, line, client_idxs, from_height, to_height, client_idxs.fold!((s, i) =>
                     s ~ format!"\n\n========== Client #%s ==========%s"
                         (i, prettify(this.clients[i].getAllBlocks())))("")));
     }
