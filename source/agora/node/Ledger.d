@@ -303,9 +303,6 @@ public class Ledger
         Params:
             header = block header to be updated
 
-        Returns:
-            true if the block was updated
-
     ***************************************************************************/
 
     public void updateBlockMultiSig (in BlockHeader header) @safe
