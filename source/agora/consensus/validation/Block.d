@@ -293,7 +293,7 @@ public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_
     }
     catch (Exception e)
     {
-        return "Exception happened while validating block time offset";
+        res = "Exception happened while validating block time offset";
     }
     if (res !is null)
         log.warn("validateBlockTimeOffset(): {}", res);
