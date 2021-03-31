@@ -160,10 +160,10 @@ public struct NodeConfig
     public Duration retry_delay = 3.seconds;
 
     /// Maximum number of retries to issue before a request is considered failed
-    public size_t max_retries = 5;
+    public size_t max_retries = 10;
 
     /// Timeout for each request
-    public Duration timeout = 500.msecs;
+    public Duration timeout = 5000.msecs;
 
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir = "/var/lib/agora/";
