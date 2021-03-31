@@ -379,7 +379,7 @@ public abstract class FlashNode : ControlFlashAPI
         this.load();
 
         this.channels = Channel.loadChannels(this.conf, this.db,
-            &this.getFlashClient,engine, taskman,
+            &this.getFlashClient, engine, taskman,
             &this.putTransaction, &this.paymentRouter,
             &this.onChannelOpen,
             &this.onPaymentComplete, &this.onUpdateComplete);
