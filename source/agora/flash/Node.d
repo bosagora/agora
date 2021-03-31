@@ -82,8 +82,7 @@ public abstract class ThinFlashNode : FlashNode
     public this (FlashConfig conf, string db_path, Hash genesis_hash,
         Engine engine, ITaskManager taskman, string agora_address)
     {
-        Duration timeout;  // infinite timeout (todo: fixup)
-        this.agora_node = this.getAgoraClient(agora_address, timeout);
+        this.agora_node = this.getAgoraClient(agora_address, conf.timeout);
         super(conf, db_path, genesis_hash, engine, taskman);
     }
 
@@ -402,7 +401,7 @@ public abstract class FlashNode : ControlFlashAPI
 
         if (this.conf.listener_address.length != 0)
             this.listener = this.getFlashListenerClient(
-                this.conf.listener_address, Duration.init);
+                this.conf.listener_address, this.conf.timeout);
         else  // avoid null checks & segfaults
             this.listener = new BlackHole!FlashListenerAPI();
     }
@@ -550,7 +549,7 @@ public abstract class FlashNode : ControlFlashAPI
                 "There is already an open channel with this ID");
 
         // todo: move to initialization stage!
-        auto peer = this.getFlashClient(chan_conf.funder_pk, Duration.init);
+        auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout);
 
         if (chan_conf.gen_hash != this.genesis_hash)
             return Result!PublicNonce(ErrorCode.InvalidGenesisHash,
@@ -965,7 +964,7 @@ public abstract class FlashNode : ControlFlashAPI
                  capacity, settle_time, peer_pk.flashPrettify);
 
         // todo: move to initialization stage!
-        auto peer = this.getFlashClient(peer_pk, Duration.init);
+        auto peer = this.getFlashClient(peer_pk, this.conf.timeout);
         const pair_pk = this.conf.key_pair.address + peer_pk;
 
         // create funding, don't sign it yet as we'll share it first
