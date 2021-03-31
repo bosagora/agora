@@ -646,14 +646,20 @@ public class EnrollmentManager
     public bool getNextPreimage (out PreImageInfo preimage, in Height height)
         @safe
     {
-        uint next_dist = getRevealDistance(height);
-        if (next_dist >= this.params.ValidatorCycle)
+        const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
+        if (enrolled == ulong.max)
+            return false;
+
+        assert(height >= enrolled);
+        const next_reveal = min(height + PreimageRevealPeriod,
+                                enrolled + (this.params.ValidatorCycle - 1));
+
+        if (next_reveal <= height)
             return false;
 
         preimage.utxo = this.enroll_key;
-        preimage.distance = cast(ushort)next_dist;
-        const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
-        preimage.hash = this.cycle[enrolled + next_dist];
+        preimage.distance = cast(ushort)(next_reveal - enrolled);
+        preimage.hash = this.cycle[next_reveal];
         return true;
     }
 
@@ -1036,31 +1042,6 @@ public class EnrollmentManager
 
         foreach (stat; validator_preimages_stats.getStats())
             collector.collect(stat.value, stat.label);
-    }
-
-    /***************************************************************************
-
-        Update the distance of the pre-image that will be revealed next time
-
-        Params:
-            height = block height to check
-
-        Returns:
-            the distance, or unit.max if this node is not enrolled.
-
-    ***************************************************************************/
-
-    private uint getRevealDistance (in Height height) @safe nothrow
-    {
-        const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
-        if (enrolled == ulong.max)
-            return uint.max;
-
-        assert(height >= enrolled);
-        auto diff = cast(uint)(height - enrolled);
-        auto dist = min(diff + PreimageRevealPeriod,
-            this.params.ValidatorCycle - 1);
-        return dist;
     }
 
     /***************************************************************************
