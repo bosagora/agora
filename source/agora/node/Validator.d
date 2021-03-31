@@ -228,7 +228,8 @@ public class Validator : FullNode, API
         this.started = true;
         // Note: Switching the next two lines leads to test failure
         // It should not, and this needs to be fixed eventually
-        this.timers ~= this.network.startPeriodicNameRegistration();
+        if (auto timer = this.network.startPeriodicNameRegistration())
+            this.timers ~= timer;
         super.start();
 
         this.clock.startSyncing();
