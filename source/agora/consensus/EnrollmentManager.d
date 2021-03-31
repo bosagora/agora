@@ -83,6 +83,10 @@ import std.string;
 
 public class EnrollmentManager
 {
+    /// The period for revealing a preimage
+    /// It is an hour interval if a block is made in every 10 minutes
+    public static immutable uint PreimageRevealPeriod = 6;
+
     /// Logger instance
     private Logger log;
 
@@ -97,10 +101,6 @@ public class EnrollmentManager
 
     /// The final hash of the preimages at the beginning of the enrollment cycle
     private Hash random_seed;
-
-    /// The period for revealing a preimage
-    /// It is an hour interval if a block is made in every 10 minutes
-    public static immutable uint PreimageRevealPeriod = 6;
 
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
