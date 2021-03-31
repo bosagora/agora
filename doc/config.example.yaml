@@ -76,6 +76,43 @@ validator:
   preimage_reveal_interval: 10
 
 ################################################################################
+##                             Flash configuration                            ##
+## Configuration options for the Flash functionality of the node.             ##
+##                                                                            ##
+################################################################################
+flash:
+  # Whether or not the Flash protocol should be supported
+  enabled: true
+  # Timeout for each request in milliseconds
+  timeout: 10000
+  # This is a randomly generated keypair
+  # DO NOT USE THOSE VALUES ANYWHERE
+  # Private seed:    SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+  # Public address:  GCOQEOHAUFYUAC6G22FJ3GZRNLGVCCLESEJ2AXBIJ5BJNUVTAERPLRIJ
+  seed: SCT4KKJNYLTQO4TVDPVJQZEONTVVW66YLRWAINWI3FZDY7U4JS4JJEI4
+
+  # Address to the listener which will receive payment / update notifications
+  listener_address: http://127.0.0.1:4004
+
+  # Minimum funding allowed for a channel to be opened (in BOA)
+  min_funding: 0
+
+  # Maximum funding allowed for a channel to be opened (in BOA)
+  max_funding: 100000
+
+  # Minimum number of blocks before settling can begin after a trigger
+  # transaction has been published
+  min_settle_time: 6
+
+  # Maximum number of blocks afte which settling can begin after a trigger
+  # transaction has been published
+  max_settle_time: 144
+
+  # Maximum number of times a payment should be retried before failure is
+  # reported to the listener (wallet / etc)
+  max_payment_retries: 3
+
+################################################################################
 ##                         Ban manager configuration                          ##
 ################################################################################
 banman:
