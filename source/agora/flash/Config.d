@@ -31,6 +31,9 @@ public struct FlashConfig
     /// Whether or not this node should support the Flash API
     public bool enabled;
 
+    /// Timeout for requests
+    public Duration timeout = 10.seconds;
+
     /// In testing mode the node will open arbitrary channels with other nodes
     /// and send & receive Flash transactions. If `true` then
     /// `NodeConfig.testing` must also be true or else configuration will fail.

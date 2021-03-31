@@ -304,8 +304,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
             "payment 1");
         log.info("Charlie's invoice is: {}", inv_1);
 
-        Duration duration;
-        auto alice = this.getFlashClient(alice_pk, duration);
+        auto alice = this.getFlashClient(alice_pk, this.config.flash.timeout);
 
         log.info("Charlie: Sending invoice to {} ({}):", alice_pk, alice);
         alice.receiveInvoice(inv_1);

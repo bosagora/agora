@@ -501,7 +501,7 @@ public class Channel
         // if it's a preloaded channel we can only retrieve the flash client
         // once the event loop is running (LocalRest issue)
         if (this.peer is null)
-            this.peer = getFlashClient(this.peer_pk, Duration.init);
+            this.peer = getFlashClient(this.peer_pk, this.flash_conf.timeout);
 
         if (this.update_signer is null)
             this.update_signer = new UpdateSigner(this.conf, this.kp, this.peer,
