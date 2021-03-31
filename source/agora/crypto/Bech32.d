@@ -36,12 +36,10 @@
 module agora.crypto.Bech32;
 
 import agora.crypto.ECC;
-import agora.utils.Log;
 
+import std.format;
 import std.string;
 import std.uni;
-
-mixin AddLogger!();
 
 /// The Bech32 character set for encoding.
 private immutable string CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
@@ -136,21 +134,15 @@ public DecodeResult decodeBech32 (in char[] str)
         ubyte c = str[i];
         if (c >= 'a' && c <= 'z') lower = true;
         else if (c >= 'A' && c <= 'Z') upper = true;
-        else if (c < 33 || c > 126) return DecodeResult.init;
+        else if (c < 33 || c > 126)
+            throw new Exception(format("Character '%X' at pos %s outside of valid char range", c, i));
     }
     if (lower && upper)
-    {
-        log.error("Error decoding Bech32: Upper case and lower case mixed");
-        return DecodeResult.init;
-    }
+        throw new Exception("Bech32 does not allow mixed lower and upper cases");
 
     auto pos = lastIndexOf(str, '1');
     if (str.length > 90 || pos == -1 || pos == 0 || pos + 7 > str.length)
-    {
-        log.error("Error decoding Bech32: Human Readable Part is invalid, " ~
-            "Data: {}, Pos: {}", str, pos);
-        return DecodeResult.init;
-    }
+        throw new Exception(format("Invalid HRP for Bech32: %s (pos: %s)", str, pos));
 
     ubyte[] values;
     values.length = str.length - 1 - pos;
@@ -160,11 +152,9 @@ public DecodeResult decodeBech32 (in char[] str)
         byte rev = CHARSET_REV[c];
 
         if (rev == -1)
-        {
-            log.error("Error decoding Bech32: Decoding char at {} is invalid, " ~
-                "Char: {}, Data: {}", i + pos + 1, to!char(c), str);
-            return DecodeResult.init;
-        }
+            throw new Exception(
+                format("Invalid byte (%X) in data at position %s: %s",
+                       c, i + pos + 1, str));
 
         values[i] = rev;
     }
@@ -174,18 +164,11 @@ public DecodeResult decodeBech32 (in char[] str)
 
     auto encoding = verifyChecksum(hrp, values);
     if (encoding == Encoding.Invalid)
-    {
-        log.error("Error decoding Bech32: Checksum is invalid, Data: {}", str);
-        return DecodeResult.init;
-    }
+        throw new Exception(format("Bech32 checksum is invalid: %s", str));
 
     ubyte[] conv;
     if (!convertBits(conv, values[0 .. $ - 6], 5, 8, false))
-    {
-        log.error("Error decoding Bech32: Converting base failed, " ~
-            "Data: {}", str);
-        return DecodeResult.init;
-    }
+        throw new Exception(format("Bech32 convertion of base failed: %s", str));
 
     return DecodeResult(encoding, hrp, conv);
 }
@@ -439,6 +422,8 @@ unittest
 // Test for checksum for Bech32 encoding
 unittest
 {
+    import std.exception;
+
     string[] valid_checksum_bech32 = [
         "A12UEL5L",
         "a12uel5l",
@@ -471,14 +456,15 @@ unittest
     }
 
     foreach (const ref input; invalid_checksum_bech32) {
-        auto dec = decodeBech32(input);
-        assert(dec == DecodeResult.init);
+        assertThrown(decodeBech32(input));
     }
 }
 
 // Test for checksum for Bech32m encoding
 unittest
 {
+    import std.exception;
+
     string[] valid_checksum_bech32m = [
         "A1LQFN3A",
         "a1lqfn3a",
@@ -512,8 +498,7 @@ unittest
     }
 
     foreach (const ref input; invalid_checksum_bech32m) {
-        auto dec = decodeBech32(input);
-        assert(dec == DecodeResult.init);
+        assertThrown(decodeBech32(input));
     }
 }
 
