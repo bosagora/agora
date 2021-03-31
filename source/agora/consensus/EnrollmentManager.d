@@ -665,26 +665,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Check if a pre-image exists
-
-        Params:
-            utxo = The UTXO for the enrollment in which the pre-image is
-                contained.
-            distance = The distance of the preimage
-
-        Returns:
-            true if the pre-image exists
-
-    ***************************************************************************/
-
-    public bool hasPreimage (in Hash utxo, in ushort distance) @safe
-        nothrow
-    {
-        return this.validator_set.hasPreimage(utxo, distance);
-    }
-
-    /***************************************************************************
-
         Generate the random seed reduced from the preimages for the provided
         block height.
 
