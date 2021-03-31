@@ -862,6 +862,11 @@ unittest
     bob.changeFees(bob_charlie_chan_id_2, Amount(10), Amount(1));
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
+    // also wait for all parties to discover other channels on the network
+    alice.waitForChannelDiscovery(bob_charlie_chan_id);
+    alice.waitForChannelDiscovery(bob_charlie_chan_id_2);
+    charlie.waitForChannelDiscovery(alice_bob_chan_id);
+
     // begin off-chain transactions
     auto inv_1 = charlie.createNewInvoice(Amount(2_000), time_t.max, "payment 1");
 
