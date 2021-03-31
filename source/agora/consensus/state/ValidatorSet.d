@@ -470,40 +470,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Check if a pre-image exists
-
-        Params:
-            enroll_key = The key for the enrollment in which the pre-image is
-                contained.
-            distance = The minimum expected distance to the commitment
-
-        Returns:
-            true if the pre-image exists
-
-    ***************************************************************************/
-
-    public bool hasPreimage (in Hash enroll_key, ushort distance) @safe
-        nothrow
-    {
-        try
-        {
-            return () @trusted {
-                auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                    "validator_set WHERE key = ? AND distance >= ? AND active = ?)",
-                    enroll_key, distance, EnrollmentStatus.Active);
-                return results.front.peek!bool(0);
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("Exception occured on hasPreimage: {}, " ~
-                "Key for enrollment: {}", ex.msg, enroll_key);
-            return false;
-        }
-    }
-
-    /***************************************************************************
-
         Extract the `R` used in the signing of the associated enrollment
         We do not check the active flag as we may get block signatures afer
         the next cycle has started
@@ -973,12 +939,10 @@ unittest
     assert(keys.isStrictlyMonotonic!("a < b"));
 
     // test for adding and getting preimage
-    assert(!set.hasPreimage(utxos[0], 10));
     assert(set.getPreimage(utxos[0])
         == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
     auto preimage = PreImageInfo(utxos[0], cache[$ - 11], 10);
     assert(set.addPreimage(preimage));
-    assert(set.hasPreimage(utxos[0], 10));
     assert(set.getPreimage(utxos[0]) == preimage);
     assert(set.getPreimageAt(utxos[0], Height(0))  // N/A: enrolled at height 1!
         == PreImageInfo.init);
