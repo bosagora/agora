@@ -1057,6 +1057,12 @@ public abstract class FlashNode : ControlFlashAPI
 
         auto path = this.network.getPaymentPath(this.conf.key_pair.address,
             invoice.destination, invoice.amount, ignore_chans);
+        if (path.length < 1 || path.length > MaxPathLength)
+        {
+            this.listener.onPaymentFailure(invoice, ErrorCode.PathNotFound);
+            return;
+        }
+
         Amount total_amount;
         Height use_lock_height;
         Point[] cur_shared_secrets;

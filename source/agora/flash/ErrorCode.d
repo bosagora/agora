@@ -22,6 +22,9 @@ public enum ErrorCode : ushort
     /// Unknown error
     Unknown,
 
+    /// Couldn't find a path to another node, or it was too long
+    PathNotFound,
+
     /// Updates with the same balance will be rejected
     UpdateRejected,
 
