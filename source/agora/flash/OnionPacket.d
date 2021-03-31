@@ -74,7 +74,7 @@ public struct OnionPacket
     // encrypted payload. The first one decrypts & deserializes to a `Payload`.
     // the next payload may or may not be legitimate, but it depends entirely
     // on the next node's ability to decrypt the payload.
-    public EncryptedPayload[20] encrypted_payloads;
+    public EncryptedPayload[MaxPathLength] encrypted_payloads;
 }
 
 /// Contains the encrypted payload and the nonce used to encrypt it
@@ -138,6 +138,9 @@ public struct Payload
     }
 }
 
+/// Upper bound on the path length
+public enum MaxPathLength = 20;
+
 /*******************************************************************************
 
     Create an onion packet for the given path. Each hop will contain an
@@ -169,7 +172,7 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
     in Height lock_height, in Amount amount, in Hop[] path,
     out Amount total_amount, out Height use_lock_height, out Point[] shared_secrets)
 {
-    assert(path.length >= 1);
+    assert(path.length >= 1 && path.length <= MaxPathLength);
 
     // todo: setting fees should be part of the routing algorithm
     total_amount = amount;
@@ -187,7 +190,6 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
     OnionPacket packet = { version_byte : OnionVersion };
 
     // onion packets have to be created from right to left
-    assert(path.length <= 20);
     ulong last_index = path.length - 1;
 
     foreach (hop; path.retro)
