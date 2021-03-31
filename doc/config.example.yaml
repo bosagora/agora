@@ -26,11 +26,11 @@ node:
   # Port on which we bind
   port:    2826    # 0xB0A, default value
   # Number of milliseconds to wait between retrying requests
-  retry_delay: 5000
+  retry_delay: 3000
   # Maximum number of retries to issue before a request is considered failed
-  max_retries: 5
+  max_retries: 10
   # Timeout for each request in milliseconds
-  timeout: 2500
+  timeout: 5000
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
   # The local address where the stats server (currently Prometheus)
@@ -117,7 +117,7 @@ flash:
 ################################################################################
 banman:
   # max failed requests until an address is banned
-  max_failed_requests: 1000
+  max_failed_requests: 100
   # the default duration of a ban
   ban_duration: 86400
 
