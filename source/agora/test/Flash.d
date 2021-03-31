@@ -62,7 +62,7 @@ public interface TestFlashListenerAPI : FlashListenerAPI
 {
     /// wait until we get a signal that the payment for this invoice
     /// has succeeded / failed, and return true / false for success
-    bool waitUntilNotified (Invoice);
+    ErrorCode waitUntilNotified (Invoice);
 }
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
@@ -436,7 +436,7 @@ public class FlashNodeFactory
 /// Listens for Flash events (if registered with a Flash node)
 private class FlashListener : TestFlashListenerAPI
 {
-    bool[Invoice] invoices;
+    ErrorCode[Invoice] invoices;
     LocalRestTaskManager taskman;
 
     public this ()
@@ -446,15 +446,15 @@ private class FlashListener : TestFlashListenerAPI
 
     public void onPaymentSuccess (Invoice invoice)
     {
-        this.invoices[invoice] = true;
+        this.invoices[invoice] = ErrorCode.None;
     }
 
     public void onPaymentFailure (Invoice invoice, ErrorCode error)
     {
-        this.invoices[invoice] = false;
+        this.invoices[invoice] = error;
     }
 
-    public bool waitUntilNotified (Invoice invoice)
+    public ErrorCode waitUntilNotified (Invoice invoice)
     {
         while (1)
         {
@@ -833,10 +833,10 @@ unittest
     // that route and fail. In the second try, alice will route the payment through bob.
     alice.payInvoice(inv_1);
     auto res1 = listener.waitUntilNotified(inv_1);
-    assert(!res1);  // should fail at first
+    assert(res1 != ErrorCode.None);  // should fail at first
     alice.payInvoice(inv_1);
     auto res2 = listener.waitUntilNotified(inv_1);
-    assert(res2);  // should succeed the second time
+    assert(res2 == ErrorCode.None);  // should succeed the second time
 
     bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
     charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
@@ -1386,6 +1386,7 @@ unittest
 
     const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
 
     const ListenerAddress = "flash-listener";
     auto listener = factory.createFlashListener!FlashListener(ListenerAddress);
@@ -1406,6 +1407,7 @@ unittest
 
     auto alice = factory.create(alice_pair, alice_conf, address);
     auto bob = factory.create!RejectingFlashNode(bob_pair, address);
+    auto charlie = factory.create(charlie_pair, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1436,11 +1438,17 @@ unittest
     bob.waitForUpdateIndex(chan_id, 2);
 
     auto res = listener.waitUntilNotified(inv_1);
-    assert(res);  // should succeed
+    assert(res == ErrorCode.None);  // should succeed
 
     auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
     alice.payInvoice(inv_2);
 
     res = listener.waitUntilNotified(inv_2);
-    assert(!res);  // should have failed
+    assert(res != ErrorCode.None);  // should have failed
+
+    auto inv_3 = charlie.createNewInvoice(Amount(1_000), time_t.max, "charlie");
+    alice.payInvoice(inv_3);
+
+    res = listener.waitUntilNotified(inv_3);
+    assert(res == ErrorCode.PathNotFound);
 }
