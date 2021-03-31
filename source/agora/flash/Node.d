@@ -124,12 +124,6 @@ public abstract class ThinFlashNode : FlashNode
 
         This enables changing the channel's state from open to closed.
 
-        TODO: replace by having FullNode inherit from FlashNode and getting
-        everything block-related for free.
-
-        TODO: Must check HTLC timeouts in any of the channels, and then
-        propose an update via proposeUpdate().
-
     ***************************************************************************/
 
     private void monitorBlockchain ()
@@ -1062,9 +1056,6 @@ public abstract class FlashNode : ControlFlashAPI
         if (auto error = invoice.payment_hash in this.payment_errors)
             ignore_chans = Set!Hash.from((*error).map!(err => err.chan_id));
 
-        // find a route
-        // todo: not implemented properly yet as capacity, individual balances, and
-        // fees are not taken into account yet. Only up to two channels assumed here.
         auto path = this.network.getPaymentPath(this.conf.key_pair.address,
             invoice.destination, invoice.amount, ignore_chans);
         Amount total_amount;
