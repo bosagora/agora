@@ -742,24 +742,93 @@ public class Ledger
     public string validateBlock (in Block block,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
+        import agora.crypto.ECC;
+        import agora.crypto.Schnorr;
+
+        // If it's the genesis block, we only need to validate it for syntactic
+        // correctness, no need to check signatures.
         if (block.header.height == 0)
             return block.isGenesisBlockInvalidReason();
 
-        return block.isInvalidReason(this.engine, this.last_block.header.height,
-            this.last_block.header.hashFull,
-            this.utxo_set.getUTXOFinder(),
-            &this.fee_man.check,
-            this.enroll_man.getEnrollmentFinder(),
-            this.enroll_man.getValidatorCount(block.header.height),
-            this.enroll_man.getCountOfValidators(block.header.height),
-            this.getRandomSeed(),
-            &this.enroll_man.getValidatorAtIndex,
-            &this.enroll_man.getCommitmentNonce,
-            this.last_block.header.time_offset,
-            cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
-            block_time_offset_tolerance,
-            &this.getCoinbaseTX,
-            file, line);
+        // Validate the block syntactically first, so we weed out obviously-wrong
+        // blocks without complex computation.
+        if (auto reason = block.isInvalidReason(
+                this.engine, this.last_block.header.height,
+                this.last_block.header.hashFull,
+                this.utxo_set.getUTXOFinder(),
+                &this.fee_man.check,
+                this.enroll_man.getEnrollmentFinder(),
+                this.enroll_man.getValidatorCount(block.header.height),
+                this.getRandomSeed(),
+                this.last_block.header.time_offset,
+                cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
+                block_time_offset_tolerance,
+                &this.getCoinbaseTX))
+            return reason;
+
+        // Finally, validate the signatures
+        Point sum_K;
+        Point sum_R;
+        const Scalar challenge = hashFull(block);
+        const enrolled_validators = this.enroll_man.getCountOfValidators(block.header.height);
+
+        log.trace("Validators expected to sign this block is {}", enrolled_validators);
+        // Check that more than half have signed
+        auto signed = iota(0, enrolled_validators).filter!(i => block.header.validators[i]).count();
+        if (signed <= enrolled_validators / 2)
+        {
+            log.error("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
+                      signed, enrolled_validators / 2, enrolled_validators, block.header.height);
+            return "Only " ~ to!string(signed) ~ " signed the block. Require more than " ~ to!string(enrolled_validators);
+        }
+        foreach (idx; 0 .. enrolled_validators)
+        {
+            const K = this.enroll_man.getValidatorAtIndex(block.header.height, idx);
+            log.trace("idx {} PublicKey: {}", idx, K);
+            if (K == PublicKey.init)
+            {
+                log.error("[{}:{}] idx #{}: Validator key not found for height {}",
+                          file, line, idx, block.header.height);
+                return "Block: Couldn't find a Validator for the given index "
+                    ~ to!string(idx) ~ " at height " ~ to!string(block.header.height.value);
+            }
+            if (!block.header.validators[idx])
+            {
+                log.trace("[{}:{}] idx #{}: Validator {} has not yet signed block height {}",
+                          file, line, idx, K, block.header.height);
+                continue;  // this validator hasn't signed yet
+            }
+
+            const CR = this.enroll_man.getCommitmentNonce(K, block.header.height);  // commited R
+            log.trace("Block.isInvalidReason: Enrollment commitment CR for validator {} is {}", PublicKey(K[]), CR);
+            if (CR == Point.init)
+                return "Block: Couldn't find commitment for this validator";
+            Point R = CR + challenge.toPoint();
+            log.trace("Block.isInvalidReason: Block signing commitment R for validator {} is {}", PublicKey(K[]), R);
+            sum_K = sum_K == Point.init ? K : (sum_K + K);
+            sum_R = sum_R == Point.init ? R : (sum_R + R);
+        }
+        if (sum_K == Point.init)
+        {
+            log.error("[{}:{}] Block: Not able to check the multi sig schnorr signature for any of the {} active validators at height {}",
+                      file, line, enrolled_validators, block.header.height);
+            return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
+        }
+        Signature sig = block.header.signature;
+        if (sum_R != sig.R)
+        {
+            log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Sum of R mismatch",
+                      file, line, enrolled_validators);
+            return "Block: Invalid schnorr signature";
+        }
+        if (!verify(sig, challenge, sum_K))
+        {
+            log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Multisig failed verification",
+                      file, line, enrolled_validators);
+            return "Block: Invalid schnorr signature";
+        }
+
+        return null;
     }
 
     /***************************************************************************
