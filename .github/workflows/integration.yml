@@ -52,13 +52,6 @@ jobs:
         cd ${{ github.workspace }}/agora/
         ./ci/system_integration_test.d
 
-    - name: Change permission on lst files
-      run: |
-        # Work around druntime setting the permissions to 600..
-        # Need to iterate on the directory to avoid 'list arguments too long'
-        cd ${{ github.workspace }}/agora/
-        find tests/system/node/ -name '*.lst' | xargs sudo chmod 644
-
     - name: 'Upload code coverage'
       uses: codecov/codecov-action@v1
       with:
