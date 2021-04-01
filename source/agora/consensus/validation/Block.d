@@ -38,12 +38,12 @@ import std.algorithm;
 
 import core.time : Duration, seconds;
 
-mixin AddLogger!();
-
 version (unittest)
 {
     import agora.consensus.data.genesis.Test;
     import agora.utils.Test;
+
+    import std.stdio;
 }
 
 /*******************************************************************************
@@ -229,8 +229,6 @@ public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_
     {
         res = "Exception happened while validating block time offset";
     }
-    if (res !is null)
-        log.warn("validateBlockTimeOffset(): {}", res);
     return res;
 }
 
@@ -619,13 +617,15 @@ version (unittest)
         bool success = mustBeValid ? (reason is null) : (reason !is null);
         if (!success)
         {
-            log.error("{} block: {}", mustBeValid ? "Invalid" : "Valid", block);
-            log.error("prev: {} ({}), enrolled: {}, random_seed: {}, " ~
-                      "cycle: {}, prev_time_offset: {}, curr_time_offset: {}, tolerance: {}",
-                      prev_height, prev_hash, enrolled_validators,
-                      random_seed, enrollment_cycle, prev_time_offset,
-                      curr_time_offset, block_time_tolerance);
-            log.error("Called from: {}:{}", file, line);
+            try {
+                writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block);
+                writefln("prev: %s (%s), enrolled: %s, random_seed: %s, " ~
+                         "cycle: %s, prev_time_offset: %s, curr_time_offset: %s, tolerance: %s",
+                         prev_height, prev_hash, enrolled_validators,
+                         random_seed, enrollment_cycle, prev_time_offset,
+                         curr_time_offset, block_time_tolerance);
+            writefln("Called from: %s:%s", file, line);
+            } catch (Exception e) { /* Shouldn't happen */ }
             assert(0, mustBeValid ?
                    reason : "Block expected to be invalid but passed `isValid`");
         }
