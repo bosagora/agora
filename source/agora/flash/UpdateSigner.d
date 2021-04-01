@@ -48,6 +48,9 @@ public class UpdateSigner
     /// All the update signer metadata
     mixin UpdateSignerMetadata!() meta;
 
+    /// Global flash configuration (may change after restart)
+    private FlashConfig flash_conf;
+
     /// Database to load from
     private ManagedDatabase db;
 
@@ -68,6 +71,7 @@ public class UpdateSigner
         Constructor
 
         Params:
+            flash_conf = global flash configuration
             conf = the channel configuration
             kp = the node's own key-pair
             peer = a Flash client to the counter-party
@@ -77,9 +81,11 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public this (ChannelConfig conf, KeyPair kp, FlashAPI peer,
-        Point peer_pk, Engine engine, ITaskManager taskman, ManagedDatabase db)
+    public this (FlashConfig flash_conf, ChannelConfig conf, KeyPair kp,
+        FlashAPI peer, Point peer_pk, Engine engine, ITaskManager taskman,
+        ManagedDatabase db)
     {
+        this.flash_conf = flash_conf;
         this.conf = conf;
         this.kp = kp;
         this.peer = peer;
