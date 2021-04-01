@@ -28,6 +28,7 @@ import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitField;
 import agora.common.Config;
+import agora.common.ManagedDatabase;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
@@ -1441,28 +1442,20 @@ private mixin template TestNodeMixin ()
         return new MemBlockStorage(this.blocks);
     }
 
+    protected override ManagedDatabase makeStateDB ()
+    {
+        return new ManagedDatabase(":memory:");
+    }
+
+    protected override ManagedDatabase makeCacheDB ()
+    {
+        return new ManagedDatabase(":memory:");
+    }
+
     /// Used by the node
     public override Metadata getMetadata () @system
     {
         return new MemMetadata();
-    }
-
-    /// Return a transaction pool backed by an in-memory SQLite db
-    public override TransactionPool getPool () @system
-    {
-        return new TransactionPool(":memory:");
-    }
-
-    /// Return a UTXO set backed by an in-memory SQLite db
-    protected override UTXOSet getUtxoSet ()
-    {
-        return new UTXOSet(":memory:");
-    }
-
-    /// Return a FeeManager backed by an in-memory SQLite db
-    protected override FeeManager getFeeManager ()
-    {
-        return new FeeManager(":memory:", this.params);
     }
 
     /// Return a LocalRest-backed task manager
@@ -1483,8 +1476,8 @@ private mixin template TestNodeMixin ()
     /// Return an enrollment manager backed by an in-memory SQLite db
     protected override EnrollmentManager getEnrollmentManager ()
     {
-        return new EnrollmentManager(
-            ":memory:", this.config.validator.key_pair, this.params);
+        return new EnrollmentManager(this.stateDB, this.cacheDB,
+            this.config.validator.key_pair, this.params);
     }
 
     /// Get the active validator count for the current block height

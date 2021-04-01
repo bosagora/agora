@@ -30,6 +30,7 @@ import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.Config;
+import agora.common.ManagedDatabase;
 import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.VibeTask;
@@ -134,9 +135,37 @@ public class FullNode : API
     /// Script execution engine
     protected Engine engine;
 
-    /// Blockstorage
+    /***************************************************************************
+
+        Persistence-related fields
+
+        The node implement persistence through 3 databases.
+
+        The blockchain data is binary serialized in a custom format to the disk
+        to allow disk space usage to be reduced, as some data can be pruned in
+        the long run, and there's almost no overhead in the binary serializer.
+        Deleting the blockchain data invalidates both state and cache DB.
+
+        State data, which is derived from the blockchain, such as UTXO set and
+        validator set, are stored in the `"state DB". The state DB can be
+        removed, either by user action or if found corrupted or inconsistent
+        with the blockchain data. In such an event, the Ledger would rebuild
+        it from scratch using the blockchain data, an operation which might
+        take some time dependening on the number of blocks.
+
+        Cache data is transient data that the node can reasonably loose without
+        compromising its role. This includes the pools (enrollments and txs),
+        as well as any additional metadata, for example peer list.
+
+    ***************************************************************************/
+
     protected IBlockStorage storage;
 
+    /// Ditto
+    protected ManagedDatabase stateDB;
+
+    /// Ditto
+    protected ManagedDatabase cacheDB;
 
     /***************************************************************************
 
@@ -224,6 +253,8 @@ public class FullNode : API
                 config.consensus,
                 config.node.block_interval_sec.seconds);
 
+        this.stateDB = this.makeStateDB();
+        this.cacheDB = this.makeCacheDB();
         this.taskman = this.getTaskManager();
         this.clock = this.getClock(this.taskman);
         this.metadata = this.getMetadata();
@@ -529,6 +560,18 @@ public class FullNode : API
         return Logger(__MODULE__);
     }
 
+    /// Returns: A new instance of a `ManagedDatabase` to use as state DB
+    protected ManagedDatabase makeStateDB ()
+    {
+        return new ManagedDatabase(this.config.node.data_dir.buildPath("state.db"));
+    }
+
+    /// Returns: A new instance of a `ManagedDatabase` to use as cache DB
+    protected ManagedDatabase makeCacheDB ()
+    {
+        return new ManagedDatabase(this.config.node.data_dir.buildPath("cache.db"));
+    }
+
     /***************************************************************************
 
         Returns an instance of a NetworkManager
@@ -605,8 +648,7 @@ public class FullNode : API
 
     protected TransactionPool getPool ()
     {
-        return new TransactionPool(
-            this.config.node.data_dir.buildPath("tx_pool.dat"));
+        return new TransactionPool(this.cacheDB);
     }
 
     /***************************************************************************
@@ -623,7 +665,7 @@ public class FullNode : API
 
     protected UTXOSet getUtxoSet ()
     {
-        return new UTXOSet(this.config.node.data_dir.buildPath("utxo_set.dat"));
+        return new UTXOSet(this.stateDB);
     }
 
     /***************************************************************************
@@ -639,9 +681,7 @@ public class FullNode : API
 
     protected FeeManager getFeeManager ()
     {
-        return new FeeManager(
-            this.config.node.data_dir.buildPath("fee_manager.dat"),
-            this.params);
+        return new FeeManager(this.stateDB, this.params);
     }
 
     /***************************************************************************
@@ -695,8 +735,7 @@ public class FullNode : API
 
     protected EnrollmentManager getEnrollmentManager ()
     {
-        return new EnrollmentManager(
-            this.config.node.data_dir.buildPath("validator_set.dat"),
+        return new EnrollmentManager(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params);
     }
 

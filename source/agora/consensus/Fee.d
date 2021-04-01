@@ -189,15 +189,7 @@ public class FeeManager
     private Amount[PublicKey] accumulated_fees;
 
     /// Ctor
-    public this (string db_path, immutable(ConsensusParams) params)
-    {
-        this.db = new ManagedDatabase(db_path);
-        this.params = params;
-        this.init();
-    }
-
-    /// Ctor
-    private this (ManagedDatabase db, immutable(ConsensusParams) params)
+    public this (ManagedDatabase db, immutable(ConsensusParams) params)
     {
         this.db = db;
         this.params = params;
@@ -451,7 +443,7 @@ public class FeeManager
     /// For unittest
     version (unittest) public this ()
     {
-        this(":memory:", new immutable(ConsensusParams));
+        this(new ManagedDatabase(":memory:"), new immutable(ConsensusParams));
     }
 
     /// For unittest

@@ -35,17 +35,13 @@ package class UTXODB
         Constructor
 
         Params:
-            utxo_db_path = path to the UTXO database file
+            db = Instance of the state database
 
     ***************************************************************************/
 
-    public this (string utxo_db_path)
+    public this (ManagedDatabase db)
     {
-        // todo: can fail. we would have to recover by either:
-        // A) reconstructing it from our blockchain storage
-        // B) requesting the UTXO set from our peers
-        this.db = new ManagedDatabase(utxo_db_path);
-
+        this.db = db;
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~
             "(key BLOB PRIMARY KEY, val BLOB NOT NULL, pubkey_hash BLOB NOT NULL)");
