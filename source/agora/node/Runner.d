@@ -67,38 +67,32 @@ public NodeListenerTuple runNode (Config config)
     mkdirRecurse(config.node.data_dir);
 
     FullNode node;
-    if (config.flash.enabled)
+    if (config.flash.enabled && config.validator.enabled)
     {
-        if (config.validator.enabled)
-        {
-            log.trace("Started FlashValidator...");
-            auto inst = new FlashValidator(config);
-            router.registerRestInterface!(FlashValidatorAPI)(inst);
-            node = inst;
-        }
-        else
-        {
-            log.trace("Started FlashFullNode...");
-            auto inst = new FlashFullNode(config);
-            router.registerRestInterface!(FlashFullNodeAPI)(inst);
-            node = inst;
-        }
+        log.trace("Started FlashValidator...");
+        auto inst = new FlashValidator(config);
+        router.registerRestInterface!(FlashValidatorAPI)(inst);
+        node = inst;
+    }
+    else if (config.validator.enabled)
+    {
+        log.trace("Started Validator...");
+        auto inst = new Validator(config);
+        router.registerRestInterface!(agora.api.Validator.API)(inst);
+        node = inst;
+    }
+    else if (config.flash.enabled)
+    {
+        log.trace("Started FlashFullNode...");
+        auto inst = new FlashFullNode(config);
+        router.registerRestInterface!(FlashFullNodeAPI)(inst);
+        node = inst;
     }
     else
     {
-        if (config.validator.enabled)
-        {
-            log.trace("Started Validator...");
-            auto inst = new Validator(config);
-            router.registerRestInterface!(agora.api.Validator.API)(inst);
-            node = inst;
-        }
-        else
-        {
-            log.trace("Started FullNode...");
-            node = new FullNode(config);
-            router.registerRestInterface!(agora.api.FullNode.API)(node);
-        }
+        log.trace("Started FullNode...");
+        node = new FullNode(config);
+        router.registerRestInterface!(agora.api.FullNode.API)(node);
     }
     settings.rejectConnectionPredicate = (in address) nothrow @safe
             {return node.getAlreadyCreatedBanManager().isBanned(address.toAddressString());};
