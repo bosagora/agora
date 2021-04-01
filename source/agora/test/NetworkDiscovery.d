@@ -20,7 +20,10 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = TestConf.init;
+    TestConf conf =
+    {
+        retry_delay : 100.msecs,
+    };
     auto network = makeTestNetwork(conf);
     network.start();
     scope(exit) network.shutdown();
