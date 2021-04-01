@@ -772,60 +772,51 @@ public class Ledger
         const Scalar challenge = hashFull(block);
         const enrolled_validators = this.enroll_man.getCountOfValidators(block.header.height);
 
-        log.trace("Validators expected to sign this block is {}", enrolled_validators);
         // Check that more than half have signed
         auto signed = iota(0, enrolled_validators).filter!(i => block.header.validators[i]).count();
         if (signed <= enrolled_validators / 2)
         {
-            log.error("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
-                      signed, enrolled_validators / 2, enrolled_validators, block.header.height);
-            return "Only " ~ to!string(signed) ~ " signed the block. Require more than " ~ to!string(enrolled_validators);
+            log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",
+                      block.header.height, signed, enrolled_validators,
+                      block.header.validators);
+            return "The majority of validators hasn't signed this block";
         }
+
+        log.trace("Checking signature, participants: {}/{}", signed, enrolled_validators);
         foreach (idx; 0 .. enrolled_validators)
         {
             const K = this.enroll_man.getValidatorAtIndex(block.header.height, idx);
-            log.trace("idx {} PublicKey: {}", idx, K);
-            if (K == PublicKey.init)
-            {
-                log.error("[{}:{}] idx #{}: Validator key not found for height {}",
-                          file, line, idx, block.header.height);
-                return "Block: Couldn't find a Validator for the given index "
-                    ~ to!string(idx) ~ " at height " ~ to!string(block.header.height.value);
-            }
+            assert(K != PublicKey.init, "Could not find the public key associated with a validator");
+
             if (!block.header.validators[idx])
             {
-                log.trace("[{}:{}] idx #{}: Validator {} has not yet signed block height {}",
-                          file, line, idx, K, block.header.height);
-                continue;  // this validator hasn't signed yet
+                // This is not an error, we might just receive the signature later
+                log.trace("Block#{}: Validator {} (idx: {}) has not yet signed",
+                          block.header.height, K, idx);
+                continue;
             }
 
             const CR = this.enroll_man.getCommitmentNonce(K, block.header.height);  // commited R
-            log.trace("Block.isInvalidReason: Enrollment commitment CR for validator {} is {}", PublicKey(K[]), CR);
             if (CR == Point.init)
                 return "Block: Couldn't find commitment for this validator";
             Point R = CR + challenge.toPoint();
-            log.trace("Block.isInvalidReason: Block signing commitment R for validator {} is {}", PublicKey(K[]), R);
             sum_K = sum_K == Point.init ? K : (sum_K + K);
             sum_R = sum_R == Point.init ? R : (sum_R + R);
         }
-        if (sum_K == Point.init)
+
+        assert(sum_K != Point.init, "Block has validators but no signature");
+
+        if (sum_R != block.header.signature.R)
         {
-            log.error("[{}:{}] Block: Not able to check the multi sig schnorr signature for any of the {} active validators at height {}",
-                      file, line, enrolled_validators, block.header.height);
-            return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
+            log.error("Block#{}: Signature's `R` mismatch: Expected {}, got {}",
+                      block.header.height, sum_R, block.header.signature.R);
+            return "Block: Invalid schnorr signature (R)";
         }
-        Signature sig = block.header.signature;
-        if (sum_R != sig.R)
+        if (!verify(block.header.signature, challenge, sum_K))
         {
-            log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Sum of R mismatch",
-                      file, line, enrolled_validators);
-            return "Block: Invalid schnorr signature";
-        }
-        if (!verify(sig, challenge, sum_K))
-        {
-            log.error("[{}:{}] Block: Invalid schnorr signature for {} active validators. Multisig failed verification",
-                      file, line, enrolled_validators);
-            return "Block: Invalid schnorr signature";
+            log.error("Block#{}: Invalid signature: {}", block.header.height,
+                      block.header.signature);
+            return "Block: Invalid signature";
         }
 
         return null;
