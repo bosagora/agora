@@ -57,7 +57,9 @@ jobs:
         # Work around druntime setting the permissions to 600..
         # Need to iterate on the directory to avoid 'list arguments too long'
         cd ${{ github.workspace }}/agora/
-        find tests/system/node/ -name '*.lst' | xargs sudo chmod 644
+        for file in $(find tests/system/node/ -name '*.lst'); do
+            sudo chmod 644 $file
+        done
 
     - name: 'Upload code coverage'
       uses: codecov/codecov-action@v1
