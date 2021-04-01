@@ -235,7 +235,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     if (sum_K == Point.init)
     {
         log.error("[{}:{}] Block: Not able to check the multi sig schnorr signature for any of the {} active validators at height {}",
-            file, line, active_validators_next_block, block.header.height);
+            file, line, enrolled_validators, block.header.height);
         return "Block: Not enough info to verify schnorr signature at height " ~ to!string(block.header.height.value);
     }
     Signature sig = block.header.signature;
