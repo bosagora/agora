@@ -148,8 +148,8 @@ public class Channel
         this.engine = engine;
         this.taskman = taskman;
         this.txPublisher = txPublisher;
-        this.update_signer = new UpdateSigner(this.conf, this.kp, this.peer,
-            this.peer_pk, this.engine, this.taskman, db);
+        this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
+            this.kp, this.peer, this.peer_pk, this.engine, this.taskman, db);
         this.paymentRouter = paymentRouter;
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
@@ -504,8 +504,8 @@ public class Channel
             this.peer = getFlashClient(this.peer_pk, this.flash_conf.timeout);
 
         if (this.update_signer is null)
-            this.update_signer = new UpdateSigner(this.conf, this.kp, this.peer,
-                this.peer_pk, this.engine, this.taskman, db);
+            this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
+                this.kp, this.peer, this.peer_pk, this.engine, this.taskman, db);
 
 LOuter: while (1)
         {
