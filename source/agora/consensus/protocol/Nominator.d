@@ -461,8 +461,6 @@ extern(D):
 
     public void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
     {
-        log.trace("Receiving envelope: {}", scpPrettify(&envelope));
-
         // ignore messages if `startNominatingTimer` was never called or
         // if `stopNominatingTimer` was called
         if (this.nomination_timer is null)
@@ -475,22 +473,22 @@ extern(D):
                 envelope.statement.slotIndex, last_block.header.height.value);
             return;  // slot was already externalized or envelope is too new
         }
+
         const PublicKey public_key = PublicKey(envelope.statement.nodeID[]);
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
-        const Point V = Point(public_key[]);
-        if (!V.isValid())
+        if (!public_key.isValid())
         {
             log.trace("Invalid point from public_key {}", public_key);
             return;
         }
-        if (!verify(V, envelope.signature.toSignature(), challenge))
+        if (!verify(public_key, envelope.signature.toSignature(), challenge))
         {
-            log.trace("INVALID Envelope signature {} \nfor public key {} \n" ~
-                "envelope {}\nchallenge {}",
-                envelope.signature, public_key, scpPrettify(&envelope),
-                challenge.toString(PrintMode.Clear));
+            // If it fails signature verification, it might not originate from said key
+            log.trace("Envelope failed signature verification for {}", public_key);
             return;
         }
+
+        log.trace("Received signed envelope: {}", scpPrettify(&envelope));
         // we check confirmed statements before validating with
         // 'scp.receiveEnvelope()'
         // There are two reasons why:
