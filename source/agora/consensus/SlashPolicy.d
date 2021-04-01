@@ -272,6 +272,7 @@ public class SlashPolicy
 // Test for getting the candidates to be slashed due to missing pre-images
 unittest
 {
+    import agora.common.ManagedDatabase;
     import agora.consensus.data.Transaction;
     import agora.consensus.PreImage;
     import agora.consensus.state.UTXOCache;
@@ -304,7 +305,9 @@ unittest
         TESTNET.GenesisBlock,
         TESTNET.CommonsBudgetAddress,
         conf);
-    scope enroll_man = new EnrollmentManager(":memory:", WK.Keys.A, params);
+    scope enroll_man = new EnrollmentManager(
+        new ManagedDatabase(":memory:"), new ManagedDatabase(":memory:"),
+        WK.Keys.A, params);
 
     // create 8 enrollments
     Enrollment[] enrollments;

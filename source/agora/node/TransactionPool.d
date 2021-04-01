@@ -29,7 +29,6 @@ import d2sqlite3.sqlite3;
 import std.algorithm;
 import std.conv : to;
 import std.exception : collectException, enforce;
-import std.file : exists;
 import std.range;
 import std.string;
 
@@ -95,22 +94,13 @@ public class TransactionPool
     /***************************************************************************
 
         Params:
-            db_path = path to the database file, or in-memory storage if
-                      :memory: was passed
+            db = Instance of the cache database
 
     ***************************************************************************/
 
-    public this (in string db_path)
+    public this (ManagedDatabase db)
     {
-        const db_exists = db_path.exists;
-        if (db_exists)
-            log.info("Loading database from: {}", db_path);
-
-        // note: can fail. we may want to just recover txes from the network instead.
-        this.db = new ManagedDatabase(db_path);
-
-        if (db_exists)
-            log.info("Loaded database from: {}", db_path);
+        this.db = db;
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
@@ -123,6 +113,12 @@ public class TransactionPool
         // Set selector after rebuilding the spender list, so nothing gets
         // filtered out
         this.selector = &this.defaultSelector;
+    }
+
+    /// Used in unittests of this moduule only
+    version (unittest) private this ()
+    {
+        this(new ManagedDatabase(":memory:"));
     }
 
     /***************************************************************************
@@ -510,7 +506,7 @@ public class TransactionPool
 /// hasTransactionHash tests
 unittest
 {
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
     auto gen_key = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
@@ -547,7 +543,7 @@ unittest
 {
     import std.exception;
 
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
     auto gen_key = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
@@ -577,7 +573,7 @@ unittest
     import std.exception;
     import core.memory;
 
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
     auto gen_key = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
@@ -612,7 +608,7 @@ unittest
 unittest
 {
     // create first transaction pool
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
 
     // create first transaction
     Transaction tx1 =
@@ -648,7 +644,7 @@ unittest
 // test addition and removal of double-spend txs
 unittest
 {
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
 
     Transaction tx1 =
     {
@@ -685,7 +681,7 @@ unittest
 // with a more complex relation betwween double-spend txs
 unittest
 {
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
 
     Transaction tx1 =
     {
@@ -745,7 +741,7 @@ unittest
         return max_idx;
     }
 
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
     pool.selector = &selector;
 
     Transaction tx1 =
@@ -796,7 +792,7 @@ unittest
 
 unittest
 {
-    auto pool = new TransactionPool(":memory:");
+    auto pool = new TransactionPool();
 
     Transaction tx1 =
     {

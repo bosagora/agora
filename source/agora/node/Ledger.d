@@ -1195,13 +1195,15 @@ version (unittest)
                     params.GenesisTimestamp +
                     (blocks.length * params.BlockInterval.total!"seconds"));
 
+            auto stateDB = new ManagedDatabase(":memory:");
+            auto cacheDB = new ManagedDatabase(":memory:");
             super(params,
                 new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
-                new UTXOSet(":memory:"),
+                new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(":memory:", key_pair, params),
-                new TransactionPool(":memory:"),
-                new FeeManager(":memory:", params),
+                new EnrollmentManager(stateDB, cacheDB, key_pair, params),
+                new TransactionPool(cacheDB),
+                new FeeManager(stateDB, params),
                 mock_clock,
                 block_time_offset_tolerance_dur, null);
         }
@@ -1475,11 +1477,13 @@ unittest
 
         public this (KeyPair kp, const(Block)[] blocks, immutable(ConsensusParams) params)
         {
+            auto stateDB = new ManagedDatabase(":memory:");
+            auto cacheDB = new ManagedDatabase(":memory:");
             super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
-                new UTXOSet(":memory:"),
+                new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(":memory:", kp, params),
-                new TransactionPool(":memory:"),
+                new EnrollmentManager(stateDB, cacheDB, kp, params),
+                new TransactionPool(cacheDB),
                 new FeeManager(),
                 new MockClock(params.GenesisTimestamp +
                               (blocks.length * params.BlockInterval.total!"seconds")));

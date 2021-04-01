@@ -71,8 +71,8 @@ private class NoPreImageVN : TestValidatorNode
 
     protected override EnrollmentManager getEnrollmentManager ()
     {
-        return new MissingPreImageEM(
-            ":memory:", this.config.validator.key_pair, params);
+        return new MissingPreImageEM(this.stateDB, this.cacheDB,
+            this.config.validator.key_pair, params);
     }
 }
 

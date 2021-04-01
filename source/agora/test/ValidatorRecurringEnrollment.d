@@ -100,8 +100,8 @@ unittest
 
         protected override EnrollmentManager getEnrollmentManager ()
         {
-            return new BadEnrollmentManager(
-                ":memory:", this.config.validator.key_pair, params);
+            return new BadEnrollmentManager(this.stateDB, this.cacheDB,
+                this.config.validator.key_pair, this.params);
         }
     }
 

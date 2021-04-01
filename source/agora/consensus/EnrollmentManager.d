@@ -139,15 +139,15 @@ public class EnrollmentManager
         Constructor
 
         Params:
-            db_path = path to the database file, or in-memory storage if
-                        :memory: was passed
+            stateDB = The state database, used by this and `ValidatorSet`
+            cacheDB = The cache database, used by `EnrollmentPool`
             key_pair = the keypair of the owner node
             params = the consensus-critical constants
 
     ***************************************************************************/
 
-    public this (string db_path, KeyPair key_pair,
-        immutable(ConsensusParams) params)
+    public this (ManagedDatabase stateDB, ManagedDatabase cacheDB,
+                 KeyPair key_pair, immutable(ConsensusParams) params)
     {
         this.log = Logger(__MODULE__);
         assert(params !is null);
@@ -155,9 +155,9 @@ public class EnrollmentManager
         this.key_pair = key_pair;
         this.cycle = PreImageCycle(key_pair.secret, params.ValidatorCycle);
 
-        this.db = new ManagedDatabase(db_path);
-        this.validator_set = new ValidatorSet(this.db, params);
-        this.enroll_pool = new EnrollmentPool(this.db);
+        this.db = stateDB;
+        this.validator_set = new ValidatorSet(stateDB, params);
+        this.enroll_pool = new EnrollmentPool(cacheDB);
 
 
         // create the table for enrollment data for a node itself
@@ -169,6 +169,15 @@ public class EnrollmentManager
 
         Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
+
+    /// Unittest-only constructor
+    version (unittest) private this (
+        KeyPair key_pair, immutable(ConsensusParams) params)
+    {
+        this(new ManagedDatabase(":memory:"), new ManagedDatabase(":memory:"),
+             key_pair, params);
+    }
+
 
     /***************************************************************************
 
@@ -1183,7 +1192,7 @@ unittest
 
     // create an EnrollmentManager object
     auto params = new immutable(ConsensusParams)();
-    auto man = new EnrollmentManager(":memory:", key_pair, params);
+    auto man = new EnrollmentManager(key_pair, params);
 
     // check the return value of `getEnrollmentPublicKey`
     assert(key_pair.address == man.getEnrollmentPublicKey());
@@ -1381,7 +1390,7 @@ unittest
 
     // create an EnrollmentManager object
     auto params = new immutable(ConsensusParams)();
-    auto man = new EnrollmentManager(":memory:", key_pair, params);
+    auto man = new EnrollmentManager(key_pair, params);
 
     Enrollment[] enrollments;
     foreach (idx, kp; pairs[0 .. 3])
@@ -1471,7 +1480,7 @@ unittest
 
     // create an EnrollmentManager
     const validator_cycle = 20;
-    scope man = new EnrollmentManager(":memory:", key_pair,
+    scope man = new EnrollmentManager(key_pair,
         new immutable(ConsensusParams)(validator_cycle));
 
     // create and add the first enrollment
@@ -1543,7 +1552,7 @@ unittest
         });
 
     auto params = new immutable(ConsensusParams);
-    scope man = new EnrollmentManager(":memory:", KeyPair.random(), params);
+    scope man = new EnrollmentManager(KeyPair.random(), params);
 
     foreach (idx, kp; pairs)
     {
@@ -1585,7 +1594,7 @@ unittest
     genesisSpendable()
         .map!(txb => txb.refund(WK.Keys.A.address).sign(TxType.Freeze))
         .each!(tx => utxo_set.put(tx));
-    auto man = new EnrollmentManager(":memory:", WK.Keys.A,
+    auto man = new EnrollmentManager(WK.Keys.A,
         new immutable(ConsensusParams)(10));
 
     assert(utxo_set.length == 8);
@@ -1608,7 +1617,7 @@ unittest
     Hash[] utxo_hashes = utxo_set.keys;
 
     // create an EnrollmentManager object
-    auto man = new EnrollmentManager(":memory:", key_pair,
+    auto man = new EnrollmentManager(key_pair,
         new immutable(ConsensusParams)());
 
     // check the return value of `getEnrollmentPublicKey`
@@ -1647,7 +1656,7 @@ unittest
 
     auto params = new immutable(ConsensusParams)();
     // create an EnrollmentManager object
-    auto man = new EnrollmentManager(":memory:", key_pair, params);
+    auto man = new EnrollmentManager(key_pair, params);
     auto findEnrollment = man.getEnrollmentFinder();
 
     auto genesis_enroll = man.createEnrollment(utxo_hashes[0], Height(0));
@@ -1722,7 +1731,7 @@ unittest
             utxos ~= UTXO.getHash(tx.hashFull(), 0);
         });
 
-    auto man = new EnrollmentManager(":memory:", WK.Keys.A,
+    auto man = new EnrollmentManager(WK.Keys.A,
         new immutable(ConsensusParams));
     auto e1 = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys.A, 10, 0);
     auto e2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys.B, 10, 0);

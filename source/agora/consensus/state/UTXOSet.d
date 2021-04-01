@@ -36,13 +36,13 @@ public class UTXOSet : UTXOCache
         Constructor
 
         Params:
-            utxo_db_path = path to the UTXO database
+            db = Instance of the state DB
 
     ***************************************************************************/
 
-    public this (in string utxo_db_path)
+    public this (ManagedDatabase db)
     {
-        this.utxo_db = new UTXODB(utxo_db_path);
+        this.utxo_db = new UTXODB(db);
     }
 
     /***************************************************************************
@@ -104,7 +104,8 @@ unittest
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
-    auto utxo_set = new UTXOSet(":memory:");
+    scope db = new ManagedDatabase(":memory:");
+    auto utxo_set = new UTXOSet(db);
 
     // create the first transaction
     Transaction tx1 = Transaction(
