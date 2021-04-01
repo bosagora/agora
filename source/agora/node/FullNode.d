@@ -92,11 +92,8 @@ private enum uint MaxBatchTranscationsSent = 100;
 
 public class FullNode : API
 {
-    /// Loggger instance
+    /// Logger instance
     protected Logger log;
-
-    /// Metadata instance
-    protected Metadata metadata;
 
     /// Config instance
     protected const Config config;
@@ -107,23 +104,32 @@ public class FullNode : API
     /// Task manager
     protected ITaskManager taskman;
 
+    /// Timer this node has started
+    protected ITimer[] timers;
+
     /// Clock instance
     protected Clock clock;
-
-    /// Stats server
-    protected StatsServer stats_server;
 
     /// Network of connected nodes
     protected NetworkManager network;
 
+    /// Metadata instance
+    protected Metadata metadata;
+
     /// Transaction pool
     protected TransactionPool pool;
 
+    /// The Ledger is the main class driving consensus
+    protected Ledger ledger;
+
+    /// Enrollment manager
+    protected EnrollmentManager enroll_man;
+
+    /// The checker of transaction data payload
+    protected FeeManager fee_man;
+
     /// Set of unspent transaction outputs
     protected UTXOSet utxo_set;
-
-    ///
-    protected Ledger ledger;
 
     /// Script execution engine
     protected Engine engine;
@@ -131,29 +137,48 @@ public class FullNode : API
     /// Blockstorage
     protected IBlockStorage storage;
 
-    /// Enrollment manager
-    protected EnrollmentManager enroll_man;
 
-    /// Block Externalized Handler list
-    protected BlockExternalizedHandler[Address] block_handlers;
+    /***************************************************************************
 
-    /// PreImage Received Handler list
-    protected PreImageReceivedHandler[Address] preimage_handlers;
+        Stats-related fields
 
-    /// Transaction Received Handler list
-    protected TransactionReceivedHandler[Address] transaction_handlers;
+        Those fields are used to expose internal statistics about the node on
+        an HTTP interface that is ultimately queried by a Prometheus server.
+        They may be unused if the stats interface is not enabled in the config.
 
-    /// Endpoint request stats
-    protected EndpointRequestStats endpoint_request_stats;
+    ***************************************************************************/
 
-    /// Application-wide stats
+    protected StatsServer stats_server;
+
+    /// Ditto
     protected ApplicationStats app_stats;
 
-    /// The checker of transaction data payload
-    protected FeeManager fee_man;
+    /// Ditto
+    protected EndpointRequestStats endpoint_request_stats;
 
-    /// Timer this node has started
-    protected ITimer[] timers;
+
+    /***************************************************************************
+
+        List of handlers for specific actions
+
+        Contains network client to servers that are interested in a specific
+        event, such as block externalization.
+        Those fields are populated based on the `event_handlers` configuration
+        section, with one sub-section per event type.
+
+        See_Also:
+          https://github.com/bosagora/stoa
+
+    ***************************************************************************/
+
+    protected BlockExternalizedHandler[Address] block_handlers;
+
+    /// Ditto
+    protected PreImageReceivedHandler[Address] preimage_handlers;
+
+    /// Ditto
+    protected TransactionReceivedHandler[Address] transaction_handlers;
+
 
     /***************************************************************************
 
