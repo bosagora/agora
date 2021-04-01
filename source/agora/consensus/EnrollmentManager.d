@@ -129,10 +129,10 @@ public class EnrollmentManager
     ///   for key_to_index and index_to_key
 
     /// used for setting the signature bitmask during signature collection
-    private ulong[Point][Height] key_to_index;
+    private ulong[PublicKey][Height] key_to_index;
 
     /// used for validating the signature
-    private Point[ulong][Height] index_to_key;
+    private PublicKey[ulong][Height] index_to_key;
 
     /***************************************************************************
 
@@ -200,9 +200,8 @@ public class EnrollmentManager
         log.trace("Update validator lookup maps at height {}: {}", height, keys);
         foreach (idx, key; keys)
         {
-            const K = Point(key[]);
-            this.key_to_index[height][K] = idx;
-            this.index_to_key[height][idx] = K;
+            this.key_to_index[height][key] = idx;
+            this.index_to_key[height][idx] = key;
         }
     }
 
@@ -233,7 +232,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public ulong getIndexOfValidator (in Height height, in Point K) nothrow @safe
+    public ulong getIndexOfValidator (in Height height, in PublicKey K) nothrow @safe
     {
         if (height !in this.key_to_index)
         {
@@ -242,7 +241,7 @@ public class EnrollmentManager
         }
         if (K !in this.key_to_index[height])
         {
-            log.warn("Public key {} not found in keys at this height {}", PublicKey(K[]), height);
+            log.warn("Public key {} not found in keys at this height {}", K, height);
             return ulong.max;
         }
         return this.key_to_index[height][K];
@@ -255,15 +254,16 @@ public class EnrollmentManager
             index = the index for which to find the associated Key
 
         Returns:
-            the key belonging to this index, or Point.init if none was found
+            the key belonging to this index,
+            or `PublicKey.init` if none was found
 
     ***************************************************************************/
 
-    public Point getValidatorAtIndex (in Height height, in ulong index)
+    public PublicKey getValidatorAtIndex (in Height height, in ulong index)
         const @safe nothrow
     {
         if (height !in this.index_to_key || index !in this.index_to_key[height])
-            return Point.init;
+            return PublicKey.init;
         else
             return this.index_to_key[height][index];
     }

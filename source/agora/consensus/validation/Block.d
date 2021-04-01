@@ -84,10 +84,10 @@ version (unittest)
             provided none of them gets slashed this block.
         enrolled_validators = the number of validators enrolled at this height
         random_seed = Hash of random seed of the preimages
-        getValidatorAtIndex = delegate to provide validator Point K for
+        getValidatorAtIndex = delegate to provide validator PublicKey K for
             given height and index into map
         getCommitmentNonce = delegate to provide the commitment Nonce of the
-            validator given by it's Point K
+            validator given by it's PublicKey K
         prev_time_offset = the time offset of the of the direct ancestor of this block
         curr_time_offset = the current time offset
         block_time_tolerance = the proposed block time offset should be less
@@ -105,8 +105,8 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
     scope EnrollmentFinder findEnrollment, size_t active_validators_next_block,
     size_t enrolled_validators, in Hash random_seed,
-    Point delegate (in Height, in ulong) nothrow @safe getValidatorAtIndex,
-    Point delegate (in Point, in Height) nothrow @safe getCommitmentNonce,
+    PublicKey delegate (in Height, in ulong) nothrow @safe getValidatorAtIndex,
+    Point delegate (in PublicKey, in Height) nothrow @safe getCommitmentNonce,
     ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance,
     Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
                                nothrow @safe getCoinbaseTX,
@@ -208,18 +208,18 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     foreach (idx; 0 .. enrolled_validators)
     {
         const K = getValidatorAtIndex(block.header.height, idx);
-        log.trace("idx {} PublicKey: {}", idx, PublicKey(K[]));
-        if (K == Point.init)
+        log.trace("idx {} PublicKey: {}", idx, K);
+        if (K == PublicKey.init)
         {
-            log.error("[{}:{}] idx #{}: Validator {} not found for height {}",
-                file, line, idx, PublicKey(K[]), block.header.height);
+            log.error("[{}:{}] idx #{}: Validator key not found for height {}",
+                file, line, idx, block.header.height);
             return "Block: Couldn't find a Validator for the given index "
                 ~ to!string(idx) ~ " at height " ~ to!string(block.header.height.value);
         }
         if (!block.header.validators[idx])
         {
             log.trace("[{}:{}] idx #{}: Validator {} has not yet signed block height {}",
-                file, line, idx, PublicKey(K[]), block.header.height);
+                file, line, idx, K, block.header.height);
             continue;  // this validator hasn't signed yet
         }
 
@@ -647,12 +647,6 @@ public bool isGenesisBlockValid (in Block genesis_block)
 
 version (unittest)
 {
-    SecretKey lookupSecretKeyFromPoint (Point point) @trusted nothrow
-    {
-        return genesis_validator_keys
-            .find!(key => key.address == PublicKey(point[]))[0].secret;
-    }
-
     public string isValidcheck (in Block block, Engine engine, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t active_enrollments, size_t enrolled_validators, scope FeeChecker checkFee,
@@ -664,16 +658,17 @@ version (unittest)
         if (random_seed == Hash.init)
             random_seed = getTestRandomSeed();
 
+        // Type inference fails as the return type is `const`
+        scope PublicKey delegate(in Height, in ulong) nothrow @safe keyLookup=
+            (in Height, in ulong i) @safe nothrow => genesis_validator_keys[i].address;
+
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, active_enrollments, enrolled_validators,
-            random_seed, (in Height h, in ulong i) @safe nothrow
-            {
-                return Point(genesis_validator_keys[i].address[]);
-            },
-            (in Point key, in Height height) @trusted nothrow
+            random_seed, keyLookup,
+            (in PublicKey key, in Height height) @trusted nothrow
             {
                 return Scalar(hashMulti(
-                    lookupSecretKeyFromPoint(key),
+                    WK.Keys[key].secret,
                     "consensus.signature.noise", enrollment_cycle))
                     .toPoint();
             },

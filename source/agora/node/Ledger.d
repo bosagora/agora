@@ -70,8 +70,6 @@ version (unittest)
 /// Ditto
 public class Ledger
 {
-    import agora.crypto.ECC : Point;
-
     /// Logger instance
     protected Logger log;
 
@@ -756,11 +754,7 @@ public class Ledger
             this.enroll_man.getCountOfValidators(block.header.height),
             this.getRandomSeed(),
             &this.enroll_man.getValidatorAtIndex,
-            (in Point key, in Height height) @safe nothrow
-            {
-                const PK = PublicKey(key[]);
-                return this.enroll_man.getCommitmentNonce(PK, block.header.height);
-            },
+            &this.enroll_man.getCommitmentNonce,
             this.last_block.header.time_offset,
             cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
             block_time_offset_tolerance,

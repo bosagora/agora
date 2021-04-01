@@ -120,7 +120,7 @@ public extern (C++) class Nominator : SCPDriver
     protected SCPEnvelopeStore scp_envelope_store;
 
     // Height => Point (public key) => Signature
-    private Signature[Point][Height] slot_sigs;
+    private Signature[PublicKey][Height] slot_sigs;
 
     /// Enrollment manager
     public EnrollmentManager enroll_man;
@@ -743,7 +743,7 @@ extern(D):
     private bool collectBlockSignature (const ref ValidatorBlockSig block_sig,
         in Hash block_hash) nothrow
     {
-        const Point K = Point(block_sig.public_key[]);
+        const PublicKey K = block_sig.public_key;
         if (!K.isValid())
         {
             log.warn("Invalid point from public_key {}", block_sig.public_key);
@@ -929,7 +929,7 @@ extern(D):
             log.warn("No signatures at height {}", block.header.height);
             return Block.init;
         }
-        const Signature[Point] block_sigs = this.slot_sigs[block.header.height];
+        const Signature[PublicKey] block_sigs = this.slot_sigs[block.header.height];
 
         auto validator_mask = BitField!ubyte(all_validators);
         foreach (K; block_sigs.byKey())
