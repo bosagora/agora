@@ -358,7 +358,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected bool acceptBlock(const ref Block block) @trusted
+    protected bool acceptBlock (const ref Block block) @trusted
     {
         // Attempt to add block to the ledger (it may be there by other means)
         this.ledger.acceptBlock(block);
