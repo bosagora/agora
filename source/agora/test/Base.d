@@ -1752,13 +1752,13 @@ public struct TestConf
     bool configure_network = true;
 
     /// the delay between request retries
-    Duration retry_delay = 100.msecs;
+    Duration retry_delay = 500.msecs;
 
     /// minimum clients to connect to (defaults to nodes.length - 1)
     size_t min_listeners;
 
     /// max retries before a request is considered failed
-    size_t max_retries = 20;
+    size_t max_retries = 10;
 
     /// request timeout for each node
     Duration timeout = 5.seconds;
