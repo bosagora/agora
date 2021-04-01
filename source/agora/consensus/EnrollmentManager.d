@@ -1332,36 +1332,6 @@ unittest
     assert(keys[0] == ordered_enrollments[2].utxo_key);
 }
 
-/// Test for adding and getting pre-images
-unittest
-{
-    import agora.consensus.data.Transaction;
-
-    scope utxo_set = new TestUTXOSet;
-    KeyPair key_pair = KeyPair.random();
-
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
-        .each!(tx => utxo_set.put(tx));
-    UTXO[Hash] utxos = utxo_set.storage;
-
-    auto man = new EnrollmentManager(":memory:", key_pair,
-        new immutable(ConsensusParams)());
-    Hash[] utxo_hashes = utxo_set.keys;
-
-    auto utxo_hash = utxo_hashes[0];
-    auto enroll = man.createEnrollment(utxo_hash, Height(2));
-    assert(man.addEnrollment(enroll, key_pair.address, Height(1),
-            utxo_set.getUTXOFinder()));
-
-    assert(man.params.ValidatorCycle - 101 == 907); // Sanity check
-    assert(man.getValidatorPreimage(utxo_hash) == PreImageInfo.init);
-    assert(man.addValidator(enroll, key_pair.address, Height(2), &utxo_set.peekUTXO,
-            utxos) is null);
-    auto preimage = PreImageInfo(utxo_hash, man.cycle.preimages[98], 907);
-    assert(man.addPreimage(preimage));
-    assert(man.getValidatorPreimage(utxo_hash) == preimage);
-}
-
 /// Test `PreImageCycle` consistency between seeds and preimages
 unittest
 {
