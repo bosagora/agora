@@ -661,6 +661,7 @@ extern(D):
     public Signature createBlockSignature (in Block block) @safe nothrow
     {
         return block.header.createBlockSignature(this.kp.secret,
+            this.enroll_man.getOurPreimage(block.header.height),
             ulong((block.header.height - 1) / this.params.ValidatorCycle));
     }
 
@@ -779,10 +780,17 @@ extern(D):
         const Scalar block_challenge = block_hash;
         // Fetch the R from enrollment commitment for signing validator
         const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
+        // Get the preimage at ledger height
+        const preimage_info = this.enroll_man.validator_set.getPreimageAt(
+            this.enroll_man.validator_set.getEnrollmentForKey(block_sig.height, block_sig.public_key),
+            block_sig.height);
+        if (preimage_info.hash == Hash.init)
+        {
+            log.warn("collectBlockSignature: No preimage for {} to sign block at height {}", block_sig.public_key, block_sig.height);
+            return false;
+        }
         // Determine the R of signature (R, s)
-        const Point R = CR + block_challenge.toPoint();
-        log.trace("collectBlockSignature: [{}] Enrollment commitment (CR): {}, signing commitment (R): {}",
-                  block_sig.public_key, CR, R);
+        Point R = CR + Scalar(preimage_info.hash).toPoint();
         // Compose the signature (R, s)
         const sig = Signature(R, block_sig.signature);
         // Check this signature is valid for this block and signing validator

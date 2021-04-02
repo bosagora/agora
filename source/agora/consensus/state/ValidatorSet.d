@@ -360,7 +360,37 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Gets the number of active validators at the block height.
+        Get the utxo_key used for enrollment for the given public key
+
+        Params:
+            height = block height to fetch utxo_key
+            public_key = public key of the validator
+
+        Returns:
+            Return UTXO key as Hash
+
+    ***************************************************************************/
+
+    public Hash getEnrollmentForKey (in Height height, in PublicKey public_key) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT key FROM validator " ~
+                "WHERE public_key = ? AND enrolled_height >= ? AND enrolled_height < ? ",
+                public_key, this.minEnrollmentHeight(height), height);
+            if (!results.empty && results.oneValue!(byte[]).length != 0)
+                return Hash(results.front.peek!(char[])(0));
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error: {}", ex.msg);
+        }
+        return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Gets the number of active validators at a given block height.
 
         This function finds validators that should be active at a given height,
         provided they do not get slashed. Active validators are those
@@ -560,6 +590,10 @@ public class ValidatorSet
                 assert(preimage_height >= height); // The query should ensure this
                 return pi.adjust(preimage_height - height);
             }
+            else
+            {
+                log.trace("No preimage found for utxo {} at height {}", enroll_key, height.value);
+            }
         }
         catch (Exception ex)
         {
@@ -601,8 +635,8 @@ public class ValidatorSet
 
         if (auto reason = isInvalidReason(preimage, prev_preimage))
         {
-            log.info("Invalid pre-image data: {}. Pre-image: {}",
-                reason, preimage);
+            log.info("Invalid pre-image data: {}. Pre-image: {}, previous: {}",
+                reason, preimage, prev_preimage);
             return false;
         }
 

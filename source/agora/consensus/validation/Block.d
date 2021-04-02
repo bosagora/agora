@@ -29,6 +29,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.utils.PrettyPrinter;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.utils.Log;
@@ -650,7 +651,7 @@ version (unittest)
         if (!success)
         {
             try {
-                writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block);
+                writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block.prettify);
                 writefln("prev: %s (%s), enrolled: %s, " ~
                          "cycle: %s, prev_time_offset: %s, curr_time_offset: %s, tolerance: %s",
                          prev_height, prev_hash, enrolled_validators,
