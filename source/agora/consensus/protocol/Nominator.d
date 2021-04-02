@@ -460,8 +460,14 @@ extern(D):
         if (this.nomination_timer is null)
             return;
 
+        // Outdated envelopes might contain block signatures which we want to add
+        // Hence, define a certain tolerance for us to accept those.
+        // See https://github.com/bosagora/agora/issues/1875
+        static immutable ConfirmTolerance = 10;
+
         const Block last_block = this.ledger.getLastBlock();
-        if (Height(envelope.statement.slotIndex) != last_block.header.height + 1)
+        // Don't use `height - tolerance` as it could underflow
+        if (envelope.statement.slotIndex + ConfirmTolerance < last_block.header.height)
         {
             log.trace("receiveEnvelope: Ignoring envelope with slot id {} as ledger is at height {}",
                 envelope.statement.slotIndex, last_block.header.height.value);
@@ -506,6 +512,21 @@ extern(D):
                     envelope.statement.pledges.confirm_.ballot.value, ex);
                 return;
             }
+
+            // If it's an old envelope, we're only interested in the signature
+            if (envelope.statement.slotIndex <= last_block.header.height)
+            {
+                const sig = ValidatorBlockSig(
+                    Height(envelope.statement.slotIndex), public_key,
+                    Scalar(envelope.statement.pledges.confirm_.value_sig));
+                auto blocks = this.ledger.getBlocksFrom(Height(envelope.statement.slotIndex));
+                if (this.collectBlockSignature(sig, blocks[0].hashFull()))
+                    log.trace("Added signature for {} from CONFIRM ballot", public_key);
+                else
+                    log.info("Couldn't add signature for {}'s CONFIRM ballot", public_key);
+                return;
+            }
+
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
                 last_block.header.height, con_data.missing_validators);
 
