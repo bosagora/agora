@@ -120,7 +120,7 @@ private class SpyNominator : TestNominator
         this.envelope_type_counts = envelope_type_counts;
     }
 
-    public override void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
+    public override void receiveEnvelope (in SCPEnvelope envelope) @trusted
     {
         super.receiveEnvelope(envelope);
         // Make sure we don't count for same node more than once
