@@ -620,10 +620,8 @@ extern(D):
 
         // rc = r used in signing the commitment
         const Scalar rc = this.enroll_man.getCommitmentNonceScalar(block.header.height);
-        log.trace("createBlockSignature: Enrollment commitment CR for validator {} is {}", this.kp.address, rc.toPoint());
         const Scalar r = rc + challenge; // make it unique each challenge
         const Point R = r.toPoint();
-        log.trace("createBlockSignature: Block signing commitment R for validator {} is {}", this.kp.address, R);
         return sign(this.kp.secret, R, r, challenge);
     }
 
