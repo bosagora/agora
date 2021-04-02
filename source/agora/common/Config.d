@@ -166,7 +166,7 @@ public struct NodeConfig
     public Duration timeout = 5000.msecs;
 
     /// Path to the data directory to store metadata and blockchain data
-    public string data_dir = "/var/lib/agora/";
+    public string data_dir = ".cache";
 
     /// The duration between requests for retrieving the latest blocks
     /// from all other nodes
