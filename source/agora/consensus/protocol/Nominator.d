@@ -740,7 +740,7 @@ extern(D):
         log.trace("collectBlockSignature: [{}] Enrollment commitment (CR): {}, signing commitment (R): {}",
                   block_sig.public_key, CR, R);
         // Compose the signature (R, s)
-        const sig = Signature(R, block_sig.signature.asScalar());
+        const sig = Signature(R, block_sig.signature);
         // Check this signature is valid for this block and signing validator
         if (!verify(sig, block_challenge, K))
         {
@@ -751,7 +751,7 @@ extern(D):
         log.trace("collectBlockSignature: VALID block signature at height {} for node {}",
             block_sig.height, block_sig.public_key);
         // collect the signature
-        this.slot_sigs[block_sig.height][K] = Signature(R, block_sig.signature.asScalar());
+        this.slot_sigs[block_sig.height][K] = Signature(R, block_sig.signature);
         return true;
     }
 

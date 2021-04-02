@@ -32,30 +32,24 @@ public struct SigScalar
 {
     public Scalar data;
 
-    public this (typeof(this.data) data) @safe @nogc nothrow
-    {
-        this.data = data;
-    }
+    alias data this;
 
-    public Scalar asScalar() const @safe @nogc nothrow
+    public static SigScalar fromString (in char[] str) @safe
     {
-        return this.data;
+        return SigScalar(Scalar.fromString(str));
     }
 
     public string toString () const @safe
     {
-        return data.toString(PrintMode.Clear);
-    }
-
-    // If we are sending this via vibe.d then it needs to be in the clear
-    string toRepresentation() const @safe
-    {
         return this.data.toString(PrintMode.Clear);
     }
 
-    static SigScalar fromRepresentation(in char[] str) @safe
+    public void toString (scope void delegate (scope const(char)[]) @safe sink)
+        const @safe
     {
-        return SigScalar(Scalar.fromString(str));
+        FormatSpec!char spec;
+        spec.spec = 'c';
+        this.data.toString(sink, spec);
     }
 }
 
