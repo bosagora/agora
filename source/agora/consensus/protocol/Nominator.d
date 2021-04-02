@@ -449,7 +449,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public void receiveEnvelope (scope ref const(SCPEnvelope) envelope) @trusted
+    public void receiveEnvelope (in SCPEnvelope envelope) @trusted
     {
         // ignore messages if `startNominatingTimer` was never called or
         // if `stopNominatingTimer` was called
@@ -721,7 +721,7 @@ extern(D):
 
     ***************************************************************************/
 
-    private bool collectBlockSignature (const ref ValidatorBlockSig block_sig,
+    private bool collectBlockSignature (in ValidatorBlockSig block_sig,
         in Hash block_hash) @safe nothrow
     {
         const PublicKey K = block_sig.public_key;
@@ -896,7 +896,7 @@ extern(D):
     }
 
     /// If more than half have signed create a combined Schnorr multisig and return the updated block
-    private Block updateMultiSignature (const ref Block block) @safe
+    private Block updateMultiSignature (in Block block) @safe
     {
         auto all_validators = this.enroll_man.getCountOfValidators(block.header.height);
 
