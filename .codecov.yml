@@ -1,2 +1,8 @@
+ignore:
+  # Ignore the tracking GC as it's tested upstream
+  - "source/agora/utils/gc/*.d"
+  # There's a giant switch in this file that brings coverage down quite a bit,
+  # but it is generated code that barely changes
+  - "source/agora/utils/WellKnownKeys.d"
 fixes:
   - "agora/source/::source/"
