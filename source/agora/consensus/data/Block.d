@@ -26,6 +26,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.serialization.Serializer;
+import agora.utils.Log;
 
 import std.algorithm.comparison;
 import std.algorithm.iteration;
@@ -34,6 +35,8 @@ import std.algorithm.sorting;
 import std.range;
 
 import core.bitop;
+
+mixin AddLogger!();
 
 /*******************************************************************************
 
@@ -104,18 +107,21 @@ public struct BlockHeader
         using Schnorr multisig.
 
         Params:
-            block = the block to sign
             secret_key = node's secret
+            preimage = preimage at the block height for the signing validator
             offset = enrollment cycle offset
 
     ***************************************************************************/
-    public Signature createBlockSignature (in Scalar secret_key, ulong offset = 0) const @safe nothrow
+
+    public Signature createBlockSignature (in Scalar secret_key, in Hash preimage,
+        ulong offset = 0) const @safe nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = this.hashFull();
         // rc = r used in signing the commitment
         const Scalar rc = Scalar(hashMulti(secret_key, "consensus.signature.noise", offset));
-        const Scalar r = rc + challenge; // make it unique each challenge
+        const Scalar reduced_preimage = Scalar(preimage);
+        const Scalar r = rc + reduced_preimage; // make it unique for block height
         const Point R = r.toPoint();
         return sign(secret_key, R, r, challenge);
     }
@@ -551,18 +557,55 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     return block;
 }
 
+/***************************************************************************
+
+    Create the block random seed from the provided pre-images
+
+    It might be that not all validators provide their `pre-image` and in
+    that case the length of the preimages can be less than the number of
+    active validators.
+
+    Params:
+        preimages = preimages sorted by the utxo keys of the validators
+
+    Returns:
+        Hash of all provided pre-images or Hash.init if an exception is thrown
+
+***************************************************************************/
+
+
+public static Hash createRandomSeed (Preimages)(Preimages preimages) @safe nothrow
+{
+    try
+    {
+        if (preimages.count == 0)
+            assert(0, "createRandomSeed: No preimages to create block random seed!");
+        return preimages.reduce!((a , b) => hashMulti(a, b));
+    } catch (Exception e)
+    {
+        log.error("createRandomSeed: Exception thrown {}", e);
+        return Hash.init;
+    }
+}
+
 /// only used in unittests with some defaults
 version (unittest)
 {
     import agora.consensus.data.genesis.Test: genesis_validator_keys;
+    import agora.consensus.validation.Block: wellKnownPreimages;
 
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
-        Transactions txs, Hash random_seed = Hash.init,
+        Transactions txs,
         in KeyPair[] key_pairs = genesis_validator_keys,
         Enrollment[] enrollments = null,
         uint[] missing_validators = null,
         ulong time_offset = 0) @safe nothrow
     {
+        auto revealed = key_pairs.enumerate.filter!(en => !missing_validators.canFind(en.index)).map!(en => en.value).array;
+        Hash[] pre_images = wellKnownPreimages(prev_block.header.height + 1, revealed);
+        assert(revealed.length == key_pairs.length - missing_validators.length);
+        Hash random_seed = createRandomSeed(pre_images);
+
         // the time_offset passed to makeNewBlock should really be
         // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
         // prev_block.header.time_offset + 1
@@ -575,8 +618,16 @@ version (unittest)
         ulong offset = 0;
         key_pairs.enumerate.each!((i, k)
         {
-            validators[i] = true;
-            sigs ~= block.header.createBlockSignature(k.secret, offset);
+            if (missing_validators.canFind(i))
+            {
+                log.trace("Skip signing with validator idx {} as it is in missing_validators", i);
+            }
+            else
+            {
+                validators[i] = true;
+                sigs ~= block.header.createBlockSignature(k.secret,
+                    pre_images[i - missing_validators.filter!(m => m < i).count], offset);
+            }
         });
         try
         {
@@ -808,4 +859,56 @@ unittest
     assert(merkle_path[2] == hmnop);
     assert(merkle_path[3] == habcdefgh);
     assert(block.header.merkle_root == Block.checkMerklePath(hi, merkle_path, 8));
+}
+
+/// demonstrate signing two blocks at height 1 to reveal private node key
+unittest
+{
+    import agora.consensus.data.genesis.Test: GenesisBlock;
+    import agora.crypto.ECC: Scalar, Point;
+    import agora.crypto.Schnorr;
+    import agora.utils.Test;
+    import std.format;
+
+    Hash random_seed1 = "seed1".hashFull();
+    Hash random_seed2 = "seed2".hashFull();
+    Hash preimage = "preimage".hashFull();
+
+    // Generate two blocks at height 1
+    auto block1 = GenesisBlock.makeNewBlock(
+        genesisSpendable().take(2).map!(txb => txb.sign()).array(), 10, random_seed1, 6);
+    auto block2 = GenesisBlock.makeNewBlock(
+        genesisSpendable().take(3).map!(txb => txb.sign()).array(), 10, random_seed2, 6);
+
+    Scalar v = genesis_validator_keys[0].secret;
+    assert(v.isValid(), "v is not a valid Scalar!");
+    Point V = v.toPoint();
+    const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
+    const Scalar r = rc + Scalar(preimage);
+    const Point R = r.toPoint();
+
+    // Two messages
+    Scalar c1 = block1.hashFull();
+    Scalar c2 = block2.hashFull();
+    assert(c1 != c2);
+
+    // Sign with same r twice
+    Signature sig1 = sign(v, R, r, c1);
+    Signature sig2 = sign(v, R, r, c2);
+
+    // Verify signatures
+    assert(verify(sig1, c1, V));
+    assert(verify(sig2, c2, V));
+
+    // Calculate the private key by subtraction
+    // `s = r + (v * c)`
+    // `s1 - s2 = r + (v * c1) - (r + v * c2) = v(c1 - c2)`
+    // `v = (s1 - s2) / (c1 - c2)`
+    Scalar s = (sig1.s - sig2.s);
+    Scalar c = (c1 - c2);
+
+    Scalar secret = s * c.invert();
+    assert(secret == v,
+        format!"Key %s is not matching key %s"
+        (secret.toString(PrintMode.Clear), v.toString(PrintMode.Clear)));
 }

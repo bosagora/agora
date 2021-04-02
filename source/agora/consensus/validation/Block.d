@@ -29,6 +29,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.utils.PrettyPrinter;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.utils.Log;
@@ -573,6 +574,42 @@ public bool isGenesisBlockValid (in Block genesis_block)
 
 version (unittest)
 {
+    import agora.consensus.PreImage;
+    import std.array;
+
+    PreImageCycle[] wellKnownPreimageCycles;
+    ulong[PublicKey] publicKeyToIndex;
+
+    public ref PreImageCycle getWellKnownPreimages (KeyPair kp) @safe nothrow
+    {
+        const uint Cycle = 20;
+        if (kp.address !in publicKeyToIndex)
+        {
+            publicKeyToIndex[kp.address] = wellKnownPreimageCycles.length;
+            wellKnownPreimageCycles ~= PreImageCycle(kp.secret, Cycle);
+        }
+        return wellKnownPreimageCycles[publicKeyToIndex[kp.address]];
+    }
+
+    public Hash[] wellKnownPreimages (keys)(Height height, keys key_pairs) @safe nothrow
+    {
+        return key_pairs.map!(kp => getWellKnownPreimages(kp)[height]).array;
+    }
+
+    // Check that cached cycles can handle being used with previous cycle heights
+    unittest
+    {
+        auto NODE2 = [ WK.Keys.NODE2 ];
+        Hash[] preimages_height_0 = wellKnownPreimages(Height(0), NODE2);
+        Hash[] preimages_height_1 = wellKnownPreimages(Height(1), NODE2);
+        // fetch from previous height within the first cycle
+        assert(wellKnownPreimages(Height(0), NODE2) == preimages_height_0);
+        // preimage from second cycle
+        Hash[] preimages_height_21 = wellKnownPreimages(Height(21), NODE2);
+        // check we can fetch preimages from previous cycle
+        assert(wellKnownPreimages(Height(1), NODE2) == preimages_height_1);
+    }
+
     public string isValidcheck (in Block block, Engine engine, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,
@@ -600,6 +637,7 @@ version (unittest)
         Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
+        Hash[] pre_images = wellKnownPreimages(prev_height + 1, genesis_validator_keys);
         string reason = isValidcheck(block, engine, prev_height, prev_hash, findUTXO,
             enrolled_validators, checkFee, findEnrollment,
             enrollment_cycle, prev_time_offset, curr_time_offset,
@@ -609,7 +647,7 @@ version (unittest)
         if (!success)
         {
             try {
-                writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block);
+                writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block.prettify);
                 writefln("prev: %s (%s), enrolled: %s, " ~
                          "cycle: %s, prev_time_offset: %s, curr_time_offset: %s, tolerance: %s",
                          prev_height, prev_hash, enrolled_validators,
@@ -946,7 +984,7 @@ unittest
                               "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
     uint[] missing_validators = [];
 
-    auto block3 = makeNewTestBlock(block2, txs_3, preimage_root, genesis_validator_keys, enrollments,
+    auto block3 = makeNewTestBlock(block2, txs_3, genesis_validator_keys, enrollments,
         missing_validators);
     block3.assertValid(engine, block2.header.height, hashFull(block2.header), findUTXO,
         Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
@@ -1086,7 +1124,7 @@ unittest
                                   "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
         uint[] missing_validators = [];
 
-        auto block3 = makeNewTestBlock(block2, txs_3, preimage_root, genesis_validator_keys, enrollments,
+        auto block3 = makeNewTestBlock(block2, txs_3, genesis_validator_keys, enrollments,
             missing_validators);
         assert(block3.header.enrollments.length == Enrollment.MinValidatorCount);
         block3.assertValid(engine, block2.header.height, hashFull(block2.header),
