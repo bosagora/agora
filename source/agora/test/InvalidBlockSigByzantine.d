@@ -68,19 +68,20 @@ private extern(C++) class BadBlockSigningNominator : TestNominator
     {
         import agora.crypto.Hash;
 
+        const Hash preimage = "preimage".hashFull();
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
         final switch (reason)
         {
             case ByzantineReason.BadCommitmentR:
                 const Scalar rc = Scalar.random(); // This is normally the enrollment commitment
-                const Scalar r = rc + challenge;
+                const Scalar r = rc + Scalar(preimage);
                 const Point R = r.toPoint();
                 return sign(this.kp.secret, R, r, challenge);
             case ByzantineReason.BadSignature:
                 const Scalar rc = Scalar(hashMulti(WK.Keys.NODE2.secret,
                     "consensus.signature.noise", 0));
-                const Scalar r = rc + challenge;
+                const Scalar r = rc + Scalar(preimage);
                 const Point R = r.toPoint();
                 // Sign with random in place of validator secret key
                 const wrong_scalar_v = Scalar.random();

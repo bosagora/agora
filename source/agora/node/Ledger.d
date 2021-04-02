@@ -810,8 +810,20 @@ public class Ledger
 
             const CR = this.enroll_man.getCommitmentNonce(K, block.header.height);  // commited R
             if (CR == Point.init)
+            {
+                log.error("Block#{}: Validator {} (idx: {}) Couldn't find commitment for this validator",
+                          block.header.height, K, idx);
                 return "Block: Couldn't find commitment for this validator";
-            Point R = CR + challenge.toPoint();
+            }
+            const preimage_info = this.enroll_man.validator_set.getPreimageAt(
+                this.enroll_man.validator_set.getEnrollmentForKey(block.header.height, K), block.header.height);
+            if (preimage_info.hash == Hash.init)
+            {
+                log.error("Block#{}: Validator {} (idx: {}) Couldn't find pre-image for validator",
+                          block.header.height, K, idx);
+                return "Block: Couldn't find pre-image for validator";
+            }
+            Point R = CR + Scalar(preimage_info.hash).toPoint();
             sum_K = sum_K + K;
             sum_R = sum_R + R;
         }
@@ -1101,7 +1113,7 @@ public class Ledger
 
         Returns:
             true if the validator has revealed its preimage for the provided
-                block height
+                block height or if current node
 
     ***************************************************************************/
 
@@ -1109,7 +1121,7 @@ public class Ledger
         @safe nothrow
     {
         if (utxo_key == this.enroll_man.getEnrollmentKey())
-            return true;
+            return true; // this is current Ledger node
 
         auto preimage = this.enroll_man.getValidatorPreimage(utxo_key);
         auto enrolled = this.enroll_man.validator_set.getEnrolledHeight(height, preimage.utxo);

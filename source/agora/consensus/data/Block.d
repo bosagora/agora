@@ -104,18 +104,21 @@ public struct BlockHeader
         using Schnorr multisig.
 
         Params:
-            block = the block to sign
             secret_key = node's secret
+            preimage = preimage at the block height for the signing validator
             offset = enrollment cycle offset
 
     ***************************************************************************/
-    public Signature createBlockSignature (in Scalar secret_key, ulong offset = 0) const @safe nothrow
+
+    public Signature createBlockSignature (in Scalar secret_key, in Hash preimage,
+        ulong offset = 0) const @safe nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = this.hashFull();
         // rc = r used in signing the commitment
         const Scalar rc = Scalar(hashMulti(secret_key, "consensus.signature.noise", offset));
-        const Scalar r = rc + challenge; // make it unique each challenge
+        const Scalar reduced_preimage = Scalar(preimage);
+        const Scalar r = rc + reduced_preimage; // make it unique for block height
         const Point R = r.toPoint();
         return sign(secret_key, R, r, challenge);
     }
@@ -612,7 +615,8 @@ version (unittest)
                 if (!missing_validators.canFind(i))
                 {
                     validators[i] = true;
-                    sigs ~= block.header.createBlockSignature(k.secret, offset);
+                    sigs ~= block.header.createBlockSignature(k.secret,
+                        pre_images[i - missing_validators.filter!(m => m < i).count], offset);
                 }
             });
             auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
@@ -842,4 +846,59 @@ unittest
     assert(merkle_path[2] == hmnop);
     assert(merkle_path[3] == habcdefgh);
     assert(block.header.merkle_root == Block.checkMerklePath(hi, merkle_path, 8));
+}
+
+/// demonstrate signing two blocks at height 1 to reveal private node key
+unittest
+{
+    import agora.consensus.data.genesis.Test: GenesisBlock;
+    import agora.crypto.ECC: Scalar, Point;
+    import agora.crypto.Schnorr;
+    import agora.utils.Test;
+    import std.format;
+
+    Hash random_seed1 = "seed1".hashFull();
+    Hash random_seed2 = "seed2".hashFull();
+    Hash preimage = "preimage".hashFull();
+
+    const TimeOffset = 1;
+    const Validators = genesis_validator_keys.length;
+
+    // Generate two blocks at height 1
+    auto block1 = GenesisBlock.makeNewBlock(
+        genesisSpendable().take(1).map!(txb => txb.sign()), TimeOffset, random_seed1, Validators);
+    auto block2 = GenesisBlock.makeNewBlock(
+        genesisSpendable().take(1).map!(txb => txb.sign()), TimeOffset, random_seed2, Validators);
+
+    Scalar v = genesis_validator_keys[0].secret;
+    assert(v.isValid(), "v is not a valid Scalar!");
+    Point V = v.toPoint();
+    const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
+    const Scalar r = rc + Scalar(preimage);
+    const Point R = r.toPoint();
+
+    // Two messages
+    Scalar c1 = block1.hashFull();
+    Scalar c2 = block2.hashFull();
+    assert(c1 != c2);
+
+    // Sign with same r twice
+    Signature sig1 = block1.header.createBlockSignature(v, preimage);
+    Signature sig2 = block2.header.createBlockSignature(v, preimage);
+
+    // Verify signatures
+    assert(verify(sig1, c1, V));
+    assert(verify(sig2, c2, V));
+
+    // Calculate the private key by subtraction
+    // `s = r + (v * c)`
+    // `s1 - s2 = r + (v * c1) - (r + v * c2) = v(c1 - c2)`
+    // `v = (s1 - s2) / (c1 - c2)`
+    Scalar s = (sig1.s - sig2.s);
+    Scalar c = (c1 - c2);
+
+    Scalar secret = s * c.invert();
+    assert(secret == v,
+        format!"Key %s is not matching key %s"
+        (secret.toString(PrintMode.Clear), v.toString(PrintMode.Clear)));
 }
