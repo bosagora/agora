@@ -424,6 +424,25 @@ public struct TxBuilder
         return this;
     }
 
+    /***************************************************************************
+
+        Deduct all the remaining amount, so there will be no refund transaction
+
+        Useful when trying to test fee calculation
+
+        Returns:
+            Reference to `this` for easy chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) deductRemaining () pure nothrow @safe @nogc
+        return
+    {
+        this.leftover.value = Amount(0);
+
+        return this;
+    }
+
     /// Refund output for the transaction
     private Output leftover;
 
