@@ -650,8 +650,8 @@ public EnrollmentFinder getGenesisEnrollmentFinder () nothrow @trusted
             state.status = EnrollmentStatus.Active;
             state.enrolled_height = Height(0);
             state.cycle_length = enrolls[0].cycle_length;
-            state.last_image = enrolls[0].random_seed;
-            state.distance = 0;
+            state.preimage.hash = enrolls[0].random_seed;
+            state.preimage.distance = 0;
         }
 
         return enrolls.length != 0;

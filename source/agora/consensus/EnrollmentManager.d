@@ -1671,15 +1671,15 @@ unittest
     assert(state.status == EnrollmentStatus.Active);
     assert(state.enrolled_height == Height(0));
     assert(state.cycle_length == params.ValidatorCycle);
-    assert(state.last_image == genesis_enroll.random_seed);
-    assert(state.distance == 0);
+    assert(state.preimage.hash == genesis_enroll.random_seed);
+    assert(state.preimage.distance == 0);
 
     PreImageInfo preimage;
     assert(man.getNextPreimage(preimage, Height(params.ValidatorCycle / 2)));
     assert(man.addPreimage(preimage));
     assert(findEnrollment(genesis_enroll.utxo_key, state));
-    assert(state.last_image == preimage.hash);
-    assert(state.distance == preimage.distance);
+    assert(state.preimage.hash == preimage.hash);
+    assert(state.preimage.distance == preimage.distance);
 
     // First 2 iterations should fail because commitment is wrong
     foreach (offset; [-1, +1, 0])
@@ -1704,8 +1704,8 @@ unittest
     assert(state.status == EnrollmentStatus.Expired);
     assert(state.enrolled_height == Height(0));
     assert(state.cycle_length == params.ValidatorCycle);
-    assert(state.last_image == preimage.hash);
-    assert(state.distance == preimage.distance);
+    assert(state.preimage.hash == preimage.hash);
+    assert(state.preimage.distance == preimage.distance);
 
     assert(man.getValidatorCount(Height(params.ValidatorCycle)) == 0);
     assert(man.addValidator(enrolls[0], key_pair.address,

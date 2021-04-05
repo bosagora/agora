@@ -84,10 +84,18 @@ public string isInvalidReason (in Enrollment enrollment,
     EnrollmentState enroll_state;
     if (findEnrollment(enrollment.utxo_key, enroll_state))
     {
-        Hash temp_hash = enrollment.random_seed;
-        foreach (_; enroll_state.enrolled_height + enroll_state.distance .. height)
-            temp_hash = hashFull(temp_hash);
-        if (temp_hash != enroll_state.last_image)
+        assert(height >= enroll_state.enrolled_height);
+        assert(height >= (enroll_state.enrolled_height + enroll_state.preimage.distance));
+
+        // Create a dummy copy
+        PreImageInfo temp = enroll_state.preimage;
+        // And patch its distance and hash
+        temp.hash = enrollment.random_seed;
+        auto dist = height - (enroll_state.enrolled_height + enroll_state.preimage.distance);
+        assert(dist < ushort.max);
+        temp.distance = cast(ushort) dist;
+        // Now we can check the match
+        if (temp.adjust(temp.distance).hash != enroll_state.preimage.hash)
             return "The seed has an invalid hash value";
     }
 
