@@ -568,7 +568,7 @@ public class BlockStorage : IBlockStorage
 
     private size_t readSizeT (size_t pos) @trusted
     {
-        ubyte[] data = this.read(pos, pos+size_t.sizeof);
+        ubyte[] data = this.read(pos, size_t.sizeof);
         return *cast(size_t*)(data.ptr);
     }
 
