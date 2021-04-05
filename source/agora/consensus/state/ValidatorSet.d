@@ -56,10 +56,7 @@ public struct EnrollmentState
     uint cycle_length;
 
     /// The most recently revealed PreImage
-    Hash last_image;
-
-    /// Distance of the most recently revealed PreImage
-    ushort distance;
+    PreImageInfo preimage;
 }
 
 /// Delegate type to query the history of Enrollments
@@ -728,8 +725,8 @@ public class ValidatorSet
                 state.status = row.peek!(EnrollmentStatus)(0);
                 state.enrolled_height = Height(row.peek!(size_t)(1));
                 state.cycle_length = row.peek!(uint)(2);
-                state.last_image = Hash(row.peek!(char[])(3));
-                state.distance = row.peek!(ushort)(4);
+                state.preimage.hash = Hash(row.peek!(char[])(3));
+                state.preimage.distance = row.peek!(ushort)(4);
                 return true;
             }
         }
