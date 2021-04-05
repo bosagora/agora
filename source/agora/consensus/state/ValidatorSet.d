@@ -627,14 +627,8 @@ public class ValidatorSet
                 Height enrolled_height = Height(row.peek!ulong(1));
                 ushort distance = row.peek!ushort(2);
 
-                // go back to the desired preimage of a previous height
-                while (enrolled_height + distance > height)
-                {
-                    preimage = hashFull(preimage);
-                    distance--;
-                }
-
-                return PreImageInfo(enroll_key, preimage, distance);
+                auto pi = PreImageInfo(enroll_key, preimage, distance);
+                return pi.adjust(enrolled_height + distance - height);
             }
         }
         catch (Exception ex)
