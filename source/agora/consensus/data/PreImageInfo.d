@@ -15,6 +15,7 @@
 module agora.consensus.data.PreImageInfo;
 
 import agora.common.Types;
+import agora.crypto.Hash;
 
 /*******************************************************************************
 
@@ -32,6 +33,34 @@ public struct PreImageInfo
 
     /// The distance between this pre-image and the initial commitment
     public ushort distance;
+
+    /***************************************************************************
+
+        Reduce the distance and adjust `hash` accordingly
+
+        This method hashes `this.hash` `value` times, and offset `this.distance`
+        by the same amount.
+
+        Params:
+          value = The amount to offset the pre-image by.
+                  Must be lesser or equal to `this.distance`.
+
+        Returns:
+          A reference to itself for easy chaining.
+
+    ***************************************************************************/
+
+    public ref PreImageInfo adjust (size_t value) return @safe nothrow @nogc
+    {
+        assert(this.distance >= value);
+        while (value > 0)
+        {
+            this.hash = this.hash.hashFull();
+            this.distance -= 1;
+            --value;
+        }
+        return this;
+    }
 }
 
 unittest
