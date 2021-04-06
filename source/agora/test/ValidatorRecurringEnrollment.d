@@ -98,7 +98,7 @@ unittest
     {
         mixin ForwardCtor!();
 
-        protected override EnrollmentManager getEnrollmentManager ()
+        protected override EnrollmentManager makeEnrollmentManager ()
         {
             return new BadEnrollmentManager(this.stateDB, this.cacheDB,
                 this.config.validator.key_pair, this.params);
@@ -186,8 +186,8 @@ unittest
         mixin ForwardCtor!();
 
         ///
-        protected override TestNominator getNominator (
-            Parameters!(TestValidatorNode.getNominator) args)
+        protected override TestNominator makeNominator (
+            Parameters!(TestValidatorNode.makeNominator) args)
         {
             return new SocialDistancingNominator(
                 this.params, this.config.validator.key_pair, args,

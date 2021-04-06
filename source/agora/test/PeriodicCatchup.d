@@ -70,8 +70,8 @@ private class TestNode () : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override TestNominator getNominator (
-        Parameters!(TestValidatorNode.getNominator) args)
+    protected override TestNominator makeNominator (
+        Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new DoesNotExternalizeBlockNominator(
             this.params, this.config.validator.key_pair, args,

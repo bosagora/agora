@@ -95,7 +95,7 @@ public NodeListenerTuple runNode (Config config)
         router.registerRestInterface!(agora.api.FullNode.API)(node);
     }
     settings.rejectConnectionPredicate = (in address) nothrow @safe
-            {return node.getAlreadyCreatedBanManager().isBanned(address.toAddressString());};
+            {return node.getBanManager().isBanned(address.toAddressString());};
 
     // Register a path for `register_listener` adding client's address.
     router.route("/register_listener")

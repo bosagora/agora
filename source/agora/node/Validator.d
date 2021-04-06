@@ -98,7 +98,7 @@ public class Validator : FullNode, API
             &this.onAcceptedBlock);
         this.ledger = vledger;
 
-        this.nominator = this.getNominator(
+        this.nominator = this.makeNominator(
             this.clock, this.network, vledger, this.enroll_man, this.taskman);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
 
@@ -395,7 +395,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected Nominator getNominator (Clock clock, NetworkManager network,
+    protected Nominator makeNominator (Clock clock, NetworkManager network,
         ValidatingLedger ledger, EnrollmentManager enroll_man, ITaskManager taskman)
     {
         return new Nominator(
@@ -417,7 +417,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override Clock getClock (ITaskManager taskman)
+    protected override Clock makeClock (ITaskManager taskman)
     {
         return new Clock((out long time_offset)
             {

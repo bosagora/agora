@@ -69,7 +69,7 @@ private class NoPreImageVN : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override EnrollmentManager getEnrollmentManager ()
+    protected override EnrollmentManager makeEnrollmentManager ()
     {
         return new MissingPreImageEM(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, params);
@@ -108,8 +108,8 @@ private class BadNominatingVN : TestValidatorNode
     mixin ForwardCtor!();
 
     ///
-    protected override TestNominator getNominator (
-        Parameters!(TestValidatorNode.getNominator) args)
+    protected override TestNominator makeNominator (
+        Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new BadNominator(
             this.params, this.config.validator.key_pair, args,
