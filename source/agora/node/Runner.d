@@ -18,6 +18,7 @@ import agora.api.Validator;
 import agora.common.Config;
 import agora.common.Task : Periodic;
 import agora.flash.API;
+import agora.node.admin.AdminInterface;
 import agora.node.FlashFullNode;
 import agora.node.FlashValidator;
 import agora.node.FullNode;
@@ -38,7 +39,11 @@ import std.typecons : Tuple, tuple;
 import core.time;
 
 ///
-public alias NodeListenerTuple = Tuple!(FullNode, "node", HTTPListener, "http_listener");
+public alias Listeners = Tuple!(
+    FullNode, "node",
+    AdminInterface, "admin",
+    HTTPListener[], "http"
+ );
 
 /*******************************************************************************
 
@@ -53,7 +58,7 @@ public alias NodeListenerTuple = Tuple!(FullNode, "node", HTTPListener, "http_li
 
 *******************************************************************************/
 
-public NodeListenerTuple runNode (Config config)
+public Listeners runNode (Config config)
 {
     setVibeLogLevel(config.logging.level);
     Log.root.level(config.logging.level, true);
@@ -66,36 +71,43 @@ public NodeListenerTuple runNode (Config config)
 
     mkdirRecurse(config.node.data_dir);
 
-    FullNode node;
+    Listeners result;
     if (config.flash.enabled && config.validator.enabled)
     {
         log.trace("Started FlashValidator...");
         auto inst = new FlashValidator(config);
         router.registerRestInterface!(FlashValidatorAPI)(inst);
-        node = inst;
+        if (config.admin.enabled)
+            result.admin = inst.makeAdminInterface();
+        result.node = inst;
     }
     else if (config.validator.enabled)
     {
         log.trace("Started Validator...");
         auto inst = new Validator(config);
         router.registerRestInterface!(agora.api.Validator.API)(inst);
-        node = inst;
+        if (config.admin.enabled)
+            result.admin = inst.makeAdminInterface();
+        result.node = inst;
     }
     else if (config.flash.enabled)
     {
         log.trace("Started FlashFullNode...");
         auto inst = new FlashFullNode(config);
         router.registerRestInterface!(FlashFullNodeAPI)(inst);
-        node = inst;
+        result.node = inst;
     }
     else
     {
         log.trace("Started FullNode...");
-        node = new FullNode(config);
-        router.registerRestInterface!(agora.api.FullNode.API)(node);
+        result.node = new FullNode(config);
+        router.registerRestInterface!(agora.api.FullNode.API)(result.node);
     }
-    settings.rejectConnectionPredicate = (in address) nothrow @safe
-            {return node.getBanManager().isBanned(address.toAddressString());};
+    settings.rejectConnectionPredicate =
+        (in address) nothrow @safe
+        {
+            return result.node.getBanManager().isBanned(address.toAddressString());
+        };
 
     // Register a path for `register_listener` adding client's address.
     router.route("/register_listener")
@@ -107,15 +119,25 @@ public NodeListenerTuple runNode (Config config)
             // TODO: disabled as this code is wrong. The client port here is not
             // the listening port of the node which tried to establish a connection.
             version (none)
-                node.registerListener(addr);
+                result.node.registerListener(addr);
             res.statusCode = 200;
             res.writeVoidBody();
         });
 
-    setTimer(0.seconds, &node.start, Periodic.No);  // asynchronous
+    setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
 
-    log.info("About to listen to HTTP: {}", settings.port);
-    return tuple!("node","http_listener")(node, listenHTTP(settings, router));
+    scope (exit)
+    {
+        log.info("Listening for blockchain data on {}:{}", config.node.address, settings.port);
+        if (result.admin !is null)
+            log.info("Admin interface listening on {}:{}", config.admin.address, settings.port);
+    }
+
+    result.http ~= listenHTTP(settings, router);
+    if (result.admin !is null)
+        result.http ~= result.admin.start();
+
+    return result;
 }
 
 /*******************************************************************************

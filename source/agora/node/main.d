@@ -143,15 +143,16 @@ private int main (string[] args)
     }
     scope(exit) file_based_lock.unlock();
 
-    NodeListenerTuple node_listener_tuple;
-    runTask(() => node_listener_tuple = runNode(config.get()));
-    scope(exit)
+    Listeners listeners;
+    runTask(() => listeners = runNode(config.get()));
+    scope (exit)
     {
-        if (node_listener_tuple != NodeListenerTuple.init) with (node_listener_tuple)
-        {
-            node.shutdown();
-            http_listener.stopListening();
-        }
+        // Note: Listener could be default-initialized, in which case all checks
+        // will be false and the foreach will not loop.
+        foreach (ref l; listeners.http)
+            l.stopListening();
+        if (listeners.node !is null)
+            listeners.node.shutdown();
     }
     return runEventLoop();
 }

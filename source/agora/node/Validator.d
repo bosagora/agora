@@ -81,9 +81,6 @@ public class Validator : FullNode, API
     /// but LocalScheduler is not instantiated yet.
     private bool started;
 
-    /// admin interface
-    protected AdminInterface admin_interface;
-
     /// Ctor
     public this (const Config config)
     {
@@ -105,9 +102,6 @@ public class Validator : FullNode, API
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
         this.regenerateQuorums(this.ledger.getBlockHeight());
-
-        this.admin_interface = new AdminInterface(config,
-            this.config.validator.key_pair, this.clock);
     }
 
     /***************************************************************************
@@ -236,9 +230,6 @@ public class Validator : FullNode, API
         this.timers ~= this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
-
-        if (this.config.admin.enabled)
-            this.admin_interface.start();
 
         if (this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
             this.nominator.startNominatingTimer();
@@ -434,6 +425,20 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
+        Instantiate a new instance of the Admin interface
+
+        This function needs to be called after the node is fully set-up.
+
+    ***************************************************************************/
+
+    public AdminInterface makeAdminInterface ()
+    {
+        return new AdminInterface(
+            this.config, this.config.validator.key_pair, this.clock);
+    }
+
+    /***************************************************************************
+
         Calls the base class `onAcceptedBlock` and additionally
         shuffles the quorum set if the new block header height
         is `QuorumShuffleInterval` blocks newer than the last
@@ -526,8 +531,6 @@ public class Validator : FullNode, API
     {
         super.shutdown();
         this.nominator.storeLatestState();
-        if (this.config.admin.enabled)
-            this.admin_interface.stop();
     }
 
     /***************************************************************************
