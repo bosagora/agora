@@ -32,6 +32,7 @@ import vibe.http.server;
 import vibe.http.router;
 import vibe.web.rest;
 
+import std.algorithm : filter;
 import std.file;
 import std.format;
 import std.typecons : Tuple, tuple;
@@ -65,8 +66,6 @@ public Listeners runNode (Config config)
     auto log = Logger(__MODULE__);
     log.trace("Config is: {}", config);
 
-    auto settings = new HTTPServerSettings(config.node.address);
-    settings.port = config.node.port;
     auto router = new URLRouter();
 
     mkdirRecurse(config.node.data_dir);
@@ -103,11 +102,10 @@ public Listeners runNode (Config config)
         result.node = new FullNode(config);
         router.registerRestInterface!(agora.api.FullNode.API)(result.node);
     }
-    settings.rejectConnectionPredicate =
-        (in address) nothrow @safe
-        {
-            return result.node.getBanManager().isBanned(address.toAddressString());
-        };
+
+    bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
+        return result.node.getBanManager().isBanned(address.toAddressString());
+    };
 
     // Register a path for `register_listener` adding client's address.
     router.route("/register_listener")
@@ -126,16 +124,23 @@ public Listeners runNode (Config config)
 
     setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
 
-    scope (exit)
+
+
+    // HTTP interfaces for the node
+    foreach (interface_; config.interfaces.filter!(i => i.type == InterfaceConfig.Type.http))
     {
-        log.info("Listening for blockchain data on {}:{}", config.node.address, settings.port);
-        if (result.admin !is null)
-            log.info("Admin interface listening on {}:{}", config.admin.address, settings.port);
+        auto settings = new HTTPServerSettings(interface_.address);
+        settings.port = interface_.port;
+        settings.rejectConnectionPredicate = isBannedDg;
+        log.info("Node will be listening on HTTP interface: {}:{}", interface_.address, settings.port);
+        result.http ~= listenHTTP(settings, router);
     }
 
-    result.http ~= listenHTTP(settings, router);
     if (result.admin !is null)
+    {
+        log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
         result.http ~= result.admin.start();
+    }
 
     return result;
 }

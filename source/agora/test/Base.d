@@ -828,8 +828,11 @@ public class TestAPIManager
             this.blocks, this.test_conf, time, eArgs,
             conf.node.timeout, file, line);
 
-        this.reg.register(conf.node.address, api.listener());
-        this.nodes ~= NodePair(conf.node.address, api, time);
+        foreach (ref interf; conf.interfaces)
+        {
+            this.reg.register(interf.address, api.listener());
+            this.nodes ~= NodePair(interf.address, api, time);
+        }
         return api;
     }
 
@@ -1209,6 +1212,9 @@ public class TestNetworkManager : NetworkManager
     import agora.api.handler.PreImage;
     import agora.api.handler.Transaction;
 
+    /// Remove this once `registerListener` is gone
+    private string address;
+
     ///
     public Registry!TestAPI* registry;
 
@@ -1216,12 +1222,13 @@ public class TestNetworkManager : NetworkManager
     public Registry!NameRegistryAPI* nregistry;
 
     /// Constructor
-    public this (Parameters!(NetworkManager.__ctor) args,
+    public this (Parameters!(NetworkManager.__ctor) args, string address,
                  Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg)
     {
         super(args);
         this.registry = reg;
         this.nregistry = nreg;
+        this.address = address;
     }
 
     ///
@@ -1296,8 +1303,7 @@ public class TestNetworkManager : NetworkManager
     /// Overridable for LocalRest which uses public keys
     protected final override void registerAsListener (NetworkClient client)
     {
-        (cast(TestNetworkClient)client).registerListenerAddress(
-            this.node_config.address);
+        (cast(TestNetworkClient)client).registerListenerAddress(this.address);
     }
 }
 
@@ -1471,7 +1477,7 @@ private mixin template TestNodeMixin ()
     public void printLog ()
     {
         auto output = stdout.lockingTextWriter();
-        output.formattedWrite("Log for node: %s\n", this.config.node.address);
+        output.formattedWrite("Log for node: %s\n", this.config.interfaces[0].address);
         output.put("======================================================================\n");
         CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
@@ -1511,7 +1517,8 @@ private mixin template TestNodeMixin ()
     {
         assert(taskman !is null);
         return new TestNetworkManager(
-            this.config, metadata, taskman, clock, this.registry, this.nregistry);
+            this.config, metadata, taskman, clock,
+            this.config.interfaces[0].address, this.registry, this.nregistry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1933,11 +1940,20 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return result;
     }
 
-    NodeConfig makeNodeConfig (Address address)
+    InterfaceConfig makeInterfaceConfig (Address address)
+    {
+        InterfaceConfig conf =
+        {
+            address : address,
+        };
+
+        return conf;
+    }
+
+    NodeConfig makeNodeConfig ()
     {
         NodeConfig conf =
         {
-            address : address,
             retry_delay : test_conf.retry_delay,
             max_retries : test_conf.max_retries,
             timeout : test_conf.timeout,
@@ -1990,7 +2006,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         Config conf =
         {
             banman : ban_conf,
-            node : makeNodeConfig(self_address),
+            node : makeNodeConfig(),
+            interfaces: [ makeInterfaceConfig(self_address) ],
             consensus: makeConsensusConfig(),
             validator : validator,
             network : makeNetworkConfig(idx, addresses),
@@ -2005,7 +2022,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         Config conf =
         {
             banman : ban_conf,
-            node : makeNodeConfig(self_address),
+            node : makeNodeConfig(),
+            interfaces: [ makeInterfaceConfig(self_address) ],
             consensus: makeConsensusConfig(),
             network : makeNetworkConfig(idx, addresses),
         };

@@ -91,6 +91,9 @@ public struct Config
     /// The node config
     public NodeConfig node;
 
+    /// Configuration for interfaces the node expose (only http for now)
+    public immutable InterfaceConfig[] interfaces = InterfaceConfig.Default;
+
     /// Consensus parameters for the chain
     public ConsensusConfig consensus;
 
@@ -114,6 +117,38 @@ public struct Config
 
     /// Event handler config
     public EventHandlerConfig event_handlers;
+}
+
+/// Used to specify endpoint-specific configuration
+public struct InterfaceConfig
+{
+    static assert(!hasUnsharedAliasing!(typeof(this)),
+        "Type must be shareable accross threads");
+
+    /// Type of interface one is able to register
+    public enum Type
+    {
+        // FIXME: https://github.com/sociomantic-tsunami/ocean/issues/846
+        // /// Cannonical name is in upper case
+        // HTTP = 0,
+        /// Convenience alias for parsing
+        http = 0,
+    }
+
+    /// Ditto
+    public Type type;
+
+     /// Bind address
+    public string address;
+
+    /// Bind port
+    public ushort port;
+
+    /// Default values when none is given in the config file
+    private static immutable InterfaceConfig[/* Type.max */ 1] Default = [
+        // Publicly enabled by default
+        { type: Type.http, address: "0.0.0.0", port: 0xB0A, },
+    ];
 }
 
 /// Node config
@@ -144,12 +179,6 @@ public struct NodeConfig
 
     /// Maximum number of listeners to connect to
     public size_t max_listeners = 10;
-
-    /// Bind address
-    public string address = "0.0.0.0";
-
-    /// Bind port
-    public ushort port = 0xB0A;
 
     /// The local address where the stats server (currently Prometheus)
     /// is going to connect to, for example: http://0.0.0.0:8008
@@ -377,6 +406,34 @@ private const(string)[] parseSequence (string section, in CommandLine cmdln,
 /// ditto
 private Config parseConfigImpl (in CommandLine cmdln, Node root)
 {
+    immutable(InterfaceConfig)[] interfaces;
+
+    // TODO: Make parseSequence return any type, not just string[]
+    if (Node* interfacesNode = "interfaces" in root)
+    {
+        foreach (ref Node l; *interfacesNode)
+        {
+            auto type = get!(InterfaceConfig.Type, "interfaces", "type")(cmdln, &l);
+            // All nodes have a default address
+            auto address = opt!(string, "interfaces", "address")(
+                cmdln, &l, InterfaceConfig.Default[type].address);
+            // ... but some are disabled by default
+            ushort port = () {
+                const defaultPort = InterfaceConfig.Default[type].port;
+                if (defaultPort == 0)
+                    return get!(ushort, "interfaces", "port")(cmdln, &l);
+                return opt!(ushort, "interfaces", "port")(cmdln, &l, defaultPort);
+            }();
+
+            interfaces ~= InterfaceConfig(type, address, port);
+        }
+
+        if (!interfaces.length)
+            throw new Exception("The 'interfaces' section must be empty or have valid values");
+    }
+    else
+        interfaces = InterfaceConfig.Default;
+
     auto validator = parseValidatorConfig("validator" in root, cmdln);
     auto node = parseNodeConfig("node" in root, cmdln);
 
@@ -384,6 +441,7 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
     {
         banman : parseBanManagerConfig("banman" in root, cmdln),
         node : node,
+        interfaces: interfaces,
         consensus: parseConsensusConfig("consensus" in root, cmdln),
         validator : validator,
         flash : parseFlashConfig("flash" in root, cmdln, node, validator),
@@ -417,7 +475,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
 {
     auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
     auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
-    auto address = get!(string, "node", "address")(cmdln, node);
     auto commons_budget = opt!(string, "node", "commons_budget_address")(cmdln, node);
 
     auto commons_budget_address = (commons_budget.length > 0)
@@ -441,7 +498,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
         (cmdln, node);
 
     string data_dir = get!(string, "node", "data_dir")(cmdln, node);
-    auto port = get!(ushort, "node", "port")(cmdln, node);
     const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
     const block_time_offset_tolerance_secs = opt!(uint, "node", "block_time_offset_tolerance_secs")(cmdln, node);
     const block_catchup_interval = opt!(uint, "node", "block_catchup_interval_secs")(cmdln, node);
@@ -453,8 +509,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             testing : testing,
             limit_test_validators: limit_test_validators,
             block_interval_sec : block_interval_sec,
-            address : address,
-            port : port,
             retry_delay : retry_delay,
             max_retries : max_retries,
             timeout : timeout,
@@ -476,8 +530,10 @@ unittest
     {
         immutable conf_example = `
 node:
-  address: 0.0.0.0
-  port: 2926
+  interfaces:
+    - type: http
+      address: 0.0.0.0
+      port: 2926
   data_dir: .cache
   commons_budget_address: boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s
 `;
