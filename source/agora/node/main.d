@@ -127,6 +127,12 @@ private int main (string[] args)
         return 0;
     }
 
+    if (config.get().admin.enabled && !config.get().validator.enabled)
+    {
+        writeln("Cannot have admin interface enabled for non-validator node");
+        return 1;
+    }
+
     auto file_based_lock = FileBasedLock("agoraNode.lock", config.get().node.data_dir, true);
     try
         file_based_lock.lockThrow();
