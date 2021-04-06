@@ -612,10 +612,9 @@ public class ValidatorSet
         {
             auto results = this.db.execute(
                 "SELECT preimage, enrolled_height, distance " ~
-                "FROM validator_set WHERE key = ? AND enrolled_height <= ? " ~
-                "AND enrolled_height + distance >= ? AND active = ?",
-                enroll_key, height.value, height.value,
-                EnrollmentStatus.Active);
+                "FROM validator_set WHERE key = ? " ~
+                "AND enrolled_height + distance >= ? ORDER BY enrolled_height + distance",
+                enroll_key, height.value);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
@@ -625,7 +624,8 @@ public class ValidatorSet
                 ushort distance = row.peek!ushort(2);
 
                 auto pi = PreImageInfo(enroll_key, preimage, distance);
-                return pi.adjust(enrolled_height + distance - height);
+                auto times = enrolled_height + distance - height;
+                return (times > pi.distance) ? PreImageInfo.init : pi.adjust(times);
             }
         }
         catch (Exception ex)
