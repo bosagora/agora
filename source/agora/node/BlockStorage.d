@@ -474,10 +474,7 @@ public class BlockStorage : IBlockStorage
         this.is_saving = true;
         scope(exit) this.is_saving = false;
 
-        if (!this.write(data_position + SignatureOffset, sig.toBlob()[]))
-            assert(0);
-
-        size_t block_size = ValidatorsOffset;
+        size_t block_size = SignatureOffset;
         scope SerializeDg dg = (in ubyte[] data) @safe
         {
             // write to memory
@@ -486,6 +483,7 @@ public class BlockStorage : IBlockStorage
 
             block_size += data.length;
         };
+        serializePart(sig, dg);
         serializePart(validators, dg);
         this.writeChecksum();
     }
