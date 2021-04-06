@@ -455,93 +455,6 @@ public class FullNode : API
         this.timers = null;
     }
 
-    /***************************************************************************
-
-        Register the given address as a listener for gossip / consensus messages.
-
-        This register the given address into the `NetworkManager`.
-
-        Params:
-            address = the address of node to register
-
-    ***************************************************************************/
-
-    public void registerListener (Address address) @trusted
-    {
-        this.network.registerListener(address);
-    }
-
-    /// GET: /node_info
-    public override NodeInfo getNodeInfo () pure nothrow @safe
-    {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "node_info", "http");
-        return this.network.getNetworkInfo();
-    }
-
-    /***************************************************************************
-
-        Receive a transaction.
-
-        API:
-            PUT /transaction
-
-        Params:
-            tx = the received transaction
-
-    ***************************************************************************/
-
-    public override void putTransaction (Transaction tx) @safe
-    {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "transaction", "http");
-        auto tx_hash = hashFull(tx);
-        if (this.pool.hasTransactionHash(tx_hash))
-            return;
-
-        if (this.ledger.acceptTransaction(tx))
-        {
-            log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
-            this.network.peers[].each!(p => p.client.sendTransaction(tx));
-            this.pushTransaction(tx);
-        }
-    }
-
-    /// GET: /has_transaction_hash
-    public override bool hasTransactionHash (Hash tx) @safe
-    {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(
-                1, "has_transaction_hash", "http");
-        return this.pool.hasTransactionHash(tx);
-    }
-
-    /// GET: /block_height
-    public override ulong getBlockHeight ()
-    {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "block_height", "http");
-        return this.ledger.getBlockHeight();
-    }
-
-    /// GET: /blocks_from
-    public override const(Block)[] getBlocksFrom (ulong block_height,
-        uint max_blocks)  @safe
-    {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks_from", "http");
-        return this.ledger.getBlocksFrom(Height(block_height))
-            .take(min(max_blocks, MaxBatchBlocksSent)).array;
-    }
-
-    /// GET: /blocks/:height
-    public override const(Block) getBlock (ulong height)  @safe
-    {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks", "http");
-        return this.ledger.getBlocksFrom(Height(height)).front();
-    }
-
     /// Start the StatsServer
     public void startStatsServer ()
     {
@@ -745,6 +658,102 @@ public class FullNode : API
     {
         return new EnrollmentManager(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params);
+    }
+
+    /*+*************************************************************************
+    *                        FullNode API implementation                       *
+    * The following methods are implementation of the API, which is exposed by *
+    * our network interface generator (Vibe.d, Localrest) to expose interfaces.*
+    * The network code generator will take care of the (de) marshalling of the *
+    * parameter and the return value, so those methods can focus on            *
+    * the business code.                                                       *
+    ***************************************************************************/
+
+    /***************************************************************************
+
+        Register the given address as a listener for gossip / consensus messages.
+
+        This register the given address into the `NetworkManager`.
+
+        Params:
+            address = the address of node to register
+
+    ***************************************************************************/
+
+    public void registerListener (Address address) @trusted
+    {
+        this.network.registerListener(address);
+    }
+
+    /// GET: /node_info
+    public override NodeInfo getNodeInfo () pure nothrow @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "node_info", "http");
+        return this.network.getNetworkInfo();
+    }
+
+    /***************************************************************************
+
+        Receive a transaction.
+
+        API:
+            PUT /transaction
+
+        Params:
+            tx = the received transaction
+
+    ***************************************************************************/
+
+    public override void putTransaction (Transaction tx) @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "transaction", "http");
+        auto tx_hash = hashFull(tx);
+        if (this.pool.hasTransactionHash(tx_hash))
+            return;
+
+        if (this.ledger.acceptTransaction(tx))
+        {
+            log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
+            this.network.peers[].each!(p => p.client.sendTransaction(tx));
+            this.pushTransaction(tx);
+        }
+    }
+
+    /// GET: /has_transaction_hash
+    public override bool hasTransactionHash (Hash tx) @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(
+                1, "has_transaction_hash", "http");
+        return this.pool.hasTransactionHash(tx);
+    }
+
+    /// GET: /block_height
+    public override ulong getBlockHeight ()
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "block_height", "http");
+        return this.ledger.getBlockHeight();
+    }
+
+    /// GET: /blocks_from
+    public override const(Block)[] getBlocksFrom (ulong block_height,
+        uint max_blocks)  @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks_from", "http");
+        return this.ledger.getBlocksFrom(Height(block_height))
+            .take(min(max_blocks, MaxBatchBlocksSent)).array;
+    }
+
+    /// GET: /blocks/:height
+    public override const(Block) getBlock (ulong height)  @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks", "http");
+        return this.ledger.getBlocksFrom(Height(height)).front();
     }
 
     /// GET: /merkle_path
