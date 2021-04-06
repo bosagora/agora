@@ -315,7 +315,8 @@ public class FullNode : API
     {
         this.startPeriodicDiscovery();
         this.startPeriodicCatchup();
-        this.startStatsServer();
+        if (config.node.stats_listening_port != 0)
+            this.stats_server = this.makeStatsServer();
 
         // Special case
         // Block externalized handler is set and push for Genesis block.
@@ -448,25 +449,12 @@ public class FullNode : API
 
         this.taskman.logStats();
         this.network.shutdown();
-        this.stopStatsServer();
+        if (this.stats_server !is null)
+            this.stats_server.shutdown();
         this.pool = null;
         this.utxo_set = null;
         this.enroll_man = null;
         this.timers = null;
-    }
-
-    /// Start the StatsServer
-    public void startStatsServer ()
-    {
-        if (config.node.stats_listening_port != 0)
-            this.stats_server = this.makeStatsServer();
-    }
-
-    /// Stop the StatsServer
-    public void stopStatsServer ()
-    {
-        if (this.stats_server !is null)
-            this.stats_server.shutdown();
     }
 
     /// Returns a newly constructed StatsServer
