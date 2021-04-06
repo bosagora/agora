@@ -23,6 +23,7 @@ import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
+import agora.crypto.ECC;
 import agora.node.BlockStorage;
 import agora.utils.Test;
 import agora.utils.PrettyPrinter;
@@ -54,19 +55,11 @@ private void main ()
 
     // For genesis, we need to use the outputs, not previous transactions
     Transaction[] txs = genesisSpendable().map!(txb => txb.refund(WK.Keys.A.address).sign()).array();
-    const SIG1 = block.header.signature = Signature.fromString("0x000102030405060708090A0B0C0D0E0F" ~
-            "000102030405060708090A0B0C0D0E0F" ~
-            "000102030405060708090A0B0C0D0E0F" ~
-            "000102030405060708090A0B0C0D0E0F");
-    const SIG2 = block.header.signature = Signature.fromString("0xdeadbeefdeadbeefdeadbeefdeadbeef" ~
-            "deadbeefdeadbeefdeadbeefdeadbeef" ~
-            "deadbeefdeadbeefdeadbeefdeadbeef" ~
-            "deadbeefdeadbeefdeadbeefdeadbeef");
 
     void signBlockSig1 (Height h)
     {
         block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, Hash.init);
-        block.header.signature = SIG1;
+        block.header.signature = Signature(Scalar.random().toPoint(), Scalar.random());
         block.header.validators = BitField!ubyte(6);
         block.header.validators[1] = true;
         storage.saveBlock(block);
@@ -83,12 +76,12 @@ private void main ()
     {
         auto block2 = storage.readBlock(Height(h));
         assert(block2.header.validators[1] == true, format!"block at height %s:\n%s\n\n"(h, prettify(block2)));
-        block2.header.signature = SIG2;
+        block2.header.signature = Signature(Scalar.random().toPoint(), Scalar.random());
         block2.header.validators[0] = true;
-        storage.updateBlockSig(Height(h), block2.hashFull(), SIG2, block2.header.validators);
+        storage.updateBlockSig(Height(h), block2.hashFull(), block2.header.signature, block2.header.validators);
         block = storage.readBlock(Height(h));
-        assert(block.header.signature == SIG2, format!"Signature not updated for block at height %s:\n%s\n\n%s != %s"
-            (h, prettify(block), block.header.signature, SIG2));
+        assert(block == block2, format!"Signature not updated for block at height %s:\n%s\n\n%s != %s"
+            (h, prettify(block), block.header.signature, block2.header.signature));
     }
     /// Update each block adding an updated block multisig and set validator 0
     /// as also signed
