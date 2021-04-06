@@ -220,38 +220,9 @@ public class FullNode : API
 
     public this (const Config config)
     {
-        import TESTNET = agora.consensus.data.genesis.Test;
-        import COINNET = agora.consensus.data.genesis.Coinnet;
-
         this.config = config;
         this.log = this.makeLogger();
-
-        auto commons_budget = config.node.testing ?
-            TESTNET.CommonsBudgetAddress : COINNET.CommonsBudgetAddress;
-        immutable Genesis = () {
-            if (!config.node.testing)
-                return COINNET.GenesisBlock;
-            if (!config.node.limit_test_validators)
-                return TESTNET.GenesisBlock;
-
-            immutable Block result = {
-                header: {
-                    merkle_root: TESTNET.GenesisBlock.header.merkle_root,
-                    time_offset: TESTNET.GenesisBlock.header.time_offset,
-                    validators: typeof(BlockHeader.validators)(config.node.limit_test_validators),
-                    enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.limit_test_validators],
-                },
-                merkle_tree: TESTNET.GenesisBlock.merkle_tree,
-                txs:         TESTNET.GenesisBlock.txs,
-            };
-            return result;
-        }();
-
-        this.params = new immutable(ConsensusParams)(
-                Genesis,
-                commons_budget,
-                config.consensus,
-                config.node.block_interval_sec.seconds);
+        this.params = FullNode.makeConsensusParams(config);
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
@@ -456,6 +427,41 @@ public class FullNode : API
         this.utxo_set = null;
         this.enroll_man = null;
         this.timers = null;
+    }
+
+    /// Make a new instance of the consensus parameters based on the config
+    public static makeConsensusParams (in Config config)
+    {
+        import TESTNET = agora.consensus.data.genesis.Test;
+        import COINNET = agora.consensus.data.genesis.Coinnet;
+
+        auto commons_budget = config.node.testing ?
+            TESTNET.CommonsBudgetAddress : COINNET.CommonsBudgetAddress;
+
+        immutable Genesis = () {
+            if (!config.node.testing)
+                return COINNET.GenesisBlock;
+            if (!config.node.limit_test_validators)
+                return TESTNET.GenesisBlock;
+
+            immutable Block result = {
+                header: {
+                    merkle_root: TESTNET.GenesisBlock.header.merkle_root,
+                    time_offset: TESTNET.GenesisBlock.header.time_offset,
+                    validators: typeof(BlockHeader.validators)(config.node.limit_test_validators),
+                    enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.limit_test_validators],
+                },
+                merkle_tree: TESTNET.GenesisBlock.merkle_tree,
+                txs:         TESTNET.GenesisBlock.txs,
+            };
+            return result;
+        }();
+
+        return new immutable(ConsensusParams)(
+                Genesis,
+                commons_budget,
+                config.consensus,
+                config.node.block_interval_sec.seconds);
     }
 
     /// Returns a newly constructed StatsServer
