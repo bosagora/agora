@@ -54,9 +54,6 @@ public class AdminInterface
     /// Logger instance
     protected Logger log;
 
-    /// HTTP listener
-    private HTTPListener listener;
-
     /// Config instance
     private const Config config;
 
@@ -93,7 +90,7 @@ public class AdminInterface
 
     ***************************************************************************/
 
-    public void start ()
+    public HTTPListener start ()
     {
         if (!this.config.admin.enabled)
             assert(0, "Admin interface is not enabled in config settings.");
@@ -101,7 +98,7 @@ public class AdminInterface
         auto settings = new HTTPServerSettings(this.config.admin.address);
         settings.port = this.config.admin.port;
 
-        auto router = new URLRouter;
+        auto router = new URLRouter();
 
         // API endpoints for this validator
         if (this.config.validator.enabled)
@@ -112,22 +109,6 @@ public class AdminInterface
             router.get("/encryptionKeyQR", &qrCode.keyQRCreate);
         }
 
-        log.trace("Started admin interface ...");
-        this.listener = listenHTTP(settings, router);
-
-        log.info("Admin interface listening to HTTP: http://{}:{}",
-            settings.bindAddresses[0], settings.port);
-    }
-
-    /***************************************************************************
-
-        Stop listening for requests
-
-    ***************************************************************************/
-
-    public void stop ()
-    {
-        log.trace("Stopping admin interface ...");
-        this.listener.stopListening();
+        return listenHTTP(settings, router);
     }
 }
