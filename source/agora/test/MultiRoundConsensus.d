@@ -69,8 +69,8 @@ unittest
         mixin ForwardCtor!();
 
         ///
-        protected override CustomNominator getNominator (
-            Parameters!(TestValidatorNode.getNominator) args)
+        protected override CustomNominator makeNominator (
+            Parameters!(TestValidatorNode.makeNominator) args)
         {
             return new CustomNominator(
                 this.params, this.config.validator.key_pair, args,

@@ -8,7 +8,7 @@
     Dependency_injection:
       To make the code testable, this classes exposes a few functions which are
       used to perform dependency injection. Those functions all follow the same
-      pattern: they are `protected`, and called `getXXX`.
+      pattern: they are `protected`, and called `makeXXX`.
       They can rely on both `this.config` and `this.params` fields being set.
 
     Copyright:
@@ -255,15 +255,15 @@ public class FullNode : API
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
-        this.taskman = this.getTaskManager();
-        this.clock = this.getClock(this.taskman);
-        this.metadata = this.getMetadata();
-        this.network = this.getNetworkManager(this.metadata, this.taskman, this.clock);
-        this.storage = this.getBlockStorage();
-        this.pool = this.getPool();
-        this.utxo_set = this.getUtxoSet();
-        this.enroll_man = this.getEnrollmentManager();
-        this.fee_man = this.getFeeManager();
+        this.taskman = this.makeTaskManager();
+        this.clock = this.makeClock(this.taskman);
+        this.metadata = this.makeMetadata();
+        this.network = this.makeNetworkManager(this.metadata, this.taskman, this.clock);
+        this.storage = this.makeBlockStorage();
+        this.pool = this.makeTransactionPool();
+        this.utxo_set = this.makeUTXOSet();
+        this.enroll_man = this.makeEnrollmentManager();
+        this.fee_man = this.makeFeeManager();
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
         this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
@@ -325,9 +325,9 @@ public class FullNode : API
 
     /// Returns an already instantiated version of the BanManager
     /// (please also see `NetworkManager.getBanMananger()`)
-    package BanManager getAlreadyCreatedBanManager () @safe @nogc nothrow pure
+    package BanManager getBanManager () @safe @nogc nothrow pure
     {
-        return this.network.getAlreadyCreatedBanManager();
+        return this.network.getBanManager();
     }
 
     /***************************************************************************
@@ -546,7 +546,7 @@ public class FullNode : API
     public void startStatsServer ()
     {
         if (config.node.stats_listening_port != 0)
-            this.stats_server = getStatsServer();
+            this.stats_server = this.makeStatsServer();
     }
 
     /// Stop the StatsServer
@@ -557,7 +557,7 @@ public class FullNode : API
     }
 
     /// Returns a newly constructed StatsServer
-    protected StatsServer getStatsServer ()
+    protected StatsServer makeStatsServer ()
     {
         return new StatsServer(this.config.node.stats_listening_port);
     }
@@ -597,7 +597,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected NetworkManager getNetworkManager (Metadata metadata,
+    protected NetworkManager makeNetworkManager (Metadata metadata,
         ITaskManager taskman, Clock clock)
     {
         return new NetworkManager(this.config, metadata, taskman, clock);
@@ -615,7 +615,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected ITaskManager getTaskManager ()
+    protected ITaskManager makeTaskManager ()
     {
         return new VibeTaskManager();
     }
@@ -633,7 +633,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected Clock getClock (ITaskManager taskman)
+    protected Clock makeClock (ITaskManager taskman)
     {
         // non-synchronizing clock (for now)
         return new Clock(
@@ -654,7 +654,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected TransactionPool getPool ()
+    protected TransactionPool makeTransactionPool ()
     {
         return new TransactionPool(this.cacheDB);
     }
@@ -671,7 +671,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected UTXOSet getUtxoSet ()
+    protected UTXOSet makeUTXOSet ()
     {
         return new UTXOSet(this.stateDB);
     }
@@ -687,7 +687,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected FeeManager getFeeManager ()
+    protected FeeManager makeFeeManager ()
     {
         return new FeeManager(this.stateDB, this.params);
     }
@@ -705,7 +705,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected Metadata getMetadata () @system
+    protected Metadata makeMetadata () @system
     {
         return new DiskMetadata(this.config.node.data_dir);
     }
@@ -720,7 +720,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected IBlockStorage getBlockStorage () @system
+    protected IBlockStorage makeBlockStorage () @system
     {
         version (unittest)
         {
@@ -741,7 +741,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected EnrollmentManager getEnrollmentManager ()
+    protected EnrollmentManager makeEnrollmentManager ()
     {
         return new EnrollmentManager(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params);

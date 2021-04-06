@@ -418,7 +418,7 @@ public class NetworkManager
 
     /// Returns an already instantiated version of the BanManager
     /// (please also see `NetworkManager.getBanMananger()`)
-    public BanManager getAlreadyCreatedBanManager () @safe @nogc nothrow pure
+    public BanManager getBanManager () @safe @nogc nothrow pure
     {
         return this.banman;
     }

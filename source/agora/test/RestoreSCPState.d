@@ -98,7 +98,7 @@ unittest
             }
             super.restoreSCPState();
         }
-        protected override SCPEnvelopeStore getSCPEnvelopeStore (string)
+        protected override SCPEnvelopeStore makeSCPEnvelopeStore (string)
         {
             return new TestSCPEnvelopeStore();
         }
@@ -109,8 +109,8 @@ unittest
         mixin ForwardCtor!();
 
         ///
-        protected override ReNominator getNominator (
-            Parameters!(TestValidatorNode.getNominator) args)
+        protected override ReNominator makeNominator (
+            Parameters!(TestValidatorNode.makeNominator) args)
         {
             return new ReNominator(
                 this.params, this.config.validator.key_pair, args,

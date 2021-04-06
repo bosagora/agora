@@ -167,7 +167,7 @@ extern(D):
         this.taskman = taskman;
         this.ledger = ledger;
         this.enroll_man = enroll_man;
-        this.scp_envelope_store = this.getSCPEnvelopeStore(data_dir);
+        this.scp_envelope_store = this.makeSCPEnvelopeStore(data_dir);
         this.restoreSCPState();
     }
 
@@ -614,7 +614,7 @@ extern(D):
 
     ***************************************************************************/
 
-    protected SCPEnvelopeStore getSCPEnvelopeStore (string data_dir)
+    protected SCPEnvelopeStore makeSCPEnvelopeStore (string data_dir)
     {
         return new SCPEnvelopeStore(buildPath(data_dir, "scp_envelopes.dat"));
     }

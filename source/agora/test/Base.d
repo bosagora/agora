@@ -499,7 +499,7 @@ extern(D):
     }
 
     // return a SCPEnvelopeStore backed by an in-memory SQLite db
-    protected override SCPEnvelopeStore getSCPEnvelopeStore (string data_dir)
+    protected override SCPEnvelopeStore makeSCPEnvelopeStore (string data_dir)
     {
         return new SCPEnvelopeStore(":memory:");
     }
@@ -1437,7 +1437,7 @@ private mixin template TestNodeMixin ()
         stdout.flush();
     }
 
-    protected override IBlockStorage getBlockStorage () @system
+    protected override IBlockStorage makeBlockStorage () @system
     {
         return new MemBlockStorage(this.blocks);
     }
@@ -1453,19 +1453,19 @@ private mixin template TestNodeMixin ()
     }
 
     /// Used by the node
-    public override Metadata getMetadata () @system
+    public override Metadata makeMetadata () @system
     {
         return new MemMetadata();
     }
 
     /// Return a LocalRest-backed task manager
-    protected override ITaskManager getTaskManager ()
+    protected override ITaskManager makeTaskManager ()
     {
         return new LocalRestTaskManager();
     }
 
     /// Return an instance of the custom TestNetworkManager
-    protected override NetworkManager getNetworkManager (
+    protected override NetworkManager makeNetworkManager (
         Metadata metadata, ITaskManager taskman, Clock clock)
     {
         assert(taskman !is null);
@@ -1474,7 +1474,7 @@ private mixin template TestNodeMixin ()
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
-    protected override EnrollmentManager getEnrollmentManager ()
+    protected override EnrollmentManager makeEnrollmentManager ()
     {
         return new EnrollmentManager(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params);
@@ -1557,7 +1557,7 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock getClock (ITaskManager taskman)
+    protected override TestClock makeClock (ITaskManager taskman)
     {
         return new TestClock(this.taskman,
             (out long time_offset) { return true; }, this.cur_time);
@@ -1658,8 +1658,8 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Returns an instance of a TestNominator with customizable behavior
-    protected override TestNominator getNominator (
-        Parameters!(Validator.getNominator) args)
+    protected override TestNominator makeNominator (
+        Parameters!(Validator.makeNominator) args)
     {
         return new TestNominator(
             this.params, this.config.validator.key_pair, args,
@@ -1668,7 +1668,7 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock getClock (ITaskManager taskman)
+    protected override TestClock makeClock (ITaskManager taskman)
     {
         return new TestClock(this.taskman,
             (out long time_offset)

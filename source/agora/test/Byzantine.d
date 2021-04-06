@@ -96,8 +96,8 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override TestNominator getNominator (
-        Parameters!(TestValidatorNode.getNominator) args)
+    protected override TestNominator makeNominator (
+        Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new ByzantineNominator(
             this.params, this.config.validator.key_pair, args,
@@ -156,8 +156,8 @@ private class SpyingValidator : TestValidatorNode
     }
 
     ///
-    protected override TestNominator getNominator (
-        Parameters!(TestValidatorNode.getNominator) args)
+    protected override TestNominator makeNominator (
+        Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new SpyNominator(
             this.params, this.config.validator.key_pair, args,

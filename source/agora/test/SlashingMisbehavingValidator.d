@@ -78,13 +78,13 @@ private class NoPreImageVN : TestValidatorNode
         super(args);
     }
 
-    protected override EnrollmentManager getEnrollmentManager ()
+    protected override EnrollmentManager makeEnrollmentManager ()
     {
         return new MissingPreImageEM(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params, this.reveal_preimage);
     }
 
-    protected override UTXOSet getUtxoSet ()
+    protected override UTXOSet makeUTXOSet ()
     {
         return this.utxo_set;
     }

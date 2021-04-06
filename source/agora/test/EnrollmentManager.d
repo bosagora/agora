@@ -277,8 +277,8 @@ unittest
         }
 
         ///
-        protected override TestNominator getNominator (
-            Parameters!(TestValidatorNode.getNominator) args)
+        protected override TestNominator makeNominator (
+            Parameters!(TestValidatorNode.makeNominator) args)
         {
             return new BadNominator(
                 this.params, this.config.validator.key_pair, args,

@@ -99,8 +99,8 @@ private class ByzantineNode (ByzantineReason reason) : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override BadBlockSigningNominator getNominator (
-        Parameters!(TestValidatorNode.getNominator) args)
+    protected override BadBlockSigningNominator makeNominator (
+        Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new BadBlockSigningNominator(
             this.params, this.config.validator.key_pair, args,
