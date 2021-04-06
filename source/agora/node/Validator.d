@@ -528,6 +528,7 @@ public class Validator : FullNode, API
     override void shutdown ()
     {
         super.shutdown();
+        this.nominator.stopNominatingTimer();
         this.nominator.storeLatestState();
     }
 
