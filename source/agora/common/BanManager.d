@@ -53,6 +53,9 @@ public class BanManager
         /// To set an IP as banned, we simply set its un-ban time in the future.
         /// By default it's set to the past (therefore un-banned)
         private TimePoint banned_until;
+
+        /// Can not be banned
+        private bool whitelisted;
     }
 
     /// Container type to emulate an AA, with serialization routines
@@ -176,10 +179,10 @@ public class BanManager
 
     public void onFailedRequest (Address address) @safe nothrow
     {
-        if (this.isBanned(address))
+        auto status = this.get(address);
+        if (this.isBanned(address) || status.whitelisted)
             return;
 
-        auto status = this.get(address);
         status.fail_count++;
 
         if (status.fail_count >= this.config.max_failed_requests)
@@ -249,8 +252,42 @@ public class BanManager
 
     public void banUntil (Address address, TimePoint banned_until) @safe nothrow
     {
+        if (this.get(address).whitelisted)
+            return; // Whitelisted address
+
         log.info("BanManager: Address {} banned until {}", address, banned_until);
         this.get(address).banned_until = banned_until;
+    }
+
+    /***************************************************************************
+
+        Whitelist an address to avoid banning it
+
+        Params:
+            address = the address to whitelist
+
+    ***************************************************************************/
+
+    public void whitelist (Address address)
+    {
+        this.get(address).whitelisted = true;
+    }
+
+    /***************************************************************************
+
+        Unwhitelist an address to allow banning it
+
+        Params:
+            address = the address to unwhitelist
+
+    ***************************************************************************/
+
+    public void unwhitelist (Address address)
+    {
+        auto status = this.get(address);
+        if (status.whitelisted)
+            status.fail_count = 0;
+        status.whitelisted = false;
     }
 
     /***************************************************************************
@@ -344,9 +381,11 @@ unittest
     }
 
     auto banman = new UnitBanMan();
+    banman.whitelist("whitelist-node");
     foreach (idx; 0 .. 9)
     {
         banman.onFailedRequest("node-1");
+        banman.onFailedRequest("whitelist-node");
         assert(banman.get("node-1").fail_count == idx + 1);
         assert(!banman.isBanned("node-1"));
     }
@@ -357,6 +396,9 @@ unittest
     assert(banman.get("node-1").fail_count == 0);  // reset counter on ban
     assert(banman.isBanned("node-1"));
     assert(banman.getUnbanTime("node-1") == 86400);  // banned until "next day"
+
+    banman.onFailedRequest("whitelist-node");
+    assert(!banman.isBanned("whitelist-node"));
 
     // stop counting failed requests during the ban
     banman.onFailedRequest("node-1");
