@@ -44,6 +44,7 @@ unittest
     auto gen_key_pair = WK.Keys.Genesis;
     // Get the genesis block, make sure it's the only block externalized
     auto blocks = node_1.getBlocksFrom(0, 2);
+    assert(blocks.length == 1, "Should only have Genesis Block at this time");
 
     Transaction[] txs;
 
@@ -75,6 +76,6 @@ unittest
     Thread.sleep(2.seconds);  // wait for propagation
 
     // New block was not created because all validators would expire
-    network.assertSameBlocks(iota(network.nodes.length),
-        Height(GenesisValidatorCycle - 1));
+    assert(node_1.getBlockHeight() == GenesisValidatorCycle - 1,
+        "Block should not have been externalized as there will be no active validators for next block");
 }
