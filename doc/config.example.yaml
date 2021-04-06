@@ -21,10 +21,6 @@ node:
   min_listeners: 2
   # Maximum number of non-validating nodes to connect to
   max_listeners: 10
-  # Address to which we bind
-  address: 0.0.0.0 # Any node can bind - default value
-  # Port on which we bind
-  port:    2826    # 0xB0A, default value
   # Number of milliseconds to wait between retrying requests
   retry_delay: 3000
   # Maximum number of retries to issue before a request is considered failed
@@ -43,6 +39,16 @@ node:
   # The duration between requests for retrieving the latest blocks
   # from all other nodes
   block_catchup_interval_secs: 20
+
+# Each entry in this array is an interface Agora will listen to, allowing to
+# expose the same node on more than one network interface or with different
+# API, such as having one interface using HTTP+JSON and the other TCP+binary.
+interfaces:
+  - type: http
+    # Address to which we bind
+    address: 0.0.0.0 # Any node can bind - default value
+    # Port on which we bind
+    port:    2826    # 0xB0A, default value
 
 ################################################################################
 ##                             Validator configuration                        ##
