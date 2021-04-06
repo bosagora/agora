@@ -393,7 +393,8 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    bool addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages) @safe
+    public bool addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages)
+        @safe
     {
         foreach (block; blocks)
         {
