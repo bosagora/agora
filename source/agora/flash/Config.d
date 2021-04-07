@@ -65,6 +65,9 @@ public struct FlashConfig
     /// The maximum retry delay between retrying failed requests. Should be lower
     /// than `max_retry_time`
     public Duration max_retry_delay = 2000.msecs;
+
+    /// Multiplier for the truncating exponential backoff retrying algorithm
+    public uint retry_multiplier = 10;
 }
 
 /// Channel configuration. These fields remain static throughout the
