@@ -51,11 +51,42 @@ public struct Logger
         this.logger.buffer(new char[](16384));
     }
 
-    public void opDispatch (string call, Args...) (Args args)
+    /// See `ocean.util.log.Logger : Logger.trace`
+    public void trace (Args...) (cstring fmt, Args args)
     {
+        this.format(LogLevel.Trace, fmt, args);
+    }
+
+    /// See `ocean.util.log.Logger : Logger.info`
+    public void info (Args...) (cstring fmt, Args args)
+    {
+        this.format(LogLevel.Info, fmt, args);
+    }
+
+    /// See `ocean.util.log.Logger : Logger.warn`
+    public void warn (Args...) (cstring fmt, Args args)
+    {
+        this.format(LogLevel.Warn, fmt, args);
+    }
+
+    /// See `ocean.util.log.Logger : Logger.error`
+    public void error (Args...) (cstring fmt, Args args)
+    {
+        this.format(LogLevel.Error, fmt, args);
+    }
+
+    /// See `ocean.util.log.Logger : Logger.fatal`
+    public void fatal (Args...) (cstring fmt, Args args)
+    {
+        this.format(LogLevel.Fatal, fmt, args);
+    }
+
+    /// See `ocean.util.log.Logger : Logger.format`
+    public void format (Args...) (LogLevel level, cstring fmt, Args args)
+    {
+        import core.memory : GC;
         try
         {
-            import core.memory : GC;
             if (GC.inFinalizer())
             {
                 writeln("allowing logging from the destructor on a GC thread would risk running into segfaults, please see issue #1128");
@@ -65,7 +96,7 @@ public struct Logger
             {
                 assert(0,"\nplease make sure you are declaring the \nmixin AddLogger!(); statement on top, followed by:\nstatic this{}; followed by:\nstatic ~this{};");
             }
-            mixin("this.logger." ~ call ~ "(args);");
+            this.logger.format(level, fmt, args);
         }
         catch (Exception ex)
         {
