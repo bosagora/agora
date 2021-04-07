@@ -33,7 +33,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count >= GenesisValidators,  // may connect to itself (#772)
+        assert(addresses.sort.uniq.count >= GenesisValidators - 1,  // >= since it may connect to itself (#772)
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
@@ -57,7 +57,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count >= 10,  // may connect to itself (#772)
+        assert(addresses.sort.uniq.count >= 9,  // >= since it may connect to itself (#772)
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
@@ -79,7 +79,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count >= 6,  // may connect to itself (#772)
+        assert(addresses.sort.uniq.count >= GenesisValidators - 1,  // >= since it may connect to itself (#772)
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }
