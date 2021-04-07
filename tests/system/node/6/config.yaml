@@ -9,7 +9,7 @@ node:
   address: 0.0.0.0
   port:    6826
   retry_delay: 3000
-  max_retries: 10
+  max_retries: 50
   timeout: 5000
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
