@@ -396,7 +396,21 @@ public class UpdateSigner
             this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
         // confirm to the peer we're done, and await for peer's own confirmation
-        this.peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
+        while (1)
+        {
+            auto result = this.peer.confirmChannelUpdate(this.conf.chan_id,
+                seq_id);
+            if (result.error)
+            {
+                log.info("{}: confirmChannelUpdate rejected, trying again..: {}",
+                    this.kp.address.flashPrettify, result.message);
+                this.taskman.wait(100.msecs);
+                continue;
+            }
+
+            break;
+        }
+
         while (!this.peer_confirmed_update)
         {
             log.info("{}: Peer {} is still collecting signatures for seq {}. "

@@ -250,9 +250,13 @@ public interface FlashAPI
                 by the funder node through the call to `openChannel()`
             seq_id = the sequence ID just used for signing
 
+        Returns:
+            An error if the counter-party cannot accept this confirmation.
+            This may happen in case of synchronization issues.
+
     ***************************************************************************/
 
-    public void confirmChannelUpdate (/* in */ Hash chan_id,
+    public Result!bool confirmChannelUpdate (/* in */ Hash chan_id,
         /* in */ uint seq_id);
 
     /***************************************************************************

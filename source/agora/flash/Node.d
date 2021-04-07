@@ -718,13 +718,14 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     /// See `FlashAPI.confirmChannelUpdate`
-    public override void confirmChannelUpdate (/* in */ Hash chan_id,
+    public override Result!bool confirmChannelUpdate (/* in */ Hash chan_id,
         /* in */ uint seq_id) @trusted
     {
         if (auto channel = chan_id in this.channels)
             return channel.onConfirmedChannelUpdate(seq_id);
 
-        //return;  // todo: return error on invalid channel ID
+        return Result!bool(ErrorCode.InvalidChannelID,
+            "Channel ID not found");
     }
 
     /// See `FlashAPI.proposePayment`

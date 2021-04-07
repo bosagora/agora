@@ -200,10 +200,10 @@ public mixin template FlashNodeCommon ()
     }
 
     ///
-    public override void confirmChannelUpdate (/* in */ Hash chan_id,
+    public override Result!bool confirmChannelUpdate (/* in */ Hash chan_id,
         /* in */ uint seq_id) @trusted
     {
-        this.flash.confirmChannelUpdate(chan_id, seq_id);
+        return this.flash.confirmChannelUpdate(chan_id, seq_id);
     }
 
     ///

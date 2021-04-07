@@ -826,12 +826,16 @@ LOuter: while (1)
         return this.update_signer.getUpdateSig();
     }
 
-    public void onConfirmedChannelUpdate (in uint seq_id)
+    public Result!bool onConfirmedChannelUpdate (in uint seq_id)
     {
-        if (seq_id != this.update_signer.getSeqID())
-            return;  // todo: return some kind of error if peer is out of sync
+        const cur_seq_id = this.update_signer.getSeqID();
+        if (seq_id != cur_seq_id)
+            Result!bool(ErrorCode.InvalidSequenceID,
+                format("onConfirmedChannelUpdate: expected seq_id: %s. Got: %s",
+                    cur_seq_id, seq_id));
 
         this.update_signer.onConfirmedChannelUpdate();
+        return Result!bool(true);
     }
 
     /***************************************************************************
