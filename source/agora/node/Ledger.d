@@ -188,15 +188,7 @@ public class Ledger
             const HighestHeight = this.last_block.header.height;
             foreach (height; 0 .. HighestHeight + 1)
             {
-                Block block = this.storage.readBlock(Height(height));
-
-                // Make sure our data on disk is valid
-                if (auto fail_reason = this.validateBlock(block))
-                    throw new Exception(
-                        "A block loaded from disk is invalid: " ~
-                        fail_reason);
-
-                this.addValidatedBlock(block);
+                this.replayStoredBlock(this.storage.readBlock(Height(height)));
             }
         }
         else if (this.enroll_man.validatorCount() == 0)
@@ -430,6 +422,25 @@ public class Ledger
         foreach (const ref Transaction tx; transactions)
             getSumOutput(tx, tx_amount);
         return to!ulong(tx_amount.toString());
+    }
+
+    /***************************************************************************
+
+        Update the ledger state from a block which was read from storage
+
+        Params:
+            block = block to update the state from
+
+    ***************************************************************************/
+
+    protected void replayStoredBlock (in Block block) @safe
+    {
+        // Make sure our data on disk is valid
+        if (auto fail_reason = this.validateBlock(block))
+            throw new Exception("A block loaded from disk is invalid: " ~
+                fail_reason);
+
+        this.addValidatedBlock(block);
     }
 
     /***************************************************************************
