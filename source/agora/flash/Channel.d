@@ -41,6 +41,7 @@ import agora.utils.Log;
 import std.array;
 import std.algorithm;
 import std.conv;
+import std.datetime.systime;
 import std.exception;
 import std.format;
 import std.stdio;  // todo: remove
@@ -869,7 +870,8 @@ LOuter: while (1)
 
         // todo: replace with a better retry mechanism
         Result!PublicNonce result;
-        foreach (idx; 0 .. this.flash_conf.max_payment_retries)
+        const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
+        foreach (idx; 0 .. uint.max)
         {
             // re-fold
             if (update_height != this.height)
@@ -896,7 +898,12 @@ LOuter: while (1)
 
                 log.info("{}: Error proposing update with {}: {}",
                     this.kp.address.flashPrettify, this.peer_pk.flashPrettify, result);
-                this.taskman.wait((2 ^^ idx).seconds);
+
+                const WaitTime = (2 ^^ idx).seconds;
+                if (Clock.currTime() + WaitTime >= fail_time)
+                    break;  // timeout
+
+                this.taskman.wait(WaitTime);
                 continue;
             }
 
@@ -1108,7 +1115,8 @@ LOuter: while (1)
         const new_seq_id = this.cur_seq_id + 1;
 
         Result!PublicNonce result;
-        foreach (idx; 0 .. this.flash_conf.max_payment_retries)
+        const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
+        foreach (idx; 0 .. uint.max)
         {
             result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
                 payment.payment_hash, payment.amount, payment.lock_height,
@@ -1122,7 +1130,10 @@ LOuter: while (1)
 
                 log.info("{}: Error proposing payment: {}", this.kp.address.flashPrettify,
                     result);
-                this.taskman.wait((2 ^^ idx).seconds);
+                const WaitTime = (2 ^^ idx).seconds;
+                if (Clock.currTime() + WaitTime >= fail_time)
+                    break;  // timeout
+                this.taskman.wait(WaitTime);
                 continue;
             }
 

@@ -108,9 +108,10 @@ flash:
   # transaction has been published
   max_settle_time: 144
 
-  # Maximum number of times a payment should be retried before failure is
-  # reported to the listener (wallet / etc)
-  max_payment_retries: 3
+  # Maximum number of seconds to re-try a failed payment / update request
+  # before the request is considered failed and is reported to the listener
+  # (wallet / etc)
+  max_retry_time: 60
 
 ################################################################################
 ##                         Ban manager configuration                          ##

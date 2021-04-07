@@ -331,7 +331,7 @@ public class FlashNodeFactory
             min_settle_time : 0,
             max_settle_time : 100,
             key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
-            max_payment_retries : 3 };
+            max_retry_time : 4.seconds };
         return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
     }
 
@@ -744,7 +744,7 @@ unittest
         max_settle_time : 100,
         key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
         listener_address : ListenerAddress,
-        max_payment_retries : 1,  // fail fast
+        max_retry_time : 4.seconds,
     };
 
     auto alice = factory.create(alice_pair, alice_conf, address);
@@ -1402,7 +1402,7 @@ unittest
         max_settle_time : 100,
         key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
         listener_address : ListenerAddress,
-        max_payment_retries : 1,  // fail fast
+        max_retry_time : 4.seconds,
     };
 
     auto alice = factory.create(alice_pair, alice_conf, address);
