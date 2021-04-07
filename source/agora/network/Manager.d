@@ -1241,6 +1241,36 @@ public class NetworkManager
 
         return new RestInterfaceClient!TransactionReceivedHandler(settings);
     }
+
+    /***************************************************************************
+
+        Whitelist a PublicKey to avoid banning it
+
+        Params:
+            key = the PublicKey to whitelist
+
+    ***************************************************************************/
+
+    public void whitelist (PublicKey key)
+    {
+        this.peers[].filter!(p => p.key == key)
+            .each!(p => this.banman.whitelist(p.client.address));
+    }
+
+    /***************************************************************************
+
+        Unwhitelist a PublicKey to allow banning it
+
+        Params:
+            key = the PublicKey to unwhitelist
+
+    ***************************************************************************/
+
+    public void unwhitelist (PublicKey key)
+    {
+        this.peers[].filter!(p => p.key == key)
+            .each!(p => this.banman.unwhitelist(p.client.address));
+    }
 }
 
 /*******************************************************************************
