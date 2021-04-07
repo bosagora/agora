@@ -304,10 +304,10 @@ private UnitTestResult customModuleUnitTester ()
     {
         runInParallel(parallel_tests);
         runInParallel(heavy_tests);
-    }
 
-    //waiting for all parallel tasks to finish
-    iota(parallel_tests.length + heavy_tests.length).each!(x => finished_tasks_num.wait());
+        //waiting for all parallel tasks to finish
+        iota(parallel_tests.length + heavy_tests.length).each!(x => finished_tasks_num.wait());
+    }
 
     UnitTestResult result = { executed : executed, passed : passed };
     if (filtered > 0)
