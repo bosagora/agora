@@ -447,8 +447,8 @@ unittest
 
 *******************************************************************************/
 
-private Point generateSharedSecret (bool is_sender, Scalar our_secret,
-    Point their_pubkey)
+public Point generateSharedSecret (bool is_sender, Scalar our_secret,
+    Point their_pubkey) @trusted nothrow
 {
     auto shared_key = our_secret * their_pubkey;
 

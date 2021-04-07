@@ -19,6 +19,7 @@ version (unittest):
 import agora.api.FullNode;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.Key;
 import agora.test.Base;
 
 /// Situation: There are six validators enrolled in Genesis block. Right before
@@ -47,7 +48,7 @@ unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey())
+    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 

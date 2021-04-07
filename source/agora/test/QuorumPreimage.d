@@ -23,6 +23,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
+import agora.crypto.Key;
 import agora.node.FullNode;
 import agora.utils.Log;
 import agora.test.Base;
@@ -136,7 +137,7 @@ unittest
                     idx, node.getQuorumConfig(), quorums_1[idx])));
     }
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey())
+    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 

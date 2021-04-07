@@ -159,9 +159,30 @@ public class NetworkManager
             {
                 try
                 {
+                    import agora.flash.OnionPacket : generateSharedSecret;
+                    import libsodium.crypto_auth;
+
                     // LocalRest will return PublicKey.init,
                     // vibe.d will throw HTTPStatusException with status == 404
-                    key = client.getPublicKey();
+                    const ephemeral_kp = KeyPair.random();
+                    auto id = client.getPublicKey(ephemeral_kp.address);
+
+                    if (id.key == PublicKey.init)
+                        break;
+
+                    Hash shared_sec = generateSharedSecret(true,
+                        ephemeral_kp.secret, id.key).hashFull();
+                    static assert(shared_sec.sizeof >= crypto_auth_KEYBYTES);
+
+                    if (id.mac.length != crypto_auth_KEYBYTES ||
+                        crypto_auth_verify(id.mac.ptr, id.key[].ptr,
+                            id.key[].length, shared_sec[].ptr) != 0)
+                    {
+                        this.outer.banman.ban(this.address);
+                        return;
+                    }
+
+                    key = id.key;
                     break;
                 }
                 catch (Exception ex)

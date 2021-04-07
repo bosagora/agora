@@ -26,6 +26,7 @@ void manyValidators (size_t validators)
     import std.format;
     import std.range;
     import core.time : seconds;
+    import agora.crypto.Key;
 
     TestConf conf = { outsider_validators : validators - GenesisValidators,
         txs_to_nominate : 0 };
@@ -39,7 +40,7 @@ void manyValidators (size_t validators)
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey())
+    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
