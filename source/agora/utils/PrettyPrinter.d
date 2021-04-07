@@ -311,16 +311,16 @@ private struct TransactionFmt
 {
     static immutable ResultStr0 = `Type : Freeze, Inputs: None
 Outputs (6):
-boa1xrdwry6f...z5en(2,000,000), boa1xrdwrymw...q9ju(2,000,000), boa1xrdwryuh...5ecp(2,000,000),
-boa1xrdwryay...g39f(2,000,000), boa1xrdwry7v...2qjg(2,000,000), boa1xrdwryl0...akac(2,000,000)`;
+node21xrdwry...7esm(2,000,000), node31xrdwry...z30l(2,000,000), node41xrdwry...7sj6(2,000,000),
+node51xrdwry...upme(2,000,000), node61xrdwry...4je9(2,000,000), node71xrdwry...uaz7(2,000,000)`;
     const actual0 = format("%s", TransactionFmt(GenesisBlock.frozens.front));
     assert(ResultStr0 == actual0, actual0);
 
     static immutable ResultStr1 = `Type : Payment, Inputs: None
 Outputs (8):
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000)`;
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000),
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000),
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000)`;
     const actual1 = format("%s", TransactionFmt(GenesisBlock.payments.front));
     assert(ResultStr1 == actual1, actual1);
 }
@@ -416,13 +416,13 @@ Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs: None
 Outputs (8):
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000)
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000),
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000),
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000)
 Type : Freeze, Inputs: None
 Outputs (6):
-boa1xrdwry6f...z5en(2,000,000), boa1xrdwrymw...q9ju(2,000,000), boa1xrdwryuh...5ecp(2,000,000),
-boa1xrdwryay...g39f(2,000,000), boa1xrdwry7v...2qjg(2,000,000), boa1xrdwryl0...akac(2,000,000)`;
+node21xrdwry...7esm(2,000,000), node31xrdwry...z30l(2,000,000), node41xrdwry...7sj6(2,000,000),
+node51xrdwry...upme(2,000,000), node61xrdwry...4je9(2,000,000), node71xrdwry...uaz7(2,000,000)`;
     const actual = format("%s", BlockFmt(GenesisBlock));
     assert(ResultStr == actual, actual);
 }
@@ -471,13 +471,13 @@ Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs: None
 Outputs (8):
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000),
-boa1xrxydyju...j2yt(61,000,000), boa1xrxydyju...j2yt(61,000,000)
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000),
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000),
+genesis1xrxy...dg2p(61,000,000), genesis1xrxy...dg2p(61,000,000)
 Type : Freeze, Inputs: None
 Outputs (6):
-boa1xrdwry6f...z5en(2,000,000), boa1xrdwrymw...q9ju(2,000,000), boa1xrdwryuh...5ecp(2,000,000),
-boa1xrdwryay...g39f(2,000,000), boa1xrdwry7v...2qjg(2,000,000), boa1xrdwryl0...akac(2,000,000)
+node21xrdwry...7esm(2,000,000), node31xrdwry...z30l(2,000,000), node41xrdwry...7sj6(2,000,000),
+node51xrdwry...upme(2,000,000), node61xrdwry...4je9(2,000,000), node71xrdwry...uaz7(2,000,000)
 ====================================================
 Height: 1, Prev: 0x1f11...8cf0, Root: 0x0497...8fef, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
@@ -486,9 +486,9 @@ Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
 Type : Payment, Inputs (1): 0x1426...9ce5:0x4b6e...a32f
-Outputs (1): boa1xrxydyju...j2yt(61,000,000)
+Outputs (1): genesis1xrxy...dg2p(61,000,000)
 Type : Payment, Inputs (1): 0x25a5...31a5:0x4b6e...a32f
-Outputs (1): boa1xrxydyju...j2yt(61,000,000)
+Outputs (1): genesis1xrxy...dg2p(61,000,000)
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;

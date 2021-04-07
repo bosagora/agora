@@ -525,14 +525,14 @@ node:
       address: 0.0.0.0
       port: 2926
   data_dir: .cache
-  commons_budget_address: boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s
+  commons_budget_address: commons1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxywrcal
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
         assert(config.min_listeners == 2);
         assert(config.max_listeners == 10);
         assert(config.data_dir == ".cache");
-        assert(config.commons_budget_address.toString() == "boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s");
+        assert(config.commons_budget_address.toString() == "commons1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxywrcal");
     }
 }
 

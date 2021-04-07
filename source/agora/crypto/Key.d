@@ -28,7 +28,6 @@ import libsodium;
 import std.exception;
 import std.format;
 
-
 /// Simple signature example
 unittest
 {
@@ -136,21 +135,33 @@ public struct PublicKey
     /// Uses Stellar's representation instead of hex
     public string toString () const @trusted nothrow
     {
+        string hrp = HumanReadablePart;
+        version(unittest)
+        {
+            import agora.utils.WellKnownHRPs : getWellKnownHRP;
+            hrp = getWellKnownHRP(this.data);
+        }
+
         ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
         bin[VersionWidth .. $] = this.data[];
-        return encodeBech32(HumanReadablePart, bin, Encoding.Bech32m).
-            assumeUnique;
+        return encodeBech32(hrp, bin, Encoding.Bech32m).assumeUnique;
     }
 
     /// Make sure the sink overload of BitBlob is not picked
     public void toString (scope void delegate(const(char)[]) sink) const @trusted
     {
+        string hrp = HumanReadablePart;
+        version(unittest)
+        {
+            import agora.utils.WellKnownHRPs : getWellKnownHRP;
+            hrp = getWellKnownHRP(this.data);
+        }
+
         ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
         bin[VersionWidth .. $] = this.data[];
-        string encoded = encodeBech32(HumanReadablePart, bin,
-            Encoding.Bech32m).assumeUnique;
+        string encoded = encodeBech32(hrp, bin, Encoding.Bech32m).assumeUnique;
         sink(encoded);
     }
 
@@ -183,7 +194,6 @@ public struct PublicKey
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         auto dec = decodeBech32(str);
-        enforce(dec.hrp == HumanReadablePart);
         enforce(dec.data.length == VersionWidth + PublicKey.sizeof);
         enforce(dec.data[0] == VersionByte.AccountID);
         return PublicKey(typeof(this.data)(dec.data[VersionWidth .. $]));
@@ -394,7 +404,7 @@ public enum VersionByte : ubyte
 // random data, so it changes every time
 unittest
 {
-    immutable address = `boa1xrdwry6fpk7a57k4gwyj3mwnf59w808nygtuxsgdrpmv4p7ua2hqx78z5en`;
+    immutable address = `node21xrdwry6fpk7a57k4gwyj3mwnf59w808nygtuxsgdrpmv4p7ua2hqx277esm`;
     immutable seed    = `SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI`;
 
     KeyPair kp = KeyPair.fromSeed(SecretKey.fromString(seed));
