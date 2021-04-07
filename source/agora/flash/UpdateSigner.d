@@ -287,11 +287,12 @@ public class UpdateSigner
                 signed trigger transaction created in the first call to
                 `collectSignatures` where the `seq_id` was zero.
         Returns:
-            a pair of signed settlement and update / trigger transactions.
+            a pair of signed settlement and update / trigger transactions,
+            or an error if collaboration with the counter-party failed
 
     ***************************************************************************/
 
-    public UpdatePair collectSignatures (uint seq_id, Output[] outputs,
+    public Result!UpdatePair collectSignatures (uint seq_id, Output[] outputs,
         PrivateNonce priv_nonce, PublicNonce peer_nonce, Transaction prev_tx)
     {
         this.clearState();
@@ -329,6 +330,9 @@ public class UpdateSigner
             break;
         }
 
+        if (settle_res.error)
+            return Result!UpdatePair(settle_res.error, settle_res.message);
+
         log.info("{}: Settlement signature {} from {} received",
             this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
@@ -340,7 +344,7 @@ public class UpdateSigner
                 ~ " from {}: {}",
                 this.kp.address.flashPrettify, error, seq_id,
                 this.peer_pk.flashPrettify, settle_res.value);
-            assert(0);
+            return Result!UpdatePair(ErrorCode.InvalidSignature);
         }
 
         log.info("{}: Settlement signature {} from {} validated",
@@ -371,9 +375,8 @@ public class UpdateSigner
         log.info("{}: Update signature {} from {} received",
             this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify);
 
-        // todo: retry? add a better status code like NotReady?
-        if (update_res.value == Signature.init)
-            assert(0);
+        if (update_res.error)
+            return Result!UpdatePair(update_res.error, update_res.message);
 
         if (auto error = this.isInvalidUpdateMultiSig(this.pending_update,
             update_res.value, priv_nonce, peer_nonce, prev_tx))
@@ -383,7 +386,8 @@ public class UpdateSigner
                 ~ "signature {} from {}: {}",
                 this.kp.address.flashPrettify, error, seq_id,
                 this.peer_pk.flashPrettify, update_res.value);
-            assert(0);
+
+            return Result!UpdatePair(ErrorCode.InvalidSignature);
         }
         this.pending_update.peer_sig = update_res.value;
         this.pending_update.validated = true;
@@ -410,7 +414,7 @@ public class UpdateSigner
             our_update_sig : this.pending_update.our_sig,
         };
 
-        return pair;
+        return Result!UpdatePair(pair);
     }
 
     /***************************************************************************

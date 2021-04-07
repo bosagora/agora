@@ -475,9 +475,10 @@ public class Channel
         const Balance balance = { refund_amount : this.conf.capacity };
         Output[] outputs = this.buildBalanceOutputs(balance);
 
-        auto pair = this.update_signer.collectSignatures(0, outputs,
+        auto pair_res = this.update_signer.collectSignatures(0, outputs,
             priv_nonce, peer_nonce, this.conf.funding_tx);
-        this.onSetupComplete(pair);
+        assert(pair_res.error == ErrorCode.None);  // todo: handle
+        this.onSetupComplete(pair_res.value);
 
         // wait until the channel is open
         while (this.state != ChannelState.Open)
@@ -904,9 +905,11 @@ LOuter: while (1)
         const old_balance = this.cur_balance;
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
-        auto update_pair = this.update_signer.collectSignatures(new_seq_id,
+        auto update_pair_res = this.update_signer.collectSignatures(new_seq_id,
             new_outputs, priv_nonce, peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
+        assert(update_pair_res.error == ErrorCode.None); // todo: handle
+        auto update_pair = update_pair_res.value;
 
         log.info("{}: +Update+ Got new pair from {}! Balanced updated: {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
@@ -1031,9 +1034,18 @@ LOuter: while (1)
 
         this.cur_seq_id = payment.seq_id;
 
-        auto update_pair = this.update_signer.collectSignatures(
+        auto update_pair_res = this.update_signer.collectSignatures(
             payment.seq_id, new_outputs, payment.priv_nonce, payment.peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
+
+        if (update_pair_res.error)
+        {
+            log.error("Couldn't sign incoming payment: {}. Error: {}",
+                payment, update_pair_res.message);
+            return;  // todo: anything else we can do here?
+        }
+
+        auto update_pair = update_pair_res.value;
 
         log.info("{}: Got new pair from {}! Balance updated! {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
@@ -1115,12 +1127,13 @@ LOuter: while (1)
 
         if (result.error)
         {
+            log.error("Couldn't propose outgoing payment: {}. Error: {}",
+                payment, result.message);
             this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
                 result.error);
             return true;  // remove it from the queue
         }
 
-        this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
         auto new_balance = this.buildUpdatedBalance(direction,
             this.cur_balance, payment.amount, payment.payment_hash,
@@ -1130,9 +1143,21 @@ LOuter: while (1)
         log.info("{}: Created outgoing payment balance request: {}",
             this.kp.address.flashPrettify, new_balance);
 
-        auto update_pair = this.update_signer.collectSignatures(
+        auto update_pair_res = this.update_signer.collectSignatures(
             new_seq_id, new_outputs, priv_nonce, peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
+
+        if (update_pair_res.error)
+        {
+            log.error("Couldn't sign outgoing payment: {}. Error: {}",
+                payment, update_pair_res.message);
+            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
+                update_pair_res.error);
+            return true;  // remove it from the queue
+        }
+
+        this.cur_seq_id = new_seq_id;
+        auto update_pair = update_pair_res.value;
 
         log.info("{}: Got new pair from {}! Balanced updated. New balance: {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
@@ -1157,12 +1182,21 @@ LOuter: while (1)
     {
         const old_balance = this.cur_balance;
 
-        this.cur_seq_id = update.seq_id;
-        auto update_pair = this.update_signer.collectSignatures(
+        auto update_pair_res = this.update_signer.collectSignatures(
             update.seq_id,
             update.outputs, update.priv_nonce,
             update.peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
+
+        if (update_pair_res.error != ErrorCode.None)
+        {
+            log.error("Couldn't sign incoming update: {}. Error: {}",
+                update, update_pair_res.message);
+            return;
+        }
+
+        this.cur_seq_id = update.seq_id;
+        auto update_pair = update_pair_res.value;
 
         log.info("{}: Got new pair from {}! Balance updated: {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, update.balance);
