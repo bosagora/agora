@@ -25,6 +25,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.state.UTXOSet;
 import agora.crypto.Schnorr;
+import agora.crypto.Key;
 import agora.utils.Test;
 import agora.test.Base;
 
@@ -119,7 +120,7 @@ unittest
 
     auto nodes = network.clients;
     auto spendable = network.blocks[$ - 1].spendable().array;
-    auto bad_address = nodes[5].getPublicKey();
+    auto bad_address = nodes[5].getPublicKey(PublicKey.init).key;
 
     // discarded UTXOs (just to trigger block creation)
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;

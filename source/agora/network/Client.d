@@ -223,17 +223,21 @@ public class NetworkClient
 
     /***************************************************************************
 
+        Params:
+            key = key of the peer
+
         Returns:
-            the node's public key.
+            The public key of this node and a secret to prove identity
 
         Throws:
             `Exception` if the request failed.
 
     ***************************************************************************/
 
-    public PublicKey getPublicKey () @trusted
+    public Identity getPublicKey (PublicKey key = PublicKey.init) @trusted
     {
-        return this.attemptRequest!(API.getPublicKey, Throw.Yes)(this.api);
+        return this.attemptRequest!(API.getPublicKey, Throw.Yes)(this.api,
+            key);
     }
 
     /***************************************************************************

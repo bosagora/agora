@@ -18,6 +18,7 @@ version (unittest):
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.Key;
 import agora.test.Base;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
@@ -43,7 +44,7 @@ unittest
 
     auto nodes = network.clients;
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey()).array;
+    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key).array;
 
     QuorumConfig[] checkQuorum (Height height) {
         if (height > 0) // if not Genesis block

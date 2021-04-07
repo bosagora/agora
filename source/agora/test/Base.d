@@ -23,7 +23,7 @@ module agora.test.Base;
 version (unittest):
 
 import agora.api.FullNode : NodeInfo, NetworkState;
-import agora.api.Validator : ValidatorAPI = API;
+import agora.api.Validator : ValidatorAPI = API, Identity;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitField;
@@ -1465,6 +1465,18 @@ public interface TestAPI : ValidatorAPI
 
     /// Ditto
     public UTXO getUTXO (Hash hash);
+
+    /***************************************************************************
+
+        Params:
+            address = the address of node to query
+
+        Returns:
+            if `address` is banned or not
+
+    ***************************************************************************/
+
+    public bool isBanned (Address address);
 }
 
 /// Return type for `TestAPI.getUTXOs`
@@ -1634,6 +1646,12 @@ private mixin template TestNodeMixin ()
             throw new Exception(format("UTXO not found: %s", hash));
         return result;
     }
+
+    /// Check if an address is banned
+    public override bool isBanned (Address address)
+    {
+        return this.network.getBanManager().isBanned(address);
+    }
 }
 
 ///
@@ -1701,11 +1719,11 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// FullNode does not implement this
-    public override PublicKey getPublicKey () @safe
+    public override Identity getPublicKey (PublicKey) @safe
     {
         // NetworkManager assumes that if key == PublicKey.init,
         // we are *not* a Validator node, treated as a FullNode instead.
-        return PublicKey.init;
+        return Identity.init;
     }
 
     /// FullNode does not implement this
@@ -1759,7 +1777,7 @@ public class TestValidatorNode : Validator, TestAPI
     public override Enrollment createEnrollmentData ()
     {
         Hash[] utxo_hashes;
-        auto pubkey = this.getPublicKey();
+        auto pubkey = this.getPublicKey(PublicKey.init).key;
         auto utxos = this.utxo_set.getUTXOs(pubkey);
         assert(utxos.length > 0, format!"No utxo for public key %s"(pubkey));
         foreach (key, utxo; utxos)

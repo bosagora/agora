@@ -46,6 +46,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.crypto.Schnorr;
 import agora.flash.api.FlashAPI;
 static import agora.api.FullNode;
 
@@ -62,6 +63,16 @@ public import agora.api.FullNode;
 @serializationPolicy!(Base64ArrayPolicy)
 public interface FlashValidatorAPI : API, ExtendedFlashAPI
 {
+}
+
+/// Identity of a Validator node
+public struct Identity
+{
+    /// Public Key of the node
+    PublicKey key;
+
+    /// MAC
+    ubyte[] mac;
 }
 
 /*******************************************************************************
@@ -82,15 +93,18 @@ public interface API : agora.api.FullNode.API
 
     /***************************************************************************
 
+        Params:
+            key = key of the peer
+
         Returns:
-            The public key of this node
+            The public key of this node and a secret to prove identity
 
         API:
             GET /public_key
 
     ***************************************************************************/
 
-    public PublicKey getPublicKey ();
+    public Identity getPublicKey (PublicKey key);
 
     /***************************************************************************
 

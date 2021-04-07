@@ -256,11 +256,25 @@ public class Validator : FullNode, API
     }
 
     /// GET /public_key
-    public override PublicKey getPublicKey () pure nothrow @safe
+    public override Identity getPublicKey (PublicKey key) nothrow @safe
     {
+        import agora.flash.OnionPacket : generateSharedSecret;
+        import libsodium.crypto_auth;
         endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
             1, "public_key", "http");
-        return this.config.validator.key_pair.address;
+
+        Identity id = Identity(this.config.validator.key_pair.address);
+        if (key == PublicKey.init)
+            return id;
+
+        Hash shared_sec = generateSharedSecret(false,
+            this.config.validator.key_pair.secret, key).hashFull();
+        static assert(shared_sec.sizeof >= crypto_auth_KEYBYTES);
+
+        id.mac.length = crypto_auth_BYTES;
+        () @trusted { crypto_auth (id.mac.ptr, id.key[].ptr,
+            id.key[].length, shared_sec[].ptr); } ();
+        return id;
     }
 
     /***************************************************************************
@@ -575,7 +589,7 @@ public class Validator : FullNode, API
 
     private Hash getFrozenUTXO () @safe
     {
-        const pub_key = this.getPublicKey();
+        const pub_key = this.config.validator.key_pair.address;
         foreach (key, utxo; this.utxo_set.getUTXOs(pub_key))
         {
             if (utxo.type == TxType.Freeze &&

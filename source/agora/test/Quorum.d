@@ -23,6 +23,7 @@ import agora.consensus.data.Params;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.Key;
 import agora.node.FullNode;
 import agora.test.Base;
 
@@ -53,7 +54,7 @@ unittest
     // generate 18 blocks, 1 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = nodes.map!(node => node.getPublicKey())
+    const keys = nodes.map!(node => node.getPublicKey(PublicKey.init).key)
         .dropExactly(GenesisValidators)
         .takeExactly(conf.outsider_validators)
         .array;
