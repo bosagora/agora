@@ -61,7 +61,7 @@ public struct Logger
                 writeln("allowing logging from the destructor on a GC thread would risk running into segfaults, please see issue #1128");
                 return;
             }
-            else if (logger is null)
+            else if (this.logger is null)
             {
                 assert(0,"\nplease make sure you are declaring the \nmixin AddLogger!(); statement on top, followed by:\nstatic this{}; followed by:\nstatic ~this{};");
             }
