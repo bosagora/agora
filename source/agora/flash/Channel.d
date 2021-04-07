@@ -804,8 +804,11 @@ LOuter: while (1)
         if (seq_id < this.channel_updates.length)
             return Result!Signature(this.channel_updates[seq_id].our_settle_sig);
 
-        if (seq_id != this.update_signer.getSeqID())
-            return Result!Signature(ErrorCode.InvalidSequenceID);
+        const cur_seq_id = this.update_signer.getSeqID();
+        if (seq_id != cur_seq_id)
+            return Result!Signature(ErrorCode.InvalidSequenceID,
+                format("onRequestSettleSig: expected seq_id: %s. Got: %s",
+                    cur_seq_id, seq_id));
 
         return this.update_signer.getSettleSig();
     }
@@ -829,8 +832,11 @@ LOuter: while (1)
         if (seq_id < this.channel_updates.length)
             return Result!Signature(this.channel_updates[seq_id].our_update_sig);
 
-        if (seq_id != this.update_signer.getSeqID())
-            return Result!Signature(ErrorCode.InvalidSequenceID);
+        const cur_seq_id = this.update_signer.getSeqID();
+        if (seq_id != cur_seq_id)
+            return Result!Signature(ErrorCode.InvalidSequenceID,
+                format("onRequestUpdateSig: expected seq_id: %s. Got: %s",
+                    cur_seq_id, seq_id));
 
         return this.update_signer.getUpdateSig();
     }
@@ -995,7 +1001,8 @@ LOuter: while (1)
         // running out of sequence IDs
         if (seq_id != this.cur_seq_id + 1)
             return Result!PublicNonce(ErrorCode.InvalidSequenceID,
-                "Proposed sequence ID must be +1 of the previous sequence ID");
+                format("onProposedUpdate: expected seq_id: %s. Got: %s",
+                    this.cur_seq_id + 1, seq_id));
 
         // Filter out the htlcs that are not pending on this channel
         auto rev_htlcs_filtered = revert_htlcs.filter!(payment_hash =>
@@ -1345,7 +1352,8 @@ LOuter: while (1)
         // running out of sequence IDs
         if (seq_id != this.cur_seq_id + 1)
             return Result!PublicNonce(ErrorCode.InvalidSequenceID,
-                "Proposed sequence ID must be +1 of the previous sequence ID");
+                format("onProposedPayment: expected seq_id: %s. Got: %s",
+                    this.cur_seq_id + 1, seq_id));
 
         log.info("{}: onProposedPayment from {} accepted ({}, {}, {}, {}, {})",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify,
@@ -1880,8 +1888,8 @@ LOuter: while (1)
 
         if (seq_id != this.cur_seq_id)
             return Result!Point(ErrorCode.InvalidSequenceID,
-                format("Sequence Point %s does not match our latest ID %s.",
-                    seq_id, this.cur_seq_id));
+                format("requestCloseChannel: expected seq_id: %s. Got: %s",
+                    this.cur_seq_id, seq_id));
 
         // todo: check fee
         // todo: need to calculate *our* balance here and see if we can
@@ -1928,7 +1936,8 @@ LOuter: while (1)
 
         if (seq_id != this.cur_seq_id)
             return Result!Signature(ErrorCode.InvalidSequenceID,
-                "Wrong sequence ID");
+                format("requestCloseSig: expected seq_id: %s. Got: %s",
+                    this.cur_seq_id, seq_id));
 
         // todo: handle this edge-case (can occur due to timing issues)
         if (this.pending_close.our_sig == Signature.init)
