@@ -290,14 +290,6 @@ public class Validator : FullNode, API
         import std.range;
         import std.format;
 
-        if (auto err = this.ledger.validateBlock(block))
-        {
-            log.error("Block failed to validate: {}", err);
-            // Maybe the block was already added to the ledger
-            return this.ledger.getBlockHeight() >= block.header.height;
-        }
-        auto sig = this.nominator.createBlockSignature(block);
-        auto multi_sig = block.header.signature;
         auto validators = this.enroll_man.getCountOfValidators(block.header.height);
         auto signed_validators = BitField!ubyte(validators);
         iota(0, validators).each!(i => signed_validators[i]= block.header.validators[i]);
@@ -307,13 +299,18 @@ public class Validator : FullNode, API
         auto node_validator_index = this.nominator.enroll_man
             .getIndexOfValidator(block.header.height, this.config.validator.key_pair.address);
 
+        if (!super.acceptBlock(block))
+            return false;
+
         // It can be a block before this validator was enrolled
         if (node_validator_index == ulong.max)
         {
             log.trace("This validator {} was not active at height {}",
                 this.config.validator.key_pair.address, block.header.height);
-            return this.ledger.acceptBlock(block);
+            return true;
         }
+
+        auto sig = this.nominator.createBlockSignature(block);
         assert(node_validator_index < validators, format!"The validator index %s is invalid"(node_validator_index));
         if (signed_validators[node_validator_index])
         {
@@ -330,10 +327,10 @@ public class Validator : FullNode, API
             log.trace("Periodic Catchup: ADD to block signature R: {} and s: {}",
                 sig.R, sig.s.toString(PrintMode.Clear));
             const signed_block = block.updateSignature(
-                multiSigCombine([ multi_sig, sig ]), signed_validators);
-            return this.ledger.acceptBlock(signed_block);
+                multiSigCombine([ block.header.signature, sig ]), signed_validators);
+            this.ledger.updateBlockMultiSig(signed_block.header);
         }
-        return this.ledger.acceptBlock(block);
+        return true;
     }
 
     /***************************************************************************
