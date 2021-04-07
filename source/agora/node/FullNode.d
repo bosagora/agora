@@ -416,8 +416,16 @@ public class FullNode : API
 
     protected bool acceptBlock (const ref Block block) @trusted
     {
+        ExpiringValidator[] ex_validators;
+        this.enroll_man.getExpiringValidators(block.header.height, ex_validators);
         // Attempt to add block to the ledger (it may be there by other means)
-        this.ledger.acceptBlock(block);
+        if (this.ledger.acceptBlock(block))
+        {
+            ex_validators.each!(ex => this.network.unwhitelist(ex.pubkey));
+            PublicKey[] active_validators;
+            this.enroll_man.getActiveValidatorPublicKeys(active_validators, block.header.height);
+            active_validators.each!(ex => this.network.whitelist(ex));
+        }
         // We return if height in ledger is reached for this block to prevent fetching again
         return this.ledger.getBlockHeight() >= block.header.height;
     }
