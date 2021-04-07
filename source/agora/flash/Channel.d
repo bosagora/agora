@@ -36,6 +36,7 @@ import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
 import agora.serialization.Serializer;
+import agora.utils.Backoff;
 import agora.utils.Log;
 
 import std.array;
@@ -104,6 +105,9 @@ public class Channel
     /// node ctor is done (see Flash restart tests)
     private FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient;
 
+    /// Retry delay algorithm
+    private Backoff backoff;
+
 
     /***************************************************************************
 
@@ -155,6 +159,8 @@ public class Channel
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
+        this.backoff = new Backoff(this.flash_conf.retry_multiplier,
+            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
         this.dump();
 
@@ -200,6 +206,8 @@ public class Channel
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
+        this.backoff = new Backoff(this.flash_conf.retry_multiplier,
+            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
         this.taskman.setTimer(0.seconds,
             (this.channel_updates.length == 0)
@@ -868,11 +876,16 @@ LOuter: while (1)
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        // todo: replace with a better retry mechanism
-        Result!PublicNonce result;
+        Result!PublicNonce result = Result!PublicNonce(ErrorCode.Unknown);
         const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
-        foreach (idx; 0 .. uint.max)
+        foreach (attempt; 0 .. uint.max)
         {
+            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            if (Clock.currTime() + WaitTime >= fail_time)
+                break;  // timeout
+
+            this.taskman.wait(WaitTime);
+
             // re-fold
             if (update_height != this.height)
             {
@@ -898,12 +911,6 @@ LOuter: while (1)
 
                 log.info("{}: Error proposing update with {}: {}",
                     this.kp.address.flashPrettify, this.peer_pk.flashPrettify, result);
-
-                const WaitTime = (2 ^^ idx).seconds;
-                if (Clock.currTime() + WaitTime >= fail_time)
-                    break;  // timeout
-
-                this.taskman.wait(WaitTime);
                 continue;
             }
 
@@ -1114,10 +1121,15 @@ LOuter: while (1)
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
         const new_seq_id = this.cur_seq_id + 1;
 
-        Result!PublicNonce result;
+        Result!PublicNonce result = Result!PublicNonce(ErrorCode.Unknown);
         const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
-        foreach (idx; 0 .. uint.max)
+        foreach (attempt; 0 .. uint.max)
         {
+            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            if (Clock.currTime() + WaitTime >= fail_time)
+                break;  // timeout
+            this.taskman.wait(WaitTime);
+
             result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
                 payment.payment_hash, payment.amount, payment.lock_height,
                 payment.packet, pub_nonce, payment.height);
@@ -1130,10 +1142,7 @@ LOuter: while (1)
 
                 log.info("{}: Error proposing payment: {}", this.kp.address.flashPrettify,
                     result);
-                const WaitTime = (2 ^^ idx).seconds;
-                if (Clock.currTime() + WaitTime >= fail_time)
-                    break;  // timeout
-                this.taskman.wait(WaitTime);
+
                 continue;
             }
 

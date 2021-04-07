@@ -32,10 +32,13 @@ import agora.flash.Types;
 import agora.script.Engine;
 import agora.script.Lock;
 import agora.serialization.Serializer;
+import agora.utils.Backoff;
 import agora.utils.Log;
 
 mixin AddLogger!();
 
+import std.conv;
+import std.datetime.systime;
 import std.format;
 import std.stdio;  // todo: remove
 import std.traits;
@@ -66,6 +69,9 @@ public class UpdateSigner
     /// Task manager
     private ITaskManager taskman;
 
+    /// Retry delay algorithm
+    private Backoff backoff;
+
     /***************************************************************************
 
         Constructor
@@ -93,6 +99,8 @@ public class UpdateSigner
         this.engine = engine;
         this.taskman = taskman;
         this.db = db;
+        this.backoff = new Backoff(this.flash_conf.retry_multiplier,
+            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
         this.load();
     }
@@ -314,16 +322,22 @@ public class UpdateSigner
         // todo: need to validate settlement against update, in case
         // balances are too big, etc.
 
-        Result!Signature settle_res;
-        while (1)
+        Result!Signature settle_res = Result!Signature(ErrorCode.Unknown);
+        const settle_fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
+        foreach (attempt; 0 .. uint.max)
         {
+            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            if (Clock.currTime() + WaitTime >= settle_fail_time)
+                break;  // timeout
+
+            this.taskman.wait(WaitTime);
+
             settle_res = this.peer.requestSettleSig(this.conf.chan_id, seq_id);
             if (settle_res.error)
             {
                 // todo: retry?
                 log.info("{}: Settlement signature {} request to {} rejected: {}",
                     this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify, settle_res);
-                this.taskman.wait(100.msecs);
                 continue;
             }
 
@@ -353,19 +367,23 @@ public class UpdateSigner
         this.pending_settle.peer_sig = settle_res.value;
         this.pending_settle.validated = true;
 
-        Result!Signature update_res;
-        while (1)
+        Result!Signature update_res = Result!Signature(ErrorCode.Unknown);
+        const update_fail_time = Clock.currTime()
+            + this.flash_conf.max_retry_time;
+        foreach (attempt; 0 .. uint.max)
         {
-            // here it's a bit problematic because the counter-party will refuse
-            // to reveal their update sig until they receive the settlement signature
-            // todo: could we just share it in the single request API?
+            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            if (Clock.currTime() + WaitTime >= update_fail_time)
+                break;  // timeout
+
+            this.taskman.wait(WaitTime);
+
             update_res = this.peer.requestUpdateSig(this.conf.chan_id, seq_id);
             if (update_res.error)
             {
                 // todo: retry?
                 log.info("{}: Update signature {} request to {} rejected: {}",
                     this.kp.address.flashPrettify, seq_id, this.peer_pk.flashPrettify, update_res);
-                this.taskman.wait(100.msecs);
                 continue;
             }
 
