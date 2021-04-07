@@ -606,6 +606,9 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     const max_settle_time = opt!(uint, "flash", "max_settle_time")(cmdln, node);
     const max_retry_time = get!(Duration, "flash", "max_retry_time", str => str.to!ulong.msecs)
         (cmdln, node);
+    const max_retry_delay = get!(Duration, "flash", "max_retry_delay", str => str.to!ulong.msecs)
+        (cmdln, node);
+    enforce(max_retry_time > max_retry_delay, "`max_retry_time` must be greater than `max_retry_delay`");
 
     FlashConfig result = {
         enabled: true,
@@ -618,6 +621,7 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         min_settle_time: min_settle_time,
         max_settle_time: max_settle_time,
         max_retry_time : max_retry_time,
+        max_retry_delay : max_retry_delay,
     };
     return result;
 }

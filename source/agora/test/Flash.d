@@ -53,6 +53,7 @@ import std.conv;
 import std.exception;
 
 import core.stdc.time;
+import core.time;
 import core.thread;
 
 mixin AddLogger!();
@@ -331,7 +332,8 @@ public class FlashNodeFactory
             min_settle_time : 0,
             max_settle_time : 100,
             key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
-            max_retry_time : 4.seconds };
+            max_retry_time : 4.seconds,
+            max_retry_delay : 100.msecs };
         return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
     }
 
@@ -745,6 +747,7 @@ unittest
         key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
         listener_address : ListenerAddress,
         max_retry_time : 4.seconds,
+        max_retry_delay : 100.msecs,
     };
 
     auto alice = factory.create(alice_pair, alice_conf, address);
@@ -1226,6 +1229,7 @@ unittest
         min_settle_time : 10,
         max_settle_time : 100,
         key_pair : KeyPair(PublicKey(bob_pair.V), SecretKey(bob_pair.v)),
+        max_retry_delay : 100.msecs,
     };
     auto alice = factory.create(alice_pair, address);
     auto bob = factory.create(bob_pair, bob_conf, address);
@@ -1403,6 +1407,7 @@ unittest
         key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
         listener_address : ListenerAddress,
         max_retry_time : 4.seconds,
+        max_retry_delay : 10.msecs,
     };
 
     auto alice = factory.create(alice_pair, alice_conf, address);

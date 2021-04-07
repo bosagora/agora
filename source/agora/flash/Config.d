@@ -61,6 +61,10 @@ public struct FlashConfig
 
     /// Maximum time spent retrying requests before they're considered failed
     public Duration max_retry_time = 60.seconds;
+
+    /// The maximum retry delay between retrying failed requests. Should be lower
+    /// than `max_retry_time`
+    public Duration max_retry_delay = 2000.msecs;
 }
 
 /// Channel configuration. These fields remain static throughout the
