@@ -64,7 +64,6 @@ public struct Logger
             else if (logger is null)
             {
                 assert(0,"\nplease make sure you are declaring the \nmixin AddLogger!(); statement on top, followed by:\nstatic this{}; followed by:\nstatic ~this{};");
-                return;
             }
             mixin("this.logger." ~ call ~ "(args);");
         }
