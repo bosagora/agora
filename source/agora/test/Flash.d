@@ -414,10 +414,10 @@ public class FlashNodeFactory
             enforce(this.listener_registry.unregister(address));
 
         foreach (node; this.nodes)
-        {
             node.shutdownNode();
+
+        foreach (node; this.nodes)
             node.ctrl.shutdown();
-        }
 
         foreach (node; this.listener_nodes)
         {
