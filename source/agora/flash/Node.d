@@ -648,9 +648,13 @@ public abstract class FlashNode : ControlFlashAPI
         if (!to_gossip.length)
             return;
 
-        // also gossip new channels to peers
-        foreach (peer; this.known_peers.byValue())
-            peer.gossipChannelsOpen(to_gossip);
+        // also gossip new channels to peers later
+        () @trusted { this.taskman.setTimer(100.msecs,
+        {
+            log.info("Gossiping: {}", to_gossip);
+            foreach (peer; this.known_peers.byValue())
+                peer.gossipChannelsOpen(to_gossip);
+        }); }();
     }
 
     /// See `FlashAPI.gossipChannelUpdates`
