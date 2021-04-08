@@ -164,6 +164,24 @@ public struct ChannelUpdate
         hashPart(this.fixed_fee, dg);
         hashPart(this.proportional_fee, dg);
     }
+
+    /***************************************************************************
+
+        Compares everything except the signature
+
+        Params:
+            other = the other value
+
+    ***************************************************************************/
+
+    public bool opEquals (in ChannelUpdate other)
+        const pure nothrow @safe @nogc
+    {
+        return this.chan_id == other.chan_id
+            && this.direction == other.direction
+            && this.fixed_fee == other.fixed_fee
+            && this.proportional_fee == other.proportional_fee;
+    }
 }
 
 unittest
@@ -174,6 +192,12 @@ unittest
         Amount(44), Amount(37));
     update.sig = sign(kp, update);
     assert(verify(kp.V, update.sig, update));
+
+    ChannelUpdate update_1;
+    ChannelUpdate update_2;
+    assert(update_1 == update_2);
+    update_2.sig = sign(kp, update_2);
+    assert(update_1 == update_2);  // still equal
 }
 
 /***************************************************************************
