@@ -255,16 +255,37 @@ public struct Amount
         Take a percentage of the `value`
 
         Params:
-            percentage = Requested percentage
+            pct = Requested percentage
 
     ***************************************************************************/
 
     pragma(inline, true)
-    public void percentage (ubyte percentage)
+    public bool percentage (ushort pct)
     {
-        assert(percentage <= 100);
-        this.value *= percentage;
+        bool overflow;
+        this.value = mulu(this.value, pct, overflow);
+        // deliberately not checking using isValid(), because after the divsion by 100,
+        // the value can become valid
+        if (overflow)
+            return false;
         this.value /= 100;
+        return this.isValid();
+    }
+
+    /***************************************************************************
+
+        Take a percentage of the `value` and assert if the result is invalid
+
+        Params:
+            pct = Requested percentage
+
+    ***************************************************************************/
+
+    pragma(inline, true)
+    public Amount mustPercentage (ushort pct)
+    {
+        this.percentage(pct) || assert(0);
+        return this;
     }
 
     /***************************************************************************
@@ -496,12 +517,21 @@ unittest
 unittest
 {
     Amount amt = Amount(100);
-    amt.percentage(33);
+    bool is_valid = amt.percentage(33);
     assert(amt == Amount(33));
-    amt.percentage(33);
+    assert(is_valid);
+
+    is_valid = amt.percentage(33);
     assert(amt == Amount(10));
-    amt.percentage(10);
+    assert(is_valid);
+
+    is_valid = amt.percentage(10);
     assert(amt == Amount(1));
+    assert(is_valid);
+
+    amt = Amount(ulong.max);
+    is_valid = amt.percentage(2);
+    assert(is_valid);
 }
 
 unittest
