@@ -18,9 +18,11 @@ import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
+import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.flash.ErrorCode;
 import agora.serialization.Serializer;
+import agora.utils.Test;
 
 import std.conv;
 import std.format;
@@ -247,38 +249,45 @@ public struct Result (T)
     }
 }
 
+private struct WKName
+{
+    string name;
+    PublicKey address;
+}
+
+private static immutable WKName[] pk_keys = [
+    { "Alice",   WK.Keys[0].address, },
+    { "Bob",     WK.Keys[1].address, },
+    { "Charlie", WK.Keys[2].address, },
+];
+
 /// Helper routine
 public string flashPrettify (T)(T input)
 {
-    import agora.utils.Test;
-    static struct WKName
-    {
-        string name;
-        Point address;
-    }
-
-    static immutable WKName[] wk = [
-        { "Alice",   WK.Keys[0].address, },
-        { "Bob",     WK.Keys[1].address, },
-        { "Charlie", WK.Keys[2].address, },
-    ];
-
     // some well-known key-pairs used in the flash tests
-    static if (is(immutable(T) == immutable(Point)))
-        foreach (const ref known; wk)
+    static if (is(immutable(T) == immutable(PublicKey))
+        || is(immutable(T) == immutable(Point)))
+    {
+        foreach (const ref known; pk_keys)
             if (known.address == input)
                 return known.name;
+    }
 
-    return input.to!string[0 .. 6];
+    return input.to!string[0 .. 8];
 }
 
 ///
 unittest
 {
+    import agora.crypto.Key;
     import agora.utils.Test;
     assert(flashPrettify(Point(WK.Keys[0].address[])) == "Alice");
+    assert(flashPrettify(WK.Keys[0].address) == "Alice");
     static immutable string s = "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec";
-    assert(flashPrettify(Scalar.fromString(s).toPoint()) == "0xe666");
+    assert(flashPrettify(Scalar.fromString(s).toPoint()) == "0xe66666",
+        flashPrettify(Scalar.fromString(s).toPoint()));
+    assert(flashPrettify(PublicKey(Scalar.fromString(s).toPoint())) == "boa1xpvx",
+        flashPrettify(PublicKey(Scalar.fromString(s).toPoint())));
 }
 
 /// Clone any type via the serializer
