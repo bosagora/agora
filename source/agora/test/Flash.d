@@ -1386,7 +1386,7 @@ unittest
 
     auto factory = new FlashNodeFactory(network.getRegistry());
     scope (exit) factory.shutdown();
-    //scope (failure) factory.printLogs();
+    scope (failure) factory.printLogs();
 
     const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
