@@ -393,14 +393,12 @@ public class NetworkClient
 
             If the request failed, returns an empty array
 
-        Throws:
-            Exception if the request failed.
-
     ***************************************************************************/
 
     public const(Block)[] getBlocksFrom (ulong height, uint max_blocks)
+        nothrow
     {
-        return this.attemptRequest!(API.getBlocksFrom, Throw.Yes)(this.api,
+        return this.attemptRequest!(API.getBlocksFrom, Throw.No)(this.api,
             height, max_blocks);
     }
 
