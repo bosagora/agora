@@ -80,7 +80,7 @@ private extern(C++) class ByzantineNominator : TestNominator
         {
             case ByzantineReason.BadSigningEnvelope:
                 envelope.signature = this.kp.sign(
-                    Hash.fromString(
+                    Hash(
                         "0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f" ~
                         "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986")).toBlob();
                 break;
