@@ -145,6 +145,10 @@ public struct ChannelUpdate
     /// Proportional fee that should paid for each BOA
     public Amount proportional_fee;
 
+    /// The linearly increasing update index of this update. Only channel
+    /// updates with a greater update index will be accepted by a node.
+    public uint update_idx;
+
     /// Signature of the channel peer
     public Signature sig;
 
