@@ -78,6 +78,10 @@ public interface TestFlashAPI : ControlFlashAPI
     /// Wait until the specified channel ID has been gossiped to this node
     public void waitForChannelDiscovery (in Hash chan_id);
 
+    /// Wait until the specified channel update has been gossiped to this node
+    public ChannelUpdate waitForChannelUpdate (in Hash chan_id,
+        in PaymentDirection dir, in uint update_idx);
+
     /// Force publishing an update tx with the given index to the blockchain.
     /// Used for testing and ensuring the counter-party detects the update tx
     /// and publishes the latest state to the blockchain.
@@ -88,9 +92,6 @@ public interface TestFlashAPI : ControlFlashAPI
 
     /// Get the expected settlement tx when a trigger was published to the chain
     public Transaction getLastSettleTx (in Hash chan_id);
-
-    /// Get the channel update
-    public ChannelUpdate getChannelUpdate (Hash chan_id, PaymentDirection dir);
 
     /// Print out the contents of the log
     public abstract void printLog ();
@@ -245,6 +246,21 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     }
 
     ///
+    public override ChannelUpdate waitForChannelUpdate (in Hash chan_id,
+        in PaymentDirection dir, in uint update_idx)
+    {
+        while (1)
+        {
+            if (auto updates = chan_id in this.channel_updates)
+                if (auto update = dir in *updates)
+                    if (update.update_idx == update_idx)
+                        return *update;
+
+            this.taskman.wait(100.msecs);
+        }
+    }
+
+    ///
     public override Transaction getClosingTx (in Hash chan_id)
     {
         auto channel = chan_id in this.channels;
@@ -271,12 +287,6 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         update.update_idx++;
         update.sig = this.conf.key_pair.sign(update);
         this.gossipChannelUpdates([update]);
-    }
-
-    ///
-    public ChannelUpdate getChannelUpdate (Hash chan_id, PaymentDirection dir)
-    {
-        return this.channel_updates[chan_id][dir];
     }
 
     /// Prints out the log contents for this node
@@ -847,13 +857,16 @@ unittest
     charlie.waitForUpdateIndex(bob_charlie_chan_id, 2);
 
     alice.changeFees(charlie_alice_chan_id, Amount(1337), Amount(1));
-    auto update = alice.getChannelUpdate(charlie_alice_chan_id, PaymentDirection.TowardsOwner);
+    auto update = alice.waitForChannelUpdate(charlie_alice_chan_id,
+        PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
-    update = bob.getChannelUpdate(charlie_alice_chan_id, PaymentDirection.TowardsOwner);
+    update = bob.waitForChannelUpdate(charlie_alice_chan_id,
+        PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
-    update = charlie.getChannelUpdate(charlie_alice_chan_id, PaymentDirection.TowardsOwner);
+    update = charlie.waitForChannelUpdate(charlie_alice_chan_id,
+        PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
 }
@@ -946,8 +959,11 @@ unittest
     // wait for the parties to detect the funding tx
     bob.waitChannelOpen(bob_charlie_chan_id);
     charlie.waitChannelOpen(bob_charlie_chan_id);
+    alice.waitForChannelDiscovery(bob_charlie_chan_id);  // also alice (so it can detect fees)
 
     bob.changeFees(bob_charlie_chan_id, Amount(100), Amount(1));
+    alice.waitForChannelUpdate(bob_charlie_chan_id, PaymentDirection.TowardsPeer, 1);
+    charlie.waitForChannelUpdate(bob_charlie_chan_id, PaymentDirection.TowardsPeer, 1);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN SECOND BOB => CHARLIE CHANNEL +/
@@ -971,6 +987,8 @@ unittest
     charlie.waitChannelOpen(bob_charlie_chan_id_2);
 
     bob.changeFees(bob_charlie_chan_id_2, Amount(10), Amount(1));
+    alice.waitForChannelUpdate(bob_charlie_chan_id_2, PaymentDirection.TowardsPeer, 1);
+    charlie.waitForChannelUpdate(bob_charlie_chan_id_2, PaymentDirection.TowardsPeer, 1);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
