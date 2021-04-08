@@ -875,7 +875,7 @@ public class NetworkManager
 
         node_pairs.sort!((a, b) => a.height > b.height);
 
-        LNextNode: foreach (pair; node_pairs) try
+        LNextNode: foreach (pair; node_pairs)
         {
             if (height > pair.height)
                 continue;  // this node does not have newer blocks than us
@@ -904,18 +904,22 @@ public class NetworkManager
                 log.info("Received blocks [{}..{}]",
                     blocks[0].header.height, blocks[$ - 1].header.height);
 
-                // one or more blocks were rejected, stop retrieval from node
-                if (!onReceivedBlocks(blocks, preimages))
-                    continue LNextNode;
+                try
+                {
+                    // one or more blocks were rejected, stop retrieval from node
+                    if (!onReceivedBlocks(blocks, preimages))
+                        continue LNextNode;
+                }
+                catch (Exception ex)
+                {
+                    // @BUG: Ledger routines should be marked nothrow,
+                    // or else storage issues should be handled differently.
+                    log.error("Error in onReceivedBlocks(): {}", ex);
+                }
 
                 height += blocks.length;
             }
             while (height < pair.height);
-        }
-        catch (Exception ex)
-        {
-            log.error("Couldn't retrieve blocks: {}. Will try again later..",
-                ex.msg);
         }
     }
 
