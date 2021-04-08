@@ -164,7 +164,7 @@ public class Channel
 
         this.dump();
 
-        this.taskman.setTimer(0.seconds,
+        this.taskman.setTimer(100.msecs,
             { this.start(priv_nonce, peer_nonce); });
     }
 
@@ -209,7 +209,7 @@ public class Channel
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
             this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
-        this.taskman.setTimer(0.seconds,
+        this.taskman.setTimer(100.msecs,
             (this.channel_updates.length == 0)
             ? { this.start(this.priv_nonce, this.peer_nonce); }  // funding not done yet
             : &this.eventLoop);  // funding already done
@@ -1902,7 +1902,7 @@ LOuter: while (1)
         // todo: there may be a double call here if the first request timed-out
         // and the client sends this request again. We should avoid calling
         // this again.
-        this.taskman.setTimer(0.seconds,
+        this.taskman.setTimer(100.msecs,
         {
             this.collectCloseSignatures(priv_nonce, peer_nonce);
         });
@@ -2012,7 +2012,7 @@ LOuter: while (1)
                                     this.payment_hashes[error.payment_hash] :
                                     this.dropped_htlcs[error.payment_hash];
             this.dropped_htlcs.remove(error.payment_hash);
-            this.taskman.setTimer(0.seconds,
+            this.taskman.setTimer(100.msecs,
             {
                 this.peer.reportPaymentError(this.conf.chan_id,
                     error.obfuscate(shared_secret));
