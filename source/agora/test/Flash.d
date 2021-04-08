@@ -267,6 +267,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         auto update = this.channel_updates[chan_id][dir];
         update.fixed_fee = fixed_fee;
         update.proportional_fee = proportional_fee;
+        update.update_idx++;
         update.sig = this.conf.key_pair.sign(update);
         this.gossipChannelUpdates([update]);
     }

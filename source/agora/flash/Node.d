@@ -671,8 +671,12 @@ public abstract class FlashNode : ControlFlashAPI
                                                 conf.funder_pk : conf.peer_pk;
                 if (auto chan_update = update.chan_id in this.channel_updates)
                     if (auto dir_update = update.direction in *chan_update)
-                        if (*dir_update == update)
+                    {
+                        if (*dir_update == update // same fees as before
+                            || update.update_idx <= dir_update.update_idx)  // must be newer (replay attacks)
                             continue;
+                    }
+
                 if (!verify(pk, update.sig, update))
                     continue;
                 this.channel_updates[update.chan_id][update.direction] = update;
