@@ -47,6 +47,7 @@ import core.stdc.time;
 import core.time;
 
 import std.algorithm;
+import std.container : DList;
 import std.conv;
 import std.format;
 import std.range;
@@ -92,12 +93,13 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public void start ()
+    public override void start ()
     {
         // todo: 200 msecs is ok only in tests
         // todo: should additionally register as pushBlock() listener
         this.monitor_timer = this.taskman.setTimer(200.msecs,
             &this.monitorBlockchain, Periodic.Yes);
+        super.start();
     }
 
     /***************************************************************************
@@ -236,11 +238,6 @@ public class AgoraFlashNode : FlashNode
         super(conf, db_path, genesis_hash, engine, taskman);
     }
 
-    /// No-op, FullNode will notify us of externalized blocks
-    public void start ()
-    {
-    }
-
     /// Called by a FullNode once a block has been externalized
     public void onExternalizedBlock (const ref Block block) @safe
     {
@@ -313,6 +310,38 @@ public class AgoraFlashNode : FlashNode
     }
 }
 
+/// Gossip type
+private enum GossipType
+{
+    Open,
+    Update,
+}
+
+/// Outgoing gossip event
+private struct GossipEvent
+{
+    /// Union flag
+    GossipType type;
+
+    union
+    {
+        ChannelConfig open;
+        ChannelUpdate update;
+    }
+
+    this (ChannelConfig open) @trusted nothrow
+    {
+        this.type = GossipType.Open;
+        this.open = open;
+    }
+
+    this (ChannelUpdate update) @trusted nothrow
+    {
+        this.type = GossipType.Update;
+        this.update = update;
+    }
+}
+
 /// Ditto
 public abstract class FlashNode : ControlFlashAPI
 {
@@ -336,6 +365,12 @@ public abstract class FlashNode : ControlFlashAPI
 
     /// for scheduling
     protected ITaskManager taskman;
+
+    /// List of outgoing gossip events
+    private DList!GossipEvent gossip_queue;
+
+    /// Timer used for gossiping
+    private ITimer gossip_timer;
 
     /// Flash network topology
     protected Network network;
@@ -409,15 +444,72 @@ public abstract class FlashNode : ControlFlashAPI
 
     /***************************************************************************
 
-        Store all the node's and each channels' metadata to the DB
+        Start the gossiping timer
+
+    ***************************************************************************/
+
+    public override void start ()
+    {
+        this.gossip_timer = this.taskman.setTimer(100.msecs,
+            &this.gossipTask, Periodic.Yes);
+    }
+
+    /***************************************************************************
+
+        Store all the node's and each channels' metadata to the DB,
+        and shut down the gossiping timer.
 
     ***************************************************************************/
 
     public void shutdown ()
     {
+        this.gossip_timer.stop();
+
         this.dump();
         foreach (chan; channels.byValue)
             chan.dump();
+    }
+
+    /***************************************************************************
+
+        Gossiping fiber routine.
+
+    ***************************************************************************/
+
+    private void gossipTask ()
+    {
+        while (!this.gossip_queue.empty)
+        {
+            auto event = this.gossip_queue.front;
+            this.gossip_queue.removeFront();
+            this.handleGossip(event);
+            this.taskman.wait(1.msecs);  // yield
+        }
+    }
+
+    /// Handle an outgoing gossip event
+    private void handleGossip (GossipEvent event)
+    {
+        final switch (event.type) with (GossipType)
+        {
+        case Open:
+            foreach (pair; this.known_peers.byKeyValue)
+            {
+                static ChannelConfig[1] open_buffer;
+                open_buffer[0] = event.open;
+                pair.value.gossipChannelsOpen(open_buffer[]);
+            }
+            break;
+
+        case Update:
+            foreach (pair; this.known_peers.byKeyValue)
+            {
+                static ChannelUpdate[1] update_buffer;
+                update_buffer[0] = event.update;
+                pair.value.gossipChannelUpdates(update_buffer[]);
+            }
+            break;
+        }
     }
 
     /***************************************************************************
@@ -598,30 +690,25 @@ public abstract class FlashNode : ControlFlashAPI
     ///
     protected void onChannelOpen (ChannelConfig conf)
     {
-        this.taskman.setTimer(0.seconds,
-        {
-            log.info("onChannelOpen() with channel {}", conf.chan_id);
+        log.info("onChannelOpen() with channel {}", conf.chan_id);
 
-            this.known_channels[conf.chan_id] = conf;
-            this.network.addChannel(conf);
+        this.known_channels[conf.chan_id] = conf;
+        this.network.addChannel(conf);
 
-            const dir = this.conf.key_pair.address.data == conf.funder_pk ?
-                PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
-            // Set the initial fees
-            // todo: this should be configurable
-            auto update = ChannelUpdate(conf.chan_id, dir,
-                Amount(1), Amount(1));
-            update.sig = this.conf.key_pair.sign(update);
-            this.channel_updates[conf.chan_id][dir] = update;
-            // todo: should not gossip this to counterparty of the just opened channel
-            foreach (peer; this.known_peers.byValue())
-            {
-                peer.gossipChannelsOpen([conf]);
-                peer.gossipChannelUpdates([this.channel_updates[conf.chan_id][dir]]);
-            }
+        const dir = this.conf.key_pair.address.data == conf.funder_pk ?
+            PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
+        // Set the initial fees
+        // todo: this should be configurable
+        auto update = ChannelUpdate(conf.chan_id, dir,
+            Amount(1), Amount(1));
+        update.sig = this.conf.key_pair.sign(update);
+        this.channel_updates[conf.chan_id][dir] = update;
 
-            this.dump();
-        });
+        // todo: should not gossip this to counterparty of the just opened channel
+        this.gossip_queue.insertBack(GossipEvent(conf));
+        this.gossip_queue.insertBack(GossipEvent(update));
+
+        this.dump();
     }
 
     /// See `FlashAPI.gossipChannelsOpen`
@@ -646,16 +733,9 @@ public abstract class FlashNode : ControlFlashAPI
             to_gossip ~= conf;  // gossip only new channels
         }
 
-        if (!to_gossip.length)
-            return;
-
         // also gossip new channels to peers later
-        () @trusted { this.taskman.setTimer(100.msecs,
-        {
-            log.info("Gossiping: {}", to_gossip);
-            foreach (peer; this.known_peers.byValue())
-                peer.gossipChannelsOpen(to_gossip);
-        }); }();
+        to_gossip.each!(chan =>
+            this.gossip_queue.insertBack(GossipEvent(chan)));
     }
 
     /// See `FlashAPI.gossipChannelUpdates`
@@ -686,11 +766,9 @@ public abstract class FlashNode : ControlFlashAPI
             }
         }
 
-        if (!to_gossip.length)
-            return;
-
-        foreach (peer; this.known_peers.byValue())
-            peer.gossipChannelUpdates(to_gossip);
+        // also gossip new updates to peers later
+        to_gossip.each!(update =>
+            this.gossip_queue.insertBack(GossipEvent(update)));
     }
 
     /// See `FlashAPI.requestCloseSig`
