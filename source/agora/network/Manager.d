@@ -850,8 +850,8 @@ public class NetworkManager
     ***************************************************************************/
 
     public void getBlocksFrom (Height height,
-        scope bool delegate(const(Block)[],
-        const(PreImageInfo)[]) @safe onReceivedBlocks) nothrow
+        scope Height delegate(const(Block)[], const(PreImageInfo)[])
+            @safe onReceivedBlocks) nothrow
     {
         struct Pair { Height height; NetworkClient client; }
 
@@ -875,7 +875,7 @@ public class NetworkManager
 
         node_pairs.sort!((a, b) => a.height > b.height);
 
-        LNextNode: foreach (pair; node_pairs)
+        foreach (pair; node_pairs)
         {
             if (height > pair.height)
                 continue;  // this node does not have newer blocks than us
@@ -884,42 +884,37 @@ public class NetworkManager
                 height, pair.height, pair.client.address);
             const MaxBlocks = 1024;
 
-            do
+            auto start_height =
+                height < this.consensus_config.validator_cycle ?
+                    0 : height - this.consensus_config.validator_cycle;
+
+            log.info("Retrieving preimages from the height of {} from {}..",
+                start_height, pair.client.address);
+
+            auto preimages = pair.client.getPreimages(start_height, height);
+
+            log.info("Received {} preimages", preimages.length);
+
+            auto blocks = pair.client.getBlocksFrom(height, MaxBlocks);
+            if (blocks.length == 0)
+                continue;
+
+            log.info("Received blocks [{}..{}]",
+                blocks[0].header.height, blocks[$ - 1].header.height);
+
+            try
             {
-                auto start_height =
-                    height < this.consensus_config.validator_cycle ?
-                        0 : height - this.consensus_config.validator_cycle;
-
-                log.info("Retrieving preimages from the height of {} from {}..",
-                    start_height, pair.client.address);
-
-                auto preimages = pair.client.getPreimages(start_height, height);
-
-                log.info("Received {} preimages", preimages.length);
-
-                auto blocks = pair.client.getBlocksFrom(height, MaxBlocks);
-                if (blocks.length == 0)
-                    continue LNextNode;
-
-                log.info("Received blocks [{}..{}]",
-                    blocks[0].header.height, blocks[$ - 1].header.height);
-
-                try
-                {
-                    // one or more blocks were rejected, stop retrieval from node
-                    if (!onReceivedBlocks(blocks, preimages))
-                        continue LNextNode;
-                }
-                catch (Exception ex)
-                {
-                    // @BUG: Ledger routines should be marked nothrow,
-                    // or else storage issues should be handled differently.
-                    log.error("Error in onReceivedBlocks(): {}", ex);
-                }
-
-                height += blocks.length;
+                // update the height with the latest accepted height
+                const new_height = onReceivedBlocks(blocks, preimages);
+                if (new_height >= height)
+                    height = new_height + 1;
             }
-            while (height < pair.height);
+            catch (Exception ex)
+            {
+                // @BUG: Ledger routines should be marked nothrow,
+                // or else storage issues should be handled differently.
+                log.error("Error in onReceivedBlocks(): {}", ex);
+            }
         }
     }
 

@@ -341,7 +341,7 @@ public class FullNode : API
 
                 this.network.getBlocksFrom(
                     Height(this.ledger.getBlockHeight() + 1),
-                    &addBlocks);
+                    &this.addBlocks);
                 this.network.getUnknownTXs(this.ledger);
                 this.network.getMissingBlockSigs(this.ledger);
             }
@@ -360,21 +360,23 @@ public class FullNode : API
             preimages = the preimages needed to check the validity of the blocks
 
         Returns:
-            true if the blocks and preimages was added
+            the last read block height, or 0 if none were accepted
 
     ***************************************************************************/
 
-    public bool addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages)
+    public Height addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages)
         @safe
     {
+        Height last_height;
         foreach (block; blocks)
         {
             if(!this.ledger.enrollment_manager.addPreimages(preimages))
-                return false;
+                return last_height;
             if (!this.ledger.acceptBlock(block))
-                return false;
+                return last_height;
+            last_height = block.header.height;
         }
-        return true;
+        return last_height;
     }
 
     /***************************************************************************
