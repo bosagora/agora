@@ -66,6 +66,12 @@ public struct Lock
             break;
         }
     }
+
+    /// The size of the Lock object
+    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    {
+        return this.type.sizeof + this.bytes.length * this.bytes[0].sizeof;
+    }
 }
 
 unittest
@@ -88,6 +94,12 @@ public struct Unlock
     {
         sink("0x");
         UbyteHexString(this.bytes).toString(sink);
+    }
+
+    /// The size of the Unlock object
+    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    {
+        return this.bytes.length * this.bytes[0].sizeof;
     }
 }
 

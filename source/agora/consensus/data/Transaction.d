@@ -60,6 +60,17 @@ public struct Transaction
     /// The data to store
     public DataPayload payload;
 
+    /// The size of the Transaction object
+    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    {
+        ulong size = this.type.sizeof + this.payload.sizeInBytes();
+        foreach (const ref input; this.inputs)
+            size += input.sizeInBytes();
+        foreach (const ref output; this.outputs)
+            size += output.sizeInBytes();
+        return size;
+    }
+
     /// This transaction may only be included in a block with `height >= lock_height`.
     /// Note that another tx with a lower lock time could double-spend this tx.
     public Height lock_height = Height(0);
@@ -122,6 +133,12 @@ public struct Output
     /// The lock condition for this Output
     public Lock lock;
 
+    /// The size of the Output object
+    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    {
+        return this.value.sizeof + this.lock.sizeInBytes();
+    }
+
     /// Ctor
     public this (Amount value, inout(Lock) lock) inout pure nothrow @trusted
     {
@@ -182,6 +199,12 @@ public struct Input
     /// than the block height at which the spending transaction wants to be
     /// included in the block. Use for implementing relative time locks.
     public uint unlock_age = 0;
+
+    /// The size of the Input object
+    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    {
+        return this.unlock.sizeInBytes() + this.unlock_age.sizeof + this.utxo.sizeof;
+    }
 
     /// Simple ctor
     public this (in Hash utxo_, Unlock unlock = Unlock.init, uint unlock_age = 0)
