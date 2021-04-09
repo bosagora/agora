@@ -287,7 +287,8 @@ public class AgoraFlashNode : FlashNode
 
         auto peer = this.flashClientGetter(peer_pk, timeout);
         this.known_peers[peer_pk] = peer;
-        peer.gossipChannelsOpen(this.known_channels.values);
+        if (this.known_channels.length > 0)
+            peer.gossipChannelsOpen(this.known_channels.values);
 
         return peer;
     }
