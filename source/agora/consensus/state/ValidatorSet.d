@@ -147,7 +147,7 @@ public class ValidatorSet
                     enroll.utxo_key,
                     pubkey,
                     enroll.cycle_length, height.value, ZeroDistance,
-                    enroll.random_seed,
+                    enroll.commitment,
                     enroll.enroll_sig.R,
                     EnrollmentStatus.Active);
             }();
@@ -824,7 +824,7 @@ public class ValidatorSet
 
 version (unittest)
 private Enrollment createEnrollment(in Hash utxo_key,
-    const KeyPair key_pair, ref Scalar random_seed_src,
+    const KeyPair key_pair, ref Scalar commitment_src,
     uint validator_cycle)
 {
     import std.algorithm;
@@ -834,11 +834,11 @@ private Enrollment createEnrollment(in Hash utxo_key,
     auto enroll = Enrollment();
     auto signature_noise = Pair.random();
     auto cache = PreImageCache(validator_cycle, 1);
-    cache.reset(hashFull(random_seed_src));
+    cache.reset(hashFull(commitment_src));
 
     enroll.utxo_key = utxo_key;
     enroll.cycle_length = validator_cycle;
-    enroll.random_seed = cache[$ - 1];
+    enroll.commitment = cache[$ - 1];
     enroll.enroll_sig = sign(pair.v, pair.V, signature_noise.V,
         signature_noise.v, enroll);
     return enroll;
@@ -931,7 +931,7 @@ unittest
 
     // test for adding and getting preimage
     assert(set.getPreimage(utxos[0])
-        == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+        == PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
     auto preimage = PreImageInfo(utxos[0], cache[$ - 11], 10);
     assert(set.addPreimage(preimage));
     assert(set.getPreimage(utxos[0]) == preimage);
@@ -940,7 +940,7 @@ unittest
     assert(set.getPreimageAt(utxos[0], Height(12))  // N/A: not revealed yet!
         == PreImageInfo.init);
     assert(set.getPreimageAt(utxos[0], Height(1))
-        == PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+        == PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
     assert(set.getPreimageAt(utxos[0], Height(11)) == preimage);
     assert(set.getPreimageAt(utxos[0], Height(10)) ==
         PreImageInfo(preimage.utxo, hashFull(preimage.hash),

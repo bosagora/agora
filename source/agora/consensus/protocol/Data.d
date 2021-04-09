@@ -57,7 +57,7 @@ unittest
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     const Enrollment record = {
         utxo_key: key,
-        random_seed: seed,
+        commitment: seed,
         cycle_length: 1008,
         enroll_sig: sig,
     };

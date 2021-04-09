@@ -309,25 +309,25 @@ public class EnrollmentPool
 
 version (unittest)
 private Enrollment createEnrollment(in Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar random_seed_src,
+    const ref KeyPair key_pair, ref Scalar commitment_src,
     uint validator_cycle)
 {
     import std.algorithm;
 
     Pair pair = Pair.fromScalar(key_pair.secret);
 
-    Hash random_seed;
+    Hash commitment;
     Hash[] preimages;
     auto enroll = Enrollment();
     auto signature_noise = Pair.random();
 
     enroll.utxo_key = utxo_key;
     enroll.cycle_length = validator_cycle;
-    preimages ~= hashFull(random_seed_src);
+    preimages ~= hashFull(commitment_src);
     foreach (i; 0 ..  enroll.cycle_length-1)
         preimages ~= hashFull(preimages[i]);
     reverse(preimages);
-    enroll.random_seed = preimages[0];
+    enroll.commitment = preimages[0];
     enroll.enroll_sig = sign(pair, signature_noise, enroll);
     return enroll;
 }

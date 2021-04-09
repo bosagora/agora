@@ -148,7 +148,7 @@ unittest
     const b20 = nodes[0].getBlocksFrom(20, 2)[0];
     network.expectHeightAndPreImg(iota(1), Height(21), b20.header);
 
-    PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.random_seed, 0);
+    PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.commitment, 0);
 
     // Wait for the revelation of new pre-image to complete
     PreImageInfo preimage_2;
@@ -209,10 +209,10 @@ unittest
 
     const known_preimage = network.clients.front().getPreimage(enroll.utxo_key);
     assert(known_preimage.distance == 0);
-    assert(known_preimage.hash == enroll.random_seed);
+    assert(known_preimage.hash == enroll.commitment);
     // Send the same pre-image as received
     network.clients().front().receivePreimage(
-        PreImageInfo(enroll.utxo_key, enroll.random_seed, 0));
+        PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
 
     // Just to be sure, in case this unittest runs last
     Thread.sleep(50.msecs);
@@ -358,7 +358,7 @@ unittest
     const e0 = b0.header.enrollments[0];
 
     // Wait for the revelation of new pre-image to complete
-    const org_preimage = PreImageInfo(e0.utxo_key, e0.random_seed, 0);
+    const org_preimage = PreImageInfo(e0.utxo_key, e0.commitment, 0);
     PreImageInfo preimage_2;
     retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(e0.utxo_key)),
         15.seconds);

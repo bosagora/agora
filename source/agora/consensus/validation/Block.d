@@ -650,7 +650,7 @@ public EnrollmentFinder getGenesisEnrollmentFinder () nothrow @trusted
             state.status = EnrollmentStatus.Active;
             state.enrolled_height = Height(0);
             state.cycle_length = enrolls[0].cycle_length;
-            state.preimage.hash = enrolls[0].random_seed;
+            state.preimage.hash = enrolls[0].commitment;
             state.preimage.distance = 0;
         }
 
@@ -933,7 +933,7 @@ unittest
     auto utxo_hash1 = UTXO.getHash(hashFull(txs_2[0]), 0);
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
-    enroll1.random_seed = hashFull(Scalar.random());
+    enroll1.commitment = hashFull(Scalar.random());
     enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
@@ -941,7 +941,7 @@ unittest
     auto utxo_hash2 = UTXO.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
-    enroll2.random_seed = hashFull(Scalar.random());
+    enroll2.commitment = hashFull(Scalar.random());
     enroll2.cycle_length = 1008;
     enroll2.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll2);
@@ -1082,7 +1082,7 @@ unittest
         auto utxo_hash1 = UTXO.getHash(hashFull(txs_2[1]), 0);
         Enrollment enroll1;
         enroll1.utxo_key = utxo_hash1;
-        enroll1.random_seed = hashFull(Scalar.random());
+        enroll1.commitment = hashFull(Scalar.random());
         enroll1.cycle_length = 1008;
         enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
             signature_noise.v, enroll1);

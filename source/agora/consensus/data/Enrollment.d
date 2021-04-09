@@ -39,8 +39,8 @@ public struct Enrollment
     /// K: UTXO hash, A hash of a frozen UTXO
     public Hash utxo_key;
 
-    /// X: random seed, The nth image of random value
-    public Hash random_seed;
+    /// X: commitment, The nth image of random value
+    public Hash commitment;
 
     /// n: cycle length, the number of rounds a validator will participate in
     /// (currently fixed to (freezing period / 2)
@@ -64,7 +64,7 @@ public struct Enrollment
     public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
         hashPart(this.utxo_key, dg);
-        hashPart(this.random_seed, dg);
+        hashPart(this.commitment, dg);
         hashPart(this.cycle_length, dg);
     }
 }
@@ -95,7 +95,7 @@ unittest
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
     Enrollment record = {
         utxo_key: key,
-        random_seed: seed,
+        commitment: seed,
         cycle_length: 42,
         enroll_sig: sig,
     };

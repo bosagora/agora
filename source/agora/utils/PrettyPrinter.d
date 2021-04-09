@@ -529,7 +529,7 @@ private struct EnrollmentFmt
         {
             formattedWrite(sink, "{ utxo: %s, seed: %s, cycles: %s, sig: %s }",
                 HashFmt(this.enroll.utxo_key),
-                HashFmt(this.enroll.random_seed),
+                HashFmt(this.enroll.commitment),
                 this.enroll.cycle_length,
                 HashFmt(this.enroll.enroll_sig.toBlob()));
         }
@@ -556,7 +556,7 @@ unittest
     Enrollment enrollment =
     {
         utxo_key: key,
-        random_seed: seed,
+        commitment: seed,
         cycle_length: 1008,
         enroll_sig: sig,
     };
@@ -611,7 +611,7 @@ unittest
     const Enrollment record =
     {
         utxo_key: key,
-        random_seed: seed,
+        commitment: seed,
         cycle_length: 1008,
         enroll_sig: sig,
     };
