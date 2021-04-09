@@ -1673,10 +1673,6 @@ public class TestValidatorNode : Validator, TestAPI
         return new TestClock(this.taskman,
             (out long time_offset)
             {
-                // not enrolled - no need to synchronize clocks
-                if (!this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
-                    return false;
-
                 return this.network.getNetTimeOffset(this.qc.threshold,
                     time_offset);
             },
