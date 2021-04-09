@@ -656,7 +656,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateConsensusData (in ConsensusData data) @trusted
+    public string validateConsensusData (in ConsensusData data) @trusted nothrow
     {
         const expect_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
@@ -701,9 +701,9 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateSlashingData (in ConsensusData data) @safe
+    public string validateSlashingData (in ConsensusData data) @safe nothrow
     {
-        if (checkSelfSlashing(data))
+        if (this.checkSelfSlashing(data))
         {
             log.fatal("The node is slashing itself.");
             assert(0);

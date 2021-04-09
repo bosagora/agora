@@ -40,6 +40,7 @@ import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
 import std.algorithm;
+import std.exception;
 import std.conv;
 import std.range;
 
@@ -244,7 +245,7 @@ public class SlashPolicy
     ***************************************************************************/
 
     public string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators) @safe
+        in uint[] missing_validators) @safe nothrow
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
@@ -263,7 +264,8 @@ public class SlashPolicy
 
         if (local_missing_validators != missing_validators)
             return "The list of missing validators does not match with the local one. " ~
-                "The local missing validators: " ~ to!string(local_missing_validators);
+                "The local missing validators: "
+                ~ assumeWontThrow(to!string(local_missing_validators));
 
         return null;
     }
