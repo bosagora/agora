@@ -73,7 +73,7 @@ unittest
     assert(blocks[blocks.length - 1].header.enrollments.length == blocks[0].header.enrollments.length);
 }
 
-// Recurring enrollment with wrong `random_seed`
+// Recurring enrollment with wrong `commitment`
 // When nodes reach the end of their validation cycle, they will try to
 // re-enroll with the same commitment in the GenesisBlock (ie. Height(0))
 // They should not be able to enroll and no new block should be created.

@@ -100,7 +100,7 @@ public class EnrollmentManager
     private Hash enroll_key;
 
     /// The final hash of the preimages at the beginning of the enrollment cycle
-    private Hash random_seed;
+    private Hash commitment;
 
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
@@ -394,7 +394,7 @@ public class EnrollmentManager
         if (enroll.utxo_key in self_utxos)
         {
             this.setEnrollmentKey(enroll.utxo_key);
-            this.setEnrollmentRandomSeed(enroll.random_seed);
+            this.setCommitment(enroll.commitment);
         }
 
         return null;
@@ -445,7 +445,7 @@ public class EnrollmentManager
         Params:
             utxo = `Hash` of a frozen UTXO value that can be used for enrollment
             key  = `KeyPair` that controls the `utxo`
-            seed = Random seed to use
+            seed = commitment to use
             cycle_length = The cycle length to use (see `ConsensusParams`)
             offset = The number of times this private key has enrolled before.
                      If `seed` is provided, this parameter is non-optional.
@@ -462,7 +462,7 @@ public class EnrollmentManager
         Enrollment result = {
             utxo_key: utxo,
             cycle_length: cycle_length,
-            random_seed: seed,
+            commitment: seed,
         };
 
         // Generate signature noise
@@ -478,7 +478,7 @@ public class EnrollmentManager
         in Hash utxo, in KeyPair key, uint cycle_length, uint offset = 0)
         @trusted nothrow
     {
-        // Generate the random seed to use
+        // Generate the commitment to use
         auto cache = PreImageCache(PreImageCycle.NumberOfCycles, cycle_length);
         assert(offset < cache.length);
         cache.reset(hashMulti(key.secret, "consensus.preimages", offset));
@@ -867,7 +867,7 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the random seed for the enrollment for this node
+        Get the commitment for the enrollment for this node
 
         If this node is not enrolled yet, the result will be empty. And if
         the database operation fails, this displays a log message and also
@@ -875,16 +875,16 @@ public class EnrollmentManager
         a normal situation overall.
 
         Returns:
-            the key for the enrollment
+            the commitment hash
 
     ***************************************************************************/
 
-    public Hash getEnrollmentRandomSeed () @trusted nothrow
+    public Hash getCommitment () @trusted nothrow
     {
         try
         {
             auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                "WHERE key = ?", "random_seed");
+                "WHERE key = ?", "commitment");
 
             if (!results.empty)
                 return Hash(results.oneValue!(string));
@@ -899,26 +899,26 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Set the random seed for the enrollment for this node
+        Set the commitment for the enrollment for this node
 
-        If saving a random seed fails, this displays a log messages and just
+        If saving a commitment fails, this displays a log messages and just
         returns. The `enroll_key` stores the value anyway and it can be restored
         from the catch-up process later. If the database or serialization
         operation fails, it means that node is not in normal situation overall.
 
         Params:
-            random_seed = the hash for the enrollment
+            commitment = the commitment hash
 
     ***************************************************************************/
 
-    private void setEnrollmentRandomSeed (in Hash random_seed) @trusted nothrow
+    private void setCommitment (in Hash commitment) @trusted nothrow
     {
-        this.random_seed = random_seed;
+        this.commitment = commitment;
 
         try
         {
             this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "random_seed", random_seed);
+                "(key, val) VALUES (?, ?)", "commitment", commitment);
         }
         catch (Exception ex)
         {
@@ -1464,7 +1464,7 @@ unittest
     Hash utxo;
     auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, 10, 0);
     auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.B, 10, 0);
-    assert(e1.random_seed != e2.random_seed);
+    assert(e1.commitment != e2.commitment);
 }
 
 /// Test for the height when the enrollment will be available
@@ -1671,7 +1671,7 @@ unittest
     assert(state.status == EnrollmentStatus.Active);
     assert(state.enrolled_height == Height(0));
     assert(state.cycle_length == params.ValidatorCycle);
-    assert(state.preimage.hash == genesis_enroll.random_seed);
+    assert(state.preimage.hash == genesis_enroll.commitment);
     assert(state.preimage.distance == 0);
 
     PreImageInfo preimage;

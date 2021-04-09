@@ -411,7 +411,7 @@ public struct PreImageCycleImpl
           secret = The secret key of the node, used as part of the hash
                    to generate the cycle seeds
           consume = If true, calculate the cycle index. Otherwise, just
-                   get the random seed which is the first pre-image
+                   get the commitment which is the first pre-image
 
         Returns:
           The hash of the current enrollment round

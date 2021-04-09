@@ -100,7 +100,7 @@ version (unittest) public void checkGenesisEnrollments (
                 .fold!((s, e) =>
                     format!"%s\n%s"
                     (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature.fromString(`%s`)),"
-                        (e.key, e.enrol.utxo_key, e.enrol.random_seed, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
+                        (e.key, e.enrol.utxo_key, e.enrol.commitment, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
                     ("\n    enrollments: [")));
 }
 

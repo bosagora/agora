@@ -366,7 +366,7 @@ unittest
         caches[0][$ - 2],
         1
     );
-    assert(hashFull(preimage_1.hash) == enrollments[0].random_seed);
+    assert(hashFull(preimage_1.hash) == enrollments[0].commitment);
     enroll_man.addPreimage(preimage_1);
     auto gotten_image = enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
     assert(preimage_1 == gotten_image);
@@ -377,7 +377,7 @@ unittest
         caches[1][$ - 2],
         1
     );
-    assert(hashFull(preimage_2.hash) == enrollments[1].random_seed);
+    assert(hashFull(preimage_2.hash) == enrollments[1].commitment);
     enroll_man.addPreimage(preimage_2);
     gotten_image = enroll_man.getValidatorPreimage(enrollments[1].utxo_key);
     assert(preimage_2 == gotten_image);
