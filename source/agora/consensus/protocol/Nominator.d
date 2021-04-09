@@ -1092,19 +1092,8 @@ extern(D):
         const uint hash_P = 2;
 
         const seed = this.ledger.getValidatorRandomSeed(Height(slot_idx - 1));
-        uint512 hash;
-        try
-        {
-            hash = uint512(hashMulti(slot_idx, prev[],
-                is_priority ? hash_P : hash_N, round_num, node_id, seed));
-        }
-        catch (Exception ex)
-        {
-            log.fatal("Computing hash of the node({}) failed: {}, Data was: " ~
-                "slot_idx: {}, prev: {}, is_priority: {}, seed: {}",
-                node_id, ex.msg, slot_idx, prev, is_priority, seed);
-            assert(0);
-        }
+        uint512 hash = uint512(hashMulti(slot_idx, prev[],
+            is_priority ? hash_P : hash_N, round_num, node_id, seed));
 
         uint64_t res = 0;
         for (size_t i = 0; i < res.sizeof; i++)
