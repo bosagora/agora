@@ -26,6 +26,11 @@ public struct DataPayload
     /// The byte array of transaction data
     public const(ubyte)[] data;
 
+    /// The size of the data DataPayload object
+    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    {
+        return this.data.length * this.data[0].sizeof;
+    }
     /***************************************************************************
 
         Create a DataPayload from binary data
