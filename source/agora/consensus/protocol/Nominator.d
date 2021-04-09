@@ -534,7 +534,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public void receiveBlockSignature (in ValidatorBlockSig block_sig) @trusted
+    public void receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
         const cur_height = this.ledger.getBlockHeight();
         log.trace("Received BLOCK SIG {} from node {} for block {}",
@@ -613,7 +613,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public Signature createBlockSignature (in Block block) @trusted nothrow
+    public Signature createBlockSignature (in Block block) @safe nothrow
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = hashFull(block);
@@ -722,7 +722,7 @@ extern(D):
     ***************************************************************************/
 
     private bool collectBlockSignature (const ref ValidatorBlockSig block_sig,
-        in Hash block_hash) nothrow
+        in Hash block_hash) @safe nothrow
     {
         const PublicKey K = block_sig.public_key;
         if (!K.isValid())
@@ -896,7 +896,7 @@ extern(D):
     }
 
     /// If more than half have signed create a combined Schnorr multisig and return the updated block
-    private Block updateMultiSignature (const ref Block block)
+    private Block updateMultiSignature (const ref Block block) @safe
     {
         auto all_validators = this.enroll_man.getCountOfValidators(block.header.height);
 
