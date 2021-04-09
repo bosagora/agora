@@ -137,7 +137,7 @@ unittest
                     idx, node.getQuorumConfig(), quorums_1[idx])));
     }
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key)
+    const keys = network.nodes.map!(node => node.getPublicKey().key)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 

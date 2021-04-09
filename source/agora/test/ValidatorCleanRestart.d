@@ -51,7 +51,7 @@ version(none) unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key)
+    const keys = network.nodes.map!(node => node.getPublicKey().key)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
@@ -150,7 +150,7 @@ unittest
     // Wait for node_1 to wake up
     node_1.ctrl.withTimeout(10.seconds,
         (scope TestAPI api) {
-            api.getPublicKey(PublicKey.init);
+            api.getPublicKey();
         }
     );
 

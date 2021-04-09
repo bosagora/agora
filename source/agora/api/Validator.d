@@ -104,7 +104,7 @@ public interface API : agora.api.FullNode.API
 
     ***************************************************************************/
 
-    public Identity getPublicKey (PublicKey key);
+    public Identity getPublicKey (PublicKey key = PublicKey.init);
 
     /***************************************************************************
 

@@ -256,7 +256,7 @@ public class Validator : FullNode, API
     }
 
     /// GET /public_key
-    public override Identity getPublicKey (PublicKey key) nothrow @safe
+    public override Identity getPublicKey (PublicKey key = PublicKey.init) nothrow @safe
     {
         import agora.flash.OnionPacket : generateSharedSecret;
         import libsodium.crypto_auth;

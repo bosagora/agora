@@ -550,6 +550,11 @@ public struct NodePair
     /// used in the Nomination protocol.
     private shared(TimePoint)* cur_time;
 
+    ///
+    public TestAPI api;
+
+    alias api this;
+
     /// Get the current clock time
     @property TimePoint time () @trusted @nogc nothrow
     {
@@ -853,7 +858,7 @@ public class TestAPIManager
         foreach (ref interf; conf.interfaces)
         {
             this.reg.register(interf.address, api.listener());
-            this.nodes ~= NodePair(interf.address, api, time);
+            this.nodes ~= NodePair(interf.address, api, time, api);
         }
         return api;
     }
@@ -1719,7 +1724,7 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// FullNode does not implement this
-    public override Identity getPublicKey (PublicKey) @safe
+    public override Identity getPublicKey (PublicKey key = PublicKey.init) @safe
     {
         // NetworkManager assumes that if key == PublicKey.init,
         // we are *not* a Validator node, treated as a FullNode instead.
@@ -1777,7 +1782,7 @@ public class TestValidatorNode : Validator, TestAPI
     public override Enrollment createEnrollmentData ()
     {
         Hash[] utxo_hashes;
-        auto pubkey = this.getPublicKey(PublicKey.init).key;
+        auto pubkey = this.getPublicKey().key;
         auto utxos = this.utxo_set.getUTXOs(pubkey);
         assert(utxos.length > 0, format!"No utxo for public key %s"(pubkey));
         foreach (key, utxo; utxos)
