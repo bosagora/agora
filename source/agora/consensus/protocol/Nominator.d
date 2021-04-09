@@ -541,14 +541,8 @@ extern(D):
                     block_sig.signature, block_sig.public_key, block_sig.height);
         if (cur_height >= block_sig.height)
         {
-            auto blocks = this.ledger.getBlocksFrom(Height(block_sig.height));
-            if (blocks.empty)
-            {
-                log.warn("Current block height is {}. Block for slot {} not found",
-                    cur_height, block_sig.height);
-                return;
-            }
-            const Block block = blocks.front;
+            const block = this.ledger.getBlocksFrom(Height(block_sig.height))
+                .front;
             if (!this.collectBlockSignature(block_sig, block.hashFull()))
                 return;
             const signed_block = updateMultiSignature(block);
