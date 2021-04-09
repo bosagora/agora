@@ -112,7 +112,7 @@ public immutable class ConsensusParams
 /// Ditto
 public struct ConsensusConfig
 {
-    public ulong genesis_timestamp = 1609459200; // 2021-01-01:00:00:00 GMT
+    public ulong genesis_timestamp = 1617235200; // 2021-04-01:00:00:00 GMT
 
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
