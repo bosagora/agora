@@ -960,29 +960,30 @@ extern(D):
 
     ***************************************************************************/
 
-    public override void emitEnvelope (ref const(SCPEnvelope) envelope)
+    public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
+        SCPEnvelope env = cast()envelope;
+        log.trace("Emitting envelope: {}", scpPrettify(&envelope));
+
         try
         {
-            SCPEnvelope env = cast()envelope;
-            log.trace("Emitting envelope: {}", scpPrettify(&envelope));
-
             // deep-dup as SCP stores pointers to memory on the stack
             env.statement.pledges = deserializeFull!(SCPStatement._pledges_t)(
                 serializeFull(env.statement.pledges));
-            this.network.validators().each!(v => v.client.sendEnvelope(env));
-
-            // Per SCP rules, once we CONFIRM a NOMINATE; we can't
-            // nominate new values. Keep track of the biggest slot_idx we confirmed
-            // a NOMINATE on
-            if (envelope.statement.slotIndex > this.last_confirmed_height &&
-                envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
-                this.last_confirmed_height = Height(envelope.statement.slotIndex);
         }
         catch (Exception ex)
         {
             assert(0, ex.to!string);
         }
+
+        this.network.validators().each!(v => v.client.sendEnvelope(env));
+
+        // Per SCP rules, once we CONFIRM a NOMINATE; we can't
+        // nominate new values. Keep track of the biggest slot_idx we confirmed
+        // a NOMINATE on
+        if (envelope.statement.slotIndex > this.last_confirmed_height &&
+            envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
+            this.last_confirmed_height = Height(envelope.statement.slotIndex);
     }
 
     /***************************************************************************
