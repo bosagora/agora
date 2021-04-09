@@ -310,16 +310,6 @@ extern(D):
             return false;
         }
 
-        // check whether the slashing related data is valid
-        if (auto msg = this.ledger.validateSlashingData(data))
-        {
-            log.fatal("tryNominate(): Invalid preimage data: {}. Data: {}",
-                    msg, data.prettify);
-            if (this.onInvalidNomination)
-                this.onInvalidNomination(data, msg);
-            return false;
-        }
-
         return true;
     }
 
@@ -798,13 +788,6 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
-        if (auto fail_reason = this.ledger.validateConsensusData(data))
-        {
-            log.error("validateValue(): Validation failed: {}. Data: {}",
-                fail_reason, data.prettify);
-            return ValidationLevel.kInvalidValue;
-        }
-
         if (this.ledger.checkSelfSlashing(data))
         {
             log.warn("validateValue(): Marking {} for data slashing us as invalid",
@@ -812,12 +795,11 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
-        if (auto fail_reason = this.ledger.validateSlashingData(data))
+        if (auto fail_reason = this.ledger.validateConsensusData(data))
         {
-            log.info("validateValue(): Preimage Validation failed, but " ~
-                "return kMaybeValidValue. Reason: {}, Data: {}",
+            log.error("validateValue(): Validation failed: {}. Data: {}",
                 fail_reason, data.prettify);
-            return ValidationLevel.kMaybeValidValue;
+            return ValidationLevel.kInvalidValue;
         }
 
         return ValidationLevel.kFullyValidatedValue;

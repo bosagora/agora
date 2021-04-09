@@ -685,6 +685,9 @@ public class Ledger
                 return fail_reason;
         }
 
+        if (auto fail_reason = this.validateSlashingData(data))
+            return fail_reason;
+
         return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
             clock.networkTime(), block_time_offset_tolerance);
     }
@@ -701,7 +704,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateSlashingData (in ConsensusData data) @safe nothrow
+    private string validateSlashingData (in ConsensusData data) @safe nothrow
     {
         if (this.checkSelfSlashing(data))
         {
