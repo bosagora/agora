@@ -944,15 +944,15 @@ extern(D):
             }
             validator_mask[idx] = true;
         }
-        const Signature[] sigs = block_sigs.values;
         // There must exist signatures for at least half the validators to externalize
-        if (sigs.length <= all_validators / 2)
+        if (block_sigs.length <= all_validators / 2)
         {
             log.warn("Only {} signed. Require more than {} out of {} validators to sign for externalizing slot height {}.",
-                sigs.length, all_validators / 2, all_validators, block.header.height);
+                block_sigs.length, all_validators / 2, all_validators, block.header.height);
             return Block.init;
         }
-        Block signed_block = block.updateSignature(multiSigCombine(sigs), validator_mask);
+        Block signed_block = block.updateSignature(
+            multiSigCombine(block_sigs.byValue), validator_mask);
         log.trace("Updated block signatures for block {}, mask: {}",
                 block.header.height, validator_mask);
         return signed_block;
