@@ -50,6 +50,7 @@ import agora.serialization.Serializer;
 import agora.stats.Block;
 import agora.stats.Tx;
 import agora.stats.Utils;
+import agora.stats.Validator;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
@@ -118,6 +119,12 @@ public class Ledger
 
     /// Block stats
     private BlockStats block_stats;
+
+    /// Validator preimages stats
+    private ValidatorPreimagesStats validator_preimages_stats;
+
+    /// Validator count stats
+    private ValidatorCountStats validator_count_stats;
 
     /// The checker of transaction data payload
     private FeeManager fee_man;
@@ -213,6 +220,7 @@ public class Ledger
 
         Utils.getCollectorRegistry().addCollector(&this.collectTxStats);
         Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
 
     /***************************************************************************
@@ -422,6 +430,27 @@ public class Ledger
         foreach (const ref Transaction tx; transactions)
             getSumOutput(tx, tx_amount);
         return to!ulong(tx_amount.toString());
+    }
+
+    /***************************************************************************
+
+        Collect all validator & preimage stats into the collector
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
+    private void collectValidatorStats (Collector collector)
+    {
+        Hash[] keys;
+        if (this.enroll_man.getEnrolledUTXOs(keys))
+            foreach (const ref key; keys)
+                validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
+                    this.enroll_man.validator_set.getPreimage(key).distance, key.toString());
+
+        foreach (stat; validator_preimages_stats.getStats())
+            collector.collect(stat.value, stat.label);
     }
 
     /***************************************************************************
