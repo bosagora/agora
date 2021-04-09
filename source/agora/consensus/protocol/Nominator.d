@@ -842,29 +842,29 @@ extern(D):
             assert(0, format!"Transaction set empty for slot %s"(height));
 
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
+        Hash random_seed = this.ledger.getExternalizedRandomSeed(
+            last_block.header.height, data.missing_validators);
+        Transaction[] externalized_tx_set;
+        if (auto fail_reason = this.ledger.getValidTXSet(data,
+            externalized_tx_set))
+        {
+            log.info("Missing TXs while externalizing at Height {}: {}",
+                height, prettify(data));
+            return;
+        }
+        const block = makeNewBlock(last_block,
+            externalized_tx_set, data.time_offset, random_seed,
+            data.enrolls, data.missing_validators);
+
+        // If we did not sign yet then add signature and gossip to other nodes
+        if (this.kp.address !in this.slot_sigs[height])
+        {
+            log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
+            this.slot_sigs[height][this.kp.address] = this.createBlockSignature(block);
+        }
+
         try
         {
-            Hash random_seed = this.ledger.getExternalizedRandomSeed(
-                last_block.header.height, data.missing_validators);
-
-            Transaction[] externalized_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(data,
-                externalized_tx_set))
-            {
-                log.info("Missing TXs while externalizing at Height {}: {}",
-                    height, prettify(data));
-                return;
-            }
-            const block = makeNewBlock(last_block,
-                externalized_tx_set, data.time_offset, random_seed,
-                data.enrolls, data.missing_validators);
-
-            // If we did not sign yet then add signature and gossip to other nodes
-            if (this.kp.address !in this.slot_sigs[height])
-            {
-                log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
-                this.slot_sigs[height][this.kp.address] = this.createBlockSignature(block);
-            }
             const signed_block = this.updateMultiSignature(block);
             if (signed_block == Block.init)
             {
