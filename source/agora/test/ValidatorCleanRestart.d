@@ -88,9 +88,9 @@ unittest
 
     // Sanity check
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount == conf.outsider_validators, 3.seconds,
+        retryFor(node.getValidatorCount(Height(20)) == conf.outsider_validators, 3.seconds,
             format("Node %s has validator count %s. Expected: %s",
-                idx, node.getValidatorCount(), conf.outsider_validators)));
+                idx, node.getValidatorCount(Height(20)), conf.outsider_validators)));
 
     // Check the connection states are complete for the set B
     set_b.each!(node =>

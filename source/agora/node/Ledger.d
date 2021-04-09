@@ -198,7 +198,7 @@ public class Ledger
                 this.replayStoredBlock(this.storage.readBlock(Height(height)));
             }
         }
-        else if (this.enroll_man.validatorCount() == 0)
+        else if (this.enroll_man.validatorCount(this.last_block.header.height) == 0)
         {
             // +1 because the genesis block counts as one
             const ulong block_count = this.last_block.header.height + 1;
@@ -272,12 +272,12 @@ public class Ledger
             return false;
         }
 
-        const old_count = this.enroll_man.validatorCount();
+        const old_count = this.enroll_man.validatorCount(block.header.height);
 
         this.storage.saveBlock(block);
         this.addValidatedBlock(block);
 
-        const new_count = this.enroll_man.validatorCount();
+        const new_count = this.enroll_man.validatorCount(block.header.height);
         // there was a change in the active validator set
         const bool validators_changed = block.header.enrollments.length > 0
             || new_count != old_count;
