@@ -104,6 +104,30 @@ struct SCPStatement {
             SCPNomination nominate_;
         }
 
+        /// Call `func` with one of the message types depending on the `type_`.
+        /// Whether or not this call is @safe depends on the @safety of `func`
+        extern(D) auto apply (alias func, T...)(auto ref T args) const
+        {
+            final switch (this.type_)
+            {
+                case SCPStatementType.SCP_ST_PREPARE:
+                    auto value = () @trusted { return this.prepare_; }();
+                    return func(value, args);
+
+                case SCPStatementType.SCP_ST_CONFIRM:
+                    auto value = () @trusted { return this.confirm_; }();
+                    return func(value, args);
+
+                case SCPStatementType.SCP_ST_EXTERNALIZE:
+                    auto value = () @trusted { return this.externalize_; }();
+                    return func(value, args);
+
+                case SCPStatementType.SCP_ST_NOMINATE:
+                    auto value = () @trusted { return this.nominate_; }();
+                    return func(value, args);
+            }
+        }
+
         /// Support (de)serialization from Vibe.d
         extern(D) string toString () const @trusted
         {

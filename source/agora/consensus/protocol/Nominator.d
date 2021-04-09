@@ -1140,30 +1140,12 @@ private struct SCPStatementHash
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @trusted @nogc
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
     {
         hashPart(this.st.nodeID, dg);
         hashPart(this.st.slotIndex, dg);
         hashPart(this.st.pledges.type_, dg);
-
-        final switch (this.st.pledges.type_)
-        {
-            case SCPStatementType.SCP_ST_PREPARE:
-                computeHash(this.st.pledges.prepare_, dg);
-                break;
-
-            case SCPStatementType.SCP_ST_CONFIRM:
-                computeHash(this.st.pledges.confirm_, dg);
-                break;
-
-            case SCPStatementType.SCP_ST_EXTERNALIZE:
-                computeHash(this.st.pledges.externalize_, dg);
-                break;
-
-            case SCPStatementType.SCP_ST_NOMINATE:
-                computeHash(this.st.pledges.nominate_, dg);
-                break;
-        }
+        this.st.pledges.apply!computeHash(dg);
     }
 
     /***************************************************************************
