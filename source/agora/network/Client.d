@@ -381,14 +381,14 @@ public class NetworkClient
     /***************************************************************************
 
         Get the array of blocks starting from the provided block height.
-        The block at block_height is included in the array.
+        The block at height is included in the array.
 
         Params:
-            block_height = the starting block height to begin retrieval from
+            height = the starting block height to begin retrieval from
             max_blocks   = the maximum blocks to return at once
 
         Returns:
-            the array of blocks starting from block_height,
+            the array of blocks starting from height,
             up to `max_blocks`.
 
             If the request failed, returns an empty array
@@ -398,10 +398,10 @@ public class NetworkClient
 
     ***************************************************************************/
 
-    public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks)
+    public const(Block)[] getBlocksFrom (ulong height, uint max_blocks)
     {
         return this.attemptRequest!(API.getBlocksFrom, Throw.Yes)(this.api,
-            block_height, max_blocks);
+            height, max_blocks);
     }
 
     /***************************************************************************

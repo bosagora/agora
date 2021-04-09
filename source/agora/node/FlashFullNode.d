@@ -179,10 +179,10 @@ public mixin template FlashNodeCommon ()
     public override Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
         /* in */ uint seq_id, /* in */ Hash[] secrets,
         /* in */ Hash[] rev_htlcs, /* in */ PublicNonce peer_nonce,
-        /* in */ Height block_height) @trusted
+        /* in */ Height height) @trusted
     {
         return this.flash.proposeUpdate(chan_id, seq_id, secrets, rev_htlcs,
-            peer_nonce, block_height);
+            peer_nonce, height);
     }
 
     ///

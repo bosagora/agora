@@ -293,7 +293,7 @@ public class EnrollmentManager
         Params:
             enroll = the enrollment data to add
             pubkey = the public key of the enrollment
-            block_height = current block height
+            height = current block height
             finder = the delegate to find UTXOs with
 
         Returns:
@@ -302,7 +302,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public bool addEnrollment (in Enrollment enroll,
-        in PublicKey pubkey, in Height block_height, scope UTXOFinder finder)
+        in PublicKey pubkey, in Height height, scope UTXOFinder finder)
         @safe nothrow
     {
         auto enrolled_height = this.getEnrolledHeight(enroll.utxo_key);
@@ -311,7 +311,7 @@ public class EnrollmentManager
         ulong avail_height;
 
         if (enrolled_height == ulong.max)
-            avail_height = block_height + 1;
+            avail_height = height + 1;
         else
             avail_height = enrolled_height + this.params.ValidatorCycle;
 
@@ -373,7 +373,7 @@ public class EnrollmentManager
         Params:
             enroll = Enrollment structure to add to the validator set
             pubkey = the public key of the enrollment
-            block_height = enrolled blockheight
+            height = enrolled blockheight
             finder = the delegate to find UTXOs with
             self_utxos = the UTXOs belonging to this node
 
@@ -383,12 +383,12 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public string addValidator (in Enrollment enroll, in PublicKey pubkey,
-        in Height block_height, scope UTXOFinder finder,
+        in Height height, scope UTXOFinder finder,
         in UTXO[Hash] self_utxos) @safe nothrow
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
-        if (auto r = this.validator_set.add(block_height, finder, enroll, pubkey))
+        if (auto r = this.validator_set.add(height, finder, enroll, pubkey))
             return r;
 
         if (enroll.utxo_key in self_utxos)
@@ -624,19 +624,19 @@ public class EnrollmentManager
         on the block height. It also clears up the enrollment of this node.
 
         Params:
-            block_height = current block height
+            height = current block height
 
     ***************************************************************************/
 
-    public void clearExpiredValidators (in Height block_height) @safe nothrow
+    public void clearExpiredValidators (in Height height) @safe nothrow
     {
         // clear up the enrollment of a node if the validator cycle of the node
-        // ends at the `block_height`
+        // ends at the `height`
         const enrolled = this.validator_set.getEnrolledHeight(this.enroll_key);
-        if (block_height >= enrolled + params.ValidatorCycle)
+        if (height >= enrolled + params.ValidatorCycle)
             this.resetNodeEnrollment();
 
-        this.validator_set.clearExpiredValidators(block_height);
+        this.validator_set.clearExpiredValidators(height);
     }
 
     /***************************************************************************
@@ -1048,23 +1048,23 @@ public class EnrollmentManager
 
         Gets the number of active validators at the block height.
 
-        `block_height` is the height of the newly created block.
+        `height` is the height of the newly created block.
         If the active validators are less than the specified value,
         new blocks cannot be created.
 
         Params:
-            block_height = the height of proposed block
+            height = the height of proposed block
 
         Returns:
             Returns the number of active validators when the block height is
-            `block_height`.
+            `height`.
             Returns 0 in case of error.
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (in Height block_height) @safe nothrow
+    public ulong getValidatorCount (in Height height) @safe nothrow
     {
-        return this.validator_set.getValidatorCount(block_height);
+        return this.validator_set.getValidatorCount(height);
     }
 
     /***************************************************************************
@@ -1399,61 +1399,61 @@ unittest
             utxo_hashes[idx], kp, params.ValidatorCycle, 0);
     }
 
-    Height block_height = Height(2);
+    Height height = Height(2);
 
     // create and add the first Enrollment object
-    assert(man.addEnrollment(enrollments[0], WK.Keys[0].address, block_height,
+    assert(man.addEnrollment(enrollments[0], WK.Keys[0].address, height,
             utxo_set.getUTXOFinder()));
-    assert(man.getValidatorCount(block_height) == 0);  // not active yet
+    assert(man.getValidatorCount(height) == 0);  // not active yet
 
-    man.clearExpiredValidators(block_height);
-    assert(man.addValidator(enrollments[0], WK.Keys[0].address, block_height, &utxo_set.peekUTXO,
+    man.clearExpiredValidators(height);
+    assert(man.addValidator(enrollments[0], WK.Keys[0].address, height, &utxo_set.peekUTXO,
             utxos) is null);
-    assert(man.getValidatorCount(block_height) == 1);  // updated
+    assert(man.getValidatorCount(height) == 1);  // updated
 
-    block_height = 3;
+    height = 3;
 
     // create and add the second Enrollment object
-    assert(man.addEnrollment(enrollments[1], WK.Keys[1].address, block_height,
+    assert(man.addEnrollment(enrollments[1], WK.Keys[1].address, height,
             utxo_set.getUTXOFinder()));
-    assert(man.getValidatorCount(block_height) == 1);  // not active yet
+    assert(man.getValidatorCount(height) == 1);  // not active yet
 
-    man.clearExpiredValidators(block_height);
-    assert(man.addValidator(enrollments[1], WK.Keys[1].address, block_height, &utxo_set.peekUTXO,
+    man.clearExpiredValidators(height);
+    assert(man.addValidator(enrollments[1], WK.Keys[1].address, height, &utxo_set.peekUTXO,
             utxos) is null);
-    assert(man.getValidatorCount(block_height) == 2);  // updated
+    assert(man.getValidatorCount(height) == 2);  // updated
 
-    block_height = 4;
+    height = 4;
 
     // create and add the third Enrollment object
-    assert(man.addEnrollment(enrollments[2], WK.Keys[2].address, block_height,
+    assert(man.addEnrollment(enrollments[2], WK.Keys[2].address, height,
             utxo_set.getUTXOFinder()));
-    assert(man.getValidatorCount(block_height) == 2);  // not active yet
+    assert(man.getValidatorCount(height) == 2);  // not active yet
 
-    man.clearExpiredValidators(block_height);
-    assert(man.addValidator(enrollments[2], WK.Keys[2].address, block_height, &utxo_set.peekUTXO,
+    man.clearExpiredValidators(height);
+    assert(man.addValidator(enrollments[2], WK.Keys[2].address, height, &utxo_set.peekUTXO,
             utxos) is null);
-    assert(man.getValidatorCount(block_height) == 3);  // updated
+    assert(man.getValidatorCount(height) == 3);  // updated
 
-    block_height = 5;    // valid block height : 0 <= H < 1008
-    man.clearExpiredValidators(block_height);
-    assert(man.getValidatorCount(block_height) == 3);  // not cleared yet
+    height = 5;    // valid block height : 0 <= H < 1008
+    man.clearExpiredValidators(height);
+    assert(man.getValidatorCount(height) == 3);  // not cleared yet
 
-    block_height = 1009; // valid block height : 2 <= H < 1010
-    man.clearExpiredValidators(block_height);
-    assert(man.getValidatorCount(block_height) == 3);
+    height = 1009; // valid block height : 2 <= H < 1010
+    man.clearExpiredValidators(height);
+    assert(man.getValidatorCount(height) == 3);
 
-    block_height = 1010; // valid block height : 3 <= H < 1011
-    man.clearExpiredValidators(block_height);
-    assert(man.getValidatorCount(block_height) == 2);
+    height = 1010; // valid block height : 3 <= H < 1011
+    man.clearExpiredValidators(height);
+    assert(man.getValidatorCount(height) == 2);
 
-    block_height = 1011; // valid block height : 4 <= H < 1012
-    man.clearExpiredValidators(block_height);
-    assert(man.getValidatorCount(block_height) == 1);
+    height = 1011; // valid block height : 4 <= H < 1012
+    man.clearExpiredValidators(height);
+    assert(man.getValidatorCount(height) == 1);
 
-    block_height = 1012; // valid block height : 5 <= H < 1013
-    man.clearExpiredValidators(block_height);
-    assert(man.getValidatorCount(block_height) == 0);
+    height = 1012; // valid block height : 5 <= H < 1013
+    man.clearExpiredValidators(height);
+    assert(man.getValidatorCount(height) == 0);
 }
 
 // https://github.com/bosagora/agora/pull/1010#issuecomment-654149650

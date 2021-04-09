@@ -175,7 +175,7 @@ public interface FlashAPI
             secrets = the secrets the proposer wishes to disclose
             rev_htlcs = the htlcs the proposer wishes to drop
             peer_nonce = the nonce the calling peer will use
-            block_height = the block height of the calling node. This is needed
+            height = the block height of the calling node. This is needed
                 in order to properly resolve any pending HTLCs in the channel.
                 For example, timed-out HTLCs should be replaced with a payout
                 back to the funder. If the called node's local block height
@@ -191,7 +191,7 @@ public interface FlashAPI
     public Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
         /* in */ uint seq_id, /* in */ Hash[] secrets,
         /* in */ Hash[] rev_htlcs, /* in */ PublicNonce peer_nonce,
-        /* in */ Height block_height);
+        /* in */ Height height);
 
     /***************************************************************************
 

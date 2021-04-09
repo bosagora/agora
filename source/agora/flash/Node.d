@@ -132,15 +132,15 @@ public abstract class ThinFlashNode : FlashNode
             try
             {
                 auto latest_height = this.agora_node.getBlockHeight();
-                if (this.last_block_height < latest_height)
+                if (this.last_height < latest_height)
                 {
                     auto next_block = this.agora_node.getBlocksFrom(
-                        this.last_block_height + 1, 1)[0];
+                        this.last_height + 1, 1)[0];
 
                     foreach (channel; this.channels)
                         channel.onBlockExternalized(next_block);
 
-                    this.last_block_height++;
+                    this.last_height++;
                     this.dump();
                 }
             }
@@ -244,7 +244,7 @@ public class AgoraFlashNode : FlashNode
     /// Called by a FullNode once a block has been externalized
     public void onExternalizedBlock (const ref Block block) @safe
     {
-        this.last_block_height = block.header.height;
+        this.last_height = block.header.height;
 
         foreach (channel; this.channels)
             channel.onBlockExternalized(block);
@@ -768,20 +768,20 @@ public abstract class FlashNode : ControlFlashAPI
     /// See `FlashAPI.proposeUpdate`
     public override Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
         /* in */ uint seq_id, /* in */ Hash[] secrets, /* in */ Hash[] rev_htlcs,
-        /* in */ PublicNonce peer_nonce, /* in */ Height block_height) @trusted
+        /* in */ PublicNonce peer_nonce, /* in */ Height height) @trusted
     {
         auto channel = chan_id in this.channels;
         if (channel is null)
             return Result!PublicNonce(ErrorCode.InvalidChannelID,
                 "Channel ID not found");
 
-        if (block_height != this.last_block_height)
+        if (height != this.last_height)
             return Result!PublicNonce(ErrorCode.MismatchingBlockHeight,
                 format("Mismatching block height! Our: %s Their %s",
-                    this.last_block_height, block_height));
+                    this.last_height, height));
 
         return channel.onProposedUpdate(seq_id, secrets, rev_htlcs, peer_nonce,
-            block_height);
+            height);
     }
 
     /// See `FlashAPI.reportPaymentError`
@@ -854,12 +854,12 @@ public abstract class FlashNode : ControlFlashAPI
         if (auto secret = payment_hash in this.secrets)
         {
             assert(!error); // Payee should never fail to receive
-            channel.learnSecrets([*secret], [], this.last_block_height);
+            channel.learnSecrets([*secret], [], this.last_height);
         }
         else if (error)
         {
             foreach (id, chan; this.channels)
-                chan.learnSecrets([], [payment_hash], this.last_block_height);
+                chan.learnSecrets([], [payment_hash], this.last_height);
             this.reportPaymentError(chan_id, OnionError(Hash.init,
                 payment_hash, chan_id, error));
         }
@@ -914,7 +914,7 @@ public abstract class FlashNode : ControlFlashAPI
         foreach (chan_id, channel; this.channels)
         {
             log.info("Calling learnSecrets for {}", chan_id);
-            channel.learnSecrets(secrets, rev_htlcs, this.last_block_height);
+            channel.learnSecrets(secrets, rev_htlcs, this.last_height);
         }
     }
 
@@ -940,7 +940,7 @@ public abstract class FlashNode : ControlFlashAPI
     {
         if (auto channel = chan_id in this.channels)
             return channel.queueNewPayment(payment_hash, amount, lock_height,
-                packet, this.last_block_height);
+                packet, this.last_height);
 
         log.info("{} Could not find this channel ID: {}",
             this.conf.key_pair.address.flashPrettify, chan_id);
@@ -1050,7 +1050,7 @@ public abstract class FlashNode : ControlFlashAPI
         // todo: isn't the payee supposed to set this?
         // the lock height for the end node. The first hop will have the biggest
         // lock height, gradually reducing with each hop until destination node.
-        Height end_lock_height = Height(this.last_block_height + 100);
+        Height end_lock_height = Height(this.last_height + 100);
 
         Set!Hash ignore_chans;
         if (auto error = invoice.payment_hash in this.payment_errors)
@@ -1100,7 +1100,7 @@ private mixin template NodeMetadata ()
     protected ChannelUpdate[PaymentDirection][Hash] channel_updates;
 
     /// The last read block height.
-    protected Height last_block_height;
+    protected Height last_height;
 
     /// secret hash => secret (preimage)
     /// Only the Payee initially knows about the secret,
