@@ -377,7 +377,7 @@ extern(D):
         if (!this.prepareNominatingSet(data))
             return;
 
-        log.trace("Nominating {} at {}", data.prettify, cur_time);
+        log.info("Nominating {} at {}", data.prettify, cur_time);
         this.is_nominating = true;
 
         // note: we are not passing the previous tx set as we don't really
