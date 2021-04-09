@@ -786,30 +786,10 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
+        ConsensusData data;
         try
         {
-            auto data = deserializeFull!ConsensusData(value[]);
-            if (auto fail_reason = this.ledger.validateConsensusData(data))
-            {
-                log.error("validateValue(): Validation failed: {}. Data: {}",
-                    fail_reason, data.prettify);
-                return ValidationLevel.kInvalidValue;
-            }
-
-            if (this.ledger.checkSelfSlashing(data))
-            {
-                log.warn("validateValue(): Marking {} for data slashing us as invalid",
-                         nomination ? "nomination" : "vote");
-                return ValidationLevel.kInvalidValue;
-            }
-
-            if (auto fail_reason = this.ledger.validateSlashingData(data))
-            {
-                log.info("validateValue(): Preimage Validation failed, but " ~
-                    "return kMaybeValidValue. Reason: {}, Data: {}",
-                    fail_reason, data.prettify);
-                return ValidationLevel.kMaybeValidValue;
-            }
+            data = deserializeFull!ConsensusData(value[]);
         }
         catch (Exception ex)
         {
@@ -817,6 +797,29 @@ extern(D):
                 "Error: {}", ex.msg);
             return ValidationLevel.kInvalidValue;
         }
+
+        if (auto fail_reason = this.ledger.validateConsensusData(data))
+        {
+            log.error("validateValue(): Validation failed: {}. Data: {}",
+                fail_reason, data.prettify);
+            return ValidationLevel.kInvalidValue;
+        }
+
+        if (this.ledger.checkSelfSlashing(data))
+        {
+            log.warn("validateValue(): Marking {} for data slashing us as invalid",
+                     nomination ? "nomination" : "vote");
+            return ValidationLevel.kInvalidValue;
+        }
+
+        if (auto fail_reason = this.ledger.validateSlashingData(data))
+        {
+            log.info("validateValue(): Preimage Validation failed, but " ~
+                "return kMaybeValidValue. Reason: {}, Data: {}",
+                fail_reason, data.prettify);
+            return ValidationLevel.kMaybeValidValue;
+        }
+
         return ValidationLevel.kFullyValidatedValue;
     }
 
