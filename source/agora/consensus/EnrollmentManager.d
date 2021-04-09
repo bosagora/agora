@@ -61,8 +61,6 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
-import agora.stats.Utils;
-import agora.stats.Validator;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
 
@@ -104,7 +102,7 @@ public class EnrollmentManager
 
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
-    private ValidatorSet validator_set;
+    public ValidatorSet validator_set;  // FIXME: Made public to ease transition to raise this to ledger
 
     /// Enrollment pool managing enrollments waiting to be a validator
     private EnrollmentPool enroll_pool;
@@ -114,12 +112,6 @@ public class EnrollmentManager
 
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
-
-    /// Validator count stats
-    private ValidatorCountStats validator_count_stats;
-
-    /// Validator preimages stats
-    private ValidatorPreimagesStats validator_preimages_stats;
 
     /// In order to support collecting signatures *after* a block is
     /// externalized we must know the key index for the block header bitmask
@@ -166,8 +158,6 @@ public class EnrollmentManager
 
         // load enrollment key
         this.enroll_key = this.getEnrollmentKey();
-
-        Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
 
     /// Unittest-only constructor
@@ -1006,31 +996,6 @@ public class EnrollmentManager
     {
         return !this.validator_set.hasEnrollment(utxo_key) &&
             this.validator_set.hasPublicKey(pubkey);
-    }
-
-    /***************************************************************************
-
-        Collect all validator & preimage stats into the collector
-
-        Params:
-            collector = the Collector to collect the stats into
-
-    ***************************************************************************/
-
-    private void collectValidatorStats (Collector collector)
-    {
-        validator_count_stats.setMetricTo!"agora_validators_gauge"(validator_set.count());
-        Hash[] keys;
-        if (getEnrolledUTXOs(keys))
-            foreach (const ref key; keys)
-                validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
-                    validator_set.getPreimage(key).distance, key.toString());
-
-        foreach (stat; validator_count_stats.getStats())
-            collector.collect(stat.value);
-
-        foreach (stat; validator_preimages_stats.getStats())
-            collector.collect(stat.value, stat.label);
     }
 
     /***************************************************************************
