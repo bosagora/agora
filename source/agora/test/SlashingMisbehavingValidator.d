@@ -155,8 +155,8 @@ unittest
     network.expectHeight(Height(2));
     auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
     assert(block2.header.missing_validators.length == 1);
-    assert(nodes[0].getValidatorCount() == 5,
-        format!"Invalid validator count, current: %s"(nodes[0].getValidatorCount()));
+    auto cnt = nodes[0].getValidatorCount(block2.header.height);
+    assert(cnt == 5, format!"Invalid validator count, current: %s"(cnt));
 
     // check if the frozen UTXO is refunded to the owner and
     // the penalty is re-routed to the `CommonsBudget`

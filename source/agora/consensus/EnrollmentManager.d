@@ -562,9 +562,9 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public size_t validatorCount () @safe
+    public size_t validatorCount (in Height height) @safe
     {
-        return this.validator_set.count();
+        return this.validator_set.getValidatorCount(height);
     }
 
     /***************************************************************************
@@ -1211,7 +1211,7 @@ unittest
     man.getEnrollments(enrolls, Height(9), &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set
-    assert(man.validator_set.count() == 1);
+    assert(man.validatorCount(Height(9)) == 1);
     assert(man.enroll_pool.count() == 1);
 
     man.enroll_pool.remove(utxo_hashes[0]);
@@ -1250,7 +1250,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[1], WK.Keys[1].address, Height(11),
             &utxo_set.peekUTXO, utxos) is null);
     man.clearExpiredValidators(Height(11));
-    assert(man.validatorCount() == 2);
+    assert(man.validatorCount(Height(11)) == 2);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 2);
 
@@ -1260,7 +1260,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[2], WK.Keys[2].address, Height(1019),
             &utxo_set.peekUTXO, utxos) is null);
     man.clearExpiredValidators(Height(1019));
-    assert(man.validatorCount() == 1);
+    assert(man.validatorCount(Height(1019)) == 1);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == ordered_enrollments[2].utxo_key);

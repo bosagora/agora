@@ -165,27 +165,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Returns:
-            the number of active enrollments, or 0 if there was a database error
-
-    ***************************************************************************/
-
-    public size_t count () @trusted nothrow
-    {
-        try
-        {
-            return this.db.execute("SELECT count(*) FROM validator_set WHERE active = ?", EnrollmentStatus.Active).
-                oneValue!size_t;
-        }
-        catch (Exception ex)
-        {
-            log.error("Error while calling ValidatorSet.count(): {}", ex);
-            return 0;
-        }
-    }
-
-    /***************************************************************************
-
         Remove all validators from the validator set
 
     ***************************************************************************/
@@ -444,7 +423,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (Height height) @safe nothrow
+    public ulong getValidatorCount (in Height height) @safe nothrow
     {
         try
         {
@@ -869,7 +848,7 @@ unittest
     auto enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
-    assert(set.count() == 1);
+    assert(set.getValidatorCount(Height(1)) == 1);
     ExpiringValidator[] ex_validators;
     assert(set.getExpiringValidators(
         Height(1 + set.params.ValidatorCycle), ex_validators).length == 1);
@@ -880,7 +859,7 @@ unittest
     auto enroll2 = createEnrollment(utxos[1], WK.Keys[1], seed_sources[utxos[1]],
         set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
-    assert(set.count() == 2);
+    assert(set.getValidatorCount(Height(1)) == 2);
     assert(set.getExpiringValidators(
         Height(1 + set.params.ValidatorCycle), ex_validators).length == 2);
     // Too early
@@ -894,7 +873,7 @@ unittest
     auto enroll3 = createEnrollment(utxos[2], WK.Keys[2], seed_sources[utxos[2]],
         set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
-    assert(set.count() == 3);
+    assert(set.getValidatorCount(Height(9)) == 3);
     assert(set.getExpiringValidators(
         Height(9 + set.params.ValidatorCycle), ex_validators).length == 1);
 
@@ -906,12 +885,12 @@ unittest
 
     // remove ValidatorSet
     set.unenroll(utxos[1]);
-    assert(set.count() == 2);
+    assert(set.getValidatorCount(Height(9)) == 2);
     assert(set.hasEnrollment(utxos[0]));
     set.unenroll(utxos[0]);
     assert(!set.hasEnrollment(utxos[0]));
     set.removeAll();
-    assert(set.count() == 0);
+    assert(set.getValidatorCount(Height(10)) == 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -960,7 +939,7 @@ unittest
     // add enrollment at the genesis block:
     // validates blocks [1 .. 1008] inclusively
     set.removeAll();  // clear all
-    assert(set.count == 0);
+    assert(set.getValidatorCount(Height(10)) == 0);
     seed_sources[utxos[0]] = Scalar.random();
     enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
         set.params.ValidatorCycle);
@@ -969,14 +948,14 @@ unittest
     // not cleared yet at height 1007
     set.clearExpiredValidators(Height(1007));
     keys.length = 0;
-    assert(set.count == 1);
+    assert(set.getValidatorCount(Height(1007)) == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
     // cleared after block height 1008 was externalized
     set.clearExpiredValidators(Height(1008));
-    assert(set.count == 0);
+    assert(set.getValidatorCount(Height(1008)) == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
     set.removeAll();  // clear all
@@ -990,14 +969,14 @@ unittest
     // not cleared yet at height 1008
     set.clearExpiredValidators(Height(1008));
     keys.length = 0;
-    assert(set.count == 1);
+    assert(set.getValidatorCount(Height(1008)) == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
     // cleared after block height 1009 was externalized
     set.clearExpiredValidators(Height(1009));
-    assert(set.count == 0);
+    assert(set.getValidatorCount(Height(1009)) == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
 }

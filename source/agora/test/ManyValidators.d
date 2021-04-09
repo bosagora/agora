@@ -71,9 +71,9 @@ void manyValidators (size_t validators)
 
     // check all validators are enrolled
     network.clients.enumerate.each!((idx, node) =>
-        retryFor(node.getValidatorCount() == validators, 5.seconds,
+        retryFor(node.getValidatorCount(Height(19)) == validators, 5.seconds,
             format("Node %s has validator count %s. Expected: %s",
-                idx, node.getValidatorCount(), validators)));
+                idx, node.getValidatorCount(Height(19)), validators)));
 
     // first validated block using all nodes
     network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1));
