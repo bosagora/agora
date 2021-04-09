@@ -107,7 +107,7 @@ public class ValidatorSet
         Add a enrollment data to the validators set
 
         Params:
-            block_height = the current block height in the ledger
+            height = the current block height in the ledger
             finder = the delegate to find UTXOs with
             enroll = the enrollment data to add
             pubkey = the public key of the enrollment
@@ -117,14 +117,14 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public string add (Height block_height, scope UTXOFinder finder,
+    public string add (Height height, scope UTXOFinder finder,
         const ref Enrollment enroll, PublicKey pubkey) @safe nothrow
     {
         import agora.consensus.validation.Enrollment : isInvalidReason;
 
         // check validaty of the enrollment data
         if (auto reason = isInvalidReason(enroll, finder,
-                                    block_height, &this.findRecentEnrollment))
+                                    height, &this.findRecentEnrollment))
             return reason;
 
         // check if already exists
@@ -146,7 +146,7 @@ public class ValidatorSet
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     enroll.utxo_key,
                     pubkey,
-                    enroll.cycle_length, block_height.value, ZeroDistance,
+                    enroll.cycle_length, height.value, ZeroDistance,
                     enroll.random_seed,
                     enroll.enroll_sig.R,
                     EnrollmentStatus.Active);
@@ -394,30 +394,30 @@ public class ValidatorSet
         validator cycle.
 
         Params:
-            block_height = current block height
+            height = current block height
 
     ***************************************************************************/
 
-    public void clearExpiredValidators (Height block_height) @safe nothrow
+    public void clearExpiredValidators (Height height) @safe nothrow
     {
         // the smallest enrolled height would be 0 (genesis block),
         // so the passed block height should be at minimum the
         // size of the validator cycle
-        if (block_height < this.params.ValidatorCycle)
+        if (height < this.params.ValidatorCycle)
             return;
 
         try
         {
             () @trusted {
-                if (block_height > this.params.ValidatorCycle)
+                if (height > this.params.ValidatorCycle)
                 {
                     this.db.execute("DELETE from validator_set " ~
                     "WHERE (enrolled_height < ? AND active = ?) or (enrolled_height < ?)",
-                    EnrollmentStatus.Expired, block_height - this.params.ValidatorCycle,
-                    block_height - this.params.ValidatorCycle - 1);
+                    EnrollmentStatus.Expired, height - this.params.ValidatorCycle,
+                    height - this.params.ValidatorCycle - 1);
                 }
                 this.db.execute("UPDATE validator_set SET active = ? WHERE enrolled_height <= ? AND active = ?",
-                    EnrollmentStatus.Expired, block_height - this.params.ValidatorCycle, EnrollmentStatus.Active);
+                    EnrollmentStatus.Expired, height - this.params.ValidatorCycle, EnrollmentStatus.Active);
             }();
         }
         catch (Exception ex)
@@ -430,30 +430,30 @@ public class ValidatorSet
 
         Gets the number of active validators at the block height.
 
-        `block_height` is the height of the newly created block.
+        `height` is the height of the newly created block.
         If the active validators are less than the specified value,
         new blocks cannot be created.
 
         Params:
-            block_height = the height of proposed block
+            height = the height of proposed block
 
         Returns:
             Returns the number of active validators when the block height is
-            `block_height`.
+            `height`.
             Returns 0 in case of error.
 
     ***************************************************************************/
 
-    public ulong getValidatorCount (Height block_height) @safe nothrow
+    public ulong getValidatorCount (Height height) @safe nothrow
     {
         try
         {
-            const height = (block_height >= this.params.ValidatorCycle) ?
-                block_height - this.params.ValidatorCycle + 1 : 0;
+            const stored_height = (height >= this.params.ValidatorCycle) ?
+                height - this.params.ValidatorCycle + 1 : 0;
             return () @trusted {
                 return this.db.execute(
                     "SELECT count(*) FROM validator_set WHERE " ~
-                    "enrolled_height >= ? AND active = ?", height,
+                    "enrolled_height >= ? AND active = ?", stored_height,
                     EnrollmentStatus.Active).oneValue!ulong;
             }();
         }

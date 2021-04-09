@@ -64,7 +64,7 @@ unittest
         mixin ForwardCtor!();
 
         /// return phony blocks
-        public override const(Block)[] getBlocksFrom (ulong block_height,
+        public override const(Block)[] getBlocksFrom (ulong height,
             uint max_blocks)
         {
             Block[] blocks;

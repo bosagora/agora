@@ -734,12 +734,12 @@ public class FullNode : API
     }
 
     /// GET: /blocks_from
-    public override const(Block)[] getBlocksFrom (ulong block_height,
+    public override const(Block)[] getBlocksFrom (ulong height,
         uint max_blocks)  @safe
     {
         this.endpoint_request_stats
             .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks_from", "http");
-        return this.ledger.getBlocksFrom(Height(block_height))
+        return this.ledger.getBlocksFrom(Height(height))
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
 
@@ -752,16 +752,16 @@ public class FullNode : API
     }
 
     /// GET: /merkle_path
-    public override Hash[] getMerklePath (ulong block_height, Hash hash) @safe
+    public override Hash[] getMerklePath (ulong height, Hash hash) @safe
     {
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "merkle_path", "http");
 
-        const Height height = Height(block_height);
+        const Height stored_height = Height(height);
 
-        if (this.ledger.getBlockHeight() < height)
+        if (this.ledger.getBlockHeight() < stored_height)
             return null;
 
-        Block block = this.storage.readBlock(height);
+        Block block = this.storage.readBlock(stored_height);
         size_t index = block.findHashIndex(hash);
         if (index >= block.txs.length)
             return null;

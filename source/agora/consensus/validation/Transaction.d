@@ -506,7 +506,7 @@ unittest
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
-    Height block_height;
+    Height height;
 
     Transaction secondTx;
     Transaction thirdTx;
@@ -522,7 +522,7 @@ unittest
     // Expected height : 0
     // Expected Status : melted
     {
-        block_height = 0;
+        height = 0;
         Transaction previousTx =
             { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
 
@@ -532,7 +532,7 @@ unittest
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
             const UTXO utxo_value = {
-                unlock_height: block_height+1,
+                unlock_height: height+1,
                 type: TxType.Payment,
                 output: output
             };
@@ -546,7 +546,7 @@ unittest
     // Expected height : 1
     // Expected Status : frozen
     {
-        block_height = 1;
+        height = 1;
         secondTx = Transaction(
             TxType.Freeze,
             [Input(previousHash, 0)],
@@ -555,7 +555,7 @@ unittest
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
         // Second Transaction is VALID.
-        assert(secondTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(secondTx.isValid(engine, storage.getUTXOFinder(), height, checker));
 
         // Save to UTXOSet
         secondHash = hashFull(secondTx);
@@ -563,7 +563,7 @@ unittest
         {
             const Hash utxo_hash = hashMulti(secondHash, idx);
             const UTXO utxo_value = {
-                unlock_height: block_height+1,
+                unlock_height: height+1,
                 type: TxType.Freeze,
                 output: output
             };
@@ -577,7 +577,7 @@ unittest
     // Expected height : 2
     // Expected Status : melting
     {
-        block_height = 2;
+        height = 2;
         thirdTx = Transaction(
             TxType.Payment,
             [Input(secondHash, 0)],
@@ -586,7 +586,7 @@ unittest
         thirdTx.inputs[0].unlock = signUnlock(key_pairs[1], thirdTx);
 
         // Third Transaction is VALID.
-        assert(thirdTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(thirdTx.isValid(engine, storage.getUTXOFinder(), height, checker));
 
         // Save to UTXOSet
         thirdHash = hashFull(thirdTx);
@@ -594,7 +594,7 @@ unittest
         {
             const Hash utxo_hash = hashMulti(thirdHash, idx);
             const UTXO utxo_value = {
-                unlock_height: block_height+2016,
+                unlock_height: height+2016,
                 type: TxType.Payment,
                 output: output
             };
@@ -608,7 +608,7 @@ unittest
     // Expected height : 2+2015
     // Expected Status : melting
     {
-        block_height = 2+2015;  //  this is melting, not melted
+        height = 2+2015;  //  this is melting, not melted
         fourthTx = Transaction(
             TxType.Payment,
             [Input(thirdHash, 0)],
@@ -617,7 +617,7 @@ unittest
         fourthTx.inputs[0].unlock = signUnlock(key_pairs[2], fourthTx);
 
         // Third Transaction is INVALID.
-        assert(!fourthTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(!fourthTx.isValid(engine, storage.getUTXOFinder(), height, checker));
     }
 
     // Creates the fifth payment transaction
@@ -626,7 +626,7 @@ unittest
     // Expected height : 2+2016
     // Expected Status : melted
     {
-        block_height = 2+2016;  //  this is melted
+        height = 2+2016;  //  this is melted
         fifthTx = Transaction(
             TxType.Payment,
             [Input(thirdHash, 0)],
@@ -635,7 +635,7 @@ unittest
         fifthTx.inputs[0].unlock = signUnlock(key_pairs[2], fourthTx);
 
         // Third Transaction is VALID.
-        assert(fifthTx.isValid(engine, storage.getUTXOFinder(), block_height, checker));
+        assert(fifthTx.isValid(engine, storage.getUTXOFinder(), height, checker));
 
         // Save to UTXOSet
         fifthHash = hashFull(fifthTx);
@@ -643,7 +643,7 @@ unittest
         {
             const Hash utxo_hash = hashMulti(fifthHash, idx);
             const UTXO utxo_value = {
-                unlock_height: block_height+1,
+                unlock_height: height+1,
                 type: TxType.Payment,
                 output: output
             };

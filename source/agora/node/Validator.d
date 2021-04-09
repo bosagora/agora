@@ -536,11 +536,11 @@ public class Validator : FullNode, API
         enrolled. Enroll when necessary.
 
         Params:
-            block_height = Current block height
+            height = Current block height
 
     ***************************************************************************/
 
-    protected void checkAndEnroll (Height block_height) @safe
+    protected void checkAndEnroll (Height height) @safe
     {
         Hash enroll_key = this.enroll_man.getEnrolledUTXO(
             this.utxo_set.getUTXOFinder());
@@ -553,12 +553,12 @@ public class Validator : FullNode, API
 
         // This validators enrollment will expire next cycle or not enrolled at all
         if (enrolled == ulong.max ||
-            block_height + 1 >= enrolled + this.params.ValidatorCycle)
+            height + 1 >= enrolled + this.params.ValidatorCycle)
         {
             log.trace("Sending Enrollment at height {} for {} cycles with {}",
-                block_height, this.params.ValidatorCycle, enroll_key);
+                height, this.params.ValidatorCycle, enroll_key);
             this.network.peers.each!(p => p.client.sendEnrollment(
-                this.enroll_man.createEnrollment(enroll_key, block_height + 1)));
+                this.enroll_man.createEnrollment(enroll_key, height + 1)));
         }
     }
 

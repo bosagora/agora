@@ -983,19 +983,19 @@ public class TestAPIManager
             externalized during the Network Unit tests
 
         Params:
-            block_height = the desired block height
+            height = the desired block height
             client_idxs = client indices for the participating validators
 
     ***************************************************************************/
 
-    public void generateBlocks (Height block_height,
+    public void generateBlocks (Height height,
         string file = __FILE__, int line = __LINE__)
     {
-        generateBlocks(iota(GenesisValidators), block_height, file, line);
+        generateBlocks(iota(GenesisValidators), height, file, line);
     }
 
     /// Ditto
-    public void generateBlocks (Idxs)(Idxs client_idxs, Height block_height,
+    public void generateBlocks (Idxs)(Idxs client_idxs, Height height,
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
@@ -1005,7 +1005,7 @@ public class TestAPIManager
         const last_block = client.getBlock(client.getBlockHeight());
 
         // Call addBlock for each block to be externalised for these clients
-        iota(block_height - last_block.header.height)
+        iota(height - last_block.header.height)
             .each!(_ => this.addBlock(client_idxs, file, line));
     }
 

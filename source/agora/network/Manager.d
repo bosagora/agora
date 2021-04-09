@@ -834,14 +834,14 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Retrieve blocks starting from block_height up to the highest block
+        Retrieve blocks starting from height up to the highest block
         that's available from the connected nodes.
 
         As requests may fail, this function should be called with a timer
         to ensure consistency of the node's ledger with other nodes.
 
         Params:
-            block_height = the starting block height to begin retrieval from
+            height = the starting block height to begin retrieval from
             onReceivedBlocks = delegate to call with the received blocks
                                if it returns false, further processing of blocks
                                from the same node is rejected due to invalid
@@ -849,7 +849,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void getBlocksFrom (Height block_height,
+    public void getBlocksFrom (Height height,
         scope bool delegate(const(Block)[],
         const(PreImageInfo)[]) @safe onReceivedBlocks) nothrow
     {
@@ -877,27 +877,27 @@ public class NetworkManager
 
         LNextNode: foreach (pair; node_pairs) try
         {
-            if (block_height > pair.height)
+            if (height > pair.height)
                 continue;  // this node does not have newer blocks than us
 
             log.info("Retrieving blocks [{}..{}] from {}..",
-                block_height, pair.height, pair.client.address);
+                height, pair.height, pair.client.address);
             const MaxBlocks = 1024;
 
             do
             {
                 auto start_height =
-                    block_height < this.consensus_config.validator_cycle ?
-                        0 : block_height - this.consensus_config.validator_cycle;
+                    height < this.consensus_config.validator_cycle ?
+                        0 : height - this.consensus_config.validator_cycle;
 
                 log.info("Retrieving preimages from the height of {} from {}..",
                     start_height, pair.client.address);
 
-                auto preimages = pair.client.getPreimages(start_height, block_height);
+                auto preimages = pair.client.getPreimages(start_height, height);
 
                 log.info("Received {} preimages", preimages.length);
 
-                auto blocks = pair.client.getBlocksFrom(block_height, MaxBlocks);
+                auto blocks = pair.client.getBlocksFrom(height, MaxBlocks);
                 if (blocks.length == 0)
                     continue LNextNode;
 
@@ -908,9 +908,9 @@ public class NetworkManager
                 if (!onReceivedBlocks(blocks, preimages))
                     continue LNextNode;
 
-                block_height += blocks.length;
+                height += blocks.length;
             }
-            while (block_height < pair.height);
+            while (height < pair.height);
         }
         catch (Exception ex)
         {
@@ -921,7 +921,7 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Retrieve blocks starting from block_height up to the highest block
+        Retrieve blocks starting from height up to the highest block
         that's available from the connected nodes.
 
     ***************************************************************************/

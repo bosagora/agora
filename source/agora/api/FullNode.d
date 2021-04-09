@@ -129,7 +129,7 @@ public interface API
 
         Get the array of blocks starting from the provided block height.
 
-        The block at `block_height` is included in the array.
+        The block at `height` is included in the array.
         Note that a node is free to return less blocks than asked for.
         However it must never return more blocks than asked for.
 
@@ -137,16 +137,16 @@ public interface API
             GET /blocks_from
 
         Params:
-            block_height = the starting block height to begin retrieval from
+            height = the starting block height to begin retrieval from
             max_blocks   = the maximum blocks to return at once
 
         Returns:
-            the array of blocks starting from block_height,
+            the array of blocks starting from height,
             up to `max_blocks`
 
     ***************************************************************************/
 
-    public const(Block)[] getBlocksFrom (ulong block_height, uint max_blocks);
+    public const(Block)[] getBlocksFrom (ulong height, uint max_blocks);
 
     /***************************************************************************
 
@@ -174,7 +174,7 @@ public interface API
             GET /merkle_path
 
         Params:
-            block_height = Height of the block that contains the transaction hash
+            height = Height of the block that contains the transaction hash
             hash         = transaction hash
 
         Returns:
@@ -182,7 +182,7 @@ public interface API
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (ulong block_height, Hash hash);
+    public Hash[] getMerklePath (ulong height, Hash hash);
 
     /***************************************************************************
 

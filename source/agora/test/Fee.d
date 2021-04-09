@@ -39,19 +39,19 @@ unittest
 
     Transaction[] txs;
 
-    void createAndExpectNewBlock (Height new_block_height)
+    void createAndExpectNewBlock (Height new_height)
     {
         // create enough tx's for a single block
-        txs = blocks[new_block_height - 1].spendable().map!(txb => txb
+        txs = blocks[new_height - 1].spendable().map!(txb => txb
             .deduct(Amount.UnitPerCoin).sign()).array();
 
         // send it to one node
         txs.each!(tx => node_1.putTransaction(tx));
 
-        network.expectHeightAndPreImg(new_block_height, blocks[0].header);
+        network.expectHeightAndPreImg(new_height, blocks[0].header);
 
         // add next block
-        blocks ~= node_1.getBlocksFrom(new_block_height, 1);
+        blocks ~= node_1.getBlocksFrom(new_height, 1);
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
             .array;
@@ -182,20 +182,20 @@ unittest
 
     Transaction[] txs;
 
-    void createAndExpectNewBlock (Height new_block_height)
+    void createAndExpectNewBlock (Height new_height)
     {
         // create enough tx's for a single block
-        txs = blocks[new_block_height - 1].spendable().map!(txb => txb
+        txs = blocks[new_height - 1].spendable().map!(txb => txb
             .deduct(Amount.UnitPerCoin).sign()).array();
 
         // send it to one node
         txs.each!(tx => valid_node.putTransaction(tx));
 
         network.expectHeightAndPreImg(iota(1, GenesisValidators),
-            new_block_height, blocks[0].header);
+            new_height, blocks[0].header);
 
         // add next block
-        blocks ~= valid_node.getBlocksFrom(new_block_height, 1);
+        blocks ~= valid_node.getBlocksFrom(new_height, 1);
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
             .array;
