@@ -41,14 +41,14 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.clients;
-    auto set_a = network.clients[0 .. GenesisValidators];
-    auto set_b = network.clients[GenesisValidators .. $];
+    auto nodes = network.nodes;
+    auto set_a = network.nodes[0 .. GenesisValidators];
+    auto set_b = network.nodes[GenesisValidators .. $];
 
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key)
+    const keys = network.nodes.map!(node => node.getPublicKey().key)
         .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
         .array;
 
@@ -84,6 +84,6 @@ unittest
 
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
-    set_b.each!(node => network.restart(node));
+    set_b.each!(node => network.restart(node.client));
     network.expectHeight(Height(GenesisValidatorCycle + 1));
 }

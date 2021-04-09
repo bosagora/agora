@@ -118,9 +118,9 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.clients;
+    auto nodes = network.nodes;
     auto spendable = network.blocks[$ - 1].spendable().array;
-    auto bad_address = nodes[5].getPublicKey(PublicKey.init).key;
+    auto bad_address = nodes[5].getPublicKey().key;
 
     // discarded UTXOs (just to trigger block creation)
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;

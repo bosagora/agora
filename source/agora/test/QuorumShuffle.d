@@ -44,7 +44,7 @@ unittest
 
     auto nodes = network.clients;
 
-    const keys = network.nodes.map!(node => node.client.getPublicKey(PublicKey.init).key).array;
+    const keys = network.nodes.map!(node => node.getPublicKey().key).array;
 
     QuorumConfig[] checkQuorum (Height height) {
         if (height > 0) // if not Genesis block

@@ -47,14 +47,14 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.clients;
+    auto nodes = network.nodes;
 
     auto validators = GenesisValidators + conf.outsider_validators;
 
     // generate 18 blocks, 1 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = nodes.map!(node => node.getPublicKey(PublicKey.init).key)
+    const keys = nodes.map!(node => node.getPublicKey().key)
         .dropExactly(GenesisValidators)
         .takeExactly(conf.outsider_validators)
         .array;
@@ -83,7 +83,7 @@ unittest
         Height(GenesisValidatorCycle));
 
     // these are no longer enrolled
-    nodes[0 .. GenesisValidators].each!(node => node.sleep(10.minutes, true));
+    nodes[0 .. GenesisValidators].each!(node => node.client.sleep(10.minutes, true));
 
     // verify that consensus can still be reached by the leftover validators
     network.generateBlocks(iota(GenesisValidators, nodes.length),
@@ -91,7 +91,7 @@ unittest
 
     // force wake up
     nodes.takeExactly(GenesisValidators).each!(node =>
-        node.sleep(0.seconds, false));
+        node.client.sleep(0.seconds, false));
 
     // all nodes should have same block height now
     network.expectHeightAndPreImg(iota(nodes.length), Height(GenesisValidatorCycle + 1),

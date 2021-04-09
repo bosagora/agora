@@ -102,7 +102,8 @@ unittest
         mixin ForwardCtor!();
 
         /// GET /public_key
-        protected override Identity getPublicKey (PublicKey key) nothrow @trusted
+        protected override Identity getPublicKey (PublicKey key = PublicKey.init) 
+            nothrow @trusted
         {
             atomicOp!"+="(call_count, 1);
             return Identity(this.config.validator.key_pair.address);
