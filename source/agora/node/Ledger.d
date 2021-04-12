@@ -37,7 +37,6 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
-import agora.consensus.validation.Block : validateBlockTimeOffset;
 import agora.consensus.Fee;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -54,7 +53,7 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import std.algorithm;
-import std.conv : to;
+import std.conv;
 import std.exception;
 import std.format;
 import std.range;
@@ -672,7 +671,6 @@ public class Ledger
         if (active_enrollments < data.missing_validators.length)
             return InvalidConsensusDataReason.TooManyMPVs;
         active_enrollments -= data.missing_validators.length;
-
         if (data.enrolls.length + active_enrollments < Enrollment.MinValidatorCount)
             return InvalidConsensusDataReason.NotEnoughValidators;
 
@@ -688,8 +686,11 @@ public class Ledger
         if (auto fail_reason = this.validateSlashingData(data))
             return fail_reason;
 
-        return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
-            clock.networkTime(), block_time_offset_tolerance);
+        if (data.time_offset < last_block.header.time_offset)
+            return text("Block time offset: [", data.time_offset,
+                 "] is less than last block offset: [", last_block.header.time_offset, "]");
+
+        return null;
     }
 
     /***************************************************************************
@@ -1098,8 +1099,8 @@ public class ValidatingLedger : Ledger
             return;
         }
         const genesis_offset =  clock.networkTime - this.params.GenesisTimestamp;
-        data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
-        log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
+        data.time_offset = this.getLastBlock().header.time_offset + this.params.BlockInterval.total!"seconds";
+        log.trace("Going to nominate current time offset [{}] or newer. Current time is [{}], Genesis timestamp is [{}]", data.time_offset, clock.networkTime, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 

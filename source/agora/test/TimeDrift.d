@@ -28,7 +28,8 @@ import std.range;
 unittest
 {
     TestConf conf = { txs_to_nominate : 2,
-        block_interval_sec : 1, max_quorum_nodes : 5, quorum_threshold : 100
+        block_interval_sec : 100, // Set block interval to more than offset tolerance (60 secs)
+        max_quorum_nodes : 5, quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -52,28 +53,26 @@ unittest
     // Check the node local time
     void checkNodeLocalTime (ulong idx, ulong expected_height)
     {
-        retryFor(nodes[idx].getLocalTime() == expected_height +
-            network.test_start_time, 5.seconds,
-            format!"Expected node #%s would have time of height %s not %s"
-                (idx, expected_height,
-                    nodes[idx].getLocalTime() - network.test_start_time));
+        auto expected_time = network.test_start_time + expected_height * conf.block_interval_sec;
+        retryFor(nodes[idx].getLocalTime() == expected_time, 5.seconds,
+            format!"Expected node #%s would have time for height %s of %s not %s"
+                (idx, expected_height, expected_time, nodes[idx].getLocalTime()));
     }
 
     // Check the node network time
     void checkNodeNetworkTime (ulong idx, ulong expected_height)
     {
-        retryFor(nodes[idx].getNetworkTime() == expected_height +
-            network.test_start_time, 5.seconds,
-            format!"Expected node #%s would have time of height %s not %s"
-                (idx, expected_height, nodes[idx].getNetworkTime() -
-                    network.test_start_time));
+        auto expected_time = network.test_start_time + expected_height * conf.block_interval_sec;
+        retryFor(nodes[idx].getNetworkTime() == expected_time, 5.seconds,
+            format!"Expected node #%s would have time for height %s of %s not %s"
+                (idx, expected_height, expected_time, nodes[idx].getNetworkTime()));
     }
 
     // clock times for nodes:    [ 1,  1,  1,  1,  1, 0] median => 1
     // calculated clock offset:  [+0, +0, +0, +0, +0, +1]
 
     // set the time to `height` * `block_interval_sec` for 5/6 nodes
-    assert(conf.block_interval_sec == 1);
+    assert(conf.block_interval_sec > 60);
     network.setTimeFor(network.nodes.take(5), Height(1));
     [ 1,  1,  1,  1,  1, 0].enumerate.each!((idx, height) =>
         checkNodeLocalTime(idx, height));

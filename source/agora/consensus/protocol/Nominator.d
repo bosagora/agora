@@ -360,7 +360,9 @@ extern(D):
             return;
         }
 
-        if (cur_time < this.getExpectedBlockTime())
+        const block_time_offset_tolerance_secs = this.ledger.block_time_offset_tolerance.total!"seconds";
+        const expectedBlockTimeThisNode = this.getExpectedBlockTime();
+        if (!(cur_time + block_time_offset_tolerance_secs > this.getExpectedBlockTime()))
             return;  // too early to nominate
 
         ConsensusData data;

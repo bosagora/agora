@@ -107,6 +107,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     import std.algorithm;
     import std.string;
     import std.conv;
+    import std.format;
     import std.range;
 
     if (block.header.height == 0)
@@ -178,58 +179,17 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
             return fail_reason;
     }
 
-    if (block.header.random_seed == Hash.init
-        || block.header.random_seed != random_seed)
-    {
+    if (block.header.random_seed == Hash.init)
+        return "Block: Header's random seed has not been set";
+
+    if (block.header.random_seed != random_seed)
         return "Block: Header's random seed does not match that of known pre-images";
-    }
 
-    return validateBlockTimeOffset(prev_time_offset, block.header.time_offset,
-                                   curr_time_offset, block_time_tolerance);
-}
+    if (block.header.time_offset < prev_time_offset)
+        return text("Proposed block time offset: [", block.header.time_offset,
+            "] is not at least the last block offset: [" , prev_time_offset, "]");
 
-/*******************************************************************************
-
-    Check the validity of the `time offset` for a block
-
-    new_block_offset is valid if and only if
-    prev_block_offset < new_block_offset <= curr_time_offset + block_time_offset_tolerance_secs
-
-    Params:
-        prev_block_offset = the timestam of the block preceding the new block
-        new_block_offset  = the time offset of the block we are trying to validate
-        curr_time_offset = the current time offset in seconds
-        block_time_tolerance = the proposed block new_block_offset should be less
-                than curr_time_offset + block_time_tolerance
-
-    Returns:
-        `null` if the new_block_offset is valid, otherwise a string explaining
-        the reason it is invalid.
-
-*******************************************************************************/
-
-public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_offset, ulong curr_time_offset,
-        Duration block_time_tolerance) @safe nothrow
-{
-    import std.format;
-    string res;
-    try
-    {
-        import std.conv : to;
-        const block_time_offset_tolerance_secs = block_time_tolerance.total!"seconds";
-
-        if (new_block_offset <= prev_block_offset)
-            res = format!"Proposed block time offset: [%s] is not greater than the time offset in the last block: [%s]"
-            (new_block_offset, prev_block_offset);
-        else if (new_block_offset > curr_time_offset + block_time_offset_tolerance_secs)
-            res =  format!"Proposed block time offset: [%s] is greater than current time offset: [%s] plus tolerance of %s secs"
-            (new_block_offset, curr_time_offset, block_time_offset_tolerance_secs);
-    }
-    catch (Exception e)
-    {
-        res = "Exception happened while validating block time offset";
-    }
-    return res;
+    return null;
 }
 
 /*******************************************************************************

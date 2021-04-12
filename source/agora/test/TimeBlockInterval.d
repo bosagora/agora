@@ -23,13 +23,14 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = { txs_to_nominate : 2, block_interval_sec : 10 };
+    TestConf conf = { txs_to_nominate : 2, block_interval_sec : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
+    assert(conf.block_interval_sec > 60); // Must be more than offset tolerance
     auto nodes = network.clients;
     auto node_1 = nodes[0];
 
