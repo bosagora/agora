@@ -17,6 +17,8 @@ import agora.common.Types;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.registry.API;
+import agora.stats.Registry;
+import agora.stats.Utils;
 import agora.utils.Log;
 
 import vibe.core.core;
@@ -30,6 +32,15 @@ public final class NameRegistry: NameRegistryAPI
 {
     ///
     private RegistryPayload[PublicKey] registry_map;
+
+    /// Validator count stats
+    private RegistryStats registry_stats;
+
+    ///
+    public this ()
+    {
+        Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
+    }
 
     /***************************************************************************
 
@@ -86,5 +97,8 @@ public final class NameRegistry: NameRegistryAPI
         log.info("Registering network addresses: {} for public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
         registry_map[registry_payload.data.public_key] = registry_payload;
+        this.registry_stats.setMetricTo!"registry_record_count"(registry_map.length);
     }
+
+    mixin DefineCollectorForStats!("registry_stats", "collectRegistryStats");
 }
