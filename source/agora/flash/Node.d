@@ -882,20 +882,31 @@ public abstract class FlashNode : ControlFlashAPI
 
             auto chans = (*path).map!(hop => hop.chan_id);
             OnionError deobfuscated = err;
-            foreach (secret; shared_secrets)
+            size_t failing_hop_idx = shared_secrets.length - 1;
+            foreach (idx, secret; shared_secrets)
             {
                 if (chans.canFind(deobfuscated.chan_id))
+                {
+                    failing_hop_idx = idx;
                     break;
+                }
                 deobfuscated = deobfuscated.obfuscate(secret);
             }
+            if (!chans.canFind(deobfuscated.chan_id))
+                return;
 
-            if (chans.canFind(deobfuscated.chan_id))
-            {
-                log.info(this.conf.key_pair.address.flashPrettify, " Got error: ",
-                    deobfuscated);
-                this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
-                this.dump();
-            }
+            // Get the PublicKey of the node we think is failing
+            const failing_node_pk = (*path)[failing_hop_idx].pub_key;
+            const failing_chan = this.known_channels[deobfuscated.chan_id];
+            // Check the failing node is a peer of the failing channel
+            if (failing_chan.funder_pk != failing_node_pk &&
+                failing_chan.peer_pk != failing_node_pk)
+                return;
+
+            log.info(this.conf.key_pair.address.flashPrettify, " Got error: ",
+                deobfuscated);
+            this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
+            this.dump();
         }
         else
             foreach (id, channel; this.channels)
