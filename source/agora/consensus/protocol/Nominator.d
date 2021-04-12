@@ -263,7 +263,6 @@ extern(D):
 
     public void stopNominationRound (Height height) @safe nothrow
     {
-        this.is_nominating = false;
         () @trusted { this.scp.stopNomination(height); }();
 
         foreach (timer; this.active_timers)
@@ -373,6 +372,7 @@ extern(D):
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
         this.nominate(slot_idx, data);
+        this.is_nominating = false;
     }
 
     /***************************************************************************
