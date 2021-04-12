@@ -42,10 +42,11 @@ public enum PaymentDirection
 /// Once a channel is closed, it may never be re-opened again.
 public enum ChannelState
 {
-    /// Channel is not being set up yet
-    None,
+    /// Channel open request has been rejected by the counter-party
+    Rejected,
 
-    /// Cooperating on the initial trigger and settlement txs.
+    /// Channel has been started (counter-party accepted open proposal).
+    /// Now cooperating on the initial trigger and settlement txs.
     SettingUp,
 
     /// Waiting for the funding tx to appear in the blockchain.
