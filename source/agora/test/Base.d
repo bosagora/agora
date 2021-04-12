@@ -227,11 +227,32 @@ private UnitTestResult customModuleUnitTester ()
     shared size_t executed;
     shared size_t passed;
 
+    // single thread semaphore to enable timeouts per unittest
+    auto single_sem = new Semaphore(0);
+
     bool runTest (ModTest mod)
     {
+        class WorkThread : Thread
+        {
+            ModTest test;
+            this (ModTest test)
+            {
+                this.test = test;
+                super(&this.run);
+            }
+
+            void run ()
+            {
+                scope (exit) single_sem.notify();
+                this.test.test();
+            }
+        }
+
         atomicOp!"+="(executed, 1);
         try
         {
+            import std.datetime;
+
             if (chatty)
             {
                 auto output = stdout.lockingTextWriter();
@@ -239,7 +260,28 @@ private UnitTestResult customModuleUnitTester ()
                 stdout.flush();
             }
 
-            mod.test();
+            scope work_thread = new WorkThread(mod);
+            auto time = Clock.currTime();
+            work_thread.start();
+
+            if (!single_sem.wait(5.minutes))
+            {
+                auto output = stdout.lockingTextWriter();
+                auto total_time = Clock.currTime() - time;
+                output.formattedWrite("Module tests timed out: %s (%s seconds)\n",
+                    mod.name, total_time.total!"seconds");
+                destroy(work_thread);
+                return false;
+            }
+            else
+            {
+                auto total_time = Clock.currTime() - time;
+                auto output = stdout.lockingTextWriter();
+                output.formattedWrite("Module tests OK: %s (%s seconds)\n", mod.name,
+                    total_time.total!"seconds");
+                work_thread.join();
+            }
+
             atomicOp!"+="(passed, 1);
             return true;
         }
