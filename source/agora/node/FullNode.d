@@ -370,8 +370,12 @@ public class FullNode : API
         Height last_height;
         foreach (block; blocks)
         {
-            if(!this.ledger.enrollment_manager.addPreimages(preimages))
-                return last_height;
+            // ignore return value:
+            // there's at least two cases where preimages will be rejected:
+            // A) We already have a duplicate preimage
+            // B) The preimage is for a newer enrollment which is in one of the
+            //    `blocks` which we haven't read from yet
+            this.ledger.enrollment_manager.addPreimages(preimages);
             if (!this.ledger.acceptBlock(block))
                 return last_height;
             last_height = block.header.height;
