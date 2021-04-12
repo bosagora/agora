@@ -554,8 +554,8 @@ public OnionError obfuscate (OnionError error, Point secret) @trusted
     import libsodium.crypto_stream_chacha20;
 
     const key = hashFull(secret);
-    assert(key[].length >= crypto_stream_chacha20_KEYBYTES);
-    assert(error.payment_hash[].length >= crypto_stream_chacha20_NONCEBYTES);
+    static assert(key.sizeof >= crypto_stream_chacha20_KEYBYTES);
+    static assert(error.payment_hash.sizeof >= crypto_stream_chacha20_NONCEBYTES);
 
     ubyte[OnionError.sizeof] stream;
     crypto_stream_chacha20(stream.ptr, stream.length, error.payment_hash[].ptr, key[].ptr);
