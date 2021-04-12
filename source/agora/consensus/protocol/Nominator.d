@@ -56,7 +56,7 @@ import geod24.bitblob;
 import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 
-import std.algorithm : each, max, map;
+import std.algorithm;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -992,9 +992,6 @@ extern(D):
         This may be done in arbitrary ways, as long as it's consistent
         (for a given input, the combined output is predictable).
 
-        For simplicity we currently only pick the first transaction set
-        to become the "combined" transaction set.
-
         Params:
             slot_idx = the slot index we're currently reaching consensus for
             candidates = a set of a set of transactions
@@ -1006,6 +1003,7 @@ extern(D):
     {
         try
         {
+            ConsensusData[] values;
             foreach (ref const(Value) candidate; candidates)
             {
                 auto data = deserializeFull!ConsensusData(candidate[]);
@@ -1014,12 +1012,14 @@ extern(D):
                     assert(0, format!"combineCandidates: Invalid consensus data: %s"(
                         msg));
 
-                log.info("combineCandidates: {}", slot_idx);
                 log.trace("Combined consensus data: {}", data.prettify);
-                // todo: currently we just pick the first of the candidate values,
-                // but we should ideally pick tx's out of the combined set
-                return duplicate_value(&candidate);
+                values ~= data;
             }
+            // Nomination MUST be deterministic so we take the least number of validators missing pre-images
+            auto combined = values.sort!("a.missing_validators.length < b.missing_validators.length").front();
+            log.info("combineCandidates: from {} candidates took: {}", values.length, combined.prettify);
+            const Value val = combined.serializeFull().toVec();
+            return duplicate_value(&val);
         }
         catch (Exception ex)
         {
