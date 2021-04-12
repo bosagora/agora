@@ -56,7 +56,7 @@ import geod24.bitblob;
 import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 
-import std.algorithm : each, max, map;
+import std.algorithm;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -1006,6 +1006,7 @@ extern(D):
     {
         try
         {
+            ConsensusData[] values;
             foreach (ref const(Value) candidate; candidates)
             {
                 auto data = deserializeFull!ConsensusData(candidate[]);
@@ -1014,12 +1015,14 @@ extern(D):
                     assert(0, format!"combineCandidates: Invalid consensus data: %s"(
                         msg));
 
-                log.info("combineCandidates: {}", slot_idx);
                 log.trace("Combined consensus data: {}", data.prettify);
-                // todo: currently we just pick the first of the candidate values,
-                // but we should ideally pick tx's out of the combined set
-                return duplicate_value(&candidate);
+                values ~= data;
             }
+            // Nomination MUST be deterministic so we take the highest time offset for now
+            auto combined = values.sort!("a.time_offset > b.time_offset").front();
+            log.info("combineCandidates: took last of {} candiates: {}", values.length, combined.prettify);
+            const Value val = combined.serializeFull().toVec();
+            return duplicate_value(&val);
         }
         catch (Exception ex)
         {
