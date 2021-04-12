@@ -480,7 +480,6 @@ public class Channel
 
     private void start (in PrivateNonce priv_nonce, in PublicNonce peer_nonce)
     {
-        assert(this.state == ChannelState.None);
         this.state = ChannelState.SettingUp;
         assert(this.cur_seq_id == 0);
 
