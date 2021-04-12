@@ -103,9 +103,6 @@ public extern (C++) class Nominator : SCPDriver
     /// Currently active timers grouped by type
     private ITimer[TimerType.max + 1] active_timers;
 
-    /// Whether we're in the asynchronous stage of nominating
-    private bool is_nominating;
-
     /// Last height that we finished the nomination round
     private Height last_confirmed_height;
 
@@ -133,6 +130,9 @@ public extern (C++) class Nominator : SCPDriver
         @safe onInvalidNomination;
 
 extern(D):
+
+    version (unittest) enum CheckNominateInterval = 100.msecs;
+        else enum CheckNominateInterval = 1.seconds;
 
     /***************************************************************************
 
@@ -187,7 +187,6 @@ extern(D):
     public void setQuorumConfig (const ref QuorumConfig quorum,
         const(QuorumConfig)[] other_quorums) nothrow @safe
     {
-        assert(!this.is_nominating);
         () @trusted { this.known_quorums.clear(); }();
 
         // store the list of other node's quorum hashes
@@ -209,8 +208,8 @@ extern(D):
 
         Begins the nomination timer
 
-        This should be called once when a Node's enrollment has been confirmed
-        on the blockchain.
+        This should be called first once a Node's enrollment has been confirmed
+        on the blockchain. Then it gets called after each `checkNominate`
 
     ***************************************************************************/
 
@@ -221,10 +220,9 @@ extern(D):
 
         // For unittests we don't want to wait 1 second between checks
         log.info("Starting nominating timer..");
-        version (unittest) enum CheckNominateInterval = 100.msecs;
-        else enum CheckNominateInterval = 1.seconds;
+
         this.nomination_timer = this.taskman.setTimer(CheckNominateInterval,
-            &this.checkNominate, Periodic.Yes);
+            &this.checkNominate, Periodic.No);
     }
 
     /***************************************************************************
@@ -263,7 +261,6 @@ extern(D):
 
     public void stopNominationRound (Height height) @safe nothrow
     {
-        this.is_nominating = false;
         () @trusted { this.scp.stopNomination(height); }();
 
         foreach (timer; this.active_timers)
@@ -334,9 +331,10 @@ extern(D):
         The main nominating function.
 
         This function is called periodically by the nominating timer.
+        Although the timer is stopped and restarted on exit.
 
         The function will return early if either one of these are true:
-        - We're already in the asynchronous stage of nominating or balloting
+        - We already `confirmed` this block height
         - The current time is < getExpectedBlockTime(slot_idx)
         - There are no transactions in the pool to nominate yet
 
@@ -344,6 +342,11 @@ extern(D):
 
     private void checkNominate () @safe
     {
+        this.nomination_timer.stop();
+        scope(exit) () @trusted {
+            this.nomination_timer = this.taskman.setTimer(CheckNominateInterval,
+                &this.checkNominate, Periodic.No); }();
+
         const slot_idx = this.ledger.getBlockHeight() + 1;
         // are we done nominating this round
         if (this.last_confirmed_height >= slot_idx)
@@ -368,7 +371,6 @@ extern(D):
             return;
 
         log.info("Nominating {} at {}", data.prettify, cur_time);
-        this.is_nominating = true;
 
         // note: we are not passing the previous tx set as we don't really
         // need it at this point (might later be necessary for chain upgrades)
