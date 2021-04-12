@@ -345,8 +345,8 @@ extern(D):
     private void checkNominate () @safe
     {
         const slot_idx = this.ledger.getBlockHeight() + 1;
-        // are we done nominating this round
-        if (this.last_confirmed_height >= slot_idx)
+        // are we done nominating this round or in async process
+        if (this.last_confirmed_height >= slot_idx || this.is_nominating)
             return;
 
         const cur_time = this.clock.networkTime();
