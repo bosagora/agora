@@ -523,9 +523,6 @@ public alias PaymentRouter =
 /// Routing failure packet
 public struct OnionError
 {
-    // todo: replace with actual HMAC
-    Hash hmac;
-
     /// Failed payment hash
     Hash payment_hash;
 
@@ -571,8 +568,8 @@ public OnionError obfuscate (OnionError error, Point secret) @trusted
 
 unittest
 {
-    auto org = OnionError(hashFull(1), hashFull(2),
-        hashFull(3), ErrorCode.LockTooLarge);
+    auto org = OnionError(hashFull(2), hashFull(3),
+        ErrorCode.LockTooLarge);
     const secret = Pair.random.V;
 
     auto obfuscated = org.obfuscate(secret);
