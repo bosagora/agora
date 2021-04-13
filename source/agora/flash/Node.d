@@ -117,8 +117,14 @@ public abstract class FlashNode : ControlFlashAPI
     /// Timer used for gossiping
     private ITimer gossip_timer;
 
+    /// Timer used for opening new channels
+    private ITimer open_chan_timer;
+
     /// Flash network topology
     protected Network network;
+
+    /// List of channels which are pending to be opened
+    protected DList!ChannelConfig pending_channels;
 
     /// All channels which we are the participants of (open / pending / closed)
     protected Channel[Hash] channels;
@@ -162,7 +168,7 @@ public abstract class FlashNode : ControlFlashAPI
         this.channels = Channel.loadChannels(this.conf, this.db,
             &this.getFlashClient, engine, taskman,
             &this.putTransaction, &this.paymentRouter,
-            &this.onChannelOpen,
+            &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete);
 
         this.network = new Network((Hash chan_id, Point from) {
@@ -197,6 +203,8 @@ public abstract class FlashNode : ControlFlashAPI
 
         this.gossip_timer = this.taskman.setTimer(100.msecs,
             &this.gossipTask, Periodic.Yes);
+        this.open_chan_timer = this.taskman.setTimer(100.msecs,
+            &this.channelOpenTask, Periodic.Yes);
     }
 
     /***************************************************************************
@@ -209,6 +217,7 @@ public abstract class FlashNode : ControlFlashAPI
     public void shutdown ()
     {
         this.gossip_timer.stop();
+        this.open_chan_timer.stop();
 
         this.dump();
         foreach (chan; channels.byValue)
@@ -228,6 +237,23 @@ public abstract class FlashNode : ControlFlashAPI
             auto event = this.gossip_queue.front;
             this.gossip_queue.removeFront();
             this.handleGossip(event);
+            this.taskman.wait(1.msecs);  // yield
+        }
+    }
+
+    /***************************************************************************
+
+        Fiber routine dedicated to opening channels.
+
+    ***************************************************************************/
+
+    private void channelOpenTask ()
+    {
+        while (!this.pending_channels.empty)
+        {
+            auto chan_conf = this.pending_channels.front;
+            scope (exit) this.pending_channels.removeFront();
+            this.handleOpenNewChannel(chan_conf);
             this.taskman.wait(1.msecs);  // yield
         }
     }
@@ -408,7 +434,7 @@ public abstract class FlashNode : ControlFlashAPI
         PrivateNonce priv_nonce = genPrivateNonce();
         auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
             priv_nonce, peer_nonce, peer, this.engine, this.taskman,
-            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen,
+            &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
 
         this.channels[chan_conf.chan_id] = channel;
@@ -432,8 +458,18 @@ public abstract class FlashNode : ControlFlashAPI
             "Channel ID not found");
     }
 
+    protected void onChannelNotify (Hash chan_id, ChannelState state,
+        ErrorCode error)
+    {
+        // gossip to the network
+        if (state == ChannelState.Open)
+            this.onChannelOpen(this.channels[chan_id].conf);
+
+        this.listener.onChannelNotify(chan_id, state, error);
+    }
+
     ///
-    protected void onChannelOpen (ChannelConfig conf)
+    private void onChannelOpen (ChannelConfig conf)
     {
         log.info("onChannelOpen() with channel {}", conf.chan_id);
 
@@ -805,8 +841,6 @@ public abstract class FlashNode : ControlFlashAPI
         log.info("openNewChannel({}, {}, {})",
                  capacity, settle_time, peer_pk.flashPrettify);
 
-        // todo: move to initialization stage!
-        auto peer = this.getFlashClient(peer_pk, this.conf.timeout);
         const pair_pk = this.conf.key_pair.address + peer_pk;
 
         // create funding, don't sign it yet as we'll share it first
@@ -815,8 +849,20 @@ public abstract class FlashNode : ControlFlashAPI
 
         const funding_tx_hash = hashFull(funding_tx);
         const Hash chan_id = funding_tx_hash;
-        const num_peers = 2;
 
+        auto all_funding_utxos = this.pending_channels[].chain(
+                channels.byValue.map!(chan => chan.conf))
+            .map!(conf => conf.funding_tx_hash);
+
+        // this channel is already being set up (or duplicate funding UTXO used)
+        if (all_funding_utxos.canFind(funding_tx_hash))
+        {
+            return Result!Hash(ErrorCode.DuplicateChannelID,
+                "Cannot open another channel with the same UTXO as a "
+                ~ "pending / existing channel");
+        }
+
+        const num_peers = 2;
         ChannelConfig chan_conf =
         {
             gen_hash        : this.genesis_hash,
@@ -831,21 +877,34 @@ public abstract class FlashNode : ControlFlashAPI
             capacity        : capacity,
             settle_time     : settle_time,
         };
+        this.pending_channels.insertBack(chan_conf);
+
+        return Result!Hash(chan_id);
+    }
+
+    /// Handle opening new channels
+    private void handleOpenNewChannel (ChannelConfig chan_conf)
+    {
+        auto peer = this.getFlashClient(chan_conf.peer_pk, this.conf.timeout);
 
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
         auto result = peer.openChannel(chan_conf, pub_nonce);
         if (result.error != ErrorCode.None)
-            return Result!Hash(result.error, result.message);
+        {
+            this.listener.onChannelNotify(chan_conf.chan_id,
+                ChannelState.Rejected, result.error);
+            return;
+        }
 
         auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
             priv_nonce, result.value, peer, this.engine, this.taskman,
-            &this.putTransaction, &this.paymentRouter, &this.onChannelOpen,
+            &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
-        this.channels[chan_id] = channel;
-
-        return Result!Hash(chan_id);
+        this.channels[chan_conf.chan_id] = channel;
+        this.listener.onChannelNotify(chan_conf.chan_id,
+            ChannelState.SettingUp, ErrorCode.None);
     }
 
     ///

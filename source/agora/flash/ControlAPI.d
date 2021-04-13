@@ -51,7 +51,11 @@ public interface ControlFlashAPI : FlashAPI
 
     /***************************************************************************
 
-        Open a new channel with another flash node.
+        Schedule opening a new channel with another flash node.
+        If this funding_utxo is already used, an error is returned.
+        Otherwise, the Listener will receive a notification through
+        the onChannelNotify() API at a later point whenever the channel
+        is accepted / rejected by the counter-party.
 
         Params:
             funding_utxo = the UTXO that will be used to fund the setup tx
@@ -61,7 +65,8 @@ public interface ControlFlashAPI : FlashAPI
             peer_pk = the public key of the counter-party flash node
 
         Returns:
-            a hash of the channel ID, or an error if unsuccessful
+            The channel ID, or an error if this funding UTXO is
+            already used for another pending / open channel.
 
     ***************************************************************************/
 

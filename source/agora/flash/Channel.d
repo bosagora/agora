@@ -88,9 +88,11 @@ public class Channel
     /// Route payments to another channel
     private PaymentRouter paymentRouter;
 
-    /// Called when the channel has been open
-    /// (the funding transaction has been externalized)
-    private void delegate (ChannelConfig conf) onChannelOpen;
+    /// Called when the channel state has been changed
+    private alias OnChannelNotify = void delegate (
+        Hash chan_id, ChannelState state, ErrorCode error);
+    /// Ditto
+    private OnChannelNotify onChannelNotify;
 
     /// When a payment has been completed we need to check whether we know
     /// the matching secret of the payment hash. Then we can propose a new
@@ -136,7 +138,7 @@ public class Channel
         Engine engine, ITaskManager taskman,
         void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
-        void delegate (ChannelConfig conf) onChannelOpen,
+        OnChannelNotify onChannelNotify,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
         void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
         ManagedDatabase db)
@@ -156,7 +158,7 @@ public class Channel
         this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
             this.kp, this.peer_pk, this.engine, this.taskman, db);
         this.paymentRouter = paymentRouter;
-        this.onChannelOpen = onChannelOpen;
+        this.onChannelNotify = onChannelNotify;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
@@ -193,7 +195,7 @@ public class Channel
         ITaskManager taskman,
         void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
-        void delegate (ChannelConfig conf) onChannelOpen,
+        OnChannelNotify onChannelNotify,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
         void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
         FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
@@ -210,7 +212,7 @@ public class Channel
         this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
             this.kp, this.peer_pk, this.engine, this.taskman, db);
         this.paymentRouter = paymentRouter;
-        this.onChannelOpen = onChannelOpen;
+        this.onChannelNotify = onChannelNotify;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
@@ -246,7 +248,7 @@ public class Channel
         FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
         Engine engine, ITaskManager taskman,
         void delegate (Transaction) txPublisher, PaymentRouter paymentRouter,
-        void delegate (ChannelConfig conf) onChannelOpen,
+        OnChannelNotify onChannelNotify,
         void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
         void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete )
     {
@@ -261,7 +263,7 @@ public class Channel
         {
             const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(0));
             channels[chan_id] = new Channel(chan_id, flash_conf, engine,
-                taskman, txPublisher, paymentRouter, onChannelOpen,
+                taskman, txPublisher, paymentRouter, onChannelNotify,
                 onPaymentComplete, onUpdateComplete, getFlashClient, db);
         }
 
@@ -614,8 +616,8 @@ LOuter: while (1)
 
         if (this.state == ChannelState.Open)
         {
-            this.onChannelOpen(cast()this.conf);
             this.dump();
+            this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
         }
     }
 
@@ -647,8 +649,8 @@ LOuter: while (1)
         Balance expected_balance = { refund_amount : this.conf.capacity };
         this.cur_balance = expected_balance;
 
-        this.onChannelOpen(cast()this.conf);
         this.dump();
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
     }
 
     /***************************************************************************
@@ -672,6 +674,7 @@ LOuter: while (1)
         log.info("{}: Tx is: {}", this.kp.address.flashPrettify, tx);
         // todo: can notify Node that it can destroy this channel instance later
         this.state = ChannelState.Closed;
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
     }
 
     /***************************************************************************
@@ -698,6 +701,7 @@ LOuter: while (1)
     public void onUpdateTxExternalized (in Transaction tx)
     {
         this.state = ChannelState.PendingClose;
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
 
         // last update was published, publish the settlement
         if (tx == this.channel_updates[$ - 1].update_tx)
@@ -767,6 +771,7 @@ LOuter: while (1)
     {
         // todo: assert this is the actual settlement transaction
         this.state = ChannelState.Closed;
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
     }
 
     /***************************************************************************
