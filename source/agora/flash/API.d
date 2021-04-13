@@ -302,6 +302,22 @@ public interface FlashListenerAPI
 @safe:
     /***************************************************************************
 
+        Called when the state of a channel changes, for example when the
+        channel is accepted / rejected by the counter-party.
+
+        Params:
+            chan_id = channel ID
+            state = the current state of the channel
+            error = if state is rejected, it will contain any error stating the
+                reason why a channel was rejected
+
+    ***************************************************************************/
+
+    public void onChannelNotify (Hash chan_id, ChannelState state,
+        ErrorCode error);
+
+    /***************************************************************************
+
         Called when the payment for the given invoice has been successful.
 
         Params:

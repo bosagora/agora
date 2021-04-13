@@ -64,6 +64,10 @@ public interface TestFlashListenerAPI : FlashListenerAPI
     /// wait until we get a signal that the payment for this invoice
     /// has succeeded / failed, and return true / false for success
     ErrorCode waitUntilNotified (Invoice);
+
+    /// wait until we get a notification about the given channel state,
+    /// and return any associated error codes
+    ErrorCode waitUntilChannelState (Hash, ChannelState);
 }
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
@@ -325,12 +329,21 @@ public class FlashNodeFactory
     /// list of FlashListenerAPI nodes
     private RemoteAPI!TestFlashListenerAPI[] listener_nodes;
 
+    /// Flash listener address
+    private static const ListenerAddress = "flash-listener";
+
+    /// Flash listener (Wallet)
+    public RemoteAPI!TestFlashListenerAPI listener;
+
     /// Ctor
     public this (Registry!TestAPI* agora_registry)
     {
         this.agora_registry = agora_registry;
         this.flash_registry.initialize();
         this.listener_registry.initialize();
+
+        this.listener = this.createFlashListener!FlashListener(
+            ListenerAddress);
     }
 
     /// Create a new flash node user
@@ -345,7 +358,8 @@ public class FlashNodeFactory
             max_settle_time : 100,
             key_pair : KeyPair(PublicKey(pair.V), SecretKey(pair.v)),
             max_retry_time : 4.seconds,
-            max_retry_delay : 100.msecs };
+            max_retry_delay : 100.msecs,
+            listener_address : ListenerAddress, };
         return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
     }
 
@@ -450,6 +464,13 @@ public class FlashNodeFactory
 /// Listens for Flash events (if registered with a Flash node)
 private class FlashListener : TestFlashListenerAPI
 {
+    static struct State
+    {
+        ChannelState state;
+        ErrorCode error;
+    }
+
+    State[Hash] channel_state;
     ErrorCode[Invoice] invoices;
     LocalRestTaskManager taskman;
 
@@ -480,6 +501,29 @@ private class FlashListener : TestFlashListenerAPI
 
             this.taskman.wait(200.msecs);
         }
+    }
+
+    public ErrorCode waitUntilChannelState (Hash chan_id, ChannelState state)
+    {
+        while (1)
+        {
+            if (auto chan_state = chan_id in this.channel_state)
+            {
+                if (chan_state.state == state)
+                {
+                    scope (exit) this.channel_state.remove(chan_id);
+                    return chan_state.error;
+                }
+            }
+
+            this.taskman.wait(200.msecs);
+        }
+    }
+
+    public void onChannelNotify (Hash chan_id, ChannelState state,
+        ErrorCode error)
+    {
+        this.channel_state[chan_id] = State(state, error);
     }
 }
 
@@ -532,15 +576,17 @@ unittest
         utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
 
     // await funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
     const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
-    // wait for the parties to detect the funding tx
+    // wait for the parties & listener to detect the funding tx
     alice.waitChannelOpen(chan_id);
     bob.waitChannelOpen(chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
 
@@ -571,6 +617,7 @@ unittest
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     auto tx_10 = node_1.getBlocksFrom(10, 1)[0].txs[0];
     assert(tx_10 == update_tx);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.PendingClose);
 
     // at this point bob will automatically publish the latest update tx
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
@@ -579,6 +626,7 @@ unittest
     auto settle_tx = bob.getLastSettleTx(chan_id);
     network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
     auto tx_12 = node_1.getBlocksFrom(12, 1)[0].txs[0];
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
     //assert(tx_12 == settle_tx);
 }
 
@@ -641,6 +689,8 @@ unittest
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.SettingUp);
 
     // await alice & bob channel funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -650,6 +700,8 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(alice_bob_chan_id);
     bob.waitChannelOpen(alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
+
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN BOB => CHARLIE CHANNEL +/
@@ -662,6 +714,8 @@ unittest
         bob_charlie_chan_id_res.message);
     const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+        ChannelState.SettingUp);
 
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
@@ -671,6 +725,7 @@ unittest
     // wait for the parties to detect the funding tx
     bob.waitChannelOpen(bob_charlie_chan_id);
     charlie.waitChannelOpen(bob_charlie_chan_id);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
@@ -698,6 +753,8 @@ unittest
     auto block11 = node_1.getBlocksFrom(11, 1)[0];
     log.info("bob closing tx: {}", bob.getClosingTx(bob_charlie_chan_id));
     assert(block11.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+        ChannelState.Closed);
 
     log.info("Beginning alice => bob collaborative close..");
     alice.beginCollaborativeClose(alice_bob_chan_id);
@@ -705,6 +762,8 @@ unittest
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
     log.info("alice closing tx: {}", alice.getClosingTx(alice_bob_chan_id));
     assert(block12.txs[0] == alice.getClosingTx(alice_bob_chan_id));
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.Closed);
 }
 
 /// Test path probing
@@ -744,9 +803,6 @@ unittest
     const bob_pk = bob_pair.V;
     const charlie_pk = charlie_pair.V;
 
-    const ListenerAddress = "flash-listener";
-    auto listener = factory.createFlashListener!FlashListener(ListenerAddress);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0,
         WK.Keys.NODE2.address);
@@ -757,7 +813,7 @@ unittest
         min_settle_time : 0,
         max_settle_time : 100,
         key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
-        listener_address : ListenerAddress,
+        listener_address : factory.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 100.msecs,
     };
@@ -780,6 +836,8 @@ unittest
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.SettingUp);
 
     // await alice & bob channel funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -789,6 +847,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(alice_bob_chan_id);
     bob.waitChannelOpen(alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN BOB => CHARLIE CHANNEL +/
@@ -801,6 +860,8 @@ unittest
         bob_charlie_chan_id_res.message);
     const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+        ChannelState.SettingUp);
 
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
@@ -810,6 +871,7 @@ unittest
     // wait for the parties to detect the funding tx
     bob.waitChannelOpen(bob_charlie_chan_id);
     charlie.waitChannelOpen(bob_charlie_chan_id);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN CHARLIE => ALICE CHANNEL +/
@@ -822,6 +884,8 @@ unittest
         charlie_alice_chan_id_res.message);
     const charlie_alice_chan_id = charlie_alice_chan_id_res.value;
     log.info("Charlie Alice channel ID: {}", charlie_alice_chan_id);
+    factory.listener.waitUntilChannelState(charlie_alice_chan_id,
+        ChannelState.SettingUp);
 
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
@@ -831,6 +895,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(charlie_alice_chan_id);
     charlie.waitChannelOpen(charlie_alice_chan_id);
+    factory.listener.waitUntilChannelState(charlie_alice_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
@@ -847,10 +912,10 @@ unittest
     // to complete the payment in that direction. Alice will first naively try
     // that route and fail. In the second try, alice will route the payment through bob.
     alice.payInvoice(inv_1);
-    auto res1 = listener.waitUntilNotified(inv_1);
+    auto res1 = factory.listener.waitUntilNotified(inv_1);
     assert(res1 != ErrorCode.None);  // should fail at first
     alice.payInvoice(inv_1);
-    auto res2 = listener.waitUntilNotified(inv_1);
+    auto res2 = factory.listener.waitUntilNotified(inv_1);
     assert(res2 == ErrorCode.None);  // should succeed the second time
 
     bob.waitForUpdateIndex(bob_charlie_chan_id, 2);
@@ -929,6 +994,8 @@ unittest
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.SettingUp);
 
     // await alice & bob channel funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -938,6 +1005,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(alice_bob_chan_id);
     bob.waitChannelOpen(alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN BOB => CHARLIE CHANNEL +/
@@ -950,6 +1018,8 @@ unittest
         bob_charlie_chan_id_res.message);
     const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+        ChannelState.SettingUp);
 
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
@@ -959,6 +1029,7 @@ unittest
     // wait for the parties to detect the funding tx
     bob.waitChannelOpen(bob_charlie_chan_id);
     charlie.waitChannelOpen(bob_charlie_chan_id);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     alice.waitForChannelDiscovery(bob_charlie_chan_id);  // also alice (so it can detect fees)
 
     bob.changeFees(bob_charlie_chan_id, Amount(100), Amount(1));
@@ -976,6 +1047,8 @@ unittest
         bob_charlie_chan_id_2_res.message);
     const bob_charlie_chan_id_2 = bob_charlie_chan_id_2_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id_2);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
+        ChannelState.SettingUp);
 
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
@@ -985,6 +1058,7 @@ unittest
     // wait for the parties to detect the funding tx
     bob.waitChannelOpen(bob_charlie_chan_id_2);
     charlie.waitChannelOpen(bob_charlie_chan_id_2);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2, ChannelState.Open);
 
     bob.changeFees(bob_charlie_chan_id_2, Amount(10), Amount(1));
     alice.waitForChannelUpdate(bob_charlie_chan_id_2, PaymentDirection.TowardsPeer, 1);
@@ -1011,6 +1085,8 @@ unittest
 
     bob.beginCollaborativeClose(bob_charlie_chan_id_2);
     network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
+        ChannelState.Closed);
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
     assert(block12.txs[0] == bob.getClosingTx(bob_charlie_chan_id_2));
     assert(block12.txs[0].outputs.length == 2);
@@ -1019,6 +1095,8 @@ unittest
 
     alice.beginCollaborativeClose(alice_bob_chan_id);
     network.expectHeightAndPreImg(Height(13), network.blocks[0].header);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.Closed);
     auto block13 = node_1.getBlocksFrom(13, 1)[0];
     assert(block13.txs[0] == alice.getClosingTx(alice_bob_chan_id));
     assert(block13.txs[0].outputs.length == 2);
@@ -1027,6 +1105,8 @@ unittest
 
     bob.beginCollaborativeClose(bob_charlie_chan_id);
     network.expectHeightAndPreImg(Height(14), network.blocks[0].header);
+    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+        ChannelState.Closed);
     auto block14 = node_1.getBlocksFrom(14, 1)[0];
     assert(block14.txs[0] == bob.getClosingTx(bob_charlie_chan_id));
     assert(block14.txs[0].outputs.length == 1); // No updates
@@ -1095,6 +1175,8 @@ unittest
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
     log.info("Alice bob channel ID: {}", alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.SettingUp);
 
     // await alice & bob channel funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -1104,6 +1186,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(alice_bob_chan_id);
     bob.waitChannelOpen(alice_bob_chan_id);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // begin off-chain transactions
@@ -1115,10 +1198,13 @@ unittest
 
     bob.beginCollaborativeClose(alice_bob_chan_id);
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
+    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+        ChannelState.Closed);
     auto block10 = node_1.getBlocksFrom(10, 1)[0];
     assert(block10.txs[0] == bob.getClosingTx(alice_bob_chan_id));
     assert(block10.txs[0].outputs.length == 1); // No updates
 }
+
 /// Test node serialization & loading
 //version (none)
 unittest
@@ -1168,6 +1254,7 @@ unittest
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
 
     // await funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -1177,6 +1264,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(chan_id);
     bob.waitChannelOpen(chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
 
@@ -1267,26 +1355,43 @@ unittest
     // error on capacity too low
     auto res = alice.openNewChannel(
         utxo, Amount(1), Settle_10_Blocks, bob_pair.V);
-    assert(res.error == ErrorCode.RejectedFundingAmount, res.to!string);
+    assert(res.error == ErrorCode.None);
+
+    auto error = factory.listener.waitUntilChannelState(res.value,
+        ChannelState.Rejected);
+    assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
     // error on capacity too high
     res = alice.openNewChannel(
         utxo, Amount(1_000_000_000), Settle_10_Blocks, bob_pair.V);
-    assert(res.error == ErrorCode.RejectedFundingAmount, res.to!string);
+    assert(res.error == ErrorCode.None);
+
+    error = factory.listener.waitUntilChannelState(res.value,
+        ChannelState.Rejected);
+    assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
     // error on settle time too low
     res = alice.openNewChannel(
         utxo, Amount(10_000), 5, bob_pair.V);
-    assert(res.error == ErrorCode.RejectedSettleTime, res.to!string);
+    assert(res.error == ErrorCode.None);
+
+    error = factory.listener.waitUntilChannelState(res.value,
+        ChannelState.Rejected);
+    assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     // error on settle time too high
     res = alice.openNewChannel(
         utxo, Amount(10_000), 1000, bob_pair.V);
-    assert(res.error == ErrorCode.RejectedSettleTime, res.to!string);
+    assert(res.error == ErrorCode.None);
+
+    error = factory.listener.waitUntilChannelState(res.value,
+        ChannelState.Rejected);
+    assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     const chan_id_res = alice.openNewChannel(
         utxo, Amount(10_000), Settle_10_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    factory.listener.waitUntilChannelState(res.value, ChannelState.SettingUp);
     const chan_id = chan_id_res.value;
 
     // await funding transaction
@@ -1297,6 +1402,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(chan_id);
     bob.waitChannelOpen(chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
     res = alice.openNewChannel(utxo, Amount(10_000), Settle_10_Blocks,
@@ -1412,9 +1518,6 @@ unittest
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
     const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
 
-    const ListenerAddress = "flash-listener";
-    auto listener = factory.createFlashListener!FlashListener(ListenerAddress);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0,
         WK.Keys.NODE2.address);
@@ -1425,7 +1528,7 @@ unittest
         min_settle_time : 0,
         max_settle_time : 100,
         key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
-        listener_address : ListenerAddress,
+        listener_address : factory.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
     };
@@ -1443,6 +1546,7 @@ unittest
         utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
 
     // await funding transaction
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
@@ -1452,6 +1556,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitChannelOpen(chan_id);
     bob.waitChannelOpen(chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
 
@@ -1462,18 +1567,18 @@ unittest
     alice.waitForUpdateIndex(chan_id, 2);
     bob.waitForUpdateIndex(chan_id, 2);
 
-    auto res = listener.waitUntilNotified(inv_1);
+    auto res = factory.listener.waitUntilNotified(inv_1);
     assert(res == ErrorCode.None);  // should succeed
 
     auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
     alice.payInvoice(inv_2);
 
-    res = listener.waitUntilNotified(inv_2);
+    res = factory.listener.waitUntilNotified(inv_2);
     assert(res != ErrorCode.None);  // should have failed
 
     auto inv_3 = charlie.createNewInvoice(Amount(1_000), time_t.max, "charlie");
     alice.payInvoice(inv_3);
 
-    res = listener.waitUntilNotified(inv_3);
+    res = factory.listener.waitUntilNotified(inv_3);
     assert(res == ErrorCode.PathNotFound);
 }
