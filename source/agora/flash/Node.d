@@ -55,261 +55,6 @@ import std.stdio;
 import std.traits;
 import std.typecons;
 
-/// A thin Flash node which itself is not a FullNode / Validator but instead
-/// interacts with another FullNode / Validator for queries to the blockchain.
-public abstract class ThinFlashNode : FlashNode
-{
-    /// random agora node (for sending tx's)
-    protected FullNodeAPI agora_node;
-
-    /// monitor timer
-    protected ITimer monitor_timer;
-
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            conf = Flash configuration
-            db_path = path to the database (or in-memory if set to ":memory:")
-            genesis_hash = the hash of the genesis block to use
-            engine = the execution engine to use
-            taskman = the task manager ot use
-            agora_address = IP address of an Agora node to monitor the
-                blockchain and publish new on-chain transactions to it.
-
-    ***************************************************************************/
-
-    public this (FlashConfig conf, string db_path, Hash genesis_hash,
-        Engine engine, ITaskManager taskman, string agora_address)
-    {
-        this.agora_node = this.getAgoraClient(agora_address, conf.timeout);
-        super(conf, db_path, genesis_hash, engine, taskman);
-    }
-
-    /***************************************************************************
-
-        Start monitoring the blockchain for any new externalized blocks.
-
-    ***************************************************************************/
-
-    public override void start ()
-    {
-        // todo: 200 msecs is ok only in tests
-        // todo: should additionally register as pushBlock() listener
-        this.monitor_timer = this.taskman.setTimer(200.msecs,
-            &this.monitorBlockchain, Periodic.Yes);
-        super.start();
-    }
-
-    /***************************************************************************
-
-        Shut down any timers and store latest data to the database
-
-    ***************************************************************************/
-
-    public override void shutdown ()
-    {
-        super.shutdown();
-        if (this.monitor_timer !is null)
-            this.monitor_timer.stop();
-    }
-
-    /***************************************************************************
-
-        Monitors the blockchain for any new externalized blocks.
-
-        If a funding / closing / trigger / update / settlement transaction
-        belong to a channel is detected, it will trigger that channel's
-        handler for this event.
-
-        This enables changing the channel's state from open to closed.
-
-    ***************************************************************************/
-
-    private void monitorBlockchain ()
-    {
-        while (1)
-        {
-            try
-            {
-                auto latest_height = this.agora_node.getBlockHeight();
-                if (this.last_height < latest_height)
-                {
-                    auto next_block = this.agora_node.getBlocksFrom(
-                        this.last_height + 1, 1)[0];
-
-                    foreach (channel; this.channels)
-                        channel.onBlockExternalized(next_block);
-
-                    this.last_height++;
-                    this.dump();
-                }
-            }
-            catch (Exception ex)
-            {
-                // connection might be dropped
-            }
-
-            this.taskman.wait(0.msecs);  // yield
-        }
-    }
-
-    /***************************************************************************
-
-        Get an instance of an Agora client.
-
-        Params:
-            address = The address (IPv4, IPv6, hostname) of the Agora node.
-            timeout = the timeout duration to use for requests.
-
-        Returns:
-            the Agora FullNode client
-
-    ***************************************************************************/
-
-    protected FullNodeAPI getAgoraClient (Address address, Duration timeout)
-    {
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-
-        return new RestInterfaceClient!FullNodeAPI(settings);
-    }
-
-    /***************************************************************************
-
-        Send the transaction via the connected agora node.
-
-        Params:
-            tx = the transaction to send
-
-    ***************************************************************************/
-
-    protected override void putTransaction (Transaction tx)
-    {
-        this.agora_node.putTransaction(tx);
-    }
-}
-
-/// A FullNode / Validator should embed this class if they enabled Flash
-public class AgoraFlashNode : FlashNode
-{
-    /// random agora node (for sending tx's)
-    protected FullNodeAPI agora_node;
-
-    /// get a Flash client for the given public key
-    protected FlashAPI delegate (in Point peer_pk, Duration timeout)
-        flashClientGetter;
-
-    /// get a Flash listener client for the given address
-    protected FlashListenerAPI delegate (in string address, Duration timeout)
-        flashListenerGetter;
-
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            conf = Flash configuration
-            db_path = path to the database (or in-memory if set to ":memory:")
-            genesis_hash = the hash of the genesis block to use
-            engine = the execution engine to use
-            taskman = the task manager ot use
-            agora_address = IP address of an Agora node to monitor the
-                blockchain and publish new on-chain transactions to it.
-            flashListenerGetter = getter for the Flash listener client
-
-    ***************************************************************************/
-
-    public this (FlashConfig conf, string db_path, Hash genesis_hash,
-        Engine engine, ITaskManager taskman, FullNodeAPI agora_node,
-        FlashAPI delegate (in Point, Duration) flashClientGetter,
-        FlashListenerAPI delegate (in string address, Duration timeout)
-            flashListenerGetter)
-    {
-        this.agora_node = agora_node;
-        this.flashClientGetter = flashClientGetter;
-        this.flashListenerGetter = flashListenerGetter;
-        super(conf, db_path, genesis_hash, engine, taskman);
-    }
-
-    /// Called by a FullNode once a block has been externalized
-    public void onExternalizedBlock (const ref Block block) @safe
-    {
-        this.last_height = block.header.height;
-
-        foreach (channel; this.channels)
-            channel.onBlockExternalized(block);
-    }
-
-    /***************************************************************************
-
-        Send the transaction via the connected agora node.
-
-        Params:
-            tx = the transaction to send
-
-    ***************************************************************************/
-
-    protected override void putTransaction (Transaction tx)
-    {
-        this.agora_node.putTransaction(tx);
-    }
-
-    /***************************************************************************
-
-        Get an instance of a Flash client for the given public key.
-
-        TODO: What if we don't have an IP mapping?
-
-        Params:
-            peer_pk = the public key of the Flash node.
-            timeout = the timeout duration to use for requests.
-
-        Returns:
-            the Flash client
-
-    ***************************************************************************/
-
-    protected override FlashAPI getFlashClient (in Point peer_pk,
-        Duration timeout) @trusted
-    {
-        if (auto peer = peer_pk in this.known_peers)
-            return *peer;
-
-        auto peer = this.flashClientGetter(peer_pk, timeout);
-        this.known_peers[peer_pk] = peer;
-        if (this.known_channels.length > 0)
-            peer.gossipChannelsOpen(this.known_channels.values);
-
-        return peer;
-    }
-
-    /***************************************************************************
-
-        Get an instance of a FlashListenerAPI client for the given address.
-
-        Params:
-            address = the IP to use
-            timeout = the timeout duration to use for requests
-
-        Returns:
-            the FlashListenerAPI client
-
-    ***************************************************************************/
-
-    protected override FlashListenerAPI getFlashListenerClient (string address,
-        Duration timeout) @trusted
-    {
-        return this.flashListenerGetter(address, timeout);
-    }
-}
-
 /// Gossip type
 private enum GossipType
 {
@@ -1206,4 +951,259 @@ private mixin template NodeMetadata ()
 
     /// hash of secret => Invoice
     private Invoice[Hash] invoices;
+}
+
+/// A thin Flash node which itself is not a FullNode / Validator but instead
+/// interacts with another FullNode / Validator for queries to the blockchain.
+public abstract class ThinFlashNode : FlashNode
+{
+    /// random agora node (for sending tx's)
+    protected FullNodeAPI agora_node;
+
+    /// monitor timer
+    protected ITimer monitor_timer;
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            conf = Flash configuration
+            db_path = path to the database (or in-memory if set to ":memory:")
+            genesis_hash = the hash of the genesis block to use
+            engine = the execution engine to use
+            taskman = the task manager ot use
+            agora_address = IP address of an Agora node to monitor the
+                blockchain and publish new on-chain transactions to it.
+
+    ***************************************************************************/
+
+    public this (FlashConfig conf, string db_path, Hash genesis_hash,
+        Engine engine, ITaskManager taskman, string agora_address)
+    {
+        this.agora_node = this.getAgoraClient(agora_address, conf.timeout);
+        super(conf, db_path, genesis_hash, engine, taskman);
+    }
+
+    /***************************************************************************
+
+        Start monitoring the blockchain for any new externalized blocks.
+
+    ***************************************************************************/
+
+    public override void start ()
+    {
+        // todo: 200 msecs is ok only in tests
+        // todo: should additionally register as pushBlock() listener
+        this.monitor_timer = this.taskman.setTimer(200.msecs,
+            &this.monitorBlockchain, Periodic.Yes);
+        super.start();
+    }
+
+    /***************************************************************************
+
+        Shut down any timers and store latest data to the database
+
+    ***************************************************************************/
+
+    public override void shutdown ()
+    {
+        super.shutdown();
+        if (this.monitor_timer !is null)
+            this.monitor_timer.stop();
+    }
+
+    /***************************************************************************
+
+        Monitors the blockchain for any new externalized blocks.
+
+        If a funding / closing / trigger / update / settlement transaction
+        belong to a channel is detected, it will trigger that channel's
+        handler for this event.
+
+        This enables changing the channel's state from open to closed.
+
+    ***************************************************************************/
+
+    private void monitorBlockchain ()
+    {
+        while (1)
+        {
+            try
+            {
+                auto latest_height = this.agora_node.getBlockHeight();
+                if (this.last_height < latest_height)
+                {
+                    auto next_block = this.agora_node.getBlocksFrom(
+                        this.last_height + 1, 1)[0];
+
+                    foreach (channel; this.channels)
+                        channel.onBlockExternalized(next_block);
+
+                    this.last_height++;
+                    this.dump();
+                }
+            }
+            catch (Exception ex)
+            {
+                // connection might be dropped
+            }
+
+            this.taskman.wait(0.msecs);  // yield
+        }
+    }
+
+    /***************************************************************************
+
+        Get an instance of an Agora client.
+
+        Params:
+            address = The address (IPv4, IPv6, hostname) of the Agora node.
+            timeout = the timeout duration to use for requests.
+
+        Returns:
+            the Agora FullNode client
+
+    ***************************************************************************/
+
+    protected FullNodeAPI getAgoraClient (Address address, Duration timeout)
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!FullNodeAPI(settings);
+    }
+
+    /***************************************************************************
+
+        Send the transaction via the connected agora node.
+
+        Params:
+            tx = the transaction to send
+
+    ***************************************************************************/
+
+    protected override void putTransaction (Transaction tx)
+    {
+        this.agora_node.putTransaction(tx);
+    }
+}
+
+/// A FullNode / Validator should embed this class if they enabled Flash
+public class AgoraFlashNode : FlashNode
+{
+    /// random agora node (for sending tx's)
+    protected FullNodeAPI agora_node;
+
+    /// get a Flash client for the given public key
+    protected FlashAPI delegate (in Point peer_pk, Duration timeout)
+        flashClientGetter;
+
+    /// get a Flash listener client for the given address
+    protected FlashListenerAPI delegate (in string address, Duration timeout)
+        flashListenerGetter;
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            conf = Flash configuration
+            db_path = path to the database (or in-memory if set to ":memory:")
+            genesis_hash = the hash of the genesis block to use
+            engine = the execution engine to use
+            taskman = the task manager ot use
+            agora_address = IP address of an Agora node to monitor the
+                blockchain and publish new on-chain transactions to it.
+            flashListenerGetter = getter for the Flash listener client
+
+    ***************************************************************************/
+
+    public this (FlashConfig conf, string db_path, Hash genesis_hash,
+        Engine engine, ITaskManager taskman, FullNodeAPI agora_node,
+        FlashAPI delegate (in Point, Duration) flashClientGetter,
+        FlashListenerAPI delegate (in string address, Duration timeout)
+            flashListenerGetter)
+    {
+        this.agora_node = agora_node;
+        this.flashClientGetter = flashClientGetter;
+        this.flashListenerGetter = flashListenerGetter;
+        super(conf, db_path, genesis_hash, engine, taskman);
+    }
+
+    /// Called by a FullNode once a block has been externalized
+    public void onExternalizedBlock (const ref Block block) @safe
+    {
+        this.last_height = block.header.height;
+
+        foreach (channel; this.channels)
+            channel.onBlockExternalized(block);
+    }
+
+    /***************************************************************************
+
+        Send the transaction via the connected agora node.
+
+        Params:
+            tx = the transaction to send
+
+    ***************************************************************************/
+
+    protected override void putTransaction (Transaction tx)
+    {
+        this.agora_node.putTransaction(tx);
+    }
+
+    /***************************************************************************
+
+        Get an instance of a Flash client for the given public key.
+
+        TODO: What if we don't have an IP mapping?
+
+        Params:
+            peer_pk = the public key of the Flash node.
+            timeout = the timeout duration to use for requests.
+
+        Returns:
+            the Flash client
+
+    ***************************************************************************/
+
+    protected override FlashAPI getFlashClient (in Point peer_pk,
+        Duration timeout) @trusted
+    {
+        if (auto peer = peer_pk in this.known_peers)
+            return *peer;
+
+        auto peer = this.flashClientGetter(peer_pk, timeout);
+        this.known_peers[peer_pk] = peer;
+        if (this.known_channels.length > 0)
+            peer.gossipChannelsOpen(this.known_channels.values);
+
+        return peer;
+    }
+
+    /***************************************************************************
+
+        Get an instance of a FlashListenerAPI client for the given address.
+
+        Params:
+            address = the IP to use
+            timeout = the timeout duration to use for requests
+
+        Returns:
+            the FlashListenerAPI client
+
+    ***************************************************************************/
+
+    protected override FlashListenerAPI getFlashListenerClient (string address,
+        Duration timeout) @trusted
+    {
+        return this.flashListenerGetter(address, timeout);
+    }
 }
