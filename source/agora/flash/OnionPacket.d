@@ -88,15 +88,12 @@ struct EncryptedPayload
 }
 
 // Payload size without the encryption metadata
-private enum SerializedPayloadSize = 80;
+private enum SerializedPayloadSize = 72;
 
 /// always same static size, no VarInt
 unittest
 {
-    assert(serializeFull(Payload(Hash.init, Amount.init, Height(0)))
-        .length == SerializedPayloadSize);
-    assert(serializeFull(Payload(Hash.init, Amount.init, Height(ulong.max)))
-        .length == SerializedPayloadSize);
+    assert(serializeFull(Payload.init).length == SerializedPayloadSize);
 }
 
 /// Decrypted Payload which is originally stored encrypted in the OnionPacket
@@ -115,16 +112,11 @@ public struct Payload
     /// `incoming_htlc_amt == forward_amount`
     public Amount forward_amount;
 
-    // need to verify:
-    // cltv_expiry - cltv_expiry_delta >= outgoing_lock_height
-    public Height outgoing_lock_height;
-
     /// Serialization hook
     public void serialize (scope SerializeDg dg) const @trusted
     {
         serializePart(this.next_chan_id, dg, CompactMode.No);
         serializePart(this.forward_amount, dg, CompactMode.No);
-        serializePart(this.outgoing_lock_height.value, dg, CompactMode.No);
     }
 
     /// Deserialization hook
@@ -133,8 +125,7 @@ public struct Payload
     {
         auto next_chan_id = deserializeFull!Hash(dg, opts);
         auto forward_amount = deserializeFull!Amount(dg, opts);
-        auto outgoing_lock_height = Height(deserializeFull!ulong(dg, opts));
-        return QT(next_chan_id, forward_amount, outgoing_lock_height);
+        return QT(next_chan_id, forward_amount);
     }
 }
 
@@ -198,7 +189,6 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
         {
             next_chan_id : next_chan_id,
             forward_amount : forward_amount,
-            outgoing_lock_height : outgoing_lock_height,
         };
 
         Point shared_secret;
@@ -212,7 +202,7 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
             assert(0);
 
         // todo: use htlc_delta config here from the channel config
-        outgoing_lock_height = Height(outgoing_lock_height + 1);
+        outgoing_lock_height = Height(outgoing_lock_height + hop.htlc_delta);
 
         next_chan_id = hop.chan_id;
 
@@ -242,10 +232,10 @@ unittest
     Pair kp4 = Pair.random();
 
     Hop[] hops = [
-        Hop(kp1.V, hashFull(1), Amount(100)),
-        Hop(kp2.V, hashFull(2), Amount(200)),
-        Hop(kp3.V, hashFull(3), Amount(300)),
-        Hop(kp4.V, hashFull(4), Amount(400)),
+        Hop(kp1.V, hashFull(1), Amount(100), 1),
+        Hop(kp2.V, hashFull(2), Amount(200), 1),
+        Hop(kp3.V, hashFull(3), Amount(300), 1),
+        Hop(kp4.V, hashFull(4), Amount(400), 1),
     ];
 
     Amount total_amount;
@@ -263,7 +253,7 @@ unittest
     assert(decryptPayload(packet.encrypted_payloads[0],
         kp1.v, packet.ephemeral_pk, payload, shared_secret));
     assert(shared_secrets[3] == shared_secret);
-    assert(payload == Payload(hashFull(2), Amount(1900), Height(103)));
+    assert(payload == Payload(hashFull(2), Amount(1900)));
 
     assert(!decryptPayload(packet.encrypted_payloads[1],
         kp2.v, packet.ephemeral_pk, payload));  // cannot decrypt with same ephemeral key
@@ -271,19 +261,19 @@ unittest
     assert(decryptPayload(packet.encrypted_payloads[0],
         kp2.v, packet.ephemeral_pk, payload, shared_secret));
     assert(shared_secrets[2] == shared_secret);
-    assert(payload == Payload(hashFull(3), Amount(1700), Height(102)));
+    assert(payload == Payload(hashFull(3), Amount(1700)));
 
     packet = nextPacket(packet);
     assert(decryptPayload(packet.encrypted_payloads[0],
         kp3.v, packet.ephemeral_pk, payload, shared_secret));
     assert(shared_secrets[1] == shared_secret);
-    assert(payload == Payload(hashFull(4), Amount(1400), Height(101)));
+    assert(payload == Payload(hashFull(4), Amount(1400)));
 
     packet = nextPacket(packet);
     assert(decryptPayload(packet.encrypted_payloads[0],
         kp4.v, packet.ephemeral_pk, payload, shared_secret));
     assert(shared_secrets[0] == shared_secret);
-    assert(payload == Payload(Hash.init, Amount(1000), Height(100)));
+    assert(payload == Payload(Hash.init, Amount(1000)));
 }
 
 /// Fill the payload with random encrypted data so it looks real but it ain't
@@ -430,7 +420,6 @@ unittest
     {
         next_chan_id : hashFull(42),
         forward_amount : Amount(123),
-        outgoing_lock_height : Height(100),
     };
 
     Pair ephemeral_kp = Pair.random();

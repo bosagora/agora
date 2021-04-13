@@ -1095,7 +1095,7 @@ LOuter: while (1)
             this.paymentRouter(payment.payload.next_chan_id,
                 payment.payment_hash,
                 payment.payload.forward_amount,
-                payment.payload.outgoing_lock_height,
+                Height(payment.lock_height - this.last_update.htlc_delta),
                 next_packet);
         }
         else
@@ -1342,10 +1342,10 @@ LOuter: while (1)
         // incoming lock height must be greater than outgoing lock height
         // todo: also take into account the desired delta
         if (payload.next_chan_id != Hash.init
-            && lock_height <= payload.outgoing_lock_height /* + this.conf.cltv_delta */)
+            && lock_height <= height + this.last_update.htlc_delta)
             return Result!PublicNonce(ErrorCode.LockTooLarge,
-                format("Lock height is too high. Incoming: %s. Outgoing: %s",
-                    lock_height, payload.outgoing_lock_height));
+                format("Lock height is too low. Required delta: %s",
+                    this.last_update.htlc_delta));
 
         // todo
         version (none)
