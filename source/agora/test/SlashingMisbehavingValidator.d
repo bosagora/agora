@@ -28,6 +28,7 @@ import agora.crypto.Schnorr;
 import agora.utils.Test;
 import agora.test.Base;
 
+import std.exception;
 import std.path : buildPath;
 
 import core.atomic;
@@ -66,15 +67,13 @@ private class MissingPreImageEM : EnrollmentManager
 // `MissingPreImageEM` class
 private class NoPreImageVN : TestValidatorNode
 {
-    public __gshared UTXOSet utxo_set;
     private shared bool* reveal_preimage;
 
     ///
     public this (Parameters!(TestValidatorNode.__ctor) args,
-        shared(bool)* reveal_preimage, UTXOSet utxo_set)
+        shared(bool)* reveal_preimage)
     {
         this.reveal_preimage = reveal_preimage;
-        this.utxo_set = utxo_set;
         super(args);
     }
 
@@ -82,11 +81,6 @@ private class NoPreImageVN : TestValidatorNode
     {
         return new MissingPreImageEM(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params, this.reveal_preimage);
-    }
-
-    protected override UTXOSet makeUTXOSet ()
-    {
-        return this.utxo_set;
     }
 }
 
@@ -100,20 +94,15 @@ unittest
     static class BadAPIManager : TestAPIManager
     {
         public static shared bool reveal_preimage = false;
-        public __gshared UTXOSet utxo_set;
 
         ///
-        public this (Parameters!(TestAPIManager.__ctor) args, UTXOSet utxo_set)
-        {
-            this.utxo_set = utxo_set;
-            super(args);
-        }
+        mixin ForwardCtor!();
 
         ///
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 5)
-                this.addNewNode!NoPreImageVN(conf, &reveal_preimage, utxo_set, file, line);
+                this.addNewNode!NoPreImageVN(conf, &reveal_preimage, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
@@ -122,8 +111,7 @@ unittest
     TestConf conf = {
         recurring_enrollment : false,
     };
-    auto utxo_set = new SyncedUTXOSet(new ManagedDatabase(":memory:"));
-    auto network = makeTestNetwork!BadAPIManager(conf, utxo_set);
+    auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -143,11 +131,9 @@ unittest
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectHeight(Height(1));
 
-    auto frozen_hash = utxo_set.getUTXOs(bad_address).keys[0];
-    auto frozen_utxo = utxo_set.getUTXOs(bad_address).values[0];
-    UTXO utxo;
-    utxo_set.peekUTXO(frozen_hash, utxo);
-    assert(utxo.type == TxType.Freeze);
+    auto utxos = nodes[0].getUTXOs(bad_address);
+    assert(utxos.length == 1);
+    assert(utxos[0].utxo.type == TxType.Freeze);
 
     // block 2
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
@@ -160,17 +146,20 @@ unittest
 
     // check if the frozen UTXO is refunded to the owner and
     // the penalty is re-routed to the `CommonsBudget`
-    utxo_set.peekUTXO(frozen_hash, utxo);
-    assert(utxo == UTXO.init);
-    auto slashed_utxo = utxo_set.getUTXOs(bad_address).values[0];
-    auto common_utxo = utxo_set.getUTXOs(WK.Keys.CommonsBudget.address).values[0];
-    auto slashed_amout = slashed_utxo.output.value;
-    slashed_amout.add(common_utxo.output.value);
-    assert(frozen_utxo.output.value == slashed_amout);
+    assertThrown!Exception(nodes[0].getUTXO(utxos[0].hash));
+    auto refund = nodes[0].getUTXOs(bad_address);
+    assert(refund.length == 1);
+    auto penalty = nodes[0].getUTXOs(WK.Keys.CommonsBudget.address);
+    assert(penalty.length == 1);
+    auto total = refund[0].utxo.output.value;
+    total.mustAdd(penalty[0].utxo.output.value);
+    // Check that the two amounts add up to the original stake
+    // TODO: Check for 40k, not just the total.
+    assert(total == utxos[0].utxo.output.value);
 
     // check the leftover UTXO is melting and the penalty UTXO is unfrozen
-    assert(slashed_utxo.unlock_height == 2018);
-    assert(common_utxo.unlock_height == 3);
+    assert(refund[0].utxo.unlock_height == 2018);
+    assert(penalty[0].utxo.unlock_height == 3);
 }
 
 /// Situation: All the validators do not reveal their pre-images for
@@ -191,7 +180,7 @@ unittest
         public override void createNewNode (Config conf, string file, int line)
         {
             if (conf.validator.enabled == true)
-                this.addNewNode!NoPreImageVN(conf, &this.reveal_preimage, new UTXOSet(new ManagedDatabase(":memory:")), file, line);
+                this.addNewNode!NoPreImageVN(conf, &this.reveal_preimage, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
