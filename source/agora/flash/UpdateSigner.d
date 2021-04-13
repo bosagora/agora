@@ -60,9 +60,6 @@ public class UpdateSigner
     /// Serialization buffer
     private ubyte[] serialize_buffer;
 
-    /// Peer we're communicating with
-    private FlashAPI peer;
-
     /// Execution engine
     private Engine engine;
 
@@ -80,7 +77,6 @@ public class UpdateSigner
             flash_conf = global flash configuration
             conf = the channel configuration
             kp = the node's own key-pair
-            peer = a Flash client to the counter-party
             peer_pk = public key of the counter-party
             engine = the execution engine
             taskman = the taskmanager to schedule tasks with
@@ -88,13 +84,12 @@ public class UpdateSigner
     ***************************************************************************/
 
     public this (FlashConfig flash_conf, ChannelConfig conf, KeyPair kp,
-        FlashAPI peer, Point peer_pk, Engine engine, ITaskManager taskman,
+        Point peer_pk, Engine engine, ITaskManager taskman,
         ManagedDatabase db)
     {
         this.flash_conf = flash_conf;
         this.conf = conf;
         this.kp = kp;
-        this.peer = peer;
         this.peer_pk = peer_pk;
         this.engine = engine;
         this.taskman = taskman;
@@ -275,6 +270,7 @@ public class UpdateSigner
         The balance should have been agreed upon before calling this routine.
 
         Params:
+            peer = the FlashAPI peer to communicate with
             seq_id = the new sequence ID. If zero, the signer will create the
                 trigger transaction which spends from the funding transaction,
                 and will also create the settlement spending from the trigger.
@@ -300,8 +296,9 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public Result!UpdatePair collectSignatures (uint seq_id, Output[] outputs,
-        PrivateNonce priv_nonce, PublicNonce peer_nonce, Transaction prev_tx)
+    public Result!UpdatePair collectSignatures (FlashAPI peer,
+        uint seq_id, Output[] outputs, PrivateNonce priv_nonce,
+        PublicNonce peer_nonce, Transaction prev_tx)
     {
         this.clearState();
 
@@ -332,7 +329,7 @@ public class UpdateSigner
 
             this.taskman.wait(WaitTime);
 
-            settle_res = this.peer.requestSettleSig(this.conf.chan_id, seq_id);
+            settle_res = peer.requestSettleSig(this.conf.chan_id, seq_id);
             if (settle_res.error)
             {
                 // todo: retry?
@@ -378,7 +375,7 @@ public class UpdateSigner
 
             this.taskman.wait(WaitTime);
 
-            update_res = this.peer.requestUpdateSig(this.conf.chan_id, seq_id);
+            update_res = peer.requestUpdateSig(this.conf.chan_id, seq_id);
             if (update_res.error)
             {
                 // todo: retry?
@@ -416,8 +413,7 @@ public class UpdateSigner
         // confirm to the peer we're done, and await for peer's own confirmation
         while (1)
         {
-            auto result = this.peer.confirmChannelUpdate(this.conf.chan_id,
-                seq_id);
+            auto result = peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
             if (result.error)
             {
                 log.info("{}: confirmChannelUpdate rejected, trying again..: {}",
