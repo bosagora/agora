@@ -162,6 +162,11 @@ public class Channel
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
             this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
+        this.last_update = ChannelUpdate(this.conf.chan_id,
+            this.is_owner ? PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner,
+            Amount(1), Amount(1), 1);
+        this.last_update.sig = this.kp.sign(this.last_update);
+
         this.dump();
 
         this.taskman.setTimer(100.msecs,
@@ -2020,6 +2025,55 @@ LOuter: while (1)
         }
     }
 
+    /***************************************************************************
+
+        Returns:
+            Most recent ChannelUpdate for our end of the Channel
+
+    ***************************************************************************/
+
+    public ChannelUpdate getChannelUpdate ()
+    {
+        return this.last_update;
+    }
+
+    /***************************************************************************
+
+        Update the fees
+
+        Params:
+            fixed_fee = Fixed fee that should paid for each payment
+            proportional_fee = Proportional fee that should paid for each BOA
+
+    ***************************************************************************/
+
+    public ChannelUpdate updateFees (Amount fixed_fee, Amount proportional_fee)
+    {
+        this.last_update.fixed_fee = fixed_fee;
+        this.last_update.proportional_fee = proportional_fee;
+        this.last_update.update_idx++;
+        this.last_update.sig = this.kp.sign(this.last_update);
+        return this.last_update;
+    }
+
+    /***************************************************************************
+
+        Update the required HTLC lock delta
+
+        Params:
+            htlc_delta = the minimum number of blocks a node requires to be
+            added to the expiry of HTLCs
+
+    ***************************************************************************/
+
+    public ChannelUpdate updateHTLCDelta (uint htlc_delta)
+    {
+        this.last_update.htlc_delta = htlc_delta;
+        this.last_update.update_idx++;
+        this.last_update.sig = this.kp.sign(this.last_update);
+        return this.last_update;
+    }
+
     version (unittest)
     public void waitForUpdateIndex (in uint index)
     {
@@ -2191,4 +2245,7 @@ private mixin template ChannelMetadata ()
 
     /// Any HTLCs which still need to be reverted
     private const(Hash)[] revert_htlcs;
+
+    /// Most recent ChannelUpdate for our end of the Channel
+    private ChannelUpdate last_update;
 }
