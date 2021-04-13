@@ -30,6 +30,6 @@ public struct Hop
     /// The channel ID to add the HTLC to
     public Hash chan_id;
 
-    /// The fee of this channel (todo: should be node-specific, not chan-specific)
+    /// The fee of this channel
     public Amount fee;
 }
