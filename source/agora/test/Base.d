@@ -1408,6 +1408,27 @@ public interface TestAPI : ValidatorAPI
     ***************************************************************************/
 
     public bool hasAcceptedTxHash (Hash tx_hash);
+
+    /***************************************************************************
+
+        Provides access to the state of the UTXO set
+
+    ***************************************************************************/
+
+    public UTXOPair[] getUTXOs (PublicKey owner);
+
+    /// Ditto
+    public UTXO getUTXO (Hash hash);
+}
+
+/// Return type for `TestAPI.getUTXOs`
+public struct UTXOPair
+{
+    ///
+    public Hash hash;
+
+    ///
+    public UTXO utxo;
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -1543,6 +1564,22 @@ private mixin template TestNodeMixin ()
     public bool hasAcceptedTxHash (Hash tx_hash)
     {
         return !!(tx_hash in this.accepted_txs);
+    }
+
+    ///
+    public override UTXOPair[] getUTXOs (PublicKey owner)
+    {
+        return this.utxo_set.getUTXOs(owner).byKeyValue
+            .map!((pair) => UTXOPair(pair.key, pair.value)).array;
+    }
+
+    ///
+    public override UTXO getUTXO (Hash hash)
+    {
+        UTXO result;
+        if (!this.utxo_set.peekUTXO(hash, result))
+            throw new Exception(format("UTXO not found: %s", hash));
+        return result;
     }
 }
 
