@@ -700,7 +700,7 @@ public abstract class FlashNode : ControlFlashAPI
         // Set the initial fees
         // todo: this should be configurable
         auto update = ChannelUpdate(conf.chan_id, dir,
-            Amount(1), Amount(1));
+            Amount(1), Amount(1), 1);
         update.sig = this.conf.key_pair.sign(update);
         this.channel_updates[conf.chan_id][dir] = update;
 
