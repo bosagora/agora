@@ -1052,9 +1052,9 @@ public abstract class ThinFlashNode : FlashNode
 
     public override void start ()
     {
-        // todo: 200 msecs is ok only in tests
+        // todo: 20 msecs is ok only in tests
         // todo: should additionally register as pushBlock() listener
-        this.monitor_timer = this.taskman.setTimer(200.msecs,
+        this.monitor_timer = this.taskman.setTimer(20.msecs,
             &this.monitorBlockchain, Periodic.Yes);
         super.start();
     }
@@ -1086,29 +1086,24 @@ public abstract class ThinFlashNode : FlashNode
 
     private void monitorBlockchain ()
     {
-        while (1)
+        try
         {
-            try
+            auto latest_height = this.agora_node.getBlockHeight();
+            if (this.last_height < latest_height)
             {
-                auto latest_height = this.agora_node.getBlockHeight();
-                if (this.last_height < latest_height)
-                {
-                    auto next_block = this.agora_node.getBlocksFrom(
-                        this.last_height + 1, 1)[0];
+                auto next_block = this.agora_node.getBlocksFrom(
+                    this.last_height + 1, 1)[0];
 
-                    foreach (channel; this.channels)
-                        channel.onBlockExternalized(next_block);
+                foreach (channel; this.channels)
+                    channel.onBlockExternalized(next_block);
 
-                    this.last_height++;
-                    this.dump();
-                }
+                this.last_height++;
+                this.dump();
             }
-            catch (Exception ex)
-            {
-                // connection might be dropped
-            }
-
-            this.taskman.wait(0.msecs);  // yield
+        }
+        catch (Exception ex)
+        {
+            // connection might be dropped
         }
     }
 
