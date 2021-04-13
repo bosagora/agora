@@ -79,14 +79,15 @@ public bool isValid (in PreImageInfo prev_image,
 /// test for validity of pre-image
 unittest
 {
+    auto params = new immutable(ConsensusParams)(2000);
+
     Hash[] preimages;
     preimages ~= hashFull(Scalar.random());
-    foreach (i; 0 .. 1007)
+    foreach (i; 0 .. params.ValidatorCycle)
         preimages ~= hashFull(preimages[i]);
     reverse(preimages);
 
     PreImageInfo prev_image = PreImageInfo(hashFull("abc"), preimages[0], 1);
-    auto params = new immutable(ConsensusParams)();
 
     // valid pre-image
     PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
