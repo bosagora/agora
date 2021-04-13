@@ -136,13 +136,13 @@ public struct ChannelUpdate
     /// The channel ID
     public Hash chan_id;
 
-    /// Indicated which peer is updating it's end
+    /// Indicates which peer is updating it's end
     public PaymentDirection direction;
 
-    /// Fixed fee that should paid for each payment
+    /// Fixed fee that should be paid for each payment
     public Amount fixed_fee;
 
-    /// Proportional fee that should paid for each BOA
+    /// Proportional fee that should be paid for each BOA
     public Amount proportional_fee;
 
     /// The linearly increasing update index of this update. Only channel
