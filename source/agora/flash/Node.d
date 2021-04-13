@@ -179,22 +179,22 @@ public abstract class FlashNode : ControlFlashAPI
 
         foreach (_, chan; this.channels)
             this.network.addChannel(chan.conf);
-
-        if (this.conf.listener_address.length != 0)
-            this.listener = this.getFlashListenerClient(
-                this.conf.listener_address, this.conf.timeout);
-        else  // avoid null checks & segfaults
-            this.listener = new BlackHole!FlashListenerAPI();
     }
 
     /***************************************************************************
 
-        Start the gossiping timer
+        Start the gossiping timer and connect to the listener
 
     ***************************************************************************/
 
     public override void start ()
     {
+        if (this.conf.listener_address.length != 0)
+            this.listener = this.getFlashListenerClient(
+                this.conf.listener_address, this.conf.timeout);
+        else  // avoid null checks & segfaults
+            this.listener = new BlackHole!FlashListenerAPI();
+
         this.gossip_timer = this.taskman.setTimer(100.msecs,
             &this.gossipTask, Periodic.Yes);
     }
