@@ -85,8 +85,6 @@ version (unittest)
         random_seed = Hash of random seed of the preimages
         prev_time_offset = the time offset of the of the direct ancestor of this block
         curr_time_offset = the current time offset
-        block_time_tolerance = the proposed block time offset should be less
-                than curr_time_offset + block_time_tolerance
         getCoinbaseTX = delegate to get the expected Coinbase TX for a given TX
             set
 
@@ -100,13 +98,14 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
     scope EnrollmentFinder findEnrollment, size_t active_validators_next_block,
     in Hash random_seed,
-    ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance,
+    ulong prev_time_offset, ulong curr_time_offset,
     Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
                                nothrow @safe getCoinbaseTX) nothrow @safe
 {
     import std.algorithm;
     import std.string;
     import std.conv;
+    import std.format;
     import std.range;
 
     if (block.header.height == 0)
@@ -184,52 +183,11 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
         return "Block: Header's random seed does not match that of known pre-images";
     }
 
-    return validateBlockTimeOffset(prev_time_offset, block.header.time_offset,
-                                   curr_time_offset, block_time_tolerance);
-}
+    if (block.header.time_offset < prev_time_offset)
+        return text("Proposed block time offset: [", block.header.time_offset,
+            "] is not at least the last block offset: [" , prev_time_offset, "]");
 
-/*******************************************************************************
-
-    Check the validity of the `time offset` for a block
-
-    new_block_offset is valid if and only if
-    prev_block_offset < new_block_offset <= curr_time_offset + block_time_offset_tolerance_secs
-
-    Params:
-        prev_block_offset = the timestam of the block preceding the new block
-        new_block_offset  = the time offset of the block we are trying to validate
-        curr_time_offset = the current time offset in seconds
-        block_time_tolerance = the proposed block new_block_offset should be less
-                than curr_time_offset + block_time_tolerance
-
-    Returns:
-        `null` if the new_block_offset is valid, otherwise a string explaining
-        the reason it is invalid.
-
-*******************************************************************************/
-
-public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_offset, ulong curr_time_offset,
-        Duration block_time_tolerance) @safe nothrow
-{
-    import std.format;
-    string res;
-    try
-    {
-        import std.conv : to;
-        const block_time_offset_tolerance_secs = block_time_tolerance.total!"seconds";
-
-        if (new_block_offset <= prev_block_offset)
-            res = format!"Proposed block time offset: [%s] is not greater than the time offset in the last block: [%s]"
-            (new_block_offset, prev_block_offset);
-        else if (new_block_offset > curr_time_offset + block_time_offset_tolerance_secs)
-            res =  format!"Proposed block time offset: [%s] is greater than current time offset: [%s] plus tolerance of %s secs"
-            (new_block_offset, curr_time_offset, block_time_offset_tolerance_secs);
-    }
-    catch (Exception e)
-    {
-        res = "Exception happened while validating block time offset";
-    }
-    return res;
+    return null;
 }
 
 /*******************************************************************************
@@ -583,8 +541,7 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
-        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
-        Duration block_time_tolerance = 100.seconds) nothrow @safe
+        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max) nothrow @safe
     {
         if (random_seed == Hash.init)
             random_seed = getTestRandomSeed();
@@ -592,7 +549,6 @@ version (unittest)
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, enrolled_validators, random_seed,
             prev_time_offset, (curr_time_offset == ulong.max) ? block.header.time_offset : curr_time_offset,
-            block_time_tolerance,
             (in Transaction[] tx_set, in uint[] missing_validators)
             {
                 return (Transaction[]).init;
@@ -606,13 +562,11 @@ version (unittest)
         size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment, Hash random_seed = Hash.init,
         ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
-        Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, engine, prev_height, prev_hash, findUTXO,
             enrolled_validators, checkFee, findEnrollment,
-            random_seed, enrollment_cycle, prev_time_offset, curr_time_offset,
-            block_time_tolerance);
+            random_seed, enrollment_cycle, prev_time_offset, curr_time_offset);
 
         bool success = mustBeValid ? (reason is null) : (reason !is null);
         if (!success)
@@ -620,10 +574,10 @@ version (unittest)
             try {
                 writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block);
                 writefln("prev: %s (%s), enrolled: %s, random_seed: %s, " ~
-                         "cycle: %s, prev_time_offset: %s, curr_time_offset: %s, tolerance: %s",
+                         "cycle: %s, prev_time_offset: %s, curr_time_offset: %s",
                          prev_height, prev_hash, enrolled_validators,
                          random_seed, enrollment_cycle, prev_time_offset,
-                         curr_time_offset, block_time_tolerance);
+                         curr_time_offset);
             writefln("Called from: %s:%s", file, line);
             } catch (Exception e) { /* Shouldn't happen */ }
             assert(0, mustBeValid ?

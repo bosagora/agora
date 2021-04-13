@@ -91,7 +91,7 @@ public class Validator : FullNode, API
 
         auto vledger = new ValidatingLedger(this.params, this.engine,
             this.utxo_set, this.storage, this.enroll_man, this.pool,
-            this.fee_man, this.clock, config.node.block_time_offset_tolerance,
+            this.fee_man, this.clock,
             &this.onAcceptedBlock);
         this.ledger = vledger;
 
