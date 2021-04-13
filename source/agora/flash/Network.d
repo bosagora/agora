@@ -234,7 +234,8 @@ public class Network
         do
         {
             auto hop = prev[to_pk];
-            path ~= Hop(to_pk, hop.chan_id, hop_fee);
+            auto update = this.lookupUpdate(hop.chan_id, hop.pub_key);
+            path ~= Hop(to_pk, hop.chan_id, hop_fee, update.htlc_delta);
             to_pk = hop.pub_key;
             hop_fee = hop.fee;
         } while(to_pk != from_pk);

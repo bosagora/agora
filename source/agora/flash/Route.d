@@ -32,4 +32,8 @@ public struct Hop
 
     /// The fee of this channel
     public Amount fee;
+
+    /// the minimum number of blocks a node requires to be
+    /// added to the expiry of HTLCs
+    public uint htlc_delta;
 }
