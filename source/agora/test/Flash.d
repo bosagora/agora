@@ -279,14 +279,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     ///
     public override void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee)
     {
-        const dir = this.conf.key_pair.address == this.known_channels[chan_id].funder_pk ?
-            PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
-        auto update = this.channel_updates[chan_id][dir];
-        update.fixed_fee = fixed_fee;
-        update.proportional_fee = proportional_fee;
-        update.update_idx++;
-        update.sig = this.conf.key_pair.sign(update);
-        this.gossipChannelUpdates([update]);
+        this.gossipChannelUpdates([this.channels[chan_id].updateFees(fixed_fee, proportional_fee)]);
     }
 
     /// Prints out the log contents for this node

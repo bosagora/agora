@@ -699,9 +699,7 @@ public abstract class FlashNode : ControlFlashAPI
             PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
         // Set the initial fees
         // todo: this should be configurable
-        auto update = ChannelUpdate(conf.chan_id, dir,
-            Amount(1), Amount(1), 1);
-        update.sig = this.conf.key_pair.sign(update);
+        auto update = this.channels[conf.chan_id].getChannelUpdate();
         this.channel_updates[conf.chan_id][dir] = update;
 
         // todo: should not gossip this to counterparty of the just opened channel
