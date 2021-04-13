@@ -154,7 +154,7 @@ public class Channel
         this.taskman = taskman;
         this.txPublisher = txPublisher;
         this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
-            this.kp, this.peer, this.peer_pk, this.engine, this.taskman, db);
+            this.kp, this.peer_pk, this.engine, this.taskman, db);
         this.paymentRouter = paymentRouter;
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
@@ -207,6 +207,8 @@ public class Channel
         this.engine = engine;
         this.taskman = taskman;
         this.txPublisher = txPublisher;
+        this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
+            this.kp, this.peer_pk, this.engine, this.taskman, db);
         this.paymentRouter = paymentRouter;
         this.onChannelOpen = onChannelOpen;
         this.onPaymentComplete = onPaymentComplete;
@@ -488,8 +490,8 @@ public class Channel
         const Balance balance = { refund_amount : this.conf.capacity };
         Output[] outputs = this.buildBalanceOutputs(balance);
 
-        auto pair_res = this.update_signer.collectSignatures(0, outputs,
-            priv_nonce, peer_nonce, this.conf.funding_tx);
+        auto pair_res = this.update_signer.collectSignatures(this.peer, 0,
+            outputs, priv_nonce, peer_nonce, this.conf.funding_tx);
         assert(pair_res.error == ErrorCode.None);  // todo: handle
         this.onSetupComplete(pair_res.value);
 
@@ -516,10 +518,6 @@ public class Channel
         // once the event loop is running (LocalRest issue)
         if (this.peer is null)
             this.peer = getFlashClient(this.peer_pk, this.flash_conf.timeout);
-
-        if (this.update_signer is null)
-            this.update_signer = new UpdateSigner(this.flash_conf, this.conf,
-                this.kp, this.peer, this.peer_pk, this.engine, this.taskman, db);
 
 LOuter: while (1)
         {
@@ -933,8 +931,8 @@ LOuter: while (1)
         const old_balance = this.cur_balance;
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
-        auto update_pair_res = this.update_signer.collectSignatures(new_seq_id,
-            new_outputs, priv_nonce, peer_nonce,
+        auto update_pair_res = this.update_signer.collectSignatures(this.peer,
+            new_seq_id, new_outputs, priv_nonce, peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
         assert(update_pair_res.error == ErrorCode.None); // todo: handle
         auto update_pair = update_pair_res.value;
@@ -1063,7 +1061,7 @@ LOuter: while (1)
 
         this.cur_seq_id = payment.seq_id;
 
-        auto update_pair_res = this.update_signer.collectSignatures(
+        auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             payment.seq_id, new_outputs, payment.priv_nonce, payment.peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
 
@@ -1178,7 +1176,7 @@ LOuter: while (1)
         log.info("{}: Created outgoing payment balance request: {}",
             this.kp.address.flashPrettify, new_balance);
 
-        auto update_pair_res = this.update_signer.collectSignatures(
+        auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             new_seq_id, new_outputs, priv_nonce, peer_nonce,
             this.channel_updates[0].update_tx);  // spend from trigger tx
 
@@ -1217,7 +1215,7 @@ LOuter: while (1)
     {
         const old_balance = this.cur_balance;
 
-        auto update_pair_res = this.update_signer.collectSignatures(
+        auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             update.seq_id,
             update.outputs, update.priv_nonce,
             update.peer_nonce,
