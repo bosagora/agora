@@ -91,7 +91,7 @@ unittest
     // wait for propagation
     nodes.each!(node =>
        txs.take(2).each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(4.seconds)
+           node.hasAcceptedTxHash(hashFull(tx)).retryFor(4.seconds)
     ));
     txs.popFrontN(2);
 
@@ -118,7 +118,7 @@ unittest
     // wait for propagation
     nodes.each!(node =>
        txs.take(2).each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(4.seconds)
+           node.hasAcceptedTxHash(hashFull(tx)).retryFor(4.seconds)
     ));
     txs.popFrontN(2);
 

@@ -43,7 +43,7 @@ unittest
     // gossip was complete
     nodes.each!(node =>
        send_txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)
+           node.hasAcceptedTxHash(hashFull(tx)).retryFor(2.seconds)
     ));
     // When a block is created, the transaction is deleted from the transaction pool.
     node_1.putTransaction(txs[$-1]);

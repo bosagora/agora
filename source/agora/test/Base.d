@@ -1398,6 +1398,16 @@ public interface TestAPI : ValidatorAPI
     ***************************************************************************/
 
     public TimePoint getNetworkTime ();
+
+    /***************************************************************************
+
+        Returns:
+            true if the tx hash was at one point accepted to the tx pool,
+            even if it was later removed (e.g. during block externalization)
+
+    ***************************************************************************/
+
+    public bool hasAcceptedTxHash (Hash tx_hash);
 }
 
 /// Contains routines which are implemented by both TestFullNode and
@@ -1416,6 +1426,9 @@ private mixin template TestNodeMixin ()
 
     /// test start time
     protected ulong test_start_time;
+
+    /// All txs which were at one point accepted into the tx pool
+    protected Set!Hash accepted_txs;
 
     /// Blocks to preload into the memory storage
     private immutable(Block)[] blocks;
@@ -1502,6 +1515,34 @@ private mixin template TestNodeMixin ()
     public override TimePoint getNetworkTime ()
     {
         return this.clock.networkTime();
+    }
+
+    /***************************************************************************
+
+        Overrides base function to keep statistics about accepted txs.
+
+    ***************************************************************************/
+
+    public override void putTransaction (Transaction tx) @safe
+    {
+        super.putTransaction(tx);
+        const tx_hash = tx.hashFull();
+        if (tx_hash !in this.accepted_txs &&
+            this.pool.hasTransactionHash(tx_hash))
+            this.accepted_txs.put(tx_hash);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            true if the tx hash was at one point accepted to the tx pool,
+            even if it was later removed (e.g. during block externalization)
+
+    ***************************************************************************/
+
+    public bool hasAcceptedTxHash (Hash tx_hash)
+    {
+        return !!(tx_hash in this.accepted_txs);
     }
 }
 

@@ -49,6 +49,10 @@ unittest
                 log.info("Accepted transaction but not gossiping: {}", tx_hash);
                 this.pushTransaction(tx);
             }
+
+            if (tx_hash !in this.accepted_txs &&
+                this.pool.hasTransactionHash(tx_hash))
+                this.accepted_txs.put(tx_hash);
         }
     }
 
