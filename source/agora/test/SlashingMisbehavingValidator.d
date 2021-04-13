@@ -124,9 +124,6 @@ unittest
     // discarded UTXOs (just to trigger block creation)
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
 
-    // wait for the preimage to be missed
-    Thread.sleep(5.seconds);
-
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
     network.expectHeight(Height(1));
