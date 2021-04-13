@@ -145,6 +145,10 @@ public struct ChannelUpdate
     /// Proportional fee that should be paid for each BOA
     public Amount proportional_fee;
 
+    /// the minimum number of blocks a node requires to be
+    /// added to the expiry of HTLCs
+    public uint htlc_delta;
+
     /// The linearly increasing update index of this update. Only channel
     /// updates with a greater update index will be accepted by a node.
     public uint update_idx;
