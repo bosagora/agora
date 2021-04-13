@@ -722,25 +722,6 @@ LOuter: while (1)
 
     /***************************************************************************
 
-        Called when a closing transaction has been detected as externalized.
-        This was a collaborative channel close.
-
-        At this point the channel becomes closed and it is safe to destroy
-        all of its associated data.
-
-        Params:
-            tx = the closing transaction.
-
-    ***************************************************************************/
-
-    private void onClosingTxExternalized (in Transaction tx)
-    {
-        // todo: assert this is the actual closing transaction
-        this.state = ChannelState.Closed;
-    }
-
-    /***************************************************************************
-
         Called when a settlement transaction has been detected as externalized.
         This was a unilateral channel close.
 
