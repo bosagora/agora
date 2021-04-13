@@ -39,10 +39,10 @@ unittest
     // 8 transactions is enough for 4 blocks with 2 txs each
     txs.each!(tx => nodes[0].putTransaction(tx));
 
-    // wait for propagation
+    // check for propagation
     nodes.each!(node =>
        txs.each!(tx =>
-           node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)
+           node.hasAcceptedTxHash(hashFull(tx)).retryFor(2.seconds)
     ));
 
     const b0 = nodes[0].getBlocksFrom(0, 1)[0];
