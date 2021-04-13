@@ -605,6 +605,7 @@ LOuter: while (1)
 
         this.trigger_utxo = UTXO.getHash(update_pair.update_tx.hashFull(), 0);
         this.channel_updates ~= update_pair;
+        this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         if (this.state == ChannelState.Open)
         {
@@ -912,6 +913,7 @@ LOuter: while (1)
             this.channel_updates[0].update_tx);  // spend from trigger tx
         assert(update_pair_res.error == ErrorCode.None); // todo: handle
         auto update_pair = update_pair_res.value;
+        this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: +Update+ Got new pair from {}! Balanced updated: {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
@@ -1049,6 +1051,7 @@ LOuter: while (1)
         }
 
         auto update_pair = update_pair_res.value;
+        this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: Got new pair from {}! Balance updated! {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
@@ -1167,6 +1170,7 @@ LOuter: while (1)
 
         this.cur_seq_id = new_seq_id;
         auto update_pair = update_pair_res.value;
+        this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: Got new pair from {}! Balanced updated. New balance: {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
@@ -1206,6 +1210,7 @@ LOuter: while (1)
 
         this.cur_seq_id = update.seq_id;
         auto update_pair = update_pair_res.value;
+        this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: Got new pair from {}! Balance updated: {}",
             this.kp.address.flashPrettify, this.peer_pk.flashPrettify, update.balance);
@@ -1618,8 +1623,7 @@ LOuter: while (1)
 
     private bool isSettleTx (in Transaction tx)
     {
-        // todo: need to implement so the channel can be closed
-        return false;
+        return !!(hashFull(tx) in this.known_settle_txs);
     }
 
     /***************************************************************************
@@ -2127,6 +2131,10 @@ private mixin template ChannelMetadata ()
 
     /// The list of any off-chain updates which happened on this channel
     private UpdatePair[] channel_updates;
+
+    /// Known settle transaction hashes. If any of these are detected on the
+    /// blockchain it means the channel should transition to a closed state.
+    private Set!Hash known_settle_txs;
 
     /// Unresolved payment hashes and their associated shared secret
     /// which are part of existing HTLCs
