@@ -13,6 +13,10 @@ node:
   data_dir: .cache
   block_interval_sec: 5
   block_catchup_interval_secs: 5
+  relay_tx_max_num : 0
+  relay_tx_interval_secs : 0
+  relay_tx_min_fee : 0
+  relay_tx_cache_exp_secs : 1200
 
 interfaces:
   - type: http
