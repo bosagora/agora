@@ -32,6 +32,7 @@ struct CommandlineArgs
     string bind_address = "0.0.0.0";
     ushort bind_port = 3003;
     ushort stats_port = 0;
+    bool verbose = false;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
@@ -48,12 +49,15 @@ public GetoptResult parseCommandLine (ref CommandlineArgs cmdline_args, string[]
         "stats-port",
             "Port where the stats server will bind to (0 to disable), defaults to: " ~ to!string(CommandlineArgs.init.stats_port),
             &cmdline_args.stats_port,
+        "verbose",
+        &cmdline_args.verbose,
         );
 }
 
 ///
 private int main (string[] args)
 {
+    import vibe.core.log;
     CommandlineArgs cmdline_args;
     try
     {
@@ -69,6 +73,9 @@ private int main (string[] args)
         writefln("Error parsing command-line arguments '%(%s %)': %s", args, ex.message);
         return -1;
     }
+
+    if (cmdline_args.verbose)
+        setLogLevel(LogLevel.verbose3);
 
     StatsServer stats_server;
     if (cmdline_args.stats_port != 0)
