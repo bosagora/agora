@@ -946,12 +946,6 @@ public abstract class FlashNode : ControlFlashAPI
         if (!this.isValidInvoice(invoice))
             assert(0);  // todo: should just reject it when we write test for it
 
-        // todo: should not be hardcoded.
-        // todo: isn't the payee supposed to set this?
-        // the lock height for the end node. The first hop will have the biggest
-        // lock height, gradually reducing with each hop until destination node.
-        Height end_lock_height = Height(this.last_height + 100);
-
         Set!Hash ignore_chans;
         if (auto error = invoice.payment_hash in this.payment_errors)
             ignore_chans = Set!Hash.from((*error).map!(err => err.chan_id));
@@ -967,11 +961,19 @@ public abstract class FlashNode : ControlFlashAPI
         Amount total_amount;
         Height use_lock_height;
         Point[] cur_shared_secrets;
-        auto packet = createOnionPacket(invoice.payment_hash, end_lock_height,
-            invoice.amount, path, total_amount, use_lock_height, cur_shared_secrets);
+        auto packet = createOnionPacket(invoice.payment_hash, invoice.amount,
+            path, total_amount, use_lock_height, cur_shared_secrets);
         this.shared_secrets[invoice.payment_hash] = cur_shared_secrets.reverse;
         this.payment_path[invoice.payment_hash] = path;
         this.invoices[invoice.payment_hash] = invoice;
+
+        // If suggested lock height is not enough, use settle_time + htlc_delta
+        auto first_conf = this.known_channels[path.front.chan_id];
+        auto first_update = this.channels[path.front.chan_id].getChannelUpdate();
+        use_lock_height = max(use_lock_height,
+            Height(first_conf.settle_time + first_update.htlc_delta));
+
+        use_lock_height = Height(use_lock_height + this.last_height);
 
         this.paymentRouter(path.front.chan_id, invoice.payment_hash,
             total_amount, use_lock_height, packet);
