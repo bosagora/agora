@@ -160,8 +160,8 @@ public enum MaxPathLength = 20;
 *******************************************************************************/
 
 public OnionPacket createOnionPacket (in Hash payment_hash,
-    in Height lock_height, in Amount amount, in Hop[] path,
-    out Amount total_amount, out Height use_lock_height, out Point[] shared_secrets)
+    in Amount amount, in Hop[] path, out Amount total_amount,
+    out Height use_lock_height, out Point[] shared_secrets)
 {
     assert(path.length >= 1 && path.length <= MaxPathLength);
 
@@ -174,7 +174,7 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
     }
 
     Amount forward_amount = amount;
-    Height outgoing_lock_height = lock_height;
+    use_lock_height = Height(0);
     Hash next_chan_id;
 
     Pair ephemeral_kp = Pair.random();
@@ -202,7 +202,7 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
             assert(0);
 
         // todo: use htlc_delta config here from the channel config
-        outgoing_lock_height = Height(outgoing_lock_height + hop.htlc_delta);
+        use_lock_height = Height(use_lock_height + hop.htlc_delta);
 
         next_chan_id = hop.chan_id;
 
@@ -213,8 +213,6 @@ public OnionPacket createOnionPacket (in Hash payment_hash,
         auto next_secret = ephemeral_kp.v + Scalar(hashFull(1));
         ephemeral_kp = Pair(next_secret, next_secret.toPoint());
     }
-
-    use_lock_height = outgoing_lock_height;
 
     // fill out the rest with encrypted filler
     foreach (ref payload; packet.encrypted_payloads[path.length .. $])
@@ -241,10 +239,10 @@ unittest
     Amount total_amount;
     Height use_lock_height;
     Point[] shared_secrets;
-    auto packet = createOnionPacket(hashFull(42),
-        Height(100), Amount(1000), hops, total_amount, use_lock_height, shared_secrets);
+    auto packet = createOnionPacket(hashFull(42), Amount(1000),
+        hops, total_amount, use_lock_height, shared_secrets);
     assert(total_amount == Amount(2000));
-    assert(use_lock_height == 104);
+    assert(use_lock_height == 4);
 
     Point shared_secret;
     Payload payload;

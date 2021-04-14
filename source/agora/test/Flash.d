@@ -1441,7 +1441,7 @@ unittest
     Amount total_amount;
     Height use_lock_height;
     Point[] shared_secrets;
-    onion = createOnionPacket(hashFull(42), Height(1000), Amount(100), path,
+    onion = createOnionPacket(hashFull(42), Amount(100), path,
         total_amount, use_lock_height, shared_secrets);
     pay_res = alice.proposePayment(chan_id, 0, hashFull(42), total_amount,
         use_lock_height, onion, PublicNonce.init, Height.init);
