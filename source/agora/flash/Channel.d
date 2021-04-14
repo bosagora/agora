@@ -1650,35 +1650,51 @@ LOuter: while (1)
 
     public Result!bool beginCollaborativeClose ()
     {
-        if (this.state != ChannelState.Open)
+        if (this.state != ChannelState.Open &&
+            this.state != ChannelState.RejectedCollaborativeClose)
             return Result!bool(ErrorCode.ChannelNotOpen,
                 "Channel is not open");
 
         this.state = ChannelState.StartedCollaborativeClose;
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
 
-        const Fee = Amount(100);  // todo: coordinate based on return value
-        Pair priv_nonce = Pair.random();
-
-        Result!Point close_res;
-        while (1)
+        this.taskman.setTimer(100.msecs,
         {
-            close_res = this.peer.closeChannel(this.conf.chan_id,
-                this.cur_seq_id, priv_nonce.V, Fee);
-            if (close_res.error)
+            const Fee = Amount(100);  // todo: coordinate based on return value
+            Pair priv_nonce = Pair.random();
+            const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
+            Result!Point close_res = Result!Point(ErrorCode.Unknown);
+
+            foreach (attempt; 0 .. uint.max)
             {
-                // todo: retry with bigger fee if smaller fee was rejected
-                // todo: retry?
-                // todo: try unilateral close after the configured timeout?
-                log.info("{}: Closing tx signature request rejected: {}",
-                    this.kp.address.flashPrettify, close_res);
-                this.taskman.wait(100.msecs);
-                continue;
+                const WaitTime = this.backoff.getDelay(attempt).msecs;
+                if (Clock.currTime() + WaitTime >= fail_time)
+                {
+                    // timeout
+                    this.state = ChannelState.RejectedCollaborativeClose;
+                    this.onChannelNotify(this.conf.chan_id, this.state,
+                        close_res.error);
+                    return;
+                }
+
+                this.taskman.wait(WaitTime);
+
+                close_res = this.peer.closeChannel(this.conf.chan_id,
+                    this.cur_seq_id, priv_nonce.V, Fee);
+                if (close_res.error)
+                {
+                    // todo: retry with bigger fee if smaller fee was rejected?
+                    log.info("{}: closeChannel() request rejected: {}",
+                        this.kp.address.flashPrettify, close_res);
+                    continue;
+                }
+
+                break;
             }
 
-            break;
-        }
+            this.collectCloseSignatures(priv_nonce, close_res.value);
+        });
 
-        this.collectCloseSignatures(priv_nonce, close_res.value);
         return Result!bool(true);
     }
 
@@ -1696,10 +1712,12 @@ LOuter: while (1)
 
     public Result!bool beginUnilateralClose ()
     {
-        if (this.state != ChannelState.Open)
+        if (this.state != ChannelState.Open &&
+            this.state != ChannelState.RejectedCollaborativeClose)
             return Result!bool(ErrorCode.ChannelNotOpen, "Channel is not open");
 
         this.state = ChannelState.StartedUnilateralClose;
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
 
         this.taskman.setTimer(100.msecs,
         {
@@ -1784,30 +1802,46 @@ LOuter: while (1)
         this.pending_close.our_sig = sign(this.kp.secret, this.conf.pair_pk,
             nonce_pair_pk, priv_nonce.v, this.pending_close.tx);
 
-        Result!Signature sig_res;
+        const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
+        Result!Signature sig_res = Result!Signature(ErrorCode.Unknown);
 
-        while (1)
+        foreach (attempt; 0 .. uint.max)
         {
+            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            if (Clock.currTime() + WaitTime >= fail_time)
+            {
+                // timeout
+                this.state = ChannelState.RejectedCollaborativeClose;
+                this.onChannelNotify(this.conf.chan_id, this.state,
+                    sig_res.error);
+                return;
+            }
+
+            this.taskman.wait(WaitTime);
+
             sig_res = this.peer.requestCloseSig(this.conf.chan_id,
                 this.cur_seq_id);
             if (sig_res.error)
             {
-                // todo: retry?
-                log.info("{}: Closing signature request rejected: {}",
+                log.info("{}: Closing tx signature request rejected: {}",
                     this.kp.address.flashPrettify, sig_res);
                 continue;
             }
 
-            break;
-        }
+            // validate it
+            if (auto error = this.isInvalidCloseMultiSig(this.pending_close,
+                sig_res.value, priv_nonce, peer_nonce))
+            {
+                log.info("{}: Error during validation: {}. For closing signature: {}",
+                    this.kp.address.flashPrettify, error, sig_res.value);
 
-        if (auto error = this.isInvalidCloseMultiSig(this.pending_close,
-            sig_res.value, priv_nonce, peer_nonce))
-        {
-            // todo: inform? ban?
-            log.info("{}: Error during validation: {}. For closing signature: {}",
-                this.kp.address.flashPrettify, error, sig_res.value);
-            assert(0);
+                this.state = ChannelState.RejectedCollaborativeClose;
+                this.onChannelNotify(this.conf.chan_id, this.state,
+                    ErrorCode.InvalidSignature);
+                return;
+            }
+
+            break;
         }
 
         this.pending_close.peer_sig = sig_res.value;
@@ -1871,6 +1905,7 @@ LOuter: while (1)
         // cover this fee.
 
         this.state = ChannelState.StartedCollaborativeClose;
+        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
         Pair priv_nonce = Pair.random();
         Point pub_nonce = priv_nonce.V;
 
