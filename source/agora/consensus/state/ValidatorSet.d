@@ -927,42 +927,26 @@ unittest
     assert(keys[0] == utxos[3]);
 
     // add enrollment at the genesis block:
-    // validates blocks [1 .. 1008] inclusively
+    // validates blocks [1 .. ValidatorCycle] inclusively
+    assert(set.params.ValidatorCycle > 10);
     set.removeAll();  // clear all
     assert(set.countActive(Height(10)) == 0);
     enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
     assert(set.add(Height(0), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
-    // not cleared yet at height 1007
-    set.clearExpiredValidators(Height(1007));
+    // not cleared yet at the last block where validators are active
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle - 1));
     keys.length = 0;
-    assert(set.countActive(Height(1007)) == 1);
+
+    assert(set.countActive(Height(set.params.ValidatorCycle)) == 1);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[0]);
 
-    // cleared after block height 1008 was externalized
-    set.clearExpiredValidators(Height(1008));
-    assert(set.countActive(Height(1008)) == 0);
+    // cleared after a new cycle was started
+    set.clearExpiredValidators(Height(set.params.ValidatorCycle));
+    assert(set.countActive(Height(set.params.ValidatorCycle + 1)) == 0);
     assert(set.getEnrolledUTXOs(keys));
     assert(keys.length == 0);
     set.removeAll();  // clear all
-
-    // now try with validator for [1 .. 1009]
-    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
-    assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
-
-    // not cleared yet at height 1008
-    set.clearExpiredValidators(Height(1008));
-    keys.length = 0;
-    assert(set.countActive(Height(1008)) == 1);
-    assert(set.getEnrolledUTXOs(keys));
-    assert(keys.length == 1);
-    assert(keys[0] == utxos[0]);
-
-    // cleared after block height 1009 was externalized
-    set.clearExpiredValidators(Height(1009));
-    assert(set.countActive(Height(1009)) == 0);
-    assert(set.getEnrolledUTXOs(keys));
-    assert(keys.length == 0);
 }
