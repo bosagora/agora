@@ -700,7 +700,7 @@ LOuter: while (1)
 
     public void onUpdateTxExternalized (in Transaction tx)
     {
-        this.state = ChannelState.PendingClose;
+        this.state = ChannelState.StartedUnilateralClose;
         this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
 
         // last update was published, publish the settlement
@@ -1654,7 +1654,7 @@ LOuter: while (1)
             return Result!bool(ErrorCode.ChannelNotOpen,
                 "Channel is not open");
 
-        this.state = ChannelState.PendingClose;
+        this.state = ChannelState.StartedCollaborativeClose;
 
         const Fee = Amount(100);  // todo: coordinate based on return value
         Pair priv_nonce = Pair.random();
@@ -1679,6 +1679,38 @@ LOuter: while (1)
         }
 
         this.collectCloseSignatures(priv_nonce, close_res.value);
+        return Result!bool(true);
+    }
+
+    /***************************************************************************
+
+        Begin a collaborative close of the channel.
+
+        The node will send the counter-party a `closeChannel` request,
+        with the sequence ID of the last known state.
+
+        The counter-party should return its signature for the closing
+        transaction.
+
+    ***************************************************************************/
+
+    public Result!bool beginUnilateralClose ()
+    {
+        if (this.state != ChannelState.Open)
+            return Result!bool(ErrorCode.ChannelNotOpen, "Channel is not open");
+
+        this.state = ChannelState.StartedUnilateralClose;
+
+        this.taskman.setTimer(100.msecs,
+        {
+            // publish trigger tx. onUpdateTxExternalized() will handle the rest.
+            auto trigger_tx = this.channel_updates[0].update_tx;
+            log.info("{}: Publishing trigger tx: {}",
+                this.kp.address.flashPrettify,
+                trigger_tx.hashFull().flashPrettify);
+            this.txPublisher(trigger_tx);
+        });
+
         return Result!bool(true);
     }
 
@@ -1838,7 +1870,7 @@ LOuter: while (1)
         // todo: need to calculate *our* balance here and see if we can
         // cover this fee.
 
-        this.state = ChannelState.PendingClose;
+        this.state = ChannelState.StartedCollaborativeClose;
         Pair priv_nonce = Pair.random();
         Point pub_nonce = priv_nonce.V;
 
@@ -1871,7 +1903,7 @@ LOuter: while (1)
 
     public Result!Signature requestCloseSig (in uint seq_id)
     {
-        if (this.state != ChannelState.PendingClose &&
+        if (this.state != ChannelState.StartedCollaborativeClose &&
             this.state != ChannelState.Closed)
             return Result!Signature(ErrorCode.ChannelNotClosing,
                 "Cannot request closing signature before issuing "

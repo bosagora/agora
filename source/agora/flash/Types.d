@@ -55,10 +55,20 @@ public enum ChannelState
     /// The channel is open and ready for new balance update requests.
     Open,
 
-    /// A channel closure was requested. New balance update requests will
-    /// be rejected. For safety reasons, the channel's metadata should be kept
+    /// A channel closure was requested either by the wallet or by the
+    /// counter-party. New balance update requests will be rejected.
+    //// For safety reasons the channel's metadata should be kept
     /// around until the channel's state becomes `Closed`.
-    PendingClose,
+    StartedCollaborativeClose,
+
+    /// The counter-party rejected collaboratively closing this channel.
+    /// The wallet has the option to either unilaterally close the channel,
+    /// or to attempt a collaborative close again at a later point.
+    RejectedCollaborativeClose,
+
+    /// The channel is being unilaterally closed by publishing an
+    /// update transaction to the blockchain.
+    StartedUnilateralClose,
 
     /// The funding transaction has been spent and externalized.
     /// This marks the channel as closed.

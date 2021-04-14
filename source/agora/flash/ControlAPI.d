@@ -55,6 +55,26 @@ public interface ControlFlashAPI : FlashAPI
 
     /***************************************************************************
 
+        If the counter-party rejects a collaborative closure,
+        the wallet may initiate a unilateral closure of the channel.
+
+        This will publish the latest update transaction to the blockchain,
+        and after the time lock expires the settlement transaction will be
+        published too.
+
+        Params:
+            chan_id = the ID of the channel to close
+
+        Returns:
+            true if this channel ID exists and may be closed,
+            else an error
+
+    ***************************************************************************/
+
+    public Result!bool beginUnilateralClose (/* in */ Hash chan_id);
+
+    /***************************************************************************
+
         Schedule opening a new channel with another flash node.
         If this funding_utxo is already used, an error is returned.
         Otherwise, the Listener will receive a notification through
