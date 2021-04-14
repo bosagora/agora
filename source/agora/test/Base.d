@@ -478,12 +478,19 @@ extern(D):
         this.ledger.prepareNominatingSet(data,
             this.txs_to_nominate ? this.txs_to_nominate : ulong.max);
         if (data.tx_set.length < this.txs_to_nominate)
+        {
+            log.trace("Nomination: Not enough transactions ({} < {})",
+                      data.tx_set.length, this.txs_to_nominate);
             return false;  // not enough txs
+        }
 
         // defensive coding, same as base class
         // (but may be overruled by derived classes)
         if (auto msg = this.ledger.validateConsensusData(data))
         {
+            log.error("Nomination: Invalid consensus data: {}. Data: {}",
+                      msg, data.prettify);
+
             if (this.onInvalidNomination)
                 this.onInvalidNomination(data, msg);
             return false;
