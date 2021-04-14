@@ -801,32 +801,11 @@ public class ValidatorSet
     }
 }
 
-version (unittest)
-private Enrollment createEnrollment(in Hash utxo_key,
-    const KeyPair key_pair, ref Scalar commitment_src,
-    uint validator_cycle)
-{
-    import std.algorithm;
-
-    Pair pair = Pair.fromScalar(key_pair.secret);
-
-    auto enroll = Enrollment();
-    auto signature_noise = Pair.random();
-    auto cache = PreImageCache(validator_cycle, 1);
-    cache.reset(hashFull(commitment_src));
-
-    enroll.utxo_key = utxo_key;
-    enroll.cycle_length = validator_cycle;
-    enroll.commitment = cache[$ - 1];
-    enroll.enroll_sig = sign(pair.v, pair.V, signature_noise.V,
-        signature_noise.v, enroll);
-    return enroll;
-}
-
 /// test for functions of ValidatorSet
 unittest
 {
     import agora.consensus.data.Transaction;
+    import agora.consensus.EnrollmentManager;
     import std.algorithm;
     import std.range;
 
@@ -843,10 +822,7 @@ unittest
         });
 
     // add enrollments
-    Scalar[Hash] seed_sources;
-    seed_sources[utxos[0]] = Scalar.random();
-    auto enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
-        set.params.ValidatorCycle);
+    auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
     assert(set.getValidatorCount(Height(1)) == 1);
     ExpiringValidator[] ex_validators;
@@ -855,9 +831,7 @@ unittest
     assert(set.hasEnrollment(utxos[0]));
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) !is null);
 
-    seed_sources[utxos[1]] = Scalar.random();
-    auto enroll2 = createEnrollment(utxos[1], WK.Keys[1], seed_sources[utxos[1]],
-        set.params.ValidatorCycle);
+    auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
     assert(set.getValidatorCount(Height(1)) == 2);
     assert(set.getExpiringValidators(
@@ -869,9 +843,7 @@ unittest
     assert(set.getExpiringValidators(
         Height(1 + set.params.ValidatorCycle + 1), ex_validators).length == 0);
 
-    seed_sources[utxos[2]] = Scalar.random();
-    auto enroll3 = createEnrollment(utxos[2], WK.Keys[2], seed_sources[utxos[2]],
-        set.params.ValidatorCycle);
+    auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
     assert(set.getValidatorCount(Height(9)) == 3);
     assert(set.getExpiringValidators(
@@ -897,8 +869,7 @@ unittest
     ordered_enrollments ~= enroll2;
     ordered_enrollments ~= enroll3;
     /// PreImageCache for the first enrollment
-    PreImageCache cache = PreImageCache(set.params.ValidatorCycle, 1);
-    cache.reset(hashFull(seed_sources[utxos[0]]));
+    auto cache = PreImageCycle(WK.Keys[0].secret, set.params.ValidatorCycle);
 
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
@@ -911,7 +882,7 @@ unittest
     // test for adding and getting preimage
     assert(set.getPreimage(utxos[0])
         == PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
-    auto preimage = PreImageInfo(utxos[0], cache[$ - 11], 10);
+    auto preimage = PreImageInfo(utxos[0], cache[Height(10)], 10);
     assert(set.addPreimage(preimage));
     assert(set.getPreimage(utxos[0]) == preimage);
     assert(set.getPreimageAt(utxos[0], Height(0))  // N/A: enrolled at height 1!
@@ -926,9 +897,7 @@ unittest
             cast(ushort)(preimage.distance - 1)));
 
     // test for clear up expired validators
-    seed_sources[utxos[3]] = Scalar.random();
-    enroll = createEnrollment(utxos[3], WK.Keys[3], seed_sources[utxos[3]],
-        set.params.ValidatorCycle);
+    enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], set.params.ValidatorCycle);
     assert(set.add(Height(9), &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
     set.clearExpiredValidators(Height(1016));
     keys.length = 0;
@@ -940,9 +909,7 @@ unittest
     // validates blocks [1 .. 1008] inclusively
     set.removeAll();  // clear all
     assert(set.getValidatorCount(Height(10)) == 0);
-    seed_sources[utxos[0]] = Scalar.random();
-    enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
-        set.params.ValidatorCycle);
+    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
     assert(set.add(Height(0), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // not cleared yet at height 1007
@@ -961,9 +928,7 @@ unittest
     set.removeAll();  // clear all
 
     // now try with validator for [1 .. 1009]
-    seed_sources[utxos[0]] = Scalar.random();
-    enroll = createEnrollment(utxos[0], WK.Keys[0], seed_sources[utxos[0]],
-        set.params.ValidatorCycle);
+    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], set.params.ValidatorCycle);
     assert(set.add(Height(1), &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // not cleared yet at height 1008
