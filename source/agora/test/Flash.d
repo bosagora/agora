@@ -610,7 +610,8 @@ unittest
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     auto tx_10 = node_1.getBlocksFrom(10, 1)[0].txs[0];
     assert(tx_10 == update_tx);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.PendingClose);
+    factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose);
 
     // at this point bob will automatically publish the latest update tx
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
@@ -621,6 +622,126 @@ unittest
     auto tx_12 = node_1.getBlocksFrom(12, 1)[0].txs[0];
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
     //assert(tx_12 == settle_tx);
+}
+
+/// Test attempted collaborative close with a non-collaborative counter-party,
+/// forcing the first counter-party to initiate a non-collaborative close.
+//version (none)
+unittest
+{
+    static class RejectingCloseNode : TestFlashNode
+    {
+        mixin ForwardCtor!();
+
+        ///
+        protected override Result!Point closeChannel (Hash chan_id,
+            uint seq_id, Point peer_nonce, Amount fee)
+        {
+            return Result!Point(ErrorCode.Unknown);
+        }
+    }
+
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+    auto alice = factory.create(alice_pair, address);
+    auto bob = factory.create!RejectingCloseNode(bob_pair, address);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+    //const Settle_10_Blocks = 10;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id_res = alice.openNewChannel(
+        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
+
+    // await funding transaction
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+
+    // wait for the parties & listener to detect the funding tx
+    alice.waitChannelOpen(chan_id);
+    bob.waitChannelOpen(chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+
+    /* do some off-chain transactions */
+    auto inv_1 = bob.createNewInvoice(Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(inv_1);
+
+    alice.waitForUpdateIndex(chan_id, 2);
+    bob.waitForUpdateIndex(chan_id, 2);
+
+    auto inv_2 = bob.createNewInvoice(Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(inv_2);
+
+    // need to wait for invoices to be complete before we have the new balance
+    // to send in the other direction
+    alice.waitForUpdateIndex(chan_id, 4);
+    bob.waitForUpdateIndex(chan_id, 4);
+
+    // note the reverse payment from bob to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(Amount(2_000), time_t.max, "payment 3");
+    bob.payInvoice(inv_3);
+
+    alice.waitForUpdateIndex(chan_id, 6);
+    bob.waitForUpdateIndex(chan_id, 6);
+
+    log.info("Alice collaboratively closing the channel..");
+    auto error = alice.beginCollaborativeClose(chan_id).error;
+    assert(error == ErrorCode.None, error.to!string);
+    // note: not checking for StartedUnilateralClose due to timing
+    factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.RejectedCollaborativeClose);
+
+    log.info("Alice unilaterally closing the channel..");
+    error = alice.beginUnilateralClose(chan_id).error;
+    assert(error == ErrorCode.None, error.to!string);
+    factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose);
+
+    // trigger tx published
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
+
+    // latest update tx published
+    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
+
+    // latest settle tx published
+    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
 /// Test indirect channel payments
