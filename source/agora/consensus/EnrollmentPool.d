@@ -307,43 +307,18 @@ public class EnrollmentPool
     }
 }
 
-version (unittest)
-private Enrollment createEnrollment(in Hash utxo_key,
-    const ref KeyPair key_pair, ref Scalar commitment_src,
-    uint validator_cycle)
-{
-    import std.algorithm;
-
-    Pair pair = Pair.fromScalar(key_pair.secret);
-
-    Hash commitment;
-    Hash[] preimages;
-    auto enroll = Enrollment();
-    auto signature_noise = Pair.random();
-
-    enroll.utxo_key = utxo_key;
-    enroll.cycle_length = validator_cycle;
-    preimages ~= hashFull(commitment_src);
-    foreach (i; 0 ..  enroll.cycle_length-1)
-        preimages ~= hashFull(preimages[i]);
-    reverse(preimages);
-    enroll.commitment = preimages[0];
-    enroll.enroll_sig = sign(pair, signature_noise, enroll);
-    return enroll;
-}
-
 /// test for function of EnrollmentPool
 unittest
 {
     import agora.consensus.data.Params;
     import agora.consensus.data.Transaction;
+    import agora.consensus.EnrollmentManager;
     import std.algorithm;
 
     auto params = new immutable(ConsensusParams)();
     scope storage = new TestUTXOSet;
     scope pool = new EnrollmentPool(new ManagedDatabase(":memory:"));
     KeyPair key_pair = KeyPair.random();
-    Scalar[Hash] seed_sources;
     Enrollment[] enrollments;
     Height avail_height;
 
@@ -361,9 +336,7 @@ unittest
     foreach (index; 0 .. 3)
     {
         auto utxo_hash = utxo_hashes[index];
-        seed_sources[utxo_hash] = Scalar.random();
-        enrollments ~= createEnrollment(utxo_hash, key_pair, seed_sources[utxo_hash],
-            params.ValidatorCycle);
+        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, params.ValidatorCycle);
         avail_height = Height(params.ValidatorCycle);
         assert(pool.add(enrollments[$ - 1], avail_height,
                                 storage.getUTXOFinder(), &findEnrollment));
