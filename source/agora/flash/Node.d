@@ -835,6 +835,15 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
+    public override Result!bool beginUnilateralClose (/* in */ Hash chan_id)
+    {
+        if (auto channel = chan_id in this.channels)
+            return channel.beginUnilateralClose();
+
+        return Result!bool(ErrorCode.InvalidChannelID, "Channel ID not found");
+    }
+
+    ///
     public override Result!Hash openNewChannel (/* in */ Hash funding_utxo,
         /* in */ Amount capacity, /* in */ uint settle_time,
         /* in */ Point peer_pk)
@@ -915,7 +924,7 @@ public abstract class FlashNode : ControlFlashAPI
         assert(channel !is null);
 
         const state = channel.getState();
-        if (state >= ChannelState.PendingClose)
+        if (state >= ChannelState.StartedCollaborativeClose)
         {
             log.info("Error: waitChannelOpen({}) called on channel state {}",
                 chan_id.flashPrettify, state);
