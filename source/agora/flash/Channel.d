@@ -1638,57 +1638,6 @@ LOuter: while (1)
 
     /***************************************************************************
 
-        Begin a unilateral closing of the channel.
-
-        The channel will attempt to co-operatively close by offering the
-        counter-party to sign a closing transaction which spends directly
-        from the funding transaction where the closing transaction is not
-        encumbered by any sequence locks.
-
-        This closing transaction will need to be externalized before the
-        channel may be considered closed.
-
-        If the counter-party is not collaborative or is non-responsive,
-        the node will wait until `cooperative_close_timeout` time has passed
-        since the last failed co-operative close request. If this timeout is
-        reached the node will forcefully publish the trigger transaction.
-
-        Once the trigger transaction is externalized the node will publish
-        the latest update transaction if any, and subsequently will publish the
-        settlement transaction. The settlement transaction may only be published
-        after `settle_time` blocks were externalized after the trigger/update
-        transaction's UTXO was included in the blockchain - this leaves enough
-        time for the counter-party to react and publish a newer update &
-        settlement transactions in case the closing party tries to cheat by
-        publishing a stale update & settlement pair of transactions.
-
-        Params:
-            seq_id = the sequence ID.
-
-        Returns:
-            the update signature,
-            or an error code with an optional error message.
-
-    ***************************************************************************/
-
-    public void beginUnilateralClose ()
-    {
-        // todo: should only be called once
-        assert(this.state == ChannelState.Open);
-        this.state = ChannelState.PendingClose;
-
-        // publish the trigger transaction
-        // note that the settlement will be published automatically after the
-        // node detects the trigger tx published to the blockchain and after
-        // its relative lock time expires.
-        const trigger_tx = this.channel_updates[0].update_tx;
-        log.info("{}: Publishing trigger tx: {}", this.kp.address.flashPrettify,
-            trigger_tx.hashFull().flashPrettify);
-        this.txPublisher(cast()trigger_tx);
-    }
-
-    /***************************************************************************
-
         Begin a collaborative close of the channel.
 
         The node will send the counter-party a `closeChannel` request,
