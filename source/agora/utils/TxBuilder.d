@@ -236,10 +236,7 @@ public struct TxBuilder
                 "Address not found in Well-Known keypairs: "
                 ~ out_ref.output.address.toString());
 
-        import Schnorr = agora.crypto.Schnorr;
-        Pair pair = Pair(ownerKP.secret, ownerKP.secret.toPoint());
-        auto sig = Schnorr.sign(pair.v, tx);
-        return genKeyUnlock(sig);
+        return genKeyUnlock(ownerKP.sign(tx));
     }
 
     /***************************************************************************
@@ -249,7 +246,6 @@ public struct TxBuilder
         Params:
             type = type of `Transaction`
             data = data payload of `Transaction`
-            lookupDg = delegate to look up the `KeyPair`
 			lock_height = the transaction-level height lock
             unlock_age = the unlock age for each input in the transaction
             unlocker = optional delegate to generate the unlock script.
