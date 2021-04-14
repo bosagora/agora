@@ -207,6 +207,27 @@ public struct NodeConfig
     /// The new block time offset has to be greater than the previous block time offset,
     /// but less than current time + block_time_offset_tolerance_secs
     public Duration block_time_offset_tolerance = 60.seconds;
+
+    // The percentage by which the double spend transaction's fee should be
+    // increased in order to be added to the transaction pool
+    public ubyte double_spent_threshold_pct = 20;
+
+    /// The maximum number of transactions relayed in every batch.
+    /// Value 0 means no limit.
+    public uint relay_tx_max_num;
+
+    /// Transaction relay batch is triggered in every `relay_tx_interval`.
+    /// Value 0 means, the transaction will be relayed immediately.
+    public Duration relay_tx_interval;
+
+    /// The minimum amount of fee a transaction has to have to be relayed.
+    /// The fee is adjusted by the transaction size:
+    /// adjusted fee = fee / transaction size in bytes.
+    public Amount relay_tx_min_fee;
+
+    /// Transaction put into the relay queue will expire, and will be removed
+    /// after `relay_tx_cache_exp`.
+    public Duration relay_tx_cache_exp;
 }
 
 /// Validator config
@@ -498,6 +519,11 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     const block_time_offset_tolerance_secs = opt!(uint, "node", "block_time_offset_tolerance_secs")(cmdln, node);
     const network_discovery_interval = opt!(uint, "node", "network_discovery_interval_secs")(cmdln, node);
     const block_catchup_interval = opt!(uint, "node", "block_catchup_interval_secs")(cmdln, node);
+    const double_spent_threshold_pct = opt!(ubyte, "node", "double_spent_threshold_pct")(cmdln, node);
+    const relay_tx_max_num = opt!(ushort, "node", "relay_tx_max_num")(cmdln, node, 100);
+    Duration relay_tx_interval = opt!(ulong, "node", "relay_tx_interval_secs")(cmdln, node, 15).seconds;
+    const relay_tx_min_fee = Amount(opt!(ulong, "node", "relay_tx_min_fee")(cmdln, node, 0));
+    Duration relay_tx_cache_exp = opt!(ulong, "node", "relay_tx_cache_exp_secs")(cmdln, node, 1200).seconds;
 
     NodeConfig result = {
             min_listeners : min_listeners,
@@ -514,6 +540,11 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             block_time_offset_tolerance : block_time_offset_tolerance_secs.seconds,
             network_discovery_interval : network_discovery_interval.seconds,
             block_catchup_interval : block_catchup_interval.seconds,
+            double_spent_threshold_pct : double_spent_threshold_pct,
+            relay_tx_max_num : relay_tx_max_num,
+            relay_tx_interval : relay_tx_interval,
+            relay_tx_min_fee : relay_tx_min_fee,
+            relay_tx_cache_exp : relay_tx_cache_exp,
     };
     return result;
 }

@@ -65,7 +65,7 @@ import core.time;
 public class NetworkManager
 {
     /// Node information
-    private static struct NodeConnInfo
+    public static struct NodeConnInfo
     {
         /// Is this node a Validator
         bool is_validator;

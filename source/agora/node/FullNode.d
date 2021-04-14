@@ -51,6 +51,7 @@ import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
 import agora.node.TransactionPool;
+import agora.node.TransactionRelayer;
 import agora.script.Engine;
 import agora.serialization.Serializer;
 import agora.stats.App;
@@ -135,6 +136,9 @@ public class FullNode : API
 
     /// Script execution engine
     protected Engine engine;
+
+    /// Transaction relayer
+    protected TransactionRelayer transaction_relayer;
 
     /***************************************************************************
 
@@ -236,6 +240,7 @@ public class FullNode : API
         this.utxo_set = this.makeUTXOSet();
         this.enroll_man = this.makeEnrollmentManager();
         this.fee_man = this.makeFeeManager();
+        this.transaction_relayer = this.makeTransactionRelayer();
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
         this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
@@ -289,6 +294,7 @@ public class FullNode : API
         this.startPeriodicCatchup();
         if (config.node.stats_listening_port != 0)
             this.stats_server = this.makeStatsServer();
+        this.transaction_relayer.start();
 
         // Special case
         // Block externalized handler is set and push for Genesis block.
@@ -434,6 +440,7 @@ public class FullNode : API
         this.network.shutdown();
         if (this.stats_server !is null)
             this.stats_server.shutdown();
+        this.transaction_relayer.shutdown();
         this.pool = null;
         this.utxo_set = null;
         this.enroll_man = null;
@@ -520,6 +527,17 @@ public class FullNode : API
         ITaskManager taskman, Clock clock)
     {
         return new NetworkManager(this.config, metadata, taskman, clock);
+    }
+
+    protected TransactionRelayer makeTransactionRelayer ()
+    {
+        return new TransactionRelayerFeeImp(this.pool, this.config, &this.network.peers,
+            this.taskman, this.clock, &getAdjustedTXFee);
+    }
+
+    protected string getAdjustedTXFee (in Transaction tx, out Amount tot_fee) nothrow @safe
+    {
+        return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
     }
 
     /***************************************************************************
@@ -718,7 +736,7 @@ public class FullNode : API
         if (this.ledger.acceptTransaction(tx))
         {
             log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
-            this.network.peers[].each!(p => p.client.sendTransaction(tx));
+            this.transaction_relayer.addTransaction(tx);
             this.pushTransaction(tx);
         }
     }

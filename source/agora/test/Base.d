@@ -1960,6 +1960,23 @@ public struct TestConf
     /// The minimum (transaction size adjusted) fee.
     /// Transaction size adjusted fee = tx fee / tx size in bytes.
     public Amount min_fee = Amount(0);
+
+    /// The maximum number of transactions relayed in every batch.
+    /// Value 0 means no limit.
+    uint relay_tx_max_num = 0;
+
+    /// Transaction relay batch is triggered in every `relay_tx_interval`.
+    /// Value 0 means, the transaction will be relayed immediately.
+    Duration relay_tx_interval = 0.seconds;
+
+    /// The minimum amount of fee a transaction has to have to be relayed.
+    /// The fee is adjusted by the transaction size:
+    /// adjusted fee = fee / transaction size in bytes.
+    Amount relay_tx_min_fee = 0;
+
+    /// Transaction put into the relay queue will expire, and will be removed
+    /// after `relay_tx_cache_exp`.
+    Duration relay_tx_cache_exp = 60.minutes;
 }
 
 /*******************************************************************************
@@ -2037,6 +2054,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             max_listeners : (test_conf.max_listeners == 0)
                 ? TotalNodes - 1 : test_conf.max_listeners,
             block_catchup_interval : test_conf.block_catchup_interval,
+            relay_tx_max_num : test_conf.relay_tx_max_num,
+            relay_tx_interval : test_conf.relay_tx_interval,
+            relay_tx_min_fee : test_conf.relay_tx_min_fee,
+            relay_tx_cache_exp : test_conf.relay_tx_cache_exp,
         };
 
         return conf;

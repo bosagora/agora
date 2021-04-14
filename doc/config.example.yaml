@@ -41,6 +41,19 @@ node:
   # The duration between requests for retrieving the latest blocks
   # from all other nodes
   block_catchup_interval_secs: 20
+  # The maximum number of transactions relayed in every batch.
+  # Value 0 means no limit.
+  relay_tx_max_num : 100
+  # Transaction relay batch is triggered in every `relay_tx_interval_secs`.
+  # Value 0 means, the transaction will be relayed immediately.
+  relay_tx_interval_secs : 30
+  # The minimum amount of fee a transaction has to have to be relayed.
+  # The fee is adjusted by the transaction size:
+  # adjusted fee = fee / transaction size in bytes.
+  relay_tx_min_fee : 0
+  # Transaction put into the relay queue will expire, and will be removed
+  # after `relay_tx_cache_exp_secs`.
+  relay_tx_cache_exp_secs : 1200
 
 # Each entry in this array is an interface Agora will listen to, allowing to
 # expose the same node on more than one network interface or with different
