@@ -826,11 +826,12 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    public override void beginCollaborativeClose (/* in */ Hash chan_id)
+    public override Result!bool beginCollaborativeClose (/* in */ Hash chan_id)
     {
-        auto channel = chan_id in this.channels;
-        assert(channel !is null);
-        channel.beginCollaborativeClose();
+        if (auto channel = chan_id in this.channels)
+            return channel.beginCollaborativeClose();
+
+        return Result!bool(ErrorCode.InvalidChannelID, "Channel ID not found");
     }
 
     ///

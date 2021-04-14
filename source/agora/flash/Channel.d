@@ -1699,11 +1699,12 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public void beginCollaborativeClose ()
+    public Result!bool beginCollaborativeClose ()
     {
-        // todo: should only be called once
-        //assert(this.state == ChannelState.Open);
-        // todo: can already be PendingClose if it was requested by another peer
+        if (this.state != ChannelState.Open)
+            return Result!bool(ErrorCode.ChannelNotOpen,
+                "Channel is not open");
+
         this.state = ChannelState.PendingClose;
 
         const Fee = Amount(100);  // todo: coordinate based on return value
@@ -1729,6 +1730,7 @@ LOuter: while (1)
         }
 
         this.collectCloseSignatures(priv_nonce, close_res.value);
+        return Result!bool(true);
     }
 
     /***************************************************************************

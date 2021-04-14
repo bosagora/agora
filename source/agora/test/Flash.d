@@ -741,7 +741,8 @@ unittest
 
     //
     log.info("Beginning bob => charlie collaborative close..");
-    bob.beginCollaborativeClose(bob_charlie_chan_id);
+    assert(bob.beginCollaborativeClose(bob_charlie_chan_id).error
+        == ErrorCode.None);
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
     auto block11 = node_1.getBlocksFrom(11, 1)[0];
     log.info("bob closing tx: {}", bob.getClosingTx(bob_charlie_chan_id));
@@ -749,8 +750,13 @@ unittest
     factory.listener.waitUntilChannelState(bob_charlie_chan_id,
         ChannelState.Closed);
 
+    // can't close twice
+    assert(bob.beginCollaborativeClose(bob_charlie_chan_id).error
+        == ErrorCode.ChannelNotOpen);
+
     log.info("Beginning alice => bob collaborative close..");
-    alice.beginCollaborativeClose(alice_bob_chan_id);
+    assert(alice.beginCollaborativeClose(alice_bob_chan_id).error
+        == ErrorCode.None);
     network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
     log.info("alice closing tx: {}", alice.getClosingTx(alice_bob_chan_id));
@@ -1076,7 +1082,8 @@ unittest
     bob.waitForUpdateIndex(bob_charlie_chan_id_2, 2);
     charlie.waitForUpdateIndex(bob_charlie_chan_id_2, 2);
 
-    bob.beginCollaborativeClose(bob_charlie_chan_id_2);
+    assert(bob.beginCollaborativeClose(bob_charlie_chan_id_2).error
+        == ErrorCode.None);
     network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
         ChannelState.Closed);
@@ -1086,7 +1093,8 @@ unittest
     assert(block12.txs[0].outputs[0].value == Amount(8000)); // No fees
     assert(block12.txs[0].outputs[1].value == Amount(2000));
 
-    alice.beginCollaborativeClose(alice_bob_chan_id);
+    assert(alice.beginCollaborativeClose(alice_bob_chan_id).error
+        == ErrorCode.None);
     network.expectHeightAndPreImg(Height(13), network.blocks[0].header);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.Closed);
@@ -1096,7 +1104,8 @@ unittest
     assert(block13.txs[0].outputs[0].value == Amount(7990)); // Fees
     assert(block13.txs[0].outputs[1].value == Amount(2010));
 
-    bob.beginCollaborativeClose(bob_charlie_chan_id);
+    assert(bob.beginCollaborativeClose(bob_charlie_chan_id).error
+        == ErrorCode.None);
     network.expectHeightAndPreImg(Height(14), network.blocks[0].header);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id,
         ChannelState.Closed);
@@ -1189,7 +1198,8 @@ unittest
     alice.payInvoice(inv_1);
     Thread.sleep(1.seconds);
 
-    bob.beginCollaborativeClose(alice_bob_chan_id);
+    assert(bob.beginCollaborativeClose(alice_bob_chan_id).error
+        == ErrorCode.None);
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.Closed);
@@ -1353,6 +1363,10 @@ unittest
     auto error = factory.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected);
     assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
+
+    // channel does not exist as it was rejected
+    assert(alice.beginCollaborativeClose(res.value).error
+        == ErrorCode.InvalidChannelID);
 
     // error on capacity too high
     res = alice.openNewChannel(

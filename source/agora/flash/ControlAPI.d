@@ -45,9 +45,13 @@ public interface ControlFlashAPI : FlashAPI
         Params:
             chan_id = the ID of the channel to close
 
+        Returns:
+            true if this channel ID exists and may be closed,
+            else an error
+
     ***************************************************************************/
 
-    public void beginCollaborativeClose (/* in */ Hash chan_id);
+    public Result!bool beginCollaborativeClose (/* in */ Hash chan_id);
 
     /***************************************************************************
 
