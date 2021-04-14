@@ -124,11 +124,13 @@ public void printSendTxHelp (ref string[] outputs)
 
     Params:
         args = client command line arguments
+        outputs = Array in which to append user-readable output
+                  (1 line will be one entry)
+        api_maker = A delegate that makes an API object based on the IP
 
 *******************************************************************************/
 
-public int sendTxProcess (string[] args, ref string[] outputs,
-                            APIMaker api_maker)
+public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_maker)
 {
     SendTxOption op;
     GetoptResult res;
