@@ -71,7 +71,7 @@ enum MaxTransactionsPerBlock = 1000;
 public extern (C++) class Nominator : SCPDriver
 {
     /// Logger instance
-    private Logger log;
+    protected Logger log;
 
     /// Consensus parameters
     protected immutable(ConsensusParams) params;
@@ -303,7 +303,7 @@ extern(D):
         // check whether the consensus data is valid before nominating it.
         if (auto msg = this.ledger.validateConsensusData(data))
         {
-            log.fatal("tryNominate(): Invalid consensus data: {}. Data: {}",
+            log.fatal("prepareNominatingSet(): Invalid consensus data: {}. Data: {}",
                     msg, data.prettify);
             if (this.onInvalidNomination)
                 this.onInvalidNomination(data, msg);
