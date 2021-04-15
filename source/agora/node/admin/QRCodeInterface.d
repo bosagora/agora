@@ -94,7 +94,7 @@ public class QRCodeInterface
         TimePoint current_time = this.clock.networkTime();
         // A 'nonce' used to allow expiring
         current_time += 60 * 60 * 24 * 90; // (default: +90 days)
-        SysTime expires_time = SysTime(unixTimeToStdTime(current_time));
+        SysTime expires_time = SysTime(unixTimeToStdTime(current_time), UTC());
 
         LoginInfo login_info = LoginInfo(
             temp_kp.secret.toString(PrintMode.Clear),
