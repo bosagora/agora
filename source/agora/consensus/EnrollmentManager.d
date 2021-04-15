@@ -295,19 +295,23 @@ public class EnrollmentManager
         in PublicKey pubkey, in Height height, scope UTXOFinder finder)
         @safe nothrow
     {
-        auto enrolled_height = this.getEnrolledHeight(enroll.utxo_key);
+        const Height enrolled = this.getEnrolledHeight(enroll.utxo_key);
 
-        // The first height at which the enrollment can be enrolled.
-        ulong avail_height;
+        // The first height at which the enrollment can be enrolled
+        // is either the next block (if there is no prior enrollment)
+        // or the height of the last enrollment + the validator cycle.
+        // Bear in mind that "height of last enrollment + validator cycle"
+        // is also the last block that the validator would be signing
+        // if it wasn't re-enrolling.
+        const Height available = enrolled == ulong.max ?
+            height + 1:
+            enrolled + this.params.ValidatorCycle;
 
-        if (enrolled_height == ulong.max)
-            avail_height = height + 1;
-        else
-            avail_height = enrolled_height + this.params.ValidatorCycle;
-
-        // if an enrollment having a different UTXO which is belonging to
-        // the same public key exists, it will reject the enrollment.
-        if (this.isPublicKeyEnrolled(enroll.utxo_key, pubkey))
+        // There is a possibility that the validator is already enrolled,
+        // using a different UTXO controlled by the same key pair.
+        // This is only possible if we didn't already find an Enrollment,
+        // as the Ledger would not accept this in the first place.
+        if (enrolled == ulong.max && this.validator_set.hasPublicKey(pubkey))
         {
             log.warn("Rejected enrollment: an enrollment with the same " ~
                 "key already exists, requested enrolment: {}, public key: {}",
@@ -315,7 +319,7 @@ public class EnrollmentManager
             return false;
         }
 
-        return this.enroll_pool.add(enroll, Height(avail_height), finder,
+        return this.enroll_pool.add(enroll, Height(available), finder,
                                     &this.validator_set.findRecentEnrollment);
     }
 
