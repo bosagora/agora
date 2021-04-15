@@ -39,6 +39,31 @@ public interface ControlFlashAPI : FlashAPI
 
     /***************************************************************************
 
+        Schedule opening a new channel with another flash node.
+        If this funding_utxo is already used, an error is returned.
+        Otherwise, the Listener will receive a notification through
+        the onChannelNotify() API at a later point whenever the channel
+        is accepted / rejected by the counter-party.
+
+        Params:
+            funding_utxo = the UTXO that will be used to fund the setup tx
+            capacity = the amount that will be used to fund the setup tx
+            settle_time = closing settle time in number of blocks since last
+                setup / update tx was published on the blockchain
+            peer_pk = the public key of the counter-party flash node
+
+        Returns:
+            The channel ID, or an error if this funding UTXO is
+            already used for another pending / open channel.
+
+    ***************************************************************************/
+
+    public Result!Hash openNewChannel (/* in */ Hash funding_utxo,
+        /* in */ Amount capacity, /* in */ uint settle_time,
+        /* in */ Point peer_pk);
+
+    /***************************************************************************
+
         Begin a collaborative closure of a channel with the counter-party
         for the given channel ID.
 
@@ -72,31 +97,6 @@ public interface ControlFlashAPI : FlashAPI
     ***************************************************************************/
 
     public Result!bool beginUnilateralClose (/* in */ Hash chan_id);
-
-    /***************************************************************************
-
-        Schedule opening a new channel with another flash node.
-        If this funding_utxo is already used, an error is returned.
-        Otherwise, the Listener will receive a notification through
-        the onChannelNotify() API at a later point whenever the channel
-        is accepted / rejected by the counter-party.
-
-        Params:
-            funding_utxo = the UTXO that will be used to fund the setup tx
-            capacity = the amount that will be used to fund the setup tx
-            settle_time = closing settle time in number of blocks since last
-                setup / update tx was published on the blockchain
-            peer_pk = the public key of the counter-party flash node
-
-        Returns:
-            The channel ID, or an error if this funding UTXO is
-            already used for another pending / open channel.
-
-    ***************************************************************************/
-
-    public Result!Hash openNewChannel (/* in */ Hash funding_utxo,
-        /* in */ Amount capacity, /* in */ uint settle_time,
-        /* in */ Point peer_pk);
 
     /***************************************************************************
 
