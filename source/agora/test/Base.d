@@ -1366,7 +1366,7 @@ public interface TestAPI : ValidatorAPI
     public QuorumConfig getQuorumConfig ();
 
     /// Get the active validator count for the current block height
-    public ulong getValidatorCount (in Height height);
+    public ulong countActiveIfExternalized (in Height height);
 
     /***************************************************************************
 
@@ -1522,9 +1522,9 @@ private mixin template TestNodeMixin ()
     }
 
     /// Get the active validator count for the current block height
-    public override ulong getValidatorCount (in Height height)
+    public override ulong countActiveIfExternalized (in Height height)
     {
-        return this.enroll_man.getValidatorCount(height);
+        return this.enroll_man.countActiveIfExternalized(height);
     }
 
     /// Localrest: the address (key) is provided directly to the network manager
