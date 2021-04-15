@@ -25,6 +25,9 @@ public enum ErrorCode : ushort
     /// Couldn't find a path to another node, or it was too long
     PathNotFound,
 
+    /// The Listener rejected opening this channel
+    UserRejectedChannel,
+
     /// Updates with the same balance will be rejected
     UpdateRejected,
 

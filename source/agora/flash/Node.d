@@ -432,6 +432,9 @@ public abstract class FlashNode : FlashControlAPI
                 "Settle time rejecteds. Want between %s and %s",
                 this.conf.min_settle_time, this.conf.max_settle_time));
 
+        if (auto error = this.listener.onRequestedChannelOpen(chan_conf))
+            return Result!PublicNonce(ErrorCode.UserRejectedChannel, error);
+
         PrivateNonce priv_nonce = genPrivateNonce();
         auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
             priv_nonce, peer_nonce, peer, this.engine, this.taskman,

@@ -310,7 +310,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
 }
 
 /// Is in charge of spawning the flash nodes
-public class FlashNodeFactory
+public class FlashNodeFactory (FlashListenerType = FlashListener)
 {
     /// Registry of nodes
     private Registry!TestAPI* agora_registry;
@@ -346,7 +346,7 @@ public class FlashNodeFactory
         this.flash_registry.initialize();
         this.listener_registry.initialize();
 
-        this.listener = this.createFlashListener!FlashListener(
+        this.listener = this.createFlashListener!FlashListenerType(
             ListenerAddress);
     }
 
@@ -529,6 +529,11 @@ private class FlashListener : TestFlashListenerAPI
     {
         this.channel_state[chan_id] = State(state, error);
     }
+
+    public string onRequestedChannelOpen (ChannelConfig conf)
+    {
+        return null;  // accept by default
+    }
 }
 
 /// Test unilateral non-collaborative close (funding + update* + settle)
@@ -557,7 +562,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -674,7 +679,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -781,7 +786,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -922,7 +927,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -1092,7 +1097,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -1284,7 +1289,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -1366,7 +1371,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -1455,7 +1460,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -1649,7 +1654,7 @@ unittest
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
-    auto factory = new FlashNodeFactory(network.getRegistry());
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
@@ -1720,4 +1725,81 @@ unittest
 
     res = factory.listener.waitUntilNotified(inv_3);
     assert(res == ErrorCode.PathNotFound);
+}
+
+/// test listener API rejecting channels
+unittest
+{
+    /// Rejects opening new channels
+    static class RejectingFlashListener : FlashListener
+    {
+        mixin ForwardCtor!();
+
+        public override string onRequestedChannelOpen (ChannelConfig conf)
+        {
+            return "I don't like this channel";
+        }
+    }
+
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory!RejectingFlashListener(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+
+    FlashConfig alice_conf = { enabled : true,
+        min_funding : Amount(1000),
+        max_funding : Amount(100_000_000),
+        min_settle_time : 0,
+        max_settle_time : 100,
+        key_pair : KeyPair(PublicKey(alice_pair.V), SecretKey(alice_pair.v)),
+        listener_address : factory.ListenerAddress,
+        max_retry_time : 4.seconds,
+        max_retry_delay : 10.msecs,
+    };
+
+    auto alice = factory.create(alice_pair, alice_conf, address);
+    auto bob = factory.create(bob_pair, address);
+    auto charlie = factory.create(charlie_pair, address);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id_res = alice.openNewChannel(
+        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+
+    auto error = factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.Rejected);
+    assert(error == ErrorCode.UserRejectedChannel);
 }
