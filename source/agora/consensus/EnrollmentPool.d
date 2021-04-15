@@ -276,7 +276,6 @@ public class EnrollmentPool
         And this is arranged in ascending order with the utxo_key
 
         Params:
-            enrolls = will contain the unregistered enrollments data if found
             height = the height of proposed block
 
         Returns:
@@ -284,12 +283,10 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public Enrollment[] getEnrollments (ref Enrollment[] enrolls, Height height)
+    public Enrollment[] getEnrollments (in Height height)
         @trusted nothrow
     {
-        enrolls.length = 0;
-        assumeSafeAppend(enrolls);
-
+        Enrollment[] enrolls;
         try
         {
             auto results = this.db.execute("SELECT val FROM enrollment_pool " ~
@@ -347,8 +344,7 @@ unittest
     }
 
     // check if enrolled heights are not set
-    Enrollment[] enrolls;
-    pool.getEnrollments(enrolls, avail_height);
+    Enrollment[] enrolls = pool.getEnrollments(avail_height);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
@@ -364,7 +360,7 @@ unittest
     assert(pool.getEnrollment(utxo_hashes[1]) == Enrollment.init);
 
     // test for enrollment block height update
-    pool.getEnrollments(enrolls, avail_height);
+    enrolls = pool.getEnrollments(avail_height);
     assert(enrolls.length == 2);
 
     avail_height = Height(params.ValidatorCycle);
@@ -375,7 +371,7 @@ unittest
     assert(!pool.hasEnrollment(utxo_hashes[0], avail_height));
     pool.remove(utxo_hashes[1]);
     pool.remove(utxo_hashes[2]);
-    assert(pool.getEnrollments(enrolls, avail_height).length == 0);
+    assert(pool.getEnrollments(avail_height).length == 0);
 
     // Reverse ordering
     Enrollment[] ordered_enrollments = enrollments.dup;
@@ -383,7 +379,7 @@ unittest
     foreach (ordered_enroll; ordered_enrollments)
         assert(pool.add(ordered_enroll, Height(1),
                         &storage.peekUTXO, &findEnrollment));
-    pool.getEnrollments(enrolls, Height(1));
+    enrolls = pool.getEnrollments(Height(1));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 }
