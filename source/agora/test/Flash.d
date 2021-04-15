@@ -28,8 +28,9 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
-import agora.flash.API;
-import agora.flash.ControlAPI;
+import agora.flash.api.FlashAPI;
+import agora.flash.api.FlashControlAPI;
+import agora.flash.api.FlashListenerAPI;
 import agora.flash.Channel;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
@@ -72,7 +73,7 @@ public interface TestFlashListenerAPI : FlashListenerAPI
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
 /// and extracting update / closing / settle pairs, and forceful channel close.
-public interface TestFlashAPI : ControlFlashAPI
+public interface TestFlashAPI : FlashControlAPI
 {
     /// Wait for the specified update index. Index 0 is the funding state.
     /// Note that a payment also triggers an update later when the secret
@@ -459,7 +460,7 @@ public class FlashNodeFactory
         foreach (node; this.nodes)
         {
             node.ctrl.restart((Object node) { (cast(TestFlashNode)node).shutdownNode(); });
-            node.ctrl.withTimeout(0.msecs, (scope ControlFlashAPI api) { api.start(); });
+            node.ctrl.withTimeout(0.msecs, (scope FlashControlAPI api) { api.start(); });
         }
     }
 }

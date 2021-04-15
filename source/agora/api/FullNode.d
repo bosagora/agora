@@ -21,7 +21,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.common.Types;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 
 import vibe.data.serialization;
 import vibe.http.common;

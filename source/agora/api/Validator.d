@@ -46,7 +46,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
 import agora.crypto.Key;
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
