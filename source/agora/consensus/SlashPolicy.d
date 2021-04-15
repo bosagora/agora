@@ -251,10 +251,6 @@ public class SlashPolicy
         if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
-        auto enroll_index = this.enroll_man.getIndexOfEnrollment();
-        if (enroll_index != ulong.max && !missing_validators.find(enroll_index).empty)
-            assert(0, "The node is slashing itself.");
-
         uint[] local_missing_validators;
         foreach (idx, key; keys)
         {
