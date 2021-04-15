@@ -403,6 +403,34 @@ public class FeeManager
 
     /***************************************************************************
 
+        Calculate the transaction fee and adjust the fee based on the
+        transaction's size measured in bytes.
+
+        The bigger the transaction size is, the smaller the the fee becomes.
+
+        Params:
+            tx = transaction for which we want to calculate the adjusted fee
+            peekUTXO = UTXO finder
+            tot_fee = adjusted fee
+
+        Returns: string describing the error, if an error happened, null otherwise
+
+    ***************************************************************************/
+
+    public string getAdjustedTXFee (in Transaction tx, scope UTXOFinder peekUTXO,
+        out Amount tot_fee) nothrow @safe
+    {
+        Amount tot_data_fee;
+        const(Transaction)[1] txs = [tx];
+
+        auto res = this.getTXSetFees(txs, peekUTXO, tot_fee, tot_data_fee);
+        tot_fee.div(tx.sizeInBytes());
+
+        return res;
+    }
+
+    /***************************************************************************
+
         Calculate total fees of a Transaction set
 
         Params:
@@ -411,9 +439,11 @@ public class FeeManager
             tot_fee = Total fee (incl. data fees)
             tot_data_fee = Total data fee
 
+        Returns: string describing the error, if an error happened, null otherwise
+
     ***************************************************************************/
 
-    public void getTXSetFees (in Transaction[] tx_set,
+    public string getTXSetFees (in Transaction[] tx_set,
         scope UTXOFinder peekUTXO, ref Amount tot_fee, ref Amount tot_data_fee)
         nothrow @safe
     {
@@ -427,17 +457,19 @@ public class FeeManager
             foreach (input; tx.inputs)
             {
                 UTXO utxo;
-                assert(peekUTXO(input.utxo, utxo));
+                if (!peekUTXO(input.utxo, utxo))
+                    return "Unable to find input for utxo";
                 tot_in.mustAdd(utxo.output.value);
             }
 
-            assert(tx.getSumOutput(tot_out), "Not validated block in" ~
-                "getTXSetFees");
+            if (!tx.getSumOutput(tot_out))
+                return "Transaction output value is invalid";
             // sum(inputs) - sum(outputs)
             tot_in.mustSub(tot_out);
             tot_fee.mustAdd(tot_in);
             tot_data_fee.mustAdd(this.getDataFee(tx.payload.data.length));
         }
+        return null;
     }
 
     /// For unittest

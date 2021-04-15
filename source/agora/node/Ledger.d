@@ -669,8 +669,8 @@ public class Ledger
         in uint[] missing_validators) nothrow @safe
     {
         Amount tot_fee, tot_data_fee;
-        this.fee_man.getTXSetFees(tx_set, &this.utxo_set.peekUTXO, tot_fee,
-            tot_data_fee);
+        if (auto fee_res = this.fee_man.getTXSetFees(tx_set, &this.utxo_set.peekUTXO, tot_fee, tot_data_fee))
+            assert(0, fee_res);
         return this.getCoinbaseTX(tot_fee, tot_data_fee, missing_validators);
     }
 
