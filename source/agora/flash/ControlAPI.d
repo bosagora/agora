@@ -100,22 +100,6 @@ public interface ControlFlashAPI : FlashAPI
 
     /***************************************************************************
 
-        Block the calling fiber until the channel with the given ID becomes
-        open. If the channel is already open then it returns immediately.
-        The channel is considered open once the setup tx has been
-        externalized in the blockchain.
-
-        TODO: does not handle
-
-        Params:
-            chan_id = the ID of the channel to wait until it's open
-
-    ***************************************************************************/
-
-    public void waitChannelOpen (/* in */ Hash chan_id);
-
-    /***************************************************************************
-
         Create an invoice that can be paid by another party. A preimage is
         shared through a secure channel to the party which will pay the invoice.
         The hash of the preimage is used in the contract, which is then shared

@@ -918,7 +918,7 @@ public abstract class FlashNode : ControlFlashAPI
     }
 
     ///
-    public override void waitChannelOpen (/* in */ Hash chan_id)
+    public void waitChannelOpen (/* in */ Hash chan_id)
     {
         auto channel = chan_id in this.channels;
         assert(channel !is null);
