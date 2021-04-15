@@ -335,3 +335,58 @@ public void ensureSingleCall (
     catch (Exception e)
         isInitialized = e;
 }
+
+/*******************************************************************************
+
+    Given two hash, where one is potentially the pre-image of the other,
+    find by how much they actually differ.
+
+    This utility was conceived to find off-by-one errors and the likes in code,
+    and should only be used for debuggging, not for testing nor production.
+
+    Params:
+      h1 = A hash that is likely to be the pre-image of `h2`
+      h2 = A hash that is likely an image of `h1`
+
+*******************************************************************************/
+
+public string preImageJitter (in Hash h1, in Hash h2, size_t max_jitter = 1000)
+    @safe nothrow
+{
+    scope (failure) assert(0, "Format threw");
+
+    // Get the obvious case out of the way
+    if (h1 == h2)
+        return "preImageJitter: Hashes h1 and h2 are the same";
+
+    Hash h1p = h1, h2p = h2;
+    foreach (idx; 0 .. max_jitter)
+    {
+        h1p = h1p.hashFull();
+        if (h1p == h2)
+            return format("h1 (%s) was a pre-image of h2 (%s) after %d computation",
+                          h1, h2, idx + 1);
+    }
+
+    foreach (idx; 0 .. max_jitter)
+    {
+        h2p = h2p.hashFull();
+        if (h2p == h1)
+            return format("h2 (%s) was a pre-image of h1 (%s) after %d computation",
+                          h2, h1, idx + 1);
+    }
+
+    return "preImageJitter: Couldn't find any match";
+}
+
+///
+unittest
+{
+    Hash h1 = "Hello World".hashFull();
+    Hash h2 = h1.hashFull.hashFull();
+
+    assert(preImageJitter(h1, h2) ==
+           format("h1 (%s) was a pre-image of h2 (%s) after 2 computation", h1, h2));
+    assert(preImageJitter(h2, h1) ==
+           format("h2 (%s) was a pre-image of h1 (%s) after 2 computation", h1, h2));
+}
