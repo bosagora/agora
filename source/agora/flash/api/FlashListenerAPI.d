@@ -14,6 +14,7 @@
 module agora.flash.api.FlashListenerAPI;
 
 import agora.common.Types;
+import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.Types;
@@ -44,6 +45,25 @@ public interface FlashListenerAPI
 
     public void onChannelNotify (Hash chan_id, ChannelState state,
         ErrorCode error);
+
+    /***************************************************************************
+
+        Called when a counter-party has requested opening a channel
+        with this node. The wallet should return an empty string if it
+        accepts opening this channel, or an error message if the
+        channel should be rejected.
+
+        Params:
+            chan_conf = the channel configuration
+
+        Returns:
+            an empty string if the channel open should be accepted,
+            else an error message which will be propagated back to the
+            counter-party
+
+    ***************************************************************************/
+
+    public string onRequestedChannelOpen (ChannelConfig chan_conf);
 
     /***************************************************************************
 
