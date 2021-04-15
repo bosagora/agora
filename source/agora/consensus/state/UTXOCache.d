@@ -99,6 +99,29 @@ abstract class UTXOCache
 
     /***************************************************************************
 
+        Returns:
+            the number of elements in the UTXO set
+
+    ***************************************************************************/
+
+    public abstract size_t length () @safe;
+
+    /***************************************************************************
+
+        Get UTXOs from the UTXO set
+
+        Params:
+            pubkey = the key by which to search UTXOs in UTXOSet
+
+        Returns:
+            the associative array for UTXOs
+
+    ***************************************************************************/
+
+    public abstract UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @safe;
+
+    /***************************************************************************
+
         Get an UTXO from the UTXO set.
 
         Params:
@@ -256,5 +279,38 @@ public class TestUTXOSet : UTXOCache
     protected override void add (in Hash utxo, UTXO value) @safe
     {
         this.storage[utxo] = value;
+    }
+
+    /***************************************************************************
+
+        Returns:
+            the number of elements in the UTXO set
+
+    ***************************************************************************/
+
+    public override size_t length () @safe
+    {
+        return this.storage.length;
+    }
+
+    /***************************************************************************
+
+        Get UTXOs from the UTXO set
+
+        Params:
+            pubkey = the key by which to search UTXOs in UTXOSet
+
+        Returns:
+            the associative array for UTXOs
+
+    ***************************************************************************/
+
+    public override UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @safe
+    {
+        UTXO[Hash] utxos;
+        foreach (const ref key_val; storage.byKeyValue)
+            if (key_val.value.output.lock.bytes[] == pubkey[])
+                utxos[key_val.key] = key_val.value;
+        return utxos;
     }
 }

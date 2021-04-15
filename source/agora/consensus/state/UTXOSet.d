@@ -53,7 +53,7 @@ public class UTXOSet : UTXOCache
 
     ***************************************************************************/
 
-    public size_t length () @safe
+    public override size_t length () @safe
     {
         return this.utxo_db.length();
     }
@@ -70,7 +70,7 @@ public class UTXOSet : UTXOCache
 
     ***************************************************************************/
 
-    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @safe
+    public override UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @safe
     {
         return this.utxo_db.getUTXOs(pubkey);
     }

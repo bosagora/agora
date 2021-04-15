@@ -90,7 +90,7 @@ public class Ledger
     private Block last_block;
 
     /// UTXO set
-    private UTXOSet utxo_set;
+    private UTXOCache utxo_set;
 
     // Clock instance
     private Clock clock;
@@ -154,7 +154,7 @@ public class Ledger
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params,
-        Engine engine, UTXOSet utxo_set, IBlockStorage storage,
+        Engine engine, UTXOCache utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         FeeManager fee_man, Clock clock,
         Duration block_time_offset_tolerance = 60.seconds,
