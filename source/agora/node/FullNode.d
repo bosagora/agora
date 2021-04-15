@@ -251,10 +251,10 @@ public class FullNode : API
         this.metadata = this.makeMetadata();
         this.network = this.makeNetworkManager(this.metadata, this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
-        this.pool = this.makeTransactionPool();
-        this.utxo_set = this.makeUTXOSet();
-        this.enroll_man = this.makeEnrollmentManager();
         this.fee_man = this.makeFeeManager();
+        this.utxo_set = this.makeUTXOSet();
+        this.pool = this.makeTransactionPool();
+        this.enroll_man = this.makeEnrollmentManager();
         this.transaction_relayer = this.makeTransactionRelayer();
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
@@ -716,7 +716,32 @@ public class FullNode : API
 
     protected TransactionPool makeTransactionPool ()
     {
-        return new TransactionPool(this.cacheDB);
+        return new TransactionPool(this.cacheDB, &getDoubleSpentSelector);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a DoubleSpentSelector
+
+        Subclasses can override this method and return
+        a DoubleSpentSelector
+
+        Returns:
+            an instance of DoubleSpentSelector
+
+    ***************************************************************************/
+
+    protected size_t getDoubleSpentSelector (Transaction[] txs) nothrow @safe
+    {
+        return maxIndex!((a, b)
+        {
+            Amount fee_a;
+            Amount fee_b;
+            fee_man.getAdjustedTXFee(a, &this.utxo_set.peekUTXO, fee_a);
+            fee_man.getAdjustedTXFee(b, &this.utxo_set.peekUTXO, fee_b);
+            return fee_a < fee_b;
+        }
+        )(txs);
     }
 
     /***************************************************************************
@@ -853,7 +878,8 @@ public class FullNode : API
         this.endpoint_request_stats
             .increaseMetricBy!"agora_endpoint_calls_total"(1, "transaction", "http");
         auto tx_hash = hashFull(tx);
-        if (this.pool.hasTransactionHash(tx_hash))
+        if (this.pool.hasTransactionHash(tx_hash) ||
+            !ledger.isAcceptableDoubleSpent(tx, config.node.double_spent_threshold_pct))
             return;
 
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);

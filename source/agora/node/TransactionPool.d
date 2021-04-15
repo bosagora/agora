@@ -18,6 +18,7 @@ import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Set;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.genesis.Test;
 import agora.crypto.Hash;
 import agora.serialization.Serializer;
 import agora.utils.Log;
@@ -29,6 +30,7 @@ import d2sqlite3.sqlite3;
 import std.algorithm;
 import std.conv : to;
 import std.exception : collectException, enforce;
+import std.functional : toDelegate;
 import std.range;
 import std.string;
 
@@ -98,7 +100,8 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public this (ManagedDatabase db)
+    public this (ManagedDatabase db,
+            DoubleSpentSelector double_spent_selector = toDelegate(&TransactionPool.defaultSelector))
     {
         this.db = db;
 
@@ -112,7 +115,7 @@ public class TransactionPool
 
         // Set selector after rebuilding the spender list, so nothing gets
         // filtered out
-        this.selector = &this.defaultSelector;
+        this.selector = double_spent_selector;
     }
 
     /// Used in unittests of this moduule only
@@ -424,7 +427,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private size_t defaultSelector (Transaction[] txs)
+    private static size_t defaultSelector (Transaction[] txs)
     {
         return 0;
     }
@@ -720,7 +723,7 @@ unittest
     assert(pool.hasTransactionHash(tx3.hashFull()));
 }
 
-// test double-spend selection mechanism
+// test double-spend selection mechanism with max output selector
 unittest
 {
     // Pick the TX with max output value, assumes only one output
@@ -741,8 +744,7 @@ unittest
         return max_idx;
     }
 
-    auto pool = new TransactionPool();
-    pool.selector = &selector;
+    auto pool = new TransactionPool(new ManagedDatabase(":memory:"), &selector);
 
     Transaction tx1 =
     {
@@ -789,6 +791,76 @@ unittest
         assert(idx++ == 0);
     }
 }
+
+// test double-spend selection mechanism with maximum fee selector
+unittest
+{
+    import agora.consensus.Fee;
+    import agora.consensus.state.UTXOSet;
+
+    auto utxo_set = new TestUTXOSet();
+    auto fee_man = new FeeManager();
+    DoubleSpentSelector selector =
+        (Transaction[] txs)
+        {
+            return maxIndex!((a, b)
+                {
+                    Amount fee_a;
+                    Amount fee_b;
+                    fee_man.getAdjustedTXFee(a, &utxo_set.peekUTXO, fee_a);
+                    fee_man.getAdjustedTXFee(b, &utxo_set.peekUTXO, fee_b);
+                    return fee_a < fee_b;
+                })(txs);
+        };
+    auto pool = new TransactionPool(new ManagedDatabase(":memory:"), selector);
+
+    auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).array()[0];
+
+    // parent transaction
+    Transaction tx1 =
+    {
+        TxType.Payment,
+        [Input(genesis_tx.hashFull(), 0)],
+        [Output(Amount(1000), KeyPair.random.address)]
+    };
+
+    utxo_set.put(tx1);
+
+    // double spent transaction, transaction trying to spend parent
+    Transaction tx2 =
+    {
+        TxType.Payment,
+        [Input(tx1.hashFull(), 0)],
+        [Output(Amount(200), KeyPair.random.address)]
+    };
+
+    // double spent transaction, trying to spend parent
+    Transaction tx3 =
+    {
+        TxType.Payment,
+        [Input(tx1.hashFull(), 0)],
+        [Output(Amount(100), KeyPair.random.address)]
+    };
+
+    assert(pool.add(tx2));
+    assert(pool.add(tx3));
+    assert(pool.length == 2);
+
+    // only tx3 should be returned, as we filter double spend transactions
+    // and tx3 has a higher fee than tx2
+    ulong cnt = 0;
+    foreach (ref Hash hash, ref Transaction tx; pool)
+    {
+        assert(tx == tx3);
+        assert(hash == tx3.hashFull());
+        cnt++;
+    }
+    assert(cnt == 1);
+
+    pool.remove(tx3);
+    assert(pool.length == 0);
+}
+
 
 unittest
 {

@@ -50,10 +50,12 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import std.algorithm;
+import std.algorithm.searching : maxElement;
 import std.conv : to;
 import std.exception;
 import std.format;
 import std.range;
+import std.typecons : Nullable, nullable;
 
 import core.time : Duration, seconds;
 
@@ -502,6 +504,48 @@ public class Ledger
 
     /***************************************************************************
 
+        Checks whether the `tx` is an acceptable double spend transaction.
+
+        If `tx` is not a double spend transaction, then returns true.
+        If `tx` is a double spend transaction, and its fee is considerable higher
+        than the existing double spend transactions, then returns true.
+        Otherwise this function returns false.
+
+        Params:
+            tx = transaction
+            threshold_pct = percentage by which the fee of the new transaction has
+              to be higher, than the previously highest double spend transaction
+
+        Returns:
+            whether the `tx` is an acceptable double spend transaction
+
+    ***************************************************************************/
+
+    public bool isAcceptableDoubleSpent (in Transaction tx, ubyte threshold_pct) @safe
+    {
+
+        Amount tx_fee;
+        if (fee_man.getAdjustedTXFee(tx, &utxo_set.peekUTXO, tx_fee) != null)
+            return false;
+
+        // only consider a double spend transaction, if its fee is
+        // considerably higher than the current highest fee
+        auto fee_threshold = getDoubleSpentHighestFee(tx);
+
+        // if the fee_threshold is null, it means there won't be any double
+        // spend transactions, after this transaction is added to the pool
+        if (!fee_threshold.isNull())
+            fee_threshold.get().percentage(threshold_pct + 100);
+
+        if (!fee_threshold.isNull() &&
+            (!tx_fee.isValid() || tx_fee < fee_threshold.get()))
+            return false;
+
+        return true;
+    }
+
+    /***************************************************************************
+
         Create the Coinbase TX for this nomination round and append it to the
         tx_set
 
@@ -879,6 +923,66 @@ public class Ledger
         this.enroll_man.getValidatorStakes(block.header.height, &this.utxo_set.peekUTXO, stakes,
             block.header.missing_validators);
         this.fee_man.accumulateFees(block, stakes, &this.utxo_set.peekUTXO);
+    }
+
+    /***************************************************************************
+
+        Returns the highest fee among all the transactions which would be
+        considered as a double spent, if `tx` transaction was in the transaction
+        pool.
+
+        If adding `tx` to the transaction pool would not result in double spent
+        transaction, then the return value is Nullable!Amount().
+
+        Params:
+            tx = transaction
+
+        Returns:
+            the highest fee among all the transactions which would be
+            considered as a double spend, if `tx` transaction was in the
+            transaction pool.
+
+    ***************************************************************************/
+
+    public Nullable!Amount getDoubleSpentHighestFee (in Transaction tx) @safe
+    {
+        Set!Hash tx_hashes;
+        pool.gatherDoubleSpentTXs(tx, tx_hashes);
+
+        const(Transaction)[] txs;
+        foreach (const tx_hash; tx_hashes)
+        {
+            const tx_ret = this.pool.getTransactionByHash(tx_hash);
+            if (tx_ret != Transaction.init)
+                txs ~= tx_ret;
+        }
+
+        if (!txs.length)
+            return Nullable!Amount();
+
+        return nullable(txs.map!((tx)
+            {
+                Amount tot_fee;
+                fee_man.getAdjustedTXFee(tx, &utxo_set.peekUTXO, tot_fee);
+                return tot_fee;
+            }).maxElement());
+    }
+
+    /***************************************************************************
+
+        Get a transaction from pool by hash
+
+        Params:
+            tx = the transaction hash
+
+        Returns:
+            Transaction or Transaction.init
+
+    ***************************************************************************/
+
+    public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
+    {
+        return this.pool.getTransactionByHash(hash);
     }
 
     /***************************************************************************
