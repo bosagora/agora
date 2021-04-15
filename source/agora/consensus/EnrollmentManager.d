@@ -1677,9 +1677,11 @@ unittest
         });
 
     auto man = new EnrollmentManager(WK.Keys.A,
-        new immutable(ConsensusParams));
-    auto e1 = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys.A, 10, 0);
-    auto e2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys.B, 10, 0);
+        new immutable(ConsensusParams)(20));
+    auto e1 = EnrollmentManager.makeEnrollment(
+        utxos[0], WK.Keys.A, man.params.ValidatorCycle, 0);
+    auto e2 = EnrollmentManager.makeEnrollment(
+        utxos[1], WK.Keys.B, man.params.ValidatorCycle, 0);
 
     assert(man.addEnrollment(e1, WK.Keys.A.address, Height(1), &utxo_set.peekUTXO));
     assert(man.addEnrollment(e2, WK.Keys.B.address, Height(1), &utxo_set.peekUTXO));
