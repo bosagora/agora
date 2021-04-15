@@ -704,6 +704,7 @@ public class ValidatorSet
                 state.status = row.peek!(EnrollmentStatus)(0);
                 state.enrolled_height = Height(row.peek!(size_t)(1));
                 state.cycle_length = row.peek!(uint)(2);
+                state.preimage.utxo = enroll_key;
                 state.preimage.hash = Hash(row.peek!(char[])(3));
                 state.preimage.distance = row.peek!(ushort)(4);
                 return true;
