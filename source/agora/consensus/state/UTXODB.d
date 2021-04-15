@@ -102,7 +102,7 @@ package class UTXODB
 
     ***************************************************************************/
 
-    public UTXO[Hash] getUTXOs (const ref PublicKey pubkey) nothrow @trusted
+    public UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @trusted
     {
         scope (failure) assert(0);
 
