@@ -82,6 +82,10 @@ public interface TestFlashAPI : ControlFlashAPI
     /// Wait until the specified channel ID has been gossiped to this node
     public void waitForChannelDiscovery (in Hash chan_id);
 
+    /// Wait until the specified channel ID has been opened. The node must be
+    /// part of this channel.
+    public void waitForChannelOpen (in Hash chan_id);
+
     /// Wait until the specified channel update has been gossiped to this node
     public ChannelUpdate waitForChannelUpdate (in Hash chan_id,
         in PaymentDirection dir, in uint update_idx);
@@ -247,6 +251,12 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     {
         while (chan_id !in this.known_channels)
             this.taskman.wait(100.msecs);
+    }
+
+    ///
+    public override void waitForChannelOpen (in Hash chan_id)
+    {
+        super.waitChannelOpen(chan_id);
     }
 
     ///
@@ -577,8 +587,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitChannelOpen(chan_id);
-    bob.waitChannelOpen(chan_id);
+    alice.waitForChannelOpen(chan_id);
+    bob.waitForChannelOpen(chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
@@ -694,8 +704,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitChannelOpen(chan_id);
-    bob.waitChannelOpen(chan_id);
+    alice.waitForChannelOpen(chan_id);
+    bob.waitForChannelOpen(chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
@@ -812,8 +822,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(alice_bob_chan_id);
-    bob.waitChannelOpen(alice_bob_chan_id);
+    alice.waitForChannelOpen(alice_bob_chan_id);
+    bob.waitForChannelOpen(alice_bob_chan_id);
     factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
 
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -837,8 +847,8 @@ unittest
     assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
 
     // wait for the parties to detect the funding tx
-    bob.waitChannelOpen(bob_charlie_chan_id);
-    charlie.waitChannelOpen(bob_charlie_chan_id);
+    bob.waitForChannelOpen(bob_charlie_chan_id);
+    charlie.waitForChannelOpen(bob_charlie_chan_id);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -965,8 +975,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(alice_bob_chan_id);
-    bob.waitChannelOpen(alice_bob_chan_id);
+    alice.waitForChannelOpen(alice_bob_chan_id);
+    bob.waitForChannelOpen(alice_bob_chan_id);
     factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -989,8 +999,8 @@ unittest
     assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
 
     // wait for the parties to detect the funding tx
-    bob.waitChannelOpen(bob_charlie_chan_id);
-    charlie.waitChannelOpen(bob_charlie_chan_id);
+    bob.waitForChannelOpen(bob_charlie_chan_id);
+    charlie.waitForChannelOpen(bob_charlie_chan_id);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1013,8 +1023,8 @@ unittest
     assert(block_11.txs.any!(tx => tx.hashFull() == charlie_alice_chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(charlie_alice_chan_id);
-    charlie.waitChannelOpen(charlie_alice_chan_id);
+    alice.waitForChannelOpen(charlie_alice_chan_id);
+    charlie.waitForChannelOpen(charlie_alice_chan_id);
     factory.listener.waitUntilChannelState(charlie_alice_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1123,8 +1133,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(alice_bob_chan_id);
-    bob.waitChannelOpen(alice_bob_chan_id);
+    alice.waitForChannelOpen(alice_bob_chan_id);
+    bob.waitForChannelOpen(alice_bob_chan_id);
     factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1147,8 +1157,8 @@ unittest
     assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
 
     // wait for the parties to detect the funding tx
-    bob.waitChannelOpen(bob_charlie_chan_id);
-    charlie.waitChannelOpen(bob_charlie_chan_id);
+    bob.waitForChannelOpen(bob_charlie_chan_id);
+    charlie.waitForChannelOpen(bob_charlie_chan_id);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     alice.waitForChannelDiscovery(bob_charlie_chan_id);  // also alice (so it can detect fees)
 
@@ -1176,8 +1186,8 @@ unittest
     assert(block_11.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id_2));
 
     // wait for the parties to detect the funding tx
-    bob.waitChannelOpen(bob_charlie_chan_id_2);
-    charlie.waitChannelOpen(bob_charlie_chan_id_2);
+    bob.waitForChannelOpen(bob_charlie_chan_id_2);
+    charlie.waitForChannelOpen(bob_charlie_chan_id_2);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2, ChannelState.Open);
 
     bob.changeFees(bob_charlie_chan_id_2, Amount(10), Amount(1));
@@ -1307,8 +1317,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(alice_bob_chan_id);
-    bob.waitChannelOpen(alice_bob_chan_id);
+    alice.waitForChannelOpen(alice_bob_chan_id);
+    bob.waitForChannelOpen(alice_bob_chan_id);
     factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1386,8 +1396,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(chan_id);
-    bob.waitChannelOpen(chan_id);
+    alice.waitForChannelOpen(chan_id);
+    bob.waitForChannelOpen(chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
@@ -1528,8 +1538,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(chan_id);
-    bob.waitChannelOpen(chan_id);
+    alice.waitForChannelOpen(chan_id);
+    bob.waitForChannelOpen(chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
@@ -1682,8 +1692,8 @@ unittest
     assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
 
     // wait for the parties to detect the funding tx
-    alice.waitChannelOpen(chan_id);
-    bob.waitChannelOpen(chan_id);
+    alice.waitForChannelOpen(chan_id);
+    bob.waitForChannelOpen(chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(chan_id, 0);
