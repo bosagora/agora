@@ -328,7 +328,7 @@ unittest
     foreach (idx, enroll; enrollments)
         assert(enroll_man.addValidator(enroll, pairs[idx].address, Height(1),
             &utxo_set.peekUTXO, self_utxos) is null);
-    assert(enroll_man.getValidatorCount(Height(1)) == 8);
+    assert(enroll_man.countActiveIfExternalized(Height(1)) == 8);
 
     // create slashing manager
     scope slash_man = new SlashPolicy(enroll_man, params);
