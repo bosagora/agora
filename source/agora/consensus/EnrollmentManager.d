@@ -556,23 +556,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the number of active validators.
-
-        Client code can use this between clearExpiredValidators() calls to
-        determine if the number of validators has changed, and act accordingly.
-
-        Returns:
-            the number of active validators
-
-    ***************************************************************************/
-
-    public size_t validatorCount (in Height height) @safe
-    {
-        return this.validator_set.getValidatorCount(height);
-    }
-
-    /***************************************************************************
-
         Check if an enrollment is a valid candidate for the proposed height
 
         This method is very similar to `addEnrollment`. This one deals with
@@ -1197,7 +1180,7 @@ unittest
     man.getEnrollments(enrolls, Height(9), &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set
-    assert(man.validatorCount(Height(9)) == 1);
+    assert(man.getValidatorCount(Height(9)) == 1);
     assert(man.enroll_pool.count() == 1);
 
     man.enroll_pool.remove(utxo_hashes[0]);
@@ -1236,7 +1219,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[1], WK.Keys[1].address, Height(11),
             &utxo_set.peekUTXO, utxos) is null);
     man.clearExpiredValidators(Height(11));
-    assert(man.validatorCount(Height(11)) == 2);
+    assert(man.getValidatorCount(Height(11)) == 2);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 2);
 
@@ -1246,7 +1229,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[2], WK.Keys[2].address, Height(1019),
             &utxo_set.peekUTXO, utxos) is null);
     man.clearExpiredValidators(Height(1019));
-    assert(man.validatorCount(Height(1019)) == 1);
+    assert(man.getValidatorCount(Height(1019)) == 1);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == ordered_enrollments[2].utxo_key);

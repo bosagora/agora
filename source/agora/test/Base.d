@@ -1524,7 +1524,7 @@ private mixin template TestNodeMixin ()
     /// Get the active validator count for the current block height
     public override ulong getValidatorCount (in Height height)
     {
-        return this.enroll_man.validatorCount(height);
+        return this.enroll_man.getValidatorCount(height);
     }
 
     /// Localrest: the address (key) is provided directly to the network manager
