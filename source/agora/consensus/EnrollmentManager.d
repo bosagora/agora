@@ -575,6 +575,10 @@ public class EnrollmentManager
 
         Check if an enrollment is a valid candidate for the proposed height
 
+        This method is very similar to `addEnrollment`. This one deals with
+        `ConsensusData` while `addEnrollment` is called when receiving an
+        `Enrollment` from a client.
+
         Params:
             enroll = The enrollment of the target to be checked
             pubkey = public key of the enrollment
@@ -591,21 +595,20 @@ public class EnrollmentManager
         in PublicKey pubkey, in Height height, scope UTXOFinder findUTXO)
         @safe nothrow
     {
-        // if an enrollment having a different UTXO which is belonging to
-        // the same public key exists, it will reject the enrollment.
-        if (this.isPublicKeyEnrolled(enroll.utxo_key, pubkey))
-            return "Enrollment: The same public key is already present";
+        const Height enrolled = this.validator_set.getEnrolledHeight(enroll.utxo_key);
+
+        if (enrolled == ulong.max)
+        {
+            // Make sure there's no other enrollment with the same keypair
+            if (this.validator_set.hasPublicKey(pubkey))
+                return "Enrollment: The same public key is already present";
+        }
+        else if (height < (enrolled + this.params.ValidatorCycle))
+            return "Enrollment: Re-enrolling a validator too early";
 
         if (auto fail_reason = enroll.isInvalidReason(findUTXO, height,
                                 &this.validator_set.findRecentEnrollment))
             return fail_reason;
-
-        const enrolled = this.validator_set.getEnrolledHeight(enroll.utxo_key);
-        if (enrolled != ulong.max &&
-            height < (enrolled + this.params.ValidatorCycle))
-        {
-            return "Enrollment: Duplicated enrollments";
-        }
 
         return null;
     }
@@ -979,27 +982,6 @@ public class EnrollmentManager
         {
             log.warn("ManagedDatabase operation error {}", ex.msg);
         }
-    }
-
-    /***************************************************************************
-
-        Check if an enrollment having a different UTXO which is belonging to
-        the same public key exists.
-
-        Params:
-            utxo_key = the UTXO key of the enrollment data fo find
-            pubkey = the public key of the enrollment
-
-        Returns:
-            true if the kind of an enrollment is found
-
-    ***************************************************************************/
-
-    private bool isPublicKeyEnrolled (in Hash utxo_key, in PublicKey pubkey)
-        @safe nothrow
-    {
-        return !this.validator_set.hasEnrollment(utxo_key) &&
-            this.validator_set.hasPublicKey(pubkey);
     }
 
     /***************************************************************************
