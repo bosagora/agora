@@ -24,7 +24,7 @@ import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.Scripts;

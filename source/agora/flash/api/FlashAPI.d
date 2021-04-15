@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.flash.API;
+module agora.flash.api.FlashAPI;
 
 import agora.common.Amount;
 import agora.common.Types;
@@ -291,51 +291,4 @@ public interface FlashAPI
 
     public void reportPaymentError (/* in */ Hash chan_id,
         /* in */ OnionError err);
-}
-
-/// This is the API that each Flash listener must implement, for example wallets
-/// or other front-ends to Agora.
-@path("/")
-@serializationPolicy!(Base64ArrayPolicy)
-public interface FlashListenerAPI
-{
-@safe:
-    /***************************************************************************
-
-        Called when the state of a channel changes, for example when the
-        channel is accepted / rejected by the counter-party.
-
-        Params:
-            chan_id = channel ID
-            state = the current state of the channel
-            error = if state is rejected, it will contain any error stating the
-                reason why a channel was rejected
-
-    ***************************************************************************/
-
-    public void onChannelNotify (Hash chan_id, ChannelState state,
-        ErrorCode error);
-
-    /***************************************************************************
-
-        Called when the payment for the given invoice has been successful.
-
-        Params:
-            invoice = the invoice that was paid
-
-    ***************************************************************************/
-
-    public void onPaymentSuccess (Invoice invoice);
-
-    /***************************************************************************
-
-        Called when the payment for the given invoice has failed.
-        The payment can be retried again with the `payInvoice()` Flash API.
-
-        Params:
-            invoice = the invoice that was paid
-
-    ***************************************************************************/
-
-    public void onPaymentFailure (Invoice invoice, ErrorCode error);
 }

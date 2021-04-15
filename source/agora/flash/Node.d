@@ -26,10 +26,11 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 import agora.flash.Channel;
 import agora.flash.Config;
-import agora.flash.ControlAPI;
+import agora.flash.api.FlashControlAPI;
+import agora.flash.api.FlashListenerAPI;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.Network;
@@ -88,7 +89,7 @@ private struct GossipEvent
 }
 
 /// Ditto
-public abstract class FlashNode : ControlFlashAPI
+public abstract class FlashNode : FlashControlAPI
 {
     /// Logger instance
     protected Logger log;

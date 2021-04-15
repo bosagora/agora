@@ -12,12 +12,12 @@
 
 *******************************************************************************/
 
-module agora.flash.ControlAPI;
+module agora.flash.api.FlashControlAPI;
 
 import agora.common.Amount;
 import agora.common.Types;
 import agora.crypto.ECC;
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 import agora.flash.Invoice;
 import agora.flash.Route;
 import agora.flash.Types;
@@ -25,7 +25,7 @@ import agora.flash.Types;
 import core.stdc.time;
 
 /// Ditto
-public interface ControlFlashAPI : FlashAPI
+public interface FlashControlAPI : FlashAPI
 {
     /***************************************************************************
 

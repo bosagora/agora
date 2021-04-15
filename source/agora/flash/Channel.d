@@ -13,7 +13,7 @@
 
 module agora.flash.Channel;
 
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.OnionPacket;

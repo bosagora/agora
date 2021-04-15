@@ -17,7 +17,7 @@ import agora.api.FullNode;
 import agora.api.Validator;
 import agora.common.Config;
 import agora.common.Task : Periodic;
-import agora.flash.API;
+import agora.flash.api.FlashAPI;
 import agora.node.admin.AdminInterface;
 import agora.node.FlashFullNode;
 import agora.node.FlashValidator;
