@@ -649,6 +649,7 @@ public class Ledger
         MayBeValid = "May be valid",
         OnlyCoinbaseTX = "Transaction set only includes a Coinbase transaction",
         TooManyMPVs = "More MPVs than active enrollments",
+        NoUTXO = "Couldn't find UTXO for one or more Enrollment",
     }
 
     /***************************************************************************
@@ -708,7 +709,8 @@ public class Ledger
         foreach (const ref enroll; data.enrolls)
         {
             UTXO utxo_value;
-            assert(this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value));
+            if (!this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value))
+                return InvalidConsensusDataReason.NoUTXO;
             if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
                 enroll, utxo_value.output.address, expect_height, utxo_finder))
                 return fail_reason;
