@@ -891,7 +891,7 @@ public class NetworkManager
             log.info("Retrieving preimages from the height of {} from {}..",
                 start_height, pair.client.address);
 
-            auto preimages = pair.client.getPreimages(start_height, height);
+            auto preimages = pair.client.getPreimages(start_height, start_height + MaxBlocks);
 
             log.info("Received {} preimages", preimages.length);
 
