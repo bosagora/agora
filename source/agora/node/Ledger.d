@@ -1134,8 +1134,7 @@ public class ValidatingLedger : Ledger
         const next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        this.enroll_man.getEnrollments(data.enrolls, this.getBlockHeight(),
-                                                    &this.utxo_set.peekUTXO);
+        data.enrolls = this.enroll_man.getEnrollments(this.getBlockHeight(), &this.utxo_set.peekUTXO);
 
         // get information about validators not revealing a preimage timely
         this.slash_man.getMissingValidators(data.missing_validators,
