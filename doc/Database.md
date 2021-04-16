@@ -7,7 +7,7 @@ For more informations, see [this description](https://github.com/bosagora/agora/
 
 ## State DB
 
-### `utxo_map` table
+### `utxo` table
 
 Our oldest table, only contain binary serialized data, should be changed to a readable format.
 
@@ -18,9 +18,9 @@ Our oldest table, only contain binary serialized data, should be changed to a re
 | pubkey_hash | TEXT     | PublicKey | NOT NULL    | It's not actually a hash but the key                   |
 
 
-### `validator_set` table
+### `validator` table
 
-Should be cleaned up and make readable. Once `utxo_map` is usable, both can be used in combination.
+Should be cleaned up and make readable. Once `utxo` is usable, both can be used in combination.
 
 | Field name      | SQL Type | D type           | Attributes                  | Comment                                            |
 |-----------------|----------|------------------|-----------------------------|----------------------------------------------------|
@@ -35,7 +35,7 @@ Should be cleaned up and make readable. Once `utxo_map` is usable, both can be u
 
 ### `node_enroll_data` table
 
-This table should be removed in favor of querying `validator_set` directly.
+This table should be removed in favor of querying `validator` directly.
 
 | Field name | SQL Type | D type | Attributes  | Comment                                                           |
 |------------|----------|--------|-------------|-------------------------------------------------------------------|
