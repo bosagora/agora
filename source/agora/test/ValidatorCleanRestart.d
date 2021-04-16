@@ -66,10 +66,7 @@ unittest
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // wait for other nodes to get to same block height
-    set_b.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == GenesisValidatorCycle - 1, 2.seconds,
-            format!"Expected block height %s but outsider %s has height %s."
-                (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
+    network.assertSameBlocks(Height(GenesisValidatorCycle - 1));
 
     // Now we enroll the set B validators.
     set_b.enumerate.each!((idx, _) => network.enroll(GenesisValidators + idx));
