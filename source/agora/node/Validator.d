@@ -204,7 +204,8 @@ public class Validator : FullNode, API
         foreach (utxo; utxos)
         {
             UTXO value;
-            assert(finder(utxo, value));
+            if (!finder(utxo, value))
+                assert(0);
             keys ~= value.output.address;
         }
 
