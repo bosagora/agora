@@ -95,7 +95,7 @@ public class ValidatorSet
         this.log = Logger(__MODULE__);
 
         // create the table for validator set if it doesn't exist yet
-        this.db.execute("CREATE TABLE IF NOT EXISTS validator_set " ~
+        this.db.execute("CREATE TABLE IF NOT EXISTS validator " ~
             "(key TEXT, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
             "distance INTEGER, preimage TEXT, nonce TEXT, active INTEGER, " ~
@@ -140,7 +140,7 @@ public class ValidatorSet
             () @trusted {
                 const ZeroDistance = 0;  // initial distance
                 this.unenroll(enroll.utxo_key);
-                this.db.execute("INSERT INTO validator_set " ~
+                this.db.execute("INSERT INTO validator " ~
                     "(key, public_key, cycle_length, enrolled_height, " ~
                     "distance, preimage, nonce, active) " ~
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -173,7 +173,7 @@ public class ValidatorSet
     {
         try
         {
-            this.db.execute("DELETE FROM validator_set");
+            this.db.execute("DELETE FROM validator");
         }
         catch (Exception ex)
         {
@@ -197,9 +197,9 @@ public class ValidatorSet
         try
         {
             () @trusted {
-                this.db.execute("DELETE from validator_set WHERE key = ? AND active = ?",
+                this.db.execute("DELETE from validator WHERE key = ? AND active = ?",
                     EnrollmentStatus.Expired, enroll_hash);
-                this.db.execute("UPDATE validator_set SET active = ? WHERE key = ?",
+                this.db.execute("UPDATE validator SET active = ? WHERE key = ?",
                     EnrollmentStatus.Expired, enroll_hash);
             }();
         }
@@ -225,7 +225,7 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height FROM validator_set" ~
+            auto results = this.db.execute("SELECT enrolled_height FROM validator" ~
                 " WHERE key = ? AND active = ?", enroll_hash, EnrollmentStatus.Active);
             if (results.empty)
                 return Height(ulong.max);
@@ -257,7 +257,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                "validator_set WHERE key = ? AND active = ?)",
+                "validator WHERE key = ? AND active = ?)",
                 enroll_hash, EnrollmentStatus.Active);
             return results.front().peek!bool(0);
         }
@@ -286,7 +286,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                "validator_set WHERE public_key = ? AND active = ?)", pubkey,
+                "validator WHERE public_key = ? AND active = ?)", pubkey,
                 EnrollmentStatus.Active);
             return results.front().peek!bool(0);
         }
@@ -318,7 +318,7 @@ public class ValidatorSet
         {
             pub_keys.length = 0;
             assumeSafeAppend(pub_keys);
-            auto results = this.db.execute("SELECT public_key FROM validator_set
+            auto results = this.db.execute("SELECT public_key FROM validator
                 WHERE enrolled_height < ? AND active = ? ORDER BY key ASC",
                     height.value, EnrollmentStatus.Active);
             foreach (row; results)
@@ -350,7 +350,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT key " ~
-                "FROM validator_set WHERE active = ? ORDER BY key ASC",
+                "FROM validator WHERE active = ? ORDER BY key ASC",
                 EnrollmentStatus.Active);
             foreach (row; results)
                 utxo_keys ~= Hash(row.peek!(char[])(0));
@@ -390,12 +390,12 @@ public class ValidatorSet
             () @trusted {
                 if (height > this.params.ValidatorCycle)
                 {
-                    this.db.execute("DELETE from validator_set " ~
+                    this.db.execute("DELETE from validator " ~
                     "WHERE (enrolled_height < ? AND active = ?) or (enrolled_height < ?)",
                     EnrollmentStatus.Expired, height - this.params.ValidatorCycle,
                     height - this.params.ValidatorCycle - 1);
                 }
-                this.db.execute("UPDATE validator_set SET active = ? WHERE enrolled_height <= ? AND active = ?",
+                this.db.execute("UPDATE validator SET active = ? WHERE enrolled_height <= ? AND active = ?",
                     EnrollmentStatus.Expired, height - this.params.ValidatorCycle, EnrollmentStatus.Active);
             }();
         }
@@ -436,7 +436,7 @@ public class ValidatorSet
                 (height - this.params.ValidatorCycle) : 0;
             return () @trusted {
                 return this.db.execute(
-                    "SELECT count(*) FROM validator_set WHERE " ~
+                    "SELECT count(*) FROM validator WHERE " ~
                     "enrolled_height >= ? AND active = ?", from_height,
                     EnrollmentStatus.Active).oneValue!ulong;
             }();
@@ -469,7 +469,7 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT nonce FROM validator_set " ~
+            auto results = this.db.execute("SELECT nonce FROM validator " ~
                 "WHERE public_key = ? and enrolled_height < ? " ~
                 "and enrolled_height >= ?", key, height.value,
                     height.value <= this.params.ValidatorCycle ? 0 : height.value - this.params.ValidatorCycle);
@@ -508,7 +508,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT preimage, distance FROM " ~
-                "validator_set WHERE key = ? AND active = ?", enroll_key,
+                "validator WHERE key = ? AND active = ?", enroll_key,
                 EnrollmentStatus.Active);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
@@ -549,7 +549,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT key, preimage, distance " ~
-                "FROM validator_set WHERE enrolled_height >= ? AND " ~
+                "FROM validator WHERE enrolled_height >= ? AND " ~
                 "enrolled_height <= ?",
                 start_height, end_height);
 
@@ -596,7 +596,7 @@ public class ValidatorSet
         {
             auto results = this.db.execute(
                 "SELECT preimage, enrolled_height, distance " ~
-                "FROM validator_set WHERE key = ? " ~
+                "FROM validator WHERE key = ? " ~
                 "AND enrolled_height + distance >= ? ORDER BY enrolled_height + distance",
                 enroll_key, height.value);
 
@@ -662,7 +662,7 @@ public class ValidatorSet
         try
         {
             () @trusted {
-                this.db.execute("UPDATE validator_set SET preimage = ?, " ~
+                this.db.execute("UPDATE validator SET preimage = ?, " ~
                     "distance = ? WHERE key = ? AND active = ?",
                     preimage.hash, preimage.distance, preimage.utxo,
                     EnrollmentStatus.Active);
@@ -701,7 +701,7 @@ public class ValidatorSet
             // of enrollments
             auto results = this.db.execute("SELECT active, enrolled_height," ~
                 "cycle_length, preimage, distance FROM " ~
-                "validator_set WHERE key = ? ORDER BY active DESC", enroll_key);
+                "validator WHERE key = ? ORDER BY active DESC", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
@@ -748,7 +748,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT enrolled_height, public_key" ~
-                " FROM validator_set WHERE enrolled_height + cycle_length = ?" ~
+                " FROM validator WHERE enrolled_height + cycle_length = ?" ~
                 " AND active =  ?", height.value, EnrollmentStatus.Active);
 
             foreach (row; results)
