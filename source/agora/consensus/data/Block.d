@@ -539,7 +539,7 @@ version (unittest)
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
         Transactions txs, Hash random_seed = Hash.init,
         Enrollment[] enrollments = null, uint[] missing_validators = null,
-        KeyPair[] key_pairs = genesis_validator_keys,
+        in KeyPair[] key_pairs = genesis_validator_keys,
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
         ulong time_offset = 0) @safe nothrow
     {
@@ -779,7 +779,7 @@ version (unittest)
 
     public Block multiSigTestBlock (ref Block block,
         ulong delegate (PublicKey) cycleForValidator,
-        KeyPair[] keys) @trusted nothrow
+        in KeyPair[] keys) @trusted nothrow
     {
         import agora.crypto.ECC;
         import agora.crypto.Schnorr;

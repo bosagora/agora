@@ -202,7 +202,7 @@ unittest
     testSymmetry(GenesisBlock);
 }
 
-public KeyPair[] genesis_validator_keys = [
+public immutable KeyPair[] genesis_validator_keys = [
     WK.Keys.NODE2,
     WK.Keys.NODE3,
     WK.Keys.NODE4,
