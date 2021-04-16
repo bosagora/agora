@@ -248,7 +248,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         const flash_path = buildPath(this.config.node.data_dir, "flash.dat");
         this.flash = new AgoraFlashNode(this.config.flash,
             flash_path, hashFull(this.params.Genesis), this.engine,
-            this.taskman, this, &this.getFlashClient,
+            this.taskman, &this.putTransaction, &this.getFlashClient,
             &this.getFlashListenerClient);
     }
 

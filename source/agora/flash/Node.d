@@ -1176,8 +1176,8 @@ public abstract class ThinFlashNode : FlashNode
 /// A FullNode / Validator should embed this class if they enabled Flash
 public class AgoraFlashNode : FlashNode
 {
-    /// random agora node (for sending tx's)
-    protected FullNodeAPI agora_node;
+    /// Callback for sending transactions to the network
+    protected void delegate (Transaction tx) putTransactionDg;
 
     /// get a Flash client for the given public key
     protected FlashAPI delegate (in Point peer_pk, Duration timeout)
@@ -1197,19 +1197,19 @@ public class AgoraFlashNode : FlashNode
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
             taskman = the task manager ot use
-            agora_address = IP address of an Agora node to monitor the
-                blockchain and publish new on-chain transactions to it.
+            putTransactionDg = callback for sending transactions to the network
             flashListenerGetter = getter for the Flash listener client
 
     ***************************************************************************/
 
     public this (FlashConfig conf, string db_path, Hash genesis_hash,
-        Engine engine, ITaskManager taskman, FullNodeAPI agora_node,
+        Engine engine, ITaskManager taskman,
+        void delegate (Transaction tx) putTransactionDg,
         FlashAPI delegate (in Point, Duration) flashClientGetter,
         FlashListenerAPI delegate (in string address, Duration timeout)
             flashListenerGetter)
     {
-        this.agora_node = agora_node;
+        this.putTransactionDg = putTransactionDg;
         this.flashClientGetter = flashClientGetter;
         this.flashListenerGetter = flashListenerGetter;
         super(conf, db_path, genesis_hash, engine, taskman);
@@ -1235,7 +1235,7 @@ public class AgoraFlashNode : FlashNode
 
     protected override void putTransaction (Transaction tx)
     {
-        this.agora_node.putTransaction(tx);
+        this.putTransactionDg(tx);
     }
 
     /***************************************************************************
