@@ -53,14 +53,11 @@ public string isInvalidReason (in PreImageInfo new_image,
     if (new_image.utxo != prev_image.utxo)
         return "The pre-image's UTXO differs from its descendant";
 
-    if (new_image.distance <= prev_image.distance)
+    if (new_image.height <= prev_image.height)
         return "The height of new pre-image is not greater than that of the previous one";
 
-    if (new_image.distance > validator_cycle)
-        return "The hashing count of two pre-images is above the validator cycle";
-
     Hash temp_hash = new_image.hash;
-    foreach (_; prev_image.distance .. new_image.distance)
+    foreach (_; prev_image.height .. new_image.height)
         temp_hash = hashFull(temp_hash);
     if (temp_hash != prev_image.hash)
         return "The pre-image has a invalid hash value";
@@ -81,27 +78,29 @@ unittest
 {
     auto params = new immutable(ConsensusParams)(2000);
 
+    import agora.common.Types;
+
     Hash[] preimages;
     preimages ~= hashFull(Scalar.random());
     foreach (i; 0 .. params.ValidatorCycle)
         preimages ~= hashFull(preimages[i]);
     reverse(preimages);
 
-    PreImageInfo prev_image = PreImageInfo(hashFull("abc"), preimages[0], 1);
+    PreImageInfo prev_image = PreImageInfo(hashFull("abc"), preimages[0], Height(0));
 
     // valid pre-image
-    PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], 101);
+    PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], Height(100));
     assert(new_image.isValid(prev_image, params.ValidatorCycle));
 
     // invalid pre-image with wrong UTXO
-    new_image = PreImageInfo(hashFull("xyz"), preimages[100], 101);
+    new_image = PreImageInfo(hashFull("xyz"), preimages[100], Height(100));
     assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 
     // invalid pre-image with wrong height number
-    new_image = PreImageInfo(hashFull("abc"), preimages[1], 3);
+    new_image = PreImageInfo(hashFull("abc"), preimages[1], Height(3));
     assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 
     // invalid pre-image with wrong hash value
-    new_image = PreImageInfo(hashFull("abc"), preimages[100], 100);
+    new_image = PreImageInfo(hashFull("abc"), preimages[101], Height(100));
     assert(!new_image.isValid(prev_image, params.ValidatorCycle));
 }

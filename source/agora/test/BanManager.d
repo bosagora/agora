@@ -112,7 +112,7 @@ unittest
     nodes[0 .. GenesisValidators].each!(node => node.clearFilter());
 
     // Before setting the network time and adding transactions we need to ensure pre-images have been sent
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
+    network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
     network.setTimeFor(Height(6));  // full node should be unbanned now
 
     auto new_tx = genBlockTransactions(1);

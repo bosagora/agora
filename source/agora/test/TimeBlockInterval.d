@@ -57,8 +57,7 @@ unittest
 
     void checkHeight(Height height)
     {
-        network.waitForPreimages(b0.header.enrollments,
-            cast(ushort) (height - 1), 30.seconds);
+        network.waitForPreimages(b0.header.enrollments, height, 30.seconds);
         network.setTimeFor(height);
         network.assertSameBlocks(height);
     }

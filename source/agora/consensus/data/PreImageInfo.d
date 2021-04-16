@@ -28,22 +28,22 @@ public struct PreImageInfo
     /// The key for the enrollment, used to look the commitment up
     public Hash utxo;
 
-    /// The value of the pre-image at the distance from the commitment
+    /// The value of the pre-image at the height from Genesis
     public Hash hash;
 
-    /// The distance between this pre-image and the initial commitment
-    public ushort distance;
+    /// The Height of the block that this pre-image is for
+    public Height height;
 
     /***************************************************************************
 
-        Reduce the distance and adjust `hash` accordingly
+        Reduce the height and adjust `hash` accordingly
 
-        This method hashes `this.hash` `value` times, and offset `this.distance`
+        This method hashes `this.hash` `value` times, and offset `this.height`
         by the same amount.
 
         Params:
           value = The amount to offset the pre-image by.
-                  Must be lesser or equal to `this.distance`.
+                  Must be lesser or equal to `this.height`.
 
         Returns:
           A reference to itself for easy chaining.
@@ -52,11 +52,11 @@ public struct PreImageInfo
 
     public ref PreImageInfo adjust (size_t value) return @safe nothrow @nogc
     {
-        assert(this.distance >= value);
+        assert(this.height >= value);
         while (value > 0)
         {
             this.hash = this.hash.hashFull();
-            this.distance -= 1;
+            this.height -= 1;
             --value;
         }
         return this;
@@ -78,7 +78,7 @@ unittest
     PreImageInfo img = {
         utxo: utxo,
         hash: hash,
-        distance: 42,
+        height: Height(42),
     };
     testSymmetry(img);
 }

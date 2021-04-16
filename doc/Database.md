@@ -24,16 +24,16 @@ Our oldest table, only contain binary serialized data, should be changed to a re
 
 Should be cleaned up and make readable. Once `utxo` is usable, both can be used in combination.
 
-| Field name      | SQL Type | D type           | Attributes                  | Comment                                            |
-|-----------------|----------|------------------|-----------------------------|----------------------------------------------------|
-| key             | TEXT     | Hash             | PRIMARY KEY (with `active`) | The `utxo` field in the `Enrollment`               |
-| public_key      | TEXT     | PublicKey        |                             | Should be replaced with a join using the UTXO hash |
-| cycle_length    | INTEGER  | ulong            |                             | Should be removed.                                 |
-| enrolled_height | INTEGER  | Height           |                             |                                                    |
-| distance        | INTEGER  | ushort           |                             |                                                    |
-| preimage        | TEXT     | Hash             |                             |                                                    |
-| nonce           | TEXT     | Point            |                             | The `R` used to sign the `Enrollment`              |
-| active          | INTEGER  | EnrollmentStatus | PRIMARY KEY (with `key`)    | An enum (boolean). Should be removed.              |
+| Field name      | SQL Type | D type           | Attributes                           | Comment                                            |
+|-----------------|----------|------------------|--------------------------------------|----------------------------------------------------|
+| key             | TEXT     | Hash             | PRIMARY KEY (with `enrolled_height`) | The `utxo` field in the `Enrollment`               |
+| public_key      | TEXT     | PublicKey        |                                      | Should be replaced with a join using the UTXO hash |
+| cycle_length    | INTEGER  | ulong            |                                      | Should be removed.                                 |
+| enrolled_height | INTEGER  | Height           | PRIMARY KEY (with `key`)             |                                                    |
+| height          | INTEGER  | ulong            |                                      |                                                    |
+| preimage        | TEXT     | Hash             |                                      |                                                    |
+| nonce           | TEXT     | Point            |                                      | The `R` used to sign the `Enrollment`              |
+| slashed_height  | INTEGER  | Height           |                                      | Height at which a validator is slashed or null     |
 
 ### `node_enroll_data` table
 

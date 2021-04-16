@@ -39,7 +39,7 @@ unittest
     auto nodes = network.clients;
 
     // Make sure nodes have revealed their preimage for height 1
-    network.waitForPreimages(GenesisBlock.header.enrollments, 1);
+    network.waitForPreimages(GenesisBlock.header.enrollments, Height(1));
 
     // sanity check for the generated quorum config
     nodes.enumerate.each!((idx, node) =>
@@ -112,7 +112,7 @@ unittest
         checkNodeNetworkTime(idx, height));
 
     // Make sure nodes have revealed their preimage for height 2
-    network.waitForPreimages(GenesisBlock.header.enrollments, 2);
+    network.waitForPreimages(GenesisBlock.header.enrollments, Height(2));
 
     txs.take(2).each!(tx => nodes[0].putTransaction(tx));
     // wait for propagation

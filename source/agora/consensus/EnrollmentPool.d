@@ -86,15 +86,15 @@ public class EnrollmentPool
         if (auto reason = isInvalidReason(enroll, finder,
                                             avail_height, findEnrollment))
         {
-            log.info("Invalid enrollment data: {}, Data was: {}", reason, enroll);
+            log.info("Invalid enrollment data: {}, Data was: {}, height: {}", reason, enroll, avail_height);
             return false;
         }
 
         // check if already exists
         if (this.hasEnrollment(enroll.utxo_key, avail_height))
         {
-            log.trace("Skipping already existing enrollment, Data was: {}",
-                enroll);
+            log.trace("Skipping already existing enrollment, Data was: {}, for height {}",
+                enroll, avail_height);
             return false;
         }
 
@@ -177,7 +177,7 @@ public class EnrollmentPool
         from the enrollment pool
 
         Params:
-            enroll_hash = key for an enrollment data to remove
+            height = height of next block
 
     ***************************************************************************/
 
@@ -302,7 +302,8 @@ public class EnrollmentPool
             height = the height of proposed block
 
         Returns:
-            The unregistered enrollments data
+            The unregistered enrollments data that couild be added in the next
+            block. (i.e. avail_height is only valid at a single height)
 
     ***************************************************************************/
 
@@ -313,7 +314,7 @@ public class EnrollmentPool
         try
         {
             auto results = this.db.execute("SELECT val FROM enrollment_pool " ~
-                "WHERE ? >= avail_height ORDER BY key ASC", height.value);
+                "WHERE ? = avail_height ORDER BY key ASC", height.value);
 
             foreach (row; results)
                 enrolls ~= deserializeFull!Enrollment(row.peek!(ubyte[])(0));
@@ -356,8 +357,8 @@ unittest
     foreach (index; 0 .. 3)
     {
         auto utxo_hash = utxo_hashes[index];
-        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, Height(0), params.ValidatorCycle);
         avail_height = Height(params.ValidatorCycle);
+        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height, params.ValidatorCycle);
         assert(pool.add(enrollments[$ - 1], avail_height,
                                 storage.getUTXOFinder(), &findEnrollment));
         assert(pool.count() == index + 1);
