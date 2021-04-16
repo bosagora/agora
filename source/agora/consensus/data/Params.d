@@ -96,7 +96,7 @@ public immutable class ConsensusParams
     /// Default for unittest, uses the test genesis block
     version (unittest) public this (
         uint validator_cycle = 1008, uint max_quorum_nodes = 7,
-        uint quorum_threshold = 80)
+        uint quorum_threshold = 60)
     {
         import agora.consensus.data.genesis.Test : GenesisBlock;
         import agora.utils.WellKnownKeys;
