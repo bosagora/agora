@@ -173,6 +173,29 @@ public class EnrollmentPool
 
     /***************************************************************************
 
+        Remove the enrollment data which did not make it into the intended block
+        from the enrollment pool
+
+        Params:
+            enroll_hash = key for an enrollment data to remove
+
+    ***************************************************************************/
+
+    public void removeExpired (in Height height) @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("DELETE FROM enrollment_pool WHERE avail_height < ?",
+                height);
+        }
+        catch (Exception ex)
+        {
+            log.error("ManagedDatabase operation error on removeExpired");
+        }
+    }
+
+    /***************************************************************************
+
         Check if a enrollment data exists in the enrollment pool.
 
         Params:
