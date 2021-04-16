@@ -24,7 +24,7 @@ node:
   # Number of milliseconds to wait between retrying requests
   retry_delay: 3000
   # Maximum number of retries to issue before a request is considered failed
-  max_retries: 10
+  max_retries: 50
   # Timeout for each request in milliseconds
   timeout: 5000
   # Path to the data directory (if the path doesn't exist it will be created)

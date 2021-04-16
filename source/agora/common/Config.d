@@ -189,7 +189,7 @@ public struct NodeConfig
     public Duration retry_delay = 3.seconds;
 
     /// Maximum number of retries to issue before a request is considered failed
-    public size_t max_retries = 10;
+    public size_t max_retries = 50;
 
     /// Timeout for each request
     public Duration timeout = 5000.msecs;
