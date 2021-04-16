@@ -11,11 +11,11 @@ For more informations, see [this description](https://github.com/bosagora/agora/
 
 Our oldest table, only contain binary serialized data, should be changed to a readable format.
 
-| Field name  | SQL Type | D type    | Attributes  | Comment                                                |
-|-------------|----------|-----------|-------------|--------------------------------------------------------|
-| key         | TEXT     | string    | PRIMARY KEY | The key is the UTXO hash                               |
-| val         | BLOB     | UTXO      | NOT NULL    | Binary serialized UTXO, should be converted to text    |
-| pubkey_hash | TEXT     | PublicKey | NOT NULL    | It's not actually a hash but the key                   |
+| Field name | SQL Type | D type    | Attributes  | Comment                                                |
+|------------|----------|-----------|-------------|--------------------------------------------------------|
+| key        | TEXT     | string    | PRIMARY KEY | The key is the UTXO hash                               |
+| val        | BLOB     | UTXO      | NOT NULL    | Binary serialized UTXO, should be converted to text    |
+| pubkey     | TEXT     | PublicKey | NOT NULL    | The public key owning this UTXO                        |
 
 
 ### `validator` table

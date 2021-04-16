@@ -44,7 +44,7 @@ package class UTXODB
         this.db = db;
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, pubkey_hash TEXT NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, pubkey TEXT NOT NULL)");
     }
 
     /***************************************************************************
@@ -106,7 +106,7 @@ package class UTXODB
         scope (failure) assert(0);
 
         UTXO[Hash] utxos;
-        auto results = db.execute("SELECT key, val FROM utxo WHERE pubkey_hash = ?",
+        auto results = db.execute("SELECT key, val FROM utxo WHERE pubkey = ?",
             pubkey);
 
         foreach (row; results)
@@ -136,7 +136,7 @@ package class UTXODB
 
         scope (failure) assert(0);
         () @trusted {
-            db.execute("INSERT INTO utxo (key, val, pubkey_hash) VALUES (?, ?, ?)",
+            db.execute("INSERT INTO utxo (key, val, pubkey) VALUES (?, ?, ?)",
                 key, buffer, value.output.address); }();
     }
 
