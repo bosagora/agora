@@ -639,7 +639,7 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
 private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     in NodeConfig node_config, in ValidatorConfig validator_config)
 {
-    const enabled = get!(bool, "validator", "enabled")(cmdln, node);
+    const enabled = get!(bool, "flash", "enabled")(cmdln, node);
     if (!enabled)
         return FlashConfig(false);
 
