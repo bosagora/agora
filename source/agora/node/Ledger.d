@@ -868,8 +868,8 @@ public class Ledger
             if (CR == Point.init)
                 return "Block: Couldn't find commitment for this validator";
             Point R = CR + challenge.toPoint();
-            sum_K = sum_K == Point.init ? K : (sum_K + K);
-            sum_R = sum_R == Point.init ? R : (sum_R + R);
+            sum_K = sum_K + K;
+            sum_R = sum_R + R;
         }
 
         assert(sum_K != Point.init, "Block has validators but no signature");
