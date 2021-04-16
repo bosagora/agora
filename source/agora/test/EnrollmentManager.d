@@ -25,11 +25,13 @@ import agora.test.Base;
 import core.thread;
 import core.time;
 
+import ocean.core.Test;
+
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
     TestConf conf = {
-        recurring_enrollment : false,
+        recurring_enrollment : true,
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -44,10 +46,10 @@ unittest
 
     // wait for preimages to be revealed before making block 20
     network.waitForPreimages(network.blocks[0].header.enrollments,
-        GenesisValidatorCycle - 1);
+        Height(GenesisValidatorCycle));
 
-    // Re-enroll the Genesis validators
-    iota(GenesisValidators).each!(idx => network.enroll(idx));
+    // // Re-enroll the Genesis validators
+    // iota(GenesisValidators).each!(idx => network.enroll(idx));
 
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle));
@@ -95,8 +97,7 @@ unittest
 ///     reveals its pre-images periodically.
 unittest
 {
-    TestConf conf = { recurring_enrollment : false };
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!TestAPIManager(TestConf());
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.start();
@@ -106,57 +107,25 @@ unittest
     // Sanity check: Check if genesis block has enrollments
     const b0 = nodes[0].getBlocksFrom(0, 2)[0];
     assert(b0.header.enrollments.length >= 1);
+    Hash node0_utxo = b0.header.enrollments[0].utxo_key;
 
-    // Make 19 blocks
-    Transaction[] txs;
-    foreach (count; 0 .. 19)
-    {
-        // Use Genesis
-        if (!txs.length)
-            txs = genesisSpendable().take(8).enumerate()
-                .map!(en => en.value.refund(WK.Keys.A.address).sign())
-                .array();
-        else
-            txs = txs
-                .map!(ptx => TxBuilder(ptx).refund(WK.Keys[count].address).sign())
-                .array();
-        txs.each!(tx => nodes[1].putTransaction(tx));
-        network.expectHeightAndPreImg(Height(count + 1), b0.header);
-    }
-
-    // Now create an Enrollment for nodes[0], create block #20, and restart nodes[0]
-    auto enroll = nodes[0].createEnrollmentData();
-    nodes[0].enrollValidator(enroll);
-    txs = txs
-        .map!(ptx => TxBuilder(ptx).refund(WK.Keys[20].address).sign())
-        .array();
-    txs.each!(tx => nodes[1].putTransaction(tx));
-    network.expectHeightAndPreImg(iota(1), Height(GenesisValidatorCycle),
-        b0.header);
-    retryFor(nodes[0].getBlocksFrom(20, 1)[0].header.enrollments.length == 1,
-        2.seconds);
+    network.generateBlocks(Height(20));
 
     network.restart(nodes[0]);
     network.waitForDiscovery();
-    network.expectHeight(iota(1), Height(20));
+    const b20 = nodes[1].getBlocksFrom(20, 1)[0];
+    assert(b20.header.enrollments[0].utxo_key >= node0_utxo);
+    // Wait for node_0 to catch up
+    network.expectHeightAndPreImg(Height(20), b0.header);
 
-    // Now make a new block and make sure only nodes[0] signs it
-    txs = txs
-        .map!(ptx => TxBuilder(ptx).refund(WK.Keys[21].address).sign())
-        .array();
-    txs.each!(tx => nodes[1].putTransaction(tx));
-    const b20 = nodes[0].getBlocksFrom(20, 2)[0];
-    network.expectHeightAndPreImg(iota(1), Height(21), b20.header);
+    PreImageInfo b20_preimage = PreImageInfo(node0_utxo, b20.header.enrollments[0].commitment, Height(20));
 
-    PreImageInfo org_preimage = PreImageInfo(enroll.utxo_key, enroll.commitment, 0);
+    // Wait for the revelation of new pre-image after block 20 to complete
+    retryFor(nodes[0].getPreimage(node0_utxo).height > 20, 5.seconds);
+    PreImageInfo preimage_26 = nodes[0].getPreimage(node0_utxo);
 
-    // Wait for the revelation of new pre-image to complete
-    PreImageInfo preimage_2;
-    retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(enroll.utxo_key)),
-        10.seconds);
-
-    // Check if a new pre-image has been revealed from the restarted node
-    assert(preimage_2.isValid(org_preimage, GenesisValidatorCycle));
+    // Check if the new pre-image is valid from the restarted node
+    test!"=="(preimage_26.isInvalidReason(b20_preimage, GenesisValidatorCycle), null);
 }
 
 // Situation: A pre-image already known by all nodes is sent on the network
@@ -208,17 +177,17 @@ unittest
     const enroll = blocks[0].header.enrollments[0];
 
     const known_preimage = network.clients.front().getPreimage(enroll.utxo_key);
-    assert(known_preimage.distance == 0);
+    assert(known_preimage.height == 0);
     assert(known_preimage.hash == enroll.commitment);
     // Send the same pre-image as received
     network.clients().front().receivePreimage(
-        PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
+        PreImageInfo(enroll.utxo_key, enroll.commitment, Height(0)));
 
     // Just to be sure, in case this unittest runs last
     Thread.sleep(50.msecs);
 
     assert(network.clients().each!(
-        client => client.getPreimage(enroll.utxo_key).distance == 0));
+        client => client.getPreimage(enroll.utxo_key).height == 0));
 }
 
 /// Situation: One misbehaving node sends an Enrollment for an
@@ -321,7 +290,7 @@ unittest
     genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys.A.address).sign())
         .each!(tx => validator.putTransaction(tx));
-    network.waitForPreimages(b0.header.enrollments, 1);
+    network.waitForPreimages(b0.header.enrollments, Height(1));
     network.setTimeFor(Height(1));  // trigger consensus
 
     // Make sure that the code in validator gets executed
@@ -358,7 +327,7 @@ unittest
     const e0 = b0.header.enrollments[0];
 
     // Wait for the revelation of new pre-image to complete
-    const org_preimage = PreImageInfo(e0.utxo_key, e0.commitment, 0);
+    const org_preimage = PreImageInfo(e0.utxo_key, e0.commitment, Height(0));
     PreImageInfo preimage_2;
     retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(e0.utxo_key)),
         15.seconds);

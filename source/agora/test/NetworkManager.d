@@ -148,7 +148,7 @@ unittest
     auto node_bad = nodes[GenesisValidators + 1];  // full node, returns bad blocks in getBlocksFrom()
 
     // wait for preimages to be revealed before making blocks
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
+    network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
 
     // enable filtering first
     node_validators.each!(node => node.filter!(API.getBlocksFrom));

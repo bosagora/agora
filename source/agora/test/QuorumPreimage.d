@@ -264,12 +264,12 @@ unittest
                     idx, node.getQuorumConfig(), quorums_2[idx])));
     }
 
-    // create 19 blocks with all validators (1 short of end of 2nd cycle)
+    // create 19 more blocks with all validators (1 short of end of 2nd cycle)
     network.generateBlocks(iota(validators),
         Height((2 * GenesisValidatorCycle) - 1));
 
     // Re-enroll
-    iota(validators).each!(idx => network.enroll(idx));
+    iota(validators).each!(idx => network.enroll(iota(validators), idx));
 
     // Generate the last block of cycle with Genesis validators
     network.generateBlocks(iota(validators),

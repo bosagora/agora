@@ -280,7 +280,7 @@ unittest
     assert(node_1.getQuorumConfig().threshold == 4); // We should need 4 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
+    network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
     network.setTimeFor(Height(1));  // trigger consensus
     waitForCount(1, &network.envelope_type_counts.externalize_count, "externalize");
     Thread.sleep(1.seconds);
@@ -302,7 +302,7 @@ unittest
     assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
+    network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
     network.setTimeFor(Height(1));  // trigger consensus
     Thread.sleep(2.seconds);
     assert(atomicLoad(network.envelope_type_counts.confirm_count) == 0,

@@ -125,27 +125,21 @@ unittest
     // discarded UTXOs (just to trigger block creation)
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
 
+    auto utxos = nodes[0].getUTXOs(bad_address);
+    auto original_stake = utxos[0].utxo.output.value;
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
     // Node index is 5 for bad node so we do not expect pre-image from it
     network.expectHeightAndPreImg(iota(0, 5), Height(1), network.blocks[0].header);
 
-    auto utxos = nodes[0].getUTXOs(bad_address);
     assert(utxos.length == 1);
-    assert(utxos[0].utxo.type == TxType.Freeze);
-
-    // block 2
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(2));
-    auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
-    assert(block2.header.missing_validators.length == 1);
-    auto cnt = nodes[0].countActive(block2.header.height + 1);
+    auto block1 = nodes[0].getBlocksFrom(1, 1)[0];
+    assert(block1.header.missing_validators.length == 1);
+    auto cnt = nodes[0].countActive(block1.header.height + 1);
     assert(cnt == 5, format!"Invalid validator count, current: %s"(cnt));
 
     // check if the frozen UTXO is refunded to the owner and
     // the penalty is re-routed to the `CommonsBudget`
-    assertThrown!Exception(nodes[0].getUTXO(utxos[0].hash));
     auto refund = nodes[0].getUTXOs(bad_address);
     assert(refund.length == 1);
     auto penalty = nodes[0].getUTXOs(WK.Keys.CommonsBudget.address);
@@ -154,11 +148,11 @@ unittest
     total.mustAdd(penalty[0].utxo.output.value);
     // Check that the two amounts add up to the original stake
     // TODO: Check for 40k, not just the total.
-    assert(total == utxos[0].utxo.output.value);
+    assert(total == original_stake);
 
     // check the leftover UTXO is melting and the penalty UTXO is unfrozen
-    assert(refund[0].utxo.unlock_height == 2018);
-    assert(penalty[0].utxo.unlock_height == 3);
+    assert(refund[0].utxo.unlock_height == 2017);
+    assert(penalty[0].utxo.unlock_height == 2);
 }
 
 /// Situation: All the validators do not reveal their pre-images for
@@ -196,21 +190,17 @@ unittest
     auto nodes = network.clients;
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array;
 
-    // block 1
-    txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(1));
-
-    // block 2 must not be created because all the validators do not
+    // block 1 must not be created because all the validators do not
     // reveal any pre-images after their enrollments.
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(1));
+    Thread.sleep(2.seconds); // Give time before checking still height 0
+    network.expectHeight(Height(0));
 
     // all the validators start revealing pre-images
     atomicStore(network.reveal_preimage, true);
 
-    // block 2 created with no slashed validator
-    network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
-    auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
-    assert(block2.header.missing_validators.length == 0);
+    // block 1 was created with no slashed validator
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
+    auto block1 = nodes[0].getBlocksFrom(1, 1)[0];
+    assert(block1.header.missing_validators.length == 0);
 }

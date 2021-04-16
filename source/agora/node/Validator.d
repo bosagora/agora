@@ -130,7 +130,7 @@ public class Validator : FullNode, API
         this.last_shuffle_height = height;
 
         // we're not enrolled and don't care about quorum sets
-        if (!this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
+        if (!this.enroll_man.isEnrolled(height + 1, &this.utxo_set.peekUTXO))
         {
             this.nominator.stopNominatingTimer();
             this.qc = QuorumConfig.init;
@@ -155,6 +155,7 @@ public class Validator : FullNode, API
         Params:
             qc = will contain the quorum configuration
             other_qcs = will contain the list of other nodes' quorum configs.
+            height = next block height
 
     ***************************************************************************/
 
@@ -164,12 +165,14 @@ public class Validator : FullNode, API
         import std.algorithm;
 
         Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        // We add one to height as we are interested in enrolled at next block
+        if (!this.enroll_man.getEnrolledUTXOs(height + 1, keys) || keys.length == 0)
         {
             log.fatal("Could not retrieve enrollments / no enrollments found");
             assert(0);
         }
 
+        // We take random seed from last block as next is not available yet
         const rand_seed = this.enroll_man.getRandomSeed(keys, height);
         qc = buildQuorumConfig(this.config.validator.key_pair.address,
             keys, this.utxo_set.getUTXOFinder(), rand_seed,
@@ -232,7 +235,7 @@ public class Validator : FullNode, API
             this.config.validator.preimage_reveal_interval,
             &this.checkRevealPreimage, Periodic.Yes);
 
-        if (this.enroll_man.isEnrolled(&this.utxo_set.peekUTXO))
+        if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.utxo_set.peekUTXO))
             this.nominator.startNominatingTimer();
         if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.getBlockHeight());
@@ -556,22 +559,23 @@ public class Validator : FullNode, API
 
     protected void checkAndEnroll (Height height) @safe
     {
-        Hash enroll_key = this.enroll_man.getEnrolledUTXO(
+        auto next_height = height + 1;
+        Hash enroll_key = this.enroll_man.getEnrolledUTXO(height,
             this.utxo_set.getUTXOFinder());
 
         if (enroll_key == Hash.init &&
             (enroll_key = this.getFrozenUTXO()) == Hash.init)
             return; // Not enrolled and no frozen UTXO
 
-        const enrolled = this.enroll_man.validator_set.getEnrolledHeight(enroll_key);
+        const enrolled = this.enroll_man.validator_set.getEnrolledHeight(next_height, enroll_key);
 
         // This validators enrollment will expire next cycle or not enrolled at all
         if (enrolled == ulong.max ||
-            height + 1 >= enrolled + this.params.ValidatorCycle)
+            next_height >= enrolled + this.params.ValidatorCycle)
         {
             log.trace("Sending Enrollment at height {} for {} cycles with {}",
-                height, this.params.ValidatorCycle, enroll_key);
-            const enrollment = this.enroll_man.createEnrollment(enroll_key, height + 1);
+                next_height, this.params.ValidatorCycle, enroll_key);
+            const enrollment = this.enroll_man.createEnrollment(enroll_key, next_height);
             this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
         }
     }

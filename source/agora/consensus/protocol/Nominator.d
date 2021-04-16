@@ -528,7 +528,7 @@ extern(D):
             }
 
             Hash random_seed = this.ledger.getExternalizedRandomSeed(
-                last_block.header.height, con_data.missing_validators);
+                last_block.header.height + 1, con_data.missing_validators);
 
             Transaction[] received_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set))
@@ -706,7 +706,7 @@ extern(D):
         }();
 
         const Hash random_seed = this.ledger.getExternalizedRandomSeed(
-                last_block.header.height, con_data.missing_validators);
+                last_block.header.height + 1, con_data.missing_validators);
 
         Transaction[] signed_tx_set;
         if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
@@ -804,7 +804,7 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
-        if (this.ledger.checkSelfSlashing(data))
+        if (this.ledger.checkSelfSlashing(Height(slot_idx), data))
         {
             log.warn("validateValue(): Marking {} for data slashing us as invalid",
                      nomination ? "nomination" : "vote");
@@ -859,7 +859,7 @@ extern(D):
 
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
         Hash random_seed = this.ledger.getExternalizedRandomSeed(
-            last_block.header.height, data.missing_validators);
+            last_block.header.height + 1, data.missing_validators);
         Transaction[] externalized_tx_set;
         if (auto fail_reason = this.ledger.getValidTXSet(data,
             externalized_tx_set))

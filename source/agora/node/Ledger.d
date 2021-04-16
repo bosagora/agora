@@ -64,8 +64,8 @@ import core.time : Duration, seconds;
 
 version (unittest)
 {
-    //import agora.consensus.data.genesis.Test;
     import agora.utils.Test;
+    import ocean.core.Test;
 }
 
 /// Ditto
@@ -198,7 +198,7 @@ public class Ledger
                 this.replayStoredBlock(this.storage.readBlock(Height(height)));
             }
         }
-        else if (this.enroll_man.validator_set.countActive(this.last_block.header.height) == 0)
+        else if (this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
         {
             // +1 because the genesis block counts as one
             const ulong block_count = this.last_block.header.height + 1;
@@ -272,12 +272,12 @@ public class Ledger
             return false;
         }
 
-        const old_count = this.enroll_man.validator_set.countActive(this.getBlockHeight());
+        const old_count = this.enroll_man.validator_set.countActive(block.header.height);
 
         this.storage.saveBlock(block);
         this.addValidatedBlock(block);
 
-        const new_count = this.enroll_man.validator_set.countActive(block.header.height);
+        const new_count = this.enroll_man.validator_set.countActive(block.header.height + 1);
         // there was a change in the active validator set
         const bool validators_changed = block.header.enrollments.length > 0
             || new_count != old_count;
@@ -392,9 +392,6 @@ public class Ledger
             ManagedDatabase.commitBatch();
         }
 
-        // Prepare maps for next block with maybe new enrollments
-        this.enroll_man.updateValidatorIndexMaps(Height(block.header.height + 1));
-
         // Clear the unknown TXs every round (clear() is not @safe)
         this.unknown_txs = Set!Hash.init;
 
@@ -444,10 +441,10 @@ public class Ledger
     private void collectValidatorStats (Collector collector)
     {
         Hash[] keys;
-        if (this.enroll_man.getEnrolledUTXOs(keys))
+        if (this.enroll_man.getEnrolledUTXOs(this.getBlockHeight() + 1, keys))
             foreach (const ref key; keys)
                 validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
-                    this.enroll_man.validator_set.getPreimage(key).distance, key.toString());
+                    this.enroll_man.validator_set.getPreimage(key).height, key.toString());
 
         foreach (stat; validator_preimages_stats.getStats())
             collector.collect(stat.value, stat.label);
@@ -507,7 +504,7 @@ public class Ledger
     {
         Hash[] validator_utxos;
         this.slash_man.getMissingValidatorsUTXOs(validator_utxos,
-            block.header.missing_validators);
+            block.header.height, block.header.missing_validators);
         foreach (utxo; validator_utxos)
         {
             UTXO utxo_value;
@@ -542,11 +539,6 @@ public class Ledger
 
     protected void updateValidatorSet (in Block block) @safe
     {
-        if (block.header.height > 0)
-            this.enroll_man.updateValidatorIndexMaps(block.header.height);
-
-        if (block.header.height >= this.params.ValidatorCycle)
-            this.enroll_man.clearExpiredValidators(block.header.height);
 
         PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
         UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
@@ -565,7 +557,7 @@ public class Ledger
                 assert(0);
             }
         }
-
+        this.enroll_man.updateValidatorIndexMaps(block.header.height + 1);
         this.updateSlashedValidatorSet(block);
     }
 
@@ -585,12 +577,12 @@ public class Ledger
 
         Hash[] validators_utxos;
         this.slash_man.getMissingValidatorsUTXOs(validators_utxos,
-            block.header.missing_validators);
+            block.header.height, block.header.missing_validators);
         foreach (utxo; validators_utxos)
         {
             log.warn("Slashing validator UTXO {} at height {}",
                      utxo, block.header.height);
-            this.enroll_man.unenrollValidator(utxo);
+            this.enroll_man.validator_set.slashValidator(utxo, block.header.height);
         }
     }
 
@@ -600,6 +592,7 @@ public class Ledger
         tx_set
 
         Params:
+            height = block height
             tot_fee = Total fee amount (incl. data)
             tot_data_fee = Total data fee amount
             missing_validators = MPVs
@@ -609,13 +602,13 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Transaction[] getCoinbaseTX (in Amount tot_fee, in Amount tot_data_fee,
+    public Transaction[] getCoinbaseTX (in Height height, in Amount tot_fee, in Amount tot_data_fee,
         in uint[] missing_validators) nothrow @safe
     {
         const next_height = this.getBlockHeight() + 1;
 
         UTXO[] stakes;
-        this.enroll_man.getValidatorStakes(&this.utxo_set.peekUTXO, stakes,
+        this.enroll_man.getValidatorStakes(next_height, &this.utxo_set.peekUTXO, stakes,
             missing_validators);
         const commons_fee = this.fee_man.getCommonsBudgetFee(tot_fee,
             tot_data_fee, stakes);
@@ -671,7 +664,7 @@ public class Ledger
         Amount tot_fee, tot_data_fee;
         if (auto fee_res = this.fee_man.getTXSetFees(tx_set, &this.utxo_set.peekUTXO, tot_fee, tot_data_fee))
             assert(0, fee_res);
-        return this.getCoinbaseTX(tot_fee, tot_data_fee, missing_validators);
+        return this.getCoinbaseTX(this.last_block.header.height + 1, tot_fee, tot_data_fee, missing_validators);
     }
 
     /***************************************************************************
@@ -739,7 +732,7 @@ public class Ledger
                 return fail_reason;
         }
 
-        if (auto fail_reason = this.validateSlashingData(data))
+        if (auto fail_reason = this.validateSlashingData(validating, data))
             return fail_reason;
 
         return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
@@ -758,16 +751,16 @@ public class Ledger
 
     ***************************************************************************/
 
-    private string validateSlashingData (in ConsensusData data) @safe nothrow
+    public string validateSlashingData (in Height height, in ConsensusData data) @safe nothrow
     {
-        if (this.checkSelfSlashing(data))
+        // If we are enrolled and not slashing ourselves
+        if (this.enroll_man.isEnrolled(height, &this.utxo_set.peekUTXO) && this.checkSelfSlashing(height, data))
         {
             log.fatal("The node is slashing itself.");
             assert(0);
         }
 
-        return this.slash_man.isInvalidPreimageRootReason(this.getBlockHeight(),
-                data.missing_validators);
+        return this.slash_man.isInvalidPreimageRootReason(height, data.missing_validators);
     }
 
     /***************************************************************************
@@ -784,9 +777,9 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool checkSelfSlashing (in ConsensusData data) @safe nothrow
+    public bool checkSelfSlashing (in Height height, in ConsensusData data) @safe nothrow
     {
-        auto enroll_index = this.enroll_man.getIndexOfEnrollment();
+        auto enroll_index = this.enroll_man.getIndexOfEnrollment(this.last_block.header.height + 1);
         if (enroll_index != ulong.max &&
             !data.missing_validators.find(enroll_index).empty)
         {
@@ -932,7 +925,7 @@ public class Ledger
         in uint[] missing_validators) @safe nothrow
     {
         Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
         Hash[] valid_keys;
@@ -964,7 +957,7 @@ public class Ledger
         }
 
         UTXO[] stakes;
-        this.enroll_man.getValidatorStakes(&this.utxo_set.peekUTXO, stakes,
+        this.enroll_man.getValidatorStakes(block.header.height, &this.utxo_set.peekUTXO, stakes,
             block.header.missing_validators);
         this.fee_man.accumulateFees(block, stakes, &this.utxo_set.peekUTXO);
     }
@@ -1014,7 +1007,7 @@ public class Ledger
                 tx_set ~= tx;
         }
 
-        auto expected_cb_txs = this.getCoinbaseTX(tot_fee,
+        auto expected_cb_txs = this.getCoinbaseTX(expect_height, tot_fee,
             tot_data_fee, data.missing_validators);
         auto excepted_cb_hashes = expected_cb_txs.map!(tx => tx.hashFull());
         assert(expected_cb_txs.length <= 1);
@@ -1072,7 +1065,7 @@ public class Ledger
 
     public Hash getRandomSeed () nothrow @safe
     {
-        return this.slash_man.getRandomSeed(this.last_block.header.height);
+        return this.slash_man.getRandomSeed(this.last_block.header.height + 1);
     }
 }
 
@@ -1125,11 +1118,10 @@ public class ValidatingLedger : Ledger
         const next_height = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        data.enrolls = this.enroll_man.getEnrollments(this.getBlockHeight(), &this.utxo_set.peekUTXO);
+        data.enrolls = this.enroll_man.getEnrollments(next_height, &this.utxo_set.peekUTXO);
 
         // get information about validators not revealing a preimage timely
-        this.slash_man.getMissingValidators(data.missing_validators,
-            this.getBlockHeight());
+        this.slash_man.getMissingValidators(data.missing_validators, next_height);
 
         Amount tot_fee, tot_data_fee;
         foreach (ref Hash hash, ref Transaction tx; this.pool)
@@ -1161,7 +1153,7 @@ public class ValidatingLedger : Ledger
         const pre_cb_len = data.tx_set.length;
         // Dont append a CB TX to an empty TX set
         if (pre_cb_len > 0)
-            data.tx_set ~= this.getCoinbaseTX(tot_fee, tot_data_fee,
+            data.tx_set ~= this.getCoinbaseTX(next_height, tot_fee, tot_data_fee,
                 data.missing_validators).map!(tx => tx.hashFull()).array;
         // No more than 1 CB per block
         assert(data.tx_set.length - pre_cb_len <= 1);
@@ -1175,7 +1167,7 @@ public class ValidatingLedger : Ledger
     {
         import agora.utils.Test : WK;
 
-        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight(),
+        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight() + 1,
             data.missing_validators);
 
         auto next_block = Height(this.last_block.header.height + 1);
@@ -1528,7 +1520,7 @@ unittest
     {
         scope ledger = new TestLedger(WK.Keys.A);
         Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(1), keys));
         assert(keys.length == 6);
     }
 
@@ -1539,7 +1531,7 @@ unittest
         const blocks = genBlocksToIndex(ValidatorCycle - 1, params);
         scope ledger = new TestLedger(WK.Keys.A, blocks, params);
         Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(ValidatorCycle), keys));
         assert(keys.length == 6);
     }
 
@@ -1620,7 +1612,7 @@ unittest
         scope ledger = new ThrowingLedger(
             WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(20), keys));
         assert(keys.length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
@@ -1632,7 +1624,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == 1009));
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(ledger.last_block.header.height + 1, keys));
         assert(keys.length == 0);
     }
 
@@ -1645,7 +1637,7 @@ unittest
         scope ledger = new ThrowingLedger(
             WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(params.ValidatorCycle), keys));
         assert(keys.length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
@@ -1658,7 +1650,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(params.ValidatorCycle), keys));
         assert(keys.length == 6);  // not updated
     }
 
@@ -1671,7 +1663,7 @@ unittest
         scope ledger = new ThrowingLedger(
             WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
         Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(params.ValidatorCycle), keys));
         assert(keys.length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
@@ -1684,7 +1676,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(ledger.enroll_man.getEnrolledUTXOs(keys));
+        assert(ledger.enroll_man.getEnrolledUTXOs(ledger.last_block.header.height, keys));
         assert(keys.length == 6);  // reverted
     }
 }
@@ -1846,17 +1838,18 @@ unittest
 
     // add four new enrollments
     Enrollment[] enrollments;
-    PreImageCache[] caches;
+    PreImageCycle[] cycles;
     auto pairs = iota(4).map!(idx => WK.Keys[idx]).array;
     foreach (idx, kp; pairs)
     {
         auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        const seed = cycle.populate(kp.secret, true);
-        caches ~= cycle.preimages;
+        cycle.populate(kp.secret, false);
+        const seed = cycle[Height(params.ValidatorCycle)];
+        cycles ~= cycle;
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, seed, params.ValidatorCycle, 0);
-        assert(ledger.enroll_man.addEnrollment(enroll, kp.address, Height(1),
-                &ledger.utxo_set.peekUTXO));
+            utxos[idx], kp, seed, params.ValidatorCycle);
+        assert(ledger.enroll_man.addEnrollment(enroll, kp.address,
+            Height(params.ValidatorCycle), &ledger.utxo_set.peekUTXO));
         enrollments ~= enroll;
     }
 
@@ -1869,7 +1862,6 @@ unittest
     // create the last block of the cycle to make the `Enrollment`s enrolled
     new_txs = genGeneralBlock(new_txs);
     assert(ledger.getBlockHeight() == Height(20));
-    ledger.enroll_man.clearExpiredValidators(Height(20));
     ledger.enroll_man.updateValidatorIndexMaps(Height(21));
     auto b20 = ledger.getBlocksFrom(Height(20))[0];
     assert(b20.header.enrollments.length == 4);
@@ -1879,14 +1871,14 @@ unittest
     assert(ledger.getBlockHeight() == Height(21));
 
     // check missing validators not revealing pre-images.
-    // there are three missing validators at the height of 21.
+    // there are three missing validators at the height of 22.
     auto temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
     auto preimage = PreImageInfo(
         enrollments[0].utxo_key,
-        caches[0][$ - 2],
-        1);
+        cycles[0][Height(22)],
+        Height(22));
     ledger.enroll_man.addPreimage(preimage);
     auto gotten_image =
         ledger.enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
@@ -1894,30 +1886,29 @@ unittest
 
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
-    assert(data.missing_validators.length == 3);
-    assert(data.missing_validators == [1, 2, 3],
-        format!"Expected missing validators: %s"(data.missing_validators));
+    test!"=="(data.missing_validators.length, 3);
+    test!"=="(data.missing_validators, [1, 2, 3]);
 
     // check validity of slashing information
-    assert(ledger.validateSlashingData(data) == null);
+    assert(ledger.validateSlashingData(Height(22), data) == null);
     ConsensusData forged_data = data;
     forged_data.missing_validators = [3, 2, 1];
-    assert(ledger.validateSlashingData(forged_data) != null);
+    assert(ledger.validateSlashingData(Height(22), forged_data) != null);
 
     // reveal preimages of all the validators
-    foreach (idx, cache; caches[1 .. $])
+    foreach (idx, cycle; cycles[1 .. $])
     {
         preimage = PreImageInfo(
             enrollments[idx + 1].utxo_key,
-            cache[$ - 2],
-            1);
+            cycle[Height(22)],
+            Height(22));
         ledger.enroll_man.addPreimage(preimage);
         gotten_image =
             ledger.enroll_man.getValidatorPreimage(enrollments[idx + 1].utxo_key);
         assert(gotten_image == preimage);
     }
 
-    // there's no missing validator at the height of 11
+    // there's no missing validator at the height of 22
     // after revealing preimages
     temp_txs.each!(tx => ledger.pool.remove(tx));
     temp_txs = genTransactions(new_txs);
@@ -1941,7 +1932,7 @@ unittest
     scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
 
     Hash[] genesisEnrollKeys;
-    ledger.enroll_man.getEnrolledUTXOs(genesisEnrollKeys);
+    ledger.enroll_man.getEnrolledUTXOs(Height(1), genesisEnrollKeys);
 
     // Reveal preimages for all validators but 1
     foreach (idx, key; genesisEnrollKeys[0..$-1])
@@ -1951,7 +1942,7 @@ unittest
         KeyPair kp = WK.Keys[stake.output.address];
         auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
         const preimage = PreImageInfo(key, cycle[Height(params.ValidatorCycle)],
-                cast (ushort) (params.ValidatorCycle));
+                Height(params.ValidatorCycle));
 
         ledger.enroll_man.addPreimage(preimage);
     }

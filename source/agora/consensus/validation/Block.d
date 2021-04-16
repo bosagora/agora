@@ -22,8 +22,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXOCache;
-import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState,
-                                            EnrollmentStatus;
+import agora.consensus.state.ValidatorSet : EnrollmentFinder, EnrollmentState;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -648,11 +647,10 @@ public EnrollmentFinder getGenesisEnrollmentFinder () nothrow @trusted
 
         if (!enrolls.empty)
         {
-            state.status = EnrollmentStatus.Active;
             state.enrolled_height = Height(0);
             state.cycle_length = enrolls[0].cycle_length;
             state.preimage.hash = enrolls[0].commitment;
-            state.preimage.distance = 0;
+            state.preimage.height = 0;
         }
 
         return enrolls.length != 0;

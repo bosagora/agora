@@ -83,18 +83,16 @@ public string isInvalidReason (in Enrollment enrollment,
     EnrollmentState enroll_state;
     if (findEnrollment(enrollment.utxo_key, enroll_state))
     {
-        assert(height >= enroll_state.enrolled_height);
-        assert(height >= (enroll_state.enrolled_height + enroll_state.preimage.distance));
+        if (height <= enroll_state.enrolled_height)
+            return "Already enrolled at this height";
+        assert(enroll_state.preimage.height >= enroll_state.enrolled_height);
 
-        // Create a dummy copy
-        PreImageInfo temp = enroll_state.preimage;
-        // And patch its distance and hash
-        temp.hash = enrollment.commitment;
-        auto dist = height - (enroll_state.enrolled_height + enroll_state.preimage.distance);
-        assert(dist < ushort.max);
-        temp.distance = cast(ushort) dist;
-        // Now we can check the match
-        if (temp.adjust(temp.distance).hash != enroll_state.preimage.hash)
+        // Create this enrollment pre-image info
+        PreImageInfo enroll_preimage = PreImageInfo(
+                enrollment.utxo_key, enrollment.commitment, height);
+        // Now we can check the preimages are consistent
+        auto distance = height - enroll_state.preimage.height;
+        if (enroll_preimage.adjust(distance).hash != enroll_state.preimage.hash)
             return "The seed has an invalid hash value";
     }
 
@@ -234,8 +232,7 @@ unittest
     assert(validator_set.add(Height(0), utxoPeek, enroll1,
                                                 key_pairs[0].address) is null);
 
-    validator_set.clearExpiredValidators(Height(params.ValidatorCycle));
-    assert(validator_set.countActive(Height(params.ValidatorCycle)) == 0);
+    assert(validator_set.countActive(Height(params.ValidatorCycle + 1)) == 0);
 
     // First 2 iterations should fail because commitment is wrong
     foreach (offset; [-1, +1, 0])
@@ -245,7 +242,7 @@ unittest
         assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),
                             utxoPeek, enroll1, key_pairs[0].address) is null));
     }
-    assert(validator_set.countActive(Height(params.ValidatorCycle)) == 1);
+    assert(validator_set.countActive(Height(params.ValidatorCycle + 1)) == 1);
 
     Enrollment invalid;
     assert(isInvalidReason(invalid,

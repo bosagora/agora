@@ -96,7 +96,7 @@ public class SlashPolicy
         () @trusted { assumeSafeAppend(missing_validators); }();
 
         Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
         foreach (idx, utxo_key; keys)
@@ -115,18 +115,19 @@ public class SlashPolicy
 
         Params:
             validators_utxos = will contain the UTXOs ot the validators
+            height = curent block being created
             missing_validators = indices of validators being slashed
 
     ***************************************************************************/
 
     public void getMissingValidatorsUTXOs (ref Hash[] validators_utxos,
-        const uint[] missing_validators) @safe nothrow
+        in Height height, const uint[] missing_validators) @safe nothrow
     {
         validators_utxos.length = 0;
         () @trusted { assumeSafeAppend(validators_utxos); }();
 
         Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys))
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys))
             assert(0, "Could not retrieve enrollments");
 
         foreach (idx; missing_validators)
@@ -152,7 +153,7 @@ public class SlashPolicy
     public Hash getRandomSeed (in Height height) @safe nothrow
     {
         Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
         Hash[] valid_keys;
@@ -191,9 +192,9 @@ public class SlashPolicy
             return true;
 
         auto preimage = this.enroll_man.getValidatorPreimage(utxo_key);
-        auto enrolled = this.enroll_man.validator_set.getEnrolledHeight(preimage.utxo);
+        auto enrolled = this.enroll_man.validator_set.getEnrolledHeight(height, preimage.utxo);
         assert(height >= enrolled);
-        return preimage.distance >= cast(ushort)(height - enrolled);
+        return preimage.height >= height;
     }
 
     /***************************************************************************
@@ -215,7 +216,7 @@ public class SlashPolicy
         in uint[] missing_validators) @safe nothrow
     {
         Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
         uint[] local_missing_validators;
@@ -227,8 +228,8 @@ public class SlashPolicy
 
         if (local_missing_validators != missing_validators)
             return "The list of missing validators does not match with the local one. " ~
-                "The local missing validators: "
-                ~ assumeWontThrow(to!string(local_missing_validators));
+                assumeWontThrow(to!string(missing_validators)) ~
+                " != " ~ assumeWontThrow(to!string(local_missing_validators));
 
         return null;
     }
@@ -279,11 +280,11 @@ unittest
     PreImageCache[] caches;
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        const seed = cycle.populate(kp.secret, true);
-        caches ~= cycle.preimages;
+        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
+        cache.reset(hashMulti(kp.secret, "consensus.preimages", 0));
+        caches ~= cache;
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, seed, params.ValidatorCycle, idx);
+            utxo_hashes[idx], kp, Height(1), params.ValidatorCycle);
         assert(enroll_man.addEnrollment(enroll, kp.address, Height(1),
                 &utxo_set.peekUTXO));
         enrollments ~= enroll;
@@ -307,7 +308,7 @@ unittest
     Hash first_validator_utxo;
     Hash second_validator_utxo;
     Hash[] utxos;
-    assert(enroll_man.getEnrolledUTXOs(utxos));
+    assert(enroll_man.getEnrolledUTXOs(Height(2), utxos));
     foreach (idx, utxo; utxos)
         if (utxo == enrollments[0].utxo_key)
         {
@@ -322,30 +323,28 @@ unittest
             second_validator_utxo = utxo;
             break;
         }
-
-    // the first validator reveals a pre-image
-    PreImageInfo preimage_1 = PreImageInfo(
+    // the first validator reveals a pre-image for height 2
+    PreImageInfo preimage_val0_height_2 = PreImageInfo(
         enrollments[0].utxo_key,
-        caches[0][$ - 2],
-        1
+        caches[0][$ - 3],
+        Height(2)
     );
-    test!"=="(hashFull(preimage_1.hash), enrollments[0].commitment);
-    enroll_man.addPreimage(preimage_1);
-    auto gotten_image = enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
-    test!"=="(preimage_1, gotten_image);
+    // Enroll is at height 1 and preimage height is actual height from Genesis
+    test!"=="(preimage_val0_height_2.hash.hashFull(), enrollments[0].commitment);
+    enroll_man.addPreimage(preimage_val0_height_2);
+    test!"=="(enroll_man.getValidatorPreimage(enrollments[0].utxo_key), preimage_val0_height_2);
 
     // the second validator reveals a pre-image
-    PreImageInfo preimage_2 = PreImageInfo(
+    PreImageInfo preimage_val1_height_2 = PreImageInfo(
         enrollments[1].utxo_key,
-        caches[1][$ - 2],
-        1
+        caches[1][$ - 3],
+        Height(2)
     );
-    test!"=="(hashFull(preimage_2.hash), enrollments[1].commitment);
-    enroll_man.addPreimage(preimage_2);
-    gotten_image = enroll_man.getValidatorPreimage(enrollments[1].utxo_key);
-    test!"=="(preimage_2, gotten_image);
+    test!"=="(preimage_val1_height_2.hash.hashFull(), enrollments[1].commitment);
+    enroll_man.addPreimage(preimage_val1_height_2);
+    test!"=="(enroll_man.getValidatorPreimage(enrollments[1].utxo_key), preimage_val1_height_2);
 
-    // check missing pre-image at the current height of 2
+    // check missing pre-image at the height of 2
     uint[] missing_validators;
     slash_man.getMissingValidators(missing_validators, Height(2));
     test!"=="(missing_validators.length, 6);
@@ -354,20 +353,20 @@ unittest
 
     // check the error string for invalid missing validators
     // The first and second validators in agora.consensus.data.genesis.Test.GenesisBlock enrollments
-    const expected_res = "The list of missing validators does not match with the local one. The local missing validators: [0, 1, 2, 4, 6, 7]";
+    const expected_res = "The list of missing validators does not match with the local one. [] != [0, 1, 2, 4, 6, 7]";
     uint[] fake_missing_validators = [];
     auto actual_res = slash_man.isInvalidPreimageRootReason(Height(2), fake_missing_validators);
     assert(actual_res == expected_res, actual_res);
 
     // get the UTXOs of the validators that do not reveals preimages
     Hash[] validators_utxos;
-    slash_man.getMissingValidatorsUTXOs(validators_utxos, missing_validators);
+    slash_man.getMissingValidatorsUTXOs(validators_utxos, Height(2), missing_validators);
     assert(validators_utxos.find(first_validator_utxo).empty());
     assert(validators_utxos.find(second_validator_utxo).empty());
 
     // get and check random seed for two valid validators
     Hash preimage_root = slash_man.getRandomSeed(Height(2));
     assert(preimage_root != Hash.init);
-    assert(preimage_root != hashMulti(Hash.init, preimage_1));
-    assert(preimage_root != hashMulti(Hash.init, preimage_2));
+    assert(preimage_root != hashMulti(Hash.init, preimage_val0_height_2));
+    assert(preimage_root != hashMulti(Hash.init, preimage_val1_height_2));
 }

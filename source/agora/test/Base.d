@@ -704,38 +704,36 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         assert(height > enroll_header.height);
-        auto distance = cast(ushort)(height - enroll_header.height - 1);
-        waitForPreimages(clients_idxs, enroll_header.enrollments,
-            distance, timeout);
+        waitForPreimages(clients_idxs, enroll_header.enrollments, height, timeout);
         this.expectHeight(clients_idxs, height, timeout, file, line);
     }
 
     /***************************************************************************
 
-        Checks if all the nodes contain the given distance of pre-images for
+        Checks if all the nodes contain the given height of pre-images for
         the given enrollments.
 
-        The overload allows passing a subset of nodes to verify the distance
+        The overload allows passing a subset of nodes to verify the height
         for only these nodes.
 
         Params:
             enrolls = the enrollments whose pre-image will be checked
-            distance = the expected distance of pre-images
+            height = the expected height of pre-images
             timeout = the request timeout to each node
 
     ***************************************************************************/
 
-    public void waitForPreimages (const(Enrollment)[] enrolls, ushort distance,
+    public void waitForPreimages (const(Enrollment)[] enrolls, Height height,
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        this.waitForPreimages(iota(GenesisValidators), enrolls, distance,
+        this.waitForPreimages(iota(GenesisValidators), enrolls, height,
             timeout, file, line);
     }
 
     /// Ditto
     public void waitForPreimages (Idxs)(Idxs clients_idxs,
-        const(Enrollment)[] enrolls, ushort distance,
+        const(Enrollment)[] enrolls, Height height,
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
@@ -744,9 +742,9 @@ public class TestAPIManager
         clients_idxs.each!(idx =>
             enrolls.enumerate.each!((idx_enroll, enroll) {
                 if (clients_idxs.canFind(idx_enroll))
-                    retryFor(this.clients[idx].getPreimage(enroll.utxo_key).distance >= distance,
+                    retryFor(this.clients[idx].getPreimage(enroll.utxo_key).height >= height,
                         timeout, format!"Client #%s has no preimage for client #%s at distance %s"
-                            (idx, idx_enroll, distance));
+                            (idx, idx_enroll, height));
             }));
     }
 
@@ -1094,15 +1092,12 @@ public class TestAPIManager
             .map!(txb => txb.sign())
             .each!(tx => first_client.putTransaction(tx));
 
-        // Get preimage distance from enrollment to this next block
-        ushort distance = cast(ushort) (((target_height - 1) % GenesisValidatorCycle));
-        assert(distance < GenesisValidatorCycle && distance >= 0,
-            format!"[%s:%s] Expected distance between 0 and %s not %s, target height %s"
-                (file, line, GenesisValidatorCycle - 1, distance, target_height));
-        auto enrolled_height = target_height - distance - 1;
+        // Get preimage height from enrollment to this next block
+        auto enrolled_height = target_height <= GenesisValidatorCycle ? 0
+            : target_height - ((target_height - 1) % GenesisValidatorCycle) - 1;
         assert(enrolled_height % GenesisValidatorCycle == 0,
-            format!"[%s:%s] Invalid enroll height calculated as %s"
-                (file, line, enrolled_height));
+            format!"[%s:%s] Invalid enroll height calculated as %s for target height %s"
+                (file, line, enrolled_height, target_height));
         // Check block is at target height for the participating clients
         const enroll_block = first_client.getBlock(enrolled_height);
         expectHeightAndPreImg(client_idxs, target_height,
@@ -1798,11 +1793,13 @@ public class TestValidatorNode : Validator, TestAPI
         }
         assert(utxo_hashes.length > 0, format!"No frozen utxo for %s"(pubkey));
 
-        const enroll_height = this.enroll_man.validator_set.getEnrolledHeight(utxo_hashes[0]);
+        const enroll_height = this.enroll_man.validator_set.getEnrolledHeight(
+            this.ledger.getBlockHeight() + 1, utxo_hashes[0]);
         // The first height at which the enrollment can be enrolled.
         const avail_height = enroll_height == ulong.max ?
                                 this.ledger.getBlockHeight() + 1 :
-                                enroll_height + this.params.ValidatorCycle;
+                                max(this.ledger.getBlockHeight() + 1,
+                                    enroll_height + this.params.ValidatorCycle);
         return this.enroll_man.createEnrollment(utxo_hashes[0],
                                                     Height(avail_height));
     }
@@ -1841,7 +1838,9 @@ public class TestValidatorNode : Validator, TestAPI
         Height height)
     {
         Hash[] utxos;
-        assert(this.enroll_man.getEnrolledUTXOs(utxos) && utxos.length > 0);
+        // We add one to height as we are interested in active validators in next block
+        assert(this.enroll_man.getEnrolledUTXOs(height + 1, utxos) && utxos.length > 0);
+        // We have to use the randomSeed from the last block as it is available now
         const rand_seed = this.enroll_man.getRandomSeed(utxos, height);
         QuorumConfig[] quorums;
         foreach (pub_key; pub_keys)

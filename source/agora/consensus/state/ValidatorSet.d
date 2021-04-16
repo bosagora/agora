@@ -37,18 +37,9 @@ import d2sqlite3.sqlite3;
 
 import std.typecons : Tuple;
 
-public enum EnrollmentStatus : int
-{
-    Expired = 0,
-    Active = 1,
-}
-
 /// The information that can be queried for an enrollment
 public struct EnrollmentState
 {
-    /// If the most recent enrollment is still active
-    EnrollmentStatus status;
-
     /// The Height the enrollment was accepted at
     Height enrolled_height;
 
@@ -98,8 +89,8 @@ public class ValidatorSet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator " ~
             "(key TEXT, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
-            "distance INTEGER, preimage TEXT, nonce TEXT, active INTEGER, " ~
-            "PRIMARY KEY (key, active))");
+            "height INTEGER, preimage TEXT, nonce TEXT, slashed_height INTEGER,
+            PRIMARY KEY (key, enrolled_height))");
     }
 
     /***************************************************************************
@@ -128,28 +119,25 @@ public class ValidatorSet
             return reason;
 
         // check if already exists
-        if (this.hasEnrollment(enroll.utxo_key))
+        if (this.hasEnrollment(height + 1, enroll.utxo_key))
             return "This validator is already enrolled";
 
         // check if an enrollment of the same public key is already present
-        if (this.hasPublicKey(pubkey))
-            return "An validator with the same public key is already enrolled";
+        if (this.hasPublicKey(height + 1, pubkey))
+            return "A validator with the same public key is already enrolled";
 
         try
         {
             () @trusted {
-                const ZeroDistance = 0;  // initial distance
-                this.unenroll(enroll.utxo_key);
                 this.db.execute("INSERT INTO validator " ~
                     "(key, public_key, cycle_length, enrolled_height, " ~
-                    "distance, preimage, nonce, active) " ~
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "height, preimage, nonce) " ~
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     enroll.utxo_key,
                     pubkey,
-                    enroll.cycle_length, height.value, ZeroDistance,
+                    enroll.cycle_length, height.value, height.value,
                     enroll.commitment,
-                    enroll.enroll_sig.R,
-                    EnrollmentStatus.Active);
+                    enroll.enroll_sig.R);
             }();
         }
         catch (Exception ex)
@@ -183,24 +171,20 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Unenroll the enrollment with the given UTXO key from the validator set
-        First we remove any previous expired record for this key and then we set
-        the current active record to expired
+        Slash the validator with the given UTXO key at the given height
 
         Params:
-            utxo_key = the UTXO key of the enrollment data to unerno
+            utxo_key = the UTXO key of the validator
+            height = height at which it is slashed (not active from this height)
 
     ***************************************************************************/
 
-    public void unenroll (in Hash enroll_hash) @trusted nothrow
+    public void slashValidator (in Hash enroll_hash, in Height height) @trusted nothrow
     {
         try
         {
             () @trusted {
-                this.db.execute("DELETE from validator WHERE key = ? AND active = ?",
-                    EnrollmentStatus.Expired, enroll_hash);
-                this.db.execute("UPDATE validator SET active = ? WHERE key = ?",
-                    EnrollmentStatus.Expired, enroll_hash);
+                this.db.execute("UPDATE validator SET slashed_height = ? WHERE key = ?", height, enroll_hash);
             }();
         }
         catch (Exception ex)
@@ -215,18 +199,21 @@ public class ValidatorSet
 
         Params:
             enroll_hash = key for an enrollment block height
+            height = height to get enrollment
 
         Returns:
             the enrolled block height, or `ulong.max` if no matching key exists
 
     ***************************************************************************/
 
-    public Height getEnrolledHeight (in Hash enroll_hash) @trusted nothrow
+    public Height getEnrolledHeight (in Height height, in Hash enroll_hash) @trusted nothrow
     {
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height FROM validator" ~
-                " WHERE key = ? AND active = ?", enroll_hash, EnrollmentStatus.Active);
+            auto results = this.db.execute("SELECT enrolled_height FROM validator " ~
+                "WHERE key = ? AND enrolled_height >= ? AND enrolled_height <= ? " ~
+                "ORDER BY enrolled_height DESC",
+                enroll_hash, this.minEnrollmentHeight(height), height);
             if (results.empty)
                 return Height(ulong.max);
 
@@ -245,20 +232,22 @@ public class ValidatorSet
         Check if a enrollment data exists in the validator set.
 
         Params:
-            enroll_hash = key for an enrollment data which is hash of frozen UTXO
+            height = block height
+            enroll_hash = key for enrollment data which is hash of frozen UTXO
 
         Returns:
             true if the validator set has the enrollment data
 
     ***************************************************************************/
 
-    public bool hasEnrollment (in Hash enroll_hash) @trusted nothrow
+    public bool hasEnrollment (in Height height, in Hash enroll_hash) @trusted nothrow
     {
         try
         {
             auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                "validator WHERE key = ? AND active = ?)",
-                enroll_hash, EnrollmentStatus.Active);
+                "validator WHERE key = ? " ~
+                "AND enrolled_height >= ? AND enrolled_height <= ?)", enroll_hash,
+               this.minEnrollmentHeight(height), height);
             return results.front().peek!bool(0);
         }
         catch (Exception ex)
@@ -271,9 +260,11 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Check with public key if a enrollment data exists in the validator set
+        Check with public key if an enrollment data exists in the validator set
 
         Params:
+            height = block height for enrollment which includes the actual block
+                with the enrollment as we are checking if public key is already used
             pubkey = the key by which the validator set searches enrollment
 
         Returns:
@@ -281,13 +272,14 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool hasPublicKey (in PublicKey pubkey) @trusted nothrow
+    public bool hasPublicKey (in Height height, in PublicKey pubkey) @trusted nothrow
     {
         try
         {
             auto results = this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-                "validator WHERE public_key = ? AND active = ?)", pubkey,
-                EnrollmentStatus.Active);
+                "validator WHERE public_key = ? " ~
+                "AND enrolled_height >= ? AND enrolled_height <= ?)", pubkey,
+               this.minEnrollmentHeight(height), height);
             return results.front().peek!bool(0);
         }
         catch (Exception ex)
@@ -318,9 +310,10 @@ public class ValidatorSet
         {
             pub_keys.length = 0;
             assumeSafeAppend(pub_keys);
-            auto results = this.db.execute("SELECT public_key FROM validator
-                WHERE enrolled_height < ? AND active = ? ORDER BY key ASC",
-                    height.value, EnrollmentStatus.Active);
+            auto results = this.db.execute("SELECT public_key FROM validator " ~
+                "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
+                "AND (slashed_height is null OR slashed_height > ?) " ~
+                "ORDER BY key ASC", this.minEnrollmentHeight(height), height, height);
             foreach (row; results)
                 pub_keys ~= PublicKey.fromString(row.peek!(char[])(0));
             return true;
@@ -334,24 +327,26 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get all the current validators in ascending order with the utxo key
+        Get all the current validators in ascending order with the utxokey
+        including the slashed as the validator index requires them
 
         Params:
+            height = the block height
             validators = will be filled with all the validators during
                 their validation cycles
-
         Returns:
             Return true if there was no error in getting the UTXO keys
 
     ***************************************************************************/
 
-    public bool getEnrolledUTXOs (out Hash[] utxo_keys) @trusted nothrow
+    public bool getEnrolledUTXOs (in Height height, out Hash[] utxo_keys) @trusted nothrow
     {
         try
         {
-            auto results = this.db.execute("SELECT key " ~
-                "FROM validator WHERE active = ? ORDER BY key ASC",
-                EnrollmentStatus.Active);
+            auto results = this.db.execute("SELECT key FROM validator " ~
+                "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
+                "AND (slashed_height is null OR slashed_height > ?) " ~
+                "ORDER BY key ASC", this.minEnrollmentHeight(height), height, height);
             foreach (row; results)
                 utxo_keys ~= Hash(row.peek!(char[])(0));
             return true;
@@ -365,52 +360,10 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Clear up expired validators whose cycle for a validator ends
-
-        The validator set clears up expired validators from the set based on
-        the block height. Validators are deleted if their enrolled height is
-        less than or equal to the value of the passed block height minus the
-        validator cycle.
-
-        Params:
-            height = current block height
-
-    ***************************************************************************/
-
-    public void clearExpiredValidators (Height height) @safe nothrow
-    {
-        // the smallest enrolled height would be 0 (genesis block),
-        // so the passed block height should be at minimum the
-        // size of the validator cycle
-        if (height < this.params.ValidatorCycle)
-            return;
-
-        try
-        {
-            () @trusted {
-                if (height > this.params.ValidatorCycle)
-                {
-                    this.db.execute("DELETE from validator " ~
-                    "WHERE (enrolled_height < ? AND active = ?) or (enrolled_height < ?)",
-                    EnrollmentStatus.Expired, height - this.params.ValidatorCycle,
-                    height - this.params.ValidatorCycle - 1);
-                }
-                this.db.execute("UPDATE validator SET active = ? WHERE enrolled_height <= ? AND active = ?",
-                    EnrollmentStatus.Expired, height - this.params.ValidatorCycle, EnrollmentStatus.Active);
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error: {}", ex.msg);
-        }
-    }
-
-    /***************************************************************************
-
-        Gets the number of active validators at a given block height.
+        Gets the number of active validators at the block height.
 
         This function finds validators that should be active at a given height,
-        provided they do not get slashed in between. Active validators are those
+        provided they do not get slashed. Active validators are those
         that can sign a block.
 
         This can be used to look up arbitrary height in the future, as long as
@@ -432,13 +385,11 @@ public class ValidatorSet
         {
             // E.g. for initial validators, enrolled at height 0,
             // they will validate blocks [1 .. 20] if the cycle is 20.
-            const from_height = (height >= this.params.ValidatorCycle) ?
-                (height - this.params.ValidatorCycle) : 0;
             return () @trusted {
-                return this.db.execute(
-                    "SELECT count(*) FROM validator WHERE " ~
-                    "enrolled_height >= ? AND active = ?", from_height,
-                    EnrollmentStatus.Active).oneValue!ulong;
+                return this.db.execute("SELECT count(*) FROM validator " ~
+                    "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
+                    "AND (slashed_height is null OR slashed_height > ?) ",
+                   this.minEnrollmentHeight(height), height, height).oneValue!ulong;
             }();
         }
         catch (Exception ex)
@@ -470,9 +421,9 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT nonce FROM validator " ~
-                "WHERE public_key = ? and enrolled_height < ? " ~
-                "and enrolled_height >= ?", key, height.value,
-                    height.value <= this.params.ValidatorCycle ? 0 : height.value - this.params.ValidatorCycle);
+                "WHERE public_key = ? AND enrolled_height >= ? " ~
+                "AND enrolled_height < ?",
+                key, this.minEnrollmentHeight(height), height);
 
             if (!results.empty && results.oneValue!(string).length != 0)
             {
@@ -507,16 +458,15 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT preimage, distance FROM " ~
-                "validator WHERE key = ? AND active = ?", enroll_key,
-                EnrollmentStatus.Active);
+            auto results = this.db.execute("SELECT preimage, height FROM " ~
+                "validator WHERE key = ? ORDER BY height DESC", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 auto row = results.front;
                 Hash preimage = Hash(row.peek!(char[])(0));
-                ushort distance = row.peek!ushort(1);
-                return PreImageInfo(enroll_key, preimage, distance);
+                auto height = Height(row.peek!ulong(1));
+                return PreImageInfo(enroll_key, preimage, height);
             }
         }
         catch (Exception ex)
@@ -548,17 +498,16 @@ public class ValidatorSet
 
         try
         {
-            auto results = this.db.execute("SELECT key, preimage, distance " ~
-                "FROM validator WHERE enrolled_height >= ? AND " ~
-                "enrolled_height <= ?",
+            auto results = this.db.execute("SELECT key, preimage, height " ~
+                "FROM validator WHERE height >= ? AND height <= ?",
                 start_height, end_height);
 
             foreach (row; results)
             {
                 Hash enroll_key = Hash(row.peek!(char[])(0));
                 Hash preimage = Hash(row.peek!(char[])(1));
-                ushort distance = row.peek!ushort(2);
-                preimages ~= PreImageInfo(enroll_key, preimage, distance);
+                auto preimage_height = Height(row.peek!ulong(2));
+                preimages ~= PreImageInfo(enroll_key, preimage, preimage_height);
             }
         }
         catch (Exception ex)
@@ -595,21 +544,21 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute(
-                "SELECT preimage, enrolled_height, distance " ~
+                "SELECT preimage, enrolled_height, height " ~
                 "FROM validator WHERE key = ? " ~
-                "AND enrolled_height + distance >= ? ORDER BY enrolled_height + distance",
-                enroll_key, height.value);
+                "AND height >= ? AND enrolled_height <= ? ORDER BY height",
+                enroll_key, height.value, height.value);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 auto row = results.front;
                 Hash preimage = Hash(row.peek!(char[])(0));
                 Height enrolled_height = Height(row.peek!ulong(1));
-                ushort distance = row.peek!ushort(2);
+                auto preimage_height = Height(row.peek!ulong(2));
 
-                auto pi = PreImageInfo(enroll_key, preimage, distance);
-                auto times = enrolled_height + distance - height;
-                return (times > pi.distance) ? PreImageInfo.init : pi.adjust(times);
+                auto pi = PreImageInfo(enroll_key, preimage, preimage_height);
+                assert(preimage_height >= height); // The query should ensure this
+                return pi.adjust(preimage_height - height);
             }
         }
         catch (Exception ex)
@@ -647,7 +596,7 @@ public class ValidatorSet
         }
 
         // Ignore same height pre-image because validators will gossip them
-        if (prev_preimage.distance == preimage.distance)
+        if (prev_preimage.height == preimage.height)
             return false;
 
         if (auto reason = isInvalidReason(preimage, prev_preimage,
@@ -663,9 +612,9 @@ public class ValidatorSet
         {
             () @trusted {
                 this.db.execute("UPDATE validator SET preimage = ?, " ~
-                    "distance = ? WHERE key = ? AND active = ?",
-                    preimage.hash, preimage.distance, preimage.utxo,
-                    EnrollmentStatus.Active);
+                    "height = ? WHERE key = ? AND enrolled_height >= ? AND enrolled_height <= ?",
+                    preimage.hash, preimage.height, preimage.utxo,
+                   this.minEnrollmentHeight(preimage.height), preimage.height);
             }();
         }
         catch (Exception ex)
@@ -681,8 +630,8 @@ public class ValidatorSet
     /***************************************************************************
 
         Find the most recent Enrollment with the provided UTXO hash, regardless
-        of it's active status but order by status descending so that active is
-        returned first
+        of it's active status but order by status descending so that most recent
+        is returned first
 
         Params:
             enroll_key = The key for the enrollment
@@ -697,21 +646,18 @@ public class ValidatorSet
     {
         try
         {
-            // No filter for `active` field, since we want to query the whole history
-            // of enrollments
-            auto results = this.db.execute("SELECT active, enrolled_height," ~
-                "cycle_length, preimage, distance FROM " ~
-                "validator WHERE key = ? ORDER BY active DESC", enroll_key);
+            auto results = this.db.execute("SELECT enrolled_height," ~
+                "cycle_length, preimage, height " ~
+                "FROM validator WHERE key = ? ORDER BY enrolled_height DESC", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 auto row = results.front;
-                state.status = row.peek!(EnrollmentStatus)(0);
-                state.enrolled_height = Height(row.peek!(size_t)(1));
-                state.cycle_length = row.peek!(uint)(2);
+                state.enrolled_height = Height(row.peek!(size_t)(0));
+                state.cycle_length = row.peek!(uint)(1);
+                state.preimage.hash = Hash(row.peek!(char[])(2));
                 state.preimage.utxo = enroll_key;
-                state.preimage.hash = Hash(row.peek!(char[])(3));
-                state.preimage.distance = row.peek!(ushort)(4);
+                state.preimage.height = Height(row.peek!(size_t)(3));
                 return true;
             }
         }
@@ -747,9 +693,8 @@ public class ValidatorSet
 
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height, public_key" ~
-                " FROM validator WHERE enrolled_height + cycle_length = ?" ~
-                " AND active =  ?", height.value, EnrollmentStatus.Active);
+            auto results = this.db.execute("SELECT enrolled_height, public_key " ~
+                "FROM validator WHERE enrolled_height + cycle_length = ?", height.value);
 
             foreach (row; results)
             {
@@ -772,6 +717,7 @@ public class ValidatorSet
         Query stakes of active Validators
 
         Params:
+            height = block height
             peekUTXO = A delegate to query UTXOs
             utxos = Array to save the stakes
 
@@ -780,7 +726,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public UTXO[] getValidatorStakes (UTXOFinder peekUTXO, ref UTXO[] utxos,
+    public UTXO[] getValidatorStakes (in Height height, UTXOFinder peekUTXO, ref UTXO[] utxos,
         const ref uint[] missing_validators) @trusted nothrow
     {
         import std.algorithm;
@@ -789,7 +735,7 @@ public class ValidatorSet
         assumeSafeAppend(utxos);
 
         Hash[] keys;
-        if (!this.getEnrolledUTXOs(keys) || keys.length == 0)
+        if (!this.getEnrolledUTXOs(height, keys) || keys.length == 0)
         {
             log.fatal("Could not retrieve enrollments / no enrollments found");
             assert(0);
@@ -829,6 +775,7 @@ unittest
     import agora.consensus.EnrollmentManager;
     import ocean.core.Test;
     import std.algorithm;
+    import std.conv;
     import std.range;
 
     const FirstEnrollHeight = Height(1);
@@ -847,18 +794,18 @@ unittest
     // add enrollments
     auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, set.params.ValidatorCycle);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
-    test!"=="(set.countActive(FirstEnrollHeight), 1);
+    test!"=="(set.countActive(FirstEnrollHeight), 0);
+    test!"=="(set.countActive(FirstEnrollHeight + 1), 1);    // Will be active next block
     ExpiringValidator[] ex_validators;
     test!"=="(set.getExpiringValidators(
         FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length, 1);
-    assert(set.hasEnrollment(utxos[0]));
-    test!"=="(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address), "This validator is already enrolled");
+    assert(set.hasEnrollment(FirstEnrollHeight, utxos[0]));
+    test!"=="(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address), "Already enrolled at this height");
 
     auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight, set.params.ValidatorCycle);
-    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
-    test!"=="(set.countActive(FirstEnrollHeight), 2);
-    assert(set.getExpiringValidators(
-        FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 2);
+    test!"=="(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address), null);
+    test!"=="(set.countActive(FirstEnrollHeight + 1), 2);
+    test!"=="(set.getExpiringValidators(FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length, 2);
     // Too early
     test!"=="(set.getExpiringValidators(
         FirstEnrollHeight + (set.params.ValidatorCycle - 1), ex_validators).length, 0);
@@ -868,25 +815,26 @@ unittest
 
     const SecondEnrollHeight = Height(9);
     auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight, set.params.ValidatorCycle);
-    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
-    test!"=="(set.countActive(SecondEnrollHeight), 3);
-    assert(set.getExpiringValidators(
-        SecondEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 1);
+    test!"=="(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address), null);
+    test!"=="(set.countActive(SecondEnrollHeight + 1), 3);
+    test!"=="(set.getExpiringValidators(
+        SecondEnrollHeight + set.params.ValidatorCycle, ex_validators).length, 1);
 
     // check if enrolled heights are not set
     Hash[] keys;
-    set.getEnrolledUTXOs(keys);
+    set.getEnrolledUTXOs(SecondEnrollHeight + 1, keys);
     test!"=="(keys.length, 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
-    // remove ValidatorSet
-    set.unenroll(utxos[1]);
-    test!"=="(set.countActive(SecondEnrollHeight), 2);
-    assert(set.hasEnrollment(utxos[0]));
-    set.unenroll(utxos[0]);
-    assert(!set.hasEnrollment(utxos[0]));
+    // slash ValidatorSet
+    set.slashValidator(utxos[1], SecondEnrollHeight + 1);
+    test!"=="(set.countActive(SecondEnrollHeight + 1), 2);
+    assert(set.hasEnrollment(SecondEnrollHeight + 1,utxos[0]));
+    set.slashValidator(utxos[0], SecondEnrollHeight + 1);
+    // The enrollment will remain even though it is slashed
+    assert(set.hasEnrollment(SecondEnrollHeight + 1, utxos[0]));
     set.removeAll();
-    assert(set.countActive(SecondEnrollHeight + 1) == 0);
+    test!"=="(set.countActive(SecondEnrollHeight + 1), 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -898,33 +846,32 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (i, ordered_enroll; ordered_enrollments)
-        assert(set.add(FirstEnrollHeight, storage.getUTXOFinder(), ordered_enroll, WK.Keys[i].address) is null);
-    set.getEnrolledUTXOs(keys);
+        test!"=="(set.add(FirstEnrollHeight, storage.getUTXOFinder(), ordered_enroll, WK.Keys[i].address), null);
+    set.getEnrolledUTXOs(FirstEnrollHeight + 1, keys);
     test!"=="(keys.length, 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
     // test for adding and getting preimage
-    test!"=="(set.getPreimage(utxos[0]), PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
-    auto preimage_11 = PreImageInfo(utxos[0], cache[SecondEnrollHeight + 2], cast(ushort)(SecondEnrollHeight + 1));
+    test!"=="(set.getPreimage(utxos[0]), PreImageInfo(enroll.utxo_key, enroll.commitment, FirstEnrollHeight));
+    test!"=="(cache[FirstEnrollHeight], enroll.commitment);
+    auto preimage_11 = PreImageInfo(utxos[0], cache[SecondEnrollHeight + 2], SecondEnrollHeight + 2);
     assert(set.addPreimage(preimage_11));
     test!"=="(set.getPreimage(utxos[0]), preimage_11);
     test!"=="(set.getPreimageAt(utxos[0], Height(FirstEnrollHeight - 1)),  // N/A: enrolled at height 1!
         PreImageInfo.init);
     test!"=="(set.getPreimageAt(utxos[0], SecondEnrollHeight + 3),  // N/A: not revealed yet!
         PreImageInfo.init);
-    test!"=="(set.getPreimageAt(utxos[0], FirstEnrollHeight),
-        PreImageInfo(enroll.utxo_key, enroll.commitment, 0));
+    test!"=="(set.getPreimageAt(utxos[0], FirstEnrollHeight + 1),
+        PreImageInfo(enroll.utxo_key, cache[FirstEnrollHeight + 1], FirstEnrollHeight + 1));
     test!"=="(set.getPreimageAt(utxos[0], SecondEnrollHeight + 2), preimage_11);
     test!"=="(set.getPreimageAt(utxos[0], SecondEnrollHeight + 1),
-        PreImageInfo(utxos[0], hashFull(preimage_11.hash),
-            cast(ushort)(preimage_11.distance - 1)));
+        PreImageInfo(utxos[0], hashFull(preimage_11.hash), Height(preimage_11.height - 1)));
 
     // test for clear up expired validators
     enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight, set.params.ValidatorCycle);
-    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
-    set.clearExpiredValidators(SecondEnrollHeight + (set.params.ValidatorCycle - 1));
+    test!"=="(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address), null);
     keys.length = 0;
-    assert(set.getEnrolledUTXOs(keys));
+    assert(set.getEnrolledUTXOs(Height(1016), keys));
     test!"=="(keys.length, 1);
     test!"=="(keys[0], utxos[3]);
 
@@ -937,19 +884,17 @@ unittest
     enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, set.params.ValidatorCycle);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
-    // not cleared yet at the last block where validators are active
-    set.clearExpiredValidators(Height(set.params.ValidatorCycle));
+    // still active at height 1008
     keys.length = 0;
 
     test!"=="(set.countActive(Height(set.params.ValidatorCycle)), 1);
-    assert(set.getEnrolledUTXOs(keys));
+    assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle), keys));
     test!"=="(keys.length, 1);
     test!"=="(keys[0], utxos[0]);
 
-    // cleared after a new cycle was started
-    set.clearExpiredValidators(Height(set.params.ValidatorCycle + 1));
-    test!"=="(set.countActive(Height(set.params.ValidatorCycle + 1)), 0);
-    assert(set.getEnrolledUTXOs(keys));
-    test!"=="(keys.length, 0);
+    // cleared after a new cycle was started (which started at height 1 so add 2)
+    assert(set.countActive(Height(set.params.ValidatorCycle + 2)) == 0);
+    assert(set.getEnrolledUTXOs(Height(1010), keys));
+    assert(keys.length == 0);
     set.removeAll();  // clear all
 }

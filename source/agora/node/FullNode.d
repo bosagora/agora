@@ -67,7 +67,7 @@ import vibe.data.json;
 import vibe.web.rest;
 
 import std.algorithm;
-import std.conv : to;
+import std.conv : to, text;
 import std.exception;
 import std.file;
 import std.format;
@@ -784,7 +784,7 @@ public class FullNode : API
         this.utxo_set.peekUTXO(enroll.utxo_key, utxo);
         const utxo_address = utxo.output.address;
         if (this.enroll_man.addEnrollment(enroll, utxo_address,
-            this.ledger.getBlockHeight(), this.utxo_set.getUTXOFinder()))
+            this.ledger.getBlockHeight() + 1, this.utxo_set.getUTXOFinder()))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
             this.network.peers.each!(p => p.client.sendEnrollment(enroll));
