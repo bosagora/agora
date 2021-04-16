@@ -805,6 +805,21 @@ public class ValidatorSet
 
         return utxos;
     }
+
+    /***************************************************************************
+
+        Returns:
+            The lowest height an `Enrollment` had to appear at for it to be
+            a validator at `height`
+
+    ***************************************************************************/
+
+    public Height minEnrollmentHeight (in Height height) const scope @safe
+        pure nothrow @nogc
+    {
+        return Height(height <= this.params.ValidatorCycle ? 0
+            : height - this.params.ValidatorCycle);
+    }
 }
 
 /// test for functions of ValidatorSet
