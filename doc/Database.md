@@ -13,9 +13,9 @@ Our oldest table, only contain binary serialized data, should be changed to a re
 
 | Field name  | SQL Type | D type    | Attributes  | Comment                                                |
 |-------------|----------|-----------|-------------|--------------------------------------------------------|
-| key         | BLOB     | string    | PRIMARY KEY | The key is the UTXO hash, should be `TEXT`             |
+| key         | TEXT     | string    | PRIMARY KEY | The key is the UTXO hash                               |
 | val         | BLOB     | UTXO      | NOT NULL    | Binary serialized UTXO, should be converted to text    |
-| pubkey_hash | BLOB     | PublicKey | NOT NULL    | It's not actually a hash but the key, should be `TEXT` |
+| pubkey_hash | TEXT     | PublicKey | NOT NULL    | It's not actually a hash but the key                   |
 
 
 ### `validator_set` table

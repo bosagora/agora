@@ -44,7 +44,7 @@ package class UTXODB
         this.db = db;
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo_map " ~
-            "(key BLOB PRIMARY KEY, val BLOB NOT NULL, pubkey_hash BLOB NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, pubkey_hash TEXT NOT NULL)");
     }
 
     /***************************************************************************
@@ -78,8 +78,7 @@ package class UTXODB
     public bool find (in Hash key, out UTXO value) nothrow @trusted
     {
         scope (failure) assert(0);
-        auto results = db.execute("SELECT val FROM utxo_map WHERE key = ?",
-            key[]);
+        auto results = db.execute("SELECT val FROM utxo_map WHERE key = ?", key);
 
         foreach (row; results)
         {
@@ -108,11 +107,11 @@ package class UTXODB
 
         UTXO[Hash] utxos;
         auto results = db.execute("SELECT key, val FROM utxo_map WHERE pubkey_hash = ?",
-            pubkey[]);
+            pubkey);
 
         foreach (row; results)
         {
-            auto hash = *cast(Hash*)row.peek!(ubyte[])(0).ptr;
+            auto hash = Hash(row.peek!(const(char)[])(0));
             auto value = deserializeFull!UTXO(row.peek!(ubyte[])(1));
             utxos[hash] = value;
         }
@@ -138,7 +137,7 @@ package class UTXODB
         scope (failure) assert(0);
         () @trusted {
             db.execute("INSERT INTO utxo_map (key, val, pubkey_hash) VALUES (?, ?, ?)",
-                key[], buffer, value.output.address[]); }();
+                key, buffer, value.output.address); }();
     }
 
     /***************************************************************************
@@ -154,6 +153,6 @@ package class UTXODB
     {
         scope (failure) assert(0);
         () @trusted {
-            db.execute("DELETE FROM utxo_map WHERE key = ?", key[]); }();
+            db.execute("DELETE FROM utxo_map WHERE key = ?", key); }();
     }
 }
