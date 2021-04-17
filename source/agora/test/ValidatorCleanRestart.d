@@ -17,6 +17,7 @@ module agora.test.ValidatorCleanRestart;
 version (unittest):
 
 import agora.api.FullNode;
+import agora.common.Amount;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Key;
@@ -50,18 +51,18 @@ version(none) unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = network.nodes.map!(node => node.getPublicKey().key)
-        .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
-        .array;
+    const keys = set_b.map!(node => node.getPublicKey()).array;
 
-    auto blocks = nodes[0].getAllBlocks();
+    Amount expected = Amount.MinFreezeAmount;
+    assert(expected.mul(keys.length));
+    auto utxos = nodes[0].getUTXOs(expected);
 
     // Block 19 we add the freeze utxos for set_b validators
     // prepare frozen outputs for outsider validators to enroll
-    blocks[0].spendable().drop(1)
-        .map!(txb => txb
-            .split(keys).sign(OutputType.Freeze))
-        .each!(tx => set_a[0].putTransaction(tx));
+    TxBuilder txb = TxBuilder(WK.Keys.AAA.address); // Refund
+    utxos.each!(pair => txb.attach(pair.utxo.output, pair.hash));
+    auto to_send = txb.draw(Amount.MinFreezeAmount, keys).sign(OutputType.Freeze);
+    set_a.each!(n => n.putTransaction(to_send));
 
     // wait for other nodes to get to same block height
     network.assertSameBlocks(Height(GenesisValidatorCycle - 1));

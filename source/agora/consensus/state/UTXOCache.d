@@ -94,6 +94,11 @@ abstract class UTXOCache
 
     public abstract size_t length () @safe;
 
+
+    /// Allows iteration on UTXOs
+    public abstract int opApply (
+        scope int delegate (const ref Hash, const ref UTXO) @safe dg) @safe;
+
     /***************************************************************************
 
         Get UTXOs from the UTXO set
@@ -286,6 +291,16 @@ public class TestUTXOSet : UTXOCache
     public override size_t length () @safe
     {
         return this.storage.length;
+    }
+
+    ///
+    public override int opApply (
+        scope int delegate (const ref Hash, const ref UTXO) @safe dg) @safe
+    {
+        foreach (const ref key, const ref value; this.storage)
+            if (auto ret = dg(key, value))
+                return ret;
+        return 0;
     }
 
     /***************************************************************************

@@ -68,6 +68,35 @@ package class UTXODB
         }();
     }
 
+    ///
+    public int opApply (
+        scope int delegate (const ref Hash, const ref UTXO) @safe dg) @safe
+    {
+        return () @trusted {
+            auto results = this.db.execute("SELECT hash, unlock_height, type, amount, locktype, lock FROM utxo");
+
+            foreach (ref row; results)
+            {
+                auto hash = Hash(row.peek!(const(char)[], PeekMode.slice)(0));
+                auto unlock_height = Height(row.peek!ulong(1));
+                auto type = row.peek!OutputType(2);
+                // DMD BUG: Cannot construct the object directly, `inout` bug
+                Output output;
+                output.type = type;
+                output.value = Amount(row.peek!ulong(3));
+                output.lock  = Lock(row.peek!(LockType)(4), row.peek!(ubyte[])(5));
+                UTXO value = {
+                    unlock_height: unlock_height,
+                    output: output,
+                };
+                if (auto ret = dg(hash, value))
+                    return ret;
+            }
+            return 0;
+        }();
+    }
+
+
     /***************************************************************************
 
         Look up the UTXO in the map, and store it to 'output' if found

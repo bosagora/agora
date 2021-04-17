@@ -1434,6 +1434,9 @@ public interface TestAPI : ValidatorAPI
 
     ***************************************************************************/
 
+    public UTXOPair[] getUTXOs (Amount minimum);
+
+    ///
     public UTXOPair[] getUTXOs (PublicKey owner);
 
     /// Ditto
@@ -1602,6 +1605,21 @@ private mixin template TestNodeMixin ()
     public bool hasAcceptedTxHash (Hash tx_hash)
     {
         return !!(tx_hash in this.accepted_txs);
+    }
+
+    ///
+    public override UTXOPair[] getUTXOs (Amount minimum)
+    {
+        UTXOPair[] result;
+        Amount accumulated;
+        foreach (const ref Hash key, const ref UTXO value; this.utxo_set)
+        {
+            result ~= UTXOPair(key, value);
+            accumulated.mustAdd(value.output.value);
+            if (accumulated >= minimum)
+                return result;
+        }
+        throw new Exception("Exhausted UTXO without finding enough coins!");
     }
 
     ///
