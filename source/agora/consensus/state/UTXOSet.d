@@ -58,6 +58,13 @@ public class UTXOSet : UTXOCache
         return this.utxo_db.length();
     }
 
+    ///
+    public override int opApply (
+        scope int delegate (const ref Hash, const ref UTXO) @safe dg) @safe
+    {
+        return this.utxo_db.opApply(dg);
+    }
+
     /***************************************************************************
 
         Get UTXOs from the UTXO set
