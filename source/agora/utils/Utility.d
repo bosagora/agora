@@ -15,7 +15,7 @@ module agora.utils.Utility;
 
 import agora.utils.Log;
 
-import std.algorithm : map;
+import std.algorithm : each, map;
 import std.array : join, split;
 import std.conv;
 import std.format;
@@ -195,4 +195,35 @@ unittest
 
     static bool willFail () { return false; }
     assertThrown!AssertError(willFail().retryFor(300.msecs));
+}
+
+/*******************************************************************************
+
+    Writes an `ubyte[]` as an hexadecimal string to a sink
+
+    Does not allocate nor throw of its own.
+
+    Params:
+      bin = Binary data to string serialize
+      sink = Sink delegate, such as those passed to `toString`
+
+*******************************************************************************/
+
+public struct UbyteHexString
+{
+    const(ubyte)[] bin;
+
+    void toString (scope void delegate (scope const(char)[]) @safe sink)
+        const @safe
+    {
+        // Copied this code from BitBlob
+        static immutable HexDigits = `0123456789abcdef`;
+
+        char[2] result;
+        this.bin.each!((sb) {
+                result[0] = HexDigits[sb >> 4];
+                result[1] = HexDigits[(sb & 0b0000_1111)];
+                sink(result[]);
+        });
+    }
 }
