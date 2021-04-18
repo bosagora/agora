@@ -29,7 +29,7 @@ import agora.test.Base;
 ///     process of set B have finished, a new block is being nominated,
 ///     and a consensus round for the new block is being made.
 /// Expectation: The new block is approved and inserted into the ledger.
-unittest
+version(none) unittest
 {
     TestConf conf = {
         timeout : 10.seconds,
