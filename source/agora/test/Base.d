@@ -77,6 +77,7 @@ import core.atomic : atomicLoad, atomicStore;
 import core.exception;
 import core.runtime;
 import core.stdc.time;
+import core.thread;
 
 /* The following imports are frequently needed in tests */
 
@@ -141,9 +142,13 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
             output.formattedWrite("%s\n", traceLine);
         }
 
-        output.formattedWrite(
-            "================================ NODE LOGS ===============================\n");
-        CircularAppender!()().print(output);
+        // We only want to print the logs if we're in the main thread,
+        // which means we are unittests non-`agora.test` modules.
+        // Modules in `agora.test` use network tests and they will call `printLogs`
+        // on failure for each nodes themselves
+        // See https://github.com/bosagora/agora/issues/1972
+        if (Thread.getThis().isMainThread())
+            CircularAppender!()().print(output);
         stdout.flush();
     }
     catch (Exception exc)
