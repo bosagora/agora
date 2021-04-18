@@ -70,6 +70,7 @@ import std.algorithm;
 import std.conv : to;
 import std.exception;
 import std.file;
+import std.format;
 import std.path : buildPath;
 import std.range;
 
@@ -355,6 +356,8 @@ public class FullNode : API
 
         Add blocks to the ledger and add the related pre-images
 
+        This is called by the periodic catch-up process.
+
         Params:
             blocks = the blocks to be added
             preimages = the preimages needed to check the validity of the blocks
@@ -364,11 +367,10 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public Height addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages)
+    private Height addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages)
         @safe
     {
-        Height last_height;
-        foreach (block; blocks)
+        foreach (const ref block; blocks)
         {
             // ignore return value:
             // there's at least two cases where preimages will be rejected:
@@ -376,11 +378,14 @@ public class FullNode : API
             // B) The preimage is for a newer enrollment which is in one of the
             //    `blocks` which we haven't read from yet
             this.ledger.enrollment_manager.addPreimages(preimages);
-            if (!this.ledger.acceptBlock(block))
-                return last_height;
-            last_height = block.header.height;
+            // A block might have been externalized in the meantime,
+            // so just skip older heights
+            if (block.header.height <= this.ledger.getBlockHeight())
+                continue;
+            else if (!this.ledger.acceptBlock(block))
+                break;
         }
-        return last_height;
+        return this.ledger.getBlockHeight();
     }
 
     /***************************************************************************
