@@ -30,9 +30,6 @@ jobs:
           # Only generate when the latest ldc is used
           # IMPORTANT: Update this when the compiler support is changed!
           - { dc: ldc-1.25.0, artifacts: true, run_vtable_checks: true }
-        exclude:
-          # Disabled due to https://github.com/dlang/dub/issues/2110
-          - { dc: ldc-master, os: windows-2019 }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -93,7 +90,7 @@ jobs:
     # Build and run the tests
     - name: '[POSIX] Build & test Agora'
       if: runner.os != 'Windows'
-      continue-on-error: ${{ matrix.dc == 'ldc-master' }}
+      #continue-on-error: ${{ matrix.dc == 'ldc-master' }}
       run: ./ci/run.sh
 
     - name: '[Windows] Build & test Agora'
