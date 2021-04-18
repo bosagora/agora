@@ -556,8 +556,8 @@ public class Validator : FullNode, API
         {
             log.trace("Sending Enrollment at height {} for {} cycles with {}",
                 height, this.params.ValidatorCycle, enroll_key);
-            this.network.peers.each!(p => p.client.sendEnrollment(
-                this.enroll_man.createEnrollment(enroll_key, height + 1)));
+            const enrollment = this.enroll_man.createEnrollment(enroll_key, height + 1);
+            this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
         }
     }
 
