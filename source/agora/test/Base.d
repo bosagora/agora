@@ -1496,7 +1496,7 @@ private mixin template TestNodeMixin ()
     }
 
     /// Prints out the log contents for this node
-    public void printLog ()
+    public override void printLog ()
     {
         auto output = stdout.lockingTextWriter();
         output.formattedWrite("Log for node: %s\n", this.config.interfaces[0].address);
