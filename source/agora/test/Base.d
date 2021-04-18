@@ -1380,6 +1380,17 @@ public interface TestAPI : ValidatorAPI
 
     /***************************************************************************
 
+        Clear a node's logs
+
+        This forces a node to clear its logs, which can be useful for tests
+        that produce a lot of logs, for example when many blocks are created.
+
+    ***************************************************************************/
+
+    public abstract void clearLog ();
+
+    /***************************************************************************
+
         TEMPORARY: Create a valid `Enrollment` for this node
 
         This method is a temporary workaround to create an Enrollment for a node
@@ -1504,6 +1515,12 @@ private mixin template TestNodeMixin ()
         CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
         stdout.flush();
+    }
+
+    ///
+    public override void clearLog ()
+    {
+        CircularAppender!()().clear();
     }
 
     protected override IBlockStorage makeBlockStorage () @system

@@ -226,6 +226,13 @@ public class CircularAppender (size_t BufferSize = 2^^20) : Appender
                     this.used_length + content.length);
             });
     }
+
+    ///
+    public void clear ()
+    {
+        this.used_length = 0;
+        this.cyclic = cycle(this.buffer);
+    }
 }
 
 ///
