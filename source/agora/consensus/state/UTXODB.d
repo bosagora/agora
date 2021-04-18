@@ -13,6 +13,7 @@
 
 module agora.consensus.state.UTXODB;
 
+import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Types;
@@ -20,6 +21,7 @@ import agora.consensus.data.Transaction;
 public import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.script.Lock;
 import agora.serialization.Serializer;
 
 import std.file;
@@ -27,6 +29,8 @@ import std.file;
 ///
 package class UTXODB
 {
+    import d2sqlite3.results : PeekMode;
+
     /// SQLite db instance
     private ManagedDatabase db;
 
@@ -44,7 +48,9 @@ package class UTXODB
         this.db = db;
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, pubkey TEXT NOT NULL)");
+            "(hash TEXT NOT NULL PRIMARY KEY, unlock_height INTEGER NOT NULL, " ~
+            "type INTEGER NOT NULL, amount INTEGER NOT NULL, " ~
+            "locktype INTEGER NOT NULL, lock BLOB NOT NULL)");
     }
 
     /***************************************************************************
@@ -75,17 +81,23 @@ package class UTXODB
 
     ***************************************************************************/
 
-    public bool find (in Hash key, out UTXO value) nothrow @trusted
+    public bool find (in Hash key, out UTXO value) @trusted nothrow
     {
-        scope (failure) assert(0);
-        auto results = db.execute("SELECT val FROM utxo WHERE key = ?", key);
+        scope(failure) assert(0);
+        auto results = this.db.execute(
+            "SELECT unlock_height, type, amount, locktype, lock FROM utxo WHERE hash = ?", key);
 
         foreach (row; results)
         {
-            value = deserializeFull!UTXO(row.peek!(ubyte[])(0));
+            auto unlock_height = Height(row.peek!ulong(0));
+            auto type = row.peek!TxType(1);
+            // DMD BUG: Cannot construct the object directly, `inout` bug
+            Output output;
+            output.value = Amount(row.peek!ulong(2));
+            output.lock  = Lock(row.peek!(LockType)(3), row.peek!(ubyte[])(4));
+            value = UTXO(unlock_height, type, output);
             return true;
         }
-
         return false;
     }
 
@@ -101,18 +113,29 @@ package class UTXODB
 
     ***************************************************************************/
 
-    public UTXO[Hash] getUTXOs (in PublicKey pubkey) nothrow @trusted
+    public UTXO[Hash] getUTXOs (in PublicKey pubkey) @trusted nothrow
     {
-        scope (failure) assert(0);
-
+        scope(failure) assert(0);
         UTXO[Hash] utxos;
-        auto results = db.execute("SELECT key, val FROM utxo WHERE pubkey = ?",
-            pubkey);
+
+        auto results = this.db.execute(
+            "SELECT hash, unlock_height, type, amount, lock FROM utxo WHERE locktype = ? AND lock = ?",
+            LockType.Key, pubkey[]);
 
         foreach (row; results)
         {
-            auto hash = Hash(row.peek!(const(char)[])(0));
-            auto value = deserializeFull!UTXO(row.peek!(ubyte[])(1));
+            auto hash = Hash(row.peek!(const(char)[], PeekMode.slice)(0));
+            auto unlock_height = Height(row.peek!ulong(1));
+            auto type = row.peek!TxType(2);
+            // DMD BUG, see above
+            Output output;
+            output.value = Amount(row.peek!ulong(3));
+            output.lock  = Lock(LockType.Key, row.peek!(ubyte[])(4));
+            UTXO value = {
+                unlock_height: unlock_height,
+                type: type,
+                output: output,
+            };
             utxos[hash] = value;
         }
 
@@ -129,15 +152,12 @@ package class UTXODB
 
     ***************************************************************************/
 
-    public void opIndexAssign (const ref UTXO value, in Hash key) @safe
+    public void opIndexAssign (const ref UTXO value, in Hash key) @trusted
     {
-        static ubyte[] buffer;
-        serializeToBuffer(value, buffer);
-
-        scope (failure) assert(0);
-        () @trusted {
-            db.execute("INSERT INTO utxo (key, val, pubkey) VALUES (?, ?, ?)",
-                key, buffer, value.output.address); }();
+        db.execute("INSERT INTO utxo (hash, unlock_height, type, amount, locktype, lock) " ~
+                   "VALUES (?, ?, ?, ?, ?, ?)",
+                   key, value.unlock_height, value.type,
+                   value.output.value, value.output.lock.type, value.output.lock.bytes);
     }
 
     /***************************************************************************
@@ -149,10 +169,8 @@ package class UTXODB
 
     ***************************************************************************/
 
-    public void remove (in Hash key) nothrow @safe
+    public void remove (in Hash key) @trusted
     {
-        scope (failure) assert(0);
-        () @trusted {
-            db.execute("DELETE FROM utxo WHERE key = ?", key); }();
+        db.execute("DELETE FROM utxo WHERE hash = ?", key);
     }
 }
