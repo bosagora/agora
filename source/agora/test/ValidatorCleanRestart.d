@@ -63,8 +63,6 @@ unittest
             .split(keys).sign(TxType.Freeze))
         .each!(tx => set_a[0].putTransaction(tx));
 
-    network.generateBlocks(Height(GenesisValidatorCycle - 1));
-
     // wait for other nodes to get to same block height
     network.assertSameBlocks(Height(GenesisValidatorCycle - 1));
 
