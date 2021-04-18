@@ -35,6 +35,8 @@ import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
+import agora.utils.Utility;
+import std.format;
 import std.traits : EnumMembers;
 
 /// Contains a tag and either a Hash or set of opcodes
@@ -45,6 +47,33 @@ public struct Lock
 
     /// May either be a Hash, or a sequence of opcodes
     public const(ubyte)[] bytes;
+
+    ///
+    public void toString (scope void delegate (scope const(char)[]) @safe sink)
+        const @safe
+    {
+        final switch (this.type)
+        {
+        case LockType.Key:
+            const pub = PublicKey(this.bytes);
+            pub.toString(sink);
+            break;
+        case LockType.KeyHash:
+        case LockType.Script:
+        case LockType.Redeem:
+            // Mimic default behavior
+            formattedWrite(sink, "Lock(%s, %s)", this.type, UbyteHexString(this.bytes));
+            break;
+        }
+    }
+}
+
+unittest
+{
+    auto kp = KeyPair.random();
+    assert(format("%s", Lock(LockType.Key, kp.address[])) ==
+           format("%s", kp.address));
+    assert(format("%s", Lock(LockType.Script, [42, 69, 250])) == "Lock(Script, 2a45fa)");
 }
 
 /// Contains a data tuple or a set of push opcodes
@@ -52,6 +81,19 @@ public struct Unlock
 {
     /// May be: <signature>, <signature, key>, <push opcodes>
     public const(ubyte)[] bytes;
+
+    ///
+    public void toString (scope void delegate (scope const(char)[]) @safe sink)
+        const @safe
+    {
+        sink("0x");
+        UbyteHexString(this.bytes).toString(sink);
+    }
+}
+
+unittest
+{
+    assert(format("%s", Unlock([250, 69, 42])) == "0xfa452a");
 }
 
 /// The input lock types.
