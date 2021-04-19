@@ -316,7 +316,8 @@ public class FullNode : API
         {
             void discover () { this.network.discover(); }
             discover(); // avoid delay
-            this.timers ~= this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
+            this.timers ~= this.taskman.setTimer(
+                this.config.node.network_discovery_interval, &discover, Periodic.Yes);
         });
     }
 

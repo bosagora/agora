@@ -36,6 +36,8 @@ node:
   # The new block time offset has to be greater than the previous block time offset
   # but less than current time + block_time_offset_tolerance_secs
   block_time_offset_tolerance_secs: 60
+  # The duration between requests for doing periodic network discovery
+  network_discovery_interval_secs: 5
   # The duration between requests for retrieving the latest blocks
   # from all other nodes
   block_catchup_interval_secs: 20
