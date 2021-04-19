@@ -68,6 +68,7 @@ import vibe.web.rest;
 
 import std.algorithm;
 import std.conv : to;
+import std.datetime.stopwatch;
 import std.exception;
 import std.file;
 import std.format;
@@ -96,6 +97,9 @@ public class FullNode : API
 {
     /// Logger instance
     protected Logger log;
+
+    /// Log the time spent in endpoints
+    protected Logger timeLog;
 
     /// Config instance
     protected const Config config;
@@ -224,6 +228,7 @@ public class FullNode : API
         this.config = config;
         this.log = this.makeLogger();
         this.params = FullNode.makeConsensusParams(config);
+        this.timeLog = Log.lookup("TimeLog.API");
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
@@ -709,8 +714,11 @@ public class FullNode : API
 
     public override void putTransaction (Transaction tx) @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         this.endpoint_request_stats
             .increaseMetricBy!"agora_endpoint_calls_total"(1, "transaction", "http");
+
         auto tx_hash = hashFull(tx);
         if (this.pool.hasTransactionHash(tx_hash))
             return;
@@ -744,8 +752,11 @@ public class FullNode : API
     public override const(Block)[] getBlocksFrom (ulong height,
         uint max_blocks)  @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         this.endpoint_request_stats
             .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks_from", "http");
+
         return this.ledger.getBlocksFrom(Height(height))
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
@@ -753,14 +764,19 @@ public class FullNode : API
     /// GET: /blocks/:height
     public override const(Block) getBlock (ulong height)  @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         this.endpoint_request_stats
             .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks", "http");
+
         return this.ledger.getBlocksFrom(Height(height)).front();
     }
 
     /// GET: /merkle_path
     public override Hash[] getMerklePath (ulong height, Hash hash) @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "merkle_path", "http");
 
         const Height stored_height = Height(height);
@@ -778,6 +794,8 @@ public class FullNode : API
     /// PUT: /enroll_validator
     public override void enrollValidator (Enrollment enroll) @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "enroll_validator", "http");
 
         UTXO utxo;
@@ -801,6 +819,8 @@ public class FullNode : API
     /// PUT: /receive_preimage
     public override void receivePreimage (PreImageInfo preimage) @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_preimage", "http");
         log.trace("Received Preimage: {}", prettify(preimage));
 
@@ -823,6 +843,9 @@ public class FullNode : API
     public override PreImageInfo[] getPreimages (ulong start_height,
         ulong end_height) @safe nothrow
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
+
         return this.enroll_man.getValidatorPreimages(Height(start_height),
             Height(end_height)).array();
     }
@@ -867,6 +890,9 @@ public class FullNode : API
 
     private void pushBlock (const Block block) @trusted
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
+
         foreach (address, handler; this.block_handlers)
         {
             this.taskman.runTask({
@@ -900,6 +926,9 @@ public class FullNode : API
     {
         foreach (address, handler; this.preimage_handlers)
         {
+            auto sw = StopWatch(AutoStart.yes);
+            scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
+
             this.taskman.runTask({
                 try
                 {
@@ -928,6 +957,9 @@ public class FullNode : API
 
     protected void pushTransaction (const Transaction tx) @trusted
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
+
         foreach (address, handler; this.transaction_handlers)
         {
             this.taskman.runTask({
@@ -958,6 +990,10 @@ public class FullNode : API
     public Transaction[] getTransactions (Set!Hash tx_hashes) @safe
     {
         Transaction[] found_txs;
+
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
+
         foreach (hash; tx_hashes)
         {
             if (found_txs.length >= MaxBatchTranscationsSent)
@@ -983,6 +1019,9 @@ public class FullNode : API
     {
         import std.algorithm: min;
         import std.conv;
+
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
 
         BlockHeader[] headers;
         if (!heights.empty)

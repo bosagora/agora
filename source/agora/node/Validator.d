@@ -45,6 +45,7 @@ import agora.utils.PrettyPrinter;
 import scpd.types.Stellar_SCP;
 
 import std.algorithm : each;
+import std.datetime.stopwatch;
 
 import core.stdc.stdlib : abort;
 import core.time;
@@ -353,8 +354,11 @@ public class Validator : FullNode, API
 
     public override void receiveEnvelope (SCPEnvelope envelope) @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
             1, "receive_envelope", "http");
+
         this.nominator.receiveEnvelope(envelope);
     }
 
@@ -372,7 +376,10 @@ public class Validator : FullNode, API
 
     public override void receiveBlockSignature (ValidatorBlockSig block_sig) @safe
     {
+        auto sw = StopWatch(AutoStart.yes);
+        scope (exit) this.timeLog.info("{}: Elapsed time: {}", __FUNCTION__, sw.peek());
         endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_block_signature", "http");
+
         this.nominator.receiveBlockSignature(block_sig);
     }
 
