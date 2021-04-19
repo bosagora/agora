@@ -226,6 +226,9 @@ public struct ValidatorConfig
 
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
+
+    /// How often the nomination timer should trigger, in milliseconds
+    public Duration nomination_interval = 1.seconds;
 }
 
 /// Admin API config
@@ -611,6 +614,8 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
     const recurring_enrollment = get!(bool, "validator", "recurring_enrollment")(cmdln, node);
     const preimage_reveal_interval = get!(Duration, "validator", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
+    const nomination_interval = get!(Duration, "validator", "nomination_interval",
+        str => str.to!ulong.msecs)(cmdln, node);
 
     ValidatorConfig result = {
         enabled: true,
@@ -620,6 +625,7 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
         addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
         recurring_enrollment : recurring_enrollment,
         preimage_reveal_interval : preimage_reveal_interval,
+        nomination_interval : nomination_interval,
     };
     return result;
 }
