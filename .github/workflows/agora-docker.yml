@@ -33,9 +33,9 @@ jobs:
         run: |
           set -xeu
           set -o pipefail
-          if [[ $github_ref == /refs/tags/* ]]
+          if [[ $github_ref == refs/tags/* ]]
           then
-            AGORA_VERSION="${github_ref#"/refs/tags/"}-${github_sha}"
+            AGORA_VERSION="${github_ref#"refs/tags/"}"
           else
             AGORA_VERSION="$github_sha"
           fi
