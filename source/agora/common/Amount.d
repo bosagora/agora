@@ -529,9 +529,9 @@ unittest
     assert(amt == Amount(1));
     assert(is_valid);
 
-    amt = Amount(ulong.max);
-    is_valid = amt.percentage(2);
-    assert(is_valid);
+    amt = Amount.MaxUnitSupply;
+    assert(amt.percentage(100));
+    assert(!amt.percentage(101));
 }
 
 unittest
