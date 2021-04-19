@@ -127,7 +127,6 @@ unittest
     auto nodes = network.clients;
     auto node_1 = nodes[0];
     auto node_2 = nodes[1];
-    auto on_nodes = nodes[1 .. $-1];    // full node
 
     // Create a block from the Genesis block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
