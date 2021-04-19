@@ -413,8 +413,11 @@ public abstract class FlashNode : FlashControlAPI
             return Result!PublicNonce(ErrorCode.DuplicateChannelID,
                 "There is already an open channel with this ID");
 
-        // todo: move to initialization stage!
         auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout);
+        if (peer is null)
+            return Result!PublicNonce(ErrorCode.AddressNotFound,
+                format("Cannot find address of flash node in registry for the key %s",
+                    chan_conf.funder_pk));
 
         if (chan_conf.gen_hash != this.genesis_hash)
             return Result!PublicNonce(ErrorCode.InvalidGenesisHash,
@@ -900,6 +903,12 @@ public abstract class FlashNode : FlashControlAPI
     private void handleOpenNewChannel (ChannelConfig chan_conf)
     {
         auto peer = this.getFlashClient(chan_conf.peer_pk, this.conf.timeout);
+        if (peer is null)
+        {
+            this.listener.onChannelNotify(chan_conf.chan_id,
+                ChannelState.Rejected, ErrorCode.AddressNotFound);
+            return;
+        }
 
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();

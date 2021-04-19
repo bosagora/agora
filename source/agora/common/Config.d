@@ -656,6 +656,7 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         (cmdln, node);
     enforce(max_retry_time > max_retry_delay, "`max_retry_time` must be greater than `max_retry_delay`");
     const retry_multiplier = opt!(uint, "flash", "retry_multiplier")(cmdln, node);
+    const registry_address = get!(string, "validator", "registry_address")(cmdln, node);
 
     FlashConfig result = {
         enabled: true,
@@ -670,6 +671,8 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         max_retry_time : max_retry_time,
         max_retry_delay : max_retry_delay,
         retry_multiplier : retry_multiplier,
+        registry_address : registry_address,
+        addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
     };
     return result;
 }

@@ -31,6 +31,12 @@ public struct FlashConfig
     /// Whether or not this node should support the Flash API
     public bool enabled;
 
+    /// Flash name registry address
+    public string registry_address;
+
+    // Network addresses that will be registered with the public key
+    public immutable string[] addresses_to_register;
+
     /// Timeout for requests
     public Duration timeout = 10.seconds;
 

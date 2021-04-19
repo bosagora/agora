@@ -519,7 +519,17 @@ public class Channel
         // if it's a preloaded channel we can only retrieve the flash client
         // once the event loop is running (LocalRest issue)
         if (this.peer is null)
+        {
             this.peer = getFlashClient(this.peer_pk, this.flash_conf.timeout);
+
+            // this would mean some of the metadata on disk is missing (flash registry)
+            // FIXME: add retry mechanism for loading this channel until peer is found,
+            // and force unilateral closure after a given timeout.
+            if (this.peer is null)
+                throw new Exception(format(
+                    "Cannot find address of flash node in registry for the key %s",
+                    this.peer_pk));
+        }
 
 LOuter: while (1)
         {

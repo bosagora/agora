@@ -22,6 +22,9 @@ public enum ErrorCode : ushort
     /// Unknown error
     Unknown,
 
+    /// Cannot find this node in the flash node registry
+    AddressNotFound,
+
     /// Couldn't find a path to another node, or it was too long
     PathNotFound,
 
