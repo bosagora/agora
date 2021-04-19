@@ -51,6 +51,7 @@ import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.node.Ledger;
 import agora.node.TransactionPool;
+import agora.registry.API;
 import agora.script.Engine;
 import agora.serialization.Serializer;
 import agora.stats.App;
@@ -79,14 +80,84 @@ import core.time;
 /// Cannot use multiple inheritance in D.
 public mixin template FlashNodeCommon ()
 {
+    import agora.utils.InetUtils;
+    import core.stdc.time;
+
+    /// Periodic name registry timer
+    protected ITimer periodic_timer;
+
+    /// Registry client
+    private NameRegistryAPI registry_client;
+
+    // start the periodic name registry routine
+    private void startNameRegistry ()
+    {
+        this.onRegisterName();  // avoid delay
+        this.periodic_timer = this.taskman.setTimer(2.minutes,
+            &this.onRegisterName, Periodic.Yes);
+    }
+
+    /// register network addresses into the name registry
+    private void onRegisterName ()
+    {
+        if (this.registry_client is null)  // try to get the client
+            this.registry_client = this.network.getNameRegistryClient(
+                this.config.flash.registry_address, 10.seconds);
+
+        if (this.registry_client is null)
+            return;  // failed, try again later
+
+        const(Address)[] addresses = this.config.flash.addresses_to_register;
+        if (!addresses.length)
+            addresses = InetUtils.getPublicIPs();
+
+        RegistryPayload payload =
+        {
+            data:
+            {
+                public_key : this.config.flash.key_pair.address,
+                addresses : addresses,
+                seq : time(null)
+            }
+        };
+
+        payload.signPayload(this.config.flash.key_pair);
+
+        try
+        {
+            this.registry_client.putValidator(payload);
+        }
+        catch (Exception ex)
+        {
+            log.info("Couldn't register our address: {}. Trying again later..",
+                ex);
+        }
+    }
+
     private ExtendedFlashAPI getFlashClient (in Point peer_pk, Duration timeout)
     {
         // todo: need to retry later
         // todo: need a key => IP mapping (maybe through the NameRegistryAPI?)
         auto pk = PublicKey(peer_pk[]);
         log.info("getFlashClient searching peer: {}", pk);
-        auto ip = this.network.getAddress(pk);
-        enforce(ip !is null, "Could not find mapping of key => IP");
+
+        auto payload = this.registry_client.getValidator(pk);
+        if (payload == RegistryPayload.init)
+        {
+            log.warn("Could not find mapping in registry for key {}", peer_pk);
+            return null;
+        }
+
+        if (!payload.verifySignature(pk))
+        {
+            log.warn("RegistryPayload signature is incorrect for {}", peer_pk);
+            return null;
+        }
+
+        if (payload.data.addresses.length == 0)
+            return null;
+
+        string ip = payload.data.addresses[0];
 
         import vibe.http.client;
 
@@ -255,6 +326,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
     public override void start ()
     {
         super.start();
+        this.startNameRegistry();
 
         if (this.config.flash.testing)
         {
@@ -267,6 +339,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
     public override void shutdown ()
     {
         this.flash.shutdown();
+        this.periodic_timer.stop();
     }
 
     public override void receiveInvoice (Invoice invoice)

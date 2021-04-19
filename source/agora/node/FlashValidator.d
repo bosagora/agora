@@ -271,6 +271,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
     // destination channel
     private void runCharlieTasks ()
     {
+        import std.format;
         log.info("Running Charlie tasks");
 
         const alice_pair = Pair(WK.Keys.NODE2.secret,
@@ -306,6 +307,9 @@ public class FlashValidator : Validator, FlashValidatorAPI
         log.info("Charlie's invoice is: {}", inv_1);
 
         auto alice = this.getFlashClient(alice_pk, this.config.flash.timeout);
+        if (alice is null)
+            throw new Exception(format(
+                "Test: Cannot find node Alice %s in Flash registry", alice_pk));
 
         log.info("Charlie: Sending invoice to {} ({}):", alice_pk, alice);
         alice.receiveInvoice(inv_1);
