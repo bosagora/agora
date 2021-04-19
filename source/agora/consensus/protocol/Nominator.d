@@ -60,7 +60,7 @@ import std.algorithm;
 import std.conv;
 import std.format;
 import std.path : buildPath;
-import core.time : msecs, seconds;
+import core.time;
 
 // TODO: The block should probably have a size limit rather than a maximum
 //  number of transactions.
@@ -128,6 +128,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Used as "prev_value" when nominating
     private const Value empty_value;
 
+    /// User configured nomination frequency
+    private const Duration nomination_interval;
+
     /// Delegate called when node's own nomination is invalid
     public extern (D) void delegate (in ConsensusData data, in string msg)
         @safe onInvalidNomination;
@@ -147,12 +150,14 @@ extern(D):
             enroll_man = used to look up the commitment & preimages
             taskman = used to run timers
             data_dir = path to the data directory
+            nomination_interval = How often to trigger `checkNominate`
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
         Clock clock, NetworkManager network, ValidatingLedger ledger,
-        EnrollmentManager enroll_man, ITaskManager taskman, string data_dir)
+        EnrollmentManager enroll_man, ITaskManager taskman, string data_dir,
+        Duration nomination_interval)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
@@ -169,6 +174,7 @@ extern(D):
         this.enroll_man = enroll_man;
         this.scp_envelope_store = this.makeSCPEnvelopeStore(data_dir);
         this.restoreSCPState();
+        this.nomination_interval = nomination_interval;
     }
 
     /***************************************************************************
@@ -221,9 +227,7 @@ extern(D):
 
         // For unittests we don't want to wait 1 second between checks
         log.info("Starting nominating timer..");
-        version (unittest) enum CheckNominateInterval = 100.msecs;
-        else enum CheckNominateInterval = 1.seconds;
-        this.nomination_timer = this.taskman.setTimer(CheckNominateInterval,
+        this.nomination_timer = this.taskman.setTimer(this.nomination_interval,
             &this.checkNominate, Periodic.Yes);
     }
 

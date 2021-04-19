@@ -1794,7 +1794,7 @@ public class TestValidatorNode : Validator, TestAPI
     {
         return new TestNominator(
             this.params, this.config.validator.key_pair, args,
-            this.config.node.data_dir,
+            this.config.node.data_dir, this.config.validator.nomination_interval,
             this.txs_to_nominate, this.test_start_time);
     }
 
@@ -2040,6 +2040,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             registry_address : test_conf.registry_address,
             recurring_enrollment : test_conf.recurring_enrollment,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
+            nomination_interval: 100.msecs,
         };
 
         Config conf =
