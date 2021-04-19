@@ -66,5 +66,5 @@ network:
 ##                               Logging options                              ##
 ################################################################################
 logging:
-  config:
+  root:
     level: Info
