@@ -327,7 +327,7 @@ public class NetworkManager
     protected Logger log;
 
     /// Config instance
-    public const NodeConfig node_config = NodeConfig.init;
+    protected const NodeConfig node_config = NodeConfig.init;
 
     /// Validator instance
     protected const ValidatorConfig validator_config = ValidatorConfig.init;

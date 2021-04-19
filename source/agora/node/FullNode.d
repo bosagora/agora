@@ -348,7 +348,7 @@ public class FullNode : API
             }
             catchup(); // avoid delay
             this.timers ~= this.taskman.setTimer(
-                this.network.node_config.block_catchup_interval, &catchup, Periodic.Yes);
+                this.config.node.block_catchup_interval, &catchup, Periodic.Yes);
         });
     }
 
