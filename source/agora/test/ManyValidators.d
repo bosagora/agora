@@ -69,11 +69,11 @@ void manyValidators (size_t validators)
     network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
 
-    // check all validators are enrolled
+    // check all validators are enrolled at block 20 by counting active in next block height
     network.clients.enumerate.each!((idx, node) =>
-        retryFor(node.countActiveIfExternalized(Height(19)) == validators, 5.seconds,
+        retryFor(node.countActive(Height(GenesisValidatorCycle + 1)) == validators, 5.seconds,
             format("Node %s has validator count %s. Expected: %s",
-                idx, node.countActiveIfExternalized(Height(19)), validators)));
+                idx, node.countActive(Height(GenesisValidatorCycle + 1)), validators)));
 
     // first validated block using all nodes
     network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1));

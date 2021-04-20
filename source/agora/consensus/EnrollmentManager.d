@@ -974,42 +974,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Gets the number of active validators at the next block height.
-
-        `height` is the height of the next block to be created. The count is of
-        how many validators will be active in the following block should the
-        block at `height` be externalized.
-        If the active validators are less than the specified value,
-        new blocks cannot be created.
-
-        Params:
-            height = the height of proposed block
-
-        Returns:
-            Returns the number of active validators when the block height is
-            `height`.
-            Returns 0 in case of error.
-
-     ***************************************************************************/
-
-    public ulong countActiveIfExternalized (in Height height) @safe nothrow
-    {
-        return this.validator_set.countActive(height + 1);
-    }
-
-    /***************************************************************************
-
-        See `ValidatorSet.countActive`
-
-    ***************************************************************************/
-
-    public ulong countActive (in Height height) @safe nothrow
-    {
-        return this.validator_set.countActive(height);
-    }
-
-    /***************************************************************************
-
         Get the enrollment with the key
 
         Params:
@@ -1149,6 +1113,9 @@ unittest
     assert(!man.addEnrollment(fail_enroll, gen_key_pair.address, EnrollAt1,
             utxo_set.getUTXOFinder()));
 
+    Enrollment[] enrolls_before = man.getEnrollments(EnrollAt1, &utxo_set.peekUTXO);
+    assert(enrolls_before.length == 0);
+
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
@@ -1178,43 +1145,51 @@ unittest
     assert(man.getEnrollment(utxo_hashes[1]) == Enrollment.init);
 
     // test for enrollment block height update
+    const EnrollAt9 = Height(9);
+    assert(man.validator_set.countActive(EnrollAt9) == 0);
     assert(man.getEnrolledHeight(utxo_hash) == ulong.max);
-    assert(man.addValidator(ordered_enrollments[0], pairs[0].address, Height(9),
+    assert(man.addValidator(ordered_enrollments[0], pairs[0].address, EnrollAt9,
             &utxo_set.peekUTXO, utxos) is null);
-    assert(man.getEnrolledHeight(ordered_enrollments[0].utxo_key) == 9);
-    assert(man.addValidator(ordered_enrollments[0], pairs[0].address, Height(9),
+    assert(man.getEnrolledHeight(ordered_enrollments[0].utxo_key) == EnrollAt9.value);
+    assert(man.addValidator(ordered_enrollments[0], pairs[0].address, EnrollAt9,
             utxo_set.getUTXOFinder(), utxos) !is null);
     assert(man.getEnrolledHeight(ordered_enrollments[1].utxo_key) == ulong.max);
-    enrolls = man.getEnrollments(Height(9), &utxo_set.peekUTXO);
+    enrolls = man.getEnrollments(EnrollAt9, &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set
-    assert(man.countActiveIfExternalized(Height(9)) == 1);
+    assert(man.validator_set.countActive(EnrollAt9) == 1);
+    // Check last block of cycle is still active
+    assert(man.validator_set.countActive(EnrollAt9 + params.ValidatorCycle) == 1);
+    // Check block in next cycle is no longer active
+    assert(man.validator_set.countActive(EnrollAt9 + params.ValidatorCycle + 1) == 0);
     assert(man.enroll_pool.count() == 1);
 
     man.enroll_pool.remove(utxo_hashes[0]);
     man.enroll_pool.remove(utxo_hashes[1]);
     man.enroll_pool.remove(utxo_hashes[2]);
-    assert(man.getEnrollments(Height(9), &utxo_set.peekUTXO).length == 0);
+    assert(man.getEnrollments(EnrollAt9, &utxo_set.peekUTXO).length == 0);
 
     // clear up all validators
     man.validator_set.removeAll();
 
-    // Reverse ordering
+    // Adding enrollments in reverse order of utxo order to show it still works
+    const EnrollAt10 = Height(10);
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (idx, ordered_enroll; ordered_enrollments)
-        assert(man.addEnrollment(ordered_enroll, pairs[idx].address, Height(10),
+        assert(man.addEnrollment(ordered_enroll, pairs[idx].address, EnrollAt10,
             &utxo_set.peekUTXO));
     enrolls = man.getEnrollments(Height(man.params.ValidatorCycle + 8), &utxo_set.peekUTXO);
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 
     // A validation is enrolled at the height of 10.
+
     PreImageInfo preimage;
-    assert(man.addValidator(ordered_enrollments[0], WK.Keys[0].address, Height(10),
+    assert(man.addValidator(ordered_enrollments[0], WK.Keys[0].address, EnrollAt10,
             &utxo_set.peekUTXO, utxos) is null);
-    assert(man.getNextPreimage(preimage, Height(10)));
+    assert(man.getNextPreimage(preimage, EnrollAt10));
     assert(preimage.hash ==
-        man.cycle.preimages[$ - 1 - man.PreimageRevealPeriod - Height(10).value]);
+        man.cycle.preimages[$ - 1 - man.PreimageRevealPeriod - EnrollAt10.value]);
 
     // test for getting validators' UTXO keys
     Hash[] keys;
@@ -1225,7 +1200,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[1], WK.Keys[1].address, Height(11),
             &utxo_set.peekUTXO, utxos) is null);
     man.clearExpiredValidators(Height(11));
-    assert(man.countActiveIfExternalized(Height(11)) == 2);
+    assert(man.validator_set.countActive(Height(11)) == 2);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 2);
 
@@ -1235,7 +1210,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[2], WK.Keys[2].address, Height(1019),
             &utxo_set.peekUTXO, utxos) is null);
     man.clearExpiredValidators(Height(1019));
-    assert(man.countActiveIfExternalized(Height(1019)) == 1);
+    assert(man.validator_set.countActive(Height(1019)) == 1);
     assert(man.getEnrolledUTXOs(keys));
     assert(keys.length == 1);
     assert(keys[0] == ordered_enrollments[2].utxo_key);
@@ -1304,7 +1279,7 @@ unittest
     }
 }
 
-/// tests for `EnrollmentManager.countActiveIfExternalized
+/// tests for `EnrollmentManager.countActive
 unittest
 {
     import agora.consensus.data.Transaction;
@@ -1344,56 +1319,56 @@ unittest
     // create and add the first Enrollment object
     assert(man.addEnrollment(enrollments[0], WK.Keys[0].address, height,
             utxo_set.getUTXOFinder()));
-    assert(man.countActiveIfExternalized(height) == 0);  // not active yet
+    assert(man.validator_set.countActive(height) == 0);  // not active yet
 
     man.clearExpiredValidators(height);
     assert(man.addValidator(enrollments[0], WK.Keys[0].address, height, &utxo_set.peekUTXO,
             utxos) is null);
-    assert(man.countActiveIfExternalized(height) == 1);  // updated
+    assert(man.validator_set.countActive(height) == 1);  // updated
 
     height = 3;
 
     // create and add the second Enrollment object
     assert(man.addEnrollment(enrollments[1], WK.Keys[1].address, height,
             utxo_set.getUTXOFinder()));
-    assert(man.countActiveIfExternalized(height) == 1);  // not active yet
+    assert(man.validator_set.countActive(height) == 1);  // not active yet
 
     man.clearExpiredValidators(height);
     assert(man.addValidator(enrollments[1], WK.Keys[1].address, height, &utxo_set.peekUTXO,
             utxos) is null);
-    assert(man.countActiveIfExternalized(height) == 2);  // updated
+    assert(man.validator_set.countActive(height) == 2);  // updated
 
     height = 4;
 
     // create and add the third Enrollment object
     assert(man.addEnrollment(enrollments[2], WK.Keys[2].address, height,
             utxo_set.getUTXOFinder()));
-    assert(man.countActiveIfExternalized(height) == 2);  // not active yet
+    assert(man.validator_set.countActive(height) == 2);  // not active yet
 
     man.clearExpiredValidators(height);
     assert(man.addValidator(enrollments[2], WK.Keys[2].address, height, &utxo_set.peekUTXO,
             utxos) is null);
-    assert(man.countActiveIfExternalized(height) == 3);  // updated
+    assert(man.validator_set.countActive(height) == 3);  // updated
 
     height = 5;    // valid block height : 0 <= H < 1008
     man.clearExpiredValidators(height);
-    assert(man.countActiveIfExternalized(height) == 3);  // not cleared yet
+    assert(man.validator_set.countActive(height) == 3);  // not cleared yet
 
     height = 1009; // valid block height : 2 <= H < 1010
     man.clearExpiredValidators(height);
-    assert(man.countActiveIfExternalized(height) == 3);
+    assert(man.validator_set.countActive(height) == 3);
 
     height = 1010; // valid block height : 3 <= H < 1011
     man.clearExpiredValidators(height);
-    assert(man.countActiveIfExternalized(height) == 2);
+    assert(man.validator_set.countActive(height) == 2);
 
     height = 1011; // valid block height : 4 <= H < 1012
     man.clearExpiredValidators(height);
-    assert(man.countActiveIfExternalized(height) == 1);
+    assert(man.validator_set.countActive(height) == 1);
 
     height = 1012; // valid block height : 5 <= H < 1013
     man.clearExpiredValidators(height);
-    assert(man.countActiveIfExternalized(height) == 0);
+    assert(man.validator_set.countActive(height) == 0);
 }
 
 // https://github.com/bosagora/agora/pull/1010#issuecomment-654149650
@@ -1606,7 +1581,7 @@ unittest
     assert(!findEnrollment(genesis_enroll.utxo_key, state));
     assert(man.addValidator(genesis_enroll, key_pair.address, Height(0),
                                 &utxo_set.peekUTXO, utxo_set.storage) is null);
-    assert(man.countActiveIfExternalized(Height(0)) == 1);
+    assert(man.validator_set.countActive(Height(0)) == 1);
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.status == EnrollmentStatus.Active);
     assert(state.enrolled_height == Height(0));
@@ -1646,11 +1621,11 @@ unittest
     assert(state.preimage.hash == preimage.hash);
     assert(state.preimage.distance == preimage.distance);
 
-    assert(man.countActiveIfExternalized(Height(params.ValidatorCycle)) == 0);
+    assert(man.validator_set.countActive(Height(params.ValidatorCycle)) == 0);
     assert(man.addValidator(enrolls[0], key_pair.address,
             Height(params.ValidatorCycle), &utxo_set.peekUTXO,
                                                 utxo_set.storage) is null);
-    assert(man.countActiveIfExternalized(Height(params.ValidatorCycle)) == 1);
+    assert(man.validator_set.countActive(Height(params.ValidatorCycle)) == 1);
 }
 
 // Test for adding and removing validators
@@ -1685,7 +1660,7 @@ unittest
     assert(man.addValidator(e2, WK.Keys.B.address, Height(2), &utxo_set.peekUTXO,
         utxo_set.storage) is null);
 
-    assert(man.countActiveIfExternalized(Height(2)) == 2);
+    assert(man.validator_set.countActive(Height(2)) == 2);
     man.unenrollValidator(utxos[0]);
-    assert(man.countActiveIfExternalized(Height(2)) == 1);
+    assert(man.validator_set.countActive(Height(2)) == 1);
 }
