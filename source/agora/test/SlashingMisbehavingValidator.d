@@ -138,7 +138,7 @@ unittest
     network.expectHeight(Height(2));
     auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
     assert(block2.header.missing_validators.length == 1);
-    auto cnt = nodes[0].countActiveIfExternalized(block2.header.height);
+    auto cnt = nodes[0].countActive(block2.header.height + 1);
     assert(cnt == 5, format!"Invalid validator count, current: %s"(cnt));
 
     // check if the frozen UTXO is refunded to the owner and
