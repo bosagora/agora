@@ -8,8 +8,22 @@
     "importPaths": [ "../../../" ],
     "sourceFiles": [
         "../../common/Types.d",
+        "../../crypto/Bech32.d",
         "../../crypto/Crc16.d",
         "../../crypto/Key.d"
+    ],
+
+    "configurations": [
+        {
+            "name": "app",
+            "mainSourceFile": "main.d",
+            "sourceFiles": [ "main.d" ]
+        },
+        {
+            "name": "unittest",
+            "mainSourceFile": "main.d",
+            "sourceFiles": [ "main.d" ]
+        }
     ],
 
     "dependencies": {

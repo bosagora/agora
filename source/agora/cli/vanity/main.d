@@ -29,44 +29,46 @@ import std.range;
 import std.stdio;
 import std.string;
 
+// Number of keys to generate
+// FIXME: Currently this is hardcoded, and used to derive from `MaxNameSize`
+//        However, depending on that constant means we can only generate entire
+//        ranges, while we might want to have all keys between 'a' and 'acc'
+//        for example.
+// immutable size_t KeyCountTarget = totalKeyCount(MaxNameSize);
+immutable size_t KeyCountTarget = nameIndex("azz") + 1;
+
 /// Change this directly to generate different size
 enum size_t MaxNameSize = 3;
 
-/**
- * Addresses always start with G{A,B,C,D}
- * We pick the addresses that start with GD, then match our expected
- * char, and are followed by a `2`, so that we have an 'end marker'
- * in case we want more letters (e.g. AA or AAA).
- * Removing this check will yield much better performance at the expense of less
- * predictable pattern.
- */
-enum char FirstChar = 'D';
 /// The end marker to use after the pattern
-enum char EndMarker = '2';
+enum char EndMarker = '0';
 
 /// The index at which the pattern starts
-enum size_t FirstIdx = 2;
+enum size_t FirstIdx = "boa1xx".length;
 /// The number of `EndMarker` that should be after the pattern
-enum size_t MarkerCount = 2;
+enum size_t MarkerCount = "00".length;
 
 // Constant that depend on the previous constant
 alias Name = char[MaxNameSize];
-immutable size_t KeyCountTarget = totalKeyCount(MaxNameSize);
 enum size_t LastIdx = FirstIdx + MaxNameSize;
 
 /// Useful constant for iteration
-immutable Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static assert(Alphabet.length == 26);
+immutable Alphabet = "acdefghjklmnpqrstuvwxyz";
+static assert(Alphabet.length == 23); // No 'b', 'i', 'o' in Bech32
+
+/// Helper function
+bool isInRange (char c) @safe pure nothrow @nogc
+{ return c >= Alphabet[0] && c <= Alphabet[$-1]; }
 
 immutable string[] SpecialNames = [
-    "GENESIS",
-    "COMMONS",
-    "NODE2",
-    "NODE3",
-    "NODE4",
-    "NODE5",
-    "NODE6",
-    "NODE7",
+    "genes",
+    "cmmns",
+    "vald2",
+    "vald3",
+    "vald4",
+    "vald5",
+    "vald6",
+    "vald7",
 ];
 
 /// Stored globally to avoid large stack / TLS issues
@@ -76,6 +78,10 @@ __gshared bool[KeyCountTarget + SpecialNames.length] foundMap;
 void main (string[] args)
 {
     shared size_t found;
+
+    writefln("Vanity miner configured for keys [%s;%s] (total: %s keys)",
+       indexName(0), indexName(KeyCountTarget - 1), KeyCountTarget);
+
     foreach (_; parallel(iota(42)))
     {
     NextKey:
@@ -85,14 +91,6 @@ void main (string[] args)
 
             // TODO: Use binary to avoid `toString` call
             const addr = PublicKey(tmp.V).toString();
-
-            // Make sure we starts with `GD`
-            if (addr[1] != FirstChar)
-                continue;
-
-            // Find match for letter(s)
-            if (addr[2] < 'A' || addr[2] > 'Z')
-                continue;
 
             if (auto index = specialNameIndex(addr))
             {
@@ -109,6 +107,10 @@ void main (string[] args)
                 continue NextKey;
             }
 
+            // Find match for letter(s)
+            if (!isInRange(addr[FirstIdx]))
+                continue;
+
             size_t endMarkerSeen;
             immutable MarkerStart = LastIdx - FirstIdx;
         Search:
@@ -124,13 +126,19 @@ void main (string[] args)
                         const name = addr[FirstIdx .. FirstIdx + 1 + idx - MarkerCount];
                         const index = nameIndex(name);
                         // Whether we already found it or not, we go to the next key
-                        found.onFound(index, tmp.v);
+                        // We might get an index that is out of range, for example
+                        // get found zzz but we only want up to 'azz'.
+                        // In this case we can't call `onFound` because it would
+                        // either assert or override a special key, as they are
+                        // just stored after the keys.
+                        if (index < KeyCountTarget)
+                            found.onFound(index, tmp.v);
                         continue NextKey;
                     }
                     continue Search;
 
-                    // Longer key, store it and keep looking
-                case 'A': .. case 'Z':
+                // Longer key, store it and keep looking
+                case 'a': .. case 'z':
                     if (endMarkerSeen || idx >= MarkerStart)
                         continue NextKey;
                     continue Search;
@@ -175,23 +183,26 @@ private bool onFound (ref shared size_t found, size_t index, Scalar value)
 /// Print the key to stdout
 private void printKey (const(char)[] name, Pair kp)
 {
+    stdout.writeln(); // We were at "Keys found: XX/XX"
     stdout.writefln("/// %s: %s", name, PublicKey(kp.V));
     stdout.writefln("static immutable %s = KeyPair(PublicKey(Point(%s)), SecretKey(Scalar(%s)));",
-                    name.strip, kp.V[], kp.v[]);
+                    name.strip.toUpper, kp.V[], kp.v[]);
 }
 
-/// Check special target: GENESIS, COMMONS, NODE...
+/// Check special target: Genesis address, Commons budget, initial validators...
 private size_t specialNameIndex (const(char)[] name)
 {
+    name = name[FirstIdx .. $];
     static foreach (idx, n; SpecialNames)
     {
-        if (name[2 .. 2 + n.length] == n)
+        if (name.startsWith(n))
         {
-            static if (idx == 0 || idx == 1)
-                return (name[2 + n.length] >= '0' && name[2 + n.length] <= '9')
-                    ? idx + KeyCountTarget: 0;
+            // If it ends with a number, find any character as terminating char
+            static if (n[$-1] >= '0' && n[$-1] <= '9')
+                return name[n.length].isInRange() ? idx + KeyCountTarget: 0;
+            // Else ends with a char, so find a number as terminating char
             else
-                return (name[2 + n.length] >= 'A' && name[2 + n.length] <= 'Z')
+                return (name[n.length] >= '0' && name[n.length] <= '9')
                     ? idx + KeyCountTarget: 0;
         }
     }
@@ -202,19 +213,19 @@ private size_t specialNameIndex (const(char)[] name)
 //
 unittest
 {
-    assert(specialNameIndex("GDGENESIS42") == KeyCountTarget + 0);
-    assert(specialNameIndex("GDCOMMONS42") == KeyCountTarget + 1);
-    assert(specialNameIndex("GDNODE2A")    == KeyCountTarget + 2);
-    assert(specialNameIndex("GDNODE3B")    == KeyCountTarget + 3);
-    assert(specialNameIndex("GDNODE4C")    == KeyCountTarget + 4);
-    assert(specialNameIndex("GDNODE5D")    == KeyCountTarget + 5);
-    assert(specialNameIndex("GDNODE6E")    == KeyCountTarget + 6);
-    assert(specialNameIndex("GDNODE7F")    == KeyCountTarget + 7);
+    assert(specialNameIndex("boa1xzgenes42acdef") == KeyCountTarget + 0);
+    assert(specialNameIndex("boa1xzcmmns69acdef") == KeyCountTarget + 1);
+    assert(specialNameIndex("boa1xzvald2acdefgh") == KeyCountTarget + 2);
+    assert(specialNameIndex("boa1xzvald3acdefgh") == KeyCountTarget + 3);
+    assert(specialNameIndex("boa1xzvald4acdefgh") == KeyCountTarget + 4);
+    assert(specialNameIndex("boa1xzvald5acdefgh") == KeyCountTarget + 5);
+    assert(specialNameIndex("boa1xzvald6acdefgh") == KeyCountTarget + 6);
+    assert(specialNameIndex("boa1xzvald7acdefgh") == KeyCountTarget + 7);
 
-    assert(specialNameIndex("GDGENESISS123") == 0);
-    assert(specialNameIndex("GDCOMMONSA456") == 0);
-    assert(specialNameIndex("GDNODE74FF")    == 0);
-    assert(specialNameIndex("GDNODES24FF")   == 0);
+    assert(specialNameIndex("boa1xzgenesiss123a") == 0);
+    assert(specialNameIndex("boa1xzcmmnsa456acd") == 0);
+    assert(specialNameIndex("boa1xzvald74acdefg") == 0);
+    assert(specialNameIndex("boa1xzvalds24acdef") == 0);
 }
 
 /// Returns: The total number of keys for this range and all smaller ranges
@@ -223,7 +234,7 @@ private size_t totalKeyCount (size_t count) pure nothrow @nogc @safe
     size_t result;
     while (count)
     {
-        result += 26 ^^ count;
+        result += Alphabet.length ^^ count;
         --count;
     }
     return result;
@@ -232,9 +243,9 @@ private size_t totalKeyCount (size_t count) pure nothrow @nogc @safe
 unittest
 {
     static assert(totalKeyCount(0) == 0);
-    static assert(totalKeyCount(1) == 26);
-    static assert(totalKeyCount(2) == 26 + 26 * 26);
-    static assert(totalKeyCount(3) == 26 + 26 * 26 + 26 * 26 * 26);
+    static assert(totalKeyCount(1) == 23);
+    static assert(totalKeyCount(2) == 23 + 23 * 23);
+    static assert(totalKeyCount(3) == 23 + 23 * 23 + 23 * 23 * 23);
 }
 
 /// Returns: The index of a given pattern
@@ -245,8 +256,8 @@ private size_t nameIndex (scope const(char)[] name) pure nothrow @nogc @safe
     immutable bool needOffset = name.length > 1;
     foreach (size_t index, char c; name)
     {
-        assert(c >= 'A' && c <= 'Z');
-        const multiplier = (c - 'A') + (index + 1 < name.length);
+        assert(c.isInRange());
+        const multiplier = Alphabet.indexOf(c) + (index + 1 < name.length);
         result += multiplier * Alphabet.length ^^ (name.length - 1 - index);
     }
     return result;
@@ -254,13 +265,13 @@ private size_t nameIndex (scope const(char)[] name) pure nothrow @nogc @safe
 
 unittest
 {
-    // Total: 26 * 26 * 26 + 26 * 26 + 26 - 1
+    // Total: 23 * 23 * 23 + 23 * 23 + 23 - 1
     size_t idx;
     Name name;
 
-    // First 26
+    // First range, single character
     {
-        foreach (c1; 'A' .. cast(char)('Z' + 1))
+        foreach (char c1; Alphabet)
         {
             name[0] = c1;
             assert(idx++ == nameIndex(name[0 .. 1]));
@@ -270,8 +281,8 @@ unittest
     // Next 26 * 26
     static if (Name.length >=  2)
     {
-        foreach (c1; 'A' .. cast(char)('Z' + 1))
-        foreach (c2; 'A' .. cast(char)('Z' + 1))
+        foreach (char c1; Alphabet)
+        foreach (char c2; Alphabet)
         {
             name[0 .. 2] = [c1, c2];
             assert(idx++ == nameIndex(name[0 .. 2]));
@@ -281,9 +292,9 @@ unittest
     // Last 26 * 26 * 26
     static if (Name.length >=  3)
     {
-        foreach (c1; 'A' .. cast(char)('Z' + 1))
-        foreach (c2; 'A' .. cast(char)('Z' + 1))
-        foreach (c3; 'A' .. cast(char)('Z' + 1))
+        foreach (char c1; Alphabet)
+        foreach (char c2; Alphabet)
+        foreach (char c3; Alphabet)
         {
             name = [c1, c2, c3];
             assert(idx++ == nameIndex(name));
@@ -294,7 +305,7 @@ unittest
 }
 
 /// Returns: The name at a given index
-private const(char)[] indexName (size_t index) //pure nothrow @safe
+public const(char)[] indexName (size_t index) //pure nothrow @safe
 {
     Name result;
     size_t iterations = 1;
@@ -313,23 +324,31 @@ private const(char)[] indexName (size_t index) //pure nothrow @safe
 
 unittest
 {
-    assert(indexName(0) == "A");
-    assert(indexName(3) == "D");
-    assert(indexName(25) == "Z");
+    // Convernience alias to shorten code
+    enum AL = Alphabet.length;
+
+    // Bounds
+    assert(indexName(0) == Alphabet[0 .. 1]);
+    assert(indexName(AL - 1) == Alphabet[$-1 .. $]);
+
+    // Bech32 has no 'b' so make sure we don't assume contiguity
+    assert(indexName(3) == "e"); // Would be 'd' if 'b' was in the alphabet
+
     static if (Name.length >= 2)
     {
-        assert(indexName(26) == "AA");
-        assert(indexName(26 * 2) == "BA");
-        assert(indexName(26 * 2 + 1) == "BB");
-        assert(indexName(26 * 3 - 1) == "BZ");
-        assert(indexName(26 + 26 * 25) == "ZA");
-        assert(indexName(26 + 26 * 26 - 1) == "ZZ");
+        assert(indexName(AL) == "aa");
+        assert(indexName(AL * 2) == "ca");
+        assert(indexName(AL * 2 + 1) == "cc");
+        assert(indexName(AL * 3 - 1) == "cz");
+        assert(indexName(AL + AL * (AL - 1)) == "za");
+        assert(indexName(AL + AL * AL - 1) == "zz");
     }
     static if (Name.length >= 3)
     {
-        assert(indexName(26 + 26 * 26) == "AAA");
-        assert(indexName(26 + 26 * 26 + 26 * 26 * 26) == "ZAA");
-        assert(indexName(25 + 26 * 25 + 26 * 26 * 26) == "ZZZ");
+        assert(indexName(AL + (AL * AL)) == "aaa");
+        assert(indexName(AL + (AL * AL * 2)) == "caa");
+        assert(indexName(AL + (AL * AL * AL)) == "zaa");
+        assert(indexName(AL + (AL * AL * AL) + (AL * AL) - 1) == "zzz");
     }
 
     foreach (idx; 0 .. totalKeyCount(Name.length))

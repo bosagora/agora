@@ -27,6 +27,19 @@ import agora.crypto.ECC: Scalar, Point;
 /// Returns: The keypair at index `index`. Pre-generated like the keys.
 package KeyPair wellKnownKeyByIndex (size_t index) @safe pure nothrow @nogc
 {
+    // Uncomment me to update
+    version (none)
+    {
+        // This will not link but it doesn't matter, the message is output at CT
+        import agora.cli.vanity.main;
+        import std.string : toUpper;
+
+        pragma(msg, "========================================");
+        static foreach (idx; 0 .. KeyCountTarget)
+            pragma(msg, "    case ", int(idx), ": return ", indexName(idx).toUpper, ";");
+        pragma(msg, "========================================");
+    }
+
     switch (index)
     {
     case 0: return A;
