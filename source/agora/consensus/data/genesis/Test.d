@@ -161,38 +161,10 @@ private immutable Hash[] GenesisMerkleTree = [
 ];
 
 /// GDGENES4KXH7RQJELTONR7HSVISVSQ5POSVBEWLR6EEIIL72H24IEDT4
-private immutable PublicKey GenesisOutputAddress = GenesisAddressUbyte;
-
-///
-private immutable ubyte[] GenesisAddressUbyte = [
-    204, 70, 146, 92, 85, 207, 248, 193,
-    36, 92, 220, 216, 252, 242, 170, 37,
-    89, 67, 175, 116, 170, 18, 89, 113,
-    241, 8, 132, 47, 250, 62, 184, 130
-    ];
-
-unittest
-{
-    assert(GenesisOutputAddress.toString()
-           == `boa1xrxydyju2h8l3sfytnwd3l8j4gj4jsa0wj4pykt37yyggtl686ugy5wj2yt`);
-}
+private immutable PublicKey GenesisOutputAddress = WK.Keys.Genesis.address;
 
 /// GDCOMMO272NFWHV5TQAIQFEDLQZLBMVVOJTHC3F567ZX4ZSRQQQWGLI3
-public immutable PublicKey CommonsBudgetAddress = CommonsBudgetUbyte;
-
-///
-private immutable ubyte[] CommonsBudgetUbyte = [
-    196, 230, 49, 218, 254, 154, 91, 30,
-    189, 156, 0, 136, 20, 131, 92, 50,
-    176, 178, 181, 114, 102, 113, 108, 189,
-    247, 243, 126, 102, 81, 132, 33, 99
-    ];
-
-unittest
-{
-    assert(CommonsBudgetAddress.toString()
-           == `boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s`);
-}
+public immutable PublicKey CommonsBudgetAddress = WK.Keys.CommonsBudget.address;
 
 unittest
 {
