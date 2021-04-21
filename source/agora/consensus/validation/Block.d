@@ -432,7 +432,7 @@ unittest
         assert(!block.isGenesisBlockValid());
 
         // at least 1 tx needed (todo: relax this?)
-        block.txs ~= txs[1];
+        block.txs ~= txs[0];
         buildMerkleTree(block);
         checkValidity(block);
 

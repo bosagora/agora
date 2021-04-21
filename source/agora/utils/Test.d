@@ -114,7 +114,7 @@ public struct WK
                 nothrow @nogc @safe:
 
                 private size_t lbound = 0;
-                private enum size_t hbound = 26 + 26 * 26 * 2;
+                private enum size_t hbound = 23 + 23 * 23 * 2 - 1;
 
                 public size_t length () const
                 {
@@ -169,16 +169,17 @@ unittest
     import std.string: representation;
     import agora.crypto.ECC;
 
+    enum Stride = 23;
+
     static assert(WK.Keys[0] == WK.Keys.A);
-    static assert(WK.Keys[16] == WK.Keys.Q);
-    static assert(WK.Keys[25] == WK.Keys.Z);
-    static assert(WK.Keys[26] == WK.Keys.AA);
-    static assert(WK.Keys[701] == WK.Keys.ZZ);
-    static assert(WK.Keys[702] == WK.Keys.AAA);
-    static assert(WK.Keys[1377] == WK.Keys.AZZ);
+    static assert(WK.Keys[Stride - 1] == WK.Keys.Z);
+    static assert(WK.Keys[Stride] == WK.Keys.AA);
+    static assert(WK.Keys[Stride + (Stride * Stride) - 1] == WK.Keys.ZZ);
+    static assert(WK.Keys[Stride + (Stride * Stride)] == WK.Keys.AAA);
+    static assert(WK.Keys[1080] == WK.Keys.AZZ);
 
     // Range interface
-    static assert(WK.Keys.byRange.length == 1378);
+    static assert(WK.Keys.byRange.length == 1080);
 
     // Key from index
     static assert(WK.Keys[WK.Keys.A.address] == WK.Keys.A);

@@ -557,7 +557,7 @@ unittest
     assert(result.outputs.length == 4);
 
     assert(equal!((in Output outp, in KeyPair b) => outp.address == b.address)(
-               result.outputs, [ WK.Keys.Z, WK.Keys.A, WK.Keys.B, WK.Keys.C ]));
+               result.outputs, [ WK.Keys.Z, WK.Keys.A, WK.Keys.C, WK.Keys.D ]));
 }
 
 /// Test with a range of tuples
@@ -565,13 +565,13 @@ unittest
 {
     Output[4] outs = [
         Output(Amount(100), WK.Keys.A.address),
-        Output(Amount(200), WK.Keys.B.address),
-        Output(Amount(300), WK.Keys.C.address),
-        Output(Amount(400), WK.Keys.D.address),
+        Output(Amount(200), WK.Keys.C.address),
+        Output(Amount(300), WK.Keys.D.address),
+        Output(Amount(400), WK.Keys.E.address),
     ];
 
     auto tup_rng = outs[].zip(iota(outs.length).map!(_ => Hash.init));
-    auto result = TxBuilder(WK.Keys.E.address).attach(tup_rng).sign();
+    auto result = TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
 
     assert(result.inputs.length == 4);
     assert(result.outputs.length == 1);

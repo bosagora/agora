@@ -41,8 +41,8 @@ validator:
   # If this node is not a validator, this will be ignored
   #
   # DO NOT USE THOSE VALUES ANYWHERE
-  # Public address:  GDNODE3OVP5Z6WN43WU4JKVDJ6OS2WGZZ3PLR3XFEY7C2SV2DTZT27NU
-  seed: SAJSE5CRJGDP65QFLW3A6XDK4ULJBLGEN4F6EYF6GDHQ4T6G7E7QXWLQ
+  # Public address:  boa1xrvald3zmehvpcmxqm0kn6wkaqyry7yj3cd8h975ypzlyz00sczpzhsk308
+  seed: SD4WCOUL6E4V5YHV4JA7EGACFSF6KAR5LVQTK5ORYYKP5VPCWT7A5NEX
   # Address of the name registry
   registry_address: disabled
 

@@ -1378,7 +1378,7 @@ unittest
     // and the offset (which is 0 in both cases)
     Hash utxo;
     auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, Height(0), 10);
-    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.B, Height(0), 10);
+    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.C, Height(0), 10);
     assert(e1.commitment != e2.commitment);
 }
 
@@ -1488,15 +1488,15 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0x348f4f51330674863fe6960715b693b0dd4a0865de9b70fc6527d368b7afcaa2c757b27d5d258135c48b68ea051babfbacad3fc1c4a5988ca88bc93d01c86579`),
+        Hash(`0x035be26e31b7f49e885736eaaf2a7621f2824a10e999dff914b7f9ac38c5ee64fea3c038e59f91c12cc97410ba2e50f8e6b63831edc2ab7c3e047bca7957e212`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(504)) ==
-        Hash(`0xeae662a765560186a3e08d4dc965743917d06bac5fbd71c1483f891446fac972557a192e0a3e337c575c579702c7d75f896d4b454dab8112feb093e201e2cd1f`),
+        Hash(`0xa39ba836f2f570c24c5ff8112dd94ba1aa9e68f74f668324c453ec431aeda4b143daef5c515b858dcc262a962539e3d2620b9009dbd367fc8d27ccbc93887f58`),
         man.getRandomSeed(utxos, Height(504)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(1008)) ==
-        Hash(`0xdbedac4b2a93a4a213ecc89e1d6aadad666ca36668621dc62f7fccc15d86c3481b8aed8d4b56c2a18ed800239e30aa2612283454378cc6e64d9baba0b91b2fc3`),
+        Hash(`0x4c138c30a734e785356fa2d735b71b092161c13de52607700c22503744c71f03ce29485df37741789492377157859007cf42bcf76a402e1a9492e24e59f23702`),
         man.getRandomSeed(utxos, Height(1008)).to!string);
 }
 
@@ -1650,14 +1650,14 @@ unittest
     auto e1 = EnrollmentManager.makeEnrollment(
         utxos[0], WK.Keys.A, Height(0), man.params.ValidatorCycle);
     auto e2 = EnrollmentManager.makeEnrollment(
-        utxos[1], WK.Keys.B, Height(0), man.params.ValidatorCycle);
+        utxos[1], WK.Keys.C, Height(0), man.params.ValidatorCycle);
 
     assert(man.addEnrollment(e1, WK.Keys.A.address, Height(1), &utxo_set.peekUTXO));
-    assert(man.addEnrollment(e2, WK.Keys.B.address, Height(1), &utxo_set.peekUTXO));
+    assert(man.addEnrollment(e2, WK.Keys.C.address, Height(1), &utxo_set.peekUTXO));
 
     assert(man.addValidator(e1, WK.Keys.A.address, Height(2), &utxo_set.peekUTXO,
         utxo_set.storage) is null);
-    assert(man.addValidator(e2, WK.Keys.B.address, Height(2), &utxo_set.peekUTXO,
+    assert(man.addValidator(e2, WK.Keys.C.address, Height(2), &utxo_set.peekUTXO,
         utxo_set.storage) is null);
 
     assert(man.validator_set.countActive(Height(2)) == 2);

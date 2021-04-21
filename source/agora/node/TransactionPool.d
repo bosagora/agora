@@ -623,7 +623,7 @@ unittest
     {
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), WK.Keys.B.address)]
+        [Output(Amount(0), WK.Keys.C.address)]
     };
 
     // add txs to the pool
