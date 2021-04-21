@@ -981,7 +981,7 @@ public class NetworkManager
                     headers.map!(header =>
                         tuple(header.height,
                             iota(0, enrolled_validators[header.height]).filter!(i =>
-                                header.validators[i]).count()
+                                header.validators[i] || header.missing_validators.canFind(i)).count() // Take into account the slashed validators
                         )
                     ).assocArray;
 
@@ -998,7 +998,7 @@ public class NetworkManager
                         foreach (header; peer.client.getBlockHeaders(missing_heights))
                         {
                             auto sig_signed_validators = iota(enrolled_validators[header.height]).filter!(i =>
-                                header.validators[i]).count();
+                                header.validators[i] || header.missing_validators.canFind(i)).count();
                             if (sig_signed_validators > signed_validators[header.height])
                             {
                                 try
