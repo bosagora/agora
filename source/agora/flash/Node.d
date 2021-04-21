@@ -241,6 +241,37 @@ public abstract class FlashNode : FlashControlAPI
 
     /***************************************************************************
 
+        Get the list of managed channels.
+
+        Params:
+            keys = the keys to look up. If empty, all managed channels will
+                be returned.
+
+        Returns:
+            the list of all managed channels by this Flash node for the
+            given public keys (if any)
+
+    ***************************************************************************/
+
+    public override ChannelConfig[] getManagedChannels (PublicKey[] keys)
+    {
+        Point[] filtered;
+        if (keys.length)
+            filtered = this.channels.byKey.filter!(k => keys.canFind(k)).array;
+        else
+            filtered = this.channels.keys;
+        sort(filtered);
+
+        ChannelConfig[] all;
+        foreach (key; filtered)
+            foreach (chan; this.channels[key])
+                all ~= chan.conf;
+
+        return all;
+    }
+
+    /***************************************************************************
+
         Store all the node's and each channels' metadata to the DB,
         and shut down the gossiping timer.
 

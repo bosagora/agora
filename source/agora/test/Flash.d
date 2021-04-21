@@ -1205,6 +1205,15 @@ unittest
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
         ChannelState.SettingUp);
 
+    auto chans = bob.getManagedChannels(null);
+    assert(chans.length == 3, chans.to!string);
+
+    chans = bob.getManagedChannels([bob_pubkey]);
+    assert(chans.length == 3, chans.to!string);
+
+    chans = bob.getManagedChannels([alice_pubkey]);
+    assert(chans.length == 0, chans.to!string);
+
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
     const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];

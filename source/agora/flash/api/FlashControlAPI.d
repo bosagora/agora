@@ -19,6 +19,7 @@ import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.flash.api.FlashAPI;
+import agora.flash.Config;
 import agora.flash.Invoice;
 import agora.flash.Route;
 import agora.flash.Types;
@@ -48,6 +49,22 @@ public interface FlashControlAPI : FlashAPI
     ***************************************************************************/
 
     public void registerKeyPair (KeyPair kp);
+
+    /***************************************************************************
+
+        Get the list of managed channels.
+
+        Params:
+            keys = the keys to look up. If empty then all managed channels will
+                be returned.
+
+        Returns:
+            the list of all managed channels by this Flash node for the
+            given public keys (if any)
+
+    ***************************************************************************/
+
+    public ChannelConfig[] getManagedChannels (PublicKey[] keys);
 
     /***************************************************************************
 
