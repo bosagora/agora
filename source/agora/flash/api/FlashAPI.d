@@ -16,6 +16,7 @@ module agora.flash.api.FlashAPI;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.crypto.ECC;
+import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
@@ -46,9 +47,12 @@ public interface FlashAPI
 @safe:
     /***************************************************************************
 
-        Requests opening a channel with this Flash node.
+        Requests opening a channel with the provided peer,
+        if it's managed by this Flash node.
 
         Params:
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_conf = contains all the static configuration for this channel.
             peer_nonce = the nonce pair that will be used for signing the
                 initial settlement & trigger transactions.
@@ -59,7 +63,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce openChannel (/* in */ ChannelConfig chan_conf,
+    public Result!PublicNonce openChannel (
+        PublicKey recv_pk, /* in */ ChannelConfig chan_conf,
         /* in */ PublicNonce peer_nonce);
 
     /***************************************************************************
@@ -82,6 +87,10 @@ public interface FlashAPI
         transaction.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = the channel ID to close
             seq_id = the sequence ID
             peer_nonce = the nonce the calling peer will use
@@ -93,8 +102,9 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Point closeChannel (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Point peer_nonce, /* in */ Amount fee);
+    public Result!Point closeChannel (PublicKey sender_pk, PublicKey recv_pk,
+        /* in */ Hash chan_id, /* in */ uint seq_id, /* in */ Point peer_nonce,
+        /* in */ Amount fee);
 
     /***************************************************************************
 
@@ -128,6 +138,10 @@ public interface FlashAPI
         or an indirect routed payment. Both types of payments use this API.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = an existing channel ID previously opened with
                 `openChannel()` and agreed to by the counter-party.
             seq_id = the new sequence ID
@@ -150,8 +164,9 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce proposePayment (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Hash payment_hash,
+    public Result!PublicNonce proposePayment (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
+        /* in */ Hash payment_hash,
         /* in */ Amount amount, /* in */ Height lock_height,
         /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
         /* in */ Height height);
@@ -170,6 +185,10 @@ public interface FlashAPI
         HTLCs are consolidated into their respective outputs.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = an existing channel ID
             seq_id = the new sequence ID
             secrets = the secrets the proposer wishes to disclose
@@ -188,9 +207,10 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Hash[] secrets,
-        /* in */ Hash[] rev_htlcs, /* in */ PublicNonce peer_nonce,
+    public Result!PublicNonce proposeUpdate (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
+        /* in */ Hash[] secrets, /* in */ Hash[] rev_htlcs,
+        /* in */ PublicNonce peer_nonce,
         /* in */ Height height);
 
     /***************************************************************************
@@ -200,6 +220,10 @@ public interface FlashAPI
         the `proposePayment` / `proposeUpdate` call.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = A previously seen pending channel ID provided
                 by the funder node through the call to `openChannel()`.
             seq_id = the agreed-upon balance update's sequence ID as
@@ -211,8 +235,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestSettleSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id);
+    public Result!Signature requestSettleSig (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -224,6 +248,10 @@ public interface FlashAPI
         signature in the call to `requestSettleSig()`.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = A previously seen pending channel ID provided
                 by the funder node through the call to `openChannel()`
             seq_id = the agreed-upon balance update's sequence ID as
@@ -236,8 +264,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestUpdateSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id);
+    public Result!Signature requestUpdateSig (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -246,6 +274,10 @@ public interface FlashAPI
         that the peer is ready for any new payments / updates.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = A previously seen pending channel ID provided
                 by the funder node through the call to `openChannel()`
             seq_id = the sequence ID just used for signing
@@ -256,8 +288,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!bool confirmChannelUpdate (/* in */ Hash chan_id,
-        /* in */ uint seq_id);
+    public Result!bool confirmChannelUpdate (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************
 
@@ -266,6 +298,10 @@ public interface FlashAPI
         sequence ID.
 
         Params:
+            sender_pk = the sender public key as managed by the counter-party.
+                (note: will be used for signature authentication later)
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = A previously open channel ID
             seq_id = the agreed-upon sequence ID in a previous
                 `closeChannel` call
@@ -276,19 +312,21 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestCloseSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id);
+    public Result!Signature requestCloseSig (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************
 
         Report a failed payment
 
         Params:
+            recv_pk = the receiving public key. If the receiving flash node
+                does not manage this key it will return an error.
             chan_id = ID of the receiver channel
             err = Description of the failure
 
     ***************************************************************************/
 
-    public void reportPaymentError (/* in */ Hash chan_id,
-        /* in */ OnionError err);
+    public void reportPaymentError (PublicKey recv_pk,
+        /* in */ Hash chan_id, /* in */ OnionError err);
 }

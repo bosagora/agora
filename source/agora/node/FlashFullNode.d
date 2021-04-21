@@ -83,6 +83,9 @@ public mixin template FlashNodeCommon ()
     import agora.utils.InetUtils;
     import core.stdc.time;
 
+    /// Flash node
+    protected AgoraFlashNode flash;
+
     /// Periodic name registry timer
     protected ITimer periodic_timer;
 
@@ -111,26 +114,30 @@ public mixin template FlashNodeCommon ()
         if (!addresses.length)
             addresses = InetUtils.getPublicIPs();
 
-        RegistryPayload payload =
+        foreach (pair; this.flash.getManagedKeys())
         {
-            data:
+            RegistryPayload payload =
             {
-                public_key : this.config.flash.key_pair.address,
-                addresses : addresses,
-                seq : time(null)
+                data:
+                {
+                    public_key : pair.key,
+                    addresses : addresses,
+                    seq : time(null)
+                }
+            };
+
+            const key_pair = KeyPair.fromSeed(pair.value);
+            payload.signPayload(key_pair);
+
+            try
+            {
+                this.registry_client.putValidator(payload);
             }
-        };
-
-        payload.signPayload(this.config.flash.key_pair);
-
-        try
-        {
-            this.registry_client.putValidator(payload);
-        }
-        catch (Exception ex)
-        {
-            log.info("Couldn't register our address: {}. Trying again later..",
-                ex);
+            catch (Exception ex)
+            {
+                log.info("Couldn't register our address: {}. Trying again later..",
+                    ex);
+            }
         }
     }
 
@@ -208,18 +215,19 @@ public mixin template FlashNodeCommon ()
 
     ///
     public override Result!PublicNonce openChannel (
-        /* in */ ChannelConfig chan_conf,
+        PublicKey peer_pk, /* in */ ChannelConfig chan_conf,
         /* in */ PublicNonce peer_nonce) @trusted
     {
-        return this.flash.openChannel(chan_conf, peer_nonce);
+        return this.flash.openChannel(peer_pk, chan_conf, peer_nonce);
     }
 
     ///
-    public override Result!Point closeChannel (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Point peer_nonce, /* in */ Amount fee)
-        @trusted
+    public override Result!Point closeChannel (PublicKey sender_pk,
+        PublicKey peer_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
+        /* in */ Point peer_nonce, /* in */ Amount fee) @trusted
     {
-        return this.flash.closeChannel(chan_id, seq_id, peer_nonce, fee);
+        return this.flash.closeChannel(sender_pk, peer_pk, chan_id, seq_id,
+            peer_nonce, fee);
     }
 
     ///
@@ -237,59 +245,63 @@ public mixin template FlashNodeCommon ()
     }
 
     ///
-    public override Result!PublicNonce proposePayment (/* in */ Hash chan_id,
+    public override Result!PublicNonce proposePayment (PublicKey sender_pk,
+        PublicKey peer_pk,
+        /* in */ Hash chan_id,
         /* in */ uint seq_id, /* in */ Hash payment_hash,
         /* in */ Amount amount, /* in */ Height lock_height,
         /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
         /* in */ Height height) @trusted
     {
-        return this.flash.proposePayment(chan_id, seq_id, payment_hash,
-            amount, lock_height, packet, peer_nonce, height);
+        return this.flash.proposePayment(sender_pk, peer_pk, chan_id, seq_id,
+            payment_hash, amount, lock_height, packet, peer_nonce, height);
     }
 
     ///
-    public override Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
+    public override Result!PublicNonce proposeUpdate (PublicKey sender_pk,
+        PublicKey peer_pk, /* in */ Hash chan_id,
         /* in */ uint seq_id, /* in */ Hash[] secrets,
         /* in */ Hash[] rev_htlcs, /* in */ PublicNonce peer_nonce,
         /* in */ Height height) @trusted
     {
-        return this.flash.proposeUpdate(chan_id, seq_id, secrets, rev_htlcs,
+        return this.flash.proposeUpdate(sender_pk, peer_pk, chan_id, seq_id, secrets, rev_htlcs,
             peer_nonce, height);
     }
 
     ///
-    public override Result!Signature requestSettleSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!Signature requestSettleSig (PublicKey sender_pk,
+        PublicKey peer_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        return this.flash.requestSettleSig(chan_id, seq_id);
+        return this.flash.requestSettleSig(sender_pk, peer_pk, chan_id, seq_id);
     }
 
     ///
-    public override Result!Signature requestUpdateSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!Signature requestUpdateSig (PublicKey sender_pk,
+        PublicKey peer_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        return this.flash.requestUpdateSig(chan_id, seq_id);
+        return this.flash.requestUpdateSig(sender_pk, peer_pk, chan_id, seq_id);
     }
 
     ///
-    public override Result!bool confirmChannelUpdate (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!bool confirmChannelUpdate (PublicKey sender_pk,
+        PublicKey peer_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        return this.flash.confirmChannelUpdate(chan_id, seq_id);
+        return this.flash.confirmChannelUpdate(sender_pk, peer_pk, chan_id,
+            seq_id);
     }
 
     ///
-    public override Result!Signature requestCloseSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!Signature requestCloseSig (PublicKey sender_pk,
+        PublicKey peer_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        return this.flash.requestCloseSig(chan_id, seq_id);
+        return this.flash.requestCloseSig(sender_pk, peer_pk, chan_id, seq_id);
     }
 
     ///
-    public override void reportPaymentError (/* in */ Hash chan_id,
-        /* in */ OnionError err) @trusted
+    public override void reportPaymentError (
+        PublicKey peer_pk, /* in */ Hash chan_id, /* in */ OnionError err) @trusted
     {
-        this.flash.reportPaymentError(chan_id, err);
+        this.flash.reportPaymentError(peer_pk, chan_id, err);
     }
 }
 
@@ -298,9 +310,6 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
 {
     /// Logger instance
     private Logger log;
-
-    /// Flash node
-    protected AgoraFlashNode flash;
 
     /***************************************************************************
 

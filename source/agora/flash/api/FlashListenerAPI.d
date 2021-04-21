@@ -14,6 +14,7 @@
 module agora.flash.api.FlashListenerAPI;
 
 import agora.common.Types;
+import agora.crypto.Key;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
@@ -43,7 +44,7 @@ public interface FlashListenerAPI
 
     ***************************************************************************/
 
-    public void onChannelNotify (Hash chan_id, ChannelState state,
+    public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
         ErrorCode error);
 
     /***************************************************************************
@@ -63,7 +64,7 @@ public interface FlashListenerAPI
 
     ***************************************************************************/
 
-    public string onRequestedChannelOpen (ChannelConfig chan_conf);
+    public string onRequestedChannelOpen (PublicKey pk, ChannelConfig chan_conf);
 
     /***************************************************************************
 
@@ -74,7 +75,7 @@ public interface FlashListenerAPI
 
     ***************************************************************************/
 
-    public void onPaymentSuccess (Invoice invoice);
+    public void onPaymentSuccess (PublicKey pk, Invoice invoice);
 
     /***************************************************************************
 
@@ -86,5 +87,5 @@ public interface FlashListenerAPI
 
     ***************************************************************************/
 
-    public void onPaymentFailure (Invoice invoice, ErrorCode error);
+    public void onPaymentFailure (PublicKey pk, Invoice invoice, ErrorCode error);
 }

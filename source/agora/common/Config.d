@@ -646,11 +646,6 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     const timeout = get!(Duration, "flash", "timeout", str => str.to!ulong.msecs)
         (cmdln, node);
 
-    immutable KeyPair kp = validator_config.enabled
-        ? validator_config.key_pair
-        : KeyPair.fromSeed(SecretKey.fromString(get!(string, "flash", "seed")(
-            cmdln, node)));
-
     const bool testing = opt!(bool, "flash", "testing")(cmdln, node);
     if (testing)
         enforce(node_config.testing,
@@ -673,7 +668,6 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
         enabled: true,
         timeout: timeout,
         testing: testing,
-        key_pair: kp,
         listener_address: listener_address,
         min_funding: min_funding.coins,
         max_funding: max_funding.coins,

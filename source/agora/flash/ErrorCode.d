@@ -22,6 +22,9 @@ public enum ErrorCode : ushort
     /// Unknown error
     Unknown,
 
+    /// This Flash node does not manage this public key
+    KeyNotRecognized,
+
     /// Cannot find this node in the flash node registry
     AddressNotFound,
 

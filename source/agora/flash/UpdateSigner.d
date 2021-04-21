@@ -329,7 +329,8 @@ public class UpdateSigner
 
             this.taskman.wait(WaitTime);
 
-            settle_res = peer.requestSettleSig(this.conf.chan_id, seq_id);
+            settle_res = peer.requestSettleSig(this.kp.address,
+                PublicKey(this.peer_pk), this.conf.chan_id, seq_id);
             if (settle_res.error)
             {
                 // todo: retry?
@@ -375,7 +376,8 @@ public class UpdateSigner
 
             this.taskman.wait(WaitTime);
 
-            update_res = peer.requestUpdateSig(this.conf.chan_id, seq_id);
+            update_res = peer.requestUpdateSig(this.kp.address,
+                PublicKey(this.peer_pk), this.conf.chan_id, seq_id);
             if (update_res.error)
             {
                 // todo: retry?
@@ -413,7 +415,8 @@ public class UpdateSigner
         // confirm to the peer we're done, and await for peer's own confirmation
         while (1)
         {
-            auto result = peer.confirmChannelUpdate(this.conf.chan_id, seq_id);
+            auto result = peer.confirmChannelUpdate(this.kp.address,
+                PublicKey(this.peer_pk), this.conf.chan_id, seq_id);
             if (result.error)
             {
                 log.info("{}: confirmChannelUpdate rejected, trying again..: {}",
