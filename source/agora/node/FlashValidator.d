@@ -72,8 +72,8 @@ import core.time;
 ///
 public class FlashValidator : Validator, FlashValidatorAPI
 {
-    /// Flash node
-    protected AgoraFlashNode flash;
+    const alice = WK.Keys.NODE2;
+    const bob   = WK.Keys.NODE3;
 
     /***************************************************************************
 
@@ -161,11 +161,10 @@ public class FlashValidator : Validator, FlashValidatorAPI
 
         log.info("Reached block {}", this.ledger.getBlockHeight());
 
-        const bob   = WK.Keys.NODE3;
         const Settle_1_Blocks = 0;
 
         const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
-        const res = this.flash.openNewChannel(
+        const res = this.flash.openNewChannel(alice.address,
             alice_utxo, Amount(10_000), Settle_1_Blocks, bob.address);
         if (res.error != ErrorCode.None)
         {
@@ -182,7 +181,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
 
         // this should be instant as the ledger should have informed the
         // flash node that a block was externalized
-        this.flash.waitChannelOpen(alice_bob_chan_id);
+        this.flash.waitChannelOpen(alice.address, alice_bob_chan_id);
 
         // await invoice..
         log.info("Alice: Channel with Bob open!..");
@@ -193,7 +192,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
         log.info("Alice: Received invoice: {}", invoice);
 
         log.info("Alice: Paying invoice..");
-        this.flash.payInvoice(invoice);
+        this.flash.payInvoice(alice.address, invoice);
 
         // todo: add fiber-blocking capability and await a signed update index
         // with the new HTLC.
@@ -222,7 +221,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
         const alice_bob_chan_id = Hash.fromString("0x2b69840d0041fd482b466a5c6b23d35db9931506ec24477a842018ae42e76e9a1f153b3df24840a526d94713a93119a93c06942e7b941e55083627b8ab3a56f7");
 
         log.info("Bob: Waiting for channel open..");
-        this.flash.waitChannelOpen(alice_bob_chan_id);
+        this.flash.waitChannelOpen(bob.address, alice_bob_chan_id);
 
         log.info("Bob: Channel with Alice is open!..");
 
@@ -248,7 +247,8 @@ public class FlashValidator : Validator, FlashValidatorAPI
         const Settle_1_Blocks = 0;
         const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
         const res = this.flash.openNewChannel(
-            bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
+            PublicKey(bob_pk), bob_utxo, Amount(3_000), Settle_1_Blocks,
+            charlie_pk);
         if (res.error != ErrorCode.None)
         {
             log.error("Cannot open channel with charlie: {}", res);
@@ -262,7 +262,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
             this.taskman.wait(20.msecs);
 
         // wait for the parties to detect the funding tx
-        this.flash.waitChannelOpen(bob_charlie_chan_id);
+        this.flash.waitChannelOpen(PublicKey(bob_pk), bob_charlie_chan_id);
 
         log.info("Bob: Channel with Charlie open!..");
         log.info("Charlie chan id: {}", bob_charlie_chan_id);
@@ -297,13 +297,13 @@ public class FlashValidator : Validator, FlashValidatorAPI
         const bob_charlie_chan_id = Hash.fromString("0x5f6f51639e089f3be4e97339f265167deb87c8331a135adb9d75f7b844cb49de768e9916edd60d2e86fce120cd9d524d43790e059d1d71fe51456a5ae2b4b9dc");
 
         log.info("Charlie: Waiting for channel open..");
-        this.flash.waitChannelOpen(bob_charlie_chan_id);
+        this.flash.waitChannelOpen(PublicKey(charlie_pk), bob_charlie_chan_id);
 
         log.info("Charlie: Channel with Bob is open!..");
 
         // begin off-chain transactions
-        auto inv_1 = this.flash.createNewInvoice(Amount(2_000), time_t.max,
-            "payment 1");
+        auto inv_1 = this.flash.createNewInvoice(PublicKey(charlie_pk),
+            Amount(2_000), time_t.max, "payment 1");
         log.info("Charlie's invoice is: {}", inv_1);
 
         auto alice = this.getFlashClient(alice_pk, this.config.flash.timeout);
@@ -312,7 +312,7 @@ public class FlashValidator : Validator, FlashValidatorAPI
                 "Test: Cannot find node Alice %s in Flash registry", alice_pk));
 
         log.info("Charlie: Sending invoice to {} ({}):", alice_pk, alice);
-        alice.receiveInvoice(inv_1);
+        alice.receiveInvoice(inv_1.value);
 
         // then use the extended flash API to send the invoice
     }

@@ -125,10 +125,10 @@ public abstract class FlashNode : FlashControlAPI
     protected Network network;
 
     /// List of channels which are pending to be opened
-    protected DList!ChannelConfig pending_channels;
+    protected DList!ChannelConfig[Point] pending_channels;
 
     /// All channels which we are the participants of (open / pending / closed)
-    protected Channel[Hash] channels;
+    protected Channel[Hash][Point] channels;
 
     /// All known connected peers (used for gossiping)
     protected FlashAPI[Point] known_peers;
@@ -161,7 +161,9 @@ public abstract class FlashNode : FlashControlAPI
         this.conf = conf;
         this.genesis_hash = genesis_hash;
         this.engine = engine;
-        this.log = Logger(this.conf.key_pair.address.flashPrettify());
+        // todo: use this in the logger call instead of the logger name
+        // this.conf.key_pair.address.flashPrettify()
+        this.log = Logger(__MODULE__);
         this.taskman = taskman;
         this.db = this.getManagedDatabase(db_path);
         this.load();
@@ -184,8 +186,10 @@ public abstract class FlashNode : FlashControlAPI
             return ChannelUpdate.init;
         });
 
-        foreach (_, chan; this.channels)
-            this.network.addChannel(chan.conf);
+        // todo: filter out adding the same channel twice (both parties)
+        foreach (point, chans; this.channels)
+            foreach (_, chan; chans)
+                this.network.addChannel(chan.conf);
     }
 
     /***************************************************************************
@@ -206,6 +210,33 @@ public abstract class FlashNode : FlashControlAPI
             &this.gossipTask, Periodic.Yes);
         this.open_chan_timer = this.taskman.setTimer(100.msecs,
             &this.channelOpenTask, Periodic.Yes);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            a key/value range of the managed key-pairs
+
+    ***************************************************************************/
+
+    public auto getManagedKeys ()
+    {
+        return this.managed_keys.byKeyValue();
+    }
+
+    /***************************************************************************
+
+        Register the given key-pair to be used with this Flash node.
+
+    ***************************************************************************/
+
+    public override void registerKeyPair (KeyPair kp)
+    {
+        this.managed_keys[kp.address] = kp.secret;
+        Channel[Hash] def;
+        this.channels[kp.address] = def;
+        DList!ChannelConfig def2;
+        this.pending_channels[kp.address] = def2;
     }
 
     /***************************************************************************
@@ -235,14 +266,17 @@ public abstract class FlashNode : FlashControlAPI
 
         foreach (pair; this.channels.byKeyValue)
         {
-            try pair.value.dump();
-            catch (Exception exc)
+            foreach (chan; pair.value)
             {
-                scope (failure) assert(0);
-                () @trusted {
-                    writefln("Error happened while dumping a channel's (%s) state: %s",
-                             pair.key, exc);
-                }();
+                try chan.dump();
+                catch (Exception exc)
+                {
+                    scope (failure) assert(0);
+                    () @trusted {
+                        writefln("Error happened while dumping a channel's (%s) state: %s",
+                                 pair.key, exc);
+                    }();
+                }
             }
         }
     }
@@ -272,12 +306,15 @@ public abstract class FlashNode : FlashControlAPI
 
     private void channelOpenTask ()
     {
-        while (!this.pending_channels.empty)
+        foreach (reg_pk, ref pending; this.pending_channels)
         {
-            auto chan_conf = this.pending_channels.front;
-            scope (exit) this.pending_channels.removeFront();
-            this.handleOpenNewChannel(chan_conf);
-            this.taskman.wait(1.msecs);  // yield
+            while (!pending.empty)
+            {
+                auto chan_conf = pending.front;
+                scope (exit) pending.removeFront();
+                this.handleOpenNewChannel(PublicKey(reg_pk), chan_conf);
+                this.taskman.wait(1.msecs);  // yield
+            }
         }
     }
 
@@ -311,17 +348,18 @@ public abstract class FlashNode : FlashControlAPI
         Change the fees for the given channel ID.
 
         Params:
+            key = the registered public key
             chan_id = the channel ID to change the fees for
             fixed_fee = the new fixed fee
             proportional_fee = the new proportional fee
 
     ***************************************************************************/
 
-    public override void changeFees (Hash chan_id, Amount fixed_fee,
-        Amount proportional_fee)
+    public override void changeFees (PublicKey key, Hash chan_id,
+        Amount fixed_fee, Amount proportional_fee)
     {
         this.gossipChannelUpdates(
-            [this.channels[chan_id].updateFees(fixed_fee, proportional_fee)]);
+            [this.channels[key][chan_id].updateFees(fixed_fee, proportional_fee)]);
     }
 
     /***************************************************************************
@@ -444,14 +482,22 @@ public abstract class FlashNode : FlashControlAPI
 
     /// See `FlashAPI.openChannel`
     public override Result!PublicNonce openChannel (
-        /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
+        PublicKey recv_pk, /*in*/ ChannelConfig chan_conf,
+        /*in*/ PublicNonce peer_nonce) @trusted
     {
         // todo: verify `chan_conf.funding_utxo`
         log.info("openChannel()");
 
-        if (chan_conf.chan_id in this.channels)
-            return Result!PublicNonce(ErrorCode.DuplicateChannelID,
-                "There is already an open channel with this ID");
+        auto secret_key = recv_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!PublicNonce(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this "
+                ~ "Flash node. Do you have the right address..?", recv_pk));
+
+        if (auto chans = recv_pk in this.channels)
+            if (chan_conf.chan_id in *chans)
+                return Result!PublicNonce(ErrorCode.DuplicateChannelID,
+                    "There is already an open channel with this ID");
 
         auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout);
         if (peer is null)
@@ -475,16 +521,18 @@ public abstract class FlashNode : FlashControlAPI
                 "Settle time rejecteds. Want between %s and %s",
                 this.conf.min_settle_time, this.conf.max_settle_time));
 
-        if (auto error = this.listener.onRequestedChannelOpen(chan_conf))
+        if (auto error = this.listener.onRequestedChannelOpen(recv_pk,
+            chan_conf))
             return Result!PublicNonce(ErrorCode.UserRejectedChannel, error);
 
         PrivateNonce priv_nonce = genPrivateNonce();
-        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
+        const key_pair = KeyPair.fromSeed(*secret_key);
+        auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, peer_nonce, peer, this.engine, this.taskman,
             &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
 
-        this.channels[chan_conf.chan_id] = channel;
+        this.channels[recv_pk][chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
         return Result!PublicNonce(pub_nonce);
@@ -494,40 +542,42 @@ public abstract class FlashNode : FlashControlAPI
     protected abstract void putTransaction (Transaction tx);
 
     /// See `FlashAPI.closeChannel`
-    public override Result!Point closeChannel (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Point peer_nonce, /* in */ Amount fee )
-        @trusted
+    public override Result!Point closeChannel (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
+        /* in */ Point peer_nonce, /* in */ Amount fee ) @trusted
     {
-        if (auto channel = chan_id in this.channels)
-            return channel.requestCloseChannel(seq_id, peer_nonce, fee);
+        if (auto chans = recv_pk in this.channels)
+            if (auto channel = chan_id in *chans)
+                return channel.requestCloseChannel(seq_id, peer_nonce, fee);
 
         return Result!Point(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 
-    protected void onChannelNotify (Hash chan_id, ChannelState state,
-        ErrorCode error)
+    protected void onChannelNotify (PublicKey reg_pk, Hash chan_id,
+        ChannelState state, ErrorCode error)
     {
         // gossip to the network
-        if (state == ChannelState.Open)
-            this.onChannelOpen(this.channels[chan_id].conf);
+        if (state == ChannelState.Open)  // todo: might not exist
+            this.onChannelOpen(reg_pk, this.channels[reg_pk][chan_id].conf);
 
-        this.listener.onChannelNotify(chan_id, state, error);
+        this.listener.onChannelNotify(reg_pk, chan_id, state, error);
     }
 
     ///
-    private void onChannelOpen (ChannelConfig conf)
+    private void onChannelOpen (PublicKey reg_pk, ChannelConfig conf)
     {
         log.info("onChannelOpen() with channel {}", conf.chan_id);
 
         this.known_channels[conf.chan_id] = conf;
         this.network.addChannel(conf);
 
-        const dir = this.conf.key_pair.address.data == conf.funder_pk ?
+        const dir = reg_pk == conf.funder_pk ?
             PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner;
         // Set the initial fees
         // todo: this should be configurable
-        auto update = this.channels[conf.chan_id].getChannelUpdate();
+        // todo: can throw if channel is missing
+        auto update = this.channels[reg_pk][conf.chan_id].getChannelUpdate();
         this.channel_updates[conf.chan_id][dir] = update;
 
         // todo: should not gossip this to counterparty of the just opened channel
@@ -598,61 +648,122 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     /// See `FlashAPI.requestCloseSig`
-    public override Result!Signature requestCloseSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!Signature requestCloseSig (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        if (auto channel = chan_id in this.channels)
+        auto secret_key = recv_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!Signature(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this "
+                ~ "Flash node. Do you have the right address..?", recv_pk));
+
+        if (auto chans = recv_pk in this.channels)
+        if (auto channel = chan_id in *chans)
+        {
+            if (sender_pk != channel.peer_pk)
+                return Result!Signature(ErrorCode.KeyNotRecognized,
+                    format("Sender key does not belong to this channel: {}",
+                        sender_pk));
+
             return channel.requestCloseSig(seq_id);
+        }
 
         return Result!Signature(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 
     /// See `FlashAPI.requestSettleSig`
-    public override Result!Signature requestSettleSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!Signature requestSettleSig (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        if (auto channel = chan_id in this.channels)
+        auto secret_key = recv_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!Signature(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this "
+                ~ "Flash node. Do you have the right address..?", recv_pk));
+
+        if (auto chans = recv_pk in this.channels)
+        if (auto channel = chan_id in *chans)
+        {
+            if (sender_pk != channel.peer_pk)
+                return Result!Signature(ErrorCode.KeyNotRecognized,
+                    format("Sender key does not belong to this channel: {}",
+                        sender_pk));
+
             return channel.onRequestSettleSig(seq_id);
+        }
 
         return Result!Signature(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 
     /// See `FlashAPI.requestUpdateSig`
-    public override Result!Signature requestUpdateSig (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!Signature requestUpdateSig (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        if (auto channel = chan_id in this.channels)
+        auto secret_key = recv_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!Signature(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this "
+                ~ "Flash node. Do you have the right address..?", recv_pk));
+
+        if (auto chans = recv_pk in this.channels)
+        if (auto channel = chan_id in *chans)
+        {
+            if (sender_pk != channel.peer_pk)
+                return Result!Signature(ErrorCode.KeyNotRecognized,
+                    format("Sender key does not belong to this channel: {}",
+                        sender_pk));
+
             return channel.onRequestUpdateSig(seq_id);
+        }
 
         return Result!Signature(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 
     /// See `FlashAPI.confirmChannelUpdate`
-    public override Result!bool confirmChannelUpdate (/* in */ Hash chan_id,
-        /* in */ uint seq_id) @trusted
+    public override Result!bool confirmChannelUpdate (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
-        if (auto channel = chan_id in this.channels)
+        auto secret_key = recv_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!bool(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this "
+                ~ "Flash node. Do you have the right address..?", recv_pk));
+
+        if (auto chans = recv_pk in this.channels)
+        if (auto channel = chan_id in *chans)
+        {
+            if (sender_pk != channel.peer_pk)
+                return Result!bool(ErrorCode.KeyNotRecognized,
+                    format("Sender key does not belong to this channel: {}",
+                        sender_pk));
+
             return channel.onConfirmedChannelUpdate(seq_id);
+        }
 
         return Result!bool(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 
     /// See `FlashAPI.proposePayment`
-    public override Result!PublicNonce proposePayment (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Hash payment_hash,
-        /* in */ Amount amount, /* in */ Height lock_height,
-        /* in */ OnionPacket packet, /* in */ PublicNonce peer_nonce,
-        /* in */ Height height) @trusted
+    public override Result!PublicNonce proposePayment (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
+        /* in */ Hash payment_hash, /* in */ Amount amount,
+        /* in */ Height lock_height, /* in */ OnionPacket packet,
+        /* in */ PublicNonce peer_nonce, /* in */ Height height) @trusted
     {
         if (packet.version_byte != OnionVersion)
             return Result!PublicNonce(ErrorCode.VersionMismatch,
                 "Protocol version mismatch");
 
-        auto channel = chan_id in this.channels;
+        auto chans = recv_pk in this.channels;
+        if (chans is null)
+            return Result!PublicNonce(ErrorCode.InvalidChannelID,
+                "Channel ID not found");
+
+        auto channel = chan_id in *chans;
         if (channel is null)
             return Result!PublicNonce(ErrorCode.InvalidChannelID,
                 "Channel ID not found");
@@ -661,15 +772,21 @@ public abstract class FlashNode : FlashControlAPI
             return Result!PublicNonce(ErrorCode.InvalidOnionPacket,
                 "Ephemeral public key in the onion packet is invalid");
 
+        auto secret_key = recv_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!PublicNonce(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this Flash node.",
+                    recv_pk));
+
         Payload payload;
         Point shared_secret;
-        if (!decryptPayload(packet.encrypted_payloads[0], this.conf.key_pair.secret,
+        if (!decryptPayload(packet.encrypted_payloads[0], *secret_key,
             packet.ephemeral_pk, payload, shared_secret))
             return Result!PublicNonce(ErrorCode.InvalidOnionPacket,
                 "Cannot decrypt onion packet payload");
 
         if (payload.next_chan_id != Hash.init
-            && payload.next_chan_id !in this.channels)
+            && payload.next_chan_id !in this.channels[recv_pk])
             return Result!PublicNonce(ErrorCode.InvalidChannelID,
                 "Cannot accept this forwarded payment as it routes to an "
                 ~ "unrecognized channel ID");
@@ -679,27 +796,30 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     /// See `FlashAPI.proposeUpdate`
-    public override Result!PublicNonce proposeUpdate (/* in */ Hash chan_id,
-        /* in */ uint seq_id, /* in */ Hash[] secrets, /* in */ Hash[] rev_htlcs,
+    public override Result!PublicNonce proposeUpdate (PublicKey sender_pk,
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
+        /* in */ Hash[] secrets, /* in */ Hash[] rev_htlcs,
         /* in */ PublicNonce peer_nonce, /* in */ Height height) @trusted
     {
-        auto channel = chan_id in this.channels;
-        if (channel is null)
-            return Result!PublicNonce(ErrorCode.InvalidChannelID,
-                "Channel ID not found");
+        if (auto chans = recv_pk in this.channels)
+        if (auto channel = chan_id in *chans)
+        {
+            if (height != this.last_height)
+                return Result!PublicNonce(ErrorCode.MismatchingBlockHeight,
+                    format("Mismatching block height! Our: %s Their %s",
+                        this.last_height, height));
 
-        if (height != this.last_height)
-            return Result!PublicNonce(ErrorCode.MismatchingBlockHeight,
-                format("Mismatching block height! Our: %s Their %s",
-                    this.last_height, height));
+            return channel.onProposedUpdate(seq_id, secrets, rev_htlcs,
+                peer_nonce, height);
+        }
 
-        return channel.onProposedUpdate(seq_id, secrets, rev_htlcs, peer_nonce,
-            height);
+        return Result!PublicNonce(ErrorCode.InvalidChannelID,
+            "Channel ID not found");
     }
 
     /// See `FlashAPI.reportPaymentError`
-    public override void reportPaymentError (/* in */ Hash chan_id,
-        /* in */ OnionError err)
+    public override void reportPaymentError (
+        PublicKey recv_pk, /* in */ Hash chan_id, /* in */ OnionError err)
     {
         import std.algorithm.searching : canFind;
 
@@ -731,15 +851,18 @@ public abstract class FlashNode : FlashControlAPI
                 failing_chan.peer_pk != failing_node_pk)
                 return;
 
-            log.info(this.conf.key_pair.address.flashPrettify, " Got error: ",
+            log.info(recv_pk.flashPrettify, " Got error: ",
                 deobfuscated);
             this.payment_errors[deobfuscated.payment_hash] ~= deobfuscated;
             this.dump();
         }
         else
-            foreach (id, channel; this.channels)
-                if (id != chan_id)
-                    channel.forwardPaymentError(err);
+        {
+            if (auto chans = recv_pk in this.channels)
+                foreach (id, channel; *chans)
+                    if (id != chan_id)
+                        channel.forwardPaymentError(err);
+        }
     }
 
     /***************************************************************************
@@ -755,10 +878,18 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    protected void onPaymentComplete (Hash chan_id, Hash payment_hash,
-        ErrorCode error = ErrorCode.None)
+    protected void onPaymentComplete (PublicKey reg_pk, Hash chan_id,
+        Hash payment_hash, ErrorCode error = ErrorCode.None)
     {
-        auto channel = chan_id in this.channels;
+        auto chans = reg_pk in this.channels;
+        if (chans is null)
+        {
+            // todo: assert?
+            log.info("Error: Channel not found: {}", chan_id);
+            return;
+        }
+
+        auto channel = chan_id in *chans;
         if (channel is null)
         {
             // todo: assert?
@@ -771,7 +902,7 @@ public abstract class FlashNode : FlashControlAPI
         if (error != ErrorCode.None)
         {
             if (auto invoice = payment_hash in this.invoices)
-                this.listener.onPaymentFailure(*invoice, error);
+                this.listener.onPaymentFailure(reg_pk, *invoice, error);
         }
 
         // our own secret (we are the payee)
@@ -782,9 +913,9 @@ public abstract class FlashNode : FlashControlAPI
         }
         else if (error)
         {
-            foreach (id, chan; this.channels)
+            foreach (id, chan; *chans)
                 chan.learnSecrets([], [payment_hash], this.last_height);
-            this.reportPaymentError(chan_id, OnionError(payment_hash,
+            this.reportPaymentError(reg_pk, chan_id, OnionError(payment_hash,
                 chan_id, error));
         }
     }
@@ -802,7 +933,7 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    protected void onUpdateComplete (in Hash[] secrets,
+    protected void onUpdateComplete (PublicKey reg_pk, in Hash[] secrets,
         in Hash[] rev_htlcs)
     {
         foreach (payment_hash; secrets.map!(secret => secret.hashFull()))
@@ -818,7 +949,7 @@ public abstract class FlashNode : FlashControlAPI
             this.invoices.remove(payment_hash);
 
             if (invoice != Invoice.init)
-                this.listener.onPaymentSuccess(invoice);
+                this.listener.onPaymentSuccess(reg_pk, invoice);
         }
 
         foreach (payment_hash; rev_htlcs)
@@ -831,11 +962,12 @@ public abstract class FlashNode : FlashControlAPI
                 else
                     error = ErrorCode.Unknown;
 
-                this.listener.onPaymentFailure(*invoice, error);
+                this.listener.onPaymentFailure(reg_pk, *invoice, error);
             }
         }
 
-        foreach (chan_id, channel; this.channels)
+        if (auto chans = reg_pk in this.channels)
+        foreach (chan_id, channel; *chans)
         {
             log.info("Calling learnSecrets for {}", chan_id);
             channel.learnSecrets(secrets, rev_htlcs, this.last_height);
@@ -847,6 +979,7 @@ public abstract class FlashNode : FlashControlAPI
         Routes an onion-encrypted payment to the given channel ID.
 
         Params:
+            reg_pk = the registered public key
             chan_id = the channel ID to route the payment to
             payment_hash = the payment hash to use
             amount = the amount to use
@@ -858,47 +991,61 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    protected void paymentRouter (in Hash chan_id,
+    protected void paymentRouter (in PublicKey reg_pk, in Hash chan_id,
         in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet)
     {
-        if (auto channel = chan_id in this.channels)
-            return channel.queueNewPayment(payment_hash, amount, lock_height,
-                packet, this.last_height);
+        if (auto chans = reg_pk in this.channels)
+            if (auto channel = chan_id in *chans)
+                return channel.queueNewPayment(payment_hash, amount, lock_height,
+                    packet, this.last_height);
 
         log.info("{} Could not find this channel ID: {}",
-            this.conf.key_pair.address.flashPrettify, chan_id);
-        this.onPaymentComplete(chan_id, payment_hash,
+            reg_pk.flashPrettify, chan_id);
+        this.onPaymentComplete(reg_pk, chan_id, payment_hash,
             ErrorCode.InvalidChannelID);
     }
 
     ///
-    public override Result!bool beginCollaborativeClose (/* in */ Hash chan_id)
+    public override Result!bool beginCollaborativeClose (PublicKey reg_pk,
+        /* in */ Hash chan_id)
     {
-        if (auto channel = chan_id in this.channels)
-            return channel.beginCollaborativeClose();
+        if (auto chans = reg_pk in this.channels)
+            if (auto channel = chan_id in *chans)
+                return channel.beginCollaborativeClose();
 
         return Result!bool(ErrorCode.InvalidChannelID, "Channel ID not found");
     }
 
     ///
-    public override Result!bool beginUnilateralClose (/* in */ Hash chan_id)
+    public override Result!bool beginUnilateralClose (PublicKey reg_pk,
+        /* in */ Hash chan_id)
     {
-        if (auto channel = chan_id in this.channels)
-            return channel.beginUnilateralClose();
+        if (auto pk_channels = reg_pk in this.channels)
+        {
+            if (auto channel = chan_id in *pk_channels)
+                return channel.beginUnilateralClose();
+        }
 
         return Result!bool(ErrorCode.InvalidChannelID, "Channel ID not found");
     }
 
     ///
-    public override Result!Hash openNewChannel (/* in */ Hash funding_utxo,
-        /* in */ Amount capacity, /* in */ uint settle_time,
-        /* in */ Point peer_pk)
+    public override Result!Hash openNewChannel (PublicKey reg_pk,
+        /* in */ Hash funding_utxo, /* in */ Amount capacity,
+        /* in */ uint settle_time, /* in */ Point recv_pk)
     {
         log.info("openNewChannel({}, {}, {})",
-                 capacity, settle_time, peer_pk.flashPrettify);
+                 capacity, settle_time, recv_pk.flashPrettify);
 
-        const pair_pk = this.conf.key_pair.address + peer_pk;
+        auto secret_key = reg_pk in this.managed_keys;
+        if (secret_key is null)
+            return Result!Hash(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this Flash node.",
+                    reg_pk));
+
+        const key_pair = KeyPair.fromSeed(*secret_key);
+        const pair_pk = key_pair.address + recv_pk;
 
         // create funding, don't sign it yet as we'll share it first
         auto funding_tx = createFundingTx(funding_utxo, capacity,
@@ -907,8 +1054,8 @@ public abstract class FlashNode : FlashControlAPI
         const funding_tx_hash = hashFull(funding_tx);
         const Hash chan_id = funding_tx_hash;
 
-        auto all_funding_utxos = this.pending_channels[].chain(
-                channels.byValue.map!(chan => chan.conf))
+        auto all_funding_utxos = this.pending_channels[reg_pk][].chain(
+                this.channels[reg_pk].byValue.map!(chan => chan.conf))
             .map!(conf => conf.funding_tx_hash);
 
         // this channel is already being set up (or duplicate funding UTXO used)
@@ -923,9 +1070,9 @@ public abstract class FlashNode : FlashControlAPI
         ChannelConfig chan_conf =
         {
             gen_hash        : this.genesis_hash,
-            funder_pk       : this.conf.key_pair.address,
-            peer_pk         : peer_pk,
-            pair_pk         : this.conf.key_pair.address + peer_pk,
+            funder_pk       : key_pair.address,
+            peer_pk         : recv_pk,
+            pair_pk         : key_pair.address + recv_pk,
             num_peers       : num_peers,
             update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
             funding_tx      : funding_tx,
@@ -934,18 +1081,18 @@ public abstract class FlashNode : FlashControlAPI
             capacity        : capacity,
             settle_time     : settle_time,
         };
-        this.pending_channels.insertBack(chan_conf);
+        this.pending_channels[reg_pk].insertBack(chan_conf);
 
         return Result!Hash(chan_id);
     }
 
     /// Handle opening new channels
-    private void handleOpenNewChannel (ChannelConfig chan_conf)
+    private void handleOpenNewChannel (PublicKey reg_pk, ChannelConfig chan_conf)
     {
         auto peer = this.getFlashClient(chan_conf.peer_pk, this.conf.timeout);
         if (peer is null)
         {
-            this.listener.onChannelNotify(chan_conf.chan_id,
+            this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
                 ChannelState.Rejected, ErrorCode.AddressNotFound);
             return;
         }
@@ -953,27 +1100,35 @@ public abstract class FlashNode : FlashControlAPI
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto result = peer.openChannel(chan_conf, pub_nonce);
+        auto result = peer.openChannel(PublicKey(chan_conf.peer_pk), chan_conf,
+            pub_nonce);
         if (result.error != ErrorCode.None)
         {
-            this.listener.onChannelNotify(chan_conf.chan_id,
+            this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
                 ChannelState.Rejected, result.error);
             return;
         }
 
-        auto channel = new Channel(this.conf, chan_conf, this.conf.key_pair,
+        auto secret_key = reg_pk in this.managed_keys;
+        if (secret_key is null)
+            assert(0);  // should not happen
+        const key_pair = KeyPair.fromSeed(*secret_key);
+
+        auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, result.value, peer, this.engine, this.taskman,
             &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
-        this.channels[chan_conf.chan_id] = channel;
-        this.listener.onChannelNotify(chan_conf.chan_id,
+        this.channels[reg_pk][chan_conf.chan_id] = channel;
+        this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
             ChannelState.SettingUp, ErrorCode.None);
     }
 
     ///
-    public void waitChannelOpen (/* in */ Hash chan_id)
+    public void waitChannelOpen (PublicKey reg_pk, /* in */ Hash chan_id)
     {
-        auto channel = chan_id in this.channels;
+        auto chans = reg_pk in this.channels;
+        assert(chans !is null);
+        auto channel = chan_id in *chans;
         assert(channel !is null);
 
         const state = channel.getState();
@@ -989,35 +1144,45 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     ///
-    public override Invoice createNewInvoice (/* in */ Amount amount,
-        /* in */ time_t expiry, /* in */ string description = null)
+    public override Result!Invoice createNewInvoice (PublicKey reg_pk,
+        /* in */ Amount amount, /* in */ time_t expiry,
+        /* in */ string description = null)
     {
         log.info("createNewInvoice({}, {}, {})",
             amount, expiry, description);
 
-        auto pair = createInvoice(this.conf.key_pair.address, amount, expiry, description);
+        if (reg_pk !in this.managed_keys)
+            return Result!Invoice(ErrorCode.KeyNotRecognized,
+                format("The provided key %s is not managed by this "
+                ~ "Flash node. Do you have the right address..?", reg_pk));
+
+        auto pair = createInvoice(reg_pk, amount, expiry, description);
         this.invoices[pair.invoice.payment_hash] = pair.invoice;
         this.secrets[pair.invoice.payment_hash] = pair.secret;
         this.dump();
 
-        return pair.invoice;
+        return Result!Invoice(pair.invoice);
     }
 
     /// Finds a payment path for the invoice and attempts to pay it
-    public override void payInvoice (/* in */ Invoice invoice)
+    public override void payInvoice (PublicKey reg_pk, /* in */ Invoice invoice)
     {
-        if (!this.isValidInvoice(invoice))
+        auto secret_key = reg_pk in this.managed_keys;
+        if (secret_key is null)
+            assert(0);  // todo: return error code
+
+        if (!this.isValidInvoice(reg_pk, invoice))
             assert(0);  // todo: should just reject it when we write test for it
 
         Set!Hash ignore_chans;
         if (auto error = invoice.payment_hash in this.payment_errors)
             ignore_chans = Set!Hash.from((*error).map!(err => err.chan_id));
 
-        auto path = this.network.getPaymentPath(this.conf.key_pair.address,
+        auto path = this.network.getPaymentPath(reg_pk,
             invoice.destination, invoice.amount, ignore_chans);
         if (path.length < 1 || path.length > MaxPathLength)
         {
-            this.listener.onPaymentFailure(invoice, ErrorCode.PathNotFound);
+            this.listener.onPaymentFailure(reg_pk, invoice, ErrorCode.PathNotFound);
             return;
         }
 
@@ -1032,22 +1197,23 @@ public abstract class FlashNode : FlashControlAPI
 
         // If suggested lock height is not enough, use settle_time + htlc_delta
         auto first_conf = this.known_channels[path.front.chan_id];
-        auto first_update = this.channels[path.front.chan_id].getChannelUpdate();
+        auto first_update = this.channels[reg_pk][path.front.chan_id]
+            .getChannelUpdate();
         use_lock_height = max(use_lock_height,
             Height(first_conf.settle_time + first_update.htlc_delta));
 
         use_lock_height = Height(use_lock_height + this.last_height);
 
-        this.paymentRouter(path.front.chan_id, invoice.payment_hash,
+        this.paymentRouter(reg_pk, path.front.chan_id, invoice.payment_hash,
             total_amount, use_lock_height, packet);
         this.dump();
     }
 
     ///
-    private bool isValidInvoice (/* in */ Invoice invoice)
+    private bool isValidInvoice (PublicKey pk, /* in */ Invoice invoice)
     {
         // paying to ourself doesn't make sense
-        if (invoice.destination == this.conf.key_pair.address)
+        if (invoice.destination == pk)
             return false;
 
         return true;
@@ -1057,6 +1223,9 @@ public abstract class FlashNode : FlashControlAPI
 /// All the node metadata which we keep in the DB for storage
 private mixin template NodeMetadata ()
 {
+    /// List of currently managed key-pairs
+    protected SecretKey[PublicKey] managed_keys;
+
     /// These are the known channels of which we may not necessary be a
     /// counterparty of. With this information we can derive payment paths.
     protected ChannelConfig[Hash] known_channels;
@@ -1168,8 +1337,9 @@ public abstract class ThinFlashNode : FlashNode
                 auto next_block = this.agora_node.getBlocksFrom(
                     this.last_height + 1, 1)[0];
 
-                foreach (channel; this.channels)
-                    channel.onBlockExternalized(next_block);
+                foreach (reg_pk, chans; this.channels)
+                    foreach (channel; chans)
+                        channel.onBlockExternalized(next_block);
 
                 this.last_height++;
                 this.dump();
@@ -1269,8 +1439,9 @@ public class AgoraFlashNode : FlashNode
     {
         this.last_height = block.header.height;
 
-        foreach (channel; this.channels)
-            channel.onBlockExternalized(block);
+        foreach (reg_pk, chans; this.channels)
+            foreach (channel; chans)
+                channel.onBlockExternalized(block);
     }
 
     /***************************************************************************

@@ -34,7 +34,8 @@ public struct FlashConfig
     /// Flash name registry address
     public string registry_address;
 
-    // Network addresses that will be registered with the public key
+    // Network addresses that will be registered with the associated managed
+    // public keys
     public immutable string[] addresses_to_register;
 
     /// Timeout for requests
@@ -44,11 +45,6 @@ public struct FlashConfig
     /// and send & receive Flash transactions. If `true` then
     /// `NodeConfig.testing` must also be true or else configuration will fail.
     public bool testing = false;
-
-    /// The seed to use for the keypair of this Flash node. If this value is
-    /// empty and `enabled` is true then the same key-pair will be used as
-    /// the one set in `validator.key_pair`.
-    public immutable KeyPair key_pair;
 
     /// Address to the listener which will receive payment / update notifications
     public string listener_address;

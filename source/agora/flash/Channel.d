@@ -90,18 +90,23 @@ public class Channel
 
     /// Called when the channel state has been changed
     private alias OnChannelNotify = void delegate (
-        Hash chan_id, ChannelState state, ErrorCode error);
+        PublicKey key, Hash chan_id, ChannelState state, ErrorCode error);
     /// Ditto
     private OnChannelNotify onChannelNotify;
 
     /// When a payment has been completed we need to check whether we know
     /// the matching secret of the payment hash. Then we can propose a new
     /// channel update for the channel which uses this payment hash.
-    private void delegate (Hash chan_id, Hash payment_hash,
-        ErrorCode error = ErrorCode.None) onPaymentComplete;
+    private alias OnPaymentComplete = void delegate (PublicKey key,
+        Hash chan_id, Hash payment_hash, ErrorCode error = ErrorCode.None);
+    /// Ditto
+    private OnPaymentComplete onPaymentComplete;
 
     /// Called when a channel update has been completed.
-    private void delegate (in Hash[] secrets, in Hash[] revert_htlcs) onUpdateComplete;
+    private alias OnUpdateComplete = void delegate (
+        PublicKey pk, in Hash[] secrets, in Hash[] revert_htlcs);
+    /// Ditto
+    private OnUpdateComplete onUpdateComplete;
 
     /// @WORKAROUND@: LocalRest issue with timings and sleep not working until
     /// node ctor is done (see Flash restart tests)
@@ -139,8 +144,8 @@ public class Channel
         void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
-        void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
-        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
+        OnPaymentComplete onPaymentComplete,
+        OnUpdateComplete onUpdateComplete,
         ManagedDatabase db)
     {
         this.flash_conf = flash_conf;
@@ -191,20 +196,20 @@ public class Channel
 
     ***************************************************************************/
 
-    public this (Hash chan_id, FlashConfig flash_conf, Engine engine,
+    public this (in PublicKey key, Hash chan_id, FlashConfig flash_conf, Engine engine,
         ITaskManager taskman,
         void delegate (Transaction) txPublisher,
         PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
-        void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
-        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete,
+        OnPaymentComplete onPaymentComplete,
+        OnUpdateComplete onUpdateComplete,
         FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
         ManagedDatabase db)
     {
         this.db = db;
         this.flash_conf = flash_conf;
         this.getFlashClient = getFlashClient;
-        this.load(chan_id);
+        this.load(key, chan_id);
 
         this.engine = engine;
         this.taskman = taskman;
@@ -243,26 +248,27 @@ public class Channel
 
     ***************************************************************************/
 
-    public static Channel[Hash] loadChannels (FlashConfig flash_conf,
+    public static Channel[Hash][Point] loadChannels (FlashConfig flash_conf,
         ManagedDatabase db,
         FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
         Engine engine, ITaskManager taskman,
         void delegate (Transaction) txPublisher, PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
-        void delegate (Hash, Hash, ErrorCode) onPaymentComplete,
-        void delegate (in Hash[], in Hash[] revert_htlcs) onUpdateComplete )
+        OnPaymentComplete onPaymentComplete,
+        OnUpdateComplete onUpdateComplete )
     {
-        Channel[Hash] channels;
+        Channel[Hash][Point] channels;
 
         db.execute("CREATE TABLE IF NOT EXISTS channels " ~
-            "(chan_id BLOB NOT NULL PRIMARY KEY, data BLOB NOT NULL, " ~
-            "update_signer BLOB)");
+            "(key BLOB NOT NULL, chan_id BLOB NOT NULL, data BLOB NOT NULL, " ~
+            "update_signer BLOB, PRIMARY KEY (key, chan_id))");
 
-        auto results = db.execute("SELECT chan_id FROM channels");
+        auto results = db.execute("SELECT key, chan_id FROM channels");
         foreach (ref row; results)
         {
-            const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(0));
-            channels[chan_id] = new Channel(chan_id, flash_conf, engine,
+            const key = deserializeFull!PublicKey(row.peek!(ubyte[])(0));
+            const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(1));
+            channels[key][chan_id] = new Channel(key, chan_id, flash_conf, engine,
                 taskman, txPublisher, paymentRouter, onChannelNotify,
                 onPaymentComplete, onUpdateComplete, getFlashClient, db);
         }
@@ -294,24 +300,26 @@ public class Channel
                 serializePart(field, dg);
         }
 
-        this.db.execute("REPLACE INTO channels (chan_id, data) VALUES (?, ?)",
-            this.conf.chan_id.serializeFull, this.serialize_buffer);
+        this.db.execute("REPLACE INTO channels (key, chan_id, data) VALUES (?, ?, ?)",
+            this.kp.address.serializeFull, this.conf.chan_id.serializeFull,
+            this.serialize_buffer);
     }
 
     /***************************************************************************
 
-        Load the channel metadata for the given channel ID from the database.
+        Load the channel metadata for the given public key and channel ID from
+        the database.
 
         Params:
             chan_id = the channel ID to load
 
     ***************************************************************************/
 
-    private void load (Hash chan_id) @trusted
+    private void load (PublicKey key, Hash chan_id) @trusted
     {
         auto results = this.db.execute(
-            "SELECT data FROM channels WHERE chan_id = ?",
-            chan_id.serializeFull);
+            "SELECT data FROM channels WHERE key = ? AND chan_id = ?",
+            key.serializeFull, chan_id.serializeFull);
         if (results.empty)
             return;  // nothing to load
 
@@ -627,7 +635,8 @@ LOuter: while (1)
         if (this.state == ChannelState.Open)
         {
             this.dump();
-            this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+            this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+                ErrorCode.None);
         }
     }
 
@@ -660,7 +669,8 @@ LOuter: while (1)
         this.cur_balance = expected_balance;
 
         this.dump();
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
     }
 
     /***************************************************************************
@@ -684,7 +694,8 @@ LOuter: while (1)
         log.info("{}: Tx is: {}", this.kp.address.flashPrettify, tx);
         // todo: can notify Node that it can destroy this channel instance later
         this.state = ChannelState.Closed;
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
     }
 
     /***************************************************************************
@@ -711,7 +722,8 @@ LOuter: while (1)
     public void onUpdateTxExternalized (in Transaction tx)
     {
         this.state = ChannelState.StartedUnilateralClose;
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
 
         // last update was published, publish the settlement
         if (tx == this.channel_updates[$ - 1].update_tx)
@@ -781,7 +793,8 @@ LOuter: while (1)
     {
         // todo: assert this is the actual settlement transaction
         this.state = ChannelState.Closed;
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
     }
 
     /***************************************************************************
@@ -904,9 +917,10 @@ LOuter: while (1)
 
             // todo: there may be a double call here if the first request timed-out
             // and the client sends this request again.
-            result = this.peer.proposeUpdate(this.conf.chan_id, new_seq_id,
-                cast(Hash[])this.secrets, cast(Hash[])this.revert_htlcs,
-                pub_nonce, update_height);
+            result = this.peer.proposeUpdate(this.kp.address,
+                PublicKey(this.peer_pk), this.conf.chan_id, new_seq_id,
+                cast(Hash[])this.secrets,
+                cast(Hash[])this.revert_htlcs, pub_nonce, update_height);
 
             if (result.error)
             {
@@ -951,7 +965,7 @@ LOuter: while (1)
             this.payment_hashes.remove(secret.hashFull());
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
-        this.onUpdateComplete(secrets, rev_htlcs_filtered);
+        this.onUpdateComplete(this.kp.address, secrets, rev_htlcs_filtered);
         this.dump();
     }
 
@@ -1088,7 +1102,7 @@ LOuter: while (1)
 
             log.info("{}: Routing to next channel: {}", this.kp.address.flashPrettify,
                 payment.payload.next_chan_id.flashPrettify);
-            this.paymentRouter(payment.payload.next_chan_id,
+            this.paymentRouter(this.kp.address, payment.payload.next_chan_id,
                 payment.payment_hash,
                 payment.payload.forward_amount,
                 Height(payment.lock_height - this.last_update.htlc_delta),
@@ -1096,7 +1110,8 @@ LOuter: while (1)
         }
         else
             // propose an update afterwards
-            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash);
+            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+                payment.payment_hash);
 
         this.dump();
     }
@@ -1117,8 +1132,8 @@ LOuter: while (1)
         const cur_amount = this.getBalance(direction);
         if (cur_amount < payment.amount)
         {
-            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
-                ErrorCode.ExceedsMaximumPayment);
+            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+                payment.payment_hash, ErrorCode.ExceedsMaximumPayment);
             return true;  // remove it from the queue
         }
 
@@ -1138,7 +1153,9 @@ LOuter: while (1)
                 break;  // timeout
             this.taskman.wait(WaitTime);
 
-            result = this.peer.proposePayment(this.conf.chan_id, new_seq_id,
+            result = this.peer.proposePayment(this.kp.address,
+                PublicKey(this.peer_pk),
+                this.conf.chan_id, new_seq_id,
                 payment.payment_hash, payment.amount, payment.lock_height,
                 payment.packet, pub_nonce, payment.height);
 
@@ -1161,8 +1178,8 @@ LOuter: while (1)
         {
             log.error("Couldn't propose outgoing payment: {}. Error: {}",
                 payment, result.message);
-            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
-                result.error);
+            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+                payment.payment_hash, result.error);
             return true;  // remove it from the queue
         }
 
@@ -1183,8 +1200,8 @@ LOuter: while (1)
         {
             log.error("Couldn't sign outgoing payment: {}. Error: {}",
                 payment, update_pair_res.message);
-            this.onPaymentComplete(this.conf.chan_id, payment.payment_hash,
-                update_pair_res.error);
+            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+                payment.payment_hash, update_pair_res.error);
             return true;  // remove it from the queue
         }
 
@@ -1248,7 +1265,8 @@ LOuter: while (1)
             this.payment_hashes.remove(secret.hashFull());
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
-        this.onUpdateComplete(update.secrets, update.revert_htlcs);
+        this.onUpdateComplete(this.kp.address, update.secrets,
+            update.revert_htlcs);
     }
 
     /***************************************************************************
@@ -1666,7 +1684,8 @@ LOuter: while (1)
                 "Channel is not open");
 
         this.state = ChannelState.StartedCollaborativeClose;
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
 
         this.taskman.setTimer(100.msecs,
         {
@@ -1682,15 +1701,16 @@ LOuter: while (1)
                 {
                     // timeout
                     this.state = ChannelState.RejectedCollaborativeClose;
-                    this.onChannelNotify(this.conf.chan_id, this.state,
-                        close_res.error);
+                    this.onChannelNotify(this.kp.address, this.conf.chan_id,
+                        this.state, close_res.error);
                     return;
                 }
 
                 this.taskman.wait(WaitTime);
 
-                close_res = this.peer.closeChannel(this.conf.chan_id,
-                    this.cur_seq_id, priv_nonce.V, Fee);
+                close_res = this.peer.closeChannel(this.kp.address,
+                    PublicKey(this.peer_pk), this.conf.chan_id, this.cur_seq_id,
+                    priv_nonce.V, Fee);
                 if (close_res.error)
                 {
                     // todo: retry with bigger fee if smaller fee was rejected?
@@ -1727,7 +1747,8 @@ LOuter: while (1)
             return Result!bool(ErrorCode.ChannelNotOpen, "Channel is not open");
 
         this.state = ChannelState.StartedUnilateralClose;
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
 
         this.taskman.setTimer(100.msecs,
         {
@@ -1822,15 +1843,15 @@ LOuter: while (1)
             {
                 // timeout
                 this.state = ChannelState.RejectedCollaborativeClose;
-                this.onChannelNotify(this.conf.chan_id, this.state,
-                    sig_res.error);
+                this.onChannelNotify(this.kp.address, this.conf.chan_id,
+                    this.state, sig_res.error);
                 return;
             }
 
             this.taskman.wait(WaitTime);
 
-            sig_res = this.peer.requestCloseSig(this.conf.chan_id,
-                this.cur_seq_id);
+            sig_res = this.peer.requestCloseSig(this.kp.address,
+                PublicKey(this.peer_pk), this.conf.chan_id, this.cur_seq_id);
             if (sig_res.error)
             {
                 log.info("{}: Closing tx signature request rejected: {}",
@@ -1846,8 +1867,8 @@ LOuter: while (1)
                     this.kp.address.flashPrettify, error, sig_res.value);
 
                 this.state = ChannelState.RejectedCollaborativeClose;
-                this.onChannelNotify(this.conf.chan_id, this.state,
-                    ErrorCode.InvalidSignature);
+                this.onChannelNotify(this.kp.address, this.conf.chan_id,
+                    this.state, ErrorCode.InvalidSignature);
                 return;
             }
 
@@ -1915,7 +1936,8 @@ LOuter: while (1)
         // cover this fee.
 
         this.state = ChannelState.StartedCollaborativeClose;
-        this.onChannelNotify(this.conf.chan_id, this.state, ErrorCode.None);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
         Pair priv_nonce = Pair.random();
         Point pub_nonce = priv_nonce.V;
 
@@ -2034,8 +2056,8 @@ LOuter: while (1)
             this.dropped_htlcs.remove(error.payment_hash);
             this.taskman.setTimer(100.msecs,
             {
-                this.peer.reportPaymentError(this.conf.chan_id,
-                    error.obfuscate(shared_secret));
+                this.peer.reportPaymentError(PublicKey(this.peer_pk),
+                    this.conf.chan_id, error.obfuscate(shared_secret));
             });
         }
     }

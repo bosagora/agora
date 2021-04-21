@@ -17,6 +17,7 @@ module agora.flash.api.FlashControlAPI;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.crypto.ECC;
+import agora.crypto.Key;
 import agora.flash.api.FlashAPI;
 import agora.flash.Invoice;
 import agora.flash.Route;
@@ -39,6 +40,17 @@ public interface FlashControlAPI : FlashAPI
 
     /***************************************************************************
 
+        Register the given key-pair as being managed by the Flash node.
+
+        Params:
+            kp = the key-pair to register
+
+    ***************************************************************************/
+
+    public void registerKeyPair (KeyPair kp);
+
+    /***************************************************************************
+
         Schedule opening a new channel with another flash node.
         If this funding_utxo is already used, an error is returned.
         Otherwise, the Listener will receive a notification through
@@ -46,6 +58,9 @@ public interface FlashControlAPI : FlashAPI
         is accepted / rejected by the counter-party.
 
         Params:
+            reg_pk = the registered public key, and the initiator of the
+            channel open request. If this key is not managed by this Flash
+            node then an error will be returned.
             funding_utxo = the UTXO that will be used to fund the setup tx
             capacity = the amount that will be used to fund the setup tx
             settle_time = closing settle time in number of blocks since last
@@ -58,9 +73,9 @@ public interface FlashControlAPI : FlashAPI
 
     ***************************************************************************/
 
-    public Result!Hash openNewChannel (/* in */ Hash funding_utxo,
-        /* in */ Amount capacity, /* in */ uint settle_time,
-        /* in */ Point peer_pk);
+    public Result!Hash openNewChannel (PublicKey reg_pk,
+        /* in */ Hash funding_utxo, /* in */ Amount capacity,
+        /* in */ uint settle_time, /* in */ Point peer_pk);
 
     /***************************************************************************
 
@@ -68,6 +83,8 @@ public interface FlashControlAPI : FlashAPI
         for the given channel ID.
 
         Params:
+            reg_pk = the registered public key. If this key is not managed by
+                this Flash node then an error will be returned.
             chan_id = the ID of the channel to close
 
         Returns:
@@ -76,7 +93,8 @@ public interface FlashControlAPI : FlashAPI
 
     ***************************************************************************/
 
-    public Result!bool beginCollaborativeClose (/* in */ Hash chan_id);
+    public Result!bool beginCollaborativeClose (PublicKey reg_pk,
+        /* in */ Hash chan_id);
 
     /***************************************************************************
 
@@ -88,6 +106,8 @@ public interface FlashControlAPI : FlashAPI
         published too.
 
         Params:
+            reg_pk = the registered public key. If this key is not managed by
+                this Flash node then an error will be returned.
             chan_id = the ID of the channel to close
 
         Returns:
@@ -96,7 +116,8 @@ public interface FlashControlAPI : FlashAPI
 
     ***************************************************************************/
 
-    public Result!bool beginUnilateralClose (/* in */ Hash chan_id);
+    public Result!bool beginUnilateralClose (PublicKey reg_pk,
+        /* in */ Hash chan_id);
 
     /***************************************************************************
 
@@ -107,14 +128,19 @@ public interface FlashControlAPI : FlashAPI
         preimage to prove.
 
         Params:
+            reg_pk = the registered public key. If this key is not managed by
+                this Flash node then an error will be returned.
             destination = the public key of the destination
             amount = the amount to invoice
             expiry = expiry time of this invoice
             description = optional description
 
+        Returns:
+            the invoice, or an error if this public key is not recognized
+
     ***************************************************************************/
 
-    public Invoice createNewInvoice (/* in */ Amount amount,
+    public Result!Invoice createNewInvoice (PublicKey reg_pk, /* in */ Amount amount,
         /* in */ time_t expiry, /* in */ string description = null);
 
     /***************************************************************************
@@ -130,22 +156,27 @@ public interface FlashControlAPI : FlashAPI
         called on the listener.
 
         Params:
+            reg_pk = the registered public key. If this key is not managed by
+                this Flash node then an error will be returned.
             invoice = the invoice to pay
 
     ***************************************************************************/
 
-    public void payInvoice (/* in */ Invoice invoice);
+    public void payInvoice (PublicKey reg_pk, /* in */ Invoice invoice);
 
     /***************************************************************************
 
         Broadcast a channel update to change the fees
 
         Params:
+            reg_pk = the registered public key. If this key is not managed by
+                this Flash node then the error will be ignored (todo: fixup)
             chan_id = channel ID
             fixed_fee = Fixed fee that should paid for each payment
             proportional_fee = Proportional fee that should paid for each BOA
 
     ***************************************************************************/
 
-    public void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee);
+    public void changeFees (PublicKey reg_pk, Hash chan_id, Amount fixed_fee,
+        Amount proportional_fee);
 }

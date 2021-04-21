@@ -504,8 +504,8 @@ unittest
 
 /// OnionPacket payment router
 public alias PaymentRouter =
-    void delegate (in Hash chan_id, in Hash payment_hash, in Amount amount,
-        in Height lock_height, in OnionPacket packet);
+    void delegate (in PublicKey pk, in Hash chan_id, in Hash payment_hash,
+        in Amount amount, in Height lock_height, in OnionPacket packet);
 
 /// Routing failure packet
 public struct OnionError
