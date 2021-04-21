@@ -291,12 +291,6 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         return channel.getLastSettleTx();
     }
 
-    ///
-    public override void changeFees (Hash chan_id, Amount fixed_fee, Amount proportional_fee)
-    {
-        this.gossipChannelUpdates([this.channels[chan_id].updateFees(fixed_fee, proportional_fee)]);
-    }
-
     /// Prints out the log contents for this node
     public void printLog ()
     {

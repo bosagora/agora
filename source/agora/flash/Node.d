@@ -286,6 +286,24 @@ public abstract class FlashNode : FlashControlAPI
 
     /***************************************************************************
 
+        Change the fees for the given channel ID.
+
+        Params:
+            chan_id = the channel ID to change the fees for
+            fixed_fee = the new fixed fee
+            proportional_fee = the new proportional fee
+
+    ***************************************************************************/
+
+    public override void changeFees (Hash chan_id, Amount fixed_fee,
+        Amount proportional_fee)
+    {
+        this.gossipChannelUpdates(
+            [this.channels[chan_id].updateFees(fixed_fee, proportional_fee)]);
+    }
+
+    /***************************************************************************
+
         Overridable in tests to test restart behavior.
 
         Params:
