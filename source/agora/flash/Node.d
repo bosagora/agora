@@ -272,6 +272,47 @@ public abstract class FlashNode : FlashControlAPI
 
     /***************************************************************************
 
+        Get the list of managed channels.
+
+        Params:
+            chan_ids = the channel keys to look up. If empty then all managed
+                channel info will be returned.
+
+        Returns:
+            the list of all managed channels by this Flash node for the
+            given public keys (if any)
+
+    ***************************************************************************/
+
+    public override ChannelInfo[] getChannelInfo (Hash[] chan_ids)
+    {
+        ChannelInfo[] all;
+        foreach (_, chans; this.channels)
+        foreach (id, chan; chans)
+        {
+            if (!chan_ids.empty && !chan_ids.canFind(id))
+                continue;  // not found
+
+            ChannelInfo info =
+            {
+                chan_id : chan.conf.chan_id,
+                owner_key : chan.conf.funder_pk,
+                peer_key : chan.conf.peer_pk,
+                // note: terminology is confusing, this is the available balance
+                // towards the peer and therefore the owner's balance.
+                owner_balance : chan.getBalance(PaymentDirection.TowardsPeer),
+                peer_balance : chan.getBalance(PaymentDirection.TowardsOwner),
+                state : chan.getState()
+            };
+
+            all ~= info;
+        }
+
+        return all;
+    }
+
+    /***************************************************************************
+
         Store all the node's and each channels' metadata to the DB,
         and shut down the gossiping timer.
 
