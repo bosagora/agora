@@ -230,8 +230,8 @@ public struct ValidatorConfig
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
 
-    /// How often the nomination timer should trigger, in milliseconds
-    public Duration nomination_interval = 1.seconds;
+    /// How often the nomination timer should trigger, in seconds
+    public Duration nomination_interval = 5.seconds;
 }
 
 /// Admin API config
@@ -620,7 +620,7 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
     const preimage_reveal_interval = get!(Duration, "validator", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
     const nomination_interval = get!(Duration, "validator", "nomination_interval",
-        str => str.to!ulong.msecs)(cmdln, node);
+        str => str.to!ulong.seconds)(cmdln, node);
 
     ValidatorConfig result = {
         enabled: true,
