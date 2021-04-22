@@ -2104,9 +2104,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return format("FullNode #%s", idx);
     }
 
-    auto genesis_validator_keys = [WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
-        WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7];
-
     auto outsider_validators_keys = WK.Keys.byRange()
         .takeExactly(test_conf.outsider_validators);
 
