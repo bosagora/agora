@@ -224,6 +224,7 @@ public class FeeManager
 
         Params:
             tx = `Transaction`
+            tx_fee = transaction fee
 
         Return:
             `null` if the transaction is valid, a string explaining the reason it
@@ -231,7 +232,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public string check (in Transaction tx, Amount sum_unspent) nothrow @safe
+    public string check (in Transaction tx, Amount tx_fee) nothrow @safe
     {
         if (tx.payload.data.length == 0)
             return null;
@@ -241,8 +242,8 @@ public class FeeManager
 
         const required_fee = calculateDataFee(tx.payload.data.length,
             this.params.TxPayloadFeeFactor);
-        if (sum_unspent < required_fee)
-            return "Transaction: There is not enough fee.";
+        if (tx_fee < required_fee)
+            return "Transaction: There is not enough data fee";
 
         return null;
     }
