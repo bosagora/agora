@@ -192,6 +192,28 @@ public struct Balance
     }
 }
 
+/// Channel information for Wallets
+public struct ChannelInfo
+{
+    /// The associated channel ID
+    public Hash chan_id;
+
+    /// The original funder of this channel (managed by the Wallet)
+    public PublicKey owner_key;
+
+    /// The counter-party of this channel
+    public PublicKey peer_key;
+
+    /// The amount that's currently held by the owner
+    public Amount owner_balance;
+
+    /// The amount that's currently held by the counter-party
+    public Amount peer_balance;
+
+    /// The current channel state (e.g. open / closed / etc)
+    public ChannelState state;
+}
+
 /*******************************************************************************
 
     Embeds a return value for an API as well as any error code and

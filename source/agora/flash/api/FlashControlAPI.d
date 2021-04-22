@@ -68,6 +68,22 @@ public interface FlashControlAPI : FlashAPI
 
     /***************************************************************************
 
+        Get the list of managed channels.
+
+        Params:
+            chan_ids = the channel keys to look up. If empty then all managed
+                channel info will be returned.
+
+        Returns:
+            the list of all managed channels by this Flash node for the
+            given public keys (if any)
+
+    ***************************************************************************/
+
+    public ChannelInfo[] getChannelInfo (Hash[] chan_ids);
+
+    /***************************************************************************
+
         Schedule opening a new channel with another flash node.
         If this funding_utxo is already used, an error is returned.
         Otherwise, the Listener will receive a notification through

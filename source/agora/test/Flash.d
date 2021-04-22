@@ -1214,6 +1214,17 @@ unittest
     chans = bob.getManagedChannels([alice_pubkey]);
     assert(chans.length == 0, chans.to!string);
 
+    auto infos = bob.getChannelInfo([bob_charlie_chan_id_2]);
+    assert(infos.length == 1);
+    auto info = infos[0];
+    assert(info.chan_id == bob_charlie_chan_id_2);
+    assert(info.owner_key == bob_pubkey);
+    assert(info.peer_key == charlie_pubkey);
+    assert(info.state == ChannelState.SettingUp
+        || info.state == ChannelState.WaitingForFunding);
+    assert(info.owner_balance == Amount(0), info.owner_balance.to!string);
+    assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
+
     // await bob & bob channel funding transaction
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
     const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
@@ -1223,6 +1234,14 @@ unittest
     bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id_2);
     charlie.waitForChannelOpen(charlie_pubkey, bob_charlie_chan_id_2);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2, ChannelState.Open);
+
+    // check if info is different now
+    infos = bob.getChannelInfo([bob_charlie_chan_id_2]);
+    assert(infos.length == 1);
+    info = infos[0];
+    assert(info.state == ChannelState.Open);
+    assert(info.owner_balance == Amount(10_000), info.owner_balance.to!string);
+    assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
     bob.changeFees(bob_pubkey, bob_charlie_chan_id_2, Amount(10), Amount(1));
     alice.waitForChannelUpdate(bob_charlie_chan_id_2, PaymentDirection.TowardsPeer, 1);
