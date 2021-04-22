@@ -34,7 +34,6 @@ unittest
         max_listeners : 7,
         max_quorum_nodes : 4,  // makes it easier to test shuffle cycling
         quorum_shuffle_interval : 6,
-        txs_to_nominate : 0
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -47,22 +46,8 @@ unittest
     const keys = network.nodes.map!(node => node.getPublicKey().key).array;
 
     QuorumConfig[] checkQuorum (Height height) {
-        if (height > 0) // if not Genesis block
-        {
-            if (height % GenesisValidatorCycle == 0) {
-                log.trace("generateBlocks to height {}", height - 1);
-                network.generateBlocks(Height(height - 1));
-                log.trace("re-enrolling at height {}", height);
-                iota(0, GenesisValidators).each!(idx => network.enroll(idx));
-                log.trace("generateBlocks to height {}", height);
-                network.generateBlocks(Height(height));
-            }
-            else
-            {
-                log.trace("generateBlocks to height {}", height);
-                network.generateBlocks(Height(height));
-            }
-        }
+        log.trace("generateBlocks to height {}", height);
+        network.generateBlocks(Height(height));
         log.trace("checkQuorum for height {}", height);
         QuorumConfig[] quorums = nodes[0].getExpectedQuorums(keys, height);
         log.trace(quorums.fold!((a, b) => format!"%s\n%s"(a, b))(""));
