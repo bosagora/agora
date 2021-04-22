@@ -607,12 +607,6 @@ private void verifyQuorumsSanity (in QuorumConfig[PublicKey] quorums)
 *******************************************************************************/
 
 version (unittest):
-version (Windows)
-private void verifyQuorumsIntersect (QuorumConfig[PublicKey] quorums)
-{
-    // @bug@: Need to fix linking issues with QuorumIntersectionChecker.create()
-}
-else
 private void verifyQuorumsIntersect (QuorumConfig[PublicKey] quorums)
 {
     import scpd.quorum.QuorumIntersectionChecker;

@@ -43,6 +43,7 @@
     ],
     "sourceFiles-windows": [
         "source/scpp/build/BallotProtocol.obj",
+        "source/scpp/build/cbitset.obj",
         "source/scpp/build/ByteSliceHasher.obj",
         "source/scpp/build/DSCPUtils.obj",
         "source/scpp/build/DUtils.obj",
@@ -63,6 +64,8 @@
         "source/scpp/build/jsoncpp.obj",
         "source/scpp/build/marshal.obj",
         "source/scpp/build/numeric.obj",
+        "source/scpp/build/QuorumIntersectionCheckerImpl.obj",
+        "source/scpp/build/QuorumTracker.obj",
         "source/scpp/build/uint128_t.obj"
     ],
 

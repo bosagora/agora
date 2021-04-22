@@ -7,6 +7,7 @@
 
 #include "util/Logging.h"
 #include "util/Math.h"
+#include "util/BitSet.h"
 
 namespace
 {
