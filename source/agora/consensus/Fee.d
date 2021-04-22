@@ -245,6 +245,12 @@ public class FeeManager
         if (tx_fee < required_fee)
             return "Transaction: There is not enough data fee";
 
+        Amount minimumFee = params.MinFee;
+        if (!minimumFee.mul(tx.sizeInBytes()))
+            return "Fee: Transaction size overflows fee cap";
+        if (tx_fee < minimumFee)
+            return "Transaction: Fee is less than adjusted minimum fee";
+
         return null;
     }
 

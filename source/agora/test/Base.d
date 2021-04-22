@@ -1927,6 +1927,9 @@ public struct TestConf
     /// The amount of a penalty for slashed validators
     Amount slash_penalty_amount = 10_000.coins;
 
+    /// The minimum (transaction size adjusted) fee.
+    /// Transaction size adjusted fee = tx fee / tx size in bytes.
+    public Amount min_fee = Amount(0);
 }
 
 /*******************************************************************************
@@ -1974,6 +1977,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             validator_tx_fee_cut : test_conf.validator_tx_fee_cut,
             payout_period : test_conf.payout_period,
             slash_penalty_amount : test_conf.slash_penalty_amount,
+            min_fee : test_conf.min_fee,
         };
 
         return result;
