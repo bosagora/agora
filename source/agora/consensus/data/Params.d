@@ -69,6 +69,7 @@ public immutable class ConsensusParams
     mixin ROProperty!("PayoutPeriod", "payout_period");
     mixin ROProperty!("SlashPenaltyAmount", "slash_penalty_amount");
     mixin ROProperty!("GenesisTimestamp", "genesis_timestamp");
+    mixin ROProperty!("MinFee", "min_fee");
 
     /***************************************************************************
 
@@ -96,7 +97,7 @@ public immutable class ConsensusParams
     /// Default for unittest, uses the test genesis block
     version (unittest) public this (
         uint validator_cycle = 1008, uint max_quorum_nodes = 7,
-        uint quorum_threshold = 80)
+        uint quorum_threshold = 80, Amount min_fee = 0)
     {
         import agora.consensus.data.genesis.Test : GenesisBlock;
         import agora.utils.WellKnownKeys;
@@ -104,6 +105,7 @@ public immutable class ConsensusParams
             validator_cycle: validator_cycle,
             max_quorum_nodes: max_quorum_nodes,
             quorum_threshold: quorum_threshold,
+            min_fee: min_fee,
         };
         this(GenesisBlock, CommonsBudget.address, config);
     }
@@ -143,6 +145,10 @@ public struct ConsensusConfig
 
     /// The amount of a penalty for slashed validators
     public Amount slash_penalty_amount = 10_000.coins;
+
+    /// The minimum (transaction size adjusted) fee.
+    /// Transaction size adjusted fee = tx fee / tx size in bytes.
+    public Amount min_fee = Amount(700);
 }
 
 /// Inserts properties functions aliasing `ConsensusConfig`
