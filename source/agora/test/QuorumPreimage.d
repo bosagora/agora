@@ -46,7 +46,9 @@ unittest
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
+    // Disabled, as most of the time they just hide the more useful
+    // quorum prints which is also a `scope (failure)` (see below)
+    // scope(failure) network.printLogs();
     network.waitForDiscovery();
 
     auto nodes = network.clients;
