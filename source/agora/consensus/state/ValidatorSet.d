@@ -300,7 +300,7 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get all the current validators in ascending order of public key
+        Get all the current validators in ascending order of the utxo key
 
         Params:
             pub_keys = will contain the public keys
@@ -334,7 +334,7 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get all the current validators in ascending order with the utxo_key
+        Get all the current validators in ascending order with the utxo key
 
         Params:
             validators = will be filled with all the validators during
