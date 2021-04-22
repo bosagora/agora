@@ -137,6 +137,19 @@ public alias LogLevel = Ocean.Level;
 /// Ditto
 public alias Log = Ocean.Log;
 
+version (unittest)
+{
+    // As we spawn one node per thread (except for the main thread),
+    // we need to configure each thread's logger, a task normally
+    // handled by `agora.node.main` / `agora.node.Runner`.
+    static this ()
+    {
+        auto appender = CircularAppender!()();
+        appender.layout(new AgoraLayout());
+        Log.root.add(appender);
+    }
+}
+
 /// Define options to configure a Logger
 /// Loosely inspired from `ocean.utils.log.Config`
 public struct LoggerConfig
