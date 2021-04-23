@@ -126,29 +126,25 @@ unittest
 
     // normal frozen transaction
     Transaction tx1 = Transaction(
-        TxType.Freeze,
-        [Input(Hash.init, 0)],
+        TxType.Freeze, null,
         [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
     );
 
     // payment transaction
     Transaction tx2 = Transaction(
-        TxType.Payment,
-        [Input(Hash.init, 0)],
+        TxType.Payment, null,
         [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
     );
 
     // Insufficient freeze amount transaction
     Transaction tx3 = Transaction(
-        TxType.Freeze,
-        [Input(Hash.init, 0)],
+        TxType.Freeze, null,
         [Output(Amount(1), key_pairs[2].address)]
     );
 
     // normal freeze amount transaction
     Transaction tx4 = Transaction(
-        TxType.Freeze,
-        [Input(Hash.init, 0)],
+        TxType.Freeze, null,
         [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
     );
 
