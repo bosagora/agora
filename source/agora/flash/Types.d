@@ -302,7 +302,7 @@ unittest
     static immutable string s = "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ec";
     assert(flashPrettify(Scalar.fromString(s).toPoint()) == "0xe66666",
         flashPrettify(Scalar.fromString(s).toPoint()));
-    assert(flashPrettify(PublicKey(Scalar.fromString(s).toPoint())) == "boa1xpvx",
+    assert(flashPrettify(PublicKey(Scalar.fromString(s).toPoint())) == "bot1xpvx",
         flashPrettify(PublicKey(Scalar.fromString(s).toPoint())));
 }
 

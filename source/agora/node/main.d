@@ -24,6 +24,7 @@ else:
 
 import agora.common.Config;
 import agora.common.FileBasedLock;
+import agora.crypto.Key;
 import agora.node.admin.Setup;
 import agora.node.FullNode;
 import agora.node.Validator;
@@ -144,6 +145,11 @@ private int main (string[] args)
             writefln("Config file '%s' successfully parsed.", cmdln.config_path);
         return 0;
     }
+
+    // Set the human-readable part for addresses
+    if (config.get().node.testing)
+        HumanReadablePart = "bot";
+
 
     if (config.get().admin.enabled && !config.get().validator.enabled)
     {
