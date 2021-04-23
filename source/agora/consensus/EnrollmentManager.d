@@ -1386,21 +1386,22 @@ unittest
 unittest
 {
     import agora.consensus.data.Transaction;
-
-    scope utxo_set = new TestUTXOSet;
-    KeyPair key_pair = KeyPair.random();
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
-        .each!(tx => utxo_set.put(tx));
-    auto utxos = utxo_set.storage;
+    import agora.consensus.state.UTXOSet;
 
     // create an EnrollmentManager
     const validator_cycle = 20;
+    KeyPair key_pair = KeyPair.random();
     scope man = new EnrollmentManager(key_pair,
         new immutable(ConsensusParams)(validator_cycle));
 
+    scope utxo_set = new UTXOSet(man.db);
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+        .each!(tx => utxo_set.updateUTXOCache(tx, Height(1), man.params.CommonsBudgetAddress));
+    auto utxos = utxo_set.getUTXOs(key_pair.address);
+
     // create and add the first enrollment
     Enrollment[] enrolls;
-    auto enroll = man.createEnrollment(utxo_set.keys[0], Height(10));
+    auto enroll = man.createEnrollment(utxos.keys[0], Height(10));
     assert(man.addEnrollment(enroll, key_pair.address, Height(9),
             utxo_set.getUTXOFinder()));
 
@@ -1421,7 +1422,7 @@ unittest
 
     // add the enrollment that is already a validator, and check if
     // the enrollment can be nominated at the height before the cycle end
-    enroll = man.createEnrollment(utxo_set.keys[0], Height(10 + validator_cycle));
+    enroll = man.createEnrollment(utxos.keys[0], Height(10 + validator_cycle));
     assert(man.addEnrollment(enroll, key_pair.address, Height(11), &utxo_set.peekUTXO));
     enrolls = man.getEnrollments(Height(validator_cycle + 8), &utxo_set.peekUTXO);
     assert(enrolls.length == 0);
@@ -1560,18 +1561,20 @@ unittest
 unittest
 {
     import agora.consensus.data.Transaction;
+    import agora.consensus.state.UTXOSet;
     import std.algorithm;
 
-    scope utxo_set = new TestUTXOSet;
-    KeyPair key_pair = KeyPair.random();
-
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
-        .each!(tx => utxo_set.put(tx));
-    Hash[] utxo_hashes = utxo_set.keys;
-
-    auto params = new immutable(ConsensusParams)();
     // create an EnrollmentManager object
+    KeyPair key_pair = KeyPair.random();
+    auto params = new immutable(ConsensusParams)();
     auto man = new EnrollmentManager(key_pair, params);
+
+    scope utxo_set = new UTXOSet(man.db);
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+        .each!(tx => utxo_set.updateUTXOCache(tx, Height(1), man.params.CommonsBudgetAddress));
+    auto utxos = utxo_set.getUTXOs(key_pair.address);
+    Hash[] utxo_hashes = utxos.keys;
+
     auto findEnrollment = man.getEnrollmentFinder();
 
     auto genesis_enroll = man.createEnrollment(utxo_hashes[0], Height(0));
@@ -1580,7 +1583,7 @@ unittest
     EnrollmentState state;
     assert(!findEnrollment(genesis_enroll.utxo_key, state));
     assert(man.addValidator(genesis_enroll, key_pair.address, Height(0),
-                                &utxo_set.peekUTXO, utxo_set.storage) is null);
+                                &utxo_set.peekUTXO, utxos) is null);
     assert(man.validator_set.countActive(Height(0)) == 1);
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.status == EnrollmentStatus.Active);
@@ -1624,7 +1627,7 @@ unittest
     assert(man.validator_set.countActive(Height(params.ValidatorCycle)) == 0);
     assert(man.addValidator(enrolls[0], key_pair.address,
             Height(params.ValidatorCycle), &utxo_set.peekUTXO,
-                                                utxo_set.storage) is null);
+                                                utxos) is null);
     assert(man.validator_set.countActive(Height(params.ValidatorCycle)) == 1);
 }
 
