@@ -680,7 +680,7 @@ public class EnrollmentManager
                 log.info("No preimage at height {} for validator key {}", height.value, key);
                 continue;
             }
-            rand_seed = hashMulti(rand_seed, preimage);
+            rand_seed = hashMulti(rand_seed, preimage.hash);
         }
 
         return rand_seed;
@@ -1488,15 +1488,15 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0xd24632cc1614e4890e91f98691b893e61b9e49c9ac3b69ef49b32f5e27a70daf682dda3be26fa898de4227dc4c1dcbcbd6337deba74492224a3a38a07410bac6`),
+        Hash(`0x82c3bf560f5d656162293f55b1d21d426be502bf2104fbc75611bc2ee6a275bfee35bb9d6010b5d38014420fd16e3d35c942bc452cbdb7f0f9eef73b5e5ea2fa`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)) ==
-        Hash(`0xeb075dea34f1881d9f3e91aab7f6c26d40b5859c66ad4c11b9fb92a5b1aac1f85ddf570844666ffc36e349591df28f6d279926f52b213886ba30e4a7f4a99f0b`),
+        Hash(`0xff413a98b3bba2c4b831e518970f24fca92063b0c12b982337a73bb254225e43eb4a3cdf75d145bf20b6ff16e70349185c82ba2fd6c33e078c43b5c116a89ddb`),
         man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle)) ==
-        Hash(`0xef0f8605d75a813cd30e69d3f4299ad342d50ac56be4f565a978ece6de16515887e5236d3176bd7a25ac58658689ce870b5017f031733a6a20d45bc525b78659`),
+        Hash(`0x272bb00e388a3dab4797e4af79ecc1a297bc39c3ab785f1473120c69c3c043f8a3dbbe0abfe6a141a6c23d1d36aff3db9321b45f1c446170a7b6b0a5bc0d6e7f`),
         man.getRandomSeed(utxos, Height(params.ValidatorCycle)).to!string);
 }
 
