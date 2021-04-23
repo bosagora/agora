@@ -2006,6 +2006,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     import std.digest;
     import std.range;
 
+    // Set the human-readable part for addresses
+    HumanReadablePart = "bot";
+
     // We know we're in the main thread
     // Vibe.d messes with the scheduler - reset it
     static import std.concurrency;
