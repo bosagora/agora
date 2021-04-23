@@ -115,13 +115,14 @@ unittest
 {
     import std.algorithm.searching;
     import std.string;
+    import agora.consensus.state.UTXOSet;
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     auto params = new immutable(ConsensusParams)();
-    scope utxo_set = new TestUTXOSet();
-    scope validator_set = new ValidatorSet(new ManagedDatabase(":memory:"),
-                                           params);
+    auto stateDB = new ManagedDatabase(":memory:");
+    scope utxo_set = new UTXOSet(stateDB);
+    scope validator_set = new ValidatorSet(stateDB, params);
     scope UTXOFinder utxoFinder = utxo_set.getUTXOFinder();
 
     // normal frozen transaction
@@ -197,10 +198,10 @@ unittest
     assert(!enroll4.isValid(utxoFinder, Height(0),
                                     &validator_set.findRecentEnrollment));
 
-    utxo_set.put(tx1);
-    utxo_set.put(tx2);
-    utxo_set.put(tx3);
-    utxo_set.put(tx4);
+    utxo_set.updateUTXOCache(tx1, Height(0), params.CommonsBudgetAddress);
+    utxo_set.updateUTXOCache(tx2, Height(0), params.CommonsBudgetAddress);
+    utxo_set.updateUTXOCache(tx3, Height(0), params.CommonsBudgetAddress);
+    utxo_set.updateUTXOCache(tx4, Height(0), params.CommonsBudgetAddress);
 
     // Nomal
     assert(enroll1.isValid(utxoFinder, Height(0),
