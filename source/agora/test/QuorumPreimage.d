@@ -25,8 +25,9 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.crypto.Key;
 import agora.node.FullNode;
-import agora.utils.Log;
 import agora.test.Base;
+import agora.utils.Log;
+import agora.utils.PrettyPrinter;
 
 import std.algorithm;
 import std.format;
@@ -65,8 +66,7 @@ unittest
         {
             import std.string;
             const quorum = node.getQuorumConfig();
-            writefln("L%s: Node %s: Threshold: %s Nodes: %s", line, idx,
-                quorum.threshold, quorum.nodes.map!(e => e.to!string));
+            writefln("L%s: Node %s: \n%s", line, idx, quorum.prettify);
         }
     }
 
@@ -134,7 +134,7 @@ unittest
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_1: %s",
-                    idx, node.getQuorumConfig(), quorums_1[idx])));
+                    idx, node.getQuorumConfig().prettify, quorums_1[idx].prettify)));
     }
 
     const keys = network.nodes.map!(node => node.getPublicKey().key)
