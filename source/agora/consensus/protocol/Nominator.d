@@ -1114,7 +1114,7 @@ extern(D):
         const uint hash_N = 1;
         const uint hash_P = 2;
 
-        const seed = this.ledger.getValidatorRandomSeed(Height(slot_idx - 1));
+        const seed = this.ledger.getLastBlock().header.hashFull();
         uint512 hash = uint512(hashMulti(slot_idx, prev[],
             is_priority ? hash_P : hash_N, round_num, node_id, seed));
 
