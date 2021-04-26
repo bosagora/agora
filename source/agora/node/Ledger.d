@@ -996,23 +996,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Get a transaction from pool by hash
-
-        Params:
-            tx = the transaction hash
-
-        Returns:
-            Transaction or Transaction.init
-
-    ***************************************************************************/
-
-    public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
-    {
-        return this.pool.getTransactionByHash(hash);
-    }
-
-    /***************************************************************************
-
         Get the valid TX set that `data` is representing
 
         Params:
@@ -1046,7 +1029,7 @@ public class Ledger
 
         foreach (const ref tx_hash; data.tx_set)
         {
-            auto tx = this.getTransactionByHash(tx_hash);
+            auto tx = this.pool.getTransactionByHash(tx_hash);
             if (tx == Transaction.init)
                 local_unknown_txs[tx_hash] = true;
             else if (auto fail_reason = tx.isInvalidReason(this.engine,
