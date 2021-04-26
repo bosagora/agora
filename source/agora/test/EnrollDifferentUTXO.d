@@ -28,8 +28,8 @@ private class SameKeyValidator : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    /// Create an enrollment with new UTXO which is not yet used
-    public override Enrollment createEnrollmentData ()
+    /// Enroll with new UTXO which is not yet used
+    public override Enrollment setRecurringEnrollment (bool doIt)
     {
         Hash[] utxo_hashes;
         auto utxos = this.utxo_set.getUTXOs(
@@ -57,7 +57,11 @@ private class SameKeyValidator : TestValidatorNode
         }
         assert(unused_utxo != Hash.init);
 
-        return this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight());
+        const new_enroll =
+            this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight());
+        this.enrollValidator(new_enroll);
+
+        return new_enroll;
     }
 }
 
@@ -146,8 +150,7 @@ unittest
     // Now we re-enroll the first validator with a new UTXO but it will fail
     // because an enrollment with same public key of the first validator is
     // already present in the validator set.
-    Enrollment new_enroll = nodes[0].createEnrollmentData();
-    nodes[0].enrollValidator(new_enroll);
+    Enrollment new_enroll = nodes[0].setRecurringEnrollment(true);
     Thread.sleep(3.seconds);  // enrollValidator() can take a while..
     nodes.each!(node =>
         retryFor(node.getEnrollment(new_enroll.utxo_key) == Enrollment.init, 1.seconds));
@@ -155,8 +158,7 @@ unittest
     // Now we re-enroll other five validators
     foreach (node; nodes[1 .. $])
     {
-        Enrollment enroll = node.createEnrollmentData();
-        nodes[0].enrollValidator(enroll);
+        Enrollment enroll = node.setRecurringEnrollment(true);
         nodes.each!(node =>
             retryFor(node.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     }
