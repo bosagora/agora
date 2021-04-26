@@ -78,8 +78,7 @@ unittest
     auto first_node = network.clients[0];
 
     // Request enrollment at the height of 15
-    auto enroll = first_node.createEnrollmentData();
-    first_node.enrollValidator(enroll);
+    auto enroll = first_node.setRecurringEnrollment(true);
 
     // Make 5 blocks in order to finish the validator cycle
     network.generateBlocks(Height(GenesisValidatorCycle));

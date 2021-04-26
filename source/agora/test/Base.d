@@ -1128,8 +1128,7 @@ public class TestAPIManager
     {
         static assert (isInputRange!Idxs);
 
-        Enrollment enroll = this.clients[client_idx].createEnrollmentData();
-        clients[client_idx].enrollValidator(enroll);
+        auto enroll = clients[client_idx].setRecurringEnrollment(true);
         client_idxs.each!(idx =>
             retryFor(this.clients[idx].getEnrollment(enroll.utxo_key) == enroll,
                 5.seconds,
@@ -1394,15 +1393,21 @@ public interface TestAPI : ValidatorAPI
 
     /***************************************************************************
 
-        TEMPORARY: Create a valid `Enrollment` for this node
+        Toggle enrollment
 
-        This method is a temporary workaround to create an Enrollment for a node
-        in tests. In the future it will be replaced by a simple function call,
-        once Enrollment catch-up is fixed and all node keypairs are well-known.
+        Check if the next enrollment is available or validator is not enrolled.
+        Make a node to enroll when necessary.
+
+        Params:
+            doIt = if the enrollments will be renewed continuouly or not
+
+        Returns:
+            The `Enrollment` used to enroll with,
+            or `Enrollment.init` if an enrollment is not possible
 
     ***************************************************************************/
 
-    public abstract Enrollment createEnrollmentData();
+    public abstract Enrollment setRecurringEnrollment (bool doIt);
 
     ///
     public QuorumConfig getQuorumConfig ();
@@ -1715,8 +1720,8 @@ public class TestFullNode : FullNode, TestAPI
             (out long time_offset) { return true; }, this.cur_time);
     }
 
-    /// FullNode does not implement this
-    public override Enrollment createEnrollmentData ()
+    /// ditto
+    public override Enrollment setRecurringEnrollment (bool doIt)
     {
         assert(0);
     }
@@ -1760,6 +1765,9 @@ public class TestValidatorNode : Validator, TestAPI
     /// for TestNominator
     protected ulong txs_to_nominate;
 
+    /// If the enrollments will be renewed continuouly or not
+    private bool recurring_enrollment = false;
+
     ///
     mixin TestNodeMixin!();
 
@@ -1776,34 +1784,31 @@ public class TestValidatorNode : Validator, TestAPI
         super(config);
     }
 
-    /// Create an enrollment data used as information for an validator
-    public override Enrollment createEnrollmentData ()
+    /// ditto
+    public override Enrollment setRecurringEnrollment (bool doIt)
     {
-        Hash[] utxo_hashes;
-        auto pubkey = this.getPublicKey().key;
-        auto utxos = this.utxo_set.getUTXOs(pubkey);
-        assert(utxos.length > 0, format!"No utxo for public key %s"(pubkey));
-        foreach (key, utxo; utxos)
-        {
-            if (utxo.type == TxType.Freeze &&
-                utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
-            {
-                utxo_hashes ~= key;
-            }
-        }
-        assert(utxo_hashes.length > 0, format!"No frozen utxo for %s"(pubkey));
+        this.recurring_enrollment = doIt;
+        if (this.recurring_enrollment)
+            return this.checkAndEnroll(this.ledger.getBlockHeight());
 
-        const enroll_height = this.enroll_man.validator_set.getEnrolledHeight(
-            this.ledger.getBlockHeight() + 1, utxo_hashes[0]);
-        // The first height at which the enrollment can be enrolled.
-        const avail_height = enroll_height == ulong.max ?
-                                this.ledger.getBlockHeight() + 1 :
-                                max(this.ledger.getBlockHeight() + 1,
-                                    enroll_height + this.params.ValidatorCycle);
-        return this.enroll_man.createEnrollment(utxo_hashes[0],
-                                                    Height(avail_height));
+        return Enrollment.init;
     }
 
+    /// ditto
+    protected override void onAcceptedBlock (in Block block,
+        bool validators_changed) @safe
+    {
+        auto cur_offset = this.clock.networkTime() - this.params.GenesisTimestamp;
+        if (!this.config.validator.recurring_enrollment &&
+            this.recurring_enrollment &&
+            this.config.validator.recurring_enrollment &&
+                block.header.time_offset > cur_offset - 3 * this.params.BlockInterval.total!"seconds")
+        {
+            this.checkAndEnroll(this.ledger.getBlockHeight());
+        }
+
+        super.onAcceptedBlock(block, validators_changed);
+    }
 
     /// ditto
     public override QuorumConfig getQuorumConfig ()

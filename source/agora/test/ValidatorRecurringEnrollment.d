@@ -341,3 +341,29 @@ unittest
     // are not enough validators
     network.generateBlocks(Height(GenesisValidatorCycle + 1));
 }
+
+// Make a validator recur enrollment in the middle of generating blocks
+unittest
+{
+    TestConf conf = {
+        recurring_enrollment : false,
+    };
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.start();
+    network.waitForDiscovery();
+
+    // generate 19 blocks
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
+    network.expectHeightAndPreImg(Height(GenesisValidatorCycle - 1),
+        network.blocks[0].header, 10.seconds);
+
+    // set the recurring enrollment option to true and make a new block
+    network.clients.enumerate.each!((_, node) => node.setRecurringEnrollment(true));
+    network.generateBlocks(Height(GenesisValidatorCycle));
+    network.expectHeightAndPreImg(Height(GenesisValidatorCycle),
+        network.blocks[0].header, 10.seconds);
+    const b20 = network.clients[0].getBlocksFrom(GenesisValidatorCycle, 1)[0];
+    assert(b20.header.enrollments.length == 6);
+}

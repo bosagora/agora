@@ -549,15 +549,19 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        Check if the current enrollment is about to expire or validator is not
-        enrolled. Enroll when necessary.
+        Check if the next enrollment is available or validator is not enrolled.
+        Enroll when necessary.
 
         Params:
             height = Current block height
 
+        Returns:
+            The `Enrollment` used to enroll with, or `Enrollment.init`
+            if not enrolled
+
     ***************************************************************************/
 
-    protected void checkAndEnroll (Height height) @safe
+    protected Enrollment checkAndEnroll (Height height) @safe
     {
         auto next_height = height + 1;
         Hash enroll_key = this.enroll_man.getEnrolledUTXO(height,
@@ -565,19 +569,27 @@ public class Validator : FullNode, API
 
         if (enroll_key == Hash.init &&
             (enroll_key = this.getFrozenUTXO()) == Hash.init)
-            return; // Not enrolled and no frozen UTXO
+            return Enrollment.init; // Not enrolled and no frozen UTXO
 
         const enrolled = this.enroll_man.validator_set.getEnrolledHeight(next_height, enroll_key);
+        const stored_avail = this.enroll_man.enroll_pool.getAvailableHeight(enroll_key);
 
         // This validators enrollment will expire next cycle or not enrolled at all
-        if (enrolled == ulong.max ||
-            next_height >= enrolled + this.params.ValidatorCycle)
+        const avail_height = enrolled == ulong.max ?
+                                next_height : enrolled + this.params.ValidatorCycle;
+
+        if (stored_avail == avail_height)
         {
-            log.trace("Sending Enrollment at height {} for {} cycles with {}",
-                next_height, this.params.ValidatorCycle, enroll_key);
-            const enrollment = this.enroll_man.createEnrollment(enroll_key, next_height);
-            this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
+            log.trace("Already in the enrollment pool at height {} for {} cycles with {}",
+                height, this.params.ValidatorCycle, enroll_key);
+            return Enrollment.init;
         }
+
+        log.trace("Sending Enrollment at height {} for {} cycles with {}",
+            next_height, this.params.ValidatorCycle, enroll_key);
+        const enrollment = this.enroll_man.createEnrollment(enroll_key, avail_height);
+        this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
+        return enrollment;
     }
 
     /***************************************************************************

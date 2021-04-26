@@ -106,7 +106,7 @@ public class EnrollmentManager
     public ValidatorSet validator_set;  // FIXME: Made public to ease transition to raise this to ledger
 
     /// Enrollment pool managing enrollments waiting to be a validator
-    private EnrollmentPool enroll_pool;
+    public EnrollmentPool enroll_pool;
 
     /// Ditto
     private PreImageCycle cycle;
