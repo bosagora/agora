@@ -1455,7 +1455,7 @@ unittest
     foreach (idx, kp; pairs)
     {
         const enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, Height(0), params.ValidatorCycle);
+            utxos[idx], kp, Height(1), params.ValidatorCycle);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
@@ -1464,22 +1464,22 @@ unittest
 
         PreImageInfo preimage = { utxo : utxos[idx],
             distance : cast(ushort)params.ValidatorCycle,
-            hash : cache[$ - params.ValidatorCycle - 1] };
+            hash : cache[$ - (params.ValidatorCycle + 1) - 1] };
 
         assert(man.addPreimage(preimage));
     }
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0x82c3bf560f5d656162293f55b1d21d426be502bf2104fbc75611bc2ee6a275bfee35bb9d6010b5d38014420fd16e3d35c942bc452cbdb7f0f9eef73b5e5ea2fa`),
+        Hash(`0xdd077785bb36ad03802ac760ae31163f77a9f030c63a5a116e1eb20494bc96f9a96fe957b3f42118e4f77c268d13b836e24387922e09a8a431b6ccf4c4424990`),
         man.getRandomSeed(utxos, Height(1)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)) ==
-        Hash(`0xff413a98b3bba2c4b831e518970f24fca92063b0c12b982337a73bb254225e43eb4a3cdf75d145bf20b6ff16e70349185c82ba2fd6c33e078c43b5c116a89ddb`),
+        Hash(`0x6d919940ac1449d5127ef1b79194183f0d55d2349423c914b8daab8fab3420856f404cb451b19ae108e1567797f4a89575296d1b8c8dcbfb4f52e9f0ed91af72`),
         man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)).to!string);
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle)) ==
-        Hash(`0x272bb00e388a3dab4797e4af79ecc1a297bc39c3ab785f1473120c69c3c043f8a3dbbe0abfe6a141a6c23d1d36aff3db9321b45f1c446170a7b6b0a5bc0d6e7f`),
+        Hash(`0x5cf74085de060f9db1b045cf416a8fbb55fa76a6d0b5b6808f383f95da030d28a1708b87b21fa19ab912c139d1cf9ccf90930cabc3d38639daa91b24f125e518`),
         man.getRandomSeed(utxos, Height(params.ValidatorCycle)).to!string);
 }
 
