@@ -956,8 +956,18 @@ public class Ledger
     public Hash getExternalizedRandomSeed (in Height height,
         in uint[] missing_validators) @safe nothrow
     {
-        return this.slash_man.getExternalizedRandomSeed(height,
-            missing_validators);
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
+            assert(0, "Could not retrieve enrollments / no enrollments found");
+
+        Hash[] valid_keys;
+        foreach (idx, key; keys)
+        {
+            if (missing_validators.find(idx).empty())
+                valid_keys ~= key;
+        }
+
+        return this.enroll_man.getRandomSeed(valid_keys, height);
     }
 
     /***************************************************************************
