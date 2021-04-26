@@ -565,7 +565,7 @@ public class Validator : FullNode, API
             (enroll_key = this.getFrozenUTXO()) == Hash.init)
             return; // Not enrolled and no frozen UTXO
 
-        const enrolled = this.enroll_man.getEnrolledHeight(enroll_key);
+        const enrolled = this.enroll_man.validator_set.getEnrolledHeight(enroll_key);
 
         // This validators enrollment will expire next cycle or not enrolled at all
         if (enrolled == ulong.max ||

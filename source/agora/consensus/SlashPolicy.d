@@ -224,7 +224,7 @@ public class SlashPolicy
             return true;
 
         auto preimage = this.enroll_man.getValidatorPreimage(utxo_key);
-        auto enrolled = this.enroll_man.getEnrolledHeight(preimage.utxo);
+        auto enrolled = this.enroll_man.validator_set.getEnrolledHeight(preimage.utxo);
         assert(height >= enrolled);
         return preimage.distance >= cast(ushort)(height - enrolled);
     }

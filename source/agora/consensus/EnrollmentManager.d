@@ -255,24 +255,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        In validatorSet DB, return the enrolled block height.
-
-        Params:
-            enroll_hash = key for an enrollment block height
-
-        Returns:
-            the enrolled block height, or `ulong.max` if no matching key exists
-
-    ***************************************************************************/
-
-    public Height getEnrolledHeight (in Hash enroll_hash)
-        @trusted nothrow
-    {
-        return this.validator_set.getEnrolledHeight(enroll_hash);
-    }
-
-    /***************************************************************************
-
         Add a enrollment data to the enrollment pool
 
         Params:
@@ -290,7 +272,7 @@ public class EnrollmentManager
         in PublicKey pubkey, in Height height, scope UTXOFinder finder)
         @safe nothrow
     {
-        const Height enrolled = this.getEnrolledHeight(enroll.utxo_key);
+        const Height enrolled = this.validator_set.getEnrolledHeight(enroll.utxo_key);
 
         // The first height at which the enrollment can be enrolled
         // is either the next block (if there is no prior enrollment)
@@ -1147,13 +1129,13 @@ unittest
     // test for enrollment block height update
     const EnrollAt9 = Height(9);
     assert(man.validator_set.countActive(EnrollAt9) == 0);
-    assert(man.getEnrolledHeight(utxo_hash) == ulong.max);
+    assert(man.validator_set.getEnrolledHeight(utxo_hash) == ulong.max);
     assert(man.addValidator(ordered_enrollments[0], pairs[0].address, EnrollAt9,
             &utxo_set.peekUTXO, utxos) is null);
-    assert(man.getEnrolledHeight(ordered_enrollments[0].utxo_key) == EnrollAt9.value);
+    assert(man.validator_set.getEnrolledHeight(ordered_enrollments[0].utxo_key) == EnrollAt9.value);
     assert(man.addValidator(ordered_enrollments[0], pairs[0].address, EnrollAt9,
             utxo_set.getUTXOFinder(), utxos) !is null);
-    assert(man.getEnrolledHeight(ordered_enrollments[1].utxo_key) == ulong.max);
+    assert(man.validator_set.getEnrolledHeight(ordered_enrollments[1].utxo_key) == ulong.max);
     enrolls = man.getEnrollments(EnrollAt9, &utxo_set.peekUTXO);
     assert(enrolls.length == 1);
     // One Enrollment was moved to validator set

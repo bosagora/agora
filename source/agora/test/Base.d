@@ -1795,7 +1795,7 @@ public class TestValidatorNode : Validator, TestAPI
         }
         assert(utxo_hashes.length > 0, format!"No frozen utxo for %s"(pubkey));
 
-        const enroll_height = this.enroll_man.getEnrolledHeight(utxo_hashes[0]);
+        const enroll_height = this.enroll_man.validator_set.getEnrolledHeight(utxo_hashes[0]);
         // The first height at which the enrollment can be enrolled.
         const avail_height = enroll_height == ulong.max ?
                                 this.ledger.getBlockHeight() + 1 :
