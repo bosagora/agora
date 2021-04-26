@@ -296,17 +296,15 @@ public class Validator : FullNode, API
         import std.range;
         import std.format;
 
+        if (!super.acceptBlock(block))
+            return false;
+
         auto validators = this.enroll_man.getCountOfValidators(block.header.height);
         auto signed_validators = BitField!ubyte(validators);
         iota(0, validators).each!(i => signed_validators[i]= block.header.validators[i]);
 
-        // Make sure the indexes are up to date
-        this.nominator.enroll_man.updateValidatorIndexMaps(block.header.height);
         auto node_validator_index = this.nominator.enroll_man
             .getIndexOfValidator(block.header.height, this.config.validator.key_pair.address);
-
-        if (!super.acceptBlock(block))
-            return false;
 
         // It can be a block before this validator was enrolled
         if (node_validator_index == ulong.max)
