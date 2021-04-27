@@ -780,20 +780,7 @@ public class EnrollmentManager
 
     public ulong getIndexOfEnrollment () @safe nothrow
     {
-        if (this.enroll_key == Hash.init)
-            return ulong.max;
-
-        Hash[] utxo_keys;
-        if (!this.validator_set.getEnrolledUTXOs(utxo_keys))
-            assert(0);
-
-        foreach (idx, key; utxo_keys)
-            if (key == this.enroll_key)
-                return idx;
-
-        log.fatal("Index of the node's enrollment not found. Enrollment: {}",
-            this.enroll_key);
-        assert(0);
+        return this.getIndexOfValidator(height, this.key_pair.address);
     }
 
     /// Returns: true if this validator is currently enrolled
