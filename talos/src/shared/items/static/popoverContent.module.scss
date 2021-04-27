@@ -1,0 +1,22 @@
+@import "./../../../base.scss";
+
+.popoverContent {
+  background-color: $color-primary;
+  padding: 30px;
+  max-width: 430px;
+  @include border-radius(0px);
+  @include font(1rem, 1.5, $color-white, null, null);
+
+  a {
+    cursor: pointer;
+    color: $color-white;
+    text-decoration: underline;
+    text-decoration-color: $color-white;
+    opacity: 1;
+    @include transition(opacity $animateEl);
+
+    &:hover {
+      opacity: 0.6;
+    }
+  }
+}

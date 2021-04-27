@@ -1,0 +1,29 @@
+@import "./../../base.scss";
+
+.wrappNetworkOptionsContent {
+  .container_network {
+    margin-top: 80px;
+
+
+    @media (max-width: $maxMediaMD) {
+      margin-top: 40px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 48px;
+    }
+  }
+
+  .container_dns {
+    margin-top: 80px;
+
+
+    @media (max-width: $maxMediaMD) {
+      margin-top: 40px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 48px;
+    }
+  }
+}

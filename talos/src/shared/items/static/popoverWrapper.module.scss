@@ -1,0 +1,24 @@
+@import "./../../../base.scss";
+
+.popoverWrapper {
+  .container_PopoverButton {}
+}
+
+.container_closePopoverButton {
+  cursor: pointer;
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0.5;
+  @include font(0.6rem, 1, $color-white, null, null);
+  @include transition(opacity $animateEl);
+
+  &:hover {
+    opacity: 1;
+  }
+}

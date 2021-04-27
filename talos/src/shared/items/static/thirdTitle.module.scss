@@ -1,0 +1,5 @@
+@import "./../../../base.scss";
+
+.thirdTitle {
+  @include font(1.4rem, 1.14, null, normal, 0);
+}

@@ -1,0 +1,9 @@
+@import "./../../../base.scss";
+
+.firstTitleExtra {
+  @include font(2.8rem, 1.07, null, bold, 0);
+
+  @media (max-width: $maxMediaXS) {
+    @include font(1.8rem, 1.22, null, bold, 0);
+  }
+}

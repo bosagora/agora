@@ -1,0 +1,14 @@
+@import "./../../../base.scss";
+
+.switcher {
+  display: flex;
+  align-items: center;
+
+  .container_switcher {}
+
+  .container_label {
+    margin-left: 20px;
+    @include font(1.4rem, 1.14, $color-black, null, null);
+    opacity: 0.9;
+  }
+}

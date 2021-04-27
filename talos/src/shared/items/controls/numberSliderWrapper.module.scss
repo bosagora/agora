@@ -1,0 +1,29 @@
+@import "./../../../base.scss";
+
+.sliderWrapper {
+  position: relative;
+  padding-top: 40px;
+
+  .container_label {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    @include font(1.4rem, 1.14, $color-black, normal, null);
+  }
+
+  .sliderMarks {
+    margin-top: -8px;
+    display: flex;
+    justify-content: space-between;
+
+    .startMark,
+    .endMark {
+      opacity: 0.4;
+      @include font(0.8rem, 1.5, $color-black, null, null);
+    }
+
+    .startMark {}
+
+    .endMark {}
+  }
+}

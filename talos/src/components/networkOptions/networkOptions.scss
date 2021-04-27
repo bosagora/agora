@@ -1,0 +1,34 @@
+@import "./../../base.scss";
+
+[class^='wrapperNetworkOptions'] {
+  @media (max-width: $maxMediaXS) {
+    padding: 40px 36px 20px;
+  }
+
+  @media (min-width: $minMediaXS) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 3;
+    padding: 225px 0px 176px;
+
+    @media (max-width: $maxMediaMD) {
+      & {
+        padding-top: 50px;
+        padding-bottom: 140px;
+      }
+    }
+
+    .container_controlsDesktop {
+      position: absolute;
+      left: 0px;
+      bottom: 60px;
+      z-index: 4;
+
+      @media (max-width: $maxMediaMD) {
+        bottom: 30px;
+      }
+    }
+  }
+}

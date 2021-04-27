@@ -1,0 +1,10 @@
+@import "./../../../base.scss";
+
+.paragraphSmall {
+  opacity: 0.66;
+  @include font(0.8rem, 1.5, $color-black, normal, null);
+
+  &+.paragraph {
+    margin-top: 20px;
+  }
+}

@@ -1,0 +1,32 @@
+@import "./../base.scss";
+
+.container_stepControls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  @media (max-width: $maxMediaXS) {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .container_prevStepButton {
+    width: auto;
+
+    @media (max-width: $maxMediaXS) {}
+  }
+
+  .container_nextStepButton {
+    margin-left: 72px;
+
+    @media (max-width: $maxMediaXS) {
+      margin-left: 0px;
+      width: 257px;
+      text-align: right;
+    }
+
+    @media (max-width: $maxMediaXSS) {
+      width: 200px;
+    }
+  }
+}

@@ -1,0 +1,13 @@
+@import "./../../../base.scss";
+
+.paragraphTitle {
+  @include font(1.4rem, 1.5, $color-black, normal, null);
+
+  &+.paragraphTitle {
+    margin-top: 20px;
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 23px;
+    }
+  }
+}

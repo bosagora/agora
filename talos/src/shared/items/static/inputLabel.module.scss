@@ -1,0 +1,14 @@
+@import "./../../../base.scss";
+
+.inputLabel {
+  display: block;
+  opacity: 0.66;
+  margin-bottom: 6px;
+  @include font(1rem, 1.5, null, null, null);
+
+  @media (max-width: $maxMediaXS) {
+    &+* {
+      margin-top: 10px;
+    }
+  }
+}

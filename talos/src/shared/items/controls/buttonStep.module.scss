@@ -1,0 +1,65 @@
+@import "./../../../base.scss";
+
+.buttonStep,
+.buttonStepVisit,
+.buttonStepActive {
+  cursor: default;
+  border: 0px;
+  padding: 0px;
+  background: none;
+  @include font(1rem, 1.5, $color-black, normal, 0);
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  opacity: 0.25;
+  $transition: opacity $animateEl, padding $animateEl, color $animateEl;
+  @include transition($transition);
+
+  .container_arrow,
+  .container_check {
+    display: block;
+    position: absolute;
+    left: -24px;
+    width: 24px;
+    top: 50%;
+    margin-top: -12px;
+    text-align: center;
+    @include font(0.6rem, 2, $color-black, normal, 0);
+    opacity: 0;
+    $transition: color $animateEl, left $animateEl, opacity $animateEl;
+    @include transition($transition);
+  }
+
+  &.buttonStepActive {
+    opacity: 1;
+    padding-left: 30px;
+    @include font(1rem, 1.5, $color-primary, bold, 0);
+
+    .container_arrow {
+      left: 0px;
+      color: $color-primary;
+      opacity: 1;
+    }
+  }
+
+  &.buttonStepVisit {
+    cursor: pointer;
+    padding-left: 30px;
+    opacity: 0.66;
+    @include font(1rem, 1.5, $color-black, normal, 0);
+
+    .container_check {
+      left: 0px;
+      color: $color-black;
+      opacity: 1;
+    }
+
+    &:hover {
+      color: $color-primary;
+
+      .container_check {
+        color: $color-primary;
+      }
+    }
+  }
+}
