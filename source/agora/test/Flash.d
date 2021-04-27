@@ -640,6 +640,126 @@ unittest
     //assert(tx_12 == settle_tx);
 }
 
+/// Test the settlement timeout branch for the
+/// unilateral non-collaborative close (funding + update* + settle)
+//version (none)
+unittest
+{
+    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs[0 .. 4])
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0,
+        WK.Keys.NODE2.address);
+    auto alice = factory.create(alice_pair, address);
+    auto bob = factory.create(bob_pair, address);
+    const alice_pk = PublicKey(alice_pair.V);
+    const bob_pk = PublicKey(bob_pair.V);
+
+    // 4 blocks settle time after trigger tx is published
+    const Settle_4_Blocks = 4;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id_res = alice.openNewChannel(alice_pk,
+        utxo, Amount(10_000), Settle_4_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
+
+    // await funding transaction
+    network.expectHeightAndPreImg(Height(5), network.blocks[0].header);
+    const block_9 = node_1.getBlocksFrom(5, 1)[$ - 1];
+    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+
+    // wait for the parties & listener to detect the funding tx
+    alice.waitForChannelOpen(alice_pk, chan_id);
+    bob.waitForChannelOpen(bob_pk, chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+
+    auto update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 0);
+
+    /* do some off-chain transactions */
+    auto inv_1 = bob.createNewInvoice(bob_pk, Amount(5_000), time_t.max,
+        "payment 1");
+    alice.payInvoice(alice_pk, inv_1.value);
+
+    alice.waitForUpdateIndex(alice_pk, chan_id, 2);
+    bob.waitForUpdateIndex(bob_pk, chan_id, 2);
+
+    auto inv_2 = bob.createNewInvoice(bob_pk, Amount(1_000), time_t.max,
+        "payment 2");
+    alice.payInvoice(alice_pk, inv_2.value);
+
+    // need to wait for invoices to be complete before we have the new balance
+    // to send in the other direction
+    alice.waitForUpdateIndex(alice_pk, chan_id, 4);
+    bob.waitForUpdateIndex(bob_pk, chan_id, 4);
+
+    // note the reverse payment from bob to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(alice_pk, Amount(2_000), time_t.max,
+        "payment 3");
+    bob.payInvoice(bob_pk, inv_3.value);
+
+    alice.waitForUpdateIndex(alice_pk, chan_id, 6);
+    bob.waitForUpdateIndex(bob_pk, chan_id, 6);
+
+    // alice is acting bad
+    log.info("Alice unilaterally closing the channel..");
+    network.expectHeightAndPreImg(Height(6), network.blocks[0].header);
+    auto tx_10 = node_1.getBlocksFrom(6, 1)[0].txs[0];
+    assert(tx_10 == update_tx);
+    factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose);
+
+    // at this point bob will automatically publish the latest update tx
+    network.expectHeightAndPreImg(Height(7), network.blocks[0].header);
+
+    // at `Settle_4_Blocks` blocks need to be externalized before a settlement
+    // can be attached to the update transaction
+    node_1.putTransaction(txs[4]);
+    network.expectHeightAndPreImg(Height(8), network.blocks[0].header);
+    node_1.putTransaction(txs[5]);
+    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
+    node_1.putTransaction(txs[6]);
+    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
+    node_1.putTransaction(txs[7]);
+    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
+
+    // and then a settlement will be automatically published
+    auto settle_tx = bob.getLastSettleTx(bob_pk, chan_id);
+    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
+    auto tx_12 = node_1.getBlocksFrom(12, 1)[0].txs[0];
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
+    assert(tx_12 == settle_tx);
+}
+
 /// Test attempted collaborative close with a non-collaborative counter-party,
 /// forcing the first counter-party to initiate a non-collaborative close.
 //version (none)

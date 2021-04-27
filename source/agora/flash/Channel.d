@@ -539,6 +539,9 @@ public class Channel
                     this.peer_pk));
         }
 
+        // check on start-up once in case this is a preloaded channel
+        this.checkPublishSettlement();
+
 LOuter: while (1)
         {
             scope (success)
@@ -728,13 +731,10 @@ LOuter: while (1)
         // last update was published, publish the settlement
         if (tx == this.channel_updates[$ - 1].update_tx)
         {
-            // todo: the settlement is likely encumbered by a relative time
-            // lock, need to determine the right time it should be published
-            // and make sure a restart will still republish it.
-            const settle_tx = this.channel_updates[$ - 1].settle_tx;
-            log.info("{}: Publishing last settle tx {}: {}",
-                this.kp.address.flashPrettify, this.channel_updates.length, settle_tx.hashFull().flashPrettify);
-            this.txPublisher(cast()settle_tx);
+            this.state = ChannelState.WaitingOnSettlement;
+            this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+                ErrorCode.None);
+            this.update_ext_height = this.height;
         }
         else
         {
@@ -744,6 +744,33 @@ LOuter: while (1)
             log.info("{}: Publishing latest update tx {}: {}",
                 this.kp.address.flashPrettify, this.channel_updates.length, update_tx.hashFull().flashPrettify);
             this.txPublisher(cast()update_tx);
+        }
+    }
+
+    /***************************************************************************
+
+        If the state of the channel is `WaitingOnSettlement`, then check
+        the current height and publish the Settlement transaction if the
+        settlement timeout has expired on the Update transaction's Output.
+
+    ***************************************************************************/
+
+    private void checkPublishSettlement ()
+    {
+        if (this.state != ChannelState.WaitingOnSettlement)
+            return;  // nothing to do
+
+        // should have been set if state changed to WaitingOnSettlement
+        assert(this.update_ext_height != Height(0));
+
+        // ready to publish settlement
+        if (this.height >= this.update_ext_height + this.conf.settle_time)
+        {
+            const settle_tx = this.channel_updates[$ - 1].settle_tx;
+            log.info("{}: Publishing last settle tx {}: {}",
+                this.kp.address.flashPrettify, this.channel_updates.length,
+                settle_tx.hashFull().flashPrettify);
+            this.txPublisher(cast()settle_tx);
         }
     }
 
@@ -1598,6 +1625,8 @@ LOuter: while (1)
                 this.onSettleTxExternalized(tx);
             }
         }
+
+        this.checkPublishSettlement();
     }
 
     /***************************************************************************
@@ -2289,4 +2318,9 @@ private mixin template ChannelMetadata ()
 
     /// Most recent ChannelUpdate for our end of the Channel
     private ChannelUpdate last_update;
+
+    /// The height at which the latest update transaction was detected on
+    /// the blockchain, which begins a timeout after which a settlement tx
+    /// may be published to the blockchain.
+    private Height update_ext_height;
 }
