@@ -65,7 +65,7 @@ unittest
 
     // wait for other nodes to get to same block height
     set_b.enumerate.each!((idx, node) =>
-        retryFor(node.getBlockHeight() == GenesisValidatorCycle - 1, 2.seconds,
+        retryFor(node.getBlockHeight() == GenesisValidatorCycle - 1, 5.seconds,
             format!"Expected block height %s but outsider %s has height %s."
                 (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
 
