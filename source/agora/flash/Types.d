@@ -70,6 +70,11 @@ public enum ChannelState
     /// update transaction to the blockchain.
     StartedUnilateralClose,
 
+    /// Waiting for the settlement branch to be unlocked in the update tx's
+    /// Output. Once it's unlocked, the settlement will be published. Once
+    /// the settlement is externalized, the channel will be set to Closed.
+    WaitingOnSettlement,
+
     /// The funding transaction has been spent and externalized.
     /// This marks the channel as closed.
     /// New channels cannot use the same funding UTXO since it was spent,
