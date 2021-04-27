@@ -1103,7 +1103,8 @@ public class ValidatingLedger : Ledger
 
     ***************************************************************************/
 
-    public void prepareNominatingSet (out ConsensusData data, ulong max_txs)
+    public void prepareNominatingSet (out ConsensusData data, ulong max_txs,
+            TimePoint nomination_start_time)
         @safe
     {
         if (clock.networkTime < this.params.GenesisTimestamp)
@@ -1112,7 +1113,7 @@ public class ValidatingLedger : Ledger
                 clock.networkTime, this.params.GenesisTimestamp);
             return;
         }
-        const genesis_offset =  clock.networkTime - this.params.GenesisTimestamp;
+        const genesis_offset =  nomination_start_time - this.params.GenesisTimestamp;
         data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
         log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
@@ -1195,7 +1196,7 @@ public class ValidatingLedger : Ledger
         string file = __FILE__, size_t line = __LINE__)
     {
         ConsensusData data;
-        this.prepareNominatingSet(data, max_txs);
+        this.prepareNominatingSet(data, max_txs, this.clock.networkTime());
         assert(data.tx_set.length >= max_txs);
         const expected_ts = this.params.GenesisTimestamp + data.time_offset;
         if (this.clock.networkTime() < expected_ts ||
@@ -1455,7 +1456,7 @@ unittest
     // no matter how far the clock is ahead, we still accept blocks as long as
     // the clock has a time greater than the time in the latest block header
     auto ledger = getLedger(mock_clock);
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     data.time_offset = 1;
     mock_clock.setTime(ledger.params.GenesisTimestamp + 2000);
     assert(ledger.externalize(data));
@@ -1768,7 +1769,8 @@ unittest
 
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
 
     Transaction[] genTransactions (Transaction[] txs)
     {
@@ -1880,7 +1882,7 @@ unittest
     assert(gotten_image == preimage);
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     test!"=="(data.missing_validators.length, 3);
     test!"=="(data.missing_validators, [1, 2, 3]);
 
@@ -1909,7 +1911,7 @@ unittest
     temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     assert(data.missing_validators.length == 0);
 }
 
@@ -1924,7 +1926,8 @@ unittest
         CommonsBudget.address, config);
 
     const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
 
     Hash[] genesisEnrollKeys;
     ledger.enroll_man.getEnrolledUTXOs(Height(1), genesisEnrollKeys);
@@ -1947,7 +1950,7 @@ unittest
     no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     // This is a block with no fees, a ConsensusData with Coinbase TXs should
     // fail validation. But since the Ledger does not know about the hash, it will
     // think someone else may validate it.
@@ -1973,7 +1976,7 @@ unittest
         txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
         data = ConsensusData.init;
-        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+        ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
 
         // Remove the coinbase TX
         data.tx_set = data.tx_set[0 .. $ - 1];
@@ -2015,7 +2018,8 @@ unittest
         CommonsBudget.address, config);
 
     const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params);
+    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
+    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
 
     auto txs = blocks[$-1].spendable.map!(txb =>
         txb.deduct(Amount.UnitPerCoin).sign()).array();
@@ -2023,7 +2027,7 @@ unittest
     ledger.forceCreateBlock(1);
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, 1);
+    ledger.prepareNominatingSet(data, 1, mock_clock.networkTime());
     // Coinbase TX should not be nominated.
     assert(data.tx_set.length == 0);
 
