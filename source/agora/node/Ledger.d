@@ -914,31 +914,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Generate the random seed reduced from the preimages for the provided
-        block height.
-
-        Params:
-            height = the desired block height to look up the images for
-
-        Returns:
-            the random seed
-
-    ***************************************************************************/
-
-    public Hash getValidatorRandomSeed (in Height height) nothrow
-    {
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
-
-        return this.enroll_man.getRandomSeed(keys, height);
-    }
-
-    /***************************************************************************
-
         Get the random seed reduced from the preimages of validators
         except the provided 'missing_validators'.
 
