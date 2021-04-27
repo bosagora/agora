@@ -135,6 +135,9 @@ public extern (C++) class Nominator : SCPDriver
     public extern (D) void delegate (in ConsensusData data, in string msg)
         @safe onInvalidNomination;
 
+    /// Nomination start time
+    protected TimePoint nomination_start_time;
+
 extern(D):
 
     /***************************************************************************
@@ -300,7 +303,7 @@ extern(D):
 
     protected bool prepareNominatingSet (out ConsensusData data) @safe
     {
-        this.ledger.prepareNominatingSet(data, MaxTransactionsPerBlock);
+        this.ledger.prepareNominatingSet(data, MaxTransactionsPerBlock, this.nomination_start_time);
         if (data.tx_set.length < 1)
             return false;  // not ready to nominate yet
 
@@ -366,6 +369,9 @@ extern(D):
 
         if (cur_time < this.getExpectedBlockTime())
             return;  // too early to nominate
+
+        if (this.nomination_start_time == 0)
+            this.nomination_start_time = cur_time;
 
         ConsensusData data;
         if (!this.prepareNominatingSet(data))
@@ -895,6 +901,7 @@ extern(D):
         }
         this.gossipBlockSignature(ValidatorBlockSig(height, this.kp.address,
                     this.slot_sigs[height][this.kp.address].s));
+        this.nomination_start_time = 0;
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests

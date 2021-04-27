@@ -498,7 +498,7 @@ extern(D):
     {
         // if 0 take all txs, otherwise nominate exactly this many txs
         this.ledger.prepareNominatingSet(data,
-            this.txs_to_nominate ? this.txs_to_nominate : ulong.max);
+            this.txs_to_nominate ? this.txs_to_nominate : ulong.max, this.nomination_start_time);
         if (data.tx_set.length < this.txs_to_nominate)
         {
             log.trace("Nomination: Not enough transactions ({} < {})",
