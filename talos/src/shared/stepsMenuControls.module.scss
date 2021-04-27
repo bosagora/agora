@@ -1,0 +1,9 @@
+@import "./../base.scss";
+
+.stepsMenuControlsWrapper {
+
+  @media (max-width: $maxMediaXS) {
+    margin-left: -36px;
+    margin-right: -36px;
+  }
+}

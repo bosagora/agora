@@ -1,0 +1,137 @@
+@import "./../base.scss";
+@import "./../grid.scss";
+
+* {
+  @include box-sizing(border-box);
+
+  &:before,
+  &:after {
+    @include box-sizing(border-box);
+  }
+}
+
+html {
+  position: relative;
+  @include font($baseSize, 1, $color-black, null, null);
+}
+
+body {
+  font-family: $font1;
+  background-color: $color-white;
+  padding: 0px;
+  margin: 0px auto;
+  min-height: 100vh;
+  line-height: 1;
+
+  @media (max-width: $maxMediaXS) {
+    min-height: initial;
+  }
+}
+
+.application {
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.container {
+  width: $containerMD;
+  padding: $containerPaddingLG;
+  margin: 0px auto;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0px;
+  color: inherit;
+}
+
+ul,
+ol {
+  margin: 0px;
+  padding: 0px;
+  list-style-type: none;
+}
+
+a {
+  text-decoration: none;
+}
+
+select,
+input:not[type="checkbox"],
+textarea {
+  width: 100%;
+  @include outline(none);
+  background: transparent;
+  @include box-shadow(none);
+  border: none;
+  font-family: $font1;
+}
+
+span {
+  font-family: inherit;
+}
+
+button {
+  font-family: inherit;
+  @include outline(none);
+  cursor: pointer;
+
+  &:hover,
+  &:focus {
+    @include outline(none);
+  }
+}
+
+.invisLink {
+  position: relative;
+  z-index: 1;
+
+  a {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 7;
+    overflow: hidden;
+    text-indent: 200%;
+    white-space: nowrap;
+  }
+}
+
+[class*="iconLeft"] {
+  position: relative;
+  display: inline-block;
+
+  &>[class*="icon"] {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 0px;
+  }
+}
+
+@media(max-width: $maxMediaSM) {
+  .container {
+    width: $containerSM;
+  }
+}
+
+@media(max-width: $maxMediaXS) {
+  .container {
+    width: $containerXS;
+    padding: 0px;
+  }
+}
+
+[class*="btn"] {
+  &+[class*="btn"] {
+    margin-left: 5px;
+  }
+}

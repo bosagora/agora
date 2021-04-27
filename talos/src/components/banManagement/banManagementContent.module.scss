@@ -1,0 +1,28 @@
+@import "./../../base.scss";
+
+.wrappBanManagementContent {
+
+  .container_counter {
+    margin-top: 80px;
+
+    @media (max-width: $maxMediaMD) {
+      margin-top: 40px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 25px;
+    }
+  }
+
+  .container_banDuration {
+    margin-top: 80px;
+
+    @media (max-width: $maxMediaMD) {
+      margin-top: 40px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 25px;
+    }
+  }
+}

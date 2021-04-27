@@ -1,0 +1,113 @@
+$containerLG: 1495px;
+$containerSD: 1200px;
+$containerMD: 1030px;
+$containerSM: 780px;
+$containerXS: 100%;
+$containerXSS: 100%;
+
+$containerMediumLG: 970px;
+$containerMediumSD: 970px;
+$containerMediumMD: 100%;
+$containerMediumSM: 100%;
+$containerMediumXS: 100%;
+$containerMediumXSS: 100%;
+
+$containerSmallLG: 830px;
+$containerSmallSD: 830px;
+$containerSmallMD: 830px;
+$containerSmallSM: 730px;
+$containerSmallXS: 100%;
+$containerSmallXSS: 100%;
+
+$containerXSmallLG: 800px;
+$containerXSmallSD: 800px;
+$containerXSmallMD: 800px;
+$containerXSmallSM: 100%;
+$containerXSmallXS: 100%;
+$containerXSmallXSS: 100%;
+
+$indent1: 15px;
+$indent2: 20px;
+$indent3: 30px;
+$indent4: 40px;
+$indent5: 60px;
+$indent6: 10px;
+$indentO1: -$indent1;
+$indentO2: -$indent2;
+$indentO3: -$indent3;
+$indentO4: -$indent4;
+$indentO5: -$indent5;
+$indentO6: -$indent6;
+
+$containerPaddingLG: 0px $indent1;
+$containerPaddingSD: 0px $indent1;
+$containerPaddingMD: 0px $indent1;
+$containerPaddingSM: 0px $indent1;
+$containerPaddingXS: 0px $indent2;
+$containerPaddingXSS: 0px $indent2;
+
+$rowMarginLG: 0px $indentO3;
+$rowMarginSD: 0px $indentO3;
+$rowMarginMD: 0px $indentO3;
+$rowMarginSM: 0px $indentO3;
+$rowMarginXS: 0px $indentO2;
+$rowMarginXSS: 0px $indentO2;
+
+$maxMediaSD: 1439px;
+$maxMediaMD: 1229px;
+$maxMediaSM: 1047px;
+$maxMediaXS: 991px;
+// $maxMediaXS: 767px;
+$maxMediaXSS: 410px;
+
+$minMediaSD: 1440px;
+$minMediaMD: 1230px;
+$minMediaSM: 992px;
+$minMediaXS: 992px;
+// $minMediaXS: 768px;
+$minMediaXSS: 411px;
+
+$col1: 100% * 1 / 12;
+$col2: 100% * 2 / 12;
+$col2_4: 100% / 5;
+$col3: 100% * 3 / 12;
+$col4: 100% * 4 / 12;
+$col5: 100% * 5 / 12;
+$col6: 100% * 6 / 12;
+$col7: 100% * 7 / 12;
+$col8: 100% * 8 / 12;
+$col9: 100% * 9 / 12;
+$col10: 100% * 10 / 12;
+$col11: 100% * 11 / 12;
+$col12: 100% * 12 / 12;
+
+$baseSize: 20px;
+
+$animateSteps: 1s;
+$animateEl: 0.5s;
+
+$font1: 'Alegreya Sans';
+$font2: 'icomoon';
+
+$color-white: #ffffff;
+$color-black: #000000;
+$color-primary: #0073ff;
+$color-negative: #de6161;
+
+$color1: #f7f8fc;
+$color2: #e4ebf9;
+$color3: #042b5b;
+
+:export {
+  font1: $font1;
+  baseSize: $baseSize;
+  color_primary: $color-primary;
+  color_negative: $color-negative;
+  color_white: $color-white;
+  color_black: $color-black;
+  color3: $color3;
+  maxMediaXS: $maxMediaXS;
+  minMediaXS: $minMediaXS;
+  animateSteps: $animateSteps;
+  animateEl: $animateEl;
+}

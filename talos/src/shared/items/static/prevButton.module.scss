@@ -1,0 +1,35 @@
+@import "./../../../base.scss";
+
+.prevButton {
+  @include font(1.4rem, 1.14, null, normal, 0);
+  position: relative;
+  padding-left: 50px;
+  text-align: right;
+
+  @media (max-width: $maxMediaXS) {
+    padding: 16px 35px;
+    @include font(1rem, 1.5, null, bold, null);
+  }
+
+  .container_icon {
+    @include font(0.8rem, 1, null, null, null);
+    width: 0.8rem;
+    position: absolute;
+    top: 50%;
+    margin-top: -0.4rem;
+    left: 6px;
+    @include transition(left $animateEl);
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: -0.35rem;
+      width: 0.7rem;
+      @include font(0.7rem, 1, null, null, null);
+    }
+  }
+
+  &:hover {
+    .container_icon {
+      left: 16px;
+    }
+  }
+}

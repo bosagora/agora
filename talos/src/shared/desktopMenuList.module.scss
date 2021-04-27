@@ -1,0 +1,9 @@
+@import "./../base.scss";
+
+.desktopMenuControls {
+  .desktopItemWrapper {
+    &+.desktopItemWrapper {
+      margin-top: 16px;
+    }
+  }
+}

@@ -1,0 +1,54 @@
+@import "./../../../base.scss";
+
+.loader {
+  height: 37px;
+  width: 37px;
+  z-index: 1;
+  opacity: 1;
+  background: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+
+  .backRound {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 33px;
+    height: 33px;
+    background-color: $color_white;
+    z-index: 2;
+    @include border-radius(50%);
+    @include animation-name(loaderBackAnimation);
+    @include animation-duration(2s);
+    @include animation-iteration-count(infinite);
+    @include animation-timing-function(ease);
+
+    .dotRound {
+      width: 7px;
+      height: 7px;
+      background-color: $color_primary;
+      z-index: 3;
+      @include border-radius(50%);
+      @include animation-name(loaderDotAnimation);
+      @include animation-duration(2s);
+      @include animation-iteration-count(infinite);
+      @include animation-timing-function(ease);
+    }
+  }
+
+  .shadow {
+    display: block;
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    top: 11px;
+    left: 4px;
+    background-color: $color3;
+    opacity: 0.5;
+    @include border-radius(0);
+    @include filter(blur(20px));
+    z-index: 1;
+  }
+}

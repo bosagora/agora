@@ -1,0 +1,207 @@
+.table {
+  display: table;
+
+  &.full {
+    width: $col12;
+  }
+
+  .tBody {
+    display: table-row-group;
+  }
+
+  .tRow {
+    display: table-row;
+  }
+
+  .tHead {
+    display: table-row;
+  }
+
+  .tCell {
+    display: table-cell !important;
+
+    &.middle {
+      vertical-align: middle;
+    }
+
+    &.top {
+      vertical-align: top;
+    }
+
+    &.bottom {
+      vertical-align: bottom;
+    }
+
+    &.right {
+      text-align: right;
+    }
+
+    &.left {
+      text-align: left;
+    }
+
+    &.center {
+      text-align: center;
+    }
+  }
+}
+
+.cfix,
+.row,
+.grid {
+  &:after {
+    @include cfix
+  }
+
+  &>.left,
+  &>.item {
+    float: left;
+  }
+
+  &>.right,
+  &>.item.right {
+    float: right;
+  }
+
+  &.noPadd {
+    margin: 0px;
+
+    &>.item {
+      padding: 0px;
+    }
+  }
+}
+
+.textCenter {
+  text-align: center !important;
+}
+
+.textLeft {
+  text-align: left !important;
+}
+
+.textRight {
+  text-align: right !important;
+}
+
+.grid {
+  margin: $indentO3 $indentO1 0px;
+
+  &>.item {
+    padding: $indent3 $indent1 0px;
+  }
+
+  &.smPadd {
+    margin: $indentO3 $indentO1 0px;
+
+    &>.item {
+      padding: $indent3 $indent1 0px;
+    }
+  }
+
+  &.bigPadd {
+    margin: -60px $indentO3 0px;
+
+    &>.item {
+      padding: $indent4 $indent3 0px;
+    }
+  }
+}
+
+.row {
+  margin-left: $indentO1;
+  margin-right: $indentO1;
+
+  &>.item {
+    padding-left: $indent1;
+    padding-right: $indent1;
+  }
+
+  &>.right,
+  &>.left {
+    padding-left: $indent1;
+    padding-right: $indent1;
+  }
+
+  &.smPadd {
+    margin-left: $indentO1;
+    margin-right: $indentO1;
+
+    &>.item {
+      padding-left: $indent1;
+      padding-right: $indent1;
+    }
+  }
+
+  &.bigPadd {
+    margin-left: $indentO3;
+    margin-right: $indentO3;
+
+    &>.item {
+      padding-left: $indent3;
+      padding-right: $indent3;
+    }
+
+    &>.right,
+    &>.left {
+      margin-left: $indentO3;
+      margin-right: $indentO3;
+    }
+  }
+}
+
+.col0 {
+  width: 0px;
+}
+
+.col1 {
+  width: $col1;
+}
+
+.col2 {
+  width: $col2;
+}
+
+.col2_4 {
+  width: $col2_4;
+}
+
+.col3 {
+  width: $col3;
+}
+
+.col4 {
+  width: $col4;
+}
+
+.col5 {
+  width: $col5;
+}
+
+.col6 {
+  width: $col6;
+}
+
+.col7 {
+  width: $col7;
+}
+
+.col8 {
+  width: $col8;
+}
+
+.col9 {
+  width: $col9;
+}
+
+.col10 {
+  width: $col10;
+}
+
+.col11 {
+  width: $col11;
+}
+
+.col12 {
+  width: $col12;
+}

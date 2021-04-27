@@ -1,0 +1,229 @@
+@import "./../../../base.scss";
+
+.tokenInputWrapper,
+.tokenInputWrapperError {
+  min-height: 79px;
+  padding-top: 16px;
+  position: relative;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+
+  @media (max-width: $maxMediaXS) {
+    min-height: 70px;
+  }
+
+  &.tokenInputWrapperError {
+    border-bottom-color: $color-negative;
+
+    @media (max-width: $maxMediaXS) {
+      border-bottom-color: transparent;
+    }
+
+    .tokenInputErrorLabel {
+      @media (max-width: $maxMediaXS) {
+        display: block;
+        position: static;
+        margin-top: 0px;
+        padding-top: 9px;
+        border-top: solid 1px $color-negative;
+      }
+    }
+  }
+
+  .tokenInput,
+  .tokenInputNull {
+    background-color: transparent;
+    height: auto;
+    min-height: 62px;
+    border-radius: 0;
+    border: 0px;
+    border-bottom-color: currentcolor;
+    border-bottom-style: none;
+    border-bottom-width: 0px;
+    padding: 0px 0px 7px;
+    overflow: visible;
+
+    @media (max-width: $maxMediaXS) {
+      min-height: 53px;
+      padding: 0px 0px 6px;
+    }
+
+    &:after {
+      content: "";
+      display: block;
+      clear: both;
+    }
+
+    &[class*='---focused'] {
+      border-bottom-color: $color-black;
+    }
+
+    &[class*='---focused']+.tokenInputLabel,
+    &+.tokenInputLabelActive {
+      opacity: 0.66;
+      @include font(1rem, 1.14, $color-black, null, null);
+      $transform: translate(0, 1.5px) scale(0.75);
+      @include transform($transform);
+    }
+
+    [class*='---token-list'] {
+      margin: 0px;
+      margin-right: 10px;
+      padding-right: 60px;
+
+      .tokenItemWrapper {
+        padding: 7px 10px 0px 0px;
+        position: relative;
+        height: auto;
+        background: none;
+        margin: 0px;
+        float: left;
+        cursor: default;
+        @media (max-width: $maxMediaXS) {
+          padding: 5px 6px 0px 0px;
+        }
+
+        .tokenItem {
+          position: relative;
+
+          .container_tokenItemInner,
+          .container_tokenItemInnerError {
+            padding: 7px 48px 7px 16px;
+            background-color: $color-white;
+            border: solid 1px $color2;
+            @include border-radius(4px);
+            width: auto;
+            display: block;
+            max-width: 100%;
+            min-height: 48px;
+            @include transition(border $animateEl);
+
+            @media (max-width: $maxMediaXS) {
+              padding: 5px 38px 5px 10px;
+              min-height: 42px;
+            }
+
+            &.container_tokenItemInnerError {
+              border-color: $color-negative;
+            }
+
+            .editInput {
+              border: 0px;
+              padding: 0px;
+              width: 150px;
+              font-family: $font1;
+              @include font(1.4rem, 1.14, $color-black, null, null);
+            }
+
+            .tokenTitle {
+              @include font(1.4rem, 1.14, $color-black, null, null);
+
+              @media (max-width: $maxMediaXS) {
+                @include font(1rem, 1.5, null, null, null);
+              }
+            }
+          }
+
+          .container_closeButton {
+            cursor: pointer;
+            position: absolute;
+            right: 10px;
+            bottom: 12px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px;
+            opacity: 0.4;
+            font-style: normal;
+            @include font(0.6rem, 1, $color-black, null, null);
+            @include transition(opacity $animateEl);
+
+            @media (max-width: $maxMediaXS) {
+              right: 6px;
+              bottom: 9px;
+            }
+
+            &:hover {
+              opacity: 1;
+            }
+          }
+        }
+      }
+    }
+
+    [class*='---autosized-wrapper'] {
+      overflow: visible;
+      height: auto;
+      padding-top: 0px;
+      display: flex;
+      align-items: center;
+
+      &>div {
+        padding-top: 10px;
+
+        @media (max-width: $maxMediaXS) {
+          padding-top: 6px;
+        }
+      }
+
+      input {
+        text-align: left;
+        height: 43px;
+        padding-right: 55px;
+        font-family: $font1;
+        @include font(1.4rem, 1.14, $color-black, null, null);
+        padding-left: 17px;
+
+        @media (max-width: $maxMediaXS) {
+          @include font(1rem, 1.5, null, null, null);
+          padding-left: 11px;
+          padding-right: 45px;
+          height: 40px;
+        }
+
+        &:focus {}
+      }
+    }
+
+    &.tokenInputNull {
+      [class*='---autosized-wrapper'] {
+        input {
+          padding-left: 0px;
+        }
+      }
+    }
+  }
+
+
+  .tokenInputLabel,
+  .tokenInputLabelActive {
+    position: absolute;
+    z-index: -1;
+    opacity: 0.4;
+    top: 1.5px;
+    @include font(1.4rem, 1.14, $color-black, null, null);
+    $transform: translate(0, 24px) scale(1);
+    @include transform($transform);
+    transform-origin: top left;
+    $transition: color 200ms cubic-bezier(0.0, 0, 0.2, 1) 0ms, transform 200ms cubic-bezier(0.0, 0, 0.2, 1) 0ms;
+    @include transition($transition);
+
+    @media (max-width: $maxMediaXS) {
+      @include font(1rem, 1.5, null, null, null);
+    }
+  }
+
+  .tokenInputErrorLabel {
+    margin-top: 9px;
+    font-size: 1rem;
+    position: absolute;
+    top: 100%;
+    left: 0px;
+    @include font(1rem, 1.5, $color-negative, null, null);
+
+    @media (max-width: $maxMediaXS) {
+      @include font(0.8rem, 1.5, null, null, null);
+    }
+  }
+}

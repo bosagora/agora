@@ -1,0 +1,5 @@
+@import "./../../../base.scss";
+
+.bold {
+  @include font(1rem, 1.5, $color-black, bold, null);
+}

@@ -1,0 +1,48 @@
+@import "./../../../base.scss";
+
+.counterItem,
+.counterItemActive {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: $color-white;
+  width: 54px;
+  height: 62px;
+  @include border-radius(4px);
+  @include font(1.4rem, 1.14, $color-black, null, null);
+  $trans: background $animateEl, color $animateEl;
+  @include transition($trans);
+
+  @media (max-width: $maxMediaXS) {
+    width: 50px;
+    height: 54px;
+    @include font(1.2rem, 1.5, null, null, null);
+  }
+
+  &:before {
+    content: '';
+    display: block;
+    position: absolute;
+    @include border-radius(4px);
+    border: solid 1px $color3;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    opacity: 0.1;
+    $trans: opacity $animateEl, border $animateEl;
+    @include transition($trans);
+  }
+
+  &:hover,
+  &.counterItemActive {
+    color: $color-white;
+    background-color: $color-primary;
+  }
+
+  &.counterItemActive {
+    cursor: default;
+  }
+}

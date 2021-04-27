@@ -1,0 +1,14 @@
+@import "./../../../base.scss";
+
+.buttonText {
+  cursor: pointer;
+  background: none;
+  border: 0px;
+  opacity: 0.5;
+  @include font(1rem, 1.5, $color-black, bold, 0);
+  @include transition( opacity $animateEl);
+
+  &:hover {
+    opacity: 0.9;
+  }
+}

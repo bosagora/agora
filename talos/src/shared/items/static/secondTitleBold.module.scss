@@ -1,0 +1,9 @@
+@import "./../../../base.scss";
+
+.secondTitleBold {
+  @include font(1.8rem, 1.33, null, bold, 0);
+
+  @media (max-width: $maxMediaXS) {
+    @include font(1.4rem, 1.29, null, bold, 0);
+  }
+}

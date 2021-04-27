@@ -1,0 +1,24 @@
+@font-face {
+    font-family: 'Alegreya Sans';
+    src: url('AlegreyaSans-Bold.eot');
+    src: url('AlegreyaSans-Bold.eot?#iefix') format('embedded-opentype'),
+        url('AlegreyaSans-Bold.woff2') format('woff2'),
+        url('AlegreyaSans-Bold.woff') format('woff'),
+        url('AlegreyaSans-Bold.ttf') format('truetype'),
+        url('AlegreyaSans-Bold.svg#AlegreyaSans-Bold') format('svg');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Alegreya Sans';
+    src: url('AlegreyaSans-Regular.eot');
+    src: url('AlegreyaSans-Regular.eot?#iefix') format('embedded-opentype'),
+        url('AlegreyaSans-Regular.woff2') format('woff2'),
+        url('AlegreyaSans-Regular.woff') format('woff'),
+        url('AlegreyaSans-Regular.ttf') format('truetype'),
+        url('AlegreyaSans-Regular.svg#AlegreyaSans-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+

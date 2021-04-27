@@ -1,0 +1,31 @@
+@import "./../../../base.scss";
+
+.buttonStaticStep,
+.buttonStaticStepVisit,
+.buttonStaticStepActive {
+  cursor: default;
+  border: 0px;
+  background: none;
+  @include font(1rem, 1.5, $color-black, normal, 0);
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  opacity: 0.25;
+  $transition: opacity $animateEl, padding $animateEl, color $animateEl;
+  @include transition($transition);
+  padding: 0px;
+
+  @media (max-width: $maxMediaXS) {
+    padding-left: 25px;
+  }
+
+  &.buttonStaticStepActive {
+    opacity: 1;
+    @include font(1rem, 1.5, $color-primary, bold, 0);
+  }
+
+  &.buttonStaticStepVisit {
+    opacity: 0;
+    @include font(1rem, 1.5, $color-black, normal, 0);
+  }
+}
