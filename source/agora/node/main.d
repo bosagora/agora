@@ -121,8 +121,7 @@ private int main (string[] args)
                 cmdln.config_path.absolutePath());
         scope setup = new SetupInterface(cmdln.config_path);
         setup.start(url);
-        if (auto ret = runEventLoop())
-            return ret;
+        return runEventLoop();
     }
 
     Nullable!Config config = ()

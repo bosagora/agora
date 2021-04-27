@@ -1,10 +1,11 @@
 /*******************************************************************************
 
-    Provide a web-based administrative interface to the node
+    Provide a web-based setup interface to the node (Talos)
 
-    To ease administration and configuration, users can interact with the node
-    using a web interface. This interface is served by Vibe.d,
-    usually on a port adjacent to the node port (2827 by default).
+    To ease onboarding, users can setup a node via a web interface.
+    This interface is a React app, served by Vibe.d, which can be enabled by
+    providing the `--initialize=ADDRESS` CLI argument to Agora.
+    `ADDRESS` defines on which port Talos will be served.
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -31,6 +32,7 @@ import vibe.http.server;
 import vibe.inet.url;
 import vibe.stream.operations;
 
+static import std.file;
 import std.format;
 import std.meta;
 import std.traits;
@@ -45,9 +47,7 @@ import std.traits;
     and guide the user through a setup process.
 
     Once the setup process is complete, the config file is written to disk,
-    and the node starts a normal booting process, where the file is read,
-    and the network interface is initialized along with the 'real'
-    administrative / monitoring interface (if enabled).
+    and the user can restart Agora through the regular booting process.
 
 *******************************************************************************/
 
@@ -75,27 +75,43 @@ public class SetupInterface
     /// Start listening for requests
     public void start (URL url)
     {
+        // Safety checks: If the user asked for the admin interface, make sure it exists
+        if (!std.file.exists("talos/index.html"))
+            throw new Exception("Talos files not found. This might mean your node is not installed correctly. " ~
+                                "Expected to find '" ~ std.file.getcwd() ~ "/talos/index.html' but didn't.");
+
         auto settings = new HTTPServerSettings(url.host);
         settings.port = url.port;
         auto router = new URLRouter;
-        router.post("/check", &this.handleCheck);
+
+        // Convenience redirect, as users expect that accessing '/' redirect to index.html
+        router.match(HTTPMethod.GET, "/", staticRedirect("/index.html", HTTPStatus.movedPermanently));
+        // Called when the config file is created
+        router.post("/writeConfig", &this.handleConfig);
+        // Handle CORS
         router.match(HTTPMethod.OPTIONS, "*", &this.handleAllOptions);
+        // By default, match the underlying files
+        router.match(HTTPMethod.GET, "*", serveStaticFiles("talos/"));
+
         this.listener = listenHTTP(settings, router);
     }
 
     /***************************************************************************
 
-        Validate a received config file
+        Validate and write a received config file to disk
 
-        This can be used by client code to check whether a configuration
-        is valid, and get a user-friendly error message if not.
+        This hook is called as the last step of the setup process,
+        and will return a user-friendly error message if any problem happens.
 
     ***************************************************************************/
 
-    private void handleCheck (scope HTTPServerRequest req, scope HTTPServerResponse res)
+    private void handleConfig (scope HTTPServerRequest req, scope HTTPServerResponse res)
     {
         string body = req.bodyReader.readAllUTF8();
-        log.error("Received configuration from admin interface: {}", body);
+        // Don't do this by default as it could log the private key to the logs
+        version (none)
+            log.info("Received configuration from admin interface: {}", body);
+
         try
         {
             auto config = parseConfigString(body, this.path);
@@ -103,6 +119,16 @@ public class SetupInterface
         }
         catch (Exception e)
             res.writeJsonBody(Response(false, e.msg), HTTPStatus.badRequest);
+
+        // Now try to write it and exit
+        try
+        {
+            std.file.write(path, body);
+            this.listener.stopListening();
+            exitEventLoop();
+        }
+        catch (Exception e)
+            res.writeJsonBody(Response(false, e.msg), HTTPStatus.internalServerError);
     }
 
     private void handleAllOptions (scope HTTPServerRequest req, scope HTTPServerResponse res)
