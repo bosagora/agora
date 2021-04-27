@@ -22,3 +22,7 @@ submodules/vibe.d/*/.dub/
 submodules/vibe.d/*/*.a
 submodules/vibe.d/examples/
 submodules/vibe.d/tests/
+
+# Node.js stuff
+talos/node_modules/
+talos/build/
