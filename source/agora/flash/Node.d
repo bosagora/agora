@@ -220,9 +220,31 @@ public abstract class FlashNode : FlashControlAPI
         this.gossip_timer.stop();
         this.open_chan_timer.stop();
 
-        this.dump();
-        foreach (chan; channels.byValue)
-            chan.dump();
+        try this.dump();
+        catch (Exception exc)
+        {
+            () @trusted {
+                printf("Error happened while dumping this node's state: %.*s\n",
+                       cast(int) exc.msg.length, exc.msg.ptr);
+
+                scope (failure) assert(0);
+                writeln("========================================");
+                writeln("Full stack trace: ", exc);
+            }();
+        }
+
+        foreach (pair; this.channels.byKeyValue)
+        {
+            try pair.value.dump();
+            catch (Exception exc)
+            {
+                scope (failure) assert(0);
+                () @trusted {
+                    writefln("Error happened while dumping a channel's (%s) state: %s",
+                             pair.key, exc);
+                }();
+            }
+        }
     }
 
     /***************************************************************************
