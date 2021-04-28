@@ -17,16 +17,16 @@ export const requestBegin = () => ({
   type: REQUEST.BEGIN
 })
 
-export const requestRequset = () => ({
+export const requestRequest = () => ({
   type: REQUEST.REQUEST
 })
 
-export const responseRequset = (data) => ({
+export const responseRequest = (data) => ({
   type: REQUEST.SUCCESS,
   data
 })
 
-export const requestFailureRequset = (data) => ({
+export const requestFailureRequest = (data) => ({
   type: REQUEST.ERROR,
   data
 })
@@ -34,25 +34,25 @@ export const requestFailureRequset = (data) => ({
 export const request = (data) => {
   return (dispatch) => {
 
-    dispatch(requestRequset())
+    dispatch(requestRequest())
 
     RequestService.request(data)
       .then((result) => {
 
         setTimeout(function () {
-          dispatch(responseRequset())
+          dispatch(responseRequest())
         }, 2000)
       })
       .catch((error) => {
 
         setTimeout(function () {
-          dispatch(requestFailureRequset())
+          dispatch(requestFailureRequest())
         }, 2000)
       })
 
 
     // setTimeout(function () {
-    //   dispatch(responseRequset())
+    //   dispatch(responseRequest())
     // }, 4000)
   }
 }
