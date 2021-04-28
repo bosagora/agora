@@ -67,6 +67,25 @@ private int main (string[] args)
         return 1;
     }
 
+    // Do not use Vibe.d default signal handler, instead set up our own as we
+    // need to properly shut down our node.
+    disableDefaultSignalHandlers();
+
+    version (Posix)
+    {
+        import core.sys.posix.signal;
+
+        sigset_t sigset;
+        sigemptyset(&sigset);
+
+        sigaction_t siginfo;
+        siginfo.sa_handler = getSignalHandler();
+        siginfo.sa_mask = sigset;
+        siginfo.sa_flags = SA_RESTART;
+        sigaction(SIGINT, &siginfo, null);
+        sigaction(SIGTERM, &siginfo, null);
+    }
+
     // Run setup interface if needed
     if (cmdln.initialize.length)
     {
@@ -143,7 +162,6 @@ private int main (string[] args)
     }
     scope(exit) file_based_lock.unlock();
 
-    Listeners listeners;
     runTask(() => listeners = runNode(config.get()));
     scope (exit)
     {
@@ -154,5 +172,65 @@ private int main (string[] args)
         if (listeners.node !is null)
             listeners.node.shutdown();
     }
+
     return runEventLoop();
+}
+
+/// Global references to the listeners / node, as they need to be accessed
+/// from the signal handler
+private __gshared Listeners listeners;
+
+/// Type of the handler that is called when a signal is received
+alias SigHandlerT = extern(C) void function (int sig) nothrow;
+
+/// Returns a signal handler
+/// This routine is there solely to ensure the function has a mangled name,
+/// and doesn't accidentally conflict with other code.
+private SigHandlerT getSignalHandler () @safe pure nothrow @nogc
+{
+    extern(C) void signalHandler (int signal) nothrow
+    {
+        // Calling `printf` because `writeln` is not `@nogc`
+        printf("Received signal %d, shutting down listeners...\n", signal);
+        foreach (ref l; listeners.http)
+        {
+            try
+            {
+                l.stopListening();
+                l = typeof(l).init;
+            }
+            catch (Exception exc)
+            {
+                printf("Exception thrown while stopping an HTTP listener: %.*s\n",
+                       cast(int) exc.msg.length, exc.msg.ptr);
+                debug {
+                    scope (failure) assert(0);
+                    writeln("========================================");
+                    writeln("Full stack trace: ", exc);
+                }
+            }
+        }
+
+        printf("Calling node shutdown procedure...\n");
+        if (listeners.node !is null)
+        {
+            try listeners.node.shutdown();
+            catch (Exception exc)
+            {
+                printf("Exception thrown while calling `shutdown` on the node: %.*s\n",
+                       cast(int) exc.msg.length, exc.msg.ptr);
+                debug {
+                    scope (failure) assert(0);
+                    writeln("========================================");
+                    writeln("Full stack trace: ", exc);
+                }
+            }
+            listeners.node = null;
+        }
+
+        printf("Terminating event loop...\n");
+        exitEventLoop();
+    }
+
+    return &signalHandler;
 }
