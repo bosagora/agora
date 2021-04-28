@@ -271,8 +271,8 @@ unittest
     // Wake one up right before cycle ends
     sleep_node_2.ctrl.sleep(0.seconds);
     // Let it catch up
-    network.expectHeight(iota(GenesisValidators - 1),
-        Height(GenesisValidatorCycle - 1));
+    network.expectHeightAndPreImg(iota(0, GenesisValidators - 1),
+        Height(GenesisValidatorCycle - 1), network.blocks[0].header);
 
     network.generateBlocks(iota(GenesisValidators - 1),
         Height(GenesisValidatorCycle));
@@ -282,8 +282,8 @@ unittest
 
     // This nodes will wake up to an expired cycle, it should immediately enroll
     sleep_node_1.ctrl.sleep(0.seconds);
-    // Let it catch up
-    network.expectHeight(Height(GenesisValidatorCycle));
+    // Let the last node catch up
+    network.expectHeight([ GenesisValidators - 1 ], Height(GenesisValidatorCycle));
 
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle + 1));

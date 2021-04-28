@@ -104,11 +104,11 @@ unittest
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(2));
+    network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 }
 
 /// Merkle Proof
@@ -147,7 +147,7 @@ unittest
     const Hash expected_root = hashMulti(habcd, hefgh);
 
     // wait for transaction propagation
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     Hash[] merkle_path;
     foreach (node; nodes)
@@ -189,14 +189,11 @@ unittest
     auto txs = network.blocks[0].spendable.map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
 
-    // wait for preimages to be revealed before making blocks
-    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
-
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(2));
+    network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
 
@@ -229,7 +226,7 @@ unittest
     network.expectHeight(Height(2));  // no new block yet (1 rejected tx)
 
     node_1.putTransaction(backup_tx);
-    network.expectHeight(Height(3));  // new block finally created
+    network.expectHeightAndPreImg(Height(3), network.blocks[0].header);  // new block finally created
 }
 
 // Ensure that when creating a frozen UTXO, the refund is not frozen too
@@ -258,7 +255,7 @@ unittest
     network.clients[0].putTransaction(tx);
 
     // Wait for the block to be created
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
     const b1 = network.clients[0].getBlock(1);
     assert(b1.txs.length == 1);
 
@@ -267,6 +264,6 @@ unittest
     assert(tx2.outputs.length == 1);
 
     network.clients[0].putTransaction(tx2);
-    network.expectHeight(Height(2));
+    network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     assert(network.clients[0].getBlock(2).txs.length == 1);
 }

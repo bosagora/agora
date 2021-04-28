@@ -127,7 +127,8 @@ unittest
 
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(1));
+    // Node index is 5 for bad node so we do not expect pre-image from it
+    network.expectHeightAndPreImg(iota(0, 5), Height(1), network.blocks[0].header);
 
     auto utxos = nodes[0].getUTXOs(bad_address);
     assert(utxos.length == 1);
@@ -209,7 +210,7 @@ unittest
     atomicStore(network.reveal_preimage, true);
 
     // block 2 created with no slashed validator
-    network.expectHeight(Height(2));
+    network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     auto block2 = nodes[0].getBlocksFrom(2, 1)[0];
     assert(block2.header.missing_validators.length == 0);
 }

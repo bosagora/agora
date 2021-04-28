@@ -742,9 +742,12 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         clients_idxs.each!(idx =>
-            enrolls.each!(enroll =>
-                retryFor(this.clients[idx].getPreimage(enroll.utxo_key)
-                    .distance >= distance, timeout)));
+            enrolls.enumerate.each!((idx_enroll, enroll) {
+                if (clients_idxs.canFind(idx_enroll))
+                    retryFor(this.clients[idx].getPreimage(enroll.utxo_key).distance >= distance,
+                        timeout, format!"Client #%s has no preimage for client #%s at distance %s"
+                            (idx, idx_enroll, distance));
+            }));
     }
 
     /***************************************************************************

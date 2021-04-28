@@ -130,7 +130,7 @@ unittest
         ///
         public override void createNewNode (Config conf, string file, int line)
         {
-            if (this.nodes.length == 5)
+            if (this.nodes.length == 0)
                 this.addNewNode!NoPreImageVN(conf, file, line);
             else
                 super.createNewNode(conf, file, line);
@@ -152,11 +152,10 @@ unittest
     // discarded UTXOs (just to trigger block creation)
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
 
-    Thread.sleep(5.seconds);
-
     // block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(1));
+    // Exclude first node from the check as it is not sending pre-image
+    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1), network.blocks[0].header);
 }
 
 /// Situation: There is a validator does not reveal a pre-image for next
@@ -184,6 +183,7 @@ unittest
 
     TestConf conf = {
         recurring_enrollment : false,
+        quorum_threshold : 60,  // we have one node without pre-image and one giving false info
     };
     auto network = makeTestNetwork!BadNominatingAPIManager(conf);
     network.start();
@@ -192,14 +192,13 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
+    assert(nodes[0].getQuorumConfig().threshold == 4); // We should need 4 nodes
     auto spendable = network.blocks[$ - 1].spendable().array;
 
     // discarded UTXOs (just to trigger block creation)
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
 
-    Thread.sleep(5.seconds);
-
     // try to make block 1
     txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1), network.blocks[0].header);
 }
