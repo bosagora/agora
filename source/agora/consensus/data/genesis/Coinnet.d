@@ -65,37 +65,37 @@ unittest
 /// The enrollments that are part of the genesis block
 private immutable Enrollment[] Enrollments =
     [
-        // GCN3CTOPFFBHZKXUVBZHZN6UFFYFFAZCPJK36U2ZY3L53AL7APM36GYO
+        // boa1xzdmznw099p8e2h54pe8ed7599c99qez0f2m756ecmtamqtlq0vm73jg5mj
         Enrollment(
             Hash(`0x03b2c926071d92528f7401afb2144c1f9bfc4dbd60d116076f7dbbb4779556b628689e0c6bb8f12212a27b6ca93f8dfe8c6e951ef367302ee22dd0cb1e8b83ce`),
             Hash(`0x2e6c60eb300e240a25dcc0cef5a7d0488294b103c569754061547cfbf1455bfde84a3b445eb76c6dfe49282a404d34f02cf89b6a5076930ecea93fbfde54df96`),
             1008,
             Signature.fromString(`0xf45c14a6f9220b53128f1f08aa666ddefd125ccf2512015937a2b97248f25ce90ee306cc3ee1a422155b8ae29c92113ba66a533530558be867f86a82d5f71e7a`)),
-        // GCN2C4X4ZAUTENP3VYVA3225CUNEAHDKFXDETNRBXZCXUPIJUY64UANT
+        // boa1xzd6zuhueq5nyd0m4c4qm66az5dyq8r29hrynd3phezh50gf5c7u54eqtdh
         Enrollment(
             Hash(`0x6e05cf3391eceafec28bb35beaf30d17bc2e5df1a13c9326c9ea565a304e8cf5439e6f972b3e7ac82a3ac19e17586898d9c9d84327d437af6e838636f2ee4e78`),
             Hash(`0x07decf74191a485b86533f7bcaf34456288c27a9ea589d32b1407c5bcfc0fdeb312ec86f021597611aad7f988b99279d10cfb7d536b516b2f7f8d5bac7b36971`),
             1008,
             Signature.fromString(`0x6633727a9a0b55b2dafbdd951682b089b2b45b9644d09522370c6f1c4e2c9b2f03e1d337008a2870cb8a1bf63542539f3610af2aef502f4596b15ad20624ff47`)),
-        // GCN6C3W6DT4TP2BQBFNPDPBP7SK32CJC2ROUUBI4C7Z36TWMK6VZ3CT4
+        // boa1xzd7zmk7rnun06psp9d0r0p0lj2m6zfz63w55pguzlem7nkv274e6hn2hg3
         Enrollment(
             Hash(`0x9544c71cece09f1a585f730c0df3d0ee8ad5cbbfa0bdc9d9d294f92e2972b746f97c3b97611f693491b7dc1ddccee0081b4663876cd02e494edc5409f40818ac`),
             Hash(`0x7709cc2b7b1b6228fa0554417bfc33341f9e6a160b20da255b24b8d2bc199a277eecb2e717652acce1dd9c45a2f32789f5a9d548c5209e4e7eb84df191c77647`),
             1008,
             Signature.fromString(`0xbcab099143e5161f6a7861601a7dd3f834d6a6ff9dab1e48ac05d02c8c993c0e0e4db77439a1a08dc1c56abce1b71e4c9e6a0a20091c5168d5ebd2bfa293189c`)),
-        // GCN4CT336WB6IIKP5CDHWFYFBCNO5BG2Y4777F2QHNA5XUWSUYSQS7IP
+        // boa1xzduznmm7kp7gg20azr8k9c9pzdwapx6culll96s8dqah5kj5cjsj0le8rk
         Enrollment(
             Hash(`0x980a42069faaa81a090c5e0ba8d9264f126c569542ac83da159a06078e432f23a2a9bcd366f8b850fbb464cc1e2b636b0fae4ec71484ef1102c543e24c88fc77`),
             Hash(`0x4aae1b6921cd6ba2ea3389008ce329436f7ed455fbd731b7084183d8dcb584334ddbc2edc9e2f781bf3a5613a24cf816493e7610812587b2040909ed41ef1af1`),
             1008,
             Signature.fromString(`0x907ef65138cae7cad57d9c6804700188f66f69cfb7c4b283e4cf380a8067a23f0443dd1c84906959c97797944c7802cc3670e14d32266c617698fd71200dcce9`)),
-        // GCN7C7UCTTQQ3RN7Q7AID5ED7VJDN3XPQ6NEAOIMWNA5AWJUFFV5PRBN
+        // boa1xzdlzl5znnssm3dlslqgrayrl4frdmh0s7dyqwgvkdqaqkf5994aw53cn58
         Enrollment(
             Hash(`0xe7596f3e910432fdeb5c9168cde5f1ba3a0ff5ca8cd8a5e89eab39775d89b2ab106887615aecdb9f6ccc9691ef7bc893f08d28e053ba8de26cbf61d88a26112e`),
             Hash(`0x437706c76be50fda4dc65e3d914f0fb6f550a685e4701b124f15338f969ef1909f6ad9475e89417324a612f248a893c9cb309bf33c7d9629fae69ec09624e51a`),
             1008,
             Signature.fromString(`0xcc1d153578be5cd72e52d51a5b71f4802d574da2be4f015764aae44f39180f9a0372280688caa4a929e4c71174a7153162d834289ba52db88e830ebf1f15eabf`)),
-        // GCN5CVXGRUW3B6CJNHUVEJFHXG2WQNMRBQR2RN4TMJ727RF3VM2RA6LF
+        // boa1xzdaz4hx35kmp7zfd854yf98hx6ksdv3ps363dunvfl6l39m4v63qmyccsm
         Enrollment(
             Hash(`0xee93cf1aeed5015e453897263560fed541492963b82d73261750a92fcb120823b9af7f95ea5f85b19a03c48e7cb23035f36637487f457060fabee1720d030771`),
             Hash(`0x07d842b1d0ae9ccc697418c1aab67c2de12466bcf38c580365470360a3cfd770c6929c509b5ed6d5b8431246cc47775e122a7252723c8d726a2e0dff01e174fa`),
