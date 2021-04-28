@@ -43,7 +43,7 @@ public class StatsServer
     }
 
     ///
-    public void shutdown ()
+    public void shutdown () @safe
     {
         this.http_listener.stopListening();
     }

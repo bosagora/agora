@@ -1050,7 +1050,7 @@ public class NetworkManager
     }
 
     /// Shut down timers & dump the metadata
-    public void shutdown ()
+    public void shutdown () @safe
     {
         foreach (peer; this.peers)
             peer.client.shutdown();

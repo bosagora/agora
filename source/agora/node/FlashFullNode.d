@@ -336,7 +336,7 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
         }
     }
 
-    public override void shutdown ()
+    public override void shutdown () @safe
     {
         this.flash.shutdown();
         this.periodic_timer.stop();
