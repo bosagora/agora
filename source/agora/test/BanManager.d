@@ -44,6 +44,7 @@ unittest
     // 6 validators and 1 full node
     auto nodes = network.clients.array;
     auto gen_key = WK.Keys.Genesis;
+    auto full_node_idx = GenesisValidators;
 
     Transaction[] all_txs;
     Transaction[] last_txs;
@@ -74,13 +75,15 @@ unittest
 
     genBlockTransactions(1).each!(tx => nodes[0].putTransaction(tx));
     // wait until the transactions were gossiped
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
+    // wait till fullnode has received block 1
+    retryFor(nodes[full_node_idx].getBlockHeight() == 1, 5.seconds,
+            format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
 
     // full node will be banned if it cannot communicate
     // validators refuse to to send blocks
     nodes[0 .. GenesisValidators].each!(node => node.filter!(node.getBlocksFrom));
-    auto full_node_idx = GenesisValidators;
     nodes[full_node_idx].filter!(nodes[full_node_idx].putTransaction); // full node won't receive transactions
 
     // leftover txs which full node will reject due to its filter
@@ -91,7 +94,7 @@ unittest
         auto new_tx = genBlockTransactions(1);
         left_txs ~= new_tx;
         new_tx.each!(tx => nodes[0].putTransaction(tx));
-        network.expectHeight(iota(0, 4), Height(1 + block_idx + 1));
+        network.expectHeightAndPreImg(iota(0, 4), Height(1 + block_idx + 1), network.blocks[0].header);
         retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds,
             format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
     }
@@ -108,6 +111,8 @@ unittest
     // clear the filter
     nodes[0 .. GenesisValidators].each!(node => node.clearFilter());
 
+    // Before setting the network time and adding transactions we need to ensure pre-images have been sent
+    network.waitForPreimages(network.blocks[0].header.enrollments, 6);
     network.setTimeFor(Height(6));  // full node should be unbanned now
 
     auto new_tx = genBlockTransactions(1);

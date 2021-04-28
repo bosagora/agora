@@ -132,12 +132,12 @@ unittest
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // Now shut down & restart one node
     auto restartMe = nodes[$-1];
     scope(failure) restartMe.printLog();
     network.restart(restartMe);
     network.waitForDiscovery();
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 }

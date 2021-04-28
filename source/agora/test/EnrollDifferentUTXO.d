@@ -167,7 +167,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
     new_txs.each!(tx => nodes[0].putTransaction(tx));
-    network.expectHeight(Height(20), 5.seconds);
+    network.expectHeightAndPreImg(Height(20), network.blocks[0].header);
     auto b20 = nodes[0].getBlocksFrom(20, 2)[0];
     assert(b20.header.enrollments.length == 5);
 
@@ -182,8 +182,7 @@ unittest
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
     new_txs.each!(tx => nodes[0].putTransaction(tx));
-    network.waitForPreimages(b20.header.enrollments, 1, 2.seconds);
-    network.expectHeight(Height(21), 5.seconds);
+    network.expectHeightAndPreImg(Height(21), b20.header);
     auto b21 = nodes[0].getBlocksFrom(21, 2)[0];
     assert(b21.header.enrollments.length == 1);
     assert(b21.header.enrollments[0] == new_enroll);

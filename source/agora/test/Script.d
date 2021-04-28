@@ -62,7 +62,7 @@ unittest
         .joiner().map!(txb => txb.sign());
 
     lock_txs.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(6));
+    network.expectHeightAndPreImg(Height(6), network.blocks[0].header);
 
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
@@ -86,7 +86,7 @@ unittest
     unlock_height_2.each!(tx => node_1.putTransaction(tx));
     // unlock height 3 accepted
     unlock_height_3.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(7));
+    network.expectHeightAndPreImg(Height(7), network.blocks[0].header);
 
     const block_7 = node_1.getBlocksFrom(7, 1)[0];
     unlock_height_3.sort();

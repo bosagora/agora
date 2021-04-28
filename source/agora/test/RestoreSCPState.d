@@ -146,12 +146,12 @@ unittest
     auto re_validator = network.clients[0];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => re_validator.putTransaction(tx));
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     Checked = true;
     // Now shut down & restart one node
     network.restart(re_validator);
     network.waitForDiscovery();
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
     assert(!Checked);
 }

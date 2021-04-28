@@ -131,7 +131,7 @@ unittest
     // Create a block from the Genesis block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.putTransaction(tx));
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // node_1 restarts and becomes unresponsive
     network.restart(node_1);
@@ -140,11 +140,12 @@ unittest
     // Make 2 blocks
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_2.putTransaction(tx));
-    network.expectHeight(iota(1,nodes.length), Height(2));
+    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(2), network.blocks[0].header);
+    network.expectHeight(iota(1, nodes.length), Height(2));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
     txs.each!(tx => node_2.putTransaction(tx));
-    network.expectHeight(iota(1,nodes.length), Height(3));
+    network.expectHeightAndPreImg(iota(1,nodes.length), Height(3), network.blocks[0].header);
 
     // Wait for node_1 to wake up
     node_1.ctrl.withTimeout(10.seconds,
@@ -153,7 +154,7 @@ unittest
         }
     );
 
-    network.expectHeight(Height(3));
+    network.expectHeightAndPreImg(Height(3), network.blocks[0].header);
 
     // The node_2 restart and is disabled to respond, which means that
     // the node_2 will be slashed soon.
@@ -166,5 +167,5 @@ unittest
 
     // The new block has been inserted to the ledger with the approval
     // of the node_1, although node_2 was shutdown.
-    network.expectHeight(Height(4));
+    network.expectHeightAndPreImg(Height(4), network.blocks[0].header);
 }
