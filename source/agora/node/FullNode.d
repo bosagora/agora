@@ -424,7 +424,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public void shutdown ()
+    public void shutdown () @safe
     {
         log.info("Shutting down..");
         foreach (timer; this.timers)

@@ -168,7 +168,7 @@ public class NetworkClient
     }
 
     /// Shut down the gossiping timer
-    public void shutdown ()
+    public void shutdown () @safe
     {
         this.gossip_timer.stop();
     }

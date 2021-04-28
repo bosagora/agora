@@ -39,7 +39,7 @@ public abstract class Metadata
     public abstract void load ();
 
     /// Dump the metadata
-    public abstract void dump ();
+    public abstract void dump () @safe;
 }
 
 /// Metadata stored in memory (for unittests)
@@ -49,7 +49,7 @@ public class MemMetadata : Metadata
     public override void load () {}
 
     ///
-    public override void dump () {}
+    public override void dump () @safe {}
 }
 
 /// Metadata stored on disk (for persistence)
@@ -94,7 +94,7 @@ public class DiskMetadata : Metadata
     }
 
     /// Dump metadata to disk
-    public override void dump ()
+    public override void dump () @safe
     {
         auto bytes = serializeFull(this.peers);
         std.file.write(this.file_path, bytes);

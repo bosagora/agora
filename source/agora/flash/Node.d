@@ -215,7 +215,7 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    public void shutdown ()
+    public void shutdown () @safe
     {
         this.gossip_timer.stop();
         this.open_chan_timer.stop();
