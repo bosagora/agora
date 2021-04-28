@@ -54,13 +54,34 @@ public immutable(Block) makeGenesis (
     return cast(immutable)(genesis);
 }
 
+version (unittest)
+{
+    public struct NodeEnrollment
+    {
+        Enrollment enrol;
+        PublicKey key;
+    }
+}
+
 /// Check the Coinnet Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Coinnet.d)
 /// This will not be used for the final Coinnet GenesisBlock which will use unknown key secrets. But can be useful for now.
 unittest
 {
     import agora.consensus.data.genesis.Test;
+    import agora.utils.Test;
 
-    checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 20);
+    import std.algorithm;
+    import std.array;
+    import std.conv;
+
+    import ocean.core.Test;
+
+    auto sorted_enrollments = checkGenesisEnrollments(GenesisBlock, [ WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
+        WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7 ], 20);
+
+    // For unit tests we want the index of the nodes to match the order of the enrollments
+    test!"=="(genesis_validator_keys.map!(k => k.address).array, sorted_enrollments.map!(e => e.key).array);
+
 }
 
 /// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Test.d)
@@ -72,7 +93,7 @@ unittest
 }
 
 /// Assert the enrollments of a GenesisBlock match expected values and are sorted by utxo (print the potential replacement set when not matching)
-version (unittest) public void checkGenesisEnrollments (
+version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     in Block genesisBlock, in KeyPair[] keys, uint cycle_length)
 {
     import agora.consensus.data.Enrollment;
@@ -84,11 +105,6 @@ version (unittest) public void checkGenesisEnrollments (
     import std.conv;
     import std.algorithm;
 
-    static struct NodeEnrollment
-    {
-        Enrollment enrol;
-        PublicKey key;
-    }
     Hash txhash = hashFull(genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front);
     Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
     auto enrollments = utxos.enumerate.map!(en =>
@@ -103,6 +119,7 @@ version (unittest) public void checkGenesisEnrollments (
                     (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature.fromString(`%s`)),"
                         (e.key, e.enrol.utxo_key, e.enrol.commitment, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
                     ("\n    enrollments: [")));
+    return sorted_enrollments;
 }
 
 /// Can be used to update the config.yaml (e.g. tests/system/node/2/config.yaml)

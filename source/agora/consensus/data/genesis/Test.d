@@ -174,11 +174,12 @@ unittest
     testSymmetry(GenesisBlock);
 }
 
+// These are the genesis validators ordered to match Genesis enrollments
 public immutable KeyPair[] genesis_validator_keys = [
     WK.Keys.NODE2,
-    WK.Keys.NODE3,
-    WK.Keys.NODE4,
     WK.Keys.NODE5,
+    WK.Keys.NODE4,
+    WK.Keys.NODE7,
     WK.Keys.NODE6,
-    WK.Keys.NODE7
+    WK.Keys.NODE3,
 ];
