@@ -230,13 +230,15 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    public override void registerKeyPair (KeyPair kp)
+    public override void registerKey (Scalar scalar) @safe
     {
-        this.managed_keys[kp.address] = kp.secret;
+        auto secret = SecretKey(scalar);
+        auto address = PublicKey(scalar.toPoint()[]);
+        this.managed_keys[address] = secret;
         Channel[Hash] def;
-        this.channels[kp.address] = def;
+        this.channels[address] = def;
         DList!ChannelConfig def2;
-        this.pending_channels[kp.address] = def2;
+        this.pending_channels[address] = def2;
     }
 
     /***************************************************************************

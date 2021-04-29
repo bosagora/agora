@@ -32,9 +32,8 @@ public interface FlashControlAPI : FlashAPI
 @safe:
     /***************************************************************************
 
-        Start the Flash node. This starts timers which monitor the blockchain
-        for any setup / trigger / close transactions which will update the
-        internal state machine.
+        Start the Flash node. This starts internal timers such as the
+        periodic name registry timer.
 
     ***************************************************************************/
 
@@ -42,14 +41,14 @@ public interface FlashControlAPI : FlashAPI
 
     /***************************************************************************
 
-        Register the given key-pair as being managed by the Flash node.
+        Register the given secret key as being managed by the Flash node.
 
         Params:
-            kp = the key-pair to register
+            secret = the secret to register
 
     ***************************************************************************/
 
-    public void registerKeyPair (KeyPair kp);
+    public void registerKey (Scalar secret);
 
     /***************************************************************************
 
