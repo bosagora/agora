@@ -38,7 +38,7 @@ import agora.consensus.data.Transaction;
 import agora.crypto.Key;
 import agora.utils.Log;
 version (unittest) import agora.utils.Test;
-
+version (unittest) import ocean.core.Test;
 import std.algorithm;
 import std.exception;
 import std.conv;
@@ -329,10 +329,10 @@ unittest
         caches[0][$ - 2],
         1
     );
-    assert(hashFull(preimage_1.hash) == enrollments[0].commitment);
+    test!"=="(hashFull(preimage_1.hash), enrollments[0].commitment);
     enroll_man.addPreimage(preimage_1);
     auto gotten_image = enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
-    assert(preimage_1 == gotten_image);
+    test!"=="(preimage_1, gotten_image);
 
     // the second validator reveals a pre-image
     PreImageInfo preimage_2 = PreImageInfo(
@@ -340,17 +340,15 @@ unittest
         caches[1][$ - 2],
         1
     );
-    assert(hashFull(preimage_2.hash) == enrollments[1].commitment);
+    test!"=="(hashFull(preimage_2.hash), enrollments[1].commitment);
     enroll_man.addPreimage(preimage_2);
     gotten_image = enroll_man.getValidatorPreimage(enrollments[1].utxo_key);
-    assert(preimage_2 == gotten_image);
+    test!"=="(preimage_2, gotten_image);
 
     // check missing pre-image at the current height of 2
     uint[] missing_validators;
     slash_man.getMissingValidators(missing_validators, Height(2));
-    assert(missing_validators.length == 6,
-            format!"Current missing preimage validaters: %s"
-                (missing_validators.length));
+    test!"=="(missing_validators.length, 6);
     assert(missing_validators.find(first_validator).empty());
     assert(missing_validators.find(second_validator).empty());
 
