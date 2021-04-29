@@ -13,6 +13,7 @@
 
 module agora.consensus.protocol.Nominator;
 
+import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
@@ -1013,11 +1014,91 @@ extern(D):
             this.last_confirmed_height = Height(envelope.statement.slotIndex);
     }
 
+    /// Used for holding consensus candidate values. It contains precomputed
+    /// fields to speed up sorting.
+    static struct CandidateHolder
+    {
+        /// Consensus data
+        public ConsensusData consensus_data;
+        /// Hash of the consensus data
+        public Hash hash;
+        /// The total amount of fees of the transactions in the consensus data
+        public Amount total_adjusted_fee;
+
+        /// Comparison function, which sorts by
+        /// 1. length of missing validators (smallest first), or if it ties
+        /// 2. total adjusted fee (smallest last), or if it ties
+        /// 3. hash of the candidate (smallest first)
+        public int opCmp (in CandidateHolder other) const @safe scope pure nothrow @nogc
+        {
+            if (this.consensus_data.missing_validators.length <
+                other.consensus_data.missing_validators.length)
+                    return -1;
+            else if (this.consensus_data.missing_validators.length >
+                     other.consensus_data.missing_validators.length)
+                return 1;
+
+            if (this.total_adjusted_fee > other.total_adjusted_fee)
+                return -1;
+            else if (this.total_adjusted_fee < other.total_adjusted_fee)
+                return 1;
+
+            if (this.hash < other.hash)
+                return -1;
+            else if (this.hash > other.hash)
+                return 1;
+
+            return 0;
+        }
+    }
+
+    @safe pure nothrow unittest
+    {
+        CandidateHolder candidate_holder;
+        CandidateHolder[] candidate_holders;
+
+        // The candidate with the least missing validators is preferred
+        candidate_holder.consensus_data.time_offset = 1;
+        candidate_holder.consensus_data.missing_validators = [1, 2, 3];
+        candidate_holders ~= candidate_holder;
+
+        candidate_holder.consensus_data.time_offset = 2;
+        candidate_holder.consensus_data.missing_validators = [1, 2];
+        candidate_holders ~= candidate_holder;
+
+        candidate_holder.consensus_data.time_offset = 3;
+        candidate_holder.consensus_data.missing_validators = [1, 2, 3, 4, 5];
+        candidate_holders ~= candidate_holder;
+
+        assert(candidate_holders.sort().front.consensus_data.time_offset == 2);
+
+        // If multiple candidates have the same number of missing validators, then
+        // the candidate with the higher adjusted fee is preferred.
+        candidate_holders[1].total_adjusted_fee = Amount(10);
+
+        candidate_holder.consensus_data.time_offset = 4;
+        candidate_holder.consensus_data.missing_validators = [3, 4];
+        candidate_holder.total_adjusted_fee = Amount(12);
+        candidate_holders ~= candidate_holder;
+
+        assert(candidate_holders.sort().front.consensus_data.time_offset == 4);
+
+        // If multiple candidates have the same number of missing validators, and
+        // adjusted total fee, then the candidate with lower hash is preferred.
+        candidate_holder.consensus_data.time_offset = 5;
+        candidate_holder.consensus_data.missing_validators = [6, 7];
+        candidate_holders ~= candidate_holder;
+
+        assert(candidate_holders.sort().front.consensus_data.time_offset == 4);
+    }
+
     /***************************************************************************
 
         Combine a set of transaction sets into a single transaction set.
         This may be done in arbitrary ways, as long as it's consistent
-        (for a given input, the combined output is predictable).
+        (for a given input, the combined output is predictable). Please see
+        CandidateHolder.opCmp for the actual implementation of which candidate
+        is chosen.
 
         Params:
             slot_idx = the slot index we're currently reaching consensus for
@@ -1030,22 +1111,44 @@ extern(D):
     {
         try
         {
-            ConsensusData[] values;
+            CandidateHolder[] candidate_holders;
             foreach (ref const(Value) candidate; candidates)
             {
                 auto data = deserializeFull!ConsensusData(candidate[]);
+                log.trace("Consensus data: {}", data.prettify);
 
+                // Only allowed in unittests, as validating the consensus data
+                // for all the candidates might take long.
+                version (unittest)
                 if (auto msg = this.ledger.validateConsensusData(data))
                     assert(0, format!"combineCandidates: Invalid consensus data: %s"(
                         msg));
 
-                log.trace("Combined consensus data: {}", data.prettify);
-                values ~= data;
+                Amount total_adjusted_fee;
+                foreach (const ref tx_hash; data.tx_set)
+                {
+                    Amount adjusted_fee;
+                    auto errormsg = this.ledger.getAdjustedTXFee(tx_hash, adjusted_fee);
+                    if (errormsg == Ledger.InvalidConsensusDataReason.NotInPool)
+                        continue; // most likely a CoinBase Transaction
+                    else if (errormsg)
+                        assert(0);
+                    total_adjusted_fee.mustAdd(adjusted_fee);
+                }
+
+                CandidateHolder candidate_holder =
+                {
+                    consensus_data: data,
+                    hash: data.hashFull(),
+                    total_adjusted_fee = total_adjusted_fee,
+                };
+                candidate_holders ~= candidate_holder;
             }
-            // Nomination MUST be deterministic so we take the least number of validators missing pre-images
-            auto combined = values.sort!("a.missing_validators.length < b.missing_validators.length").front();
-            log.info("combineCandidates: from {} candidates took: {}", values.length, combined.prettify);
-            const Value val = combined.serializeFull().toVec();
+
+            auto chosen_consensus_data = candidate_holders.sort().front;
+            log.trace("Chosen consensus data: {}", chosen_consensus_data.prettify);
+
+            const Value val = chosen_consensus_data.serializeFull().toVec();
             return duplicate_value(&val);
         }
         catch (Exception ex)
