@@ -1261,7 +1261,7 @@ unittest
     }
 }
 
-/// tests for `EnrollmentManager.countActive
+/// tests for `ValidatorSet.countActive
 unittest
 {
     import agora.consensus.data.Transaction;
