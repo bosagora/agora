@@ -41,11 +41,6 @@ public struct FlashConfig
     /// Timeout for requests
     public Duration timeout = 10.seconds;
 
-    /// In testing mode the node will open arbitrary channels with other nodes
-    /// and send & receive Flash transactions. If `true` then
-    /// `NodeConfig.testing` must also be true or else configuration will fail.
-    public bool testing = false;
-
     /// Address to the listener which will receive payment / update notifications
     public string listener_address;
 
