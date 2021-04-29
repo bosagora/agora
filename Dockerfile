@@ -12,7 +12,7 @@ RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2
 # and `bpfk/agora-builder:latest` uses edge.
 FROM alpine:edge
 COPY --from=Builder /root/packages/ /root/packages/
-RUN apk --no-cache add --allow-untrusted -X /root/packages/build/ ldc-runtime=1.25.1-r0 \
+RUN apk --no-cache add --allow-untrusted -X /root/packages/build/ ldc-runtime=1.26.0-r0 \
     && rm -rf /root/packages/
 RUN apk --no-cache add llvm-libunwind libgcc libsodium libstdc++ sqlite-libs
 COPY --from=Builder /root/agora/build/agora /usr/local/bin/agora
