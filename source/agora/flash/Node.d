@@ -38,10 +38,15 @@ import agora.flash.OnionPacket;
 import agora.flash.Route;
 import agora.flash.Scripts;
 import agora.flash.Types;
+import agora.network.Manager;
 import agora.script.Engine;
+import agora.registry.API;
 import agora.serialization.Serializer;
+import agora.utils.InetUtils;
 import agora.utils.Log;
 
+import vibe.http.router;
+import vibe.http.server;
 import vibe.web.rest;
 
 import core.stdc.time;
@@ -52,6 +57,7 @@ import std.container : DList;
 import std.conv;
 import std.format;
 import std.range;
+import std.path;
 import std.stdio;
 import std.traits;
 import std.typecons;
@@ -1472,13 +1478,14 @@ public class AgoraFlashNode : FlashNode
     /// Callback for sending transactions to the network
     protected void delegate (Transaction tx) putTransactionDg;
 
-    /// get a Flash client for the given public key
-    protected FlashAPI delegate (in Point peer_pk, Duration timeout)
-        flashClientGetter;
+    /// Network manager
+    protected NetworkManager network;
 
-    /// get a Flash listener client for the given address
-    protected FlashListenerAPI delegate (in string address, Duration timeout)
-        flashListenerGetter;
+    /// Periodic name registry timer
+    protected ITimer periodic_timer;
+
+    /// Registry client
+    private NameRegistryAPI registry_client;
 
     /***************************************************************************
 
@@ -1486,26 +1493,72 @@ public class AgoraFlashNode : FlashNode
 
         Params:
             conf = Flash configuration
-            db_path = path to the database (or in-memory if set to ":memory:")
+            data_dir = path to the data directory
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
             taskman = the task manager ot use
             putTransactionDg = callback for sending transactions to the network
-            flashListenerGetter = getter for the Flash listener client
+            network = NetworkManager which contains the name registry
 
     ***************************************************************************/
 
-    public this (FlashConfig conf, string db_path, Hash genesis_hash,
+    public this (FlashConfig conf, string data_dir, Hash genesis_hash,
         Engine engine, ITaskManager taskman,
         void delegate (Transaction tx) putTransactionDg,
-        FlashAPI delegate (in Point, Duration) flashClientGetter,
-        FlashListenerAPI delegate (in string address, Duration timeout)
-            flashListenerGetter)
+        NetworkManager network)
     {
+        const db_path = buildPath(data_dir, "flash.dat");
         this.putTransactionDg = putTransactionDg;
-        this.flashClientGetter = flashClientGetter;
-        this.flashListenerGetter = flashListenerGetter;
+        this.network = network;
         super(conf, db_path, genesis_hash, engine, taskman);
+    }
+
+    /***************************************************************************
+
+        Start timers and register with the name registry.
+
+    ***************************************************************************/
+
+    public override void start () @trusted
+    {
+        super.start();
+        this.startNameRegistry();
+    }
+
+    /***************************************************************************
+
+        Shutdown all timers.
+
+    ***************************************************************************/
+
+    public override void shutdown ()
+    {
+        super.shutdown();
+        this.periodic_timer.stop();
+    }
+
+    /***************************************************************************
+
+        Start listening for requests
+
+        Begins asynchronous tasks for the Flash ControlAPI interface
+
+    ***************************************************************************/
+
+    public HTTPListener startControlInterface ()
+    {
+        this.start();
+
+        if (!this.conf.enabled)
+            assert(0, "Flash interface is not enabled in config settings.");
+
+        auto settings = new HTTPServerSettings(this.conf.control_address);
+        settings.port = this.conf.control_port;
+
+        auto router = new URLRouter();
+        router.registerRestInterface!FlashControlAPI(this);
+
+        return listenHTTP(settings, router);
     }
 
     /// Called by a FullNode once a block has been externalized
@@ -1516,6 +1569,55 @@ public class AgoraFlashNode : FlashNode
         foreach (reg_pk, chans; this.channels)
             foreach (channel; chans)
                 channel.onBlockExternalized(block);
+    }
+
+    // start the periodic name registry routine
+    private void startNameRegistry ()
+    {
+        this.onRegisterName();  // avoid delay
+        this.periodic_timer = this.taskman.setTimer(2.minutes,
+            &this.onRegisterName, Periodic.Yes);
+    }
+
+    /// register network addresses into the name registry
+    private void onRegisterName ()
+    {
+        if (this.registry_client is null)  // try to get the client
+            this.registry_client = this.network.getNameRegistryClient(
+                this.conf.registry_address, 10.seconds);
+
+        if (this.registry_client is null)
+            return;  // failed, try again later
+
+        const(Address)[] addresses = this.conf.addresses_to_register;
+        if (!addresses.length)
+            addresses = InetUtils.getPublicIPs();
+
+        foreach (pair; this.getManagedKeys())
+        {
+            RegistryPayload payload =
+            {
+                data:
+                {
+                    public_key : pair.key,
+                    addresses : addresses,
+                    seq : time(null)
+                }
+            };
+
+            const key_pair = KeyPair.fromSeed(pair.value);
+            payload.signPayload(key_pair);
+
+            try
+            {
+                this.registry_client.putValidator(payload);
+            }
+            catch (Exception ex)
+            {
+                log.info("Couldn't register our address: {}. Trying again later..",
+                    ex);
+            }
+        }
     }
 
     /***************************************************************************
@@ -1554,10 +1656,37 @@ public class AgoraFlashNode : FlashNode
         if (auto peer = peer_pk in this.known_peers)
             return *peer;
 
-        auto peer = this.flashClientGetter(peer_pk, timeout);
-        if (peer is null)
+        auto pk = PublicKey(peer_pk[]);
+        log.info("getFlashClient searching peer: {}", pk);
+
+        auto payload = this.registry_client.getValidator(pk);
+        if (payload == RegistryPayload.init)
+        {
+            log.warn("Could not find mapping in registry for key {}", peer_pk);
+            return null;
+        }
+
+        if (!payload.verifySignature(pk))
+        {
+            log.warn("RegistryPayload signature is incorrect for {}", peer_pk);
+            return null;
+        }
+
+        if (payload.data.addresses.length == 0)
             return null;
 
+        string ip = payload.data.addresses[0];
+
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        // todo: this is obviously wrong, need proper connection handling later
+        settings.baseURL = URL(ip);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        auto peer = new RestInterfaceClient!FlashAPI(settings);
         this.known_peers[peer_pk] = peer;
         if (this.known_channels.length > 0)
             peer.gossipChannelsOpen(this.known_channels.values);
@@ -1578,9 +1707,17 @@ public class AgoraFlashNode : FlashNode
 
     ***************************************************************************/
 
-    protected override FlashListenerAPI getFlashListenerClient (string address,
-        Duration timeout) @trusted
+    protected override FlashListenerAPI getFlashListenerClient (
+        string address, Duration timeout) @trusted
     {
-        return this.flashListenerGetter(address, timeout);
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!FlashListenerAPI(settings);
     }
 }
