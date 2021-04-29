@@ -141,7 +141,7 @@ public mixin template FlashNodeCommon ()
         }
     }
 
-    private ExtendedFlashAPI getFlashClient (in Point peer_pk, Duration timeout)
+    private FlashAPI getFlashClient (in Point peer_pk, Duration timeout)
     {
         // todo: need to retry later
         // todo: need a key => IP mapping (maybe through the NameRegistryAPI?)
@@ -175,7 +175,7 @@ public mixin template FlashNodeCommon ()
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;
 
-        return new RestInterfaceClient!ExtendedFlashAPI(settings);
+        return new RestInterfaceClient!FlashAPI(settings);
     }
 
     private FlashListenerAPI getFlashListenerClient (in string address,
@@ -342,11 +342,6 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
     {
         this.flash.shutdown();
         this.periodic_timer.stop();
-    }
-
-    public override void receiveInvoice (Invoice invoice)
-    {
-        // todo: no-op
     }
 
     mixin FlashNodeCommon!();

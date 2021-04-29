@@ -28,17 +28,6 @@ import vibe.data.serialization;
 import vibe.http.common;
 import vibe.web.rest;
 
-/// The extended Flash API supports higher-level wallet-like constructs
-/// such as sharing invoices with another party. This strictly does not
-/// need to inherit FlashAPI, only used for convenience & testing.
-@path("/")
-@serializationPolicy!(Base64ArrayPolicy)
-public interface ExtendedFlashAPI : FlashAPI
-{
-@safe:
-    void receiveInvoice (Invoice invoice);
-}
-
 /// This is the API that each Flash node must implement.
 @path("/")
 @serializationPolicy!(Base64ArrayPolicy)
