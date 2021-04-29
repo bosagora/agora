@@ -677,11 +677,6 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     const timeout = get!(Duration, "flash", "timeout", str => str.to!ulong.msecs)
         (cmdln, node);
 
-    const bool testing = opt!(bool, "flash", "testing")(cmdln, node);
-    if (testing)
-        enforce(node_config.testing,
-            "Cannot enable 'flash.testing' if 'node.testing' is disabled");
-
     const listener_address = get!(string, "flash", "listener_address")(cmdln, node);
     const min_funding = opt!(ulong, "flash", "min_funding")(cmdln, node);
     const max_funding = opt!(ulong, "flash", "max_funding")(cmdln, node);
@@ -698,7 +693,6 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     FlashConfig result = {
         enabled: true,
         timeout: timeout,
-        testing: testing,
         listener_address: listener_address,
         min_funding: min_funding.coins,
         max_funding: max_funding.coins,

@@ -336,13 +336,6 @@ public class FlashFullNode : FullNode, FlashFullNodeAPI
     {
         super.start();
         this.startNameRegistry();
-
-        if (this.config.flash.testing)
-        {
-            // we know we're a full node, and the key we use is in
-            // `this.config.flash.key_pair`
-            log.info("This flash node is in testing mode!");
-        }
     }
 
     public override void shutdown () @safe
