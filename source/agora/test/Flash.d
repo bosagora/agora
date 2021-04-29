@@ -378,7 +378,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
         this.flash_registry.register(pair.V.to!string, api.listener());
         api.start();
         const key_pair = KeyPair(PublicKey(pair.V), SecretKey(pair.v));
-        api.registerKeyPair(key_pair);
+        api.registerKey(key_pair.secret);
 
         return api;
     }
