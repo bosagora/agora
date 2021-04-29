@@ -47,7 +47,7 @@ public struct NodeInfo
 /// Used with `runner.d`
 @path("/")
 @serializationPolicy!(Base64ArrayPolicy)
-public interface FlashFullNodeAPI : API, ExtendedFlashAPI
+public interface FlashFullNodeAPI : API, FlashAPI
 {
 }
 

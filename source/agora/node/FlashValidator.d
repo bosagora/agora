@@ -106,9 +106,5 @@ public class FlashValidator : Validator, FlashValidatorAPI
         this.flash.shutdown();
     }
 
-    public override void receiveInvoice (Invoice invoice)
-    {
-    }
-
     mixin FlashNodeCommon!();
 }

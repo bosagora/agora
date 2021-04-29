@@ -61,7 +61,7 @@ public import agora.api.FullNode;
 /// Used with `runner.d`
 @path("/")
 @serializationPolicy!(Base64ArrayPolicy)
-public interface FlashValidatorAPI : API, ExtendedFlashAPI
+public interface FlashValidatorAPI : API, FlashAPI
 {
 }
 
