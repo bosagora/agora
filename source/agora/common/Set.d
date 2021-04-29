@@ -45,6 +45,18 @@ public struct Set (T)
         this._set.remove(key);
     }
 
+    /// Support for `-checkaction=context` in LDC 1.26.0,
+    /// can be removed when LDC 1.27.0 is the oldest supported release
+    /// https://github.com/dlang/druntime/pull/3412
+    public string toString () const
+    {
+        import std.format;
+
+        return format("%(%s, %)",
+                      this._set.byKeyValue.filter!(tup => tup.value)
+                      .map!(tup => tup.key));
+    }
+
     /// Walk over all elements and call dg(elem)
     public int opApply (scope int delegate(T) @safe dg) @safe
     {

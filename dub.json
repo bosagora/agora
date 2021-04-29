@@ -147,6 +147,7 @@
                 "source/scpp/build/DSizeChecks.obj",
                 "source/scpp/build/DLayoutChecks.obj"
             ],
+            "dflags": [ "-checkaction=context" ],
             "dflags-ldc": [ "--link-defaultlib-debug" ],
         },
         {
