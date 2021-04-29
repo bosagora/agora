@@ -47,7 +47,6 @@ import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
-import agora.flash.api.FlashAPI;
 static import agora.api.FullNode;
 
 import scpd.types.Stellar_SCP;
@@ -57,13 +56,6 @@ import vibe.web.rest;
 
 ///
 public import agora.api.FullNode;
-
-/// Used with `runner.d`
-@path("/")
-@serializationPolicy!(Base64ArrayPolicy)
-public interface FlashValidatorAPI : API, FlashAPI
-{
-}
 
 /// Identity of a Validator node
 public struct Identity

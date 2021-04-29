@@ -41,6 +41,12 @@ public struct FlashConfig
     /// Timeout for requests
     public Duration timeout = 10.seconds;
 
+    /// The address to listen to for the control interface
+    public string control_address = "127.0.0.1";
+
+    /// The port to listen to for the control interface
+    public ushort control_port = 0xB0C;
+
     /// Address to the listener which will receive payment / update notifications
     public string listener_address;
 

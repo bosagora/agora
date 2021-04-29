@@ -18,9 +18,8 @@ import agora.api.Validator;
 import agora.common.Config;
 import agora.common.Task : Periodic;
 import agora.flash.api.FlashAPI;
+import agora.flash.Node;
 import agora.node.admin.AdminInterface;
-import agora.node.FlashFullNode;
-import agora.node.FlashValidator;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;
@@ -43,6 +42,7 @@ import core.time;
 public alias Listeners = Tuple!(
     FullNode, "node",
     AdminInterface, "admin",
+    AgoraFlashNode, "flash",
     HTTPListener[], "http"
  );
 
@@ -76,16 +76,7 @@ public Listeners runNode (Config config)
     mkdirRecurse(config.node.data_dir);
 
     Listeners result;
-    if (config.flash.enabled && config.validator.enabled)
-    {
-        log.trace("Started FlashValidator...");
-        auto inst = new FlashValidator(config);
-        router.registerRestInterface!(FlashValidatorAPI)(inst);
-        if (config.admin.enabled)
-            result.admin = inst.makeAdminInterface();
-        result.node = inst;
-    }
-    else if (config.validator.enabled)
+    if (config.validator.enabled)
     {
         log.trace("Started Validator...");
         auto inst = new Validator(config);
@@ -94,18 +85,26 @@ public Listeners runNode (Config config)
             result.admin = inst.makeAdminInterface();
         result.node = inst;
     }
-    else if (config.flash.enabled)
-    {
-        log.trace("Started FlashFullNode...");
-        auto inst = new FlashFullNode(config);
-        router.registerRestInterface!(FlashFullNodeAPI)(inst);
-        result.node = inst;
-    }
     else
     {
         log.trace("Started FullNode...");
         result.node = new FullNode(config);
         router.registerRestInterface!(agora.api.FullNode.API)(result.node);
+    }
+
+    if (config.flash.enabled)
+    {
+        import agora.crypto.Hash;
+
+        log.trace("Started Flash node...");
+        const params = FullNode.makeConsensusParams(config);
+        auto flash = new AgoraFlashNode(config.flash,
+            config.node.data_dir, params.Genesis.hashFull(),
+            result.node.getEngine(),
+            result.node.getTaskManager(), &result.node.putTransaction,
+            result.node.getNetworkManager());
+        router.registerRestInterface!FlashAPI(flash);
+        result.flash = flash;
     }
 
     bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
@@ -145,6 +144,14 @@ public Listeners runNode (Config config)
     {
         log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
         result.http ~= result.admin.start();
+    }
+
+    // also register the FlashControlAPI
+    if (result.flash !is null)
+    {
+        log.info("Flash control interface listening will be on {}:{}",
+            config.flash.control_address, config.flash.control_port);
+        result.http ~= result.flash.startControlInterface();
     }
 
     return result;

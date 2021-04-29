@@ -690,10 +690,15 @@ private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
     const retry_multiplier = opt!(uint, "flash", "retry_multiplier")(cmdln, node);
     const registry_address = get!(string, "flash", "registry_address")(cmdln, node);
 
+    const control_address = get!(string, "flash", "control_address")(cmdln, node);
+    const control_port    = get!(ushort, "flash", "control_port")(cmdln, node);
+
     FlashConfig result = {
         enabled: true,
         timeout: timeout,
         listener_address: listener_address,
+        control_address: control_address,
+        control_port: control_port,
         min_funding: min_funding.coins,
         max_funding: max_funding.coins,
         min_settle_time: min_settle_time,
