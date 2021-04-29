@@ -643,6 +643,8 @@ public class Ledger
         OnlyCoinbaseTX = "Transaction set only includes a Coinbase transaction",
         TooManyMPVs = "More MPVs than active enrollments",
         NoUTXO = "Couldn't find UTXO for one or more Enrollment",
+        NotInPool = "Transaction is not in the pool",
+
     }
 
     /***************************************************************************
@@ -1158,6 +1160,49 @@ public class ValidatingLedger : Ledger
                 data.missing_validators).map!(tx => tx.hashFull()).array;
         // No more than 1 CB per block
         assert(data.tx_set.length - pre_cb_len <= 1);
+    }
+
+    /***************************************************************************
+
+        Calculate the transaction fee and adjust the fee based on the
+        transaction's size measured in bytes.
+
+        The bigger the transaction size is, the smaller the adjusted fee becomes.
+
+        Params:
+            tx = transaction for which we want to calculate the adjusted fee
+            tot_fee = total adjusted fee
+
+        Returns: string describing the error, if an error happened, null otherwise
+
+    ***************************************************************************/
+
+    public string getAdjustedTXFee (in Transaction tx, out Amount tot_fee) nothrow @safe
+    {
+        return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
+    }
+
+    /***************************************************************************
+
+        Calculate the transaction fee and adjust the fee based on the
+        transaction's size measured in bytes.
+
+        The bigger the transaction size is, the smaller the adjusted fee becomes.
+
+        Params:
+            tx_hash = tx hash for which we want to calculate the adjusted fee
+            tot_fee = total adjusted fee
+
+        Returns: string describing the error, if an error happened, null otherwise
+
+    ***************************************************************************/
+
+    public string getAdjustedTXFee (in Hash tx_hash, out Amount tot_fee) nothrow @safe
+    {
+        auto tx = this.pool.getTransactionByHash(tx_hash);
+        if (tx == Transaction.init)
+            return InvalidConsensusDataReason.NotInPool;
+        return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
     }
 
     version (unittest):
