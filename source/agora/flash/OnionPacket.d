@@ -161,7 +161,7 @@ public enum MaxPathLength = 20;
 
 public OnionPacket createOnionPacket (in Hash payment_hash,
     in Amount amount, in Hop[] path, out Amount total_amount,
-    out Height use_lock_height, out Point[] shared_secrets)
+    out Height use_lock_height, out Point[] shared_secrets) @safe
 {
     assert(path.length >= 1 && path.length <= MaxPathLength);
 
@@ -275,7 +275,7 @@ unittest
 }
 
 /// Fill the payload with random encrypted data so it looks real but it ain't
-private void fillGarbage (ref EncryptedPayload payload)
+private void fillGarbage (ref EncryptedPayload payload) @trusted
 {
     randombytes_buf(payload.nonce.ptr, payload.nonce.length);
 
@@ -315,7 +315,7 @@ public OnionPacket nextPacket (in OnionPacket packet)
 *******************************************************************************/
 
 public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
-    Point target_pk, out Point shared_secret)
+    Point target_pk, out Point shared_secret) @trusted
 {
     EncryptedPayload result;
     randombytes_buf(result.nonce.ptr, result.nonce.length);

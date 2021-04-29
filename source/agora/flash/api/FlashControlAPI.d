@@ -29,6 +29,7 @@ import core.stdc.time;
 /// Ditto
 public interface FlashControlAPI : FlashAPI
 {
+@safe:
     /***************************************************************************
 
         Start the Flash node. This starts timers which monitor the blockchain

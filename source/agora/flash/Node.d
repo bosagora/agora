@@ -198,7 +198,7 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    public override void start ()
+    public override void start () @trusted
     {
         if (this.conf.listener_address.length != 0)
             this.listener = this.getFlashListenerClient(
@@ -253,13 +253,13 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    public override ChannelConfig[] getManagedChannels (PublicKey[] keys)
+    public override ChannelConfig[] getManagedChannels (PublicKey[] keys) @safe
     {
         Point[] filtered;
         if (keys.length)
             filtered = this.channels.byKey.filter!(k => keys.canFind(k)).array;
         else
-            filtered = this.channels.keys;
+            filtered = this.channels.byKey.array;
         sort(filtered);
 
         ChannelConfig[] all;
@@ -284,7 +284,7 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    public override ChannelInfo[] getChannelInfo (Hash[] chan_ids)
+    public override ChannelInfo[] getChannelInfo (Hash[] chan_ids) @safe
     {
         ChannelInfo[] all;
         foreach (_, chans; this.channels)
@@ -627,7 +627,7 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     protected void onChannelNotify (PublicKey reg_pk, Hash chan_id,
-        ChannelState state, ErrorCode error)
+        ChannelState state, ErrorCode error) @safe
     {
         // gossip to the network
         if (state == ChannelState.Open)  // todo: might not exist
@@ -637,7 +637,7 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     ///
-    private void onChannelOpen (PublicKey reg_pk, ChannelConfig conf)
+    private void onChannelOpen (PublicKey reg_pk, ChannelConfig conf) @safe
     {
         log.info("onChannelOpen() with channel {}", conf.chan_id);
 
@@ -951,7 +951,7 @@ public abstract class FlashNode : FlashControlAPI
     ***************************************************************************/
 
     protected void onPaymentComplete (PublicKey reg_pk, Hash chan_id,
-        Hash payment_hash, ErrorCode error = ErrorCode.None)
+        Hash payment_hash, ErrorCode error = ErrorCode.None) @safe
     {
         auto chans = reg_pk in this.channels;
         if (chans is null)
@@ -1065,7 +1065,7 @@ public abstract class FlashNode : FlashControlAPI
 
     protected void paymentRouter (in PublicKey reg_pk, in Hash chan_id,
         in Hash payment_hash, in Amount amount,
-        in Height lock_height, in OnionPacket packet)
+        in Height lock_height, in OnionPacket packet) @safe
     {
         if (auto chans = reg_pk in this.channels)
             if (auto channel = chan_id in *chans)
@@ -1116,7 +1116,7 @@ public abstract class FlashNode : FlashControlAPI
                 format("The provided key %s is not managed by this Flash node.",
                     reg_pk));
 
-        const key_pair = KeyPair.fromSeed(*secret_key);
+        const key_pair = () @trusted { return KeyPair.fromSeed(*secret_key); }();
         const pair_pk = key_pair.address + recv_pk;
 
         // create funding, don't sign it yet as we'll share it first
@@ -1282,7 +1282,7 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     ///
-    private bool isValidInvoice (PublicKey pk, /* in */ Invoice invoice)
+    private bool isValidInvoice (PublicKey pk, /* in */ Invoice invoice) @safe
     {
         // paying to ourself doesn't make sense
         if (invoice.destination == pk)
@@ -1365,7 +1365,7 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    public override void start ()
+    public override void start () @trusted
     {
         // todo: 20 msecs is ok only in tests
         // todo: should additionally register as pushBlock() listener

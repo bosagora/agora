@@ -90,7 +90,7 @@ public class Channel
 
     /// Called when the channel state has been changed
     private alias OnChannelNotify = void delegate (
-        PublicKey key, Hash chan_id, ChannelState state, ErrorCode error);
+        PublicKey key, Hash chan_id, ChannelState state, ErrorCode error) @safe;
     /// Ditto
     private OnChannelNotify onChannelNotify;
 
@@ -98,7 +98,7 @@ public class Channel
     /// the matching secret of the payment hash. Then we can propose a new
     /// channel update for the channel which uses this payment hash.
     private alias OnPaymentComplete = void delegate (PublicKey key,
-        Hash chan_id, Hash payment_hash, ErrorCode error = ErrorCode.None);
+        Hash chan_id, Hash payment_hash, ErrorCode error = ErrorCode.None) @safe;
     /// Ditto
     private OnPaymentComplete onPaymentComplete;
 
@@ -389,7 +389,7 @@ public class Channel
 
     ***************************************************************************/
 
-    public ChannelState getState ()
+    public ChannelState getState () @safe
     {
         return this.state;
     }
@@ -416,7 +416,7 @@ public class Channel
 
     ***************************************************************************/
 
-    public Amount getBalance (in PaymentDirection direction)
+    public Amount getBalance (in PaymentDirection direction) @safe
     {
         // to pay towards owner, there must be enough peer balance (payment),
         // for the other direction the owner balance (refund) amount is checked.
@@ -434,7 +434,7 @@ public class Channel
     ***************************************************************************/
 
     public void learnSecrets (in Hash[] secrets, in Hash[] revert_htlcs,
-        in Height height)
+        in Height height) @safe
     {
         log.info("{}: learnSecrets({}, hashes: {}, known: {}, drop: {} height: {})",
             this.kp.address.flashPrettify,
@@ -465,7 +465,7 @@ public class Channel
             return;
 
         this.secrets = matching_secrets;
-        this.revert_htlcs = revert_htlcs;
+        this.revert_htlcs = revert_htlcs.dup;
     }
 
     /***************************************************************************
@@ -1311,7 +1311,7 @@ LOuter: while (1)
     ***************************************************************************/
 
     public void queueNewPayment (in Hash payment_hash, in Amount amount,
-        in Height lock_height, in OnionPacket packet, in Height height)
+        in Height lock_height, in OnionPacket packet, in Height height) @safe
     {
         log.info("{}: Queued new payment: {}", this.kp.address.flashPrettify,
             payment_hash.flashPrettify);
@@ -1705,7 +1705,7 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public Result!bool beginCollaborativeClose ()
+    public Result!bool beginCollaborativeClose () @trusted
     {
         if (this.state != ChannelState.Open &&
             this.state != ChannelState.RejectedCollaborativeClose)
@@ -1769,7 +1769,7 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public Result!bool beginUnilateralClose ()
+    public Result!bool beginUnilateralClose () @trusted
     {
         if (this.state != ChannelState.Open &&
             this.state != ChannelState.RejectedCollaborativeClose)
@@ -2098,7 +2098,7 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public ChannelUpdate getChannelUpdate ()
+    public ChannelUpdate getChannelUpdate () @safe
     {
         return this.last_update;
     }
@@ -2114,6 +2114,7 @@ LOuter: while (1)
     ***************************************************************************/
 
     public ChannelUpdate updateFees (Amount fixed_fee, Amount proportional_fee)
+        @safe
     {
         this.last_update.fixed_fee = fixed_fee;
         this.last_update.proportional_fee = proportional_fee;
