@@ -1535,15 +1535,16 @@ public class AgoraFlashNode : FlashNode
     /***************************************************************************
 
         Get an instance of a Flash client for the given public key.
+        The name registry is consulted to look up the IP for the given key.
 
-        TODO: What if we don't have an IP mapping?
+        The client is cached internally.
 
         Params:
             peer_pk = the public key of the Flash node.
             timeout = the timeout duration to use for requests.
 
         Returns:
-            the Flash client
+            the Flash client, or null if none was found
 
     ***************************************************************************/
 
@@ -1554,6 +1555,9 @@ public class AgoraFlashNode : FlashNode
             return *peer;
 
         auto peer = this.flashClientGetter(peer_pk, timeout);
+        if (peer is null)
+            return null;
+
         this.known_peers[peer_pk] = peer;
         if (this.known_channels.length > 0)
             peer.gossipChannelsOpen(this.known_channels.values);
