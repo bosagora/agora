@@ -1220,8 +1220,6 @@ extern(D):
     public override void setupTimer (ulong slot_idx, int timer_type,
         milliseconds timeout, CPPDelegate!SCPCallback* callback)
     {
-        scope (failure) assert(0);
-
         const type = cast(TimerType) timer_type;
         assert(type >= TimerType.min && type <= TimerType.max);
         if (auto timer = this.active_timers[type])
