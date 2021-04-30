@@ -130,7 +130,7 @@
     }
 
     .container_sideLeft {
-      background-image: url(/img/main_background.svg);
+      background-image: url(/assets/img/main_background.svg);
       @include back-img(inherit, right top, no-repeat);
       display: flex;
       justify-content: end;
@@ -151,7 +151,7 @@
         height: auto;
         min-height: auto;
         display: block;
-        background-image: url(/img/index-back.svg);
+        background-image: url(/assets/img/index-back.svg);
         @include back-img(cover, left bottom, no-repeat);
       }
 
