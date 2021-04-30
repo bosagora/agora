@@ -371,7 +371,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             conf, this.agora_registry, agora_address, storage,
             &this.flash_registry, &this.listener_registry,
-            5.seconds);  // timeout from main thread
+            10.seconds);  // timeout from main thread
 
         this.addresses ~= pair.V;
         this.nodes ~= api;
