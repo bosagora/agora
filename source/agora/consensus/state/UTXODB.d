@@ -83,22 +83,31 @@ package class UTXODB
 
     public bool find (in Hash key, out UTXO value) @trusted nothrow
     {
-        scope(failure) assert(0);
-        auto results = this.db.execute(
-            "SELECT unlock_height, type, amount, locktype, lock FROM utxo WHERE hash = ?", key);
-
-        foreach (row; results)
+        try
         {
-            auto unlock_height = Height(row.peek!ulong(0));
-            auto type = row.peek!TxType(1);
-            // DMD BUG: Cannot construct the object directly, `inout` bug
-            Output output;
-            output.value = Amount(row.peek!ulong(2));
-            output.lock  = Lock(row.peek!(LockType)(3), row.peek!(ubyte[])(4));
-            value = UTXO(unlock_height, type, output);
-            return true;
+            auto results = this.db.execute(
+                "SELECT unlock_height, type, amount, locktype, lock FROM utxo WHERE hash = ?", key);
+
+            foreach (row; results)
+            {
+                auto unlock_height = Height(row.peek!ulong(0));
+                auto type = row.peek!TxType(1);
+                // DMD BUG: Cannot construct the object directly, `inout` bug
+                Output output;
+                output.value = Amount(row.peek!ulong(2));
+                output.lock  = Lock(row.peek!(LockType)(3), row.peek!(ubyte[])(4));
+                value = UTXO(unlock_height, type, output);
+                return true;
+            }
+            return false;
         }
-        return false;
+        catch (Exception exc)
+        {
+            import std.stdio;
+            try writeln("Exception thrown in UTXODB.find: ", exc);
+            catch (Exception exc) { assert(0, "Last chance writeln thrown: Giving up"); }
+            assert(0, exc.toString());
+        }
     }
 
     /***************************************************************************
