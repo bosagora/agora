@@ -78,8 +78,64 @@ public auto prettify (T) (const auto ref T input) nothrow
         return ConsensusDataFmt(input);
     else static if (is(T : const QuorumConfig))
         return QuorumConfigFmt(input);
+    else static if (is(T == struct))  // recurse into fields and auto-prettify
+    {
+        struct Formatted
+        {
+            public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+            {
+                import std.traits;
+                try
+                {
+                    sink("{ ");
+                    foreach (idx, field; FieldNameTuple!T)
+                    {
+                        formattedWrite(sink, "%s: %s", field,
+                            prettify(__traits(getMember, input, field)));
+                        if (idx + 1 < FieldNameTuple!T.length)
+                            sink(", ");
+                    }
+                    sink(" }");
+                }
+                catch (Exception ex)
+                {
+                    assert(0, ex.msg);
+                }
+            }
+        }
+
+        return Formatted();
+    }
     else
         return input;
+}
+
+unittest
+{
+    static struct S
+    {
+        static struct Nested
+        {
+            Hash hash;
+            Amount amount;
+        }
+
+        static struct A
+        {
+            int x;
+        }
+
+        Nested nested;
+        PublicKey pubkey;
+        A a = A(32);
+        A b = A(64);
+    }
+
+    static immutable Hash SomeHash =
+        "0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+        ~ "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+    assert(format("%s", prettify(S(S.Nested(SomeHash, Amount(1))))) ==
+        "{ nested: { hash: 0x0000...e26f, amount: 0.0,000,001 }, pubkey: boa1xqqqqqqq...jq8m, a: { x: 32 }, b: { x: 64 } }");
 }
 
 /// Formatting struct for `Amount`
