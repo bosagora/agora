@@ -55,7 +55,8 @@ private void writeBlocks (string path)
     foreach (block_idx; 0 .. BlockCount)
     {
         Transaction[8] txs;
-        auto block = makeNewBlock(blocks[$ - 1], txs[], blocks[$ - 1].header.time_offset + 1, Hash.init);
+        auto block = makeNewBlock(blocks[$ - 1], txs[], blocks[$ - 1].header.time_offset + 1, Hash.init,
+            genesis_validator_keys.length);
         storage.saveBlock(block);
         blocks ~= block;
     }

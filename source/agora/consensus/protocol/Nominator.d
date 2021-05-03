@@ -539,6 +539,7 @@ extern(D):
             }
             const Block proposed_block = makeNewBlock(last_block,
                 received_tx_set, con_data.time_offset, random_seed,
+                this.enroll_man.getCountOfValidators(last_block.header.height + 1),
                 con_data.enrolls, con_data.missing_validators);
             const block_sig = ValidatorBlockSig(Height(envelope.statement.slotIndex),
                 public_key, Scalar(envelope.statement.pledges.confirm_.value_sig));
@@ -712,6 +713,7 @@ extern(D):
 
         const proposed_block = makeNewBlock(last_block,
             signed_tx_set, con_data.time_offset, random_seed,
+            this.enroll_man.getCountOfValidators(last_block.header.height + 1),
             con_data.enrolls, con_data.missing_validators);
 
         const Signature sig = createBlockSignature(proposed_block);
@@ -853,7 +855,7 @@ extern(D):
 
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
         Hash random_seed = this.ledger.getExternalizedRandomSeed(
-            last_block.header.height + 1, data.missing_validators);
+            height, data.missing_validators);
         Transaction[] externalized_tx_set;
         if (auto fail_reason = this.ledger.getValidTXSet(data,
             externalized_tx_set))
@@ -864,6 +866,7 @@ extern(D):
         }
         const block = makeNewBlock(last_block,
             externalized_tx_set, data.time_offset, random_seed,
+            this.enroll_man.getCountOfValidators(last_block.header.height + 1),
             data.enrolls, data.missing_validators);
 
         // If we did not sign yet then add signature and gossip to other nodes

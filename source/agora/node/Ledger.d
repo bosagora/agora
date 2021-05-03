@@ -1171,7 +1171,7 @@ public class ValidatingLedger : Ledger
             data.missing_validators);
 
         auto next_block = Height(this.last_block.header.height + 1);
-        KeyPair[] public_keys = iota(0, this.enroll_man.getCountOfValidators(next_block))
+        auto key_pairs = iota(0, this.enroll_man.getCountOfValidators(next_block))
             .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
             .map!(K => WK.Keys[K])
             .array();
@@ -1185,13 +1185,8 @@ public class ValidatingLedger : Ledger
         }
 
         const block = makeNewTestBlock(this.last_block,
-            externalized_tx_set, random_seed, data.enrolls,
-            data.missing_validators, public_keys,
-            (PublicKey pubkey)
-            {
-                return 0;   // This is the number of re-enrollments (currently always 0 in these tests)
-            },
-            data.time_offset);
+            externalized_tx_set, random_seed, key_pairs,
+            data.enrolls, data.missing_validators, data.time_offset);
         return this.acceptBlock(block, file, line);
     }
 
@@ -2044,6 +2039,6 @@ unittest
     assert(!ledger.externalize(data));
 
     auto last_block = ledger.getLastBlock();
-    const block = makeNewBlock(last_block, cb_tx_set, data.time_offset, Hash.init);
+    const block = makeNewBlock(last_block, cb_tx_set, data.time_offset, Hash.init, genesis_validator_keys.length);
     assert(ledger.validateBlock(block) == "Block: Must contain other transactions than Coinbase");
 }
