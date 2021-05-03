@@ -17,7 +17,7 @@ COPY --from=Builder /root/packages/ /root/packages/
 RUN apk --no-cache add --allow-untrusted -X /root/packages/build/ ldc-runtime=1.26.0-r0 \
     && rm -rf /root/packages/
 RUN apk --no-cache add llvm-libunwind libgcc libsodium libstdc++ sqlite-libs
-COPY --from=Builder /root/agora/talos/build/ /root/talos/
+COPY --from=Builder /root/agora/talos/build/ /usr/share/agora/talos/
 COPY --from=Builder /root/agora/build/agora /usr/local/bin/agora
 WORKDIR /agora/
 ENTRYPOINT [ "/usr/local/bin/agora" ]
