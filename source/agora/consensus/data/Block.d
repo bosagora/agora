@@ -513,6 +513,7 @@ unittest
         txs = the transactions that will be contained in the new block
         time_offset = the block time offset from Genesis timestamp in seconds
         random_seed = Hash of random seed of the preimages
+        validators = count of validators who could potentially sign the block
         enrollments = the enrollments that will be contained in the new block
         missing_validators = list of indices to the validator UTXO set
             which have not revealed the preimage
@@ -520,7 +521,7 @@ unittest
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, ulong time_offset, Hash random_seed,
+    Transactions txs, ulong time_offset, Hash random_seed, size_t validators,
     Enrollment[] enrollments = null, uint[] missing_validators = null)
     @safe nothrow
 {
@@ -532,7 +533,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     block.header.height = prev_block.header.height + 1;
     block.header.time_offset = time_offset;
     block.header.random_seed = random_seed;
-
+    block.header.validators = BitField!ubyte(validators);
     block.header.enrollments = enrollments;
     block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
@@ -550,22 +551,16 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     return block;
 }
 
-/// only used in unittests with defualt block signing with the genesis validators
+/// only used in unittests with some defaults
 version (unittest)
 {
-    import agora.utils.Test;
-    public import agora.consensus.data.genesis.Test : genesis_validator_keys;
-
-    ulong defaultCycleZero (PublicKey key)
-    {
-        return 0;
-    }
+    import agora.consensus.data.genesis.Test: genesis_validator_keys;
 
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
         Transactions txs, Hash random_seed = Hash.init,
-        Enrollment[] enrollments = null, uint[] missing_validators = null,
         in KeyPair[] key_pairs = genesis_validator_keys,
-        ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
+        Enrollment[] enrollments = null,
+        uint[] missing_validators = null,
         ulong time_offset = 0) @safe nothrow
     {
         // the time_offset passed to makeNewBlock should really be
@@ -574,8 +569,29 @@ version (unittest)
         // however many tests calling makeNewTestBlock have no access to ConsensusParams
         auto block = makeNewBlock(prev_block, txs,
                 time_offset ? time_offset : prev_block.header.time_offset + 1,
-                random_seed, enrollments, missing_validators);
-        return multiSigTestBlock(block, cycleForValidator, key_pairs);
+                random_seed, key_pairs.length, enrollments, missing_validators);
+        auto validators = BitField!ubyte(key_pairs.length);
+        Signature[] sigs;
+        ulong offset = 0;
+        key_pairs.enumerate.each!((i, k)
+        {
+            validators[i] = true;
+            sigs ~= block.header.createBlockSignature(k.secret, offset);
+        });
+        try
+        {
+            auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
+            return signed_block;
+        }
+        catch (Exception e)
+        {
+            () @trusted
+            {
+                import std.format;
+                assert(0, format!"makeNewTestBlock exception thrown during test: %s"(e));
+            }();
+        }
+        return Block.init;
     }
 }
 
@@ -609,10 +625,10 @@ version (unittest)
     uint[] missing_validators = [];
 
     auto block = makeNewBlock(GenesisBlock, [Transaction.init], 1,
-        random_seed, [enr_1, enr_2], missing_validators);
+        random_seed, genesis_validator_keys.length, [enr_1, enr_2], missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ascending
     block = makeNewBlock(GenesisBlock, [Transaction.init], 1,
-        random_seed, [enr_2, enr_1], missing_validators);
+        random_seed, genesis_validator_keys.length, [enr_2, enr_1], missing_validators);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
 }
 
@@ -792,50 +808,4 @@ unittest
     assert(merkle_path[2] == hmnop);
     assert(merkle_path[3] == habcdefgh);
     assert(block.header.merkle_root == Block.checkMerklePath(hi, merkle_path, 8));
-}
-
-version (unittest)
-{
-    import agora.utils.Log;
-    mixin AddLogger!();
-
-    public Block multiSigTestBlock (ref Block block,
-        ulong delegate (PublicKey) cycleForValidator,
-        in KeyPair[] keys) @trusted nothrow
-    {
-        import agora.crypto.ECC;
-        import agora.crypto.Schnorr;
-        import std.format;
-
-        auto validators = BitField!ubyte(keys.length);
-        Signature[] sigs;
-
-        // challenge = Hash(block) to Scalar
-        const Scalar challenge = hashFull(block);
-
-        void validatorSign (ulong i, KeyPair key)
-        {
-            // rc = r used in signing the commitment
-            const Scalar rc = Scalar(hashMulti(key.secret, "consensus.signature.noise",
-                cycleForValidator(key.address)));
-            const Scalar r = rc + challenge; // make it unique each challenge
-            const Pair R = Pair.fromScalar(r);
-            Scalar s = sign(key.secret, R.V, r, challenge).s;
-            log.trace("multiSigTestBlock: cycle {} index {}. (R, s) for validator {} is ({}, {})",
-                cycleForValidator(key.address), i, key.address, rc.toPoint(), s);
-            sigs ~= Signature(R.V, s);
-            validators[i] = true;
-        }
-        try
-        {
-            keys.enumerate.each!((idx, key) => validatorSign(idx, key));
-        } catch (Exception e)
-        {
-            assert(0, format!"Unit test signing error: %s"(e));
-        }
-        // Create new block with updates
-        block.header.validators = validators;
-        block.header.signature = multiSigCombine(sigs);
-        return block;
-    }
 }

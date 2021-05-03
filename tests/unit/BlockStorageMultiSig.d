@@ -58,7 +58,7 @@ private void main ()
 
     void signBlockSig1 (Height h)
     {
-        block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, Hash.init);
+        block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, Hash.init, genesis_validator_keys.length);
         block.header.signature = Signature(Scalar.random().toPoint(), Scalar.random());
         block.header.validators = BitField!ubyte(6);
         block.header.validators[1] = true;
