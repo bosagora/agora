@@ -524,11 +524,17 @@ extern(D):
     // set the DB instance of SCPEnvelopeStore
     protected void setSCPEnvelopeStore (SCPEnvelopeStore envelope_store)
     {
-        this.scp_envelope_store = envelope_store;
+        this.proc_envelopes_store = envelope_store;
     }
 
     // return a SCPEnvelopeStore backed by an in-memory SQLite db
-    protected override SCPEnvelopeStore makeSCPEnvelopeStore (string data_dir)
+    protected override SCPEnvelopeStore makeProcessedSCPEnvelopeStore (string data_dir)
+    {
+        return new SCPEnvelopeStore(":memory:");
+    }
+
+    // return a SCPEnvelopeStore backed by an in-memory SQLite db
+    protected override SCPEnvelopeStore makeQueuedSCPEnvelopeStore (string data_dir)
     {
         return new SCPEnvelopeStore(":memory:");
     }

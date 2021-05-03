@@ -86,7 +86,7 @@ unittest
         }
 
         ///
-        override void restoreSCPState ()
+        override void restoreSCPState () @trusted
         {
             // on first boot the envelope store will be empty,
             // but on restart it should contain two envelopes
@@ -98,7 +98,7 @@ unittest
             }
             super.restoreSCPState();
         }
-        protected override SCPEnvelopeStore makeSCPEnvelopeStore (string)
+        protected override SCPEnvelopeStore makeProcessedSCPEnvelopeStore (string)
         {
             return new TestSCPEnvelopeStore();
         }

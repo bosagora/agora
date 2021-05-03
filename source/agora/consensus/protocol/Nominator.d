@@ -58,6 +58,7 @@ import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 
 import std.algorithm;
+import std.container : DList;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -117,8 +118,11 @@ public extern (C++) class Nominator : SCPDriver
     /// Note that Clock network synchronization is not yet implemented.
     private ITimer nomination_timer;
 
-    /// SCPEnvelopeStore instance
-    protected SCPEnvelopeStore scp_envelope_store;
+    /// Storage for processed & accepted SCP envelopes
+    protected SCPEnvelopeStore proc_envelopes_store;
+
+    /// Storage for incoming SCP envelopes which were queued for processing
+    protected SCPEnvelopeStore queued_envelopes_store;
 
     // Height => Point (public key) => Signature
     private Signature[PublicKey][Height] slot_sigs;
@@ -135,6 +139,12 @@ public extern (C++) class Nominator : SCPDriver
     /// Delegate called when node's own nomination is invalid
     public extern (D) void delegate (in ConsensusData data, in string msg)
         @safe onInvalidNomination;
+
+    /// List of incoming SCPEnvelopes that need to be processed
+    private DList!SCPEnvelope queued_envelopes;
+
+    /// Timer used for processing queued incoming SCP Envelope messages
+    private ITimer envelope_timer;
 
     /// Nomination start time
     protected TimePoint nomination_start_time;
@@ -176,9 +186,29 @@ extern(D):
         this.taskman = taskman;
         this.ledger = ledger;
         this.enroll_man = enroll_man;
-        this.scp_envelope_store = this.makeSCPEnvelopeStore(data_dir);
+        this.proc_envelopes_store = this.makeProcessedSCPEnvelopeStore(data_dir);
+        this.queued_envelopes_store = this.makeQueuedSCPEnvelopeStore(data_dir);
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
+        this.envelope_timer = this.taskman.setTimer(10.msecs,
+            &this.envelopeProcessTask, Periodic.Yes);
+    }
+
+    /// Shut down the envelope processing timer
+    public void shutdown () @safe
+    {
+        this.envelope_timer.stop();
+    }
+
+    /// Processes incoming queued envelopes
+    private void envelopeProcessTask ()
+    {
+        while (!this.queued_envelopes.empty)
+        {
+            auto env = this.queued_envelopes.front;
+            this.queued_envelopes.removeFront();
+            this.handleSCPEnvelope(env);
+        }
     }
 
     /***************************************************************************
@@ -437,30 +467,46 @@ extern(D):
 
     ***************************************************************************/
 
-    protected void restoreSCPState ()
+    protected void restoreSCPState () @trusted
     {
-        foreach (const ref SCPEnvelope envelope; this.scp_envelope_store)
+        foreach (const ref SCPEnvelope envelope; this.proc_envelopes_store)
         {
             this.scp.setStateFromEnvelope(envelope.statement.slotIndex,
                 envelope);
             if (!this.scp.isSlotFullyValidated(envelope.statement.slotIndex))
                 assert(0);
         }
+
+        foreach (const ref SCPEnvelope envelope; this.queued_envelopes_store)
+            this.queued_envelopes.insertBack(cast()envelope);
     }
 
     /***************************************************************************
 
         Called when a new SCP Envelope is received from the network.
+        It queues it up for processing by the envelope process fiber.
 
         Params:
             envelope = the SCP envelope
 
-        Returns:
-            true if the SCP protocol accepted this envelope
-
     ***************************************************************************/
 
     public void receiveEnvelope (in SCPEnvelope envelope) @trusted
+    {
+        auto copied = envelope.serializeFull.deserializeFull!SCPEnvelope;
+        this.queued_envelopes.insertBack(copied);
+    }
+
+    /***************************************************************************
+
+        Called to process a queued incoming SCP Envelope.
+
+        Params:
+            envelope = the SCP envelope
+
+    ***************************************************************************/
+
+    private void handleSCPEnvelope (in SCPEnvelope envelope) @trusted
     {
         // ignore messages if `startNominatingTimer` was never called or
         // if `stopNominatingTimer` was called
@@ -590,7 +636,8 @@ extern(D):
 
     /***************************************************************************
 
-        Store the latest SCP sate for restore
+        Store the latest SCP state and the queued SCP envelopes,
+        for restoring later.
 
     ***************************************************************************/
 
@@ -609,18 +656,26 @@ extern(D):
         scope (failure) ManagedDatabase.rollback();
 
         // Clean the previous envelopes from the DB
-        this.scp_envelope_store.removeAll();
+        this.proc_envelopes_store.removeAll();
 
         // Store the latest envelopes
         foreach (const ref env; envelopes)
-            this.scp_envelope_store.add(env);
+            this.proc_envelopes_store.add(env);
+
+        // Clean the previously queued envelopes from the DB
+        this.queued_envelopes_store.removeAll();
+
+        // Store the queued envelopes
+        foreach (const ref env; this.queued_envelopes[])
+            this.queued_envelopes_store.add(env);
 
         ManagedDatabase.commitBatch();
     }
 
     /***************************************************************************
 
-        Returns an instance of an SCPEnvelopeStore
+        Returns an instance of an SCPEnvelopeStore for the processed
+        and accepted SCP Envelopes which are stored internally in SCP.
 
         Params:
             data_dir = path to the data directory
@@ -630,9 +685,30 @@ extern(D):
 
     ***************************************************************************/
 
-    protected SCPEnvelopeStore makeSCPEnvelopeStore (string data_dir)
+    protected SCPEnvelopeStore makeProcessedSCPEnvelopeStore (string data_dir)
     {
-        return new SCPEnvelopeStore(buildPath(data_dir, "scp_envelopes.dat"));
+        return new SCPEnvelopeStore(buildPath(data_dir,
+            "processed_scp_envelopes.dat"));
+    }
+
+    /***************************************************************************
+
+        Returns an instance of an SCPEnvelopeStore for the incoming SCP
+        Enveloeps which were not processed yet but were queued for later
+        processing.
+
+        Params:
+            data_dir = path to the data directory
+
+        Returns:
+            the SCPEnvelopeStore instance
+
+    ***************************************************************************/
+
+    protected SCPEnvelopeStore makeQueuedSCPEnvelopeStore (string data_dir)
+    {
+        return new SCPEnvelopeStore(buildPath(data_dir,
+            "queued_scp_envelopes.dat"));
     }
 
     /***************************************************************************
