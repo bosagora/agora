@@ -75,10 +75,10 @@ public class SetupInterface
     /// Start listening for requests
     public void start (URL url)
     {
-        // Safety checks: If the user asked for the admin interface, make sure it exists
-        if (!std.file.exists("talos/index.html"))
-            throw new Exception("Talos files not found. This might mean your node is not installed correctly. " ~
-                                "Expected to find '" ~ std.file.getcwd() ~ "/talos/index.html' but didn't.");
+        // If the user asked for the admin interface, make sure it exists
+        // It can be located in a few places (to accomodate for different setups),
+        // however if it can't be found in any of them, this will throw.
+        string path = this.getStaticFilePath();
 
         auto settings = new HTTPServerSettings(url.host);
         settings.port = url.port;
@@ -91,9 +91,25 @@ public class SetupInterface
         // Handle CORS
         router.match(HTTPMethod.OPTIONS, "*", &this.handleAllOptions);
         // By default, match the underlying files
-        router.match(HTTPMethod.GET, "*", serveStaticFiles("talos/"));
+        router.match(HTTPMethod.GET, "*", serveStaticFiles(path));
 
         this.listener = listenHTTP(settings, router);
+    }
+
+    /// Returns: The path at which the Talos files are located
+    private string getStaticFilePath () const
+    {
+        // First check working directory
+        if (std.file.exists("talos/index.html"))
+            return std.file.getcwd() ~ "/talos/";
+
+        if (std.file.exists("/usr/share/agora/talos/index.html"))
+            return "/usr/share/agora/talos/";
+
+        throw new Exception("Talos files not found. " ~
+                            "This might mean your node is not installed correctly. " ~
+                            "Searched for `index.html` in '" ~ std.file.getcwd() ~
+                            "/talos/' and '/usr/share/agora/talos/'.");
     }
 
     /***************************************************************************
