@@ -40,10 +40,14 @@ import std.path : absolutePath;
 import std.stdio;
 import std.typecons : Nullable;
 
+import core.exception;
+
 /// Application entry point
 private int main (string[] args)
 {
     CommandLine cmdln;
+
+    stAssertError = new AssertError("You should not see this");
 
     try
     {
@@ -239,3 +243,27 @@ private SigHandlerT getSignalHandler () @safe pure nothrow @nogc
 
     return &signalHandler;
 }
+
+/*******************************************************************************
+
+    Print a message, then throw a statically allocated assert error
+
+    Because one can't use `assert` in destructor:
+    https://github.com/dlang/druntime/blob/20679d4ee80ce6df994d9b1bdfad64484fee46f0/src/core/exception.d#L429
+
+*******************************************************************************/
+
+private void handleAssertion (string file, size_t line, string msg) nothrow
+{
+    import core.stdc.stdio;
+
+    printf("Assert triggered at '%.*s:%zu': %.*s\n",
+           cast(int) file.length, file.ptr, line, cast(int) msg.length, msg.ptr);
+    stAssertError.msg = msg;
+    stAssertError.file = file;
+    stAssertError.line = line;
+    throw stAssertError;
+}
+
+/// A statically allocated instance to avoid invalid memory errors in destructors
+private AssertError stAssertError;
