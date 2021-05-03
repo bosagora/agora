@@ -1,0 +1,5 @@
+# The GC uses signals to start/stop thread, so just ignore them,
+# as otherwise we get stop for every GC collections, which makes
+# the process essentially un-debug-able.
+handle SIGUSR1 noprint
+handle SIGUSR2 noprint
