@@ -53,7 +53,7 @@ public class SCPEnvelopeStore
         this.db = db;
 
         this.db.execute("CREATE TABLE IF NOT EXISTS scp_envelopes " ~
-            "(seq INTEGER PRIMARY KEY AUTOINCREMENT, envelope BLOB NOT NULL)");
+            "(seq INTEGER PRIMARY KEY AUTOINCREMENT, envelope BLOB NOT NULL, processed INTEGER NOT NULL)");
     }
 
     /***************************************************************************
@@ -63,14 +63,15 @@ public class SCPEnvelopeStore
         First, clean with 'removeAll' before Adding it in new envelopes.
 
         Params:
-            envelope = the envelop to add
+            envelope = the envelope to add
+            processed = If the envelope has been processed
 
         Returns:
             true if the envelope has been added to the database
 
     ***************************************************************************/
 
-    public bool add (const ref SCPEnvelope envelope) @safe nothrow
+    public bool add (const ref SCPEnvelope envelope, bool processed) @safe nothrow
     {
         static ubyte[] envelope_bytes;
 
@@ -88,8 +89,8 @@ public class SCPEnvelopeStore
         try
         {
             () @trusted {
-                db.execute("INSERT INTO scp_envelopes (envelope) VALUES(?)",
-                    envelope_bytes);
+                db.execute("INSERT INTO scp_envelopes (envelope, processed) VALUES(?, ?)",
+                           envelope_bytes, processed);
             }();
         }
         catch (Exception ex)
@@ -131,18 +132,19 @@ public class SCPEnvelopeStore
 
     ***************************************************************************/
 
-    public int opApply (scope int delegate(const ref SCPEnvelope) dg)
+    public int opApply (scope int delegate(bool processed, const ref SCPEnvelope) dg)
     {
         () @trusted
         {
             auto results = this.db.execute(
-                "SELECT envelope FROM scp_envelopes");
+                "SELECT envelope, processed FROM scp_envelopes");
 
             foreach (ref row; results)
             {
                 auto env = deserializeFull!(const SCPEnvelope)(row.peek!(ubyte[])(0));
+                auto processed = row.peek!bool(1);
 
-                if (auto ret = dg(env))
+                if (auto ret = dg(processed, env))
                     return ret;
             }
             return 0;
@@ -181,12 +183,12 @@ unittest
 
     foreach (env; envelopes)
     {
-        envelope_store.add(env);
+        envelope_store.add(env, false);
     }
 
     assert(envelope_store.length == 2);
 
-    foreach (const ref SCPEnvelope env; envelope_store)
+    foreach (_, const ref SCPEnvelope env; envelope_store)
     {
         assert(env == SCPEnvelope.init);
     }

@@ -47,7 +47,7 @@ unittest
         mixin ForwardCtor!();
 
         ///
-        override void restoreSCPState ()
+        override void restoreSCPState () @trusted
         {
             // on first boot the envelope store will be empty,
             // but on restart it should contain one or more envelopes
