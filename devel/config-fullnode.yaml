@@ -1,0 +1,46 @@
+#
+# This configuration file is intended to provide a full node that follows
+# the live system and just validates / outputs what it sees.
+#
+# This configuration is provided for the convenience of developers and should
+# not be used in production. See `doc/config.example.yaml` for a full,
+# up to date example of the configuration options available
+#
+# Run from the root with:
+# ./build/agora -c devel/config-fullnode.yaml
+
+node:
+  testing: true
+  block_interval_sec: 20
+  data_dir: .fullnode/data/
+  # Can be used with curl or just a browser
+  stats_listening_port: 9111
+
+interfaces:
+  - type:    http
+    address: 0.0.0.0
+    port:    2826
+
+consensus:
+  validator_cycle: 20
+
+validator:
+  enabled: false
+  registry_address: http://eu-001.bosagora.io:5001
+
+# Note: You may want to comment some of those to selectively test
+network:
+  - http://eu-002.bosagora.io:2826/
+  - http://eu-002.bosagora.io:3826/
+  - http://na-001.bosagora.io:4826/
+  - http://na-001.bosagora.io:5826/
+  - http://na-002.bosagora.io:6826/
+  - http://na-002.bosagora.io:7826/
+
+logging:
+  root:
+    # You might want to use `Trace` and separate output
+    level: Info
+    console: true
+    propagate: true
+    file: .fullnode/log/root.log
