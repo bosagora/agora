@@ -31,12 +31,15 @@ import vibe.data.json;
 import vibe.http.router;
 import vibe.http.server;
 
+import Ocean = ocean.util.log.Logger;
+
 import barcode;
 
 import std.datetime : SysTime, unixTimeToStdTime, UTC;
 import std.format;
 import std.meta;
 import std.traits;
+import std.typecons;
 
 import core.time : days;
 
@@ -84,6 +87,43 @@ public class AdminInterface : NodeControlAPI
         this.log = Logger(__MODULE__);
         this.key_pair = key_pair;
         this.clock = clock;
+    }
+
+    ///
+    public override void postLogger (string name, bool propagate,
+        Nullable!(LogLevel) level, Nullable!bool additive,
+        Nullable!bool console, Nullable!string file) @trusted
+    {
+        import ocean.util.log.AppendConsole;
+
+        Ocean.Logger logger = name == "root" ? Ocean.Log.root :
+            Ocean.Log.lookup(name);
+
+        if (!additive.isNull())
+            logger.additive = additive.get();
+        if (!level.isNull())
+            logger.level(level.get(), propagate);
+
+        // If either parameter was provided, clear the list of appender
+        // It would be better if we had a way to remove a specific appender,
+        // e.g. set `console=false` would disable console but leave file intact,
+        // but the Logger API doesn't expose this. It would also complicate
+        // matters if we wanted to have multiple file outputs.
+        if (!console.isNull() || !file.isNull())
+            logger.clear();
+
+        if (!console.isNull())
+        {
+            auto appender = new AppendConsole();
+            appender.layout(new AgoraLayout());
+            logger.add(appender);
+        }
+        if (!file.isNull())
+        {
+            auto appender = new PhobosFileAppender(file.get());
+            appender.layout(new AgoraLayout());
+            logger.add(appender);
+        }
     }
 
     /***************************************************************************

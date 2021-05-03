@@ -16,6 +16,8 @@ module agora.api.Admin;
 import vibe.data.serialization;
 import vibe.web.rest;
 
+import ocean.util.log.ILogger;
+
 import std.typecons;
 
 
@@ -24,6 +26,20 @@ import std.typecons;
 public interface NodeControlAPI
 {
     @safe:
+
+    /***************************************************************************
+
+        Set the configuration of a Logger
+
+    ***************************************************************************/
+
+    public void postLogger (
+        @viaQuery("name") string name,
+        @viaQuery("propagate") bool propagate = true,
+        @viaQuery("level") Nullable!(ILogger.Level) level = Nullable!(ILogger.Level).init,
+        @viaQuery("additive") Nullable!bool additive = Nullable!(bool).init,
+        @viaQuery("console") Nullable!bool console = Nullable!(bool).init,
+        @viaQuery("file") Nullable!string file = Nullable!(string).init);
 
     /***************************************************************************
 
