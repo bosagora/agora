@@ -57,6 +57,7 @@ import core.stdc.stdint;
 import core.stdc.stdlib : abort;
 
 import std.algorithm;
+import std.container : DList;
 import std.conv;
 import std.format;
 import std.path : buildPath;
@@ -141,6 +142,12 @@ public extern (C++) class Nominator : SCPDriver
     /// Nomination start time
     protected TimePoint nomination_start_time;
 
+    /// List of incoming SCPEnvelopes that need to be processed
+    private DList!SCPEnvelope queued_envelopes;
+
+    /// Timer used for processing queued incoming SCP Envelope messages
+    private ITimer envelope_timer;
+
 extern(D):
 
     /***************************************************************************
@@ -186,6 +193,25 @@ extern(D):
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
+        this.envelope_timer = this.taskman.setTimer(10.msecs,
+            &this.envelopeProcessTask, Periodic.Yes);
+    }
+
+    /// Shut down the envelope processing timer
+    public void shutdown () @safe
+    {
+        this.envelope_timer.stop();
+    }
+
+    /// Processes incoming queued envelopes
+    private void envelopeProcessTask ()
+    {
+        while (!this.queued_envelopes.empty)
+        {
+            auto env = this.queued_envelopes.front;
+            this.queued_envelopes.removeFront();
+            this.handleSCPEnvelope(env);
+        }
     }
 
     /***************************************************************************
@@ -453,10 +479,15 @@ extern(D):
 
     ***************************************************************************/
 
-    protected void restoreSCPState ()
+    protected void restoreSCPState () @trusted
     {
-        foreach (const ref SCPEnvelope envelope; this.scp_envelope_store)
+        foreach (bool proc, const ref SCPEnvelope envelope; this.scp_envelope_store)
         {
+            if (!proc)
+            {
+                this.queued_envelopes.insertBack(cast()envelope);
+                continue;
+            }
             auto shared_env = this.wrapEnvelope(envelope);
             this.scp.setStateFromEnvelope(envelope.statement.slotIndex,
                 shared_env);
@@ -468,16 +499,29 @@ extern(D):
     /***************************************************************************
 
         Called when a new SCP Envelope is received from the network.
+        It queues it up for processing by the envelope process fiber.
 
         Params:
             envelope = the SCP envelope
 
-        Returns:
-            true if the SCP protocol accepted this envelope
-
     ***************************************************************************/
 
     public void receiveEnvelope (in SCPEnvelope envelope) @trusted
+    {
+        auto copied = envelope.serializeFull.deserializeFull!SCPEnvelope;
+        this.queued_envelopes.insertBack(copied);
+    }
+
+    /***************************************************************************
+
+        Called to process a queued incoming SCP Envelope.
+
+        Params:
+            envelope = the SCP envelope
+
+    ***************************************************************************/
+
+    private void handleSCPEnvelope (in SCPEnvelope envelope) @trusted
     {
         // ignore messages if `startNominatingTimer` was never called or
         // if `stopNominatingTimer` was called
@@ -608,7 +652,8 @@ extern(D):
 
     /***************************************************************************
 
-        Store the latest SCP sate for restore
+        Store the latest SCP state and the queued SCP envelopes,
+        for restoring later.
 
     ***************************************************************************/
 
@@ -632,7 +677,11 @@ extern(D):
 
         // Store the latest envelopes
         foreach (const ref env; envelopes)
-            this.scp_envelope_store.add(env);
+            this.scp_envelope_store.add(env, true);
+
+        // Store the queued envelopes
+        foreach (const ref env; this.queued_envelopes[])
+            this.scp_envelope_store.add(env, false);
 
         ManagedDatabase.commitBatch();
     }
