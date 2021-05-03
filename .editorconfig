@@ -1,0 +1,9 @@
+# See https://editorconfig.org
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[*.{d,di}]
+dfmt_space_before_function_parameters = true
