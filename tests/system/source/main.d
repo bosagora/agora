@@ -19,7 +19,6 @@ import agora.consensus.data.genesis;
 import TestGenesis = agora.consensus.data.genesis.Test;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
-import agora.crypto.Key;
 import agora.common.Set;
 import agora.crypto.Hash;
 import agora.utils.PrettyPrinter;
@@ -49,9 +48,6 @@ int main (string[] args)
     }
     /// Address array of nodes
     const addresses = args[1..$];
-
-    // Set the human-readable part for addresses
-    HumanReadablePart = "bot";
 
     API[] clients;
     foreach (const ref addr; addresses)

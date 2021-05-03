@@ -113,7 +113,7 @@ unittest
 
 private immutable int VersionWidth = 1;
 private immutable int ChecksumWidth = 2;
-shared public char[3] HumanReadablePart = "boa";
+private immutable char[3] HumanReadablePart = "boa";
 
 /// Represent a public key / address
 public struct PublicKey
@@ -139,7 +139,7 @@ public struct PublicKey
         ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
         bin[VersionWidth .. $] = this.data[];
-        return encodeBech32(cast(char[])HumanReadablePart, bin, Encoding.Bech32m).
+        return encodeBech32(HumanReadablePart, bin, Encoding.Bech32m).
             assumeUnique;
     }
 
@@ -149,7 +149,7 @@ public struct PublicKey
         ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
         bin[VersionWidth .. $] = this.data[];
-        string encoded = encodeBech32(cast(char[])HumanReadablePart, bin,
+        string encoded = encodeBech32(HumanReadablePart, bin,
             Encoding.Bech32m).assumeUnique;
         sink(encoded);
     }
@@ -157,7 +157,6 @@ public struct PublicKey
     ///
     unittest
     {
-        HumanReadablePart = "boa";
         immutable address = `boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`;
         PublicKey pubkey = PublicKey.fromString(address);
 
@@ -184,7 +183,7 @@ public struct PublicKey
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         auto dec = decodeBech32(str);
-        enforce(dec.hrp == cast(char[])HumanReadablePart);
+        enforce(dec.hrp == HumanReadablePart);
         enforce(dec.data.length == VersionWidth + PublicKey.sizeof);
         enforce(dec.data[0] == VersionByte.AccountID);
         return PublicKey(typeof(this.data)(dec.data[VersionWidth .. $]));
