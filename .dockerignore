@@ -2,7 +2,6 @@
 .git/
 ci/
 doc/
-hooks/
 tests/
 LICENSE
 README.md
