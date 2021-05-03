@@ -57,8 +57,7 @@ jobs:
     - name: '[OSX] Install dependencies & setup environment'
       if: runner.os == 'macOS'
       run: |
-        brew install coreutils pkg-config
-        ./ci/ci_osx_setup.sh
+        brew install coreutils libsodium pkg-config
         echo "LIBRARY_PATH=${LD_LIBRARY_PATH-}:/usr/local/lib/" >> $GITHUB_ENV
         echo "PKG_CONFIG_PATH=/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/" >> $GITHUB_ENV
 
