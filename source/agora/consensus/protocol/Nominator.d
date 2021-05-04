@@ -534,7 +534,7 @@ extern(D):
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set))
             {
                 log.info("Missing TXs while checking envelope signature : {}",
-                    prettify(envelope));
+                    scpPrettify(&envelope));
                 return; // We dont have all the TXs for this block. Try to catchup
             }
             const Block proposed_block = makeNewBlock(last_block,
@@ -712,7 +712,7 @@ extern(D):
         if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
         {
             log.info("Missing TXs while signing confirm ballot {}",
-                prettify(envelope));
+                scpPrettify(&envelope));
             return;
         }
 
