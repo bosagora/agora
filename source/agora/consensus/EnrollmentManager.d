@@ -475,23 +475,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get the r that was used to sign the enrollment of this validator node
-
-        Params:
-            height = height of block that r will sign
-        Returns:
-            The initial `r` used when signing the Enrollment
-
-    ***************************************************************************/
-
-    public Scalar getCommitmentNonceScalar (in Height height) const @safe nothrow
-    {
-        ulong index = ulong((height - 1) / this.params.ValidatorCycle);
-        return Scalar(hashMulti(this.key_pair.secret, "consensus.signature.noise", index));
-    }
-
-    /***************************************************************************
-
         Get all the enrolled validator's UTXO keys.
 
         Params:

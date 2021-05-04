@@ -20,9 +20,10 @@ import agora.common.BitField;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
-import agora.crypto.Schnorr: Signature;
+import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.serialization.Serializer;
 
@@ -93,6 +94,30 @@ public struct BlockHeader
         foreach (validator; this.missing_validators)
             hashPart(validator, dg);
         hashPart(this.time_offset, dg);
+    }
+
+    /***************************************************************************
+
+        Create the block signature for the given keypair
+
+        This signature will be combined with other validator's signatures
+        using Schnorr multisig.
+
+        Params:
+            block = the block to sign
+            secret_key = node's secret
+            offset = enrollment cycle offset
+
+    ***************************************************************************/
+    public Signature createBlockSignature (in Scalar secret_key, ulong offset = 0) const @safe nothrow
+    {
+        // challenge = Hash(block) to Scalar
+        const Scalar challenge = this.hashFull();
+        // rc = r used in signing the commitment
+        const Scalar rc = Scalar(hashMulti(secret_key, "consensus.signature.noise", offset));
+        const Scalar r = rc + challenge; // make it unique each challenge
+        const Point R = r.toPoint();
+        return sign(secret_key, R, r, challenge);
     }
 }
 

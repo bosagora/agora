@@ -640,14 +640,8 @@ extern(D):
 
     public Signature createBlockSignature (in Block block) @safe nothrow
     {
-        // challenge = Hash(block) to Scalar
-        const Scalar challenge = hashFull(block);
-
-        // rc = r used in signing the commitment
-        const Scalar rc = this.enroll_man.getCommitmentNonceScalar(block.header.height);
-        const Scalar r = rc + challenge; // make it unique each challenge
-        const Point R = r.toPoint();
-        return sign(this.kp.secret, R, r, challenge);
+        return block.header.createBlockSignature(this.kp.secret,
+            ulong((block.header.height - 1) / this.params.ValidatorCycle));
     }
 
     extern (C++):
