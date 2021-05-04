@@ -486,7 +486,7 @@ public class EnrollmentManager
 
     public Scalar getCommitmentNonceScalar (in Height height) const @safe nothrow
     {
-        ulong index = ulong((height - 1) / this.cycle.preimages.length());
+        ulong index = ulong((height - 1) / this.params.ValidatorCycle);
         return Scalar(hashMulti(this.key_pair.secret, "consensus.signature.noise", index));
     }
 
