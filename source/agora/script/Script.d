@@ -48,8 +48,8 @@ public struct Script
 
     /***************************************************************************
 
-        Internal. Use the `validateScriptSyntax()` free function to construct
-        a validated Script out of a byte array of opcodes.
+        Internal. Use the `validateScriptSyntax()` or `assumeValidated()`
+        functions to construct a validated Script out of a byte array of opcodes.
 
         Params:
             opcodes = the set of validated opcodes for this script type
@@ -59,6 +59,22 @@ public struct Script
     private this (const(ubyte)[] opcodes) pure nothrow @safe @nogc
     {
         this.opcodes = opcodes;
+    }
+
+    /***************************************************************************
+
+        Params:
+            opcodes = the set of assumed to be validated opcodes
+
+        Returns:
+            a Script with the given opcodes which are assumed to be valid
+
+    ***************************************************************************/
+
+    public static Script assumeValidated (const(ubyte)[] opcodes)
+        pure nothrow @safe @nogc
+    {
+        return Script(opcodes);
     }
 
     /***************************************************************************
