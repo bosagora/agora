@@ -29,12 +29,12 @@
 //
 // - A network N is a set of nodes {N₀, N₁, ...}
 //
-// - Every node Nᵢ has an associated quorum qet (or "qset") QSᵢ that is a set of
+// - Every node Nᵢ has an associated quorum set (or "qset") QSᵢ that is a set of
 //   subsets of N.
 //
 // - Every element of a qset QSᵢ is called a quorum slice.
 //
-// - A quorum Q ⊆ N is a set satisfying: Q ≠ ∅ and Ɐ v ∈ Q, ∃ S ∈ QSᵢ, S ⊆ Q
+// - A quorum Q ⊆ N is a set satisfying: Q ≠ ∅ and Ɐ Nᵢ ∈ Q, ∃ S ∈ QSᵢ, S ⊆ Q
 //
 // - Equivalently in english: a quorum is a subset of the network such that for
 //   each node Nᵢ in the quorum, there's some slice S in the node's quorum set
@@ -172,7 +172,7 @@
 // ======================================================
 //
 // The first early exit is easy: just stop expanding when you get half-way
-// through the space (or precisely: at sets larger than MAXSZ = (#N/2) + 1)
+// through the space (or precisely: at sets larger than MAXSZ = #N/2)
 // because the problem is symmetric: any potential failing subset C with size
 // greater than MAXSZ discovered in the branching subtree ahead will satisfy
 //
@@ -353,6 +353,7 @@
 #include "QuorumIntersectionChecker.h"
 #include "crypto/StrKey.h"
 #include "util/BitSet.h"
+#include "util/RandomEvictionCache.h"
 #include "xdr/Stellar-SCP.h"
 #include "xdr/Stellar-types.h"
 
@@ -443,6 +444,10 @@ class MinQuorumEnumerator
     // any set enumerated by this enumerator and its children.
     BitSet mPerimeter;
 
+    // The initial value of mRemaining at the root of the search, representing
+    // the overall SCC we're considering subsets of.
+    BitSet const& mScanSCC;
+
     // Checker that owns us, contains state of stats, graph, etc.
     QuorumIntersectionCheckerImpl const& mQic;
 
@@ -454,8 +459,10 @@ class MinQuorumEnumerator
 
   public:
     MinQuorumEnumerator(BitSet const& committed, BitSet const& remaining,
+                        BitSet const& scanSCC,
                         QuorumIntersectionCheckerImpl const& qic);
 
+    bool hasDisjointQuorum(BitSet const& nodes) const;
     bool anyMinQuorumHasDisjointQuorum();
 };
 
@@ -469,7 +476,7 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
     {
         size_t mTotalNodes = {0};
         size_t mNumSCCs = {0};
-        size_t mMaxSCC = {0};
+        size_t mScanSCCSize = {0};
         size_t mCallsStarted = {0};
         size_t mFirstRecursionsTaken = {0};
         size_t mSecondRecursionsTaken = {0};
@@ -490,6 +497,10 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
     mutable Stats mStats;
     bool mLogTrace;
 
+    // When run as a subroutine of criticality-checking, we inhibit
+    // INFO/ERROR/WARNING level messages.
+    bool mQuiet;
+
     // State to capture a counterexample found during search, for later
     // reporting.
     mutable std::pair<std::vector<stellar::PublicKey>,
@@ -502,10 +513,16 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
     std::unordered_map<stellar::PublicKey, size_t> mPubKeyBitNums;
     QGraph mGraph;
 
-    // This just calculates SCCs and stores the maximal one, which we use for
-    // the remainder of the search.
+    // This is a temporary structure that's reused very often within the
+    // MinQuorumEnumerators, but never reentrantly / simultaneously. So we
+    // allocate it once here and let the MQEs use it to avoid hammering
+    // on malloc.
+    mutable std::vector<size_t> mInDegrees;
+
+    // This just calculates SCCs, from which we extract the first one found with
+    // a quorum, which (assuming no other SCCs have quorums) we'll use for the
+    // remainder of the search.
     TarjanSCCCalculator mTSC;
-    BitSet mMaxSCC;
 
     QBitSet convertSCPQuorumSet(stellar::SCPQuorumSet const& sqs);
     void buildGraph(stellar::QuorumTracker::QuorumMap const& qmap);
@@ -514,9 +531,12 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
     bool containsQuorumSlice(BitSet const& bs, QBitSet const& qbs) const;
     bool containsQuorumSliceForNode(BitSet const& bs, size_t node) const;
     BitSet contractToMaximalQuorum(BitSet nodes) const;
+
+    const int MAX_CACHED_QUORUMS_SIZE = 0xffff;
+    mutable stellar::RandomEvictionCache<BitSet, bool, BitSet::HashFunction>
+        mCachedQuorums;
     bool isAQuorum(BitSet const& nodes) const;
     bool isMinimalQuorum(BitSet const& nodes) const;
-    bool hasDisjointQuorum(BitSet const& nodes) const;
     void noteFoundDisjointQuorums(BitSet const& nodes,
                                   BitSet const& disj) const;
     std::string nodeName(size_t node) const;
@@ -524,7 +544,8 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
     friend class MinQuorumEnumerator;
 
   public:
-    QuorumIntersectionCheckerImpl(stellar::QuorumTracker::QuorumMap const& qmap);
+    QuorumIntersectionCheckerImpl(stellar::QuorumTracker::QuorumMap const& qmap,
+                                  bool quiet = false);
     bool networkEnjoysQuorumIntersection() const override;
 
     std::pair<std::vector<stellar::PublicKey>, std::vector<stellar::PublicKey>>

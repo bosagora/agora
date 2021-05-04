@@ -17,7 +17,6 @@ import agora.common.Amount;
 import agora.common.BitField;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
-import agora.common.SCPHash;
 import agora.serialization.Serializer;
 import agora.common.Set;
 import agora.common.Task;
@@ -205,14 +204,16 @@ extern(D):
         {
             auto quorum_set = buildSCPConfig(qc);
             auto shared_set = makeSharedSCPQuorumSet(quorum_set);
-            this.known_quorums[hashFull(quorum_set)] = shared_set;
+            const hash = this.getHashOfQuorum(quorum_set);
+            this.known_quorums[hash] = shared_set;
         }
 
         // set up our own quorum
         auto quorum_set = buildSCPConfig(quorum);
         () @trusted { this.scp.updateLocalQuorumSet(quorum_set); }();
         auto shared_set = makeSharedSCPQuorumSet(quorum_set);
-        this.known_quorums[hashFull(quorum_set)] = shared_set;
+        const hash = this.getHashOfQuorum(quorum_set);
+        this.known_quorums[hash] = shared_set;
     }
 
     /***************************************************************************
@@ -421,7 +422,9 @@ extern(D):
 
         auto next_value = next.serializeFull().toVec();
         auto next_dup = duplicate_value(&next_value);
-        if (this.scp.nominate(slot_idx, next_dup, this.empty_value))
+        auto nextval = this.wrapValue(next_dup);
+
+        if (this.scp.nominate(slot_idx, nextval, this.empty_value))
         {
             log.info("{}(): Tx set triggered new nomination", __FUNCTION__);
         }
@@ -441,8 +444,9 @@ extern(D):
     {
         foreach (const ref SCPEnvelope envelope; this.scp_envelope_store)
         {
+            auto shared_env = this.wrapEnvelope(envelope);
             this.scp.setStateFromEnvelope(envelope.statement.slotIndex,
-                envelope);
+                shared_env);
             if (!this.scp.isSlotFullyValidated(envelope.statement.slotIndex))
                 assert(0);
         }
@@ -554,7 +558,8 @@ extern(D):
                 return;
         }
 
-        if (this.scp.receiveEnvelope(envelope) != SCP.EnvelopeState.VALID)
+        auto shared_env = this.wrapEnvelope(envelope);
+        if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
             log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope));
     }
 
@@ -602,7 +607,8 @@ extern(D):
         {
             if (this.scp.empty())
                 return;
-            envelopes = this.scp.getLatestMessagesSend(this.scp.getHighSlotIndex());
+
+            envelopes = this.scp.getExternalizingState(this.scp.getHighSlotIndex());
         }();
 
         ManagedDatabase.beginBatch();
@@ -1106,14 +1112,17 @@ extern(D):
 
     ***************************************************************************/
 
-    public override Value combineCandidates (uint64_t slot_idx,
-        ref const(set!Value) candidates)
+    public override ValueWrapperPtr combineCandidates (uint64_t slot_idx,
+        ref const(ValueWrapperPtrSet) candidates)
     {
+        log.info("combineCandidates: {}", slot_idx);
+
         try
         {
             CandidateHolder[] candidate_holders;
-            foreach (ref const(Value) candidate; candidates)
+            foreach (ref const cand; candidates)
             {
+                auto candidate = cand.getValue();
                 auto data = deserializeFull!ConsensusData(candidate[]);
                 log.trace("Consensus data: {}", data.prettify);
 
@@ -1149,7 +1158,8 @@ extern(D):
             log.trace("Chosen consensus data: {}", chosen_consensus_data.prettify);
 
             const Value val = chosen_consensus_data.serializeFull().toVec();
-            return duplicate_value(&val);
+            auto dupe_val = duplicate_value(&val);
+            return this.wrapValue(dupe_val);
         }
         catch (Exception ex)
         {
@@ -1230,6 +1240,38 @@ extern(D):
             res = (res << 8) | hash[][i];
 
         return res;
+    }
+
+    import scpd.types.Stellar_types : StellarHash = Hash;
+
+    // `getHashOf` computes the hash for the given vector of byte vector
+    override StellarHash getHashOf (ref vector!Value vals) const nothrow
+    {
+        import libsodium.crypto_generichash;
+        Hash hash = void;
+        crypto_generichash_state state;
+
+        auto dg = () @trusted {
+            crypto_generichash_init(&state, null, 0, Hash.sizeof);
+            scope HashDg dg = (in ubyte[] data) @trusted {
+                crypto_generichash_update(&state, data.ptr, data.length);
+            };
+            return dg;
+        }();
+
+        foreach (value; vals)
+        {
+            const ubyte[] bytes = value[];
+            hashPart(bytes, dg);
+        }
+        void trusted () @trusted
+        {
+            crypto_generichash_final(&state, hash[].ptr, Hash.sizeof);
+        }
+        trusted();
+
+        ubyte[64] bytes = hash[][0..64];
+        return StellarHash(bytes);
     }
 }
 

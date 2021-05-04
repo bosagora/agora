@@ -13,6 +13,7 @@
 
 namespace stellar
 {
+uint32 const MAXIMUM_QUORUM_NESTING_LEVEL = 4;
 
 namespace
 {
@@ -21,7 +22,7 @@ class QuorumSetSanityChecker
 {
   public:
     explicit QuorumSetSanityChecker(SCPQuorumSet const& qSet, bool extraChecks,
-                                    const char** reason);
+                                    char const*& errString);
     bool
     isSane() const
     {
@@ -34,47 +35,37 @@ class QuorumSetSanityChecker
     bool mIsSane;
     size_t mCount{0};
 
-    bool checkSanity(SCPQuorumSet const& qSet, int depth, const char** reason);
+    bool checkSanity(SCPQuorumSet const& qSet, uint32 depth,
+                     char const*& errString);
 };
 
 QuorumSetSanityChecker::QuorumSetSanityChecker(SCPQuorumSet const& qSet,
                                                bool extraChecks,
-                                               const char** reason)
+                                               char const*& errString)
     : mExtraChecks{extraChecks}
 {
-    const char* msg = nullptr;
-    if (reason == nullptr)
-        reason = &msg;  // avoid null checks in checkSanity()
-
-    mIsSane = checkSanity(qSet, 0, reason);
-    if (mCount < 1)
+    mIsSane = checkSanity(qSet, 0, errString);
+    if (mIsSane && (mCount < 1 || mCount > 1000))
     {
-        *reason = "Number of validator nodes is zero";
         mIsSane = false;
+        errString =
+            "Total number of nodes in a quorum must be within 1 and 1000";
     }
-    else if (mCount > 1000)
-    {
-        *reason = "Number of validator nodes exceeds the limit of 1000";
-        mIsSane = false;
-    }
-
-    // only one of the two may be true
-    assert(mIsSane ^ (*reason != nullptr));
 }
 
 bool
-QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, int depth,
-                                    const char** reason)
+QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, uint32 depth,
+                                    char const*& errString)
 {
-    if (depth > 2)
+    if (depth > MAXIMUM_QUORUM_NESTING_LEVEL)
     {
-        *reason = "Cannot have sub-quorums with depth exceeding 2 levels";
+        errString = "Maximum quorum nesting level exceeded";
         return false;
     }
 
     if (qSet.threshold < 1)
     {
-        *reason = "The threshold for a quorum must equal at least 1";
+        errString = "Threshold must be greater than 0";
         return false;
     }
 
@@ -87,14 +78,14 @@ QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, int depth,
 
     if (qSet.threshold > totEntries)
     {
-        *reason = "The threshold for a quorum exceeds total number of entries";
+        errString = "Threshold exceeds total number of entries";
         return false;
     }
 
     // threshold is within the proper range
     if (mExtraChecks && qSet.threshold < vBlockingSize)
     {
-        *reason = "Extra check: the threshold for a quorum is too low";
+        errString = "Threshold is lower than the v-blocking size (< 51%).";
         return false;
     }
 
@@ -103,15 +94,15 @@ QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, int depth,
         auto r = mKnownNodes.insert(n);
         if (!r.second)
         {
-            *reason = "A duplicate node was configured within another quorum";
             // n was already present
+            errString = "Duplicate node found in quorum configuration";
             return false;
         }
     }
 
     for (auto const& iSet : i)
     {
-        if (!checkSanity(iSet, depth + 1, reason))
+        if (!checkSanity(iSet, depth + 1, errString))
         {
             return false;
         }
@@ -122,9 +113,10 @@ QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, int depth,
 }
 
 bool
-isQuorumSetSane(SCPQuorumSet const& qSet, bool extraChecks, const char** reason)
+isQuorumSetSane(SCPQuorumSet const& qSet, bool extraChecks,
+                char const*& errString)
 {
-    QuorumSetSanityChecker checker{qSet, extraChecks, reason};
+    QuorumSetSanityChecker checker{qSet, extraChecks, errString};
     return checker.isSane();
 }
 

@@ -6,7 +6,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-
+#include "scp/SCPDriver.h"
 #include "crypto/SecretKey.h"  // for operator() (hashing support)
 
 // rudimentary support for walking through an std::set

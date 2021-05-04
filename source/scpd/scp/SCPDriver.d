@@ -23,6 +23,47 @@ import core.stdc.inttypes;
 
 extern(C++, `stellar`):
 
+extern (C++, class) public struct ValueWrapper
+{
+extern(C++):
+    mixin NonMovableOrCopyable!();
+
+    const Value value;
+
+  public:
+    this(const ref Value e);
+    ~this();
+
+    ref const(Value) getValue() const;
+}
+
+alias ValueWrapperPtr = shared_ptr!ValueWrapper;
+
+extern (C++, class) public struct SCPEnvelopeWrapper
+{
+extern(C++):
+    mixin NonMovableOrCopyable!();
+
+    const SCPEnvelope mEnvelope;
+
+  public:
+    this(const ref SCPEnvelope e);
+    ~this();
+
+    ref const(SCPEnvelope) getEnvelope() const;
+    ref const(SCPStatement) getStatement() const;
+}
+
+alias SCPEnvelopeWrapperPtr = shared_ptr!SCPEnvelopeWrapper;
+
+extern (C++, class) public struct WrappedValuePtrComparator
+{
+extern(C++):
+    bool opCall()(ref const(ValueWrapperPtr) l, ref const(ValueWrapperPtr) r) const;
+}
+
+alias ValueWrapperPtrSet = set!(ValueWrapperPtr, WrappedValuePtrComparator);
+
 public abstract class SCPDriver
 {
 nothrow:
@@ -30,6 +71,12 @@ nothrow:
 
     // Envelope signature/verification
     abstract void signEnvelope(ref SCPEnvelope envelope);
+
+    // SCPEnvelopeWrapper factory
+    SCPEnvelopeWrapperPtr wrapEnvelope(ref const(SCPEnvelope) envelope);
+
+    // ValueWrapperPtr factory
+    ValueWrapperPtr wrapValue(ref const(Value) value);
 
     // Delegates the retrieval of the quorum set designated by `qSetHash` to
     // the user of SCP.
@@ -58,9 +105,9 @@ nothrow:
     // validation can be *more* restrictive during nomination as needed
     enum ValidationLevel
     {
-        kInvalidValue,        // value is invalid for sure
-        kFullyValidatedValue, // value is valid for sure
-        kMaybeValidValue      // value may be valid
+        kInvalidValue = 0,       // value is invalid for sure
+        kMaybeValidValue = 1,    // value may be valid
+        kFullyValidatedValue = 2 // value is valid for sure
     }
     ValidationLevel validateValue(uint64_t slotIndex, ref const(Value) value, bool nomination);
 
@@ -69,7 +116,7 @@ nothrow:
     // This is used during nomination when encountering an invalid value (ie
     // validateValue did not return `kFullyValidatedValue` for this value).
     // returning Value() means no valid value could be extracted
-    Value extractValidValue(uint64_t slotIndex, ref const(Value) value);
+    ValueWrapperPtr extractValidValue(uint64_t slotIndex, ref const(Value) value);
 
     version (Windows)
     {
@@ -108,6 +155,12 @@ nothrow:
         void* toShortString(ref const(PublicKey) pk) const;
     }
 
+    // `getHashOf` computes the hash for the given vector of byte vector
+    abstract Hash getHashOf(ref vector!Value vals) const;
+
+    // Agora: routing through xdr_to_opaque to get the same hashing behavior
+    Hash getHashOfQuorum(ref const(SCPQuorumSet) qSet) const @trusted;
+
     // `computeHashNode` is used by the nomination protocol to
     // randomize the order of messages between nodes.
     uint64_t computeHashNode(uint64_t slotIndex, ref const(Value) prev,
@@ -121,8 +174,8 @@ nothrow:
 
     // `combineCandidates` computes the composite value based off a list
     // of candidate values.
-    abstract Value combineCandidates(
-        uint64_t slotIndex, ref const(set!Value) candidates);
+    abstract ValueWrapperPtr combineCandidates(
+        uint64_t slotIndex, ref const(ValueWrapperPtrSet) candidates);
 
     // `setupTimer`: requests to trigger 'cb' after timeout
     // if cb is nullptr, the timer is cancelled

@@ -17,6 +17,7 @@ import scpd.Cpp;
 import scpd.scp.BallotProtocol;
 import scpd.scp.NominationProtocol;
 import scpd.scp.SCP;
+import scpd.scp.SCPDriver;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
@@ -58,6 +59,9 @@ private:
     // true if the Slot was fully validated
     bool mFullyValidated;
 
+    // true if we heard from a v-blocking set
+    bool mGotVBlocking;
+
   public:
     this(uint64_t slotIndex, ref SCP SCP);
 
@@ -66,17 +70,18 @@ private:
         return mSlotIndex;
     }
 
-    ref const(Value) getLatestCompositeCandidate();
+    ValueWrapperPtr getLatestCompositeCandidate();
 
     // // returns the latest messages the slot emitted
     // vector!SCPEnvelope getLatestMessagesSend() const;
 
     // // forces the state to match the one in the envelope
     // // this is used when rebuilding the state after a crash for example
-    void setStateFromEnvelope(ref const(SCPEnvelope) e);
+    void setStateFromEnvelope(SCPEnvelopeWrapperPtr);
 
-    // returns the latest messages known for this slot
-    vector!SCPEnvelope getCurrentState() const;
+    // calls f for all latest messages
+    void processCurrentState(ref const(CPPDelegate!PCSCallback) f,
+                             bool forceSelf) const;
 
     // returns messages that helped this slot externalize
     vector!SCPEnvelope getExternalizingState() const;
@@ -88,7 +93,7 @@ private:
     // the slot accordingly.
     // self: set to true when node wants to record its own messages (potentially
     // triggering more transitions)
-    SCP.EnvelopeState processEnvelope(ref const(SCPEnvelope) envelope, bool self);
+    SCP.EnvelopeState processEnvelope(SCPEnvelopeWrapperPtr envelope, bool self);
 
     bool abandonBallot();
 
@@ -100,7 +105,7 @@ private:
     bool bumpState(const ref Value value, bool force);
 
     // // attempts to nominate a value for consensus
-    bool nominate(ref const(Value) value, ref const(Value) previousValue,
+    bool nominate(ValueWrapperPtr value, ref const(Value) previousValue,
                   bool timedout);
 
     void stopNomination();
@@ -118,6 +123,7 @@ private:
 
   protected:
     vector!SCPEnvelope getEntireCurrentState();
+    void maybeSetGotVBlocking();
 }
 
 extern (D):
