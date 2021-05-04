@@ -55,6 +55,8 @@ unittest
 /// To construct addresses (PublicKey), see `fromString`
 public struct KeyPair
 {
+    @safe:
+
     /// Public key
     public const PublicKey address;
 
@@ -252,17 +254,19 @@ public struct PublicKey
 /// this does not expose any Stellar serialization shenanigans.
 public struct SecretKey
 {
+    @safe:
+
     /*private*/ Scalar data;
     alias data this;
 
     /// Construct an instance from binary data
-    public this (const Scalar args) pure nothrow @safe @nogc
+    public this (const Scalar args) pure nothrow @nogc
     {
         this.data = args;
     }
 
     /// Ditto
-    public this (const ubyte[] args) pure nothrow @safe @nogc
+    public this (const ubyte[] args) pure nothrow @nogc
     {
         this.data = args;
     }
@@ -282,7 +286,7 @@ public struct SecretKey
 
     ***************************************************************************/
 
-    public void toString (scope void delegate(const(char)[]) sink,
+    public void toString (scope void delegate(const(char)[]) @safe sink,
                           PrintMode mode = PrintMode.Obfuscated) const
     {
         final switch (mode)
@@ -322,7 +326,7 @@ public struct SecretKey
         import std.format : phobos_format = format;
         import ocean.text.convert.Formatter : ocean_format = format;
         assert(phobos_format("%s", sd) == "**SECRET**");
-        assert(ocean_format("{}", sd) == "**SECRET**");
+        () @trusted { assert(ocean_format("{}", sd) == "**SECRET**"); }();
     }
 
     /***************************************************************************
