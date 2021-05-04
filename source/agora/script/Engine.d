@@ -236,12 +236,12 @@ public class Engine
         assert(lock.type == LockType.Script);
 
         Script unlock_script;
-        if (auto error = validateScript(ScriptType.Unlock, unlock.bytes,
+        if (auto error = validateScriptSyntax(ScriptType.Unlock, unlock.bytes,
             this.StackMaxItemSize, unlock_script))
             return error;
 
         Script lock_script;
-        if (auto error = validateScript(ScriptType.Lock, lock.bytes,
+        if (auto error = validateScriptSyntax(ScriptType.Lock, lock.bytes,
             this.StackMaxItemSize, lock_script))
             return error;
 
@@ -293,7 +293,7 @@ public class Engine
         const Hash script_hash = Hash(lock.bytes);
 
         Script unlock_script;
-        if (auto error = validateScript(ScriptType.Unlock, unlock.bytes,
+        if (auto error = validateScriptSyntax(ScriptType.Unlock, unlock.bytes,
             this.StackMaxItemSize, unlock_script))
             return error;
 
@@ -310,7 +310,7 @@ public class Engine
                  ~ "which does not match the redeem hash in the lock script";
 
         Script redeem;
-        if (auto error = validateScript(ScriptType.Redeem, redeem_bytes,
+        if (auto error = validateScriptSyntax(ScriptType.Redeem, redeem_bytes,
             this.StackMaxItemSize, redeem))
             return error;
 
