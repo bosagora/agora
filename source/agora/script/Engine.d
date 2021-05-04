@@ -104,8 +104,8 @@ public class Engine
     public string execute (in Lock lock, in Unlock unlock, in Transaction tx,
         in Input input) nothrow @safe
     {
-        if (lock.bytes.length == 0)
-            return "Lock cannot be empty";
+        if (auto reason = validateLockSyntax(lock, this.StackMaxItemSize))
+            return reason;
 
         final switch (lock.type)
         {
@@ -159,12 +159,7 @@ public class Engine
         switch (lock.type)
         {
         case LockType.Key:
-            if (lock.bytes.length != Point.sizeof)
-                return "LockType.Key requires 32-byte key argument in the lock script";
             const Point key = Point(lock.bytes);
-            if (!key.isValid())
-                return "LockType.Key 32-byte public key in lock script is invalid";
-
             if (unlock.bytes.length != Signature.sizeof)
                 return "LockType.Key requires a 64-byte signature in the unlock script";
             const sig = unlock.bytes.toSignature();
@@ -174,10 +169,7 @@ public class Engine
             break;
 
         case LockType.KeyHash:
-            if (lock.bytes.length != Hash.sizeof)
-                return "LockType.KeyHash requires a 64-byte key hash argument in the lock script";
             const Hash key_hash = Hash(lock.bytes);
-
             const(ubyte)[] bytes = unlock.bytes;
             if (bytes.length != Signature.sizeof + Point.sizeof)
                 return "LockType.KeyHash requires a 64-byte signature "
@@ -240,11 +232,7 @@ public class Engine
             this.StackMaxItemSize, unlock_script))
             return error;
 
-        Script lock_script;
-        if (auto error = validateScriptSyntax(ScriptType.Lock, lock.bytes,
-            this.StackMaxItemSize, lock_script))
-            return error;
-
+        Script lock_script = Script.assumeValidated(lock.bytes);
         Stack stack = Stack(this.StackMaxTotalSize, this.StackMaxItemSize);
         if (auto error = this.executeScript(unlock_script, stack, tx, input))
             return error;
@@ -287,9 +275,6 @@ public class Engine
         in Transaction tx, in Input input) nothrow @safe
     {
         assert(lock.type == LockType.Redeem);
-
-        if (lock.bytes.length != Hash.sizeof)
-            return "LockType.Redeem requires 64-byte script hash in the lock script";
         const Hash script_hash = Hash(lock.bytes);
 
         Script unlock_script;
@@ -2084,7 +2069,7 @@ unittest
     // invalid scripts / sigs
     test!("==")(engine.execute(
         Lock(LockType.Script, []), Unlock(unlock[]), tx, Input.init),
-        "Lock cannot be empty");
+        "Lock script must not be empty");
     test!("==")(engine.execute(
         Lock(LockType.Script, invalid_script[]), Unlock(unlock[]), tx, Input.init),
         "Script contains an unrecognized opcode");
