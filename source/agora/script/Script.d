@@ -48,7 +48,7 @@ public struct Script
 
     /***************************************************************************
 
-        Internal. Use the `validateScript()` free function to construct
+        Internal. Use the `validateScriptSyntax()` free function to construct
         a validated Script out of a byte array of opcodes.
 
         Params:
@@ -104,7 +104,7 @@ public struct Script
 
 *******************************************************************************/
 
-public string validateScript (in ScriptType type, in ubyte[] opcodes,
+public string validateScriptSyntax (in ScriptType type, in ubyte[] opcodes,
     in ulong StackMaxItemSize, out Script script) pure nothrow @safe @nogc
 {
     const(ubyte)[] bytes = opcodes[];
@@ -171,48 +171,48 @@ unittest
     Script result;
 
     // empty scripts are syntactically valid
-    test!"=="(validateScript(
+    test!"=="(validateScriptSyntax(
         ScriptType.Lock, [], StackMaxItemSize, result), null);
-    test!"=="(validateScript(
+    test!"=="(validateScriptSyntax(
         ScriptType.Unlock, [], StackMaxItemSize, result), null);
 
     // only pushes are allowed for unlock
-    test!"=="(validateScript(ScriptType.Unlock, [OP.FALSE], StackMaxItemSize,
+    test!"=="(validateScriptSyntax(ScriptType.Unlock, [OP.FALSE], StackMaxItemSize,
         result),
         null);
-    test!"=="(validateScript(ScriptType.Unlock,
+    test!"=="(validateScriptSyntax(ScriptType.Unlock,
         [OP.PUSH_NUM_1, OP.PUSH_NUM_2, OP.PUSH_NUM_3, OP.PUSH_NUM_4, OP.PUSH_NUM_5],
         StackMaxItemSize, result),
         null);
-    test!"=="(validateScript(ScriptType.Unlock, [OP.PUSH_BYTES_1, 1],
+    test!"=="(validateScriptSyntax(ScriptType.Unlock, [OP.PUSH_BYTES_1, 1],
         StackMaxItemSize, result), null);
-    test!"=="(validateScript(ScriptType.Unlock, [OP.PUSH_BYTES_1, 1, OP.HASH],
+    test!"=="(validateScriptSyntax(ScriptType.Unlock, [OP.PUSH_BYTES_1, 1, OP.HASH],
         StackMaxItemSize, result),
         "Unlock script may only contain stack pushes");
 
-    test!"=="(validateScript(ScriptType.Lock, [255], StackMaxItemSize, result),
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [255], StackMaxItemSize, result),
         "Script contains an unrecognized opcode");
 
     // PUSH_BYTES_*
-    test!"=="(validateScript(ScriptType.Lock, [1], StackMaxItemSize, result),
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [1], StackMaxItemSize, result),
         "PUSH_BYTES_* opcode exceeds total script size");
     // 1-byte data payload
-    test!"=="(.validateScript(ScriptType.Lock, [1, 255], StackMaxItemSize,
+    test!"=="(.validateScriptSyntax(ScriptType.Lock, [1, 255], StackMaxItemSize,
         result), null);
-    test!"=="(validateScript(ScriptType.Lock, [2], StackMaxItemSize, result),
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [2], StackMaxItemSize, result),
         "PUSH_BYTES_* opcode exceeds total script size");
-    test!"=="(validateScript(ScriptType.Lock, [2, 255], StackMaxItemSize,
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [2, 255], StackMaxItemSize,
         result),
         "PUSH_BYTES_* opcode exceeds total script size");
     // 2-byte data payload
-    test!"=="(validateScript(ScriptType.Lock, [2, 255, 255], StackMaxItemSize,
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [2, 255, 255], StackMaxItemSize,
         result), null);
     ubyte[75] payload_75;
-    test!"=="(validateScript(ScriptType.Lock, [ubyte(75)] ~ payload_75[0 .. 74],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [ubyte(75)] ~ payload_75[0 .. 74],
         StackMaxItemSize, result),
         "PUSH_BYTES_* opcode exceeds total script size");
     // 75-byte data payload
-    test!"=="(validateScript(ScriptType.Lock, [ubyte(75)] ~ payload_75,
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [ubyte(75)] ~ payload_75,
         StackMaxItemSize, result), null);
 
     // PUSH_DATA_*
@@ -222,44 +222,44 @@ unittest
     const ubyte[2] size_overflow = nativeToLittleEndian(
         ushort(StackMaxItemSize + 1));
 
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_1],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_1],
         StackMaxItemSize, result),
         "PUSH_DATA_1 opcode requires 1 byte(s) for the payload size");
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_1, 0],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_1, 0],
         StackMaxItemSize, result),
         "PUSH_DATA_1 opcode payload size is not within StackMaxItemSize limits");
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_1, 1],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_1, 1],
         StackMaxItemSize, result),
         "PUSH_DATA_1 opcode payload size exceeds total script size");
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_1, 1, 1],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_1, 1, 1],
         StackMaxItemSize, result), null);
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_2],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_2],
         StackMaxItemSize, result),
         "PUSH_DATA_2 opcode requires 2 byte(s) for the payload size");
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_2, 0],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_2, 0],
         StackMaxItemSize, result),
         "PUSH_DATA_2 opcode requires 2 byte(s) for the payload size");
-    test!"=="(validateScript(ScriptType.Lock, [OP.PUSH_DATA_2, 0, 0],
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [OP.PUSH_DATA_2, 0, 0],
         StackMaxItemSize, result),
         "PUSH_DATA_2 opcode payload size is not within StackMaxItemSize limits");
-    test!"=="(validateScript(ScriptType.Lock, [ubyte(OP.PUSH_DATA_2)] ~ size_1,
+    test!"=="(validateScriptSyntax(ScriptType.Lock, [ubyte(OP.PUSH_DATA_2)] ~ size_1,
         StackMaxItemSize, result),
         "PUSH_DATA_2 opcode payload size exceeds total script size");
-    test!"=="(validateScript(ScriptType.Lock,
+    test!"=="(validateScriptSyntax(ScriptType.Lock,
         [ubyte(OP.PUSH_DATA_2)] ~ size_1 ~ [ubyte(1)], StackMaxItemSize,
         result), null);
-    test!"=="(validateScript(ScriptType.Lock,
+    test!"=="(validateScriptSyntax(ScriptType.Lock,
         [ubyte(OP.PUSH_DATA_2)] ~ size_max ~ max_payload, StackMaxItemSize,
         result), null);
-    test!"=="(validateScript(ScriptType.Lock,
+    test!"=="(validateScriptSyntax(ScriptType.Lock,
         [ubyte(OP.PUSH_DATA_2)] ~ size_overflow ~ max_payload,
         StackMaxItemSize, result),
         "PUSH_DATA_2 opcode payload size is not within StackMaxItemSize limits");
-    test!"=="(validateScript(ScriptType.Lock,
+    test!"=="(validateScriptSyntax(ScriptType.Lock,
         [ubyte(OP.PUSH_DATA_2)] ~ size_max ~ max_payload ~ OP.HASH,
         StackMaxItemSize, result),
         null);
-    test!"=="(validateScript(ScriptType.Lock,
+    test!"=="(validateScriptSyntax(ScriptType.Lock,
         [ubyte(OP.PUSH_DATA_2)] ~ size_max ~ max_payload ~ ubyte(255),
         StackMaxItemSize, result),
         "Script contains an unrecognized opcode");
@@ -368,9 +368,9 @@ unittest
     // sanity checks
     const key_hash = hashFull(kp.V);
     Script lock_script = createLockP2PKH(key_hash);
-    assert(validateScript(ScriptType.Lock, lock_script[], 512, result) is null);
+    assert(validateScriptSyntax(ScriptType.Lock, lock_script[], 512, result) is null);
     Script unlock_script = createUnlockP2PKH(sig, kp.V);
-    assert(validateScript(ScriptType.Unlock, unlock_script[], 512, result)
+    assert(validateScriptSyntax(ScriptType.Unlock, unlock_script[], 512, result)
         is null);
 }
 
