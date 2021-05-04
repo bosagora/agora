@@ -108,8 +108,10 @@ public string validateScriptSyntax (in ScriptType type, in ubyte[] opcodes,
     in ulong StackMaxItemSize, out Script script) pure nothrow @safe @nogc
 {
     const(ubyte)[] bytes = opcodes[];
-    if (bytes.empty)
-        return null;  // empty scripts are syntactically valid
+
+    // this prevents accidental loss of funds.
+    if (type == ScriptType.Lock && bytes.empty)
+        return "Lock script must not be empty";
 
     // todo: add script size checks (based on consensus params)
 
@@ -170,11 +172,13 @@ unittest
     immutable StackMaxItemSize = 512;
     Script result;
 
-    // empty scripts are syntactically valid
-    test!"=="(validateScriptSyntax(
-        ScriptType.Lock, [], StackMaxItemSize, result), null);
+    // empty unlock scripts are syntactically valid
     test!"=="(validateScriptSyntax(
         ScriptType.Unlock, [], StackMaxItemSize, result), null);
+    // but not lock scripts (would otherwise cause fund loss)
+    test!"=="(validateScriptSyntax(
+        ScriptType.Lock, [], StackMaxItemSize, result),
+        "Lock script must not be empty");
 
     // only pushes are allowed for unlock
     test!"=="(validateScriptSyntax(ScriptType.Unlock, [OP.FALSE], StackMaxItemSize,

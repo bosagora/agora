@@ -35,6 +35,7 @@ import agora.common.Types;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
+import agora.script.Script;
 import agora.utils.Utility;
 import std.format;
 import std.traits : EnumMembers;
@@ -80,6 +81,117 @@ unittest
     assert(format("%s", Lock(LockType.Key, kp.address[])) ==
            format("%s", kp.address));
     assert(format("%s", Lock(LockType.Script, [42, 69, 250])) == "Lock(Script, 2a45fa)");
+}
+
+
+/*******************************************************************************
+
+    Validates the Lock script's syntax on its own. For user's safety,
+    Agora's protocol rules disallow accepting an Output with a syntactically
+    invalid Lock script. This prevents accidental loss of funds, for example
+    in cases where the lock script is ill-formed (e.g. missing END blocks,
+    dangling ELSE statements, etc).
+
+    The semantics of the lock script are not checked here as it requires
+    an unlock script to run it with. This responsibility lies within the
+    script execution engine.
+
+    Params:
+        lock = the lock to validate
+        StackMaxItemSize = maximum allowed payload size for a
+            stack push operation
+
+    Returns:
+        null if the lock is syntactically valid,
+        otherwise the string explaining the reason why it's invalid
+
+*******************************************************************************/
+
+public string validateLockSyntax (in Lock lock, in ulong StackMaxItemSize)
+    /*pure*/ nothrow @safe @nogc
+{
+    // assumed sizes
+    static assert(Point.sizeof == 32);
+    static assert(Hash.sizeof == 64);
+
+    final switch (lock.type)
+    {
+    case LockType.Key:
+        if (lock.bytes.length != Point.sizeof)
+            return "LockType.Key requires 32-byte key argument in the lock script";
+        const Point key = Point(lock.bytes);
+        if (!key.isValid())
+            return "LockType.Key 32-byte public key in lock script is invalid";
+
+        return null;
+
+    case LockType.KeyHash:
+        if (lock.bytes.length != Hash.sizeof)
+            return "LockType.KeyHash requires a 64-byte key hash argument in the lock script";
+
+        return null;
+
+    case LockType.Script:
+        Script _lock_script;
+        return validateScriptSyntax(ScriptType.Lock, lock.bytes, StackMaxItemSize,
+            _lock_script);
+
+    case LockType.Redeem:
+        if (lock.bytes.length != Hash.sizeof)
+            return "LockType.Redeem requires 64-byte script hash in the lock script";
+        return null;
+    }
+}
+
+///
+unittest
+{
+    import agora.script.Opcodes;
+    import std.bitmanip;
+    immutable StackMaxItemSize = 512;
+
+    /* LockType.Key */
+    Lock lock = { type : LockType.Key };
+    assert(validateLockSyntax(lock, StackMaxItemSize) ==
+        "LockType.Key requires 32-byte key argument in the lock script");
+    lock.bytes.length = Point.sizeof;
+    assert(validateLockSyntax(lock, StackMaxItemSize) ==
+        "LockType.Key 32-byte public key in lock script is invalid");
+    const rand_key = Scalar.random().toPoint();
+    lock.bytes = rand_key[];
+    assert(validateLockSyntax(lock, StackMaxItemSize) == null);
+
+    /* LockType.KeyHash */
+    lock.type = LockType.KeyHash;
+    lock.bytes.length = 0;
+    assert(validateLockSyntax(lock, StackMaxItemSize) ==
+        "LockType.KeyHash requires a 64-byte key hash argument in the lock script");
+    lock.bytes.length = Hash.sizeof;  // any 64-byte number is a valid hash
+    assert(validateLockSyntax(lock, StackMaxItemSize) == null);
+
+    /* LockType.Script */
+    lock.type = LockType.Script;
+    lock.bytes.length = 0;
+    assert(validateLockSyntax(lock, StackMaxItemSize) ==
+        "Lock script must not be empty");
+    const ubyte[2] no_overflow = nativeToLittleEndian(
+        ushort(StackMaxItemSize));
+    const ubyte[2] size_overflow = nativeToLittleEndian(
+        ushort(StackMaxItemSize + 1));
+    const ubyte[StackMaxItemSize] max_payload;
+    lock.bytes = [ubyte(OP.PUSH_DATA_2)] ~ size_overflow ~ max_payload;
+    assert(validateLockSyntax(lock, StackMaxItemSize) ==
+        "PUSH_DATA_2 opcode payload size is not within StackMaxItemSize limits");
+    lock.bytes = [ubyte(OP.PUSH_DATA_2)] ~ no_overflow ~ max_payload;
+    assert(validateLockSyntax(lock, StackMaxItemSize) == null);
+
+    /* LockType.Redeem */
+    lock.type = LockType.Redeem;
+    lock.bytes.length = 0;
+    assert(validateLockSyntax(lock, StackMaxItemSize) ==
+        "LockType.Redeem requires 64-byte script hash in the lock script");
+    lock.bytes.length = Hash.sizeof;  // any 64-byte number is a valid hash
+    assert(validateLockSyntax(lock, StackMaxItemSize) == null);
 }
 
 /// Contains a data tuple or a set of push opcodes
