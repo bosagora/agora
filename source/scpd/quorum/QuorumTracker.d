@@ -25,13 +25,6 @@ import scpd.types.Stellar_types;
 
 extern (C++, `stellar`):
 
-private mixin template NonMovableOrCopyable ()
-{
-    @disable this ();
-    @disable this (this);
-    @disable ref typeof (this) opAssign () (auto ref typeof(this) rhs);
-}
-
 /// helper class to help track the overall quorum over time
 /// a node tracked is definitely in the transitive quorum.
 /// If its associated quorum set is empty (nullptr), it just means
@@ -44,15 +37,37 @@ extern (C++, class) public struct QuorumTracker
     mixin NonMovableOrCopyable!();
 
 private:
-    SCP* mSCP;
+    const(NodeID) mLocalNodeID;
     QuorumMap mQuorum;
 
 public:
+    static struct NodeInfo
+    {
+        SCPQuorumSetPtr mQuorumSet;
+
+        this (SCPQuorumSetPtr quorumSet)
+        {
+            this.mQuorumSet = quorumSet;
+            this.mClosestValidators = set!NodeID(CppCtor.Use);  // must initialize
+        }
+
+        // The next two fields represent distance to the local node and a set of
+        // validators in the local qset that are closest to the node that
+        // NodeInfo represents. If NodeInfo is the local node, mDistance is 0
+        // and mClosestValidators is empty. If NodeInfo is a node in the local
+        // qset, mDistance is 1 and mClosestValidators only contains the local
+        // qset node. Otherwise, mDistance is the shortest distance to NodeInfo
+        // from the local node, and mClosestValidators contains all validators
+        // in the local qset that are (mDistance - 1) away from NodeInfo.
+        int mDistance;
+        set!NodeID mClosestValidators;
+    }
+
     /// The Node ID => Quorum set map type
-    alias QuorumMap = unordered_map!(NodeID, SCPQuorumSetPtr);
+    alias QuorumMap = unordered_map!(NodeID, NodeInfo);
 
     /// Initialize a new QuorumTracker
-    this (SCP* scp);
+    this (ref const(NodeID) localNodeID);
 
     /// returns true if id is in transitive quorum for sure
     bool isNodeDefinitelyInQuorum (const ref NodeID id);

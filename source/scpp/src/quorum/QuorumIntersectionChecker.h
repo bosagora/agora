@@ -13,7 +13,8 @@ class QuorumIntersectionChecker
 {
   public:
     static std::shared_ptr<QuorumIntersectionChecker>
-    create(stellar::QuorumTracker::QuorumMap const& qmap);
+    create(stellar::QuorumTracker::QuorumMap const& qmap,
+           bool quiet = false);
 
     virtual ~QuorumIntersectionChecker(){};
     virtual bool networkEnjoysQuorumIntersection() const = 0;

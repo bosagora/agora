@@ -48,6 +48,9 @@ class Slot : public std::enable_shared_from_this<Slot>
     // true if the Slot was fully validated
     bool mFullyValidated;
 
+    // true if we heard from a v-blocking set
+    bool mGotVBlocking;
+
   public:
     Slot(uint64 slotIndex, SCP& SCP);
 
@@ -81,17 +84,18 @@ class Slot : public std::enable_shared_from_this<Slot>
         return mBallotProtocol;
     }
 
-    Value const& getLatestCompositeCandidate();
+    ValueWrapperPtr const& getLatestCompositeCandidate();
 
     // returns the latest messages the slot emitted
     std::vector<SCPEnvelope> getLatestMessagesSend() const;
 
     // forces the state to match the one in the envelope
     // this is used when rebuilding the state after a crash for example
-    void setStateFromEnvelope(SCPEnvelope const& e);
+    void setStateFromEnvelope(SCPEnvelopeWrapperPtr e);
 
-    // returns the latest messages known for this slot
-    std::vector<SCPEnvelope> getCurrentState() const;
+    // calls f for all latest messages
+    void processCurrentState(std::function<bool(SCPEnvelope const&)> const& f,
+                             bool forceSelf) const;
 
     // returns the latest message from a node
     // or nullptr if not found
@@ -107,7 +111,8 @@ class Slot : public std::enable_shared_from_this<Slot>
     // the slot accordingly.
     // self: set to true when node wants to record its own messages (potentially
     // triggering more transitions)
-    SCP::EnvelopeState processEnvelope(SCPEnvelope const& envelope, bool self);
+    SCP::EnvelopeState processEnvelope(SCPEnvelopeWrapperPtr envelope,
+                                       bool self);
 
     bool abandonBallot();
 
@@ -119,7 +124,7 @@ class Slot : public std::enable_shared_from_this<Slot>
     bool bumpState(Value const& value, bool force);
 
     // attempts to nominate a value for consensus
-    bool nominate(Value const& value, Value const& previousValue,
+    bool nominate(ValueWrapperPtr value, Value const& previousValue,
                   bool timedout);
 
     void stopNomination();
@@ -136,6 +141,12 @@ class Slot : public std::enable_shared_from_this<Slot>
     getStatementCount() const
     {
         return mStatementsHistory.size();
+    }
+
+    bool
+    gotVBlocking() const
+    {
+        return mGotVBlocking;
     }
 
     // returns information about the local state in JSON format
@@ -167,11 +178,11 @@ class Slot : public std::enable_shared_from_this<Slot>
     // returns true if the statement defined by voted and accepted
     // should be accepted
     bool federatedAccept(StatementPredicate voted, StatementPredicate accepted,
-                         std::map<NodeID, SCPEnvelope> const& envs);
+                         std::map<NodeID, SCPEnvelopeWrapperPtr> const& envs);
     // returns true if the statement defined by voted
     // is ratified
     bool federatedRatify(StatementPredicate voted,
-                         std::map<NodeID, SCPEnvelope> const& envs);
+                         std::map<NodeID, SCPEnvelopeWrapperPtr> const& envs);
 
     std::shared_ptr<LocalNode> getLocalNode();
 
@@ -183,6 +194,7 @@ class Slot : public std::enable_shared_from_this<Slot>
 
   protected:
     std::vector<SCPEnvelope> getEntireCurrentState();
+    void maybeSetGotVBlocking();
     friend class TestSCP;
 };
 }

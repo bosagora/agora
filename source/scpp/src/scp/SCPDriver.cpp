@@ -8,17 +8,55 @@
 
 #include "crypto/Hex.h"
 #include "crypto/KeyUtils.h"
-#include "crypto/Hash.h"
 #include "crypto/SecretKey.h"
 #include "xdrpp/marshal.h"
 
 namespace stellar
 {
 
+bool
+WrappedValuePtrComparator::operator()(ValueWrapperPtr const& l,
+                                      ValueWrapperPtr const& r) const
+{
+    assert(l && r);
+    return l->getValue() < r->getValue();
+}
+
+SCPEnvelopeWrapper::SCPEnvelopeWrapper(SCPEnvelope const& e) : mEnvelope(e)
+{
+}
+
+SCPEnvelopeWrapper::~SCPEnvelopeWrapper()
+{
+}
+
+ValueWrapper::ValueWrapper(Value const& value) : mValue(value)
+{
+}
+
+ValueWrapper::~ValueWrapper()
+{
+}
+
+SCPEnvelopeWrapperPtr
+SCPDriver::wrapEnvelope(SCPEnvelope const& envelope)
+{
+    auto res = std::make_shared<SCPEnvelopeWrapper>(envelope);
+    return res;
+}
+
+ValueWrapperPtr
+SCPDriver::wrapValue(Value const& value)
+{
+    auto res = std::make_shared<ValueWrapper>(value);
+    return res;
+}
+
 std::string
 SCPDriver::getValueString(Value const& v) const
 {
-    uint512 valueHash = getHashOf(v);
+    Hash valueHash = getHashOf({xdr::xdr_to_opaque(v)});
+
     return hexAbbrev(valueHash);
 }
 
@@ -39,13 +77,20 @@ static const uint32 hash_N = 1;
 static const uint32 hash_P = 2;
 static const uint32 hash_K = 3;
 
-static uint64
-hashHelper(uint512 &hash)
+uint64
+SCPDriver::hashHelper(
+    uint64 slotIndex, Value const& prev,
+    std::function<void(std::vector<xdr::opaque_vec<>>&)> extra)
 {
+    std::vector<xdr::opaque_vec<>> vals;
+    vals.emplace_back(xdr::xdr_to_opaque(slotIndex));
+    vals.emplace_back(xdr::xdr_to_opaque(prev));
+    extra(vals);
+    Hash t = getHashOf(vals);
     uint64 res = 0;
     for (size_t i = 0; i < sizeof(res); i++)
     {
-        res = (res << 8) | hash[i];
+        res = (res << 8) | t[i];
     }
     return res;
 }
@@ -54,17 +99,30 @@ uint64
 SCPDriver::computeHashNode(uint64 slotIndex, Value const& prev, bool isPriority,
                            int32_t roundNumber, NodeID const& nodeID)
 {
-    uint512 hash = getHashOf(slotIndex, prev, isPriority ? hash_P : hash_N,
-        roundNumber, nodeID);
-    return hashHelper(hash);
+    return hashHelper(
+        slotIndex, prev, [&](std::vector<xdr::opaque_vec<>>& vals) {
+            vals.emplace_back(xdr::xdr_to_opaque(isPriority ? hash_P : hash_N));
+            vals.emplace_back(xdr::xdr_to_opaque(roundNumber));
+            vals.emplace_back(xdr::xdr_to_opaque(nodeID));
+        });
+}
+
+Hash
+SCPDriver::getHashOfQuorum(SCPQuorumSet const& qSet) const
+{
+    return getHashOf({xdr::xdr_to_opaque(qSet)});
 }
 
 uint64
 SCPDriver::computeValueHash(uint64 slotIndex, Value const& prev,
                             int32_t roundNumber, Value const& value)
 {
-    uint512 hash = getHashOf(slotIndex, prev, hash_K, roundNumber, value);
-    return hashHelper(hash);
+    return hashHelper(slotIndex, prev,
+                      [&](std::vector<xdr::opaque_vec<>>& vals) {
+                          vals.emplace_back(xdr::xdr_to_opaque(hash_K));
+                          vals.emplace_back(xdr::xdr_to_opaque(roundNumber));
+                          vals.emplace_back(xdr::xdr_to_opaque(value));
+                      });
 }
 
 static const int MAX_TIMEOUT_SECONDS = (30 * 60);
@@ -85,38 +143,5 @@ SCPDriver::computeTimeout(uint32 roundNumber)
         timeoutInSeconds = (int)roundNumber;
     }
     return std::chrono::seconds(timeoutInSeconds);
-}
-
-Value SCPDriver::extractValidValue(uint64 slotIndex, Value const& value)
-{
-    return Value();
-}
-
-void SCPDriver::nominatingValue(uint64 slotIndex, Value const& value)
-{
-}
-
-void SCPDriver::updatedCandidateValue(uint64 slotIndex, Value const& value)
-{
-}
-
-void SCPDriver::startedBallotProtocol(uint64 slotIndex, SCPBallot const& ballot)
-{
-}
-
-void SCPDriver::acceptedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
-{
-}
-
-void SCPDriver::confirmedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
-{
-}
-
-void SCPDriver::acceptedCommit(uint64 slotIndex, SCPBallot const& ballot)
-{
-}
-
-void SCPDriver::ballotDidHearFromQuorum(uint64 slotIndex, SCPBallot const& ballot)
-{
 }
 }

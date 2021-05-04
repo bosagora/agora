@@ -3,12 +3,17 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include "Math.h"
+#include "util/GlobalChecks.h"
+#include "util/UnorderedMap.h"
+#include <algorithm>
 #include <cmath>
+#include <numeric>
+#include <set>
 
 namespace stellar
 {
 
-std::default_random_engine gRandomEngine;
+stellar_default_random_engine gRandomEngine;
 std::uniform_real_distribution<double> uniformFractionDistribution(0.0, 1.0);
 
 double
@@ -17,20 +22,135 @@ rand_fraction()
     return uniformFractionDistribution(gRandomEngine);
 }
 
-size_t
-rand_pareto(float alpha, size_t max)
-{
-    // from http://www.pamvotis.org/vassis/RandGen.htm
-    float f =
-        static_cast<float>(1) /
-        static_cast<float>(pow(rand_fraction(), static_cast<float>(1) / alpha));
-    // modified into a truncated pareto
-    return static_cast<size_t>(f * max - 1) % max;
-}
-
 bool
 rand_flip()
 {
     return (gRandomEngine() & 1);
+}
+
+double
+closest_cluster(double p, std::set<double> const& centers)
+{
+    auto bestCenter = std::numeric_limits<double>::max();
+    auto currDist = std::numeric_limits<double>::max();
+    for (auto const& c : centers)
+    {
+        auto newDist = std::fabs(c - p);
+        if (newDist < currDist)
+        {
+            bestCenter = c;
+            currDist = newDist;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return bestCenter;
+}
+
+std::set<double>
+k_meansPP(std::vector<double> const& points, uint32_t k)
+{
+    if (k == 0)
+    {
+        throw std::runtime_error("k_means: k must be positive");
+    }
+
+    if (points.size() < k)
+    {
+        return std::set<double>(points.begin(), points.end());
+    }
+
+    std::set<double> centroids;
+
+    auto backlog = points;
+
+    auto moveIndexToCentroid = [&](size_t index) {
+        // @BUG: undefined symbol printAssertFailureAndThrow()
+        // releaseAssertOrThrow(index < backlog.size());
+        auto it = backlog.begin() + index;
+        auto val = *it;
+        backlog.erase(it);
+        centroids.emplace(val);
+    };
+
+    // start with a random element
+    moveIndexToCentroid(rand_uniform<size_t>(0, backlog.size() - 1));
+
+    while (centroids.size() < k && !backlog.empty())
+    {
+        std::vector<double> weights;
+        weights.reserve(backlog.size());
+
+        for (auto const& p : backlog)
+        {
+            auto closest = closest_cluster(p, centroids);
+            auto d2 = closest - p;
+            d2 *= d2;
+            // give a non zero probability
+            d2 = std::max(std::numeric_limits<double>::min(), d2);
+            weights.emplace_back(d2);
+        }
+
+        // Select the next centroid based on weights, furthest away
+        std::discrete_distribution<size_t> weightedDistribution(weights.begin(),
+                                                                weights.end());
+        auto nextIndex = weightedDistribution(gRandomEngine);
+        moveIndexToCentroid(nextIndex);
+    }
+
+    return centroids;
+}
+
+std::set<double>
+k_means(std::vector<double> const& points, uint32_t k)
+{
+    // initialize centroids with k-means++
+    std::set<double> centroids = k_meansPP(points, k);
+
+    // could not pick k points to start with
+    if (centroids.size() < k)
+    {
+        return centroids;
+    }
+
+    bool recalculate = true;
+    uint32_t iteration = 0;
+
+    const uint32_t MAX_RECOMPUTE_ITERATIONS = 50;
+
+    // Run until convergence or iteration depth exhaustion
+    while (recalculate && iteration++ < MAX_RECOMPUTE_ITERATIONS)
+    {
+        UnorderedMap<double, std::vector<double>> assignment;
+        assignment.reserve(points.size());
+        recalculate = false;
+        // centroid -> assigned points
+        for (auto const& p : points)
+        {
+            // Assign each point to the closest centroid
+            auto cVal = closest_cluster(p, centroids);
+            assignment[cVal].push_back(p);
+        }
+
+        // Now that assignment is done, recompute centroids or converge
+        std::set<double> newCentroids;
+        for (auto const& a : assignment)
+        {
+            newCentroids.insert(
+                std::accumulate(a.second.begin(), a.second.end(), 0.0) /
+                a.second.size());
+        }
+
+        if (centroids != newCentroids)
+        {
+            recalculate = true;
+            centroids = std::move(newCentroids);
+        }
+    }
+
+    return centroids;
 }
 }

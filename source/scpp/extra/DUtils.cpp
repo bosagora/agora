@@ -10,8 +10,8 @@
 #include "scp/NominationProtocol.h"
 #include "scp/BallotProtocol.h"
 #include "scp/SCP.h"
+#include "scp/SCPDriver.h"
 #include <functional>
-#include <unordered_map>
 #include <set>
 
 using namespace xdr;
@@ -71,10 +71,10 @@ PUSHBACKINST3(PublicKey, std::vector)
 PUSHBACKINST3(SCPEnvelope, std::vector)
 PUSHBACKINST3(SCPQuorumSet, std::vector)
 
-
 #define CPPSETFOREACHINST(T) template int cpp_set_foreach<T>(void*, void*, void*);
 CPPSETFOREACHINST(int)
 CPPSETFOREACHINST(Value)
+CPPSETFOREACHINST(ValueWrapperPtr)
 CPPSETFOREACHINST(SCPBallot)
 CPPSETFOREACHINST(PublicKey)
 CPPSETFOREACHINST(unsigned int)
@@ -82,16 +82,19 @@ CPPSETFOREACHINST(unsigned int)
 #define CPPSETEMPTYINST(T) template bool cpp_set_empty<T>(const void*);
 CPPSETEMPTYINST(int)
 CPPSETEMPTYINST(Value)
+CPPSETEMPTYINST(ValueWrapperPtr)
 CPPSETEMPTYINST(SCPBallot)
 CPPSETEMPTYINST(PublicKey)
 CPPSETEMPTYINST(unsigned int)
 
 #define CPPUNORDEREDMAPASSIGNINST(K, V) template void cpp_unordered_map_assign<K, V>(void*, const K&, const V&);
 CPPUNORDEREDMAPASSIGNINST(NodeID, std::shared_ptr<SCPQuorumSet>)
+CPPUNORDEREDMAPASSIGNINST(NodeID, QuorumTracker::NodeInfo)
 CPPUNORDEREDMAPASSIGNINST(int, int)
 
 #define CPPUNORDEREDMAPLENGTHINST(K, V) template std::size_t cpp_unordered_map_length<K, V>(const void*);
 CPPUNORDEREDMAPLENGTHINST(NodeID, std::shared_ptr<SCPQuorumSet>)
+CPPUNORDEREDMAPLENGTHINST(NodeID, QuorumTracker::NodeInfo)
 CPPUNORDEREDMAPLENGTHINST(int, int)
 
 void callCPPDelegate (void* cb)
@@ -129,6 +132,8 @@ CPPOBJECTINST(std::shared_ptr<SCPEnvelope>);
 CPPOBJECTINST(std::shared_ptr<Slot>);
 CPPOBJECTINST(std::shared_ptr<LocalNode>);
 CPPOBJECTINST(std::shared_ptr<QuorumIntersectionChecker*>);
+CPPOBJECTINST(std::shared_ptr<ValueWrapper>);
+CPPOBJECTINST(std::shared_ptr<SCPEnvelopeWrapper>);
 
 CPPOBJECTINST(std::set<int>);
 CPPOBJECTINST(std::set<Value>);
@@ -142,7 +147,7 @@ CPPOBJECTINST(std::set<unsigned int>);
 CPPUNIQUEPTRINST(SCPEnvelope);
 CPPUNIQUEPTRINST(SCPBallot);
 CPPUNIQUEPTRINST(Value);
-
+CPPUNIQUEPTRINST(stellar::BallotProtocol::SCPBallotWrapper);
 
 #define CPPUNORDEREDMAPINST(K, V, id)   typedef std::unordered_map<K, V> ump_type_##id;  \
                                         CPPOBJECTINST(ump_type_##id);
@@ -154,3 +159,17 @@ CPPUNORDEREDMAPINST(int, int, 1)
 CPPMAPINST(int, int, 0)
 CPPMAPINST(PublicKey, SCPEnvelope, 1)
 CPPMAPINST(uint64_t, std::shared_ptr<Slot>, 2)
+CPPMAPINST(stellar::PublicKey, std::shared_ptr<SCPEnvelopeWrapper>, 3)
+
+#define CPPUNORDEREDMAPRANDHASHINST(K, V, id)   typedef std::unordered_map<K, V, std::RandHasher<K, std::hash<K > > > rand_map_type_##id;  \
+                                CPPOBJECTINST(rand_map_type_##id);
+
+
+CPPUNORDEREDMAPRANDHASHINST(int, int, 0);
+CPPUNORDEREDMAPRANDHASHINST(stellar::PublicKey, stellar::QuorumTracker::NodeInfo, 1);
+
+// typedef std::set<ValueWrapperPtr, WrappedValuePtrComparator*> ValueWrapperPtrSet2;
+
+CPPDEFAULTCTORINST(ValueWrapperPtrSet);
+CPPDTORINST(ValueWrapperPtrSet);
+CPPCOPYCTORINST(ValueWrapperPtrSet);
