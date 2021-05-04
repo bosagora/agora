@@ -128,7 +128,15 @@ public Listeners runNode (Config config)
 
     setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
 
-
+    if (result.admin !is null)
+    {
+        log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
+        auto adminrouter = new URLRouter();
+        adminrouter.registerRestInterface(result.admin);
+        auto settings = new HTTPServerSettings(config.admin.address);
+        settings.port = config.admin.port;
+        result.http ~= listenHTTP(settings, adminrouter);
+    }
 
     // HTTP interfaces for the node
     foreach (interface_; config.interfaces.filter!(i => i.type == InterfaceConfig.Type.http))
@@ -138,12 +146,6 @@ public Listeners runNode (Config config)
         settings.rejectConnectionPredicate = isBannedDg;
         log.info("Node will be listening on HTTP interface: {}:{}", interface_.address, settings.port);
         result.http ~= listenHTTP(settings, router);
-    }
-
-    if (result.admin !is null)
-    {
-        log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
-        result.http ~= result.admin.start();
     }
 
     // also register the FlashControlAPI
