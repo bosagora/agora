@@ -1307,13 +1307,13 @@ version (unittest)
         public override Hash getExternalizedRandomSeed (in Height height,
             in uint[] missing_validators) @safe nothrow
         {
-            return getTestRandomSeed();
+            return Hash.init; // Make it clear we are not checking in these tests
         }
 
         ///
         public override Hash getRandomSeed () nothrow @safe
         {
-            return getTestRandomSeed();
+            return Hash.init; // Make it clear we are not checking in these tests
         }
     }
 }
@@ -1588,13 +1588,13 @@ unittest
         public override Hash getExternalizedRandomSeed (in Height height,
             in uint[] missing_validators) @safe nothrow
         {
-            return getTestRandomSeed();
+            return Hash.init; // Make it clear we are not checking in these tests
         }
 
         ///
         public override Hash getRandomSeed () nothrow @safe
         {
-            return getTestRandomSeed();
+            return Hash.init; // Make it clear we are not checking in these tests
         }
     }
 
@@ -2044,6 +2044,6 @@ unittest
     assert(!ledger.externalize(data));
 
     auto last_block = ledger.getLastBlock();
-    const block = makeNewBlock(last_block, cb_tx_set, data.time_offset, getTestRandomSeed());
+    const block = makeNewBlock(last_block, cb_tx_set, data.time_offset, Hash.init);
     assert(ledger.validateBlock(block) == "Block: Must contain other transactions than Coinbase");
 }
