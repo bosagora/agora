@@ -286,12 +286,6 @@ public auto genesisSpendable () @safe pure nothrow
     return GenesisBlock.spendable;
 }
 
-/// Get random seed for making new block
-public Hash getTestRandomSeed () @safe nothrow
-{
-    return hashFull(Hash.init);
-}
-
 /*******************************************************************************
 
     A little utility to ensure a function is only called once

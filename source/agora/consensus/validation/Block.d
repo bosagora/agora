@@ -111,9 +111,15 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     if (block.header.height == 0)
         return "Block: Genesis block should be validated using isGenesisBlockInvalidReason";
 
-    assert(random_seed !is Hash.init);
-    // Validate this after the genesis check for better UX
-    assert(prev_hash !is Hash.init);
+    version (unittest)
+    {
+        // FIXME: Remove this skip of random seed checks in unit tests
+    } else
+    {
+        assert(random_seed !is Hash.init);
+        // Validate this after the genesis check for better UX
+        assert(prev_hash !is Hash.init);
+    }
 
     if (block.header.height != prev_height + 1)
         return "Block: Height is not one more than previous block";
@@ -586,9 +592,6 @@ version (unittest)
         ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
         Duration block_time_tolerance = 100.seconds) nothrow @safe
     {
-        if (random_seed == Hash.init)
-            random_seed = getTestRandomSeed();
-
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, enrolled_validators, random_seed,
             prev_time_offset, (curr_time_offset == ulong.max) ? block.header.time_offset : curr_time_offset,
@@ -624,7 +627,7 @@ version (unittest)
                          prev_height, prev_hash, enrolled_validators,
                          random_seed, enrollment_cycle, prev_time_offset,
                          curr_time_offset, block_time_tolerance);
-            writefln("Called from: %s:%s", file, line);
+                writefln("Called from: %s:%s", file, line);
             } catch (Exception e) { /* Shouldn't happen */ }
             assert(0, mustBeValid ?
                    reason : "Block expected to be invalid but passed `isValid`");
@@ -959,7 +962,7 @@ unittest
         missing_validators);
     block3.assertValid(engine, block2.header.height, hashFull(block2.header), findUTXO,
         Enrollment.MinValidatorCount, checker, findGenesisEnrollments, preimage_root);
-    enrollments.sort!("a.utxo_key > b.utxo_key");
+    block3.header.enrollments.sort!("a.utxo_key > b.utxo_key");
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     block3.assertValid!false(engine, block2.header.height, hashFull(block2.header), findUTXO,

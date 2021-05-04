@@ -543,9 +543,6 @@ version (unittest)
         ulong delegate (PublicKey) cycleForValidator = (PublicKey k) => defaultCycleZero(k),
         ulong time_offset = 0) @safe nothrow
     {
-        if (random_seed == Hash.init)
-            random_seed = getTestRandomSeed();
-
         // the time_offset passed to makeNewBlock should really be
         // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
         // prev_block.header.time_offset + 1
