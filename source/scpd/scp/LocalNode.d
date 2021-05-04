@@ -15,6 +15,7 @@ module scpd.scp.LocalNode;
 
 import scpd.scp.SCP;
 import scpd.Cpp;
+import scpd.scp.SCPDriver;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
@@ -57,7 +58,7 @@ extern(C++, class) public struct LocalNode
     static SCPQuorumSetPtr getSingletonQSet(const ref NodeID nodeID);
 
     // runs proc over all nodes contained in qset
-    static void forAllNodes(const ref SCPQuorumSet qset,
+    static bool forAllNodes(const ref SCPQuorumSet qset,
                             CPPDelegate!(void function(const ref NodeID)));
 
     // returns the weight of the node within the qset
@@ -75,7 +76,7 @@ extern(C++, class) public struct LocalNode
     // `isVBlocking` tests if the filtered nodes V are a v-blocking set for
     // this node.
     static bool isVBlocking(const ref SCPQuorumSet qSet,
-                const ref map!(NodeID, SCPEnvelope) _map,
+                const ref map!(NodeID, SCPEnvelopeWrapperPtr) _map,
                 CPPDelegate!(bool function(const ref SCPStatement)) filter);
 
     // `isQuorum` tests if the filtered nodes V form a quorum
@@ -84,7 +85,7 @@ extern(C++, class) public struct LocalNode
     // SCPQuorumSetPtr from the SCPStatement for its associated node in map
     // (required for transitivity)
     static bool isQuorum(const ref SCPQuorumSet qSet,
-        const ref map!(NodeID, SCPEnvelope) _map,
+        const ref map!(NodeID, SCPEnvelopeWrapperPtr) _map,
              const ref CPPDelegate!(SCPQuorumSetPtr function(const ref SCPStatement)) qfun,
              const ref CPPDelegate!(bool function(const ref SCPStatement)) filter);
 
@@ -95,7 +96,7 @@ extern(C++, class) public struct LocalNode
         const ref set!NodeID nodes, const(NodeID)* excluded);
 
     static vector!NodeID findClosestVBlocking (
-        const ref SCPQuorumSet qset, const ref map!(NodeID, SCPEnvelope) _map,
+        const ref SCPQuorumSet qset, const ref map!(NodeID, SCPEnvelopeWrapperPtr) _map,
         const ref CPPDelegate!(bool function(const ref SCPStatement)) filter,
         const(NodeID)* excluded = null);
 

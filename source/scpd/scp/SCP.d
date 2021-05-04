@@ -24,6 +24,10 @@ import scpd.types.XDRBase;
 
 import core.stdc.inttypes;
 
+public alias PCSCallback = extern(C++) bool function(ref const(SCPEnvelope));
+
+public alias PSCallback = extern(C++) bool function(uint64_t);
+
 shared static this ()
 {
     initialize_byteslice_hasher();
@@ -69,11 +73,11 @@ nothrow:
     // this is the main entry point of the SCP library
     // it processes the envelope, updates the internal state and
     // invokes the appropriate methods
-    EnvelopeState receiveEnvelope(ref const(SCPEnvelope) envelope);
+    EnvelopeState receiveEnvelope(SCPEnvelopeWrapperPtr envelope);
 
     // Submit a value to consider for slotIndex
     // previousValue is the value from slotIndex-1
-    bool nominate(uint64_t slotIndex, ref const(Value) value,
+    bool nominate(uint64_t slotIndex, ValueWrapperPtr value,
                         ref const(Value) previousValue);
 
     // stops nomination for a slot
@@ -100,6 +104,9 @@ nothrow:
     // returns the validation state of the given slot
     bool isSlotFullyValidated(uint64_t slotIndex);
 
+    // returns if we received messages from a v-blocking set
+    bool gotVBlocking(uint64_t slotIndex);
+
     // Helpers for monitoring and reporting the internal memory-usage of the SCP
     // protocol to system metric reporters.
     size_t getKnownSlotsCount() const;
@@ -110,17 +117,28 @@ nothrow:
 
     // forces the state to match the one in the envelope
     // this is used when rebuilding the state after a crash for example
-    void setStateFromEnvelope(uint64_t slotIndex, ref const(SCPEnvelope) e);
+    void setStateFromEnvelope(uint64_t slotIndex, SCPEnvelopeWrapperPtr e);
 
     // check if we are holding some slots
     bool empty() const;
-    // return lowest slot index value
-    uint64_t getLowSlotIndex() const;
-    // return highest slot index value
-    uint64_t getHighSlotIndex() const;
 
-    // returns all messages for the slot
-    vector!SCPEnvelope getCurrentState(uint64_t slotIndex);
+    // invokes f for all latest messages
+    // if forceSelf, return messages for self even if not fully validated
+    // f returns false to stop processing, true otherwise
+    void processCurrentState(uint64_t slotIndex,
+                             ref const(CPPDelegate!PCSCallback) f,
+                             bool forceSelf);
+
+    // iterates through slots, starting from slot startIndex
+    void processSlotsAscendingFrom(uint64_t startIndex,
+                                   ref const(CPPDelegate!PSCallback) f);
+
+    // iterates through slots, starting from slot startIndex
+    void processSlotsDescendingFrom(uint64_t startIndex,
+                                    ref const(CPPDelegate!PSCallback) f);
+
+    // Recovered from previous SCP versions
+    uint64_t getHighSlotIndex() const;
 
     // returns the latest message from a node
     // or null if not found

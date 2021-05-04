@@ -89,6 +89,8 @@ extern(C++, (StdNamespace)) extern(C++, class) struct allocator (T) {}
 
 extern(C++, (StdNamespace)) extern(C++, class) struct less (T) {}
 
+extern(C++, `std`) extern(C++, class) struct RandHasher (T, Hasher = hash!T) { }
+
 extern(C++, (StdNamespace)) extern(C++, class) struct default_delete (T) {}
 
 // simplistic std::pair bindings
@@ -128,7 +130,7 @@ extern(C++, (StdNamespace)) {
         else
             private alias TPtr = T*;
 
-        mixin CPPBindingMixin!(unique_ptr!T, false);
+        mixin CPPBindingMixin!(unique_ptr, false);
 
         TPtr ptr;
         alias ptr this;
@@ -151,14 +153,14 @@ private pure nothrow @nogc @safe extern(C++) size_t cpp_unordered_map_length (K,
 
 /// Rudimentary bindings for std::unordered_map
 extern(C++, (StdNamespace))
-public struct unordered_map (Key, T, Hash = hash!Key, KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
+public struct unordered_map (Key, T, Hash = RandHasher!(Key), KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
 {
     version (CppRuntime_Clang)
         private ulong[40 / ulong.sizeof] _data;
     else
         private ulong[56 / ulong.sizeof] _data;
 
-    mixin CPPBindingMixin!(unordered_map!(Key, T));
+    mixin CPPBindingMixin!unordered_map;
 
     void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
     {
@@ -209,7 +211,7 @@ extern(C++, (StdNamespace)) {
         else
             private ulong[48 / ulong.sizeof] _data;
 
-        mixin CPPBindingMixin!(set!Key);
+        mixin CPPBindingMixin!set;
 
         /// Foreach support
         extern(D) public int opApply (scope int delegate(ref const(Key)) dg) const
@@ -229,7 +231,7 @@ extern(C++, (StdNamespace)) {
         {
             return cpp_set_empty!Key(cast(const void*)&this);
         }
-}
+    }
 
     /// Fake bindings for std::map
     public extern(C++, class) struct map (Key, Value, Compare = less!Key, Allocator = allocator!(pair!(const Key, Value)))
@@ -239,7 +241,7 @@ extern(C++, (StdNamespace)) {
         else
             private ulong[48 / ulong.sizeof] _data;
 
-        mixin CPPBindingMixin!(map!(Key, Value));
+        mixin CPPBindingMixin!map;
     }
 
     // only used at compile-time on the C++ side, here for mangling
@@ -531,6 +533,13 @@ unittest
 
 /// Invoke an std::function pointer (note: must be void* due to mangling issues)
 extern(C++) void callCPPDelegate (void* cb);
+
+public mixin template NonMovableOrCopyable ()
+{
+    @disable this ();
+    @disable this (this);
+    @disable ref typeof (this) opAssign () (auto ref typeof(this) rhs);
+}
 
 unittest
 {

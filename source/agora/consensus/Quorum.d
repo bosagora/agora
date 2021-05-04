@@ -579,12 +579,12 @@ private void verifyQuorumsSanity (in QuorumConfig[PublicKey] quorums)
         auto scp_quorum = toSCPQuorumSet(quorum);
         const bool ExtraChecks = true;
         const(char)* fail_reason;
-        enforce(isQuorumSetSane(scp_quorum, ExtraChecks, &fail_reason),
+        enforce(isQuorumSetSane(scp_quorum, ExtraChecks, fail_reason),
             format("Quorum %s fails sanity check before normalization: %s",
                     quorum, fail_reason.fromStringz));
 
         normalizeQSet(scp_quorum);
-        enforce(isQuorumSetSane(scp_quorum, ExtraChecks, &fail_reason),
+        enforce(isQuorumSetSane(scp_quorum, ExtraChecks, fail_reason),
             format("Quorum %s fails sanity check after normalization: %s",
                     quorum, fail_reason.fromStringz));
     }
@@ -617,7 +617,7 @@ private void verifyQuorumsIntersect (QuorumConfig[PublicKey] quorums)
         auto scp = toSCPQuorumSet(quorum);
         auto scp_quorum = makeSharedSCPQuorumSet(scp);
         auto scp_key = NodeID(uint256(key[][0 .. uint256.sizeof]));
-        qm[scp_key] = scp_quorum;
+        qm[scp_key] = QuorumTracker.NodeInfo(scp_quorum);
     }
 
     auto qic = QuorumIntersectionChecker.create(qm);

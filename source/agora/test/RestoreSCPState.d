@@ -89,11 +89,12 @@ unittest
         override void restoreSCPState ()
         {
             // on first boot the envelope store will be empty,
-            // but on restart it should contain two envelopes
-            // (nominate & ballot protocol messages)
+            // but on restart it should contain one or more envelopes
+            // (note: the total count depends on SCP's internal state and can
+            // change between SCP releases)
             if (Checked)
             {
-                assert(TestSCPEnvelopeStore.store.length == 2);
+                assert(TestSCPEnvelopeStore.store.length > 0);
                 Checked = false;
             }
             super.restoreSCPState();

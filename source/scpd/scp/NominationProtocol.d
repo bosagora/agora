@@ -32,13 +32,13 @@ nothrow:
     Slot* mSlot;
 
     int32_t mRoundNumber;
-    set!Value mVotes;                             // X
-    set!Value mAccepted;                          // Y
-    set!Value mCandidates;                        // Z
-    map!(NodeID, SCPEnvelope) mLatestNominations; // N
+    ValueWrapperPtrSet mVotes;                              // X
+    ValueWrapperPtrSet mAccepted;                           // Y
+    ValueWrapperPtrSet mCandidates;                         // Z
+    map!(NodeID, SCPEnvelopeWrapperPtr) mLatestNominations; // N
 
     /// last envelope emitted by this node
-    unique_ptr!SCPEnvelope mLastEnvelope;
+    SCPEnvelopeWrapperPtr mLastEnvelope;
 
     // nodes from quorum set that have the highest priority this round
     set!NodeID mRoundLeaders;
@@ -47,7 +47,7 @@ nothrow:
     bool mNominationStarted;
 
     // the latest (if any) candidate value
-    Value mLatestCompositeCandidate;
+    ValueWrapperPtr mLatestCompositeCandidate;
 
     // the value from the previous slot
     Value mPreviousValue;
@@ -64,11 +64,11 @@ nothrow:
                                ref bool notEqual);
 
     SCPDriver.ValidationLevel validateValue(const ref Value v);
-    Value extractValidValue(const ref Value value);
+    ValueWrapperPtr extractValidValue(const ref Value value);
 
     bool isSane(const ref SCPStatement st);
 
-    void recordEnvelope(const ref SCPEnvelope env);
+    void recordEnvelope(SCPEnvelopeWrapperPtr env);
 
     void emitNomination();
 
@@ -94,7 +94,7 @@ nothrow:
     // returns the highest value that we don't have yet, that we should
     // vote for, extracted from a nomination.
     // returns the empty value if no new value was found
-    Value getNewValueFromNomination(const ref SCPNomination nom);
+    ValueWrapperPtr getNewValueFromNomination(const ref SCPNomination nom);
 
   public:
     // note: must call C++ ctor to properly call default ctors for
@@ -102,20 +102,18 @@ nothrow:
     @disable this();
     this(ref Slot slot);
 
-    SCP.EnvelopeState processEnvelope(const ref SCPEnvelope envelope);
+    SCP.EnvelopeState processEnvelope(SCPEnvelopeWrapperPtr envelope);
 
     static vector!Value getStatementValues(const ref SCPStatement st);
 
     // attempts to nominate a value for consensus
-    bool nominate(const ref Value value, const ref Value previousValue,
+    bool nominate(ValueWrapperPtr value, const ref Value previousValue,
                   bool timedout);
 
     // stops the nomination protocol
     void stopNomination();
 
-    void setStateFromEnvelope(const ref SCPEnvelope e);
-
-    vector!SCPEnvelope getCurrentState() const;
+    void setStateFromEnvelope(SCPEnvelopeWrapperPtr e);
 }
 
 extern (D):

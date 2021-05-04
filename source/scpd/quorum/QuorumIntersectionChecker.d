@@ -27,7 +27,8 @@ public abstract class QuorumIntersectionChecker
   public:
     /// Create & initialize a QuorumIntersectionChecker with the given map
     static shared_ptr!QuorumIntersectionChecker create (
-        ref const(QuorumTracker.QuorumMap) map);
+        ref const(QuorumTracker.QuorumMap) map,
+	bool quiet = false);
 
     ~this () {}
 

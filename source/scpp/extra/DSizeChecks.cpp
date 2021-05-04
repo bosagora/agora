@@ -20,6 +20,7 @@
 #include "xdr/Stellar-SCP.h"
 #include "xdr/Stellar-types.h"
 #include "scp/Slot.h"
+#include "scp/SCPDriver.h"
 #include "crypto/ByteSlice.h"
 
 using namespace xdr;
@@ -60,3 +61,14 @@ CPPSIZEOF(xarray<std::uint8_t COMMA 4>)
 CPPSIZEOF(xvector<Value>)
 CPPSIZEOF(xvector<PublicKey>)
 CPPSIZEOF(xvector<SCPQuorumSet>)
+
+CPPSIZEOF(LocalNode)
+CPPSIZEOF(BallotProtocol)
+CPPSIZEOF(NominationProtocol)
+CPPSIZEOF(SCP)
+CPPSIZEOF(Slot)
+CPPSIZEOF(BallotProtocol::SCPBallotWrapper)
+CPPSIZEOF(SCPEnvelopeWrapper)
+CPPSIZEOF(ValueWrapper)
+CPPSIZEOF(ValueWrapperPtr)
+CPPSIZEOF(ValueWrapperPtrSet)

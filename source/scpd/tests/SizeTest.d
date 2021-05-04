@@ -27,7 +27,7 @@ unittest
 {
     foreach (Type; GlueTypes)
     {
-        Type object;
+        Type object = Type.init;
         assert(Type.sizeof == cppSizeOf(object),
             format("Type '%s' size mismatch: %s (D) != %s (C++)",
                 Type.stringof, Type.sizeof, cppSizeOf(object)));

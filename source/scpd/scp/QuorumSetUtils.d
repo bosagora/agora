@@ -18,8 +18,11 @@ import scpd.types.Stellar_types;
 
 extern(C++, `stellar`):
 
+// level = 0 when there is no nesting.
+enum MAXIMUM_QUORUM_NESTING_LEVEL = 4;
+
 bool isQuorumSetSane(ref const SCPQuorumSet qSet, bool extraChecks,
-    const(char)** reason = null);
+    ref const(char)* reason);
 
 // normalize the quorum set, optionally removing idToRemove
 void normalizeQSet(ref SCPQuorumSet qSet, const(NodeID)* idToRemove = null)

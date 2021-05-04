@@ -13,6 +13,12 @@
 
 module scpd.tests.GlueTypes;
 
+import scpd.scp.LocalNode;
+import scpd.scp.BallotProtocol;
+import scpd.scp.NominationProtocol;
+import scpd.scp.SCP;
+import scpd.scp.SCPDriver;
+import scpd.scp.Slot;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types;
 import scpd.types.Utils;
@@ -59,6 +65,21 @@ alias TypesNoLayout = AliasSeq!
     xvector!Value,
     xvector!PublicKey,
     xvector!SCPQuorumSet,
+
+    LocalNode,
+    BallotProtocol,
+    NominationProtocol,
+    SCP,
+    Slot,
+
+    // todo: these still don't match perfectly. Need to fix
+    // some other C++ bindings for this to work. Most of these
+    // types are not passed by value so it's currently ok.
+    //SCPEnvelopeWrapper,
+    //ValueWrapper,
+
+    ValueWrapperPtr,
+    BallotProtocol.SCPBallotWrapper,
 );
 
 /// All the glue types have sizeof(), but some may not have accessible layout information
