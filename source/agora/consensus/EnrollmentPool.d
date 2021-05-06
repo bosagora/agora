@@ -115,7 +115,7 @@ public class EnrollmentPool
             () @trusted {
                 this.db.execute("REPLACE INTO enrollment_pool " ~
                     "(key, val, avail_height) VALUES (?, ?, ?)",
-                    enroll.utxo_key.toString(), buffer, avail_height.value);
+                    enroll.utxo_key, buffer, avail_height.value);
             }();
         }
         catch (Exception ex)
