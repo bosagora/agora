@@ -67,19 +67,20 @@ public class EnrollmentPool
 
     /***************************************************************************
 
-        Add a enrollment data to the enrollment pool
+        Add a enrollment data to the enrollment pool after validating it
 
         Params:
             enroll = the enrollment data to add
             avail_height = height at which the enrollment is available
             finder = the delegate to find UTXOs with
+            findEnrollment = A delegate to find previous enrollments
 
         Returns:
             true if the enrollment data has been added to the enrollment pool
 
     ***************************************************************************/
 
-    public bool add (const ref Enrollment enroll, Height avail_height,
+    public bool add (in Enrollment enroll, in Height avail_height,
         scope UTXOFinder finder, scope EnrollmentFinder findEnrollment) @safe nothrow
     {
         // check validity of the enrollment data
@@ -98,6 +99,25 @@ public class EnrollmentPool
             return false;
         }
 
+        return this.addValidated(enroll, avail_height);
+    }
+
+    /***************************************************************************
+
+        Directly add an enrollment to the pool, without validation
+
+        Params:
+            enroll = the enrollment data to add
+            avail_height = height at which the enrollment is available
+
+        Returns:
+            true if the enrollment data has been added to the enrollment pool
+
+    ***************************************************************************/
+
+    public bool addValidated (in Enrollment enroll, in Height avail_height)
+        @safe nothrow
+    {
         static ubyte[] buffer;
         try
         {
