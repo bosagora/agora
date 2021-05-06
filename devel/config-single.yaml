@@ -1,0 +1,48 @@
+#
+# This configuration file is intended to provide a standalone local network
+# with a single validator.
+#
+# This configuration is provided for the convenience of developers and should
+# not be used in production. See `doc/config.example.yaml` for a full,
+# up to date example of the configuration options available
+#
+# Run from the root with:
+# ./build/agora -c devel/config-single.yaml
+
+node:
+  testing: true
+  limit_test_validators: 1
+  block_interval_sec: 20
+  data_dir: .single/data/
+  # Can be used with curl or just a browser
+  stats_listening_port: 9111
+
+interfaces:
+  - type:    http
+    address: 0.0.0.0
+    port:    2826
+
+consensus:
+  validator_cycle: 20
+
+validator:
+  enabled: true
+  seed: SAUHVPR7O7F2QGLDVXG3DQTVHXESE3ZAWHIIGKT35LCHIPLZBZTAFXJA
+  registry_address: disabled
+
+admin:
+  enabled: true
+  address: 0.0.0.0
+  port:    2827
+
+# The node will self-ban but this section needs at least one entry
+network:
+  - http://127.0.0.1:2826/
+
+logging:
+  root:
+    # You might want to use `Trace` and separate output
+    level: Info
+    console: true
+    propagate: true
+    file: .single/log/root.log
