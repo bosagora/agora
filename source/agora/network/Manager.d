@@ -1116,7 +1116,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected API getClient (Address address, Duration timeout)
+    public API getClient (Address address, Duration timeout)
     {
         import vibe.http.client;
 

@@ -1219,7 +1219,7 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override TestAPI getClient (Address address,
+    public final override TestAPI getClient (Address address,
         Duration timeout)
     {
         auto tid = this.registry.locate(address);
