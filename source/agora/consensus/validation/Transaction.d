@@ -86,6 +86,9 @@ public string isInvalidReason (
         if (tx.type == TxType.Freeze && idx > 0 &&
             output.value < Amount.MinFreezeAmount)
             return "Transaction: All non-refund outputs must be over the minimum freezing amount";
+
+        if (auto reason = validateLockSyntax(output.lock, engine.StackMaxItemSize))
+            return reason;
     }
 
     const tx_hash = hashFull(tx);
@@ -331,6 +334,14 @@ unittest
 
     assert(tx1.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
            format("Transaction signature is not validated %s", tx1));
+
+    import agora.serialization.Serializer;
+    auto dupe = tx1.serializeFull.deserializeFull!Transaction;
+    assert(dupe.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
+           format("Transaction signature is not validated %s", tx1));
+    dupe.outputs[0].lock.bytes.length = 0;
+    assert(dupe.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker)
+        == "LockType.Key requires 32-byte key argument in the lock script");
 
     Transaction tx2 = Transaction(
         TxType.Payment,

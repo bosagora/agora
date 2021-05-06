@@ -114,14 +114,14 @@ public struct TxBuilder
     /// Ditto
     public this (const Transaction tx) @safe nothrow
     {
-        this(tx.outputs[0].address);
+        this(tx.outputs[0].lock);
         this.attach(tx);
     }
 
     /// Ditto
     public this (const Transaction tx, uint index) @safe nothrow
     {
-        this(tx.outputs[index].address);
+        this(tx.outputs[index].lock);
         this.attach(tx, index);
     }
 

@@ -57,7 +57,7 @@ public class Engine
     private immutable ulong StackMaxTotalSize;
 
     /// Maximum size of an item on the stack
-    private immutable ulong StackMaxItemSize;
+    public immutable ulong StackMaxItemSize;
 
     /***************************************************************************
 
