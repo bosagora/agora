@@ -571,22 +571,15 @@ public class Validator : FullNode, API
             return Enrollment.init; // Not enrolled and no frozen UTXO
 
         const enrolled = this.enroll_man.validator_set.getEnrolledHeight(next_height, enroll_key);
-        const stored_avail = this.enroll_man.enroll_pool.getAvailableHeight(enroll_key);
 
         // This validators enrollment will expire next cycle or not enrolled at all
         const avail_height = enrolled == ulong.max ?
                                 next_height : enrolled + this.params.ValidatorCycle;
 
-        if (stored_avail == avail_height)
-        {
-            log.trace("Already in the enrollment pool at height {} for {} cycles with {}",
-                height, this.params.ValidatorCycle, enroll_key);
-            return Enrollment.init;
-        }
-
         const enrollment = this.enroll_man.createEnrollment(enroll_key, avail_height);
         log.trace("Sending Enrollment for enrolling at height {} (to validate blocks {} to {})",
             avail_height, avail_height + 1, avail_height + this.params.ValidatorCycle);
+        this.enroll_man.enroll_pool.addValidated(enrollment, avail_height);
         this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
         return enrollment;
     }
