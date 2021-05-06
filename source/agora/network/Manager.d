@@ -183,6 +183,7 @@ public class NetworkManager
                     }
 
                     key = id.key;
+                    client.setIdentity(id.key);
                     break;
                 }
                 catch (Exception ex)

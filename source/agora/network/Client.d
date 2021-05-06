@@ -38,8 +38,6 @@ import std.random;
 
 import core.time;
 
-mixin AddLogger!();
-
 /// Used for communicating with a remote node
 public class NetworkClient
 {
@@ -138,6 +136,9 @@ public class NetworkClient
     /// Timer used for gossiping
     private ITimer gossip_timer;
 
+    /// Logger uniquely identifying this client
+    private Logger log;
+
     /***************************************************************************
 
         Constructor.
@@ -155,6 +156,9 @@ public class NetworkClient
     public this (ITaskManager taskman, BanManager banman, Address address,
         API api, Duration retry, size_t max_retries)
     {
+        // By default, use the module, but if we can identify a validator,
+        // this logger will be replaced with a more specialized one.
+        this.log = Log.lookup(__MODULE__);
         this.taskman = taskman;
         this.banman = banman;
         this.address = address;
@@ -223,6 +227,22 @@ public class NetworkClient
 
     /***************************************************************************
 
+        Change this client's logger to make it easier to identify peers and
+        selectively enable or disable logging
+
+        Params:
+          key = Public key of this peer
+
+    ***************************************************************************/
+
+    public void setIdentity (in PublicKey key)
+    {
+        this.log = Log.lookup(format("%s.%s", __MODULE__, key));
+        this.log.info("Peer identity established");
+    }
+
+    /***************************************************************************
+
         Params:
             key = key of the peer
 
@@ -269,7 +289,7 @@ public class NetworkClient
                     (scope res) {
                         statusCode = res.statusCode;
                         if (res.statusCode != 200)
-                            log.info("Response of {}/register_listener : {}",
+                            this.log.info("Response of {}/register_listener : {}",
                                 this.address, res);
 
                     }
@@ -279,7 +299,7 @@ public class NetworkClient
            }
            catch (Exception ex)
            {
-               log.format(LogLevel.Trace, "Request '{}' to {} failed: {}",
+               this.log.format(LogLevel.Trace, "Request '{}' to {} failed: {}",
                    "registerListener", this.address, ex.message);
                if (idx + 1 < this.max_retries) // wait after each failure except last
                    this.taskman.wait(this.retry_delay);
@@ -547,7 +567,7 @@ public class NetworkClient
 
                 try
                 {
-                    log.format(log_level, "Request '{}' to {} failed: {}",
+                    this.log.format(log_level, "Request '{}' to {} failed: {}",
                         name, this.address, ex.message);
                 }
                 catch (Exception ex)
