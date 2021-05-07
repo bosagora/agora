@@ -74,3 +74,33 @@ VectorT duplicate(const VectorT& this_)
     VectorT dup = VectorT(this_);
     return dup;
 }
+
+template<typename T>
+int getCPPSizeof ()
+{
+    return sizeof(T);
+}
+
+template<typename T>
+void defaultCtorCPPObject (T* ptr)
+{
+    new(ptr) T();
+}
+
+template<typename T>
+void dtorCPPObject (T* ptr)
+{
+    ptr->~T();
+}
+
+template<typename T>
+void opAssignCPPObject (T* lhs, T* rhs)
+{
+    (*lhs) = *(rhs);
+}
+
+template<typename T>
+void copyCtorCPPObject (T* ptr, T* rhs)
+{
+    new(ptr) T(*(rhs));
+}

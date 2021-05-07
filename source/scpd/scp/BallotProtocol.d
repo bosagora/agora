@@ -299,4 +299,8 @@ extern(C++, class) public struct BallotProtocol
     void checkHeardFromQuorum();
 }
 
-static assert(BallotProtocol.sizeof == 136);
+extern (D):
+unittest
+{
+    assert(BallotProtocol.sizeof == getCPPSizeof!BallotProtocol());
+}

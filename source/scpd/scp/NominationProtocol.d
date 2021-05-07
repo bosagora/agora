@@ -118,4 +118,8 @@ nothrow:
     vector!SCPEnvelope getCurrentState() const;
 }
 
-static assert(NominationProtocol.sizeof == 200);
+extern (D):
+unittest
+{
+    assert(NominationProtocol.sizeof == getCPPSizeof!NominationProtocol());
+}

@@ -120,4 +120,8 @@ private:
     vector!SCPEnvelope getEntireCurrentState();
 }
 
-static assert(Slot.sizeof == 400);
+extern (D):
+unittest
+{
+    assert(Slot.sizeof == getCPPSizeof!Slot());
+}

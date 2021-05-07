@@ -131,4 +131,8 @@ nothrow:
     vector!SCPEnvelope getExternalizingState(uint64_t slotIndex);
 }
 
-static assert(SCP.sizeof == 48);
+extern (D):
+unittest
+{
+    assert(SCP.sizeof == getCPPSizeof!SCP());
+}
