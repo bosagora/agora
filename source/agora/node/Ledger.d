@@ -1904,7 +1904,6 @@ unittest
     // create the last block of the cycle to make the `Enrollment`s enrolled
     new_txs = genGeneralBlock(new_txs);
     assert(ledger.getBlockHeight() == Height(20));
-    ledger.enroll_man.updateValidatorIndexMaps(Height(21));
     auto b20 = ledger.getBlocksFrom(Height(20))[0];
     assert(b20.header.enrollments.length == 4);
 
