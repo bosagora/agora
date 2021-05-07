@@ -100,7 +100,7 @@ public class FullNode : API
     protected Logger log;
 
     /// Config instance
-    protected const Config config;
+    protected Config config;
 
     /// Parameters for consensus-critical constants
     protected immutable(ConsensusParams) params;
@@ -227,7 +227,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public this (const Config config)
+    public this (Config config)
     {
         this.config = config;
         this.log = this.makeLogger();

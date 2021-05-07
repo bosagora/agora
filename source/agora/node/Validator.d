@@ -82,7 +82,7 @@ public class Validator : FullNode, API
     private bool started;
 
     /// Ctor
-    public this (const Config config)
+    public this (Config config)
     {
         assert(config.validator.enabled);
         super(config);
