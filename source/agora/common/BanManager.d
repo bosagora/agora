@@ -21,7 +21,6 @@ import agora.utils.InetUtils;
 import agora.utils.Log;
 
 import std.file;
-import std.path;
 import std.socket : getAddressInfo, AddressFamily;
 import std.stdio;
 
@@ -125,13 +124,13 @@ public class BanManager
 
     ***************************************************************************/
 
-    public this (Config config, Clock clock, cstring data_dir,
-                 Logger logger = Logger(ThisModule)) @safe nothrow pure
+    public this (Config config, Clock clock, string banfile_path,
+        Logger logger = Logger(ThisModule)) @safe nothrow pure
     {
         this.config = config;
         this.log = logger;
         this.clock = clock;
-        this.banfile_path = buildPath(data_dir, "banned.dat");
+        this.banfile_path = banfile_path;
     }
 
     /***************************************************************************

@@ -29,10 +29,12 @@ import core.time;
 ///
 private void main ()
 {
+    import std.path : buildPath;
+
     auto path = makeCleanTempDir();
 
     BanManager.Config conf = { max_failed_requests : 10, ban_duration : 60.seconds };
-    auto banman = new BanManager(conf, new Clock(null, null), path);
+    auto banman = new BanManager(conf, new Clock(null, null), buildPath(path, "banned.dat"));
     banman.load();  // should not throw
 
     const IP = "127.0.0.1";
@@ -41,7 +43,7 @@ private void main ()
     assert(banman.isBanned(IP));
     banman.dump();
 
-    auto new_banman = new BanManager(conf, new Clock(null, null), path);
+    auto new_banman = new BanManager(conf, new Clock(null, null), buildPath(path, "banned.dat"));
     new_banman.load();
     assert(new_banman.isBanned(IP));
 }

@@ -811,9 +811,11 @@ public class NetworkManager
     ***************************************************************************/
 
     protected BanManager getBanManager (in BanManager.Config banman_conf,
-        Clock clock, cstring data_dir)
+        Clock clock, string data_dir)
     {
-        return new BanManager(banman_conf, clock, data_dir);
+        import std.path : buildPath;
+
+        return new BanManager(banman_conf, clock, buildPath(data_dir, "banned.dat"));
     }
 
     /// register network addresses into the name registry
