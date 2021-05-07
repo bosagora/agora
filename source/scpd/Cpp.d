@@ -34,6 +34,76 @@ import std.meta;
 
 import vibe.data.json;
 
+public enum CppCtor { Use = 0 }
+
+extern(C++) {
+@trusted nothrow @nogc:
+    void defaultCtorCPPObject(T) (T* ptr);
+    void dtorCPPObject(T) (T* ptr);
+    void opAssignCPPObject(T) (T* lhs, T* rhs);
+    void copyCtorCPPObject(T) (T* ptr, inout(T)* rhs);
+    void copyCtorCPPObject(T) (immutable(T)* ptr, inout(T)* rhs);
+    int getCPPSizeof(T) ();
+}
+
+private mixin template CPPBindingMixin (T, bool Copyable = true, bool DefaultConstructable = false)
+{
+    extern(D)
+    {
+        static if (!DefaultConstructable) @disable this();
+        this (CppCtor use) @trusted nothrow @nogc
+        {
+            defaultCtorCPPObject!T(&this);
+        }
+
+        ~this () @trusted nothrow @nogc
+        {
+            dtorCPPObject!T(&this);
+        }
+
+        static if (Copyable)
+        this (ref return scope inout T rhs) @trusted nothrow @nogc
+        {
+            copyCtorCPPObject!T(&this, &rhs);
+        }
+
+        static if (Copyable)
+        this (ref return scope inout T rhs) immutable @trusted nothrow @nogc
+        {
+            copyCtorCPPObject!T(&this, &rhs);
+        }
+
+        static if (Copyable)
+        void opAssign()(auto ref T rhs) @trusted nothrow @nogc
+        {
+            opAssignCPPObject!T(&this, &rhs);
+        }
+    }
+}
+
+/// Can't import `core.stdcpp.allocator` because it transitively imports
+/// `core.stdcpp.exception`
+/// In this case we just need to get the name right for `vector`
+
+extern(C++, (StdNamespace)) extern(C++, class) struct allocator (T) {}
+
+extern(C++, (StdNamespace)) extern(C++, class) struct less (T) {}
+
+extern(C++, (StdNamespace)) extern(C++, class) struct default_delete (T) {}
+
+// simplistic std::pair bindings
+public extern(C++, (StdNamespace)) struct pair (T1, T2)
+{
+    T1 first;
+    T2 second;
+}
+
+// fake std::hash (for mangling)
+public extern(C++, (StdNamespace))  struct hash (T) {}
+
+// fake std::equal_to (for mangling)
+public extern(C++, (StdNamespace))  struct equal_to (T = void) {}
+
 extern(C++, (StdNamespace)) {
     /// Simple binding to `std::shared_ptr`
     extern(C++, class) struct shared_ptr (T)
@@ -43,19 +113,22 @@ extern(C++, (StdNamespace)) {
         else
             private alias TPtr = T*;
 
-        ~this() @safe {}
+        mixin CPPBindingMixin!(shared_ptr!T);
+
         TPtr ptr;
         void* _control_block;
         alias ptr this;
     }
 
     /// Simple binding to `std::unique_ptr`
-    extern(C++, class) struct unique_ptr (T)
+    extern(C++, class) struct unique_ptr (T, Deleter = default_delete!T)
     {
         static if (is(T == class) || is(T == interface))
             private alias TPtr = T;
         else
             private alias TPtr = T*;
+
+        mixin CPPBindingMixin!(unique_ptr!T, false);
 
         TPtr ptr;
         alias ptr this;
@@ -76,49 +149,43 @@ private nothrow @nogc extern(C++) void cpp_unordered_map_assign (K, V)(
 private pure nothrow @nogc @safe extern(C++) size_t cpp_unordered_map_length (K, V)(
     const(void)* map);
 
-// @bug with substitution
-// https://issues.dlang.org/show_bug.cgi?id=20679
-//private pure nothrow @nogc @safe extern(C++) unordered_map!(K, V)* cpp_unordered_map_create (K, V)();
-
-/// Create a new unordered map with the given Key/T types, and return a pointer to it
-private pure nothrow @nogc @safe extern(C++) void* cpp_unordered_map_create (K, V)();
-
 /// Rudimentary bindings for std::unordered_map
 extern(C++, (StdNamespace))
 public struct unordered_map (Key, T, Hash = hash!Key, KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
 {
-    private void* ptr;
+    version (CppRuntime_Clang)
+        private ulong[40 / ulong.sizeof] _data;
+    else
+        private ulong[56 / ulong.sizeof] _data;
 
-    extern(D) void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
+    mixin CPPBindingMixin!(unordered_map!(Key, T));
+
+    void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
     {
-        cpp_unordered_map_assign!(Key, T)(this.ptr, key, value);
+        cpp_unordered_map_assign!(Key, T)(&this, key, value);
     }
 
-    extern(D) size_t length () pure nothrow @safe @nogc
+    size_t length () pure nothrow @safe @nogc
     {
-        return cpp_unordered_map_length!(Key, T)(this.ptr);
-    }
-
-    /// create a new unordered map allocated on the C++ side.
-    /// Note that we currently only use this in unittests
-    extern(D) static unordered_map create () pure @trusted @nogc nothrow
-    {
-        return unordered_map(cpp_unordered_map_create!(Key, T)());
+        return cpp_unordered_map_length!(Key, T)(&this);
     }
 }
 
 unittest
 {
-    auto map = unordered_map!(int, int).create();
+    auto map = unordered_map!(int, int)(CppCtor.Use);
     assert(map.length() == 0);
     map[1] = 1;
     assert(map.length() == 1);
+    auto copy = map;
+    assert(copy.length() == map.length());
+
+    auto copy2 = unordered_map!(int, int)(CppCtor.Use);
+    copy2 = copy;
+    assert(copy2.length() == map.length());
 }
 
 extern(C++, `std`) {
-    /// Binding: Needs to be instantiated on C++ side
-    shared_ptr!T make_shared(T, Args...)(Args args);
-
     class runtime_error : exception { }
     class logic_error : exception { }
 
@@ -128,11 +195,21 @@ extern(C++, `std`) {
         this() nothrow {}
         const(char)* what() const nothrow;
     }
+}
+
+extern(C++, (StdNamespace)) {
+    /// Binding: Needs to be instantiated on C++ side
+    shared_ptr!T make_shared(T, Args...)(Args args);
 
     /// Fake bindings for std::set
-    public extern(C++, class) struct set (Key)
+    public extern(C++, class) struct set (Key, Compare = less!Key, Allocator = allocator!Key)
     {
-        void*[3] ptr;
+        version (CppRuntime_Clang)
+            private ulong[24 / ulong.sizeof] _data;
+        else
+            private ulong[48 / ulong.sizeof] _data;
+
+        mixin CPPBindingMixin!(set!Key);
 
         /// Foreach support
         extern(D) public int opApply (scope int delegate(ref const(Key)) dg) const
@@ -152,12 +229,17 @@ extern(C++, `std`) {
         {
             return cpp_set_empty!Key(cast(const void*)&this);
         }
-    }
+}
 
     /// Fake bindings for std::map
-    public extern(C++, class) struct map (Key, Value)
+    public extern(C++, class) struct map (Key, Value, Compare = less!Key, Allocator = allocator!(pair!(const Key, Value)))
     {
-        void*[3] ptr;
+        version (CppRuntime_Clang)
+            private ulong[24 / ulong.sizeof] _data;
+        else
+            private ulong[48 / ulong.sizeof] _data;
+
+        mixin CPPBindingMixin!(map!(Key, Value));
     }
 
     // only used at compile-time on the C++ side, here for mangling
@@ -209,25 +291,6 @@ version (Posix)
         assert(values == [1, 2, 3, 4, 5]);
     }
 }
-
-/// Can't import `core.stdcpp.allocator` because it transitively imports
-/// `core.stdcpp.exception`
-/// In this case we just need to get the name right for `vector`
-
-extern(C++, (StdNamespace)) extern(C++, class) struct allocator (T) {}
-
-// simplistic std::pair bindings
-public extern(C++, (StdNamespace)) struct pair (T1, T2)
-{
-    T1 first;
-    T2 second;
-}
-
-// fake std::hash (for mangling)
-public extern(C++, (StdNamespace))  struct hash (T) {}
-
-// fake std::equal_to (for mangling)
-public extern(C++, (StdNamespace))  struct equal_to (T = void) {}
 
 /*******************************************************************************
 
@@ -468,3 +531,11 @@ unittest
 
 /// Invoke an std::function pointer (note: must be void* due to mangling issues)
 extern(C++) void callCPPDelegate (void* cb);
+
+unittest
+{
+    assert(unordered_map!(int,int).sizeof == getCPPSizeof!(unordered_map!(int,int))());
+    assert(shared_ptr!int.sizeof == getCPPSizeof!(shared_ptr!int)());
+    assert(set!int.sizeof == getCPPSizeof!(set!int)());
+    assert(map!(int,int).sizeof == getCPPSizeof!(map!(int,int))());
+}

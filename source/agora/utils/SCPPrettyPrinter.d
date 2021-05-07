@@ -107,7 +107,7 @@ private struct QuorumFmt
     {
         try
         {
-            SCPQuorumSetPtr qset;
+            SCPQuorumSetPtr qset = SCPQuorumSetPtr(CppCtor.Use);
             if (this.getQSet !is null)
                 qset = this.getQSet(this.hash);
 

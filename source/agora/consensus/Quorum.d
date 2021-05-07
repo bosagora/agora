@@ -611,7 +611,7 @@ private void verifyQuorumsIntersect (QuorumConfig[PublicKey] quorums)
 {
     import scpd.quorum.QuorumIntersectionChecker;
 
-    auto qm = QuorumTracker.QuorumMap.create();
+    auto qm = QuorumTracker.QuorumMap(CppCtor.Use);
     foreach (key, quorum; quorums)
     {
         auto scp = toSCPQuorumSet(quorum);

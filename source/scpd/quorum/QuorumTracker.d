@@ -71,5 +71,8 @@ public:
     ref const(QuorumMap) getQuorum () const;
 }
 
-// should be 48, see #753
-static assert(QuorumTracker.sizeof == 16);
+extern (D):
+unittest
+{
+    assert(QuorumTracker.sizeof == getCPPSizeof!QuorumTracker());
+}
