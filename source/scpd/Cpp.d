@@ -34,6 +34,12 @@ import std.meta;
 
 import vibe.data.json;
 
+extern(C++) private void defaultCtorCPPObject(T) (T* ptr);
+extern(C++) private void dtorCPPObject(T) (T* ptr);
+extern(C++) private void opAssignCPPObject(T) (T* lhs, T* rhs);
+extern(C++) private void copyCtorCPPObject(T) (T* ptr, T* rhs);
+extern(C++) int getCPPSizeof(T) () @nogc nothrow;
+
 extern(C++, (StdNamespace)) {
     /// Simple binding to `std::shared_ptr`
     extern(C++, class) struct shared_ptr (T)
@@ -76,43 +82,61 @@ private nothrow @nogc extern(C++) void cpp_unordered_map_assign (K, V)(
 private pure nothrow @nogc @safe extern(C++) size_t cpp_unordered_map_length (K, V)(
     const(void)* map);
 
-// @bug with substitution
-// https://issues.dlang.org/show_bug.cgi?id=20679
-//private pure nothrow @nogc @safe extern(C++) unordered_map!(K, V)* cpp_unordered_map_create (K, V)();
-
-/// Create a new unordered map with the given Key/T types, and return a pointer to it
-private pure nothrow @nogc @safe extern(C++) void* cpp_unordered_map_create (K, V)();
-
 /// Rudimentary bindings for std::unordered_map
 extern(C++, (StdNamespace))
 public struct unordered_map (Key, T, Hash = hash!Key, KeyEqual = equal_to!Key, Allocator = allocator!(pair!(const Key, T)))
 {
-    private void* ptr;
+    version (CppRuntime_Clang)
+        private ulong[40 / ulong.sizeof] _data;
+    else
+        private ulong[56 / ulong.sizeof] _data;
 
-    extern(D) void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
+    @disable this ();
+
+    extern(D):
+    this (char dummy)
     {
-        cpp_unordered_map_assign!(Key, T)(this.ptr, key, value);
+        defaultCtorCPPObject!(typeof(this))(&this);
     }
 
-    extern(D) size_t length () pure nothrow @safe @nogc
+    ~this ()
     {
-        return cpp_unordered_map_length!(Key, T)(this.ptr);
+        dtorCPPObject!(typeof(this))(&this);
     }
 
-    /// create a new unordered map allocated on the C++ side.
-    /// Note that we currently only use this in unittests
-    extern(D) static unordered_map create () pure @trusted @nogc nothrow
+    this (ref return scope typeof(this) rhs)
     {
-        return unordered_map(cpp_unordered_map_create!(Key, T)());
+        copyCtorCPPObject!(typeof(this))(&this, &rhs);
+    }
+
+    void opAssign()(auto ref typeof(this) rhs)
+    {
+        opAssignCPPObject!(typeof(this))(&this, &rhs);
+    }
+
+    void opIndexAssign (in T value, in Key key) @trusted @nogc nothrow
+    {
+        cpp_unordered_map_assign!(Key, T)(&this, key, value);
+    }
+
+    size_t length () pure nothrow @safe @nogc
+    {
+        return cpp_unordered_map_length!(Key, T)(&this);
     }
 }
 
 unittest
 {
-    auto map = unordered_map!(int, int).create();
+    auto map = unordered_map!(int, int)(0);
     assert(map.length() == 0);
     map[1] = 1;
     assert(map.length() == 1);
+    auto copy = map;
+    assert(copy.length() == map.length());
+
+    auto copy2 = unordered_map!(int, int)(0);
+    copy2 = copy;
+    assert(copy2.length() == map.length());
 }
 
 extern(C++, `std`) {
@@ -468,3 +492,8 @@ unittest
 
 /// Invoke an std::function pointer (note: must be void* due to mangling issues)
 extern(C++) void callCPPDelegate (void* cb);
+
+unittest
+{
+    assert(unordered_map!(int,int).sizeof == getCPPSizeof!(unordered_map!(int,int))());
+}

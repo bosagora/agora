@@ -4,7 +4,9 @@
 #include "DUtils.h"
 #include "xdrpp/marshal.h"
 #include "xdr/Stellar-SCP.h"
+#include "quorum/QuorumTracker.h"
 #include <functional>
+#include <unordered_map>
 
 using namespace xdr;
 using namespace stellar;
@@ -84,13 +86,6 @@ CPPUNORDEREDMAPASSIGNINST(int, int)
 CPPUNORDEREDMAPLENGTHINST(NodeID, std::shared_ptr<SCPQuorumSet>)
 CPPUNORDEREDMAPLENGTHINST(int, int)
 
-// @bug with substitution
-// https://issues.dlang.org/show_bug.cgi?id=20679
-// #define CPPUNORDEREDMAPCREATEINST(K, V) template std::unordered_map<K, V>* cpp_unordered_map_create<K, V>();
-#define CPPUNORDEREDMAPCREATEINST(K, V) template void* cpp_unordered_map_create<K, V>();
-CPPUNORDEREDMAPCREATEINST(NodeID, std::shared_ptr<SCPQuorumSet>)
-CPPUNORDEREDMAPCREATEINST(int, int)
-
 void callCPPDelegate (void* cb)
 {
     auto callback = (std::function<void()>*)cb;
@@ -103,3 +98,21 @@ std::shared_ptr<SCPQuorumSet> makeSharedSCPQuorumSet (
 {
     return std::make_shared<SCPQuorumSet>(quorum);
 }
+
+#define CPPDEFAULTCTORINST(T) template void defaultCtorCPPObject<T>(T*);
+#define CPPDTORINST(T) template void dtorCPPObject<T>(T*);
+#define CPPSIZEOFINST(T) template int getCPPSizeof<T>();
+#define CPPASSIGNINST(T) template void opAssignCPPObject<T> (T* lhs, T* rhs);
+#define CPPCOPYCTORINST(T) template void copyCtorCPPObject<T> (T* ptr, T* rhs);
+CPPSIZEOFINST(QuorumTracker);
+
+#define CPPOBJECTINST(T) CPPDEFAULTCTORINST(T) \
+                         CPPDTORINST(T)        \
+                         CPPSIZEOFINST(T)      \
+                         CPPASSIGNINST(T)      \
+                         CPPCOPYCTORINST(T)
+
+#define CPPUNORDEREDMAPINST(K, V, id)   typedef std::unordered_map<K, V> ump_type_##id;  \
+                                        CPPOBJECTINST(ump_type_##id);
+CPPUNORDEREDMAPINST(NodeID, std::shared_ptr<SCPQuorumSet>, 0)
+CPPUNORDEREDMAPINST(int, int, 1)

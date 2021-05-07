@@ -760,7 +760,6 @@ namespace stellar
 std::shared_ptr<QuorumIntersectionChecker>
 QuorumIntersectionChecker::create(QuorumTracker::QuorumMap const& qmap)
 {
-    // note: cast due to current unordered_set binding in Cpp.d
-    return std::make_shared<QuorumIntersectionCheckerImpl>(**(QuorumTracker::QuorumMap**)&qmap);
+    return std::make_shared<QuorumIntersectionCheckerImpl>(qmap);
 }
 }
