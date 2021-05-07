@@ -1263,7 +1263,7 @@ public class TestNetworkManager : NetworkManager
     ***************************************************************************/
 
     protected override TestBanManager getBanManager (in BanManager.Config conf,
-        Clock clock, cstring data_dir)
+        Clock clock, string data_dir)
     {
         return new TestBanManager(conf, clock, data_dir);
     }
