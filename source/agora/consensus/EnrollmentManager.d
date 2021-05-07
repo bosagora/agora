@@ -247,27 +247,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Params:
-            height = the height at which to look up the mapping for
-            index = the index for which to find the associated Key
-
-        Returns:
-            the key belonging to this index,
-            or `PublicKey.init` if none was found
-
-    ***************************************************************************/
-
-    public PublicKey getValidatorAtIndex (in Height height, in ulong index)
-        const @safe nothrow
-    {
-        if (height !in this.keymap.index_to_key || index !in this.keymap.index_to_key[height])
-            return PublicKey.init;
-        else
-            return this.keymap.index_to_key[height][index];
-    }
-
-    /***************************************************************************
-
         Add a enrollment data to the enrollment pool
 
         Params:

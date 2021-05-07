@@ -833,22 +833,28 @@ public class Ledger
         Point sum_K;
         Point sum_R;
         const Scalar challenge = hashFull(block);
-        const enrolled_validators = this.enroll_man.getCountOfValidators(block.header.height);
+        PublicKey[] validators;
+        try
+            validators = this.enroll_man.getActiveValidatorPublicKeys(block.header.height);
+        catch (Exception exc)
+        {
+            this.log.error("Exception thrown by getActiveValidatorPublicKey while externalizing valid block: {}", exc);
+            return "Internal error: Could not list active validators at current height";
+        }
 
         // Check that more than half have signed
-        auto signed = iota(0, enrolled_validators).filter!(i => block.header.validators[i]).count();
-        if (signed <= enrolled_validators / 2)
+        auto signed = iota(0, validators.length).filter!(i => block.header.validators[i]).count();
+        if (signed <= validators.length / 2)
         {
             log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",
-                      block.header.height, signed, enrolled_validators,
+                      block.header.height, signed, validators.length,
                       block.header.validators);
             return "The majority of validators hasn't signed this block";
         }
 
-        log.trace("Checking signature, participants: {}/{}", signed, enrolled_validators);
-        foreach (idx; 0 .. enrolled_validators)
+        log.trace("Checking signature, participants: {}/{}", signed, validators.length);
+        foreach (idx, K; validators)
         {
-            const K = this.enroll_man.getValidatorAtIndex(block.header.height, idx);
             assert(K != PublicKey.init, "Could not find the public key associated with a validator");
 
             if (!block.header.validators[idx])
@@ -1217,8 +1223,7 @@ public class ValidatingLedger : Ledger
             data.missing_validators);
 
         auto next_block = Height(this.last_block.header.height + 1);
-        auto key_pairs = iota(0, this.enroll_man.getCountOfValidators(next_block))
-            .map!(idx => PublicKey(this.enroll_man.getValidatorAtIndex(next_block, idx)[]))
+        auto key_pairs = this.enroll_man.getActiveValidatorPublicKeys(next_block)
             .map!(K => WK.Keys[K])
             .array();
 
