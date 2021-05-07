@@ -1765,9 +1765,6 @@ public class TestValidatorNode : Validator, TestAPI
     /// for TestNominator
     protected ulong txs_to_nominate;
 
-    /// If the enrollments will be renewed continuouly or not
-    private bool recurring_enrollment = false;
-
     ///
     mixin TestNodeMixin!();
 
@@ -1787,27 +1784,11 @@ public class TestValidatorNode : Validator, TestAPI
     /// ditto
     public override Enrollment setRecurringEnrollment (bool doIt)
     {
-        this.recurring_enrollment = doIt;
-        if (this.recurring_enrollment)
+        this.config.validator.recurring_enrollment = doIt;
+        if (this.config.validator.recurring_enrollment)
             return this.checkAndEnroll(this.ledger.getBlockHeight());
 
         return Enrollment.init;
-    }
-
-    /// ditto
-    protected override void onAcceptedBlock (in Block block,
-        bool validators_changed) @safe
-    {
-        auto cur_offset = this.clock.networkTime() - this.params.GenesisTimestamp;
-        if (!this.config.validator.recurring_enrollment &&
-            this.recurring_enrollment &&
-            this.config.validator.recurring_enrollment &&
-                block.header.time_offset > cur_offset - 3 * this.params.BlockInterval.total!"seconds")
-        {
-            this.checkAndEnroll(this.ledger.getBlockHeight());
-        }
-
-        super.onAcceptedBlock(block, validators_changed);
     }
 
     /// ditto
