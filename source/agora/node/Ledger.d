@@ -557,7 +557,11 @@ public class Ledger
                 assert(0);
             }
         }
-        this.enroll_man.updateValidatorIndexMaps(block.header.height + 1);
+
+        const Height next = block.header.height + 1;
+        auto keys = this.enroll_man.getActiveValidatorPublicKeys(next);
+        this.log.trace("Update validator lookup maps at height {}: {}", next, keys);
+        this.enroll_man.keymap.update(next, keys);
         this.updateSlashedValidatorSet(block);
     }
 

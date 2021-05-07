@@ -134,10 +134,28 @@ public class EnrollmentManager
 
         /// used for validating the signature
         private PublicKey[ulong][Height] index_to_key;
+
+        /***********************************************************************
+
+            Update the validator key index maps
+
+            Params:
+                height = the block height the validators will next sign
+
+        ***********************************************************************/
+
+        public void update (in Height height, in PublicKey[] keys) @safe nothrow
+        {
+            foreach (idx, key; keys)
+            {
+                this.key_to_index[height][key] = idx;
+                this.index_to_key[height][idx] = key;
+            }
+        }
     }
 
     /// Ditto
-    private ValidatorKeyMap keymap;
+    public ValidatorKeyMap keymap;
 
     /***************************************************************************
 
@@ -179,28 +197,6 @@ public class EnrollmentManager
     {
         this(new ManagedDatabase(":memory:"), new ManagedDatabase(":memory:"),
              key_pair, params);
-    }
-
-
-    /***************************************************************************
-
-        Update the validator key index maps
-
-        Params:
-            height = the block height the validators will next sign
-
-    ***************************************************************************/
-
-    public void updateValidatorIndexMaps (in Height height) @safe
-    {
-        auto keys = this.getActiveValidatorPublicKeys(height);
-
-        log.trace("Update validator lookup maps at height {}: {}", height, keys);
-        foreach (idx, key; keys)
-        {
-            this.keymap.key_to_index[height][key] = idx;
-            this.keymap.index_to_key[height][idx] = key;
-        }
     }
 
     /***************************************************************************
