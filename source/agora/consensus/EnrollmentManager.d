@@ -114,18 +114,30 @@ public class EnrollmentManager
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
 
-    /// In order to support collecting signatures *after* a block is
-    /// externalized we must know the key index for the block header bitmask
-    /// for the active validator set *for that block height*.
-    /// Once a block is externalized the validator set might change
-    /// - so we store for each block height (can be optimised later) the maps
-    ///   for key_to_index and index_to_key
+    /***************************************************************************
 
-    /// used for setting the signature bitmask during signature collection
-    private ulong[PublicKey][Height] key_to_index;
+        A two-way map between public key and indexes at a given height
 
-    /// used for validating the signature
-    private PublicKey[ulong][Height] index_to_key;
+        In order to support collecting signatures *after* a block is
+        externalized we must know the key index for the block header bitmask
+        for the active validator set *for that block height*.
+        Once a block is externalized the validator set might change
+        - so we store for each block height (can be optimised later) the maps
+          for key_to_index and index_to_key
+
+    ***************************************************************************/
+
+    private struct ValidatorKeyMap
+    {
+        /// used for setting the signature bitmask during signature collection
+        private ulong[PublicKey][Height] key_to_index;
+
+        /// used for validating the signature
+        private PublicKey[ulong][Height] index_to_key;
+    }
+
+    /// Ditto
+    private ValidatorKeyMap keymap;
 
     /***************************************************************************
 
@@ -186,8 +198,8 @@ public class EnrollmentManager
         log.trace("Update validator lookup maps at height {}: {}", height, keys);
         foreach (idx, key; keys)
         {
-            this.key_to_index[height][key] = idx;
-            this.index_to_key[height][idx] = key;
+            this.keymap.key_to_index[height][key] = idx;
+            this.keymap.index_to_key[height][idx] = key;
         }
     }
 
@@ -203,8 +215,8 @@ public class EnrollmentManager
 
     public size_t getCountOfValidators (in Height height) const nothrow @safe
     {
-        return height !in this.key_to_index ? 0
-            : this.index_to_key[height].length;
+        return height !in this.keymap.key_to_index ? 0
+            : this.keymap.index_to_key[height].length;
     }
 
     /***************************************************************************
@@ -220,17 +232,17 @@ public class EnrollmentManager
 
     public ulong getIndexOfValidator (in Height height, in PublicKey K) nothrow @safe
     {
-        if (height !in this.key_to_index)
+        if (height !in this.keymap.key_to_index)
         {
             log.warn("No keys at this height {}", height);
             return ulong.max;
         }
-        if (K !in this.key_to_index[height])
+        if (K !in this.keymap.key_to_index[height])
         {
             log.warn("Public key {} not found in keys at this height {}", K, height);
             return ulong.max;
         }
-        return this.key_to_index[height][K];
+        return this.keymap.key_to_index[height][K];
     }
 
     /***************************************************************************
@@ -248,10 +260,10 @@ public class EnrollmentManager
     public PublicKey getValidatorAtIndex (in Height height, in ulong index)
         const @safe nothrow
     {
-        if (height !in this.index_to_key || index !in this.index_to_key[height])
+        if (height !in this.keymap.index_to_key || index !in this.keymap.index_to_key[height])
             return PublicKey.init;
         else
-            return this.index_to_key[height][index];
+            return this.keymap.index_to_key[height][index];
     }
 
     /***************************************************************************
