@@ -25,7 +25,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install g++-9 libsodium-dev libsqlite3-dev
+        sudo apt-get install libsodium-dev libsqlite3-dev clang
 
     - name: Checkout faucet
       uses: actions/checkout@v2

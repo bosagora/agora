@@ -65,7 +65,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install g++-9 libsodium-dev libsqlite3-dev
+        sudo apt-get install libsodium-dev libsqlite3-dev clang
 
     - name: '[Windows] Install dependencies & setup environment'
       if: runner.os == 'Windows'
