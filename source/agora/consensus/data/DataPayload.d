@@ -45,56 +45,6 @@ public struct DataPayload
         this.data = bin;
     }
 
-    /// Print `DataPayload`
-    public void toString (scope void delegate(const(char)[]) @safe sink) const @safe
-    {
-        if (this.data.length == 0)
-            return;
-
-        auto toHexDigit = (ubyte value) @safe nothrow @nogc
-        {
-            return cast(char)(value + ((value < 10) ? 0x30 : 0x57));
-        };
-
-        sink("0x");
-        char[2] hex;
-        this.data.each!(
-            (num)
-            {
-                hex[0] = toHexDigit(num >> 4);
-                hex[1] = toHexDigit(num & 0xF);
-                sink(hex);
-            }
-        );
-    }
-
-    /// Support for Vibe.d serialization
-    public string toString () const @safe
-    {
-        if (this.data.length == 0)
-            return "";
-
-        size_t idx;
-        char[] buffer;
-        buffer.length = this.data.length * 2 + 2;
-        scope sink = (const(char)[] v) {
-            buffer[idx .. idx + v.length] = v;
-            idx += v.length;
-        };
-        this.toString(sink);
-        return buffer.idup;
-    }
-
-    /// Support for Vibe.d deserialization
-    public static DataPayload fromString (scope const(char)[] str) @safe
-    {
-        if (str.length >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
-            str = str[2 .. $];
-
-        ubyte [] data = str.idup.chunks(2).map!(twoDigits => twoDigits.parse!ubyte(16)).array();
-        return DataPayload(data);
-    }
-
     /***************************************************************************
 
         Implements hashing support
@@ -142,43 +92,6 @@ public struct DataPayload
     {
         return DataPayload(deserializeFull!(ubyte[])(dg, opts));
     }
-}
-
-// Creation test - from hex string
-unittest
-{
-    DataPayload data_payload1 = DataPayload.fromString("");
-    assert(data_payload1.toString() == "");
-    assert(data_payload1.data.length == 0);
-
-    DataPayload data_payload2 = DataPayload.fromString("abcdef");
-    assert(data_payload2.toString() == "0xabcdef");
-    assert(data_payload2.data.length == 3);
-
-    DataPayload data_payload3 = DataPayload.fromString("0xABCDEF");
-    assert(data_payload3.toString() == "0xabcdef");
-    assert(data_payload3.data.length == 3);
-}
-
-// Creation test - from ubyte array
-unittest
-{
-    DataPayload data_payload = DataPayload(cast(ubyte[])[1, 2, 3, 4]);
-    assert(data_payload.toString() == "0x01020304");
-    assert(data_payload.data.length == 4);
-}
-
-// JSON serialization test
-unittest
-{
-    import vibe.data.json;
-
-    DataPayload old_data = DataPayload.fromString("0x1234567890ABCDEF");
-    auto json_str = old_data.serializeToJsonString();
-    assert(json_str == "\"0x1234567890abcdef\"");
-
-    DataPayload new_data = deserializeJson!DataPayload(json_str);
-    assert(new_data.data == old_data.data);
 }
 
 // serialization test
