@@ -284,19 +284,22 @@ unittest
 
 public struct PreImageCycle
 {
+    @safe nothrow:
+
     /// Make sure we get initializedby disabling the default ctor
     @disable public this ();
 
-    /// Construct an instance with the provided cycle length
-    public this (in Scalar secret, uint cycle_length) @safe nothrow
+    public static immutable ulong NumberOfCycles = 100;
+
+    /// Construct an instance with the provided cycle length and number of cycles
+    public this (in Scalar secret, in uint cycle_length, in ulong cycles = PreImageCycle.NumberOfCycles,
+        Height initial_seek = Height(0))
     {
         this.secret = secret;
-        this.impl = PreImageCycleImpl(
-            /* nonce: */ 0,
-            /* index: */ 0,
-            /* seeds: */ PreImageCache(PreImageCycleImpl.NumberOfCycles, cycle_length),
-            /* preimages: */ PreImageCache(cycle_length, 1),
-        );
+        this.cycles = cycles;
+        this.seeds = PreImageCache(cycles, cycle_length);
+        this.preimages = PreImageCache(cycle_length, 1);
+        this.seek(initial_seek);
     }
 
     /***************************************************************************
@@ -315,39 +318,18 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public Hash opIndex (in Height height) @safe nothrow @nogc
+    public Hash opIndex (in Height height) @nogc
     {
-        this.impl.seek(this.secret, height);
-        auto offset = height % this.impl.preimages.length();
-        return this.impl.preimages[$ - offset - 1];
+        this.seek(height);
+        auto offset = height % this.preimages.length();
+        return this.preimages[$ - offset - 1];
     }
 
     ///
     private Scalar secret;
 
-    ///
-    public alias impl this;
-
-    ///
-    public PreImageCycleImpl impl;
-}
-
-/// Ditto
-public struct PreImageCycleImpl
-{
-    @safe nothrow:
-
-    /// Make sure we get initialized by disabling the default ctor
-    @disable public this ();
-
-    /// Re-introduce the all-parameter default ctor
-    public this (typeof(PreImageCycleImpl.tupleof) args) pure @nogc
-    {
-        this.tupleof = args;
-    }
-
     /// The number of cycles for a bulk of pre-images
-    public static immutable uint NumberOfCycles = 100;
+    public ulong cycles;
 
     /***************************************************************************
 
@@ -396,69 +378,6 @@ public struct PreImageCycleImpl
 
     /***************************************************************************
 
-        Populate the caches of pre-images
-
-        This will first populate the caches (seeds and preimages) as necessary,
-        then increase the `index` by one, or reset it to 0 and increase `nonce`
-        if necessary.
-
-        Note that the increment is done after the caches are populated,
-        so `populate` needs to be called once this node has confirmed it
-        is part of consensus. If the caches are only needed without the
-        increment, the `consume` parameter must be set to `false`.
-
-        Params:
-          secret = The secret key of the node, used as part of the hash
-                   to generate the cycle seeds
-          consume = If true, calculate the cycle index. Otherwise, just
-                   get the commitment which is the first pre-image
-
-        Returns:
-          The hash of the current enrollment round
-
-    ***************************************************************************/
-
-    public Hash populate (in Scalar secret, bool consume)
-    {
-        // Populate the nonce cache if necessary
-        if (this.index == 0)
-        {
-            const cycle_seed = hashMulti(
-                secret, "consensus.preimages", this.nonce);
-            this.seeds.reset(cycle_seed);
-        }
-
-        if (consume)
-        {
-            // Populate the current enrollment round cache
-            // The index into `seeds` is the absolute index of the cycle,
-            // not the number of round, hence why we use `byStrides`
-            // The alternative would be:
-            // [$ - (this.index + 1) * this.preimages.length]
-            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
-
-            // Increment index if there are rounds left in this cycle
-            this.index += 1;
-            if (this.index >= NumberOfCycles)
-            {
-                this.index = 0;
-                this.nonce += 1;
-            }
-            return this.preimages[$ - 1];
-        }
-        else
-        {
-            // If this is used for getting initial pre-image for enrollment
-            // it just creates initial pre-image of the cycle seed.
-            auto next_images = PreImageCache(
-                this.preimages.data.length, this.preimages.interval);
-            next_images.reset(this.seeds.byStride[$ - 1 - this.index]);
-            return next_images[$ - 1];
-        }
-    }
-
-    /***************************************************************************
-
         Seek to the `PreImage`s at height `height`
 
         This will calculate the `index` and `nonce` according to the given
@@ -474,18 +393,18 @@ public struct PreImageCycleImpl
 
     ***************************************************************************/
 
-    private void seek (in Scalar secret, in Height height) @nogc
+    private void seek (in Height height) @nogc
     {
         uint seek_index = cast (uint) (height / this.preimages.length());
-        uint seek_nonce = seek_index / NumberOfCycles;
-        seek_index %= NumberOfCycles;
+        uint seek_nonce = seek_index / this.cycles;
+        seek_index %= this.cycles;
 
         if (this.seeds[0] == Hash.init || seek_nonce != this.nonce)
         {
             this.nonce = seek_nonce;
             this.index = seek_index;
             const cycle_seed = hashMulti(
-                secret, "consensus.preimages", this.nonce);
+                this.secret, "consensus.preimages", this.nonce);
             this.seeds.reset(cycle_seed);
             this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
         }
@@ -497,33 +416,46 @@ public struct PreImageCycleImpl
     }
 }
 
-// Test `seek` and `populate` equivalence
+version (unittest)
+{
+    // Test all heights of multiple cycles with multiple batch nonces
+    private void testPreImageCycle (uint cycle_length, ulong number_of_cycles)
+    {
+        import std.algorithm;
+        import std.format;
+        import std.range;
+        import std.stdio;
+
+        auto secret = Scalar.random();
+        auto cycle = PreImageCycle(secret, cycle_length, number_of_cycles);
+        ulong total_images = cycle_length * number_of_cycles;
+        void testBatch (uint nonce)
+        {
+            scope(failure) writefln("\nBatch failed with nonce %s and cycle %s", nonce, cycle);
+            Hash[] batch;
+            iota(total_images).each!( i =>
+                batch ~= i == 0 ?
+                    hashMulti(secret, "consensus.preimages", nonce)
+                    : hashFull(batch[i - 1]));
+            batch.enumerate.each!( (idx, image) =>
+                assert(cycle[Height((total_images * nonce) + total_images - idx - 1)] == image));
+        }
+        iota(3).each!( i => testBatch(i));
+    }
+}
+
+///
 unittest
 {
-    const ValidatorCycle = 2;
-    auto secret = Scalar.random();
-    auto pop_cycle = PreImageCycleImpl(
-            /* nonce: */ 0,
-            /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                ValidatorCycle),
-            /* preimages: */ PreImageCache(ValidatorCycle, 1)
-        );
-    auto seek_cycle = PreImageCycleImpl(
-            /* nonce: */ 0,
-            /* index:  */ 0,
-            /* seeds:  */ PreImageCache(PreImageCycle.NumberOfCycles,
-                ValidatorCycle),
-            /* preimages: */ PreImageCache(ValidatorCycle, 1)
-        );
+    const cycle_length = 2;
+    const number_of_cycles = 10;
+    testPreImageCycle(cycle_length, number_of_cycles);
+}
 
-    foreach (idx; 0..PreImageCycle.NumberOfCycles + 2)
-    {
-        pop_cycle.populate(secret, true);
-        seek_cycle.seek(secret, Height(idx * ValidatorCycle));
-        assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
-        // A offset within the ValidatorCycle should not change cached PreImages
-        seek_cycle.seek(secret, Height(idx * ValidatorCycle + 1));
-        assert(pop_cycle.preimages[0] == seek_cycle.preimages[0]);
-    }
+///
+unittest
+{
+    const cycle_length = 3;
+    const number_of_cycles = 12;
+    testPreImageCycle(cycle_length, number_of_cycles);
 }

@@ -1910,7 +1910,6 @@ unittest
     foreach (idx, kp; pairs)
     {
         auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        cycle.populate(kp.secret, false);
         const seed = cycle[Height(params.ValidatorCycle)];
         cycles ~= cycle;
         auto enroll = EnrollmentManager.makeEnrollment(
