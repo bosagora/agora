@@ -1122,69 +1122,6 @@ unittest
     test!"=="(keys[0], ordered_enrollments[2].utxo_key);
 }
 
-/// Test `PreImageCycle` consistency between seeds and preimages
-unittest
-{
-    auto params = new immutable(ConsensusParams)();
-
-    auto secret = Scalar.random();
-
-    // Note: This was copied from `EnrollmentManager` constructor and should
-    // be kept in sync with it
-    auto cycle = PreImageCycle(secret, params.ValidatorCycle);
-
-    Scalar fake_secret; // Used whenever `secret` *shouldn't* be used
-    foreach (uint cycleGroupCount; 0 .. 10)
-    {
-        foreach (outerIndex; 1 .. PreImageCycle.NumberOfCycles + 1)
-        {
-            // Sanity check #1
-            assert(cycleGroupCount == cycle.nonce);
-            assert(outerIndex - 1  == cycle.index);
-            // Only provide `secret` on the first iteration
-            const commitment =
-                cycle.populate(outerIndex == 1 ? secret : fake_secret, true);
-            const lastInCycle = outerIndex == PreImageCycle.NumberOfCycles;
-            // Sanity check #2
-            assert(cycleGroupCount + lastInCycle == cycle.nonce);
-            if (lastInCycle)
-                assert(0                         == cycle.index);
-            else
-                assert(outerIndex == cycle.index);
-            // The commitment (last+1 in the cache, first to be revealed)
-            // is the final pre-image revealed by the previous enrollment
-            // (preimages[0])
-            immutable SeedIndex = cycle.seeds.length
-                - outerIndex * params.ValidatorCycle;
-            assert(cycle.seeds.byStride[$ - outerIndex] == cycle.preimages[0]);
-        }
-    }
-
-    // This check is quite expensive: 45s when it was written,
-    // which doubled the total runtime of a `dub test` cycle.
-    // It is versioned out now, but can be enabled for paranoid testing
-    version (none)
-    {
-        // Reset the cycle and test that *all* values in `seeds` are represented
-        // in `preimages`
-        cycle.nonce = 0;
-        cycle.index = 0;
-        foreach (size_t cycleCount; 0 .. 5)
-        {
-            size_t seedIndex = cycle.seeds.length - 1;
-            while (true)
-            {
-                const Index = seedIndex % params.ValidatorCycle;
-                if (Index == (params.ValidatorCycle - 1))
-                    cycle.populate(seedIndex == cycle.seeds.length ? secret :fake_secret, true);
-                assert(cycle.seeds[seedIndex] == cycle.preimages[Index]);
-                if (seedIndex == 0) break;
-                seedIndex--;
-            }
-        }
-    }
-}
-
 /// tests for `ValidatorSet.countActive
 unittest
 {
