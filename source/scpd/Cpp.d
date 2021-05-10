@@ -53,7 +53,21 @@ extern(C++, (StdNamespace)) {
         else
             private alias TPtr = T*;
 
-        ~this() @safe {}
+        this (ref typeof(this) rhs) @trusted nothrow
+        {
+            copyCtorCPPObject!(typeof(this))(&this, &rhs);
+        }
+
+        ~this () @trusted nothrow
+        {
+            dtorCPPObject!(typeof(this))(&this);
+        }
+
+        void opAssign()(auto ref typeof(this) rhs) @trusted nothrow
+        {
+            opAssignCPPObject!(typeof(this))(&this, &rhs);
+        }
+
         TPtr ptr;
         void* _control_block;
         alias ptr this;
@@ -500,4 +514,5 @@ extern(C++) void callCPPDelegate (void* cb);
 unittest
 {
     assert(unordered_map!(int,int).sizeof == getCPPSizeof!(unordered_map!(int,int))());
+    assert(shared_ptr!int.sizeof == getCPPSizeof!(shared_ptr!int)());
 }

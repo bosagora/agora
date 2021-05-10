@@ -5,6 +5,7 @@
 #include "xdrpp/marshal.h"
 #include "xdr/Stellar-SCP.h"
 #include "quorum/QuorumTracker.h"
+#include "quorum/QuorumIntersectionChecker.h"
 #include <functional>
 #include <unordered_map>
 
@@ -111,6 +112,9 @@ CPPSIZEOFINST(QuorumTracker);
                          CPPSIZEOFINST(T)      \
                          CPPASSIGNINST(T)      \
                          CPPCOPYCTORINST(T)
+CPPOBJECTINST(std::shared_ptr<int>);
+CPPOBJECTINST(std::shared_ptr<SCPQuorumSet>);
+CPPOBJECTINST(std::shared_ptr<QuorumIntersectionChecker*>);
 
 #define CPPUNORDEREDMAPINST(K, V, id)   typedef std::unordered_map<K, V> ump_type_##id;  \
                                         CPPOBJECTINST(ump_type_##id);
