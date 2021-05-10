@@ -59,7 +59,7 @@ version (Posix)
         "-D_GLIBCXX_USE_CXX11_ABI=0",
         "-std=c++14",
     ];
-    immutable CppCmd = [ "g++" ] ~ CppFlags;
+    immutable CppCmd = [ "clang++" ] ~ CppFlags;
 }
 else version (Windows)
 {
