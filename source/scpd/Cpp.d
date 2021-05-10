@@ -34,13 +34,17 @@ import std.meta;
 
 import vibe.data.json;
 
-extern(C++) private void defaultCtorCPPObject(T) (T* ptr);
-extern(C++) private void dtorCPPObject(T) (T* ptr);
-extern(C++) private void opAssignCPPObject(T) (T* lhs, T* rhs);
-extern(C++) private void copyCtorCPPObject(T) (T* ptr, T* rhs);
-extern(C++) int getCPPSizeof(T) () @nogc nothrow;
+extern(C++) {
+@trusted nothrow:
+    void defaultCtorCPPObject(T) (T* ptr);
+    void dtorCPPObject(T) (T* ptr);
+    void opAssignCPPObject(T) (T* lhs, T* rhs);
+    void copyCtorCPPObject(T) (T* ptr, T* rhs);
+    int getCPPSizeof(T) () @nogc;
+}
 
 extern(C++, (StdNamespace)) {
+
     /// Simple binding to `std::shared_ptr`
     extern(C++, class) struct shared_ptr (T)
     {
