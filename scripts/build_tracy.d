@@ -43,8 +43,8 @@ else
 {
     immutable ObjExt = `.o`;
     immutable CppCmd = [
-        `gcc`, `-std=c++14`, `-g`, `-c`, `-DTRACY_ENABLE`,
-        `-o`, OutputFile, TracySourcePath,
+        `clang++`, `-std=c++14`, `-g`, `-c`, `-DTRACY_ENABLE`,
+        `-fPIC`, `-o`, OutputFile, TracySourcePath,
     ];
 }
 
