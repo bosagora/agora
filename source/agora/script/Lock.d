@@ -72,6 +72,30 @@ public struct Lock
     {
         return this.type.sizeof + this.bytes.length * this.bytes[0].sizeof;
     }
+
+    /// Support for sorting
+    public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
+    {
+        import std.algorithm;
+
+        if (cast(int)this.type == cast(int)rhs.type)
+            return cmp(this.bytes, rhs.bytes);
+        return cast(int)this.type < cast(int)rhs.type ? -1 : 1;
+    }
+}
+
+unittest
+{
+    import std.algorithm;
+    import std.array;
+
+    auto lock1 = Lock(LockType.Key,     [153, 223, 171, 200, 195, 76, 197, 30, 122, 135, 199, 165, 59, 248, 20, 63, 104, 203, 140, 183, 177, 199, 208, 11, 136, 169, 69, 145, 67, 250, 64, 156]);
+    auto lock2 = Lock(LockType.Key,     [153, 223, 171, 100, 195, 76, 197, 30, 122, 135, 199, 165, 59, 248, 20, 63, 104, 203, 140, 183, 177, 199, 208, 11, 136, 169, 69, 145, 67, 250, 64, 156]);
+    auto lock3 = Lock(LockType.KeyHash, [153, 223, 171, 250, 195, 76, 197, 30, 122, 135, 199, 165, 59, 248, 20, 63, 104, 203, 140, 183, 177, 199, 208, 11, 136, 169, 69, 145, 67, 250, 64, 156]);
+    auto lock4 = Lock(LockType.Key,     [153, 223, 171, 250, 195, 76, 197, 30, 122, 135, 199, 165, 59, 248, 20, 63, 104, 203, 140, 183, 177, 199, 208, 11, 136, 169, 69, 145, 67, 250, 64, 156]);
+    auto locks = [ lock1, lock2, lock3, lock4];
+    locks.sort();
+    assert(locks == [ lock2, lock1, lock4, lock3 ]);
 }
 
 unittest

@@ -80,7 +80,7 @@ unittest
     network.expectHeight(Height(1));
     const block = node1.getBlock(Height(1));
 
-    // verify that the transaction with fee 13000 is the only one inncluded in the block
+    // verify that the transaction with fee 13000 is the only one included in the block
     assert(block.txs.length == 2); // Coinbase + our transaction
     assert(block.txs.filter!(tx => tx.type == TxType.Payment).front() == txs[4]);
 }

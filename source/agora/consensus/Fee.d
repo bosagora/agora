@@ -560,7 +560,6 @@ unittest
 
     Transaction freeze_tx = Transaction(
         TxType.Freeze,
-        null, // no inputs
         [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address) ]);
 
     auto utxo_set = new TestUTXOSet;
@@ -571,7 +570,6 @@ unittest
 
     Transaction gen_tx = Transaction(
         TxType.Payment,
-        null, // no inputs
         [ Output(Amount(2_000_000L), WK.Keys.NODE2.address) ]);
     utxo_set.put(gen_tx);
 

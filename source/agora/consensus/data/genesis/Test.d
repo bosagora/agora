@@ -100,6 +100,8 @@ public immutable Block GenesisBlock = {
         Transaction(
             TxType.Freeze,
             [
+                // If we want these in order NODE2, NODE3 .. NODE7
+                // then we need to make sure the value of the Public key is in same order
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address),

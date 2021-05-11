@@ -50,6 +50,7 @@ import agora.utils.Log;
 import geod24.LocalRest : Listener;
 import geod24.Registry;
 
+import std.algorithm;
 import std.conv;
 import std.exception;
 
@@ -1389,8 +1390,8 @@ unittest
     auto block12 = node_1.getBlocksFrom(12, 1)[0];
     assert(block12.txs[0] == bob.getClosingTx(bob_pubkey, bob_charlie_chan_id_2));
     assert(block12.txs[0].outputs.length == 2);
-    assert(block12.txs[0].outputs[0].value == Amount(8000)); // No fees
-    assert(block12.txs[0].outputs[1].value == Amount(2000));
+    assert(block12.txs[0].outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
+    assert(block12.txs[0].outputs.count!(o => o.value == Amount(2000)) == 1);
 
     assert(alice.beginCollaborativeClose(alice_pubkey, alice_bob_chan_id).error
         == ErrorCode.None);
@@ -1400,8 +1401,8 @@ unittest
     auto block13 = node_1.getBlocksFrom(13, 1)[0];
     assert(block13.txs[0] == alice.getClosingTx(alice_pubkey, alice_bob_chan_id));
     assert(block13.txs[0].outputs.length == 2);
-    assert(block13.txs[0].outputs[0].value == Amount(7990)); // Fees
-    assert(block13.txs[0].outputs[1].value == Amount(2010));
+    assert(block13.txs[0].outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
+    assert(block13.txs[0].outputs.count!(o => o.value == Amount(2010)) == 1);
 
     assert(bob.beginCollaborativeClose(bob_pubkey, bob_charlie_chan_id).error
         == ErrorCode.None);

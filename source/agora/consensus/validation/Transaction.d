@@ -28,6 +28,8 @@ version (unittest)
 {
     import agora.crypto.Key;
 
+    import std.array;
+    import std.algorithm;
     import std.format;
 }
 
@@ -59,6 +61,7 @@ public string isInvalidReason (
     scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
     @safe nothrow
 {
+    import std.algorithm;
     import std.conv;
 
     if (tx.type != TxType.Coinbase && tx.inputs.length == 0)
@@ -69,6 +72,12 @@ public string isInvalidReason (
 
     if (tx.lock_height > height)
         return "Transaction: Not unlocked for this height";
+
+    if (!isStrictlyMonotonic!"a < b"(tx.inputs))
+        return "Transaction: The inputs are not sorted in ascending order";
+
+    if (!isSorted!"a < b"(tx.outputs))
+        return "Transaction: The outputs are not sorted in ascending order";
 
     foreach (idx, output; tx.outputs)
     {
@@ -83,9 +92,13 @@ public string isInvalidReason (
         // Each output of a freezing transaction must have at least
         // `Amount.MinFreezeAmount`, save for the first one which
         // will be considered a refund if it is less than that.
-        if (tx.type == TxType.Freeze && idx > 0 &&
+        if (tx.type == TxType.Freeze &&
             output.value < Amount.MinFreezeAmount)
-            return "Transaction: All non-refund outputs must be over the minimum freezing amount";
+            {
+                if (tx.outputs.length == 1 ||
+                    tx.outputs.count!(o => o.value < Amount.MinFreezeAmount) > 1)
+                    return "Transaction: All non-refund outputs must be over the minimum freezing amount";
+            }
     }
 
     const tx_hash = hashFull(tx);
@@ -238,6 +251,7 @@ unittest
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
+    secondTx.outputs.sort;
     secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
@@ -245,6 +259,7 @@ unittest
            format("Transaction data is not validated %s", secondTx));
 
     secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
+    secondTx.outputs.sort;
     secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
@@ -920,7 +935,7 @@ unittest
         [
             Output(large_data_fee, payload_checker.params.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
-        ],
+        ].sort.array,
         DataPayload(large_data)
     );
     dataHash = hashFull(dataTx);
@@ -1018,9 +1033,8 @@ unittest
         [
             Output(Amount(2826), key_pair.address),
             Output(Amount(3895), key_pair.address),
-        ],
+        ].sort.array,
     );
-
     // No input
     assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
 

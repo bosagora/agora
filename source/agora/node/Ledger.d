@@ -586,7 +586,7 @@ public class Ledger
             foreach (pair; payouts.byKeyValue())
                 if (pair.value > Amount(0))
                     coinbase_tx.outputs ~= Output(pair.value, pair.key);
-
+        coinbase_tx.outputs.sort;
         return coinbase_tx.outputs.length > 0 ? [coinbase_tx] : [];
     }
 
@@ -1537,7 +1537,7 @@ version (unittest)
 ///
 unittest
 {
-    scope ledger = new TestLedger(WK.Keys.NODE2);
+    scope ledger = new TestLedger(WK.Keys.NODE3);
     assert(ledger.getBlockHeight() == 0);
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);

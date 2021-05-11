@@ -484,6 +484,7 @@ unittest
         Output zeroOutput =
             Output(Amount.invalid(0), WK.Keys[0].address);
         block.txs[0].outputs ~= zeroOutput;
+        block.txs[0].outputs.sort;
         buildMerkleTree(block);
         assert(!block.isGenesisBlockValid());
     }
@@ -542,7 +543,7 @@ unittest
         [
             Output(normal_data_fee, fee_man.params.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
-        ],
+        ].sort.array,
         DataPayload(normal_data)
     );
 
@@ -901,6 +902,7 @@ unittest
 
     KeyPair keypair = KeyPair.random();
     Transaction[] txs_2;
+    Output[] no_outputs;
     foreach (idx, pre_tx; txs_1)
     {
         Input input = Input(hashFull(pre_tx), 0);
@@ -930,7 +932,7 @@ unittest
             output.lock = genKeyLock(keypair.address);
             tx.outputs ~= output;
         }
-
+        tx.outputs.sort;
         tx.inputs[0].unlock = VTx.signUnlock(gen_key, tx);
         txs_2 ~= tx;
     }
@@ -1030,6 +1032,7 @@ unittest
 
     KeyPair keypair = KeyPair.random();
     Transaction[] txs_2;
+    Output[] no_outputs;
     foreach (idx, pre_tx; txs_1)
     {
         Transaction tx = Transaction(
@@ -1049,7 +1052,7 @@ unittest
             foreach (_; 0 .. 8)
                 tx.outputs ~= Output(Amount(100), keypair.address);
         }
-
+        tx.outputs.sort;
         tx.inputs[0].unlock = VTx.signUnlock(gen_key, tx);
         txs_2 ~= tx;
     }

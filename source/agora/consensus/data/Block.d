@@ -459,7 +459,6 @@ unittest
 
     Transaction tx = Transaction(
         TxType.Payment,
-        null, // no inputs
         [
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),

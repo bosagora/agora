@@ -76,6 +76,7 @@ abstract class UTXOCache
         }
 
         Hash tx_hash = tx.hashFull();
+        bool frozen_refund_added = false;
         foreach (idx, output; tx.outputs)
         {
             auto utxo_hash = UTXO.getHash(tx_hash, idx);
@@ -86,11 +87,14 @@ abstract class UTXOCache
             if (melting && output.address != commons_budget)
                 this.add(utxo_hash, UTXO(height + 2016, tx.type, output));
             // Additionally, if a transaction has two or more outputs,
-            // the first one is allowed to be under the minimum freezing amount.
+            // one is allowed to be under the minimum freezing amount.
             // If it is, it will not be considered frozen.
-            else if (tx.type == TxType.Freeze && tx.outputs.length >= 2 &&
-                     (idx == 0 && output.value < Amount.MinFreezeAmount))
-                this.add(utxo_hash, UTXO(height + 1, TxType.Payment, output));
+            else if (!frozen_refund_added && tx.type == TxType.Freeze
+                && tx.outputs.length >= 2 && output.value < Amount.MinFreezeAmount)
+                {
+                    this.add(utxo_hash, UTXO(height + 1, TxType.Payment, output));
+                    frozen_refund_added = true;
+                }
             // Finally, the following is the most common case
             else
                 this.add(utxo_hash, UTXO(height + 1, tx.type, output));

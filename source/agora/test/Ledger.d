@@ -243,7 +243,7 @@ unittest
     // Create a freezing tx with two outputs:
     // 1) A refund of 1k
     // 2) A very large frozen amount (60.999k)
-    Amount freezeAmount = network.blocks[0].txs[1].outputs[0].value;
+    Amount freezeAmount = network.blocks[0].frozens.front.outputs[0].value;
     // Must be under Amount.MinFreezeAmount so that the refund isn't frozen
     freezeAmount.mustSub(1_000.coins);
     auto tx = network.blocks[0].spendable
@@ -259,7 +259,7 @@ unittest
     const b1 = network.clients[0].getBlock(1);
     assert(b1.txs.length == 1);
 
-    // Now spend the refund transaction
+    // Now spend the refund transaction (output index is 0 as it is sorted and lock is same value but ammount is less)
     auto tx2 = TxBuilder(b1.txs[0], 0).sign();
     assert(tx2.outputs.length == 1);
 
