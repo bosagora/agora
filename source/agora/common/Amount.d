@@ -381,7 +381,7 @@ public struct Amount
 
 *******************************************************************************/
 
-public Amount coins (in ulong num_coins)
+public Amount coins (in ulong num_coins) @safe pure nothrow @nogc
 {
     return Amount(Amount.UnitPerCoin.value * num_coins, true);
 }
