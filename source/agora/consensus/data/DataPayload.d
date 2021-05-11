@@ -24,12 +24,12 @@ import std.range;
 public struct DataPayload
 {
     /// The byte array of transaction data
-    public const(ubyte)[] data;
+    public const(ubyte)[] bytes;
 
     /// The size of the data DataPayload object
     public ulong sizeInBytes () const nothrow pure @safe @nogc
     {
-        return this.data.length * this.data[0].sizeof;
+        return this.bytes.length * this.bytes[0].sizeof;
     }
     /***************************************************************************
 
@@ -42,7 +42,7 @@ public struct DataPayload
 
     public this (inout(ubyte)[] bin) inout pure nothrow @safe
     {
-        this.data = bin;
+        this.bytes = bin;
     }
 
     /***************************************************************************
@@ -56,7 +56,7 @@ public struct DataPayload
 
     public void computeHash (scope HashDg dg) const nothrow @nogc @safe
     {
-        hashPart(this.data, dg);
+        hashPart(this.bytes, dg);
     }
 
     /***************************************************************************
@@ -70,7 +70,7 @@ public struct DataPayload
 
     public void serialize (scope SerializeDg dg) const @safe
     {
-        serializePart(this.data, dg);
+        serializePart(this.bytes, dg);
     }
 
     /***************************************************************************
@@ -102,7 +102,7 @@ unittest
     assert(bytes == [3, 0, 1, 2]);
     auto new_data = deserializeFull!(DataPayload)(bytes);
 
-    assert(new_data.data == old_data.data);
+    assert(new_data.bytes == old_data.bytes);
 }
 
 unittest

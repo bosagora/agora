@@ -234,13 +234,13 @@ public class FeeManager
 
     public string check (in Transaction tx, Amount tx_fee) nothrow @safe
     {
-        if (tx.payload.data.length == 0)
+        if (tx.payload.bytes.length == 0)
             return null;
 
-        if (tx.payload.data.length > this.params.TxPayloadMaxSize)
+        if (tx.payload.bytes.length > this.params.TxPayloadMaxSize)
             return "Transaction: The size of the data payload is too large";
 
-        const required_fee = calculateDataFee(tx.payload.data.length,
+        const required_fee = calculateDataFee(tx.payload.bytes.length,
             this.params.TxPayloadFeeFactor);
         if (tx_fee < required_fee)
             return "Transaction: There is not enough data fee";
@@ -474,7 +474,7 @@ public class FeeManager
             // sum(inputs) - sum(outputs)
             tot_in.mustSub(tot_out);
             tot_fee.mustAdd(tot_in);
-            tot_data_fee.mustAdd(this.getDataFee(tx.payload.data.length));
+            tot_data_fee.mustAdd(this.getDataFee(tx.payload.bytes.length));
         }
         return null;
     }
