@@ -199,7 +199,7 @@ version (Windows)
     }
 
     ///
-    public alias HostPortTup = Tuple!(string, "host", ushort, "port", HostType, "type");
+    public alias HostPortTup = Tuple!(string, "host", ushort, "port", HostType, "type", string, "schema");
 
     /***************************************************************************
 
@@ -243,49 +243,49 @@ version (Windows)
         else if (parsed_url.host.all!(c => c.isDigit() || c == '.'))
             host_type = HostType.IPv4;
 
-        return HostPortTup(parsed_url.host, parsed_url.port, host_type);
+        return HostPortTup(parsed_url.host, parsed_url.port, host_type, parsed_url.schema);
     }
 
     unittest
     {
         // IPv6 tests
         assert(extractHostAndPort("https://[1:2:3:4:5:6]:12345/blabla/blabla/")
-                == HostPortTup("1:2:3:4:5:6", 12345, HostType.IPv6));
+                == HostPortTup("1:2:3:4:5:6", 12345, HostType.IPv6, "https"));
 
         assert(extractHostAndPort("https://[1:2:3:4:5:6]/blabla")
-            == HostPortTup("1:2:3:4:5:6", 443, HostType.IPv6));
+            == HostPortTup("1:2:3:4:5:6", 443, HostType.IPv6, "https"));
 
         assert(extractHostAndPort("https://[3::1]/blabla")
-            == HostPortTup("3::1", 443, HostType.IPv6));
+            == HostPortTup("3::1", 443, HostType.IPv6, "https"));
 
         assert(extractHostAndPort("https://[::1]/blabla")
-            == HostPortTup("::1", 443, HostType.IPv6));
+            == HostPortTup("::1", 443, HostType.IPv6, "https"));
 
         assert(extractHostAndPort("http://[::]:1234")
-            == HostPortTup("::", 1234, HostType.IPv6));
+            == HostPortTup("::", 1234, HostType.IPv6, "http"));
 
         assert(extractHostAndPort("[::]")
-            == HostPortTup("::", 80, HostType.IPv6));
+            == HostPortTup("::", 80, HostType.IPv6, "http"));
 
         // IPv4 tests
         assert(extractHostAndPort("https://1.2.3.4:12345/blabla/blabla")
-                == HostPortTup("1.2.3.4", 12345, HostType.IPv4));
+                == HostPortTup("1.2.3.4", 12345, HostType.IPv4, "https"));
 
         assert(extractHostAndPort("https://1.2.3.4/blabla")
-            == HostPortTup("1.2.3.4", 443, HostType.IPv4));
+            == HostPortTup("1.2.3.4", 443, HostType.IPv4, "https"));
 
         assert(extractHostAndPort("http://1.2.3.4")
-            == HostPortTup("1.2.3.4", 80, HostType.IPv4));
+            == HostPortTup("1.2.3.4", 80, HostType.IPv4, "http"));
 
         assert(extractHostAndPort("1.2.3.4")
-            == HostPortTup("1.2.3.4", 80, HostType.IPv4));
+            == HostPortTup("1.2.3.4", 80, HostType.IPv4, "http"));
 
         // Domain tests
         assert(extractHostAndPort("http://node-0:1826/blabla/blabla/")
-            == HostPortTup("node-0", 1826, HostType.Domain));
+            == HostPortTup("node-0", 1826, HostType.Domain, "http"));
 
         assert(extractHostAndPort("seed.bosagora.io/blabla")
-            == HostPortTup("seed.bosagora.io", 80, HostType.Domain));
+            == HostPortTup("seed.bosagora.io", 80, HostType.Domain, "http"));
     }
 
     public static string[] getPublicIPs()
