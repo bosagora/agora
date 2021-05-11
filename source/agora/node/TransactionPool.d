@@ -614,20 +614,16 @@ unittest
     auto pool = new TransactionPool();
 
     // create first transaction
-    Transaction tx1 =
-    {
+    Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), WK.Keys.A.address)]
-    };
+        [Output(Amount(0), WK.Keys.A.address)]);
 
     // create second transaction
-    Transaction tx2 =
-    {
+    Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), WK.Keys.C.address)]
-    };
+        [Output(Amount(0), WK.Keys.C.address)]);
 
     // add txs to the pool
     assert(pool.add(tx1));
@@ -649,26 +645,20 @@ unittest
 {
     auto pool = new TransactionPool();
 
-    Transaction tx1 =
-    {
+    Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), KeyPair.random.address)]
-    };
+        [Output(Amount(0), KeyPair.random.address)]);
 
-    Transaction tx2 =
-    {
+    Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]
-    };
+        [Output(Amount(0), KeyPair.random.address)]);
 
-    Transaction tx3 =
-    {
+    Transaction tx3 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]
-    };
+        [Output(Amount(0), KeyPair.random.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));
@@ -686,26 +676,20 @@ unittest
 {
     auto pool = new TransactionPool();
 
-    Transaction tx1 =
-    {
+    Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), KeyPair.random.address)]
-    };
+        [Output(Amount(0), KeyPair.random.address)]);
 
-    Transaction tx2 =
-    {
+    Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0), Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]
-    };
+        [Output(Amount(0), KeyPair.random.address)]);
 
-    Transaction tx3 =
-    {
+    Transaction tx3 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]
-    };
+        [Output(Amount(0), KeyPair.random.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));
@@ -746,19 +730,14 @@ unittest
 
     auto pool = new TransactionPool(new ManagedDatabase(":memory:"), &selector);
 
-    Transaction tx1 =
-    {
+    Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(2), KeyPair.random.address)]
-    };
+        [Output(Amount(2), KeyPair.random.address)]);
 
-    Transaction tx2 =
-    {
-        TxType.Payment,
+    Transaction tx2 = Transaction(TxType.Payment,
         [Input(Hash.init, 0), Input(Hash.init, 1)],
-        [Output(Amount(1), KeyPair.random.address)]
-    };
+        [Output(Amount(1), KeyPair.random.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));
@@ -817,30 +796,18 @@ unittest
     auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).array()[0];
 
     // parent transaction
-    Transaction tx1 =
-    {
-        TxType.Payment,
-        [Input(genesis_tx.hashFull(), 0)],
-        [Output(Amount(1000), KeyPair.random.address)]
-    };
+    Transaction tx1 = Transaction(TxType.Payment, [Input(genesis_tx.hashFull(), 0)],
+        [Output(Amount(1000), KeyPair.random.address)]);
 
     utxo_set.put(tx1);
 
     // double spent transaction, transaction trying to spend parent
-    Transaction tx2 =
-    {
-        TxType.Payment,
-        [Input(tx1.hashFull(), 0)],
-        [Output(Amount(200), KeyPair.random.address)]
-    };
+    Transaction tx2 = Transaction(TxType.Payment, [Input(tx1.hashFull(), 0)],
+        [Output(Amount(200), KeyPair.random.address)]);
 
     // double spent transaction, trying to spend parent
-    Transaction tx3 =
-    {
-        TxType.Payment,
-        [Input(tx1.hashFull(), 0)],
-        [Output(Amount(100), KeyPair.random.address)]
-    };
+    Transaction tx3 = Transaction(TxType.Payment, [Input(tx1.hashFull(), 0)],
+        [Output(Amount(100), KeyPair.random.address)]);
 
     assert(pool.add(tx2));
     assert(pool.add(tx3));
@@ -866,19 +833,15 @@ unittest
 {
     auto pool = new TransactionPool();
 
-    Transaction tx1 =
-    {
+    Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(2), KeyPair.random.address)]
-    };
+        [Output(Amount(2), KeyPair.random.address)]);
 
-    Transaction tx2 =
-    {
+    Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(1), KeyPair.random.address)]
-    };
+        [Output(Amount(1), KeyPair.random.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));

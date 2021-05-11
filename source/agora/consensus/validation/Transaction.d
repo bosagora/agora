@@ -214,7 +214,7 @@ unittest
     scope checker = &payload_checker.check;
 
     // Creates the first transaction.
-    Transaction previousTx = { outputs: [ Output(Amount(100), key_pairs[0].address) ] };
+    Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount(100), key_pairs[0].address) ]);
 
     // Save
     Hash previousHash = hashFull(previousTx);
@@ -257,7 +257,7 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
-    Transaction tx_1 = { outputs: [ Output(Amount(1000), key_pairs[0].address) ] };
+    Transaction tx_1 = Transaction(TxType.Payment, [ Output(Amount(1000), key_pairs[0].address) ]);
     Hash tx_1_hash = hashFull(tx_1);
 
     scope payload_checker = new FeeManager();
@@ -267,13 +267,11 @@ unittest
     storage.put(tx_1);
 
     // Creates the second transaction.
-    Transaction tx_2 =
-    {
+    Transaction tx_2 = Transaction(
         TxType.Payment,
-        inputs  : [Input(tx_1_hash, 0)],
+        [Input(tx_1_hash, 0)],
         // oops
-        outputs : [Output(Amount.invalid(-400_000), key_pairs[1].address)]
-    };
+        [Output(Amount.invalid(-400_000), key_pairs[1].address)]);
 
     tx_2.inputs[0].unlock = signUnlock(key_pairs[0], tx_2);
 
@@ -281,12 +279,10 @@ unittest
 
     // Creates the third transaction.
     // Reject a transaction whose output value is zero
-    Transaction tx_3 =
-    {
+    Transaction tx_3 = Transaction(
         TxType.Payment,
-        inputs  : [Input(tx_1_hash, 0)],
-        outputs : [Output(Amount.invalid(0), key_pairs[1].address)]
-    };
+        [Input(tx_1_hash, 0)],
+        [Output(Amount.invalid(0), key_pairs[1].address)]);
 
     tx_3.inputs[0].unlock = signUnlock(key_pairs[0], tx_3);
 
@@ -309,7 +305,7 @@ unittest
     scope checker = &payload_checker.check;
 
     // Create the first transaction.
-    Transaction genesisTx = { outputs: [ Output(Amount(100_000), key_pairs[0].address) ] };
+    Transaction genesisTx = Transaction(TxType.Payment, [ Output(Amount(100_000), key_pairs[0].address) ]);
     Hash genesisHash = hashFull(genesisTx);
     storage.put(genesisTx);
 
@@ -367,8 +363,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx =
-            { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
+        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -398,7 +393,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
+        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -428,7 +423,7 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = { outputs: [ Output(Amount(100_000_000_000L), key_pairs[0].address) ] };
+        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount(100_000_000_000L), key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -457,7 +452,7 @@ unittest
     // Second transaction is valid.
     {
         // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = { outputs: [ Output(Amount(500_000_000_000L), key_pairs[0].address) ] };
+        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount(500_000_000_000L), key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -523,8 +518,8 @@ unittest
     // Expected Status : melted
     {
         height = 0;
-        Transaction previousTx =
-            { outputs: [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ] };
+        Transaction previousTx = Transaction(
+            TxType.Payment, [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
 
         // Save to UTXOSet
         previousHash = hashFull(previousTx);
@@ -678,7 +673,7 @@ unittest
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
-    Transaction firstTx = { outputs: [ Output(Amount(100_1000), key_pair.address) ] };
+    Transaction firstTx = Transaction(TxType.Payment, [ Output(Amount(100_1000), key_pair.address) ]);
     Hash firstHash = hashFull(firstTx);
     storage.put(firstTx);
 
@@ -1054,7 +1049,7 @@ unittest
 
     KeyPair kp = KeyPair.random();
 
-    Transaction prev_tx = { outputs: [Output(Amount(100), kp.address)] };
+    Transaction prev_tx = Transaction(TxType.Payment, [Output(Amount(100), kp.address)]);
     storage.put(prev_tx);
 
     Transaction tx = Transaction(

@@ -97,20 +97,19 @@ public immutable Block GenesisBlock = {
     },
     merkle_tree: GenesisMerkleTree,
     txs: [
-        {
+        Transaction(
             TxType.Freeze,
-            outputs: [
+            [
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE5.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE6.address),
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE7.address),
-            ],
-        },
-        {
+            ]),
+        Transaction(
             TxType.Payment,
-            outputs: [
+            [
                 Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
@@ -119,8 +118,7 @@ public immutable Block GenesisBlock = {
                 Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-            ],
-        },
+            ]),
     ],
 };
 

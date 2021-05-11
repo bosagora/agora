@@ -28,6 +28,7 @@ import agora.script.Lock;
 import agora.serialization.Serializer;
 
 import std.algorithm;
+import std.array;
 
 /// Type of the transaction: defines the content that follows and the semantic of it
 public enum TxType : ubyte
@@ -48,6 +49,52 @@ public enum TxType : ubyte
 
 public struct Transaction
 {
+    @safe:
+
+    /// ctor with only outputs
+    public this (in TxType type, Output[] outputs) nothrow
+    {
+        this.type = type;
+        this.outputs = outputs;
+    }
+
+    /// ctor with only inputs
+    public this (Input[] inputs) nothrow
+    {
+        this.type = TxType.Freeze;  // Can only be freeze
+        this.inputs = inputs;
+    }
+
+    /// ctor without DataPayload
+    public this (in TxType type, Input[] inputs, Output[] outputs,
+        in Height lock_height = Height(0)) nothrow
+    {
+        this(type, outputs);
+        this.inputs = inputs;
+        this.lock_height = lock_height;
+    }
+
+    /// ctor
+    public this (in TxType type, inout Input[] inputs, inout Output[] outputs,
+        inout DataPayload payload = DataPayload.init,
+        in Height lock_height = Height(0)) inout nothrow
+    {
+        this.type = type;
+        this.inputs = inputs;
+        this.outputs = outputs;
+        this.payload = payload;
+        this.lock_height = lock_height;
+    }
+
+    /// Used in some unit tests with only the lock_height set
+    version (unittest)
+    {
+        public this (Height lock_height)
+        {
+            this.lock_height = Height(lock_height);
+        }
+    }
+
     /// Transaction type
     public TxType type;
 
@@ -61,7 +108,7 @@ public struct Transaction
     public DataPayload payload;
 
     /// The size of the Transaction object
-    public ulong sizeInBytes () const nothrow pure @safe @nogc
+    public ulong sizeInBytes () const nothrow pure @nogc
     {
         ulong size = this.type.sizeof + this.payload.sizeInBytes();
         foreach (const ref input; this.inputs)
@@ -84,7 +131,7 @@ public struct Transaction
 
     ***************************************************************************/
 
-    public void serialize (scope SerializeDg dg) const @safe
+    public void serialize (scope SerializeDg dg) const
     {
         serializePart(this.type, dg);
 
@@ -102,7 +149,7 @@ public struct Transaction
     }
 
     /// Support for sorting transactions
-    public int opCmp (in Transaction other) const nothrow @safe @nogc
+    public int opCmp (in Transaction other) const nothrow @nogc
     {
         return hashFull(this).opCmp(hashFull(other));
     }
@@ -248,6 +295,12 @@ public struct Input
     {
         dg(this.utxo[]);
         hashPart(this.unlock_age, dg);
+    }
+
+    /// Support for sorting
+    public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
+    {
+        return this.utxo.opCmp(rhs.utxo);
     }
 }
 

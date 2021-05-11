@@ -129,7 +129,7 @@ unittest
     PublicKey pubkey = PublicKey.fromString(address);
 
     Output[1] outputs = [ Output(Amount(100), pubkey) ];
-    Transaction tx = { outputs: outputs[] };
+    Transaction tx = Transaction(TxType.Payment, [], outputs[]);
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
@@ -457,10 +457,10 @@ unittest
     immutable address = `boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`;
     PublicKey pubkey = PublicKey.fromString(address);
 
-    Transaction tx =
-    {
+    Transaction tx = Transaction(
         TxType.Payment,
-        outputs: [
+        null, // no inputs
+        [
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
@@ -468,9 +468,8 @@ unittest
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-        ],
-    };
+            Output(Amount(62_500_000L * 10_000_000L), pubkey)
+        ]);
 
     auto validators = typeof(BlockHeader.validators)(6);
     validators[0] = true;
@@ -695,11 +694,10 @@ unittest
     ];
 
     // Create transactions.
-    Transaction tx;
     Hash last_hash = Hash.init;
     for (int idx = 0; idx < 8; idx++)
     {
-        tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
+        auto tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
         tx.inputs[0].unlock = genKeyUnlock(
             key_pairs[idx].sign(last_hash[]));

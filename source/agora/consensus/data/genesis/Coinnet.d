@@ -109,9 +109,9 @@ private immutable Hash GenesisMerkleRoot = GenesisMerkleTree[$ - 1];
 ///
 private immutable Transaction[] GenesisTransactions =
     [
-        {
+        Transaction(
             TxType.Payment,
-            outputs: [
+            [
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
@@ -120,19 +120,17 @@ private immutable Transaction[] GenesisTransactions =
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-            ],
-        },
-        {
+            ]),
+        Transaction(
             TxType.Freeze,
-            outputs: [
+            [
                 Output(Amount(2_000_000L * 10_000_000L), NODE2_ADDRESS),
                 Output(Amount(2_000_000L * 10_000_000L), NODE3_ADDRESS),
                 Output(Amount(2_000_000L * 10_000_000L), NODE4_ADDRESS),
                 Output(Amount(2_000_000L * 10_000_000L), NODE5_ADDRESS),
                 Output(Amount(2_000_000L * 10_000_000L), NODE6_ADDRESS),
                 Output(Amount(2_000_000L * 10_000_000L), NODE7_ADDRESS),
-            ],
-        },
+            ])
     ];
 
 private immutable Hash[] GenesisMerkleTree = [

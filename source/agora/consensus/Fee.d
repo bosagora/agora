@@ -558,12 +558,10 @@ unittest
 
     auto fee_man = new FeeManager();
 
-    Transaction freeze_tx = {
+    Transaction freeze_tx = Transaction(
         TxType.Freeze,
-        outputs: [
-            Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address),
-        ]
-    };
+        null, // no inputs
+        [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address) ]);
 
     auto utxo_set = new TestUTXOSet;
     utxo_set.put(freeze_tx);
@@ -571,23 +569,16 @@ unittest
     Hash txhash = hashFull(freeze_tx);
     Hash stake_hash = UTXO.getHash(txhash, 0);
 
-    Transaction gen_tx = {
+    Transaction gen_tx = Transaction(
         TxType.Payment,
-        outputs: [
-            Output(Amount(2_000_000L), WK.Keys.NODE2.address),
-        ]
-    };
+        null, // no inputs
+        [ Output(Amount(2_000_000L), WK.Keys.NODE2.address) ]);
     utxo_set.put(gen_tx);
 
-    Transaction spend_tx = {
+    Transaction spend_tx = Transaction(
         TxType.Payment,
-        inputs: [
-            Input(gen_tx.hashFull(), 0)
-        ],
-        outputs: [
-            Output(Amount(1_000_000L), WK.Keys.NODE2.address),
-        ]
-    };
+        [ Input(gen_tx.hashFull(), 0)],
+        [ Output(Amount(1_000_000L), WK.Keys.NODE2.address) ]);
 
     UTXO utxo;
     assert(utxo_set.peekUTXO(spend_tx.inputs[0].utxo, utxo));

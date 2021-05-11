@@ -410,12 +410,9 @@ unittest
 
     Transaction makeNewTx ()
     {
-        Transaction new_tx =
-        {
+        Transaction new_tx = Transaction(
             TxType.Payment,
-            inputs: [],
-            outputs: [Output(Amount(100), KeyPair.random().address)]
-        };
+            [Output(Amount(100), KeyPair.random().address)]);
         return new_tx;
     }
 
@@ -908,11 +905,11 @@ unittest
     {
         Input input = Input(hashFull(pre_tx), 0);
 
-        Transaction tx =
-        {
+        Transaction tx = Transaction(
             TxType.Freeze,
             [input],
-        };
+            null
+        );
         if (idx > 3)
             tx.type = TxType.Payment;
 
@@ -950,12 +947,10 @@ unittest
     {
         Input input = Input(hashFull(txs_2[7]), idx);
 
-        Transaction tx =
-        {
+        Transaction tx = Transaction(
             TxType.Payment,
             [input],
-            [Output(Amount(1), keypair2.address)]
-        };
+            [Output(Amount(1), keypair2.address)]);
         tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
         txs_3 ~= tx;
     }
@@ -1037,11 +1032,10 @@ unittest
     Transaction[] txs_2;
     foreach (idx, pre_tx; txs_1)
     {
-        Transaction tx =
-        {
+        Transaction tx = Transaction(
             TxType.Freeze,
             [Input(hashFull(pre_tx), 0)],
-        };
+            null);
 
         if (idx <= 2)
         {
@@ -1073,12 +1067,10 @@ unittest
         Transaction[] txs_3;
         foreach (idx; 0 .. 8)
         {
-            Transaction tx =
-            {
+            Transaction tx = Transaction(
                 TxType.Payment,
                 [Input(hashFull(txs_2[$-4]), idx)],
-                [Output(Amount(1), keypair2.address)]
-            };
+                [Output(Amount(1), keypair2.address)]);
             tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
             txs_3 ~= tx;
         }
@@ -1099,12 +1091,10 @@ unittest
         Transaction[] txs_3;
         foreach (idx; 0 .. 8)
         {
-            Transaction tx =
-            {
+            Transaction tx = Transaction(
                 TxType.Payment,
                 [Input(hashFull(txs_2[$-3]), idx)],
-                [Output(Amount(1), keypair2.address)]
-            };
+                [Output(Amount(1), keypair2.address)]);
             tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
             txs_3 ~= tx;
         }
@@ -1143,12 +1133,10 @@ unittest
         Transaction[] txs_3;
         foreach (idx; 0 .. 8)
         {
-            Transaction tx =
-            {
+            Transaction tx = Transaction(
                 TxType.Payment,
                 [Input(hashFull(txs_2[$-1]), idx)],
-                [Output(Amount(1), keypair2.address)]
-            };
+                [Output(Amount(1), keypair2.address)]);
             tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
             txs_3 ~= tx;
         }

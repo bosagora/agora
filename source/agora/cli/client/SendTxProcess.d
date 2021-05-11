@@ -184,12 +184,9 @@ public int sendTxProcess (string[] args, ref string[] outputs,
     // create the transaction
     auto key_pair = KeyPair.fromSeed(SecretKey.fromString(op.key));
 
-    Transaction tx =
-    {
-        TxType.Payment,
+    Transaction tx = Transaction(TxType.Payment,
         [Input(Hash.fromString(op.txhash), op.index)],
-        [Output(Amount(op.amount), PublicKey.fromString(op.address))]
-    };
+        [Output(Amount(op.amount), PublicKey.fromString(op.address))]);
 
     auto signature = key_pair.sign(tx);
     tx.inputs[0].unlock = genKeyUnlock(signature);
@@ -270,12 +267,9 @@ unittest
     });
     assert (res == CLIENT_SUCCESS);
 
-    Transaction tx =
-    {
-        TxType.Payment,
+    Transaction tx = Transaction(TxType.Payment,
         [Input(Hash.fromString(txhash), index)],
-        [Output(Amount(amount), PublicKey.fromString(address))]
-    };
+        [Output(Amount(amount), PublicKey.fromString(address))]);
     Hash send_txhash = hashFull(tx);
     auto key_pair = KeyPair.fromSeed(SecretKey.fromString(key));
     tx.inputs[0].unlock = genKeyUnlock(key_pair.sign(send_txhash[]));

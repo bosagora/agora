@@ -1603,7 +1603,7 @@ unittest
     //   <sig>
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx = { inputs : [Input.init] };
+    const Transaction tx = Transaction(TxType.Payment, [Input.init], null);
     test!("==")(engine.execute(
         Lock(LockType.Script, [OP.CHECK_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]),
         "CHECK_SEQ_SIG opcode requires 4 items on the stack");
@@ -1765,8 +1765,8 @@ unittest
     const height_11 = nativeToLittleEndian(ulong(11));
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx_10 = { lock_height : Height(10) };
-    const Transaction tx_11 = { lock_height : Height(11) };
+    const Transaction tx_10 = Transaction(Height(10));
+    const Transaction tx_11 = Transaction(Height(11));
     test!("==")(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_9)
