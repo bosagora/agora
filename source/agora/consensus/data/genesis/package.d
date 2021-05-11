@@ -82,6 +82,8 @@ unittest
     // For unit tests we want the index of the nodes to match the order of the enrollments
     test!"=="(genesis_validator_keys.map!(k => k.address).array, sorted_enrollments.map!(e => e.key).array);
 
+    checkGenesisTransactions(GenesisBlock);
+    assert(GenesisBlock.isGenesisBlockInvalidReason() == null);
 }
 
 /// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Coinnet.d)
@@ -90,6 +92,7 @@ unittest
     import agora.consensus.data.genesis.Coinnet;
 
     checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 1008);
+    checkGenesisTransactions(GenesisBlock);
 }
 
 /// Assert the enrollments of a GenesisBlock match expected values and are sorted by utxo (print the potential replacement set when not matching)
@@ -105,7 +108,10 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     import std.conv;
     import std.algorithm;
 
-    Hash txhash = hashFull(genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front);
+    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front;
+    Output[] sorted_freeze_outputs = freeze_tx.outputs.dup.sort.array;
+    assert(sorted_freeze_outputs == freeze_tx.outputs);
+    Hash txhash = hashFull(freeze_tx);
     Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
     auto enrollments = utxos.enumerate.map!(en =>
         NodeEnrollment(EnrollmentManager.makeEnrollment(en.value, keys[en.index], Height(0), cycle_length),
@@ -120,6 +126,21 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
                         (e.key, e.enrol.utxo_key, e.enrol.commitment, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
                     ("\n    enrollments: [")));
     return sorted_enrollments;
+}
+
+/// Assert the transactions of a GenesisBlock are valid
+version (unittest) public void checkGenesisTransactions (in Block genesisBlock)
+{
+    import agora.consensus.data.Transaction;
+    import agora.consensus.data.UTXO;
+    import agora.consensus.EnrollmentManager;
+    import std.format;
+    import std.range;
+    import std.conv;
+    import std.algorithm;
+
+    genesisBlock.txs.each!(tx => assert(tx.inputs.dup.isStrictlyMonotonic!((a, b) => a < b)));
+    genesisBlock.txs.each!(tx => assert(tx.outputs.dup.isSorted!((a, b) => a < b)));
 }
 
 /// Can be used to update the config.yaml (e.g. tests/system/node/2/config.yaml)

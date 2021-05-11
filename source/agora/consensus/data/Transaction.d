@@ -55,6 +55,7 @@ public struct Transaction
     public this (in TxType type, Output[] outputs) nothrow
     {
         this.type = type;
+        outputs.sort;
         this.outputs = outputs;
     }
 
@@ -62,6 +63,7 @@ public struct Transaction
     public this (Input[] inputs) nothrow
     {
         this.type = TxType.Freeze;  // Can only be freeze
+        inputs.sort;
         this.inputs = inputs;
     }
 
@@ -70,11 +72,12 @@ public struct Transaction
         in Height lock_height = Height(0)) nothrow
     {
         this(type, outputs);
+        inputs.sort;
         this.inputs = inputs;
         this.lock_height = lock_height;
     }
 
-    /// ctor
+    /// ctor with immutable fields so the inputs and outputs must be already sorted
     public this (in TxType type, inout Input[] inputs, inout Output[] outputs,
         inout DataPayload payload = DataPayload.init,
         in Height lock_height = Height(0)) inout nothrow
@@ -84,6 +87,8 @@ public struct Transaction
         this.outputs = outputs;
         this.payload = payload;
         this.lock_height = lock_height;
+        assert(this.inputs.dup.isStrictlyMonotonic!((a, b) => a < b));
+        assert(this.outputs.dup.isSorted!((a, b) => a < b));
     }
 
     /// Used in some unit tests with only the lock_height set
@@ -140,6 +145,7 @@ public struct Transaction
             serializePart(input, dg);
 
         serializePart(this.outputs.length, dg);
+        assert(this.outputs.isSorted!((a, b) => a < b));
         foreach (const ref output; this.outputs)
             serializePart(output, dg);
 
@@ -229,6 +235,14 @@ public struct Output
         Point point = Point(this.lock.bytes);
         PublicKey key = PublicKey(point[]);
         return key;
+    }
+
+    /// Support for sorting
+    public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
+    {
+        if (this.lock != rhs.lock)
+            return this.lock < rhs.lock ? -1 : 1;
+        return this.value.opCmp(rhs.value);
     }
 }
 

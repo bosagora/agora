@@ -277,7 +277,10 @@ public struct TxBuilder
 
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
+        {
             this.data.outputs = [ this.leftover ] ~ this.data.outputs;
+            this.data.outputs.sort;
+        }
 
         this.data.payload = DataPayload(data);
 
@@ -353,6 +356,7 @@ public struct TxBuilder
         toward.each!((key)
         {
             this.data.outputs ~= Output(amount, key);
+            this.data.outputs.sort;
             // Provide friendlier error message for developers
             if (!this.leftover.value.sub(amount))
                 assert(0, format("Error: Withdrawing %d times %s BOA underflown",
@@ -397,7 +401,7 @@ public struct TxBuilder
         this.leftover.value = forEach.div(newOutputs.length);
         newOutputs.each!((ref output) { output.value = forEach; });
         assert(newOutputs.all!(output => output.value > Amount(0)));
-
+        this.data.outputs.sort;
         return this;
     }
 
@@ -518,13 +522,8 @@ unittest
     assert(result.outputs.length == 4);
 
     // 488M / 3
-    const Amount ExpectedAmount      = Amount(162_666_666_6666_666L);
-
-    assert(result.outputs[1].value == ExpectedAmount);
-    assert(result.outputs[2].value == ExpectedAmount);
-    assert(result.outputs[3].value == ExpectedAmount);
-    // The first output is the remainder
-    assert(result.outputs[0].value == Amount(2));
+    assert(result.outputs.count!(o => o.value == Amount(162_666_666_6666_666L)) == 3);
+    assert(result.outputs.count!(o => o.value == Amount(2)) == 1); // left over chance
 }
 
 /// Test with one output key
@@ -556,8 +555,12 @@ unittest
     assert(result.inputs.length == 8);
     assert(result.outputs.length == 4);
 
-    assert(equal!((in Output outp, in KeyPair b) => outp.address == b.address)(
-               result.outputs, [ WK.Keys.Z, WK.Keys.A, WK.Keys.C, WK.Keys.D ]));
+    assert(result.outputs == [
+        Output(Amount(2), WK.Keys.Z.address),
+        Output(Amount(162_666_666_6666_666L), WK.Keys.A.address),
+        Output(Amount(162_666_666_6666_666L), WK.Keys.C.address),
+        Output(Amount(162_666_666_6666_666L), WK.Keys.D.address),
+    ].sort.array);
 }
 
 /// Test with a range of tuples
@@ -575,7 +578,7 @@ unittest
 
     assert(result.inputs.length == 4);
     assert(result.outputs.length == 1);
-    assert(result.outputs[0].value == Amount(1000));
+    assert(result.outputs[0] == Output(Amount(1000), WK.Keys.F.address));
 }
 
 ///
