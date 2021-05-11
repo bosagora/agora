@@ -118,7 +118,7 @@ public string isInvalidReason (
 
     if (tx.type == TxType.Freeze)
     {
-        if (tx.payload.data.length != 0)
+        if (tx.payload.bytes.length != 0)
             return "Transaction: Freeze cannot have data payload";
 
         foreach (input; tx.inputs)
@@ -171,7 +171,7 @@ public string isInvalidReason (
         if (tx.inputs[0] != Input(height))
             return "Transaction: Coinbase transaction contains invalid input";
 
-        if (tx.payload.data.length != 0)
+        if (tx.payload.bytes.length != 0)
             return "Transaction: Coinbase transactions can't include payload";
     }
     else

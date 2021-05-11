@@ -290,7 +290,7 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
         if (tx.outputs.length == 0)
             return "GenesisBlock: No output(s) in the transaction";
 
-        if (tx.payload.data.length != 0)
+        if (tx.payload.bytes.length != 0)
             return "GenesisBlock: The data payload cannot be stored";
 
         Hash tx_hash = tx.hashFull();

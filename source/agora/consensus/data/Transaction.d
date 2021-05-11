@@ -355,8 +355,8 @@ unittest
     auto json_str = old_tx.serializeToJsonString();
 
     Transaction new_tx = deserializeJson!Transaction(json_str);
-    assert(new_tx.payload.data.length == old_tx.payload.data.length);
-    assert(new_tx.payload.data == old_tx.payload.data);
+    assert(new_tx.payload.bytes.length == old_tx.payload.bytes.length);
+    assert(new_tx.payload.bytes == old_tx.payload.bytes);
 }
 
 // Check exact same Coinbase TXs for different heights generate different hashes
