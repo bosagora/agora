@@ -425,16 +425,14 @@ public class Ledger
 
             auto remain_amount = Amount(utxo_value.output.value);
             remain_amount.sub(this.params.SlashPenaltyAmount);
-            Transaction slashing_tx =
-            {
+            Transaction slashing_tx = Transaction(
                 TxType.Payment,
-                inputs: [Input(utxo)],
-                outputs: [
+                [Input(utxo)],
+                [
                     Output(this.params.SlashPenaltyAmount,
                         this.params.CommonsBudgetAddress),
                     Output(remain_amount, utxo_value.output.address),
-                ],
-            };
+                ]);
             this.utxo_set.updateUTXOCache(slashing_tx, block.header.height,
                 this.params.CommonsBudgetAddress);
         }
@@ -2187,7 +2185,7 @@ unittest
         data.tx_set = data.tx_set[0 .. $ - 1];
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
         // Add Invalid coinbase TX
-        data.tx_set ~= Transaction(TxType.Coinbase).hashFull();
+        data.tx_set ~= Transaction(TxType.Coinbase, null).hashFull();
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
 
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());

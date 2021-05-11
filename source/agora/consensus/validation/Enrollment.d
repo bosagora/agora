@@ -66,6 +66,7 @@ public string isInvalidReason (in Enrollment enrollment,
         return "Enrollment: UTXO is not frozen";
 
     Point address = utxo_set_value.output.address;
+
     if (!address.isValid())
         return "Enrollment: Address is not a valid point on Curve25519";
 

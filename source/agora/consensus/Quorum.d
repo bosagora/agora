@@ -490,11 +490,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
     TestUTXOSet storage = new TestUTXOSet;
     foreach (idx, const ref amount; amounts.save.enumerate)
     {
-        Transaction tx =
-        {
-            type : TxType.Freeze,
-            outputs: [Output(amount, keys[idx])]
-        };
+        Transaction tx = Transaction(TxType.Freeze, null, [ Output(amount, keys[idx]) ]);
 
         // simulating our own UTXO hashes to make the tests stable
         Hash txhash = hashMulti(id, idx, amount);

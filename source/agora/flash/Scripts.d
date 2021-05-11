@@ -180,13 +180,12 @@ public Unlock createUnlockSettle (Signature sig, in ulong seq_id)
 public Transaction createFundingTx (in Hash utxo, in Amount capacity,
     in Point pair_pk) @safe nothrow
 {
-    Transaction funding_tx = {
-        type: TxType.Payment,
-        inputs: [Input(utxo)],
-        outputs: [
+    Transaction funding_tx = Transaction(
+        TxType.Payment,
+        [Input(utxo)],
+        [
             Output(capacity,
-                Lock(LockType.Key, pair_pk[].dup))]
-    };
+                Lock(LockType.Key, pair_pk[].dup))]);
 
     return funding_tx;
 }
@@ -211,11 +210,10 @@ public Transaction createFundingTx (in Hash utxo, in Amount capacity,
 public Transaction createClosingTx (in Hash utxo, in Output[] outputs)
     @safe nothrow
 {
-    Transaction closing_tx = {
-        type: TxType.Payment,
-        inputs: [Input(utxo)],
-        outputs: outputs.dup,
-    };
+    Transaction closing_tx = Transaction(
+        TxType.Payment,
+        [Input(utxo)],
+        outputs.dup);
 
     return closing_tx;
 }
@@ -239,11 +237,10 @@ public Transaction createClosingTx (in Hash utxo, in Output[] outputs)
 public Transaction createSettleTx (in Transaction prev_tx,
     in uint settle_age, in Output[] outputs) @safe nothrow
 {
-    Transaction settle_tx = {
-        type: TxType.Payment,
-        inputs: [Input(prev_tx, 0 /* index */, settle_age)],
-        outputs: outputs.dup,
-    };
+    Transaction settle_tx = Transaction(
+        TxType.Payment,
+        [Input(prev_tx, 0 /* index */, settle_age)],
+        outputs.dup);
 
     return settle_tx;
 }
@@ -273,12 +270,10 @@ public Transaction createUpdateTx (in ChannelConfig chan_conf,
         chan_conf.funding_tx_hash, chan_conf.pair_pk, seq_id,
         chan_conf.num_peers);
 
-    Transaction update_tx = {
-        type: TxType.Payment,
-        inputs: [Input(prev_tx, 0 /* index */, 0 /* unlock age */)],
-        outputs: [
-            Output(chan_conf.capacity, Lock)]
-    };
+    Transaction update_tx = Transaction(
+        TxType.Payment,
+        [ Input(prev_tx, 0 /* index */, 0 /* unlock age */)] ,
+        [ Output(chan_conf.capacity, Lock) ]);
 
     return update_tx;
 }
@@ -528,8 +523,8 @@ unittest
     import agora.script.Engine;
     import std.stdio;
 
-    const Transaction bad_tx = { lock_height : Height(99) };
-    const Transaction tx = { lock_height : Height(100) };
+    const Transaction bad_tx = Transaction(Height(99));
+    const Transaction tx = Transaction(Height(100));
     const Hash wrong_secret = hashFull(99);
     const Hash secret = hashFull(42);
     auto hash = hashFull(secret);
