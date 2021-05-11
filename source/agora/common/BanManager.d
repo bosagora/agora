@@ -47,7 +47,7 @@ public class BanManager
         /// the total number of failed requests.
         /// if the number of failed requests reaches a certain number,
         /// then the IP is temporarily banned
-        private size_t fail_count;
+        private uint fail_count;
 
         /// To set an IP as banned, we simply set its un-ban time in the future.
         /// By default it's set to the past (therefore un-banned)
@@ -173,16 +173,18 @@ public class BanManager
 
         Params:
             address = the address to increase the fail count for
+            fail_count_inc = the number with which the failed request count
+                should be increased
 
     ***************************************************************************/
 
-    public void onFailedRequest (Address address) @safe nothrow
+    public void onFailedRequest (Address address, uint fail_count_inc = 1) @safe nothrow
     {
         auto status = this.get(address);
         if (this.isBanned(address) || status.whitelisted)
             return;
 
-        status.fail_count++;
+        status.fail_count += fail_count_inc;
 
         if (status.fail_count >= this.config.max_failed_requests)
         {
