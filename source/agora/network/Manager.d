@@ -380,6 +380,9 @@ public class NetworkManager
     /// All connected nodes (Validators & FullNodes)
     public DList!NodeConnInfo peers;
 
+    /// Adressess that were used to seed this node
+    public Set!Address seed_addresses;
+
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
 
@@ -436,18 +439,16 @@ public class NetworkManager
 
         // if we have peers in the metadata, use them
         if (this.metadata.peers.length > 0)
-        {
-            this.addAddresses(this.metadata.peers);
-        }
+            this.seed_addresses = this.metadata.peers;
         else
         {
-            // add the IP seeds
-            this.addAddresses(Set!Address.from(config.network));
+            this.seed_addresses = Set!Address.from(config.network);
 
             // add the DNS seeds
             if (config.dns_seeds.length > 0)
-                this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
+                this.seed_addresses.putRange(resolveDNSSeeds(config.dns_seeds, this.log));
         }
+        this.addAddresses(this.seed_addresses);
     }
 
     /// Returns an already instantiated version of the BanManager
