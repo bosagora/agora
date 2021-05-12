@@ -56,9 +56,12 @@ import agora.node.TransactionRelayer;
 import agora.script.Engine;
 import agora.serialization.Serializer;
 import agora.stats.App;
+import agora.stats.Block;
 import agora.stats.EndpointReq;
 import agora.stats.Server;
+import agora.stats.Tx;
 import agora.stats.Utils;
+import agora.stats.Validator;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 import agora.utils.Utility;
@@ -191,6 +194,18 @@ public class FullNode : API
     /// Ditto
     protected EndpointRequestStats endpoint_request_stats;
 
+    /// Ditto
+    private TxStats tx_stats;
+
+    /// Ditto
+    private BlockStats block_stats;
+
+    /// Ditto
+    private ValidatorPreimagesStats validator_preimages_stats;
+
+    /// Ditto
+    private ValidatorCountStats validator_count_stats;
+
 
     /***************************************************************************
 
@@ -273,6 +288,10 @@ public class FullNode : API
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectTxStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
+
         enum build_version = import(VersionFileName);
         this.app_stats.setMetricTo!"agora_application_info"(
             1, // Unused, see article linked in the struct's documentationx
@@ -297,6 +316,72 @@ public class FullNode : API
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
     mixin DefineCollectorForStats!("endpoint_request_stats", "collectStats");
+    mixin DefineCollectorForStats!("block_stats", "collectBlockStats");
+
+    /***************************************************************************
+
+        Collect all ledger & mempool stats into the collector
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
+    private void collectTxStats (Collector collector)
+    {
+        this.tx_stats.setMetricTo!"agora_transactions_poolsize_gauge"(
+            this.pool.length());
+        this.tx_stats.setMetricTo!"agora_transactions_amount_gauge"(
+            this.getUnspentAmount(this.pool));
+        foreach (stat; this.tx_stats.getStats())
+            collector.collect(stat.value);
+    }
+
+    /// Stats helper: return the total unspent amount
+    private ulong getUnspentAmount (TxRange) (ref TxRange transactions)
+    {
+        Amount tx_amount;
+        foreach (const ref Transaction tx; transactions)
+            getSumOutput(tx, tx_amount);
+        return to!ulong(tx_amount.toString());
+    }
+
+    /***************************************************************************
+
+        Collect all validator & preimage stats into the collector
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
+    private void collectValidatorStats (Collector collector)
+    {
+        Hash[] keys;
+        if (this.ledger.enrollment_manager.getEnrolledUTXOs(this.ledger.getBlockHeight() + 1, keys))
+            foreach (const ref key; keys)
+                this.validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
+                    this.ledger.enrollment_manager.validator_set.getPreimage(key).height, key.toString());
+
+        foreach (stat; this.validator_preimages_stats.getStats())
+            collector.collect(stat.value, stat.label);
+    }
+
+    /// Helper for stats
+    private void recordBlockStats (in Block block) @safe
+    {
+        const new_count = this.ledger.enrollment_manager.validator_set.countActive(block.header.height + 1);
+        this.block_stats.setMetricTo!"agora_block_height_counter"(
+            block.header.height.value);
+        this.block_stats.setMetricTo!"agora_block_enrollments_gauge"(new_count);
+        this.block_stats.increaseMetricBy!"agora_block_txs_amount_total"(
+            getUnspentAmount(block.txs));
+        this.block_stats.increaseMetricBy!"agora_block_txs_total"(
+            block.txs.length);
+        this.block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
+        this.block_stats.setMetricTo!"agora_block_height_counter"(
+            block.header.height.value);
+    }
 
     /***************************************************************************
 
@@ -443,6 +528,7 @@ public class FullNode : API
                 continue;
             else if (!this.ledger.acceptBlock(block))
                 break;
+            this.recordBlockStats(block);
         }
         return this.ledger.getBlockHeight();
     }
@@ -464,6 +550,7 @@ public class FullNode : API
         // Attempt to add block to the ledger (it may be there by other means)
         if (this.ledger.acceptBlock(block))
         {
+            this.recordBlockStats(block);
             ex_validators.each!(ex => this.network.unwhitelist(ex.pubkey));
             PublicKey[] active_validators = this.enroll_man.getActiveValidatorPublicKeys(block.header.height);
             active_validators.each!(ex => this.network.whitelist(ex));
@@ -785,12 +872,17 @@ public class FullNode : API
         if (this.pool.hasTransactionHash(tx_hash))
             return;
 
-        if (this.ledger.acceptTransaction(tx))
+        this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
+        if (!this.ledger.acceptTransaction(tx))
         {
-            log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
-            this.transaction_relayer.addTransaction(tx);
-            this.pushTransaction(tx);
+            this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
+            return;
         }
+
+        log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
+        this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
+        this.transaction_relayer.addTransaction(tx);
+        this.pushTransaction(tx);
     }
 
     /// GET: /has_transaction_hash
