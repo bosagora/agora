@@ -997,6 +997,8 @@ unittest
     // e.g. QR code. Alice scans it and proposes the payment.
     // it has a direct channel to bob so it uses it.
     alice.payInvoice(alice_pubkey, inv_1.value);
+    auto inv_res = factory.listener.waitUntilNotified(inv_1.value);
+    assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
 
     // wait for payment + folding update indices
     alice.waitForUpdateIndex(alice_pubkey, alice_bob_chan_id, 2);
@@ -1341,7 +1343,7 @@ unittest
     assert(info.owner_key == bob_pubkey);
     assert(info.peer_key == charlie_pubkey);
     assert(info.state == ChannelState.SettingUp
-        || info.state == ChannelState.WaitingForFunding);
+        || info.state == ChannelState.WaitingForFunding, info.state.to!string);
     assert(info.owner_balance == Amount(0), info.owner_balance.to!string);
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
