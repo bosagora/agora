@@ -47,6 +47,7 @@ private int main (string[] args)
     CommandLine cmdln;
 
     stAssertError = new AssertError("You should not see this");
+    assertHandler = &handleAssertion;
 
     try
     {
