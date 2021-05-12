@@ -760,7 +760,7 @@ public class Ledger
     public string validateSlashingData (in Height height, in ConsensusData data) @safe nothrow
     {
         // If we are enrolled and not slashing ourselves
-        if (this.enroll_man.isEnrolled(height, &this.utxo_set.peekUTXO) && this.checkSelfSlashing(height, data))
+        if (this.enroll_man.isEnrolled(height, &this.utxo_set.peekUTXO) && this.isSelfSlashing(height, data))
         {
             log.fatal("The node is slashing itself.");
             assert(0);
@@ -783,15 +783,10 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool checkSelfSlashing (in Height height, in ConsensusData data) @safe nothrow
+    public bool isSelfSlashing (in Height height, in ConsensusData data) @safe nothrow
     {
-        auto enroll_index = this.enroll_man.getIndexOfEnrollment(this.last_block.header.height + 1);
-        if (enroll_index != ulong.max &&
-            !data.missing_validators.find(enroll_index).empty)
-        {
-            return true;
-        }
-        return false;
+        const index = this.enroll_man.getIndexOfEnrollment(this.last_block.header.height + 1);
+        return (index != ulong.max && !data.missing_validators.find(index).empty);
     }
 
     /***************************************************************************
