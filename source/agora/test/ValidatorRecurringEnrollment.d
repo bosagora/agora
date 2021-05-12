@@ -14,6 +14,8 @@
 
 module agora.test.ValidatorRecurringEnrollment;
 
+version (unittest):
+
 import agora.test.Base;
 
 import agora.common.Config;
