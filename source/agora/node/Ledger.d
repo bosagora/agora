@@ -47,10 +47,6 @@ import agora.node.TransactionPool;
 import agora.script.Engine;
 import agora.script.Lock;
 import agora.serialization.Serializer;
-import agora.stats.Block;
-import agora.stats.Tx;
-import agora.stats.Utils;
-import agora.stats.Validator;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
@@ -114,18 +110,6 @@ public class Ledger
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
 
-    /// Transaction stats
-    private TxStats tx_stats;
-
-    /// Block stats
-    private BlockStats block_stats;
-
-    /// Validator preimages stats
-    private ValidatorPreimagesStats validator_preimages_stats;
-
-    /// Validator count stats
-    private ValidatorCountStats validator_count_stats;
-
     /// The checker of transaction data payload
     private FeeManager fee_man;
 
@@ -178,8 +162,6 @@ public class Ledger
         this.last_block = this.storage.readLastBlock();
         log.info("Last known block: #{} ({})", this.last_block.header.height,
                  this.last_block.header.hashFull());
-        this.block_stats.setMetricTo!"agora_block_height_counter"(
-            this.last_block.header.height.value);
 
         Block gen_block = this.storage.readBlock(Height(0));
         if (gen_block != params.Genesis)
@@ -217,10 +199,6 @@ public class Ledger
                 this.updateValidatorSet(block);
             }
         }
-
-        Utils.getCollectorRegistry().addCollector(&this.collectTxStats);
-        Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
-        Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
     }
 
     /***************************************************************************
@@ -284,14 +262,6 @@ public class Ledger
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
 
-        this.block_stats.setMetricTo!"agora_block_enrollments_gauge"(new_count);
-        this.block_stats.increaseMetricBy!"agora_block_txs_amount_total"(
-            getUnspentAmount(block.txs));
-        this.block_stats.increaseMetricBy!"agora_block_txs_total"(
-            block.txs.length);
-        this.block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
-        this.block_stats.setMetricTo!"agora_block_height_counter"(
-            block.header.height.value);
         return true;
     }
 
@@ -334,7 +304,6 @@ public class Ledger
 
     public bool acceptTransaction (Transaction tx) @safe
     {
-        this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
         const Height expected_height = this.getBlockHeight() + 1;
         string reason;
 
@@ -346,13 +315,10 @@ public class Ledger
         {
             log.info("Rejected tx. Reason: {}. Tx: {}",
                 reason !is null ? reason : "double-spend/coinbase", tx);
-            this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return false;
         }
         // If we were looking for this TX, stop
         this.unknown_txs.remove(tx.hashFull());
-
-        this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         return true;
     }
 
@@ -397,57 +363,6 @@ public class Ledger
 
         // Update the known "last block"
         this.last_block = deserializeFull!Block(serializeFull(block));
-    }
-
-    mixin DefineCollectorForStats!("block_stats", "collectBlockStats");
-
-    /***************************************************************************
-
-        Collect all ledger & mempool stats into the collector
-
-        Params:
-            collector = the Collector to collect the stats into
-
-    ***************************************************************************/
-
-    private void collectTxStats (Collector collector)
-    {
-        this.tx_stats.setMetricTo!"agora_transactions_poolsize_gauge"(
-            this.pool.length());
-        this.tx_stats.setMetricTo!"agora_transactions_amount_gauge"(
-            getUnspentAmount(this.pool));
-        foreach (stat; this.tx_stats.getStats())
-            collector.collect(stat.value);
-    }
-
-    /// Stats helper: return the total unspent amount
-    private ulong getUnspentAmount (TxRange) (ref TxRange transactions)
-    {
-        Amount tx_amount;
-        foreach (const ref Transaction tx; transactions)
-            getSumOutput(tx, tx_amount);
-        return to!ulong(tx_amount.toString());
-    }
-
-    /***************************************************************************
-
-        Collect all validator & preimage stats into the collector
-
-        Params:
-            collector = the Collector to collect the stats into
-
-    ***************************************************************************/
-
-    private void collectValidatorStats (Collector collector)
-    {
-        Hash[] keys;
-        if (this.enroll_man.getEnrolledUTXOs(this.getBlockHeight() + 1, keys))
-            foreach (const ref key; keys)
-                validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
-                    this.enroll_man.validator_set.getPreimage(key).height, key.toString());
-
-        foreach (stat; validator_preimages_stats.getStats())
-            collector.collect(stat.value, stat.label);
     }
 
     /***************************************************************************
