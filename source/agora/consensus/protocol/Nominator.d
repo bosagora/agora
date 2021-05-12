@@ -807,7 +807,7 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
-        if (this.ledger.checkSelfSlashing(Height(slot_idx), data))
+        if (this.ledger.isSelfSlashing(Height(slot_idx), data))
         {
             log.warn("validateValue(): Marking {} for data slashing us as invalid",
                      nomination ? "nomination" : "vote");
