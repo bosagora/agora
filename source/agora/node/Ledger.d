@@ -1124,14 +1124,51 @@ public class ValidatingLedger : Ledger
         data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
         log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
+
+        data.enrolls = this.getCandidateEnrollments(next_height);
+        data.missing_validators = this.getCandidateMissingValidators(next_height);
+        data.tx_set = this.getCandidateTransactions(next_height, max_txs,
+            data.missing_validators);
+    }
+
+    /***************************************************************************
+
+        Returns: A list of Enrollments that can be used for the next block
+
+    ***************************************************************************/
+
+    public Enrollment[] getCandidateEnrollments (in Height height) @safe
+    {
+        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            A list of Validators that have not yet revealed their PreImage for
+            height `height` (based on the current Ledger's knowledge).
+
+    ***************************************************************************/
+
+    public uint[] getCandidateMissingValidators (in Height height) @safe
+    {
+        return this.slash_man.getMissingValidators(height);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            A list of Transaction hash that can be included in the next block
+
+    ***************************************************************************/
+
+    public Hash[] getCandidateTransactions (
+        in Height height, ulong max_txs, in uint[] missing_validators) @safe
+    {
+        Hash[] result;
+        Amount tot_fee, tot_data_fee;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
-        data.enrolls = this.enroll_man.getEnrollments(next_height, &this.utxo_set.peekUTXO);
-
-        // get information about validators not revealing a preimage timely
-        this.slash_man.getMissingValidators(data.missing_validators, next_height);
-
-        Amount tot_fee, tot_data_fee;
         foreach (ref Hash hash, ref Transaction tx; this.pool)
         {
             scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
@@ -1145,26 +1182,27 @@ public class ValidatingLedger : Ledger
                 return err;
             };
 
-            if (auto reason = tx.isInvalidReason(this.engine, utxo_finder,
-                next_height, checkAndAcc))
+            if (auto reason = tx.isInvalidReason(
+                    this.engine, utxo_finder, height, checkAndAcc))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
-                data.tx_set ~= hash;
+                result ~= hash;
 
-            if (data.tx_set.length >= max_txs)
+            if (result.length >= max_txs)
             {
-                data.tx_set.sort();
-                return;
+                result.sort();
+                return result;
             }
         }
 
-        const pre_cb_len = data.tx_set.length;
+        const pre_cb_len = result.length;
         // Dont append a CB TX to an empty TX set
         if (pre_cb_len > 0)
-            data.tx_set ~= this.getCoinbaseTX(next_height, tot_fee, tot_data_fee,
-                data.missing_validators).map!(tx => tx.hashFull()).array;
+            result ~= this.getCoinbaseTX(height, tot_fee, tot_data_fee,
+                missing_validators).map!(tx => tx.hashFull()).array;
         // No more than 1 CB per block
-        assert(data.tx_set.length - pre_cb_len <= 1);
+        assert(result.length - pre_cb_len <= 1);
+        return result;
     }
 
     /***************************************************************************

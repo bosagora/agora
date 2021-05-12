@@ -84,28 +84,21 @@ public class SlashPolicy
         slashed through the consensus procoess.
 
         Params:
-            missing_validators = will contain the validators
             height = the desired block height to look up the validators for
 
     ***************************************************************************/
 
-    public void getMissingValidators (ref uint[] missing_validators,
-        in Height height) @safe nothrow
+    public uint[] getMissingValidators (in Height height) @safe nothrow
     {
-        missing_validators.length = 0;
-        () @trusted { assumeSafeAppend(missing_validators); }();
-
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
+        uint[] result;
         foreach (idx, utxo_key; keys)
-        {
             if (!this.hasRevealedPreimage(height, utxo_key))
-            {
-                missing_validators ~= cast(uint)idx;
-            }
-        }
+                result ~= cast(uint)idx;
+        return result;
     }
 
     /***************************************************************************
@@ -345,8 +338,7 @@ unittest
     test!"=="(enroll_man.getValidatorPreimage(enrollments[1].utxo_key), preimage_val1_height_2);
 
     // check missing pre-image at the height of 2
-    uint[] missing_validators;
-    slash_man.getMissingValidators(missing_validators, Height(2));
+    uint[] missing_validators =  slash_man.getMissingValidators(Height(2));
     test!"=="(missing_validators.length, 6);
     assert(missing_validators.find(first_validator).empty());
     assert(missing_validators.find(second_validator).empty());
