@@ -1016,6 +1016,8 @@ unittest
     // e.g. QR code. Alice scans it and proposes the payment.
     // it has a direct channel to bob so it uses it.
     alice.payInvoice(alice_pubkey, inv_1.value);
+    auto inv_res = factory.listener.waitUntilNotified(inv_1.value);
+    assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
 
     // wait for payment + folding update indices
     alice.waitForUpdateIndex(alice_pubkey, alice_bob_chan_id, 2);
