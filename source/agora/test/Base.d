@@ -2131,26 +2131,26 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .takeExactly(GenesisValidators)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
+    const num_full_nodes = test_conf.full_nodes + test_conf.outsider_full_nodes;
+    auto full_node_addresses = num_full_nodes.iota.map!(
+        idx => fullNodeAddress(idx)).array;
+
+    // full nodes and enrolled validators will connect to other enrolled validators
+    // and other full nodes (but not to outsider nodes)
+    auto connect_addresses = enrolled_addresses.chain(full_node_addresses);
+
     auto validator_configs = validator_keys.enumerate
         .map!(en => makeValidatorConfig(
             en.index,
             en.value,
             validator_addresses[en.index],
-            enrolled_addresses.filter!(  // don't connect the validator to itself
+            connect_addresses.filter!(  // don't connect the validator to itself
                 addr => addr != validator_addresses[en.index]).array));
-
-    const num_full_nodes = test_conf.full_nodes + test_conf.outsider_full_nodes;
-    auto full_node_addresses = num_full_nodes.iota.map!(
-        idx => fullNodeAddress(idx)).array;
-
-    // full nodes will connect to enrolled addresses + other full nodes
-    // (but not to outsider nodes)
-    auto connect_addresses = enrolled_addresses.chain(full_node_addresses);
 
     auto full_node_configs = num_full_nodes
         .iota
         .map!(index => makeFullNodeConfig(
-            index,
+            index + enrolled_addresses.length,
             full_node_addresses[index],
             connect_addresses.filter!(  // don't connect the fullnode to itself
                 addr => addr != full_node_addresses[index]).array));
