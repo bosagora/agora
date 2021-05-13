@@ -315,12 +315,15 @@ extern(D):
     {
         this.ledger.prepareNominatingSet(data, MaxTransactionsPerBlock, this.nomination_start_time);
         if (data.tx_set.length < 1)
-            return false;  // not ready to nominate yet
+        {
+            this.log.trace("prepareNominatingSet(): No transaction to nominate yet");
+            return false;
+        }
 
         // check whether the consensus data is valid before nominating it.
         if (auto msg = this.ledger.validateConsensusData(data))
         {
-            log.fatal("prepareNominatingSet(): Invalid consensus data: {}. Data: {}",
+            this.log.error("prepareNominatingSet(): Invalid consensus data: {}. Data: {}",
                     msg, data.prettify);
             if (this.onInvalidNomination)
                 this.onInvalidNomination(data, msg);
@@ -364,26 +367,38 @@ extern(D):
         const slot_idx = this.ledger.getBlockHeight() + 1;
         // are we done nominating this round
         if (this.last_confirmed_height >= slot_idx)
+        {
+            this.log.trace(
+                "checkNominate(): Not nominating because we already confirmed ({} >= {})",
+                this.last_confirmed_height, slot_idx);
             return;
+        }
 
         const cur_time = this.clock.networkTime();
         const genesis_timestamp = this.params.GenesisTimestamp;
 
         if (cur_time < genesis_timestamp)
         {
-            log.fatal("Clock is out of sync. " ~
-                "Current time: {}. Genesis time: {}", cur_time,
-                genesis_timestamp);
+            this.log.error(
+                "Clock is out of sync: {} (Current) < {} (Genesis)",
+                cur_time, genesis_timestamp);
             return;
         }
 
-        if (cur_time < this.getExpectedBlockTime())
-            return;  // too early to nominate
+        const next_nomination = this.getExpectedBlockTime();
+        if (cur_time < next_nomination)
+        {
+            this.log.trace(
+                "checkNominate(): Too early to nominate (current: {}, next: {})",
+                cur_time, next_nomination);
+            return;
+        }
 
         if (this.nomination_start_time == 0)
             this.nomination_start_time = cur_time;
 
         ConsensusData data;
+        // `prepareNomintingSet` will log something if it returns `false`
         if (!this.prepareNominatingSet(data))
             return;
 
