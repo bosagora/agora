@@ -217,7 +217,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Height getBlockHeight () @safe nothrow
+    public Height getBlockHeight () const scope @safe @nogc nothrow pure
     {
         return this.last_block.header.height;
     }
