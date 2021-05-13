@@ -1170,24 +1170,25 @@ static immutable CommonsBudget = KeyPair(PublicKey(Point([49, 189, 206, 20, 131,
 
     Key pairs used for Enrollments in the genesis block
 
-    Note that despite mining for a few days, NODE0, NODE1, NODE8, NODE9 were
-    not found.
-
 *******************************************************************************/
 
-/// vald2: boa1xpvald2ydpxzl9aat978kv78y5g24jxy46mcnl7munf4jyhd0zjrc5x62kn
-static immutable NODE2 = KeyPair(PublicKey(Point([89, 223, 181, 68, 104, 76, 47, 151, 189, 89, 124, 123, 51, 199, 37, 16, 170, 200, 196, 174, 183, 137, 255, 219, 228, 211, 89, 18, 237, 120, 164, 60])), SecretKey(Scalar([40, 122, 190, 63, 119, 203, 168, 25, 99, 173, 205, 177, 194, 117, 61, 201, 34, 111, 32, 177, 208, 131, 42, 123, 234, 196, 116, 61, 121, 14, 102, 2])));
-/// vald3: boa1xrvald3zmehvpcmxqm0kn6wkaqyry7yj3cd8h975ypzlyz00sczpzhsk308
-static immutable NODE3 = KeyPair(PublicKey(Point([217, 223, 182, 34, 222, 110, 192, 227, 102, 6, 223, 105, 233, 214, 232, 8, 50, 120, 146, 142, 26, 123, 151, 212, 32, 69, 242, 9, 239, 134, 4, 17])), SecretKey(Scalar([249, 97, 58, 139, 241, 57, 94, 224, 245, 226, 65, 242, 24, 2, 44, 139, 229, 2, 61, 93, 97, 53, 117, 209, 198, 20, 254, 213, 226, 180, 254, 14])));
-/// vald4: boa1xrvald4v2gy790stemq4gg37v4us7ztsxq032z9jmlxfh6xh9xfak4qglku
-static immutable NODE4 = KeyPair(PublicKey(Point([217, 223, 182, 172, 82, 9, 226, 190, 11, 206, 193, 84, 34, 62, 101, 121, 15, 9, 112, 48, 31, 21, 8, 178, 223, 204, 155, 232, 215, 41, 147, 219])), SecretKey(Scalar([98, 226, 48, 109, 185, 208, 123, 178, 255, 129, 73, 131, 35, 237, 45, 205, 165, 127, 59, 193, 148, 70, 235, 102, 79, 137, 73, 116, 53, 66, 231, 15])));
-/// vald5: boa1xzvald5dvy54j7yt2h5yzs2432h07rcn66j84t3lfdrlrwydwq78cz0nckq
-static immutable NODE5 = KeyPair(PublicKey(Point([153, 223, 182, 141, 97, 41, 89, 120, 139, 85, 232, 65, 65, 85, 138, 174, 255, 15, 19, 214, 164, 122, 174, 63, 75, 71, 241, 184, 141, 112, 60, 124])), SecretKey(Scalar([221, 126, 197, 133, 227, 104, 135, 143, 81, 160, 228, 54, 200, 241, 175, 123, 2, 170, 165, 2, 7, 127, 122, 59, 7, 35, 45, 180, 140, 49, 166, 11])));
-/// vald6: boa1xrvald6jsqfuctlr4nr4h9c224vuah8vgv7f9rzjauwev7j8tj04qee8f0t
-static immutable NODE6 = KeyPair(PublicKey(Point([217, 223, 183, 82, 128, 19, 204, 47, 227, 172, 199, 91, 151, 10, 85, 89, 206, 220, 236, 67, 60, 146, 140, 82, 239, 29, 150, 122, 71, 92, 159, 80])), SecretKey(Scalar([108, 48, 31, 186, 38, 25, 57, 33, 60, 210, 196, 151, 102, 61, 167, 8, 100, 128, 104, 220, 204, 27, 39, 67, 101, 67, 43, 119, 30, 25, 30, 4])));
-/// vald7: boa1xzvald7hxvgnzk50sy04ha7ezgyytxt5sgw323zy8dlj3ya2q40e6elltwq
-static immutable NODE7 = KeyPair(PublicKey(Point([153, 223, 183, 215, 51, 17, 49, 90, 143, 129, 31, 91, 247, 217, 18, 8, 69, 153, 116, 130, 29, 21, 68, 68, 59, 127, 40, 147, 170, 5, 95, 157])), SecretKey(Scalar([118, 108, 243, 157, 25, 205, 32, 124, 50, 230, 106, 83, 17, 206, 84, 190, 145, 205, 57, 39, 114, 49, 53, 82, 78, 242, 202, 178, 115, 229, 63, 8])));
+// val2: boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2 - SAQXRDHTWME4GUIVNYCKPN433VJ4BJP2L2T7UWHGSSW47VFC67EQFY3S
+static immutable NODE2 = KeyPair(PublicKey(Point([153, 223, 171, 177, 195, 76, 197, 30, 122, 135, 199, 165, 59, 248, 20, 63, 104, 203, 140, 183, 177, 199, 208, 11, 136, 169, 69, 145, 67, 250, 64, 156])), SecretKey(Scalar([33, 120, 140, 243, 179, 9, 195, 81, 21, 110, 4, 167, 183, 155, 221, 83, 192, 165, 250, 94, 167, 250, 88, 230, 148, 173, 207, 212, 162, 247, 201, 2])));
 
+// val3: boa1xzval3ah8z7ewhuzx6mywveyr79f24w49rdypwgurhjkr8z2ke2mycftv9n - SC3H3ADGT3YGLMDWCLKZ2GILDHDTC4WDE7M3G4URQPWJZZM43TTAM2QG
+static immutable NODE3 = KeyPair(PublicKey(Point([153, 223, 199, 183, 56, 189, 151, 95, 130, 54, 182, 71, 51, 36, 31, 138, 149, 85, 213, 40, 218, 64, 185, 28, 29, 229, 97, 156, 74, 182, 85, 178])), SecretKey(Scalar([182, 125, 128, 102, 158, 240, 101, 176, 118, 18, 213, 157, 25, 11, 25, 199, 49, 114, 195, 39, 217, 179, 114, 145, 131, 236, 156, 229, 156, 220, 230, 6])));
+
+// val4: boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy - SBIJAVYYCSRV5RNO2WVTT25H6VZTEV3YSE7U7WT7UQUNSVBUGB6QNBWG
+static immutable NODE4 = KeyPair(PublicKey(Point([153, 223, 214, 108, 31, 21, 153, 23, 111, 24, 86, 15, 95, 171, 229, 173, 214, 103, 99, 35, 48, 186, 164, 240, 217, 9, 27, 16, 184, 93, 56, 248])), SecretKey(Scalar([80, 144, 87, 24, 20, 163, 94, 197, 174, 213, 171, 57, 235, 167, 245, 115, 50, 87, 120, 145, 63, 79, 218, 127, 164, 40, 217, 84, 52, 48, 125, 6])));
+
+// val5: boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8 - SAZO4WA5SXUN3J6XBXZCFPXJJZ62IQAJYAG2KBVWF2QZKTU2WK3QTNMV
+static immutable NODE5 = KeyPair(PublicKey(Point([217, 223, 208, 98, 222, 250, 162, 138, 245, 232, 16, 200, 237, 152, 232, 238, 238, 189, 199, 26, 23, 114, 71, 229, 103, 101, 20, 145, 201, 41, 203, 82])), SecretKey(Scalar([50, 238, 88, 29, 149, 232, 221, 167, 215, 13, 242, 34, 190, 233, 78, 125, 164, 64, 9, 192, 13, 165, 6, 182, 46, 161, 149, 78, 154, 178, 183, 9])));
+
+// val6: boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5 - SAFIQC7HRZPVPEG47ZHS3OBBCYDREHNC4DEKM3QODM7WKPZPU7VQXCPI
+static immutable NODE6 = KeyPair(PublicKey(Point([217, 223, 234, 237, 60, 4, 220, 217, 100, 22, 138, 153, 130, 78, 2, 115, 43, 242, 163, 96, 194, 239, 246, 247, 40, 239, 222, 136, 65, 100, 40, 141])), SecretKey(Scalar([10, 136, 11, 231, 142, 95, 87, 144, 220, 254, 79, 45, 184, 33, 22, 7, 18, 29, 162, 224, 200, 166, 110, 14, 27, 63, 101, 63, 47, 167, 235, 11])));
+
+// val7: boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh - SAWI3JZWDDSQR6AX4DRG2OMS26Y6XY4X2WA3FK6D5UW4WTU74GUQXRZP
+static immutable NODE7 = KeyPair(PublicKey(Point([217, 223, 249, 14, 188, 133, 91, 20, 125, 7, 45, 137, 177, 83, 168, 255, 84, 153, 126, 174, 212, 66, 231, 164, 215, 233, 176, 53, 53, 68, 215, 49])), SecretKey(Scalar([44, 141, 167, 54, 24, 229, 8, 248, 23, 224, 226, 109, 57, 146, 215, 177, 235, 227, 151, 213, 129, 178, 171, 195, 237, 45, 203, 78, 159, 225, 169, 11])));
 
 /*******************************************************************************
 

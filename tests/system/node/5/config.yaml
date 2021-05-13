@@ -45,8 +45,8 @@ validator:
   # If this node is not a validator, this will be ignored
   #
   # DO NOT USE THOSE VALUES ANYWHERE
-  # Public address:  boa1xzvald5dvy54j7yt2h5yzs2432h07rcn66j84t3lfdrlrwydwq78cz0nckq
-  seed: SDOX5RMF4NUIPD2RUDSDNSHRV55QFKVFAIDX66R3A4RS3NEMGGTAWA44
+  # Public address:  boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8
+  seed: SAZO4WA5SXUN3J6XBXZCFPXJJZ62IQAJYAG2KBVWF2QZKTU2WK3QTNMV
   # Address of the name registry
   registry_address: disabled
 
