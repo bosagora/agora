@@ -1688,8 +1688,14 @@ public class AgoraFlashNode : FlashNode
 
         auto peer = new RestInterfaceClient!FlashAPI(settings);
         this.known_peers[peer_pk] = peer;
+
+        // gossip all channels
         if (this.known_channels.length > 0)
             peer.gossipChannelsOpen(this.known_channels.values);
+
+        // and gossip all updates
+        foreach (chan_id, updates; this.channel_updates)
+            peer.gossipChannelUpdates(updates.values);
 
         return peer;
     }
