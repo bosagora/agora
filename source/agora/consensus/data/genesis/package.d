@@ -63,7 +63,7 @@ version (unittest)
     }
 }
 
-/// Check the Coinnet Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Coinnet.d)
+/// Check the Coinnet Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Test.d)
 /// This will not be used for the final Coinnet GenesisBlock which will use unknown key secrets. But can be useful for now.
 unittest
 {
@@ -84,7 +84,7 @@ unittest
 
 }
 
-/// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Test.d)
+/// Check the Test Genesis Block enrollments (prints replacement enrollments if needed for agora.consensus.data.genesis.Coinnet.d)
 unittest
 {
     import agora.consensus.data.genesis.Coinnet;
