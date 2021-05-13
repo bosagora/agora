@@ -731,12 +731,14 @@ public class Ledger
                 &this.fee_man.check,
                 this.enroll_man.getEnrollmentFinder(),
                 this.enroll_man.validator_set.countActive(block.header.height + 1),
-                this.getRandomSeed(),
                 this.last_block.header.time_offset,
                 cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
                 block_time_offset_tolerance,
                 &this.getCoinbaseTX))
             return reason;
+
+        if (block.header.random_seed != this.getRandomSeed())
+            return "Block: Header's random seed does not match that of known pre-images";
 
         // Finally, validate the signatures
         Point sum_K;
