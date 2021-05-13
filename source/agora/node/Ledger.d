@@ -35,7 +35,6 @@ import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
-import agora.consensus.SlashPolicy;
 import agora.consensus.validation;
 import agora.consensus.validation.Block : validateBlockTimeOffset;
 import agora.consensus.Fee;
@@ -100,9 +99,6 @@ public class Ledger
         return this.enroll_man;
     }
 
-    /// Slashing policy manager
-    private SlashPolicy slash_man;
-
     /// If not null call this delegate
     /// A block was externalized
     private void delegate (in Block, bool) @safe onAcceptedBlock;
@@ -150,7 +146,6 @@ public class Ledger
         this.utxo_set = utxo_set;
         this.storage = storage;
         this.enroll_man = enroll_man;
-        this.slash_man = new SlashPolicy(this.enroll_man, params);
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
         this.fee_man = fee_man;
@@ -418,7 +413,7 @@ public class Ledger
     protected void updateSlashedUTXOSet (in Block block) @safe
     {
         Hash[] validator_utxos;
-        this.slash_man.getMissingValidatorsUTXOs(validator_utxos,
+        this.getMissingValidatorsUTXOs(validator_utxos,
             block.header.height, block.header.missing_validators);
         foreach (utxo; validator_utxos)
         {
@@ -427,14 +422,14 @@ public class Ledger
                 assert(0, "UTXO for the slashed validator not found!");
 
             auto remain_amount = Amount(utxo_value.output.value);
-            remain_amount.sub(this.slash_man.penalty_amount);
+            remain_amount.sub(this.params.SlashPenaltyAmount);
             Transaction slashing_tx =
             {
                 TxType.Payment,
                 inputs: [Input(utxo)],
                 outputs: [
-                    Output(this.slash_man.penalty_amount,
-                        this.slash_man.penalty_address),
+                    Output(this.params.SlashPenaltyAmount,
+                        this.params.CommonsBudgetAddress),
                     Output(remain_amount, utxo_value.output.address),
                 ],
             };
@@ -495,7 +490,7 @@ public class Ledger
             return;
 
         Hash[] validators_utxos;
-        this.slash_man.getMissingValidatorsUTXOs(validators_utxos,
+        this.getMissingValidatorsUTXOs(validators_utxos,
             block.header.height, block.header.missing_validators);
         foreach (utxo; validators_utxos)
         {
@@ -681,7 +676,7 @@ public class Ledger
             assert(0);
         }
 
-        return this.slash_man.isInvalidPreimageRootReason(height, data.missing_validators);
+        return this.isInvalidPreimageRootReason(height, data.missing_validators);
     }
 
     /***************************************************************************
@@ -987,7 +982,116 @@ public class Ledger
 
     public Hash getRandomSeed () nothrow @safe
     {
-        return this.slash_man.getRandomSeed(this.last_block.header.height + 1);
+        const height = this.last_block.header.height + 1;
+
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
+            assert(0, "Could not retrieve enrollments / no enrollments found");
+
+        Hash[] valid_keys;
+        foreach (key; keys)
+        {
+            if (this.hasRevealedPreimage(height, key))
+                valid_keys ~= key;
+        }
+
+        // NOTE: The random seed of `Hash.init` value is currently
+        // checked in the `validateSlashingData` function of `Ledger`.
+        if (valid_keys.length == 0)
+            return Hash.init;
+
+        return this.enroll_man.getRandomSeed(valid_keys, height);
+    }
+
+    /***************************************************************************
+
+        Get the UTXOs of the validators that do not reveal their pre-images
+        by indices
+
+        Params:
+            validators_utxos = will contain the UTXOs ot the validators
+            height = curent block being created
+            missing_validators = indices of validators being slashed
+
+    ***************************************************************************/
+
+    private void getMissingValidatorsUTXOs (ref Hash[] validators_utxos,
+        in Height height, const uint[] missing_validators) @safe nothrow
+    {
+        validators_utxos.length = 0;
+        () @trusted { assumeSafeAppend(validators_utxos); }();
+
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys))
+            assert(0, "Could not retrieve enrollments");
+
+        foreach (idx; missing_validators)
+        {
+            validators_utxos ~= keys[idx];
+        }
+    }
+
+    /***************************************************************************
+
+        Check if a validator has a pre-image for the height
+
+        Params:
+            height = the desired block height to look up the hash for
+            utxo_key = the UTXO key idendifying a validator
+
+        Returns:
+            true if the validator has revealed its preimage for the provided
+                block height
+
+    ***************************************************************************/
+
+    private bool hasRevealedPreimage (in Height height, in Hash utxo_key)
+        @safe nothrow
+    {
+        if (utxo_key == this.enroll_man.getEnrollmentKey())
+            return true;
+
+        auto preimage = this.enroll_man.getValidatorPreimage(utxo_key);
+        auto enrolled = this.enroll_man.validator_set.getEnrolledHeight(height, preimage.utxo);
+        assert(height >= enrolled);
+        return preimage.height >= height;
+    }
+
+    /***************************************************************************
+
+        Check if information for pre-images and slashed validators is valid
+
+        Params:
+            height = the height of proposed block
+            missing_validators = list of indices to the validator UTXO set
+                which have not revealed the preimage
+
+        Returns:
+            `null` if the information is valid at the proposed height,
+            otherwise a string explaining the reason it is invalid.
+
+    ***************************************************************************/
+
+    private string isInvalidPreimageRootReason (in Height height,
+        in uint[] missing_validators) @safe nothrow
+    {
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
+            assert(0, "Could not retrieve enrollments / no enrollments found");
+
+        uint[] local_missing_validators;
+        foreach (idx, key; keys)
+        {
+            if (!this.hasRevealedPreimage(height, key))
+                local_missing_validators ~= cast(uint)idx;
+        }
+
+        if (local_missing_validators != missing_validators)
+            return "The list of missing validators does not match with the local one. " ~
+                assumeWontThrow(to!string(missing_validators)) ~
+                " != " ~ assumeWontThrow(to!string(local_missing_validators));
+
+        return null;
     }
 }
 
@@ -1067,7 +1171,15 @@ public class ValidatingLedger : Ledger
 
     public uint[] getCandidateMissingValidators (in Height height) @safe
     {
-        return this.slash_man.getMissingValidators(height);
+        Hash[] keys;
+        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
+            assert(0, "Could not retrieve enrollments / no enrollments found");
+
+        uint[] result;
+        foreach (idx, utxo_key; keys)
+            if (!this.hasRevealedPreimage(height, utxo_key))
+                result ~= cast(uint)idx;
+        return result;
     }
 
     /***************************************************************************
