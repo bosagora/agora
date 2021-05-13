@@ -720,6 +720,11 @@ public abstract class FlashNode : FlashControlAPI
                 to_gossip ~= update;
                 this.dump();
             }
+            else
+            {
+                log.info("gossipChannelUpdates() rejected missing channel update: {}",
+                    update);
+            }
         }
 
         // also gossip new updates to peers later
