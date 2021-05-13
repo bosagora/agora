@@ -693,6 +693,11 @@ public abstract class FlashNode : FlashControlAPI
                 this.gossip_queue.insertBack(GossipEvent(update));
                 this.dump();
             }
+            else
+            {
+                log.info("gossipChannelUpdates() rejected missing channel update: {}",
+                    update);
+            }
         }
     }
 
