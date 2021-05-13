@@ -254,14 +254,24 @@ private UnitTestResult customModuleUnitTester ()
         atomicOp!"+="(executed, 1);
         try
         {
+            import std.datetime.stopwatch : AutoStart, StopWatch;
+
             if (chatty)
             {
                 auto output = stdout.lockingTextWriter();
-                output.formattedWrite("Unittesting %s..\n", mod.name);
+                output.formattedWrite("Unittesting %s", mod.name);
+                stdout.flush();
+            }
+            auto sw = StopWatch(AutoStart.yes);
+            mod.test();
+            sw.stop();
+            if (chatty)
+            {
+                auto output = stdout.lockingTextWriter();
+                output.formattedWrite(" (took %s)\n", sw.peek());
                 stdout.flush();
             }
 
-            mod.test();
             atomicOp!"+="(passed, 1);
             return true;
         }
