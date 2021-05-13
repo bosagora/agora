@@ -985,9 +985,11 @@ unittest
     factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    // also wait for all parties to discover other channels on the network
+    // also wait for all parties to discover other channels and their updates on the network
     alice.waitForChannelDiscovery(bob_charlie_chan_id);
     charlie.waitForChannelDiscovery(alice_bob_chan_id);
+    alice.waitForChannelUpdate(bob_charlie_chan_id, PaymentDirection.TowardsPeer, 0);
+    charlie.waitForChannelUpdate(alice_bob_chan_id, PaymentDirection.TowardsPeer, 0);
 
     // begin off-chain transactions
     auto inv_1 = charlie.createNewInvoice(charlie_pubkey, Amount(2_000),
