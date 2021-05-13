@@ -16,12 +16,6 @@ namespace xdr {
 #endif // _MSC_VER && !MSVC
 
 #if MSVC
-#define Constexpr
-// Dtor implicitly deleted due to base class deleted/inaccessible dtor:
-#pragma warning(disable: 4624)
-// Dtor will not be implicitly called if an exn is thrown:
-#pragma warning(disable: 4594)
-
 inline std::string
 errstr(int no)
 {
@@ -34,9 +28,10 @@ errstr(int no)
 #define xdr_strerror xdr::errstr
 
 #else // !MSVC
-#define Constexpr constexpr
 #define xdr_strerror std::strerror
 #endif // !MSVC
+
+#define Constexpr constexpr
 
 #ifndef XDRPP_WORDS_BIGENDIAN
 #if MSVC

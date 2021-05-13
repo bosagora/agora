@@ -63,9 +63,6 @@ public:
   static msg_ptr alloc(std::size_t size);
 };
 
-static_assert(std::is_standard_layout<message_t>::value,
-	      "message_t should be standard layout");
-
 }
 
 #endif // !_XDRPP_MESSAGE_H_HEADER_INCLUDED_
