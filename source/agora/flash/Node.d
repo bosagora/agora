@@ -697,7 +697,7 @@ public abstract class FlashNode : FlashControlAPI
     /// See `FlashAPI.gossipChannelUpdates`
     public void gossipChannelUpdates (ChannelUpdate[] chan_updates)
     {
-        log.info("gossipChannelUpdates() with {} channels", chan_updates.length);
+        log.info("gossipChannelUpdates() with {} channels", chan_updates);
 
         ChannelUpdate[] to_gossip;
         foreach (update; chan_updates)
@@ -715,7 +715,13 @@ public abstract class FlashNode : FlashControlAPI
                     }
 
                 if (!verify(pk, update.sig, update))
+                {
+                    log.info("gossipChannelUpdates() rejected bad signature: {}",
+                        update);
                     continue;
+                }
+                log.info("gossipChannelUpdates() added channel update: {}",
+                        update);
                 this.channel_updates[update.chan_id][update.direction] = update;
                 to_gossip ~= update;
                 this.dump();
