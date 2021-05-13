@@ -1365,7 +1365,8 @@ unittest
     assert(info.chan_id == bob_charlie_chan_id_2);
     assert(info.owner_key == bob_pubkey);
     assert(info.peer_key == charlie_pubkey);
-    assert(info.state == ChannelState.SettingUp
+    assert(info.state == ChannelState.Negotiating
+        || info.state == ChannelState.SettingUp
         || info.state == ChannelState.WaitingForFunding, info.state.to!string);
     assert(info.owner_balance == Amount(0), info.owner_balance.to!string);
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
