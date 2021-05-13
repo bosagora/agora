@@ -534,7 +534,7 @@ extern(D):
                 return;
             }
 
-            Hash random_seed = this.ledger.getExternalizedRandomSeed(
+            Hash random_seed = this.ledger.getRandomSeed(
                 last_block.header.height + 1, con_data.missing_validators);
 
             Transaction[] received_tx_set;
@@ -707,7 +707,7 @@ extern(D):
                 assert(0);  // this should never happen
         }();
 
-        const Hash random_seed = this.ledger.getExternalizedRandomSeed(
+        const Hash random_seed = this.ledger.getRandomSeed(
                 last_block.header.height + 1, con_data.missing_validators);
 
         Transaction[] signed_tx_set;
@@ -861,7 +861,7 @@ extern(D):
             assert(0, format!"Transaction set empty for slot %s"(height));
 
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
-        Hash random_seed = this.ledger.getExternalizedRandomSeed(
+        Hash random_seed = this.ledger.getRandomSeed(
             height, data.missing_validators);
         Transaction[] externalized_tx_set;
         if (auto fail_reason = this.ledger.getValidTXSet(data,

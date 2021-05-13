@@ -737,7 +737,7 @@ public class Ledger
                 &this.getCoinbaseTX))
             return reason;
 
-        if (block.header.random_seed != this.getRandomSeed())
+        if (block.header.random_seed != this.getRandomSeed(block.header.height, block.header.missing_validators))
             return "Block: Header's random seed does not match that of known pre-images";
 
         // Finally, validate the signatures
@@ -840,7 +840,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Hash getExternalizedRandomSeed (in Height height,
+    public Hash getRandomSeed (in Height height,
         in uint[] missing_validators) @safe nothrow
     {
         Hash[] keys;
@@ -969,40 +969,6 @@ public class Ledger
     public Set!Hash getUnknownTXHashes () @safe nothrow
     {
         return this.unknown_txs;
-    }
-
-    /***************************************************************************
-
-        Generate the random seed reduced from the preimages for the current
-        height
-
-        Returns:
-            the random seed if there are one or more valid preimages,
-            otherwise Hash.init.
-
-    ***************************************************************************/
-
-    public Hash getRandomSeed () nothrow @safe
-    {
-        const height = this.last_block.header.height + 1;
-
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
-            assert(0, "Could not retrieve enrollments / no enrollments found");
-
-        Hash[] valid_keys;
-        foreach (key; keys)
-        {
-            if (this.hasRevealedPreimage(height, key))
-                valid_keys ~= key;
-        }
-
-        // NOTE: The random seed of `Hash.init` value is currently
-        // checked in the `validateSlashingData` function of `Ledger`.
-        if (valid_keys.length == 0)
-            return Hash.init;
-
-        return this.enroll_man.getRandomSeed(valid_keys, height);
     }
 
     /***************************************************************************
@@ -1285,7 +1251,7 @@ public class ValidatingLedger : Ledger
     {
         import agora.utils.Test : WK;
 
-        Hash random_seed = this.getExternalizedRandomSeed(this.getBlockHeight() + 1,
+        Hash random_seed = this.getRandomSeed(this.getBlockHeight() + 1,
             data.missing_validators);
 
         auto next_block = Height(this.last_block.header.height + 1);
@@ -1416,14 +1382,8 @@ version (unittest)
         }
 
         ///
-        public override Hash getExternalizedRandomSeed (in Height height,
+        public override Hash getRandomSeed (in Height height,
             in uint[] missing_validators) @safe nothrow
-        {
-            return Hash.init; // Make it clear we are not checking in these tests
-        }
-
-        ///
-        public override Hash getRandomSeed () nothrow @safe
         {
             return Hash.init; // Make it clear we are not checking in these tests
         }
@@ -1697,14 +1657,8 @@ unittest
         }
 
         ///
-        public override Hash getExternalizedRandomSeed (in Height height,
+        public override Hash getRandomSeed (in Height height,
             in uint[] missing_validators) @safe nothrow
-        {
-            return Hash.init; // Make it clear we are not checking in these tests
-        }
-
-        ///
-        public override Hash getRandomSeed () nothrow @safe
         {
             return Hash.init; // Make it clear we are not checking in these tests
         }
