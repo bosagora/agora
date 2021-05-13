@@ -45,7 +45,6 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.crypto.Hash;
 import agora.crypto.Key;
-import agora.flash.Node;
 import agora.network.Client;
 import agora.network.Clock;
 import agora.network.Manager;
@@ -229,9 +228,6 @@ public class FullNode : API
     /// Ditto
     protected TransactionReceivedHandler[Address] transaction_handlers;
 
-    /// Any associated flash node (if enabled)
-    protected AgoraFlashNode flash;
-
 
     /***************************************************************************
 
@@ -300,18 +296,6 @@ public class FullNode : API
             config.validator.enabled
                 ? config.validator.key_pair.address.toString() : null,
         );
-    }
-
-    /***************************************************************************
-
-        Registers a flash node with the current node. It will receive
-        block externalize events.
-
-    ***************************************************************************/
-
-    public void setFlashNode (AgoraFlashNode flash) @safe @nogc nothrow
-    {
-        this.flash = flash;
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
@@ -1043,9 +1027,6 @@ public class FullNode : API
                 }
             });
         }
-
-        if (this.flash !is null)
-            this.flash.onExternalizedBlock(block);
     }
 
     /***************************************************************************
