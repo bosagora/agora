@@ -42,6 +42,10 @@ public enum PaymentDirection
 /// Once a channel is closed, it may never be re-opened again.
 public enum ChannelState
 {
+    /// The channel is being negotiated for opening with the counter-party.
+    /// Later it may transition to either Rejected or SettingUp (if accepted).
+    Negotiating,
+
     /// Channel open request has been rejected by the counter-party
     Rejected,
 
