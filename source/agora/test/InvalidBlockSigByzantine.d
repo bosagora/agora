@@ -105,7 +105,7 @@ private class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new BadBlockSigningNominator(
             this.params, this.config.validator.key_pair, args,
             this.config.node.data_dir, this.config.validator.nomination_interval,
-            this.txs_to_nominate, this.test_start_time, reason);
+            &this.acceptBlock, this.txs_to_nominate, this.test_start_time, reason);
     }
 }
 
