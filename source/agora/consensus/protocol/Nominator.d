@@ -136,6 +136,9 @@ public extern (C++) class Nominator : SCPDriver
     public extern (D) void delegate (in ConsensusData data, in string msg)
         @safe onInvalidNomination;
 
+    /// Delegate called when a block is to be externalized
+    public extern (D) bool delegate (const ref Block) @safe acceptBlock;
+
     /// Nomination start time
     protected TimePoint nomination_start_time;
 
@@ -155,14 +158,18 @@ extern(D):
             taskman = used to run timers
             data_dir = path to the data directory
             nomination_interval = How often to trigger `checkNominate`
+            externalize = delegate called when a block is to be externalized
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
         Clock clock, NetworkManager network, ValidatingLedger ledger,
         EnrollmentManager enroll_man, ITaskManager taskman, string data_dir,
-        Duration nomination_interval)
+        Duration nomination_interval,
+        bool delegate (const ref Block) @safe externalize)
     {
+        assert(externalize !is null);
+
         this.log = Logger(__MODULE__);
         this.params = params;
         this.clock = clock;
@@ -179,6 +186,7 @@ extern(D):
         this.scp_envelope_store = this.makeSCPEnvelopeStore(data_dir);
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
+        this.acceptBlock = externalize;
     }
 
     /***************************************************************************
@@ -908,7 +916,13 @@ extern(D):
     /// function for verifying the block which can be overriden in byzantine unit tests
     extern(D) protected void verifyBlock (in Block signed_block)
     {
-        if (!this.ledger.acceptBlock(signed_block))
+        // We call `{Validator,FullNode}.acceptBlock` here (via delegate),
+        // instead of calling `Ledger.acceptBlock` directly.
+        // The reason for that is that those classes have some special logic
+        // which applies when a block is externalize (for example if the quorum
+        // config changes or the list of validators change,
+        // new network connections might need to be established).
+        if (!this.acceptBlock(signed_block))
         {
             log.error("Block was not accepted by node {}", this.kp.address);
             assert(0, format!"Block was not accepted"());
