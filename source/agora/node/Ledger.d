@@ -882,7 +882,7 @@ public class Ledger
         Hash[] valid_keys;
         foreach (idx, key; keys)
         {
-            if (missing_validators.find(idx).empty())
+            if (!missing_validators.canFind(idx))
                 valid_keys ~= key;
         }
 
