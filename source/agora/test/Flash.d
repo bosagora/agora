@@ -13,6 +13,8 @@
 
 module agora.test.Flash;
 
+__gshared bool LOG_CHANNEL;
+
 version (unittest):
 
 import agora.api.FullNode : FullNodeAPI = API;
@@ -269,6 +271,29 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     {
         while (1)
         {
+            if (LOG_CHANNEL)
+            {
+                writefln("chan_id %s found: %s", chan_id, !!(chan_id in this.channel_updates));
+                if (auto updates = chan_id in this.channel_updates)
+                {
+                    writefln("chan_id %s update dir %s found %s", chan_id, dir, !!(dir in *updates));
+                    if (auto update = dir in *updates)
+                    {
+                        writefln("chan_id %s update_idx %s == channel idx %s: %s", chan_id, update_idx,
+                            update.update_idx, update_idx == update.update_idx);
+                    }
+                    else
+                    {
+                        writefln("cannot find direction %s", dir);
+                    }
+                }
+                else
+                {
+                    log.info("Can't find chan ID {}. map: {}",
+                        chan_id, cast(void*)&this.channel_updates);
+                }
+            }
+
             if (auto updates = chan_id in this.channel_updates)
                 if (auto update = dir in *updates)
                     if (update.update_idx == update_idx)
@@ -989,7 +1014,9 @@ unittest
     alice.waitForChannelDiscovery(bob_charlie_chan_id);
     charlie.waitForChannelDiscovery(alice_bob_chan_id);
     alice.waitForChannelUpdate(bob_charlie_chan_id, PaymentDirection.TowardsPeer, 0);
+    LOG_CHANNEL = true;
     charlie.waitForChannelUpdate(alice_bob_chan_id, PaymentDirection.TowardsPeer, 0);
+    LOG_CHANNEL = false;
 
     // begin off-chain transactions
     auto inv_1 = charlie.createNewInvoice(charlie_pubkey, Amount(2_000),

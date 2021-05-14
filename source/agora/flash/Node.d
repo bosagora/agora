@@ -720,9 +720,9 @@ public abstract class FlashNode : FlashControlAPI
                         update);
                     continue;
                 }
-                log.info("gossipChannelUpdates() added channel update: {}",
-                        update);
                 this.channel_updates[update.chan_id][update.direction] = update;
+                log.info("gossipChannelUpdates() added channel update: {}. chan_id: {}. direction: {}. address: {}",
+                        update, update.chan_id, update.direction, cast(void*)&this.channel_updates);
                 to_gossip ~= update;
                 this.dump();
             }
