@@ -104,6 +104,90 @@ struct SCPStatement {
             SCPNomination nominate_;
         }
 
+        ~this () @trusted nothrow
+        {
+            final switch (this.type_)
+            {
+                case SCPStatementType.SCP_ST_PREPARE:
+                    destroy(this.prepare_);
+                    break;
+                case SCPStatementType.SCP_ST_CONFIRM:
+                    destroy(this.confirm_);
+                    break;
+                case SCPStatementType.SCP_ST_EXTERNALIZE:
+                    destroy(this.externalize_);
+                    break;
+                case SCPStatementType.SCP_ST_NOMINATE:
+                    destroy(this.nominate_);
+                    break;
+            }
+        }
+
+        this (ref return scope inout _pledges_t rhs) inout @trusted nothrow @nogc pure
+        {
+            this.type_ = rhs.type_;
+            if (this.type_== SCPStatementType.SCP_ST_PREPARE)
+                this.prepare_ = rhs.prepare_;
+            else if (this.type_== SCPStatementType.SCP_ST_CONFIRM)
+                this.confirm_ = rhs.confirm_;
+            else if (this.type_== SCPStatementType.SCP_ST_EXTERNALIZE)
+                this.externalize_ = rhs.externalize_;
+            else if (this.type_== SCPStatementType.SCP_ST_NOMINATE)
+                this.nominate_ = rhs.nominate_;
+        }
+
+        this (T) (auto ref T field)
+        {
+            static if (is(T : typeof(this.prepare_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_PREPARE;
+                this.prepare_ = field;
+            }
+            else static if (is(T : typeof(this.confirm_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_CONFIRM;
+                this.confirm_ = field;
+            }
+            else static if (is(T : typeof(this.externalize_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
+                this.externalize_ = field;
+            }
+            else static if (is(T : typeof(this.nominate_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_NOMINATE;
+                this.nominate_ = field;
+            }
+            else
+                static assert(0, "Unsupported statement type: " ~ T.stringof ~ " " ~ typeof(this).stringof);
+        }
+
+        this (T) (auto ref T field) const
+        {
+            static if (is(T : typeof(this.prepare_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_PREPARE;
+                this.prepare_ = field;
+            }
+            else static if (is(T : typeof(this.confirm_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_CONFIRM;
+                this.confirm_ = field;
+            }
+            else static if (is(T : typeof(this.externalize_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
+                this.externalize_ = field;
+            }
+            else static if (is(T : typeof(this.nominate_)))
+            {
+                this.type_ = SCPStatementType.SCP_ST_NOMINATE;
+                this.nominate_ = field;
+            }
+            else
+                static assert(0, "Unsupported statement type: " ~ T.stringof ~ " " ~ typeof(this).stringof);
+        }
+
         /// Call `func` with one of the message types depending on the `type_`.
         /// Whether or not this call is @safe depends on the @safety of `func`
         extern(D) auto apply (alias func, T...)(auto ref T args) const
@@ -232,72 +316,14 @@ struct SCPStatement {
             final switch (type)
             {
             case SCPStatementType.SCP_ST_PREPARE:
-                return enableNRVO!(QT, SCPStatementType.SCP_ST_PREPARE)(dg, opts);
+                return QT(deserializeFull!(typeof(QT.prepare_))(dg, opts));
             case SCPStatementType.SCP_ST_CONFIRM:
-                return enableNRVO!(QT, SCPStatementType.SCP_ST_CONFIRM)(dg, opts);
+                return QT(deserializeFull!(typeof(QT.confirm_))(dg, opts));
             case SCPStatementType.SCP_ST_EXTERNALIZE:
-                return enableNRVO!(QT, SCPStatementType.SCP_ST_EXTERNALIZE)(dg, opts);
+                return QT(deserializeFull!(typeof(QT.externalize_))(dg, opts));
             case SCPStatementType.SCP_ST_NOMINATE:
-                return enableNRVO!(QT, SCPStatementType.SCP_ST_NOMINATE)(dg, opts);
+                return QT(deserializeFull!(typeof(QT.nominate_))(dg, opts));
             }
-        }
-
-        /***********************************************************************
-
-            Allow `fromBinary` to do NRVO
-
-            We need to initialize using a literal to account for type
-            constructors, but we can't initialize the `union` in a generic way
-            (because we need to use a different name based on the `type`).
-            The normal solution is to put it in a `switch`, but since we
-            declare multiple variable (one per `switch` branch),
-            NRVO is disabled.
-            The solution is to use `static if` to ensure the compiler only sees
-            one temporary and does NRVO on this function, which in turn enables
-            NRVO on the caller.
-
-            See_Also:
-              https://forum.dlang.org/thread/miuevyfxbujwrhghmiuw@forum.dlang.org
-
-        ***********************************************************************/
-
-        extern(D) private static QT enableNRVO (QT, SCPStatementType type) (
-            scope DeserializeDg dg, in DeserializerOptions opts) @safe
-        {
-            static if (type == SCPStatementType.SCP_ST_PREPARE)
-            {
-                QT ret = {
-                    type_: type,
-                    prepare_: deserializeFull!(typeof(QT.prepare_))(dg, opts)
-                };
-                return ret;
-            }
-            else static if (type == SCPStatementType.SCP_ST_CONFIRM)
-            {
-                QT ret = {
-                    type_: type,
-                    confirm_: deserializeFull!(typeof(QT.confirm_))(dg, opts)
-                };
-                return ret;
-            }
-            else static if (type == SCPStatementType.SCP_ST_EXTERNALIZE)
-            {
-                QT ret = {
-                    type_: type,
-                    externalize_: deserializeFull!(typeof(QT.externalize_))(dg, opts)
-                };
-                return ret;
-            }
-            else static if (type == SCPStatementType.SCP_ST_NOMINATE)
-            {
-                QT ret = {
-                    type_: type,
-                    nominate_: deserializeFull!(typeof(QT.nominate_))(dg, opts)
-                };
-                return ret;
-            }
-            else
-                static assert(0, "Unsupported statement type: " ~ type.stringof);
         }
     }
 
@@ -306,12 +332,23 @@ struct SCPStatement {
     _pledges_t pledges;
 }
 
+// pledges.init is equal to default init of all union members
+unittest
+{
+    SCPStatement stat;
+    assert(stat.pledges.prepare_ == stat.pledges.prepare_.init);
+    assert(stat.pledges.confirm_ == stat.pledges.confirm_.init);
+    assert(stat.pledges.externalize_ == stat.pledges.externalize_.init);
+    assert(stat.pledges.nominate_ == stat.pledges.nominate_.init);
+}
+
 static assert(SCPStatement.sizeof == 200);
 static assert(Signature.sizeof == 64);
 
 struct SCPEnvelope {
   SCPStatement statement;
   Signature signature;
+  ~this() @safe nothrow {}
 }
 
 static assert(SCPEnvelope.sizeof == 264);
