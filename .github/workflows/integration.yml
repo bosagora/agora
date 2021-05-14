@@ -37,7 +37,7 @@ jobs:
     - name: Update Faucet submodule to point to our clone
       run: |
         cd ${{ github.workspace }}/faucet/
-        git -C submodules/agora fetch origin ${{ github.ref }}:agora-ci-integration-test-donotuse
+        git -C submodules/agora fetch origin ${{ github.sha }}:agora-ci-integration-test-donotuse
         git -C submodules/agora checkout     agora-ci-integration-test-donotuse
         # For debug output
         git submodule
