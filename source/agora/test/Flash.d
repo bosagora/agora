@@ -568,8 +568,7 @@ unittest
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create(alice_pair, address);
     auto bob = factory.create(bob_pair, address);
     const alice_pk = PublicKey(alice_pair.V);
@@ -675,8 +674,7 @@ unittest
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create(alice_pair, address);
     auto bob = factory.create(bob_pair, address);
     const alice_pk = PublicKey(alice_pair.V);
@@ -808,8 +806,7 @@ unittest
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create(alice_pair, address);
     auto bob = factory.create!RejectingCloseNode(bob_pair, address);
     const alice_pk = PublicKey(alice_pair.V);
@@ -926,8 +923,7 @@ unittest
     const charlie_pubkey = PublicKey(charlie_pair.V);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create(alice_pair, address);
     auto bob = factory.create(bob_pair, address);
     auto charlie = factory.create(charlie_pair, address);
@@ -1074,8 +1070,7 @@ unittest
     const charlie_pubkey = PublicKey(charlie_pair.V);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1249,8 +1244,7 @@ unittest
     const charlie_pubkey = PublicKey(charlie_pair.V);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create(alice_pair, address);
     auto bob = factory.create(bob_pair, address);
     auto charlie = factory.create(charlie_pair, address);
@@ -1470,8 +1464,7 @@ unittest
     const bob_pubkey = PublicKey(bob_pair.V);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create!BleedingEdgeFlashNode(alice_pair, address);
     auto bob = factory.create(bob_pair, address);
 
@@ -1553,8 +1546,7 @@ unittest
     const bob_pubkey = PublicKey(bob_pair.V);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
     auto alice = factory.create(alice_pair, address, DatabaseStorage.Static);
     auto bob = factory.create(bob_pair, address, DatabaseStorage.Static);
 
@@ -1642,8 +1634,7 @@ unittest
     const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
     FlashConfig bob_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1845,8 +1836,7 @@ unittest
     const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1962,8 +1952,7 @@ unittest
     const alice_pubkey = PublicKey(alice_pair.V);
 
     // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0,
-        WK.Keys.NODE2.address);
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
