@@ -124,7 +124,7 @@ unittest
     PreImageInfo preimage_26 = nodes[0].getPreimage(node0_utxo);
 
     // Check if the new pre-image is valid from the restarted node
-    test!"=="(preimage_26.isInvalidReason(b20_preimage, GenesisValidatorCycle), null);
+    test!"=="(preimage_26.isInvalidReason(b20_preimage), null);
 }
 
 // Situation: A pre-image already known by all nodes is sent on the network
