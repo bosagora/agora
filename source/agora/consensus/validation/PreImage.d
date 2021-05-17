@@ -39,7 +39,6 @@ version (unittest)
     Params:
         new_image = The pre-image information to check
         prev_image = The previous pre-image information
-        validator_cycle = The defined period as a validator
 
     Returns:
         `null` if the pre-image is valid, otherwise a string
@@ -48,7 +47,7 @@ version (unittest)
 *******************************************************************************/
 
 public string isInvalidReason (in PreImageInfo new_image,
-    in PreImageInfo prev_image, uint validator_cycle) nothrow @safe
+    in PreImageInfo prev_image) nothrow @safe
 {
     if (new_image.utxo != prev_image.utxo)
         return "The pre-image's UTXO differs from its descendant";
@@ -68,9 +67,9 @@ public string isInvalidReason (in PreImageInfo new_image,
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
 public bool isValid (in PreImageInfo prev_image,
-    in PreImageInfo new_image, uint validator_cycle) nothrow @safe
+    in PreImageInfo new_image) nothrow @safe
 {
-    return isInvalidReason(prev_image, new_image, validator_cycle) is null;
+    return isInvalidReason(prev_image, new_image) is null;
 }
 
 /// test for validity of pre-image
@@ -90,17 +89,17 @@ unittest
 
     // valid pre-image
     PreImageInfo new_image = PreImageInfo(hashFull("abc"), preimages[100], Height(100));
-    assert(new_image.isValid(prev_image, params.ValidatorCycle));
+    assert(new_image.isValid(prev_image));
 
     // invalid pre-image with wrong UTXO
     new_image = PreImageInfo(hashFull("xyz"), preimages[100], Height(100));
-    assert(!new_image.isValid(prev_image, params.ValidatorCycle));
+    assert(!new_image.isValid(prev_image));
 
     // invalid pre-image with wrong height number
     new_image = PreImageInfo(hashFull("abc"), preimages[1], Height(3));
-    assert(!new_image.isValid(prev_image, params.ValidatorCycle));
+    assert(!new_image.isValid(prev_image));
 
     // invalid pre-image with wrong hash value
     new_image = PreImageInfo(hashFull("abc"), preimages[101], Height(100));
-    assert(!new_image.isValid(prev_image, params.ValidatorCycle));
+    assert(!new_image.isValid(prev_image));
 }

@@ -599,8 +599,7 @@ public class ValidatorSet
         if (prev_preimage.height == preimage.height)
             return false;
 
-        if (auto reason = isInvalidReason(preimage, prev_preimage,
-            this.params.ValidatorCycle))
+        if (auto reason = isInvalidReason(preimage, prev_preimage))
         {
             log.info("Invalid pre-image data: {}. Pre-image: {}",
                 reason, preimage);
