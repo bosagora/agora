@@ -34,11 +34,12 @@ You need a recent C++ compiler (g++ with N4387 fixed), a recent (>=1.26.0) versi
 On Linux, we recommend gcc-9. On OSX, the latest `llvm` package available on Homebrew.
 
 Additionally, the following are dependencies:
-- `libsodium`:  Development library
-- `pkg-config`: For DUB to find the correct `sqlite3` and other system libraries
-- `openssl`:    Binary (to detect the version) and development library
-- `sqlite3`:    Development library
-- `zlib`:       Development library
+- `libsodium`:    Development library
+- `pkg-config`:   For DUB to find the correct `sqlite3` and other system libraries
+- `openssl`:      Binary (to detect the version) and development library
+- `sqlite3`:      Development library
+- `zlib`:         Development library
+- `libmaxminddb`: Development library
 
 Additionally, on OSX, `PKG_CONFIG_PATH` needs to be properly set to pick up `sqlite3` and `openssl`.
 Provided you installed those packages via `brew`, you can run the following command prior to building:

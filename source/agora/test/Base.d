@@ -51,6 +51,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Client;
 import agora.network.Clock;
+import agora.network.Crawler;
 import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
@@ -1208,14 +1209,19 @@ public class TestNetworkManager : NetworkManager
     ///
     public Registry!NameRegistryAPI* nregistry;
 
+    ///
+    public TestConf test_conf;
+
     /// Constructor
     public this (Parameters!(NetworkManager.__ctor) args, string address,
-                 Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg)
+                 Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
+                 TestConf test_conf = TestConf.init)
     {
         super(args);
         this.registry = reg;
         this.nregistry = nreg;
         this.address = address;
+        this.test_conf = test_conf;
     }
 
     ///
@@ -1225,7 +1231,11 @@ public class TestNetworkManager : NetworkManager
         auto tid = this.registry.locate(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!TestAPI(tid, timeout);
-        assert(0, "Trying to access node at address '" ~ address ~
+
+        if (this.test_conf.use_non_assert_get_client)
+            return null;
+        else
+            assert(0, "Trying to access node at address '" ~ address ~
                "' without first creating it");
     }
 
@@ -1537,6 +1547,12 @@ private mixin template TestNodeMixin ()
         return new MemMetadata();
     }
 
+    /// Make a Crawler instance
+    protected override Crawler  makeCrawler ()
+    {
+        return new TestCrawler(this.taskman, this.clock, this.config, this.network);
+    }
+
     /// Return a LocalRest-backed task manager
     protected override ITaskManager makeTaskManager ()
     {
@@ -1550,7 +1566,8 @@ private mixin template TestNodeMixin ()
         assert(taskman !is null);
         return new TestNetworkManager(
             this.config, metadata, taskman, clock,
-            this.config.interfaces[0].address, this.registry, this.nregistry);
+            this.config.interfaces[0].address, this.registry,
+            this.nregistry, this.test_conf);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1686,6 +1703,9 @@ public class TestFullNode : FullNode, TestAPI
     mixin TestNodeMixin!();
 
     ///
+    private TestConf test_conf;
+
+    ///
     public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
         immutable(Block)[] blocks, in TestConf test_conf, shared(TimePoint)* cur_time)
     {
@@ -1694,6 +1714,7 @@ public class TestFullNode : FullNode, TestAPI
         this.blocks = blocks;
         this.cur_time = cur_time;
         this.test_start_time = *cur_time;
+        this.test_conf = test_conf;
         super(config);
     }
 
@@ -1702,6 +1723,13 @@ public class TestFullNode : FullNode, TestAPI
     {
         return new TestClock(this.taskman,
             (out long time_offset) { return true; }, this.cur_time);
+    }
+
+    /// Start periodic network discover based on test config settings
+    protected override void discoveryTask ()
+    {
+        if (this.test_conf.do_network_discovery)
+            super.discoveryTask();
     }
 
     /// ditto
@@ -1750,6 +1778,9 @@ public class TestValidatorNode : Validator, TestAPI
     mixin TestNodeMixin!();
 
     ///
+    private TestConf test_conf;
+
+    ///
     public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
         immutable(Block)[] blocks, in TestConf test_conf, shared(TimePoint)* cur_time)
     {
@@ -1758,6 +1789,7 @@ public class TestValidatorNode : Validator, TestAPI
         this.blocks = blocks;
         this.cur_time = cur_time;
         this.test_start_time = *cur_time;
+        this.test_conf = test_conf;
         super(config);
     }
 
@@ -1785,6 +1817,14 @@ public class TestValidatorNode : Validator, TestAPI
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
             &this.acceptBlock, this.test_start_time);
+    }
+
+
+    /// Start periodic network discover based on test config settings
+    protected override void discoveryTask ()
+    {
+        if (this.test_conf.do_network_discovery)
+            super.discoveryTask();
     }
 
     /// Provides a unittest-adjusted clock source for the node
@@ -1927,6 +1967,30 @@ public struct TestConf
     /// Transaction put into the relay queue will expire, and will be removed
     /// after `relay_tx_cache_exp`.
     Duration relay_tx_cache_exp = 60.minutes;
+
+    /// true, if this node should collect statistics about other
+    /// nodes in the network, including their geographical location and OS
+    public bool collect_network_statistics = false;
+
+    /// The number of network crawlers that will be instantiated to collects
+    /// statistics about other nodes in the network
+    public ubyte num_of_crawlers = 1;
+
+    /// The number of seconds one crawler should wait after successfully contacted
+    /// a node
+    public Duration crawling_interval = 2.seconds;
+
+    /// true, if NetworkManager.getClient should return null, as opposed to assert,
+    /// in case the node passed to getClient has already been shut down or
+    /// never created
+    public bool use_non_assert_get_client = false;
+
+    /// true, if NetworkManager should automatically initiate network discovery,
+    /// when the node is started up
+    public bool do_network_discovery = true;
+
+    /// true, if this node should be included in network statistics
+    public bool include_in_network_statistics = true;
 }
 
 /*******************************************************************************
@@ -2007,6 +2071,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             relay_tx_interval : test_conf.relay_tx_interval,
             relay_tx_min_fee : test_conf.relay_tx_min_fee,
             relay_tx_cache_exp : test_conf.relay_tx_cache_exp,
+            num_of_crawlers : test_conf.num_of_crawlers,
+            crawling_interval : test_conf.crawling_interval,
+            collect_network_statistics : test_conf.collect_network_statistics,
+            include_in_network_statistics : test_conf.include_in_network_statistics,
         };
 
         return conf;

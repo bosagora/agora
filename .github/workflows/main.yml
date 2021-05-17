@@ -57,7 +57,7 @@ jobs:
     - name: '[OSX] Install dependencies & setup environment'
       if: runner.os == 'macOS'
       run: |
-        brew install coreutils libsodium pkg-config
+        brew install coreutils libsodium pkg-config libmaxminddb
         echo "LIBRARY_PATH=${LD_LIBRARY_PATH-}:/usr/local/lib/" >> $GITHUB_ENV
         echo "PKG_CONFIG_PATH=/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig/" >> $GITHUB_ENV
 
@@ -65,7 +65,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install libsodium-dev libsqlite3-dev clang
+        sudo apt-get install libsodium-dev libsqlite3-dev clang libmaxminddb-dev
 
     - name: '[Windows] Install dependencies & setup environment'
       if: runner.os == 'Windows'
@@ -122,6 +122,8 @@ jobs:
     # Build and run the tests
     - name: '[POSIX] Build & test Agora'
       if: runner.os != 'Windows'
+      env:
+        AGORA_GEOIP_PATH: ${{ github.workspace }}/build/geoip/GeoLite2-City.mmdb
       #continue-on-error: ${{ matrix.dc == 'ldc-master' }}
       run: ./ci/run.sh
 

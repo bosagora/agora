@@ -58,6 +58,20 @@ node:
   # increased in order to be added to the transaction pool
   double_spent_threshold_pct: 20
 
+  # true, if this node should collect statistics about other
+  # nodes in the network, including their geographical location and OS
+  collect_network_statistics : true
+
+  # The number of network crawlers that will be instantiated to collect
+  # statistics about other nodes in the network
+  num_of_crawlers : 3
+
+  # The number of seconds one crawler should wait after successfully contacted a node
+  crawling_interval_secs : 2
+
+  # The path to a file containing IP address -> geographical location mapping
+  ipdb_path : "data/ipdb.mmdb"
+
 # Each entry in this array is an interface Agora will listen to, allowing to
 # expose the same node on more than one network interface or with different
 # API, such as having one interface using HTTP+JSON and the other TCP+binary.

@@ -52,11 +52,13 @@ import vibe.inet.url;
 import std.algorithm;
 import std.array;
 import std.container : DList;
+import std.conv : to;
 import std.datetime.stopwatch;
 import std.exception;
 import std.format;
 import std.random;
 import std.range : walkLength;
+import std.system : os;
 
 import core.stdc.time;
 import core.time;
@@ -418,6 +420,9 @@ public class NetworkManager
     /// Proxy to be used for outgoing Agora connections
     protected URL proxy_url;
 
+    /// The string representation of the OS this node runs on
+    public static immutable Os = os.to!string();
+
     /// Ctor
     public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
     {
@@ -446,7 +451,7 @@ public class NetworkManager
 
             // add the DNS seeds
             if (config.dns_seeds.length > 0)
-                this.seed_addresses.putRange(resolveDNSSeeds(config.dns_seeds, this.log));
+                resolveDNSSeeds(config.dns_seeds, this.log).each!(seed_address => this.seed_addresses.put(seed_address));
         }
         this.addAddresses(this.seed_addresses);
     }
@@ -1097,7 +1102,7 @@ public class NetworkManager
         return NodeInfo(
             this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
-            this.known_addresses);
+            this.known_addresses, Os, this.node_config.include_in_network_statistics);
     }
 
     /***************************************************************************
