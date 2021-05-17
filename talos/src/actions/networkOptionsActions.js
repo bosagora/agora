@@ -6,7 +6,7 @@ export const CHANGE_NETWORKOPTIONS_ITEMS = createActionTypesOf("CHANGE_NETWORKOP
 export const changeNetworkOptionsItems = (name, value, isTouched) => {
   switch (name) {
     case "network": {
-      var isValid = true
+      let isValid = true
 
       if (value.length > 0)
         value.map(item => {
@@ -26,7 +26,7 @@ export const changeNetworkOptionsItems = (name, value, isTouched) => {
       }
     }
     case "dns": {
-      var isValid = true
+      let isValid = true
 
       if (value.length > 0)
         value.map(item => {
