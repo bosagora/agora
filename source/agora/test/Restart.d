@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.api.Validator;
 import agora.common.Config;
+import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.test.Base;
@@ -57,14 +58,10 @@ private class PersistentNode : TestValidatorNode
 
     mixin ForwardCtor!();
 
-    ///
-    private static UTXOSet utxo_set_saved;
-    ///
-    private static EnrollmentManager em_saved;
+    /// Note: We only save the stateDB, not the cacheDB, as we don't test it
+    private static ManagedDatabase stateDB_saved;
     ///
     private static IBlockStorage blockstorage_saved;
-    ///
-    private static FeeManager fee_man;
 
     ///
     protected override IBlockStorage makeBlockStorage () @system
@@ -75,29 +72,12 @@ private class PersistentNode : TestValidatorNode
     }
 
     ///
-    protected override UTXOSet makeUTXOSet ()
+    protected override ManagedDatabase makeStateDB ()
     {
-        if (utxo_set_saved is null)
-            utxo_set_saved = super.makeUTXOSet();
-        return utxo_set_saved;
+        if (stateDB_saved is null)
+            stateDB_saved = super.makeStateDB();
+        return stateDB_saved;
     }
-
-    ///
-    protected override EnrollmentManager makeEnrollmentManager ()
-    {
-        if (em_saved is null)
-            em_saved = super.makeEnrollmentManager();
-        return em_saved;
-    }
-
-    ///
-    protected override FeeManager makeFeeManager ()
-    {
-        if (fee_man is null)
-            fee_man = super.makeFeeManager();
-        return fee_man;
-    }
-
 }
 
 private class WithPersistentNodeAPIManager : TestAPIManager
