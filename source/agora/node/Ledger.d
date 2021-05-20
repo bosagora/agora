@@ -780,9 +780,16 @@ public class Ledger
                 block_time_offset_tolerance,
                 &this.getCoinbaseTX))
             return reason;
-
-        if (block.header.random_seed != this.getRandomSeed(block.header.height, block.header.missing_validators))
-            return "Block: Header's random seed does not match that of known pre-images";
+        try
+        {
+            if (block.header.random_seed != this.getRandomSeed(block.header.height, block.header.missing_validators))
+                return "Block: Header's random seed does not match that of known pre-images";
+        }
+        catch (Exception exc)
+        {
+            this.log.error("validateBlock: Exception thrown by getRandomSeed while externalizing valid block: {}", exc);
+            return "Internal error: Could not calculate random seed at current height";
+        }
 
         // Finally, validate the signatures
         Point sum_K;
@@ -885,7 +892,7 @@ public class Ledger
     ***************************************************************************/
 
     public Hash getRandomSeed (in Height height,
-        in uint[] missing_validators) @safe nothrow
+        in uint[] missing_validators) @safe
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
@@ -1355,9 +1362,6 @@ public class ValidatingLedger : Ledger
     {
         import agora.utils.Test : WK;
 
-        Hash random_seed = this.getRandomSeed(this.getBlockHeight() + 1,
-            data.missing_validators);
-
         auto next_block = Height(this.last_block.header.height + 1);
         auto key_pairs = this.enroll_man.getActiveValidatorPublicKeys(next_block)
             .map!(K => WK.Keys[K])
@@ -1367,12 +1371,11 @@ public class ValidatingLedger : Ledger
         if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
         {
             log.info("Missing TXs, can not create new block at Height {} : {}",
-                this.getBlockHeight() + 1, prettify(data));
+                next_block, prettify(data));
             return false;
         }
-
         const block = makeNewTestBlock(this.last_block,
-            externalized_tx_set, random_seed, key_pairs,
+            externalized_tx_set, key_pairs,
             data.enrolls, data.missing_validators, data.time_offset);
         return this.acceptBlock(block, file, line);
     }
@@ -1381,6 +1384,8 @@ public class ValidatingLedger : Ledger
     private void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock,
         string file = __FILE__, size_t line = __LINE__)
     {
+        const next_block = this.getBlockHeight() + 1;
+        simulatePreimages(this.enroll_man, next_block);
         ConsensusData data;
         this.prepareNominatingSet(data, max_txs, this.clock.networkTime());
         assert(data.tx_set.length >= max_txs);
@@ -1431,6 +1436,7 @@ public class ValidatingLedger : Ledger
 /// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
 {
+    import agora.consensus.validation.Block: getWellKnownPreimages;
     import core.stdc.time : time;
 
     /// A `Ledger` with sensible defaults for `unittest` blocks
@@ -1472,6 +1478,14 @@ version (unittest)
         }
 
         ///
+        protected override void replayStoredBlock (in Block block) @safe
+        {
+            if (block.header.height > 0)
+                simulatePreimages(this.enroll_man, block.header.height);
+            super.replayStoredBlock(block);
+        }
+
+        ///
         protected override void updateSlashedUTXOSet (in Block block)
             @safe
         {
@@ -1484,21 +1498,42 @@ version (unittest)
         {
             return;
         }
-
-        ///
-        public override Hash getRandomSeed (in Height height,
-            in uint[] missing_validators) @safe nothrow
-        {
-            return Hash.init; // Make it clear we are not checking in these tests
-        }
     }
-}
 
-version (unittest)
-{
     // sensible defaults
     private const TestStackMaxTotalSize = 16_384;
     private const TestStackMaxItemSize = 512;
+
+    mixin AddLogger!();
+    import agora.consensus.PreImage;
+
+    // Make sure the preimages are available when the block is validated
+    private void simulatePreimages (EnrollmentManager enroll_man, in Height height, int[] skip_indexes = null) @safe nothrow
+    {
+        try
+        {
+            KeyPair[] key_pairs = enroll_man.getActiveValidatorPublicKeys(height).map!(k => WK.Keys[k]).array;
+            Hash[] utxos;
+            assert(enroll_man.getEnrolledUTXOs(height, utxos));
+
+            void addPreimages (in PublicKey public_key, in PreImageInfo preimage_info)
+            {
+                log.info("Adding test preimages for height {} for validator {}: {}", height, public_key, preimage_info);
+                enroll_man.addPreimages([ preimage_info ]);
+            }
+            key_pairs.enumerate.each!((idx, kp)
+            {
+                if (skip_indexes.length && skip_indexes.canFind(idx))
+                    log.info("Skip add preimage for validator idx {} at height {} as requested by test", idx, height);
+                else
+                    addPreimages(kp.address, PreImageInfo(utxos[idx],
+                        getWellKnownPreimages(kp)[height], height));
+            });
+        } catch (Exception e)
+        {
+            log.error("simulatePreimages: height: {} exception thrown: {}", height, e);
+        }
+    }
 }
 
 ///
@@ -1573,6 +1608,7 @@ unittest
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     const block = makeNewTestBlock(ledger.params.Genesis, txs);
+    simulatePreimages(ledger.enroll_man, ledger.getBlockHeight() + 1);
     assert(ledger.acceptBlock(block));
 }
 
@@ -1630,6 +1666,7 @@ unittest
             .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
             .array();
         txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        simulatePreimages(ledger.enroll_man, ledger.getBlockHeight() + 1);
         return ledger;
     }
 
@@ -1677,15 +1714,17 @@ private immutable(Block)[] genBlocksToIndex (
     size_t count, scope immutable(ConsensusParams) params)
 {
     const(Block)[] blocks = [ params.Genesis ];
-
+    scope ledger = new TestLedger(WK.Keys.NODE2);
     foreach (_; 0 .. count)
     {
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-
         auto cycle = blocks[$ - 1].header.height / params.ValidatorCycle;
         blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
     }
-
+    if (blocks)
+    {
+        simulatePreimages(ledger.enroll_man, blocks[$ - 1].header.height);
+    }
     return blocks.assumeUnique;
 }
 
@@ -1746,6 +1785,14 @@ unittest
                               (blocks.length * params.BlockInterval.total!"seconds")));
         }
 
+        ///
+        protected override void replayStoredBlock (in Block block) @safe
+        {
+            if (block.header.height > 0)
+                simulatePreimages(this.enroll_man, block.header.height);
+            super.replayStoredBlock(block);
+        }
+
         override void updateUTXOSet (in Block block) @safe
         {
             super.updateUTXOSet(block);
@@ -1758,13 +1805,6 @@ unittest
             super.updateValidatorSet(block);
             if (this.throw_in_update_validators)
                 throw new Exception("");
-        }
-
-        ///
-        public override Hash getRandomSeed (in Height height,
-            in uint[] missing_validators) @safe nothrow
-        {
-            return Hash.init; // Make it clear we are not checking in these tests
         }
     }
 
@@ -2101,21 +2141,13 @@ unittest
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
     scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
 
-    Hash[] genesisEnrollKeys;
-    ledger.enroll_man.getEnrolledUTXOs(Height(1), genesisEnrollKeys);
+    // Add preimages for all validators (except for two of them) till end of cycle
+    // Make sure not to pick enrollment index of NODE2 if used in TestLedger ctor above
+    auto skip_indexes = [ 2, 5 ];
 
-    // Reveal preimages for all validators but 1
-    foreach (idx, key; genesisEnrollKeys[0..$-1])
-    {
-        UTXO stake;
-        assert(ledger.utxo_set.peekUTXO(key, stake));
-        KeyPair kp = WK.Keys[stake.output.address];
-        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        const preimage = PreImageInfo(key, cycle[Height(params.ValidatorCycle)],
-                Height(params.ValidatorCycle));
-
-        ledger.enroll_man.addPreimage(preimage);
-    }
+    // Make sure we are not simulating slashing for current node as we always assume the preimage is revealed for current ledger node
+    assert(!skip_indexes.canFind(ledger.enroll_man.getIndexOfEnrollment(Height(1))));
+    simulatePreimages(ledger.enroll_man, Height(params.ValidatorCycle), skip_indexes);
 
     // Block with no fee
     auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
@@ -2131,7 +2163,8 @@ unittest
     assert(ledger.validateConsensusData(data) ==
         Ledger.InvalidConsensusDataReason.MayBeValid);
 
-    ledger.forceCreateBlock();
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+    ledger.externalize(data);
     assert(ledger.getBlockHeight() == blocks.length);
     blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
@@ -2157,7 +2190,8 @@ unittest
         data.tx_set ~= Transaction(TxType.Coinbase).hashFull();
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
 
-        ledger.forceCreateBlock();
+        ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+        ledger.externalize(data);
         assert(ledger.getBlockHeight() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
@@ -2167,15 +2201,20 @@ unittest
         // Payout block should pay the CommonsBudget + all validators (excl MPV)
         // other blocks should only pay CommonsBudget
         if (blocks[$-1].header.height == params.PayoutPeriod)
-            assert(cb_txs[0].outputs.length == genesisEnrollKeys.length);
+            assert(cb_txs[0].outputs.length == 1 + genesis_validator_keys.length - skip_indexes.length);
         else
             assert(cb_txs[0].outputs.length == 1);
 
+        Hash[] utxos;
+        assert(ledger.enroll_man.getEnrolledUTXOs(Height(height), utxos));
         // MPV should never be paid
         UTXO mpv_stake;
-        assert(ledger.utxo_set.peekUTXO(genesisEnrollKeys[$-1], mpv_stake));
-        assert(cb_txs[0].outputs.filter!(output => output.address ==
-            mpv_stake.output.address).array.length == 0);
+        skip_indexes.each!((i)
+        {
+            assert(ledger.utxo_set.peekUTXO(utxos[i], mpv_stake));
+            assert(cb_txs[0].outputs.filter!(output => output.address ==
+                mpv_stake.output.address).array.length == 0);
+        });
     }
 }
 
@@ -2215,6 +2254,7 @@ unittest
     assert(!ledger.externalize(data));
 
     auto last_block = ledger.getLastBlock();
-    const block = makeNewBlock(last_block, cb_tx_set, data.time_offset, Hash.init, genesis_validator_keys.length);
+    const block = makeNewTestBlock(last_block, cb_tx_set);
+    simulatePreimages(ledger.enroll_man, block.header.height);
     assert(ledger.validateBlock(block) == "Block: Must contain other transactions than Coinbase");
 }

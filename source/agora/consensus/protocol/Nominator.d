@@ -719,30 +719,38 @@ extern(D):
                 assert(0);  // this should never happen
         }();
 
-        const Hash random_seed = this.ledger.getRandomSeed(
-                last_block.header.height + 1, con_data.missing_validators);
-
-        Transaction[] signed_tx_set;
-        if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
+        try
         {
-            log.info("Missing TXs while signing confirm ballot {}",
-                scpPrettify(&envelope));
+            const Hash random_seed = this.ledger.getRandomSeed(
+                    last_block.header.height + 1, con_data.missing_validators);
+            Transaction[] signed_tx_set;
+            if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
+            {
+                log.info("Missing TXs while signing confirm ballot {}",
+                    scpPrettify(&envelope));
+                return;
+            }
+
+            const proposed_block = makeNewBlock(last_block,
+                signed_tx_set, con_data.time_offset, random_seed,
+                this.enroll_man.getCountOfValidators(last_block.header.height + 1),
+                con_data.enrolls, con_data.missing_validators);
+
+            const Signature sig = createBlockSignature(proposed_block);
+
+            envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!32(sig.s[]));
+
+            // Store our block signature in the slot_sigs map
+            log.trace("signConfirmBallot: ADD block signature at height {} for this node {}",
+                last_block.header.height + 1, this.kp.address);
+            this.slot_sigs[last_block.header.height + 1][this.kp.address] = sig;
+        }
+        catch (Exception e)
+        {
+            log.error("signConfirmBallot: Exception thrown: {}", e);
             return;
         }
 
-        const proposed_block = makeNewBlock(last_block,
-            signed_tx_set, con_data.time_offset, random_seed,
-            this.enroll_man.getCountOfValidators(last_block.header.height + 1),
-            con_data.enrolls, con_data.missing_validators);
-
-        const Signature sig = createBlockSignature(proposed_block);
-
-        envelope.statement.pledges.confirm_.value_sig = opaque_array!32(BitBlob!32(sig.s[]));
-
-        // Store our block signature in the slot_sigs map
-        log.trace("signConfirmBallot: ADD block signature at height {} for this node {}",
-            last_block.header.height + 1, this.kp.address);
-        this.slot_sigs[last_block.header.height + 1][this.kp.address] = sig;
     }
 
     /***************************************************************************
@@ -873,30 +881,30 @@ extern(D):
             assert(0, format!"Transaction set empty for slot %s"(height));
 
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
-        Hash random_seed = this.ledger.getRandomSeed(
-            height, data.missing_validators);
-        Transaction[] externalized_tx_set;
-        if (auto fail_reason = this.ledger.getValidTXSet(data,
-            externalized_tx_set))
-        {
-            log.info("Missing TXs while externalizing at Height {}: {}",
-                height, prettify(data));
-            return;
-        }
-        const block = makeNewBlock(last_block,
-            externalized_tx_set, data.time_offset, random_seed,
-            this.enroll_man.getCountOfValidators(last_block.header.height + 1),
-            data.enrolls, data.missing_validators);
-
-        // If we did not sign yet then add signature and gossip to other nodes
-        if (this.kp.address !in this.slot_sigs[height])
-        {
-            log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
-            this.slot_sigs[height][this.kp.address] = this.createBlockSignature(block);
-        }
-
         try
         {
+            Hash random_seed = this.ledger.getRandomSeed(
+                height, data.missing_validators);
+            Transaction[] externalized_tx_set;
+            if (auto fail_reason = this.ledger.getValidTXSet(data,
+                externalized_tx_set))
+            {
+                log.info("Missing TXs while externalizing at Height {}: {}",
+                    height, prettify(data));
+                return;
+            }
+            const block = makeNewBlock(last_block,
+                externalized_tx_set, data.time_offset, random_seed,
+                this.enroll_man.getCountOfValidators(last_block.header.height + 1),
+                data.enrolls, data.missing_validators);
+
+            // If we did not sign yet then add signature and gossip to other nodes
+            if (this.kp.address !in this.slot_sigs[height])
+            {
+                log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
+                this.slot_sigs[height][this.kp.address] = this.createBlockSignature(block);
+            }
+
             const signed_block = this.updateMultiSignature(block);
             if (signed_block == Block.init)
             {

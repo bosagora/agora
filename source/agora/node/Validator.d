@@ -173,20 +173,27 @@ public class Validator : FullNode, API
         }
 
         // We take random seed from last block as next is not available yet
-        const rand_seed = this.enroll_man.getRandomSeed(keys, height);
-        qc = buildQuorumConfig(this.config.validator.key_pair.address,
-            keys, this.utxo_set.getUTXOFinder(), rand_seed,
-            this.quorum_params);
-
-        auto pub_keys = this.getEnrolledPublicKeys(keys);
-        other_qcs.length = 0;
-        () @trusted { assumeSafeAppend(other_qcs); }();
-
-        foreach (pub_key; pub_keys.filter!(
-            pk => pk != this.config.validator.key_pair.address))  // skip our own
+        try
         {
-            other_qcs ~= buildQuorumConfig(pub_key, keys,
-                this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
+            const rand_seed = this.enroll_man.getRandomSeed(keys, height);
+            qc = buildQuorumConfig(this.config.validator.key_pair.address,
+                keys, this.utxo_set.getUTXOFinder(), rand_seed,
+                this.quorum_params);
+            auto pub_keys = this.getEnrolledPublicKeys(keys);
+            other_qcs.length = 0;
+            () @trusted { assumeSafeAppend(other_qcs); }();
+
+            foreach (pub_key; pub_keys.filter!(
+                pk => pk != this.config.validator.key_pair.address))  // skip our own
+            {
+                other_qcs ~= buildQuorumConfig(pub_key, keys,
+                    this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
+            }
+        }
+        catch (Exception e)
+        {
+            log.fatal("rebuildQuorumConfig: Exception thrown: {}", e);
+            assert(0);
         }
     }
 
