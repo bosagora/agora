@@ -25,7 +25,6 @@ import d2sqlite3.sqlite3;
 
 import scpd.types.Stellar_SCP;
 
-import std.file : exists;
 import std.range;
 
 
@@ -43,19 +42,15 @@ public class SCPEnvelopeStore
         Constructor
 
         Params:
-            db_path = path to the database file, or in-memory storage if
-                      :memory: was passed
+            db = Cache database to store SCP envelopes
 
     ***************************************************************************/
 
-    public this (in string db_path)
+    public this (ManagedDatabase db)
     {
         this.log = Logger(__MODULE__);
-        const db_exists = db_path.exists;
-        if (db_exists)
-            log.info("Loading database from: {}", db_path);
-
-        this.db = new ManagedDatabase(db_path);
+        assert(db !is null);
+        this.db = db;
 
         this.db.execute("CREATE TABLE IF NOT EXISTS scp_envelopes " ~
             "(seq INTEGER PRIMARY KEY AUTOINCREMENT, envelope BLOB NOT NULL)");
@@ -175,7 +170,7 @@ public class SCPEnvelopeStore
 /// add & opApply & remove tests
 unittest
 {
-    auto envelope_store = new SCPEnvelopeStore(":memory:");
+    auto envelope_store = new SCPEnvelopeStore(new ManagedDatabase(":memory:"));
 
     SCPEnvelope[] envelopes;
 
