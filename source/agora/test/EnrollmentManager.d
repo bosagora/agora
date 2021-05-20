@@ -48,9 +48,6 @@ unittest
     network.waitForPreimages(network.blocks[0].header.enrollments,
         Height(GenesisValidatorCycle));
 
-    // // Re-enroll the Genesis validators
-    // iota(GenesisValidators).each!(idx => network.enroll(idx));
-
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle));
 
