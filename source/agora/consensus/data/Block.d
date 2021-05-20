@@ -551,35 +551,72 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     return block;
 }
 
+/***************************************************************************
+
+    Create the block random seed from the provided pre-images
+
+    It might be that not all validators provide their `pre-image` and in
+    that case the length of the preimages can be less than the number of
+    active validators.
+
+    Params:
+        preimages = preimages sorted by the utxo keys of the validators
+
+    Returns:
+        Hash of all provided pre-images or Hash.init if an exception is thrown
+
+***************************************************************************/
+
+
+public static Hash createRandomSeed (Preimages)(Preimages preimages) @safe
+in
+{
+    static assert (isInputRange!Preimages);
+}
+do
+{
+    assert(preimages.count != 0);
+    return preimages.reduce!((a , b) => hashMulti(a, b));
+}
+
 /// only used in unittests with some defaults
 version (unittest)
 {
     import agora.consensus.data.genesis.Test: genesis_validator_keys;
+    import agora.consensus.validation.Block: wellKnownPreimages;
 
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
-        Transactions txs, Hash random_seed = Hash.init,
+        Transactions txs,
         in KeyPair[] key_pairs = genesis_validator_keys,
         Enrollment[] enrollments = null,
         uint[] missing_validators = null,
         ulong time_offset = 0) @safe nothrow
     {
-        // the time_offset passed to makeNewBlock should really be
-        // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
-        // prev_block.header.time_offset + 1
-        // however many tests calling makeNewTestBlock have no access to ConsensusParams
-        auto block = makeNewBlock(prev_block, txs,
-                time_offset ? time_offset : prev_block.header.time_offset + 1,
-                random_seed, key_pairs.length, enrollments, missing_validators);
-        auto validators = BitField!ubyte(key_pairs.length);
-        Signature[] sigs;
-        ulong offset = 0;
-        key_pairs.enumerate.each!((i, k)
-        {
-            validators[i] = true;
-            sigs ~= block.header.createBlockSignature(k.secret, offset);
-        });
+        auto revealed = key_pairs.enumerate.filter!(en => !missing_validators.canFind(en.index)).map!(en => en.value).array;
+        Hash[] pre_images = wellKnownPreimages(prev_block.header.height + 1, revealed);
+        assert(revealed.length == key_pairs.length - missing_validators.length);
         try
         {
+            Hash random_seed = createRandomSeed(pre_images);
+
+            // the time_offset passed to makeNewBlock should really be
+            // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
+            // prev_block.header.time_offset + 1
+            // however many tests calling makeNewTestBlock have no access to ConsensusParams
+            auto block = makeNewBlock(prev_block, txs,
+                    time_offset ? time_offset : prev_block.header.time_offset + 1,
+                    random_seed, key_pairs.length, enrollments, missing_validators);
+            auto validators = BitField!ubyte(key_pairs.length);
+            Signature[] sigs;
+            ulong offset = 0;
+            key_pairs.enumerate.each!((i, k)
+            {
+                if (!missing_validators.canFind(i))
+                {
+                    validators[i] = true;
+                    sigs ~= block.header.createBlockSignature(k.secret, offset);
+                }
+            });
             auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
             return signed_block;
         }

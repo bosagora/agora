@@ -70,6 +70,7 @@ import d2sqlite3.results;
 import d2sqlite3.sqlite3;
 
 import std.algorithm;
+import std.range;
 import std.file;
 import std.path;
 import std.string;
@@ -583,7 +584,7 @@ public class EnrollmentManager
         block height.
 
         Params:
-            keys = the keys to look up (must be sorted)
+            keys = the utxo keys to look up (must be sorted)
             height = the desired block height to look up the images for
 
         Returns:
@@ -591,16 +592,17 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Hash getRandomSeed (in Hash[] keys, in Height height) @safe nothrow
+    public Hash getRandomSeed (Keys)(Keys keys, in Height height) @safe
     in
     {
+        static assert (isInputRange!Keys);
+        static assert (is(ElementType!Keys : Hash));
         assert(keys.length != 0);
         assert(keys.isStrictlyMonotonic!((a, b) => a < b));
     }
     do
     {
-        Hash rand_seed;
-        foreach (const ref key; keys)
+        Hash getPreimage (Hash key)
         {
             const preimage = this.validator_set.getPreimageAt(key, height);
             // We could have a misbehaving validator that does not reveal
@@ -609,12 +611,11 @@ public class EnrollmentManager
             if (preimage == PreImageInfo.init)
             {
                 log.info("No preimage at height {} for validator key {}", height.value, key);
-                continue;
             }
-            rand_seed = hashMulti(rand_seed, preimage.hash);
+            return preimage.hash;
         }
 
-        return rand_seed;
+        return createRandomSeed(keys.map!(key => getPreimage(key)).filter!(p => p != Hash.init));
     }
 
     /***************************************************************************
@@ -1325,16 +1326,13 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0xdd077785bb36ad03802ac760ae31163f77a9f030c63a5a116e1eb20494bc96f9a96fe957b3f42118e4f77c268d13b836e24387922e09a8a431b6ccf4c4424990`),
-        man.getRandomSeed(utxos, Height(1)).to!string);
+        Hash(`0x917a965581b2fe9c2ebdc8475c40f8771d865641e3d1559e22c8b3314ec2c855c2a123e565fade481180b2a1e06a3e14f81ca9e32f60d0a8a00b5fbcbe9d35f5`));
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)) ==
-        Hash(`0x6d919940ac1449d5127ef1b79194183f0d55d2349423c914b8daab8fab3420856f404cb451b19ae108e1567797f4a89575296d1b8c8dcbfb4f52e9f0ed91af72`),
-        man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)).to!string);
+        Hash(`0x7a801f54575a58aba6bf344cfbd70f21b4d62d1fe5bca36ea8942f714b829054b6d51930c7f3e4091382f341c74750749406edacb216cdd02cf25ace5390be1e`));
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle)) ==
-        Hash(`0x5cf74085de060f9db1b045cf416a8fbb55fa76a6d0b5b6808f383f95da030d28a1708b87b21fa19ab912c139d1cf9ccf90930cabc3d38639daa91b24f125e518`),
-        man.getRandomSeed(utxos, Height(params.ValidatorCycle)).to!string);
+        Hash(`0xfa749e8c23fa62ca2a0a61134b062b781821fb746f485ab4410da7b436ad50c1c3582a5a8b59cad05139230358dec11214f7f12a23d373c66187fb2cf6212f3b`));
 }
 
 // Tests for get/set a enrollment key
