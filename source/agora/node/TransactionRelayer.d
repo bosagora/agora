@@ -393,6 +393,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     {
         import agora.consensus.data.genesis.Test;
         import agora.crypto.Key;
+        import agora.utils.Test;
         import std.array;
 
         auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).front;
@@ -401,7 +402,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         Transaction tx = Transaction(
             TxType.Payment,
             [Input(genesis_tx.hashFull(), gen_out_ind)],
-            [Output(amount, KeyPair.random.address)]);
+            [Output(amount, WK.Keys.AA.address)]);
 
         return tx;
     }
