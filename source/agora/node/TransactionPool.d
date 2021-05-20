@@ -648,17 +648,17 @@ unittest
     Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), KeyPair.random.address)]);
+        [Output(Amount(0), WK.Keys.FR.address)]);
 
     Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]);
+        [Output(Amount(0), WK.Keys.UK.address)]);
 
     Transaction tx3 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]);
+        [Output(Amount(0), WK.Keys.NL.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));
@@ -679,17 +679,17 @@ unittest
     Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(0), KeyPair.random.address)]);
+        [Output(Amount(0), WK.Keys.ZA.address)]);
 
     Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0), Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]);
+        [Output(Amount(0), WK.Keys.ZC.address)]);
 
     Transaction tx3 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(0), KeyPair.random.address)]);
+        [Output(Amount(0), WK.Keys.ZD.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));
@@ -733,11 +733,11 @@ unittest
     Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(2), KeyPair.random.address)]);
+        [Output(Amount(2), WK.Keys.US.address)]);
 
     Transaction tx2 = Transaction(TxType.Payment,
         [Input(Hash.init, 0), Input(Hash.init, 1)],
-        [Output(Amount(1), KeyPair.random.address)]);
+        [Output(Amount(1), WK.Keys.KR.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));
@@ -797,17 +797,17 @@ unittest
 
     // parent transaction
     Transaction tx1 = Transaction(TxType.Payment, [Input(genesis_tx.hashFull(), 0)],
-        [Output(Amount(1000), KeyPair.random.address)]);
+        [Output(Amount(1000), WK.Keys.KR.address)]);
 
     utxo_set.put(tx1);
 
     // double spent transaction, transaction trying to spend parent
     Transaction tx2 = Transaction(TxType.Payment, [Input(tx1.hashFull(), 0)],
-        [Output(Amount(200), KeyPair.random.address)]);
+        [Output(Amount(200), WK.Keys.NZ.address)]);
 
     // double spent transaction, trying to spend parent
     Transaction tx3 = Transaction(TxType.Payment, [Input(tx1.hashFull(), 0)],
-        [Output(Amount(100), KeyPair.random.address)]);
+        [Output(Amount(100), WK.Keys.AU.address)]);
 
     assert(pool.add(tx2));
     assert(pool.add(tx3));
@@ -836,12 +836,12 @@ unittest
     Transaction tx1 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output(Amount(2), KeyPair.random.address)]);
+        [Output(Amount(2), WK.Keys.GE.address)]);
 
     Transaction tx2 = Transaction(
         TxType.Payment,
         [Input(Hash.init, 1)],
-        [Output(Amount(1), KeyPair.random.address)]);
+        [Output(Amount(1), WK.Keys.CA.address)]);
 
     assert(pool.add(tx1));
     assert(pool.add(tx2));

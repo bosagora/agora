@@ -22,6 +22,7 @@ import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.test.Base;
+import agora.utils.Test;
 
 import core.thread.osthread : Thread;
 
@@ -43,7 +44,7 @@ unittest
 
     auto input_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).front();
     Amount input_tx_amount = input_tx.outputs[0].value;
-    auto output_addr = KeyPair.random.address;
+    auto output_addr = WK.Keys.AA.address;
 
     // create double spend transactions with fees 10000, 10100 .. 13000
     auto txs = [Amount(10000), Amount(10100), Amount(10200), Amount(11000), Amount(13000)]
