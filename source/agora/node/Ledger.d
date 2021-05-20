@@ -468,10 +468,10 @@ public class Ledger
         }
 
         const Height next = block.header.height + 1;
+        this.updateSlashedValidatorSet(block);
         auto keys = this.getValidators(next).map!(vi => vi.address).array();
         this.log.trace("Update validator lookup maps at height {}: {}", next, keys);
         this.enroll_man.keymap.update(next, keys);
-        this.updateSlashedValidatorSet(block);
     }
 
     /***************************************************************************
