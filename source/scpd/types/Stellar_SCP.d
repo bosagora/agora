@@ -273,7 +273,7 @@ struct SCPStatement {
             public void computeHash (scope HashDg dg) const @trusted @nogc nothrow
             {
                 hashPart(this.type_, dg);
-                switch (this.type_)
+                final switch (this.type_)
                 {
                 case SCPStatementType.SCP_ST_PREPARE:
                     return hashPart(this.prepare_, dg);
@@ -283,8 +283,6 @@ struct SCPStatement {
                     return hashPart(this.externalize_, dg);
                 case SCPStatementType.SCP_ST_NOMINATE:
                     return hashPart(this.nominate_, dg);
-                default:
-                    assert(0);
                 }
             }
         }
@@ -293,7 +291,7 @@ struct SCPStatement {
         extern(D) void serialize (scope SerializeDg dg) const @trusted
         {
             serializePart(this.type_, dg);
-            switch (this.type_)
+            final switch (this.type_)
             {
             case SCPStatementType.SCP_ST_PREPARE:
                 return serializePart(this.prepare_, dg);
@@ -303,8 +301,6 @@ struct SCPStatement {
                 return serializePart(this.externalize_, dg);
             case SCPStatementType.SCP_ST_NOMINATE:
                 return serializePart(this.nominate_, dg);
-            default:
-                assert(0);
             }
         }
 
@@ -313,7 +309,7 @@ struct SCPStatement {
             in DeserializerOptions opts) @safe
         {
             auto type = deserializeFull!(typeof(QT.type_))(dg, opts);
-            final switch (type)
+            switch (type)
             {
             case SCPStatementType.SCP_ST_PREPARE:
                 return QT(deserializeFull!(typeof(QT.prepare_))(dg, opts));
@@ -323,6 +319,8 @@ struct SCPStatement {
                 return QT(deserializeFull!(typeof(QT.externalize_))(dg, opts));
             case SCPStatementType.SCP_ST_NOMINATE:
                 return QT(deserializeFull!(typeof(QT.nominate_))(dg, opts));
+            default:
+                throw new Exception("Unrecognized envelope type");
             }
         }
     }
@@ -330,6 +328,33 @@ struct SCPStatement {
     NodeID nodeID;
     uint64_t slotIndex;
     _pledges_t pledges;
+}
+
+// should not be able to deserialize an invalid _pledges_t
+unittest
+{
+    import std.stdio;
+    auto type = cast(SCPStatementType) -1; // Unknown
+    ubyte[] sered = serializeFull(type);
+    try
+    {
+        deserializeFull!(SCPStatement._pledges_t)(sered);
+        assert(0);
+    }
+    catch (Exception e)
+    {
+        assert(e.msg == "Unrecognized envelope type");
+    }
+
+    try
+    {
+        SCPStatement._pledges_t.fromString(Json.emptyObject.toString());
+        assert(0);
+    }
+    catch (Exception e)
+    {
+        assert(e.msg == "Unrecognized envelope type");
+    }
 }
 
 // pledges.init is equal to default init of all union members
