@@ -81,5 +81,5 @@ unittest
 
     // verify that the transaction with fee 13000 is the only one inncluded in the block
     assert(block.txs.length == 2); // Coinbase + our transaction
-    assert(block.txs[1] == txs[4]);
+    assert(block.txs.filter!(tx => tx.type == TxType.Payment).front() == txs[4]);
 }
