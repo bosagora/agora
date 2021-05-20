@@ -250,7 +250,7 @@ unittest
         {
             return new BadNominator(
                 this.params, this.config.validator.key_pair, args,
-                this.config.node.data_dir, this.config.validator.nomination_interval,
+                this.cacheDB, this.config.validator.nomination_interval,
                 &this.acceptBlock, this.txs_to_nominate, this.test_start_time,
                 this.runCount);
         }

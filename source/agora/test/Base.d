@@ -520,18 +520,6 @@ extern(D):
 
         return true;
     }
-
-    // set the DB instance of SCPEnvelopeStore
-    protected void setSCPEnvelopeStore (SCPEnvelopeStore envelope_store)
-    {
-        this.scp_envelope_store = envelope_store;
-    }
-
-    // return a SCPEnvelopeStore backed by an in-memory SQLite db
-    protected override SCPEnvelopeStore makeSCPEnvelopeStore (string data_dir)
-    {
-        return new SCPEnvelopeStore(":memory:");
-    }
 }
 
 /// We use a pair of (key, client) rather than a hashmap client[key],
@@ -1803,7 +1791,7 @@ public class TestValidatorNode : Validator, TestAPI
     {
         return new TestNominator(
             this.params, this.config.validator.key_pair, args,
-            this.config.node.data_dir, this.config.validator.nomination_interval,
+            this.cacheDB, this.config.validator.nomination_interval,
             &this.acceptBlock, this.txs_to_nominate, this.test_start_time);
     }
 

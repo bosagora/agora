@@ -16,6 +16,7 @@ module agora.test.RestoreSCPState;
 version (unittest):
 
 import agora.common.Config;
+import agora.common.ManagedDatabase;
 import agora.common.Task;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
@@ -35,43 +36,6 @@ import scpd.types.Stellar_SCP;
 
 import core.thread;
 
-/// Class containing gshared store for SCPEnvelopeStoreTest
-public class TestSCPEnvelopeStore : SCPEnvelopeStore
-{
-    __gshared const(SCPEnvelope)[] store;
-
-    this ()
-    {
-        super(":memory:");
-    }
-
-    public override bool add (const ref SCPEnvelope envelope) @trusted nothrow
-    {
-        store ~= envelope;
-        return true;
-    }
-
-    public override void removeAll () @trusted nothrow
-    {
-        // no-op
-    }
-
-    public override int opApply (scope int delegate(const ref SCPEnvelope) dg) @trusted
-    {
-        foreach (ref env; store)
-        {
-            if (auto ret = dg(env))
-                return ret;
-        }
-        return 0;
-    }
-
-    public override size_t length () @trusted
-    {
-        return store.length;
-    }
-}
-
 /// A test to store SCP state and recover SCP state
 unittest
 {
@@ -80,10 +44,7 @@ unittest
     static class ReNominator : TestNominator
     {
         /// Ctor
-        public this (Parameters!(TestNominator.__ctor) args)
-        {
-            super(args);
-        }
+        mixin ForwardCtor!();
 
         ///
         override void restoreSCPState ()
@@ -94,20 +55,26 @@ unittest
             // change between SCP releases)
             if (Checked)
             {
-                assert(TestSCPEnvelopeStore.store.length > 0);
+                assert(this.scp_envelope_store.length > 0);
                 Checked = false;
             }
             super.restoreSCPState();
-        }
-        protected override SCPEnvelopeStore makeSCPEnvelopeStore (string)
-        {
-            return new TestSCPEnvelopeStore();
         }
     }
 
     static class ReValidator : TestValidatorNode
     {
+        ///
         mixin ForwardCtor!();
+
+        private static ManagedDatabase PersistentDB;
+
+        protected override ManagedDatabase makeCacheDB ()
+        {
+            if (PersistentDB is null)
+                PersistentDB = new ManagedDatabase(":memory:");
+            return PersistentDB;
+        }
 
         ///
         protected override ReNominator makeNominator (
@@ -115,7 +82,7 @@ unittest
         {
             return new ReNominator(
                 this.params, this.config.validator.key_pair, args,
-                this.config.node.data_dir, this.config.validator.nomination_interval,
+                this.cacheDB, this.config.validator.nomination_interval,
                 &this.acceptBlock, this.txs_to_nominate, this.test_start_time);
         }
     }

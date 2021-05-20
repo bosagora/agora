@@ -163,7 +163,7 @@ extern(D):
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
         Clock clock, NetworkManager network, ValidatingLedger ledger,
-        EnrollmentManager enroll_man, ITaskManager taskman, string data_dir,
+        EnrollmentManager enroll_man, ITaskManager taskman, ManagedDatabase cacheDB,
         Duration nomination_interval,
         bool delegate (const ref Block) @safe externalize)
     {
@@ -182,7 +182,7 @@ extern(D):
         this.taskman = taskman;
         this.ledger = ledger;
         this.enroll_man = enroll_man;
-        this.scp_envelope_store = this.makeSCPEnvelopeStore(data_dir);
+        this.scp_envelope_store = new SCPEnvelopeStore(cacheDB);
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
@@ -645,23 +645,6 @@ extern(D):
             this.scp_envelope_store.add(env);
 
         ManagedDatabase.commitBatch();
-    }
-
-    /***************************************************************************
-
-        Returns an instance of an SCPEnvelopeStore
-
-        Params:
-            data_dir = path to the data directory
-
-        Returns:
-            the SCPEnvelopeStore instance
-
-    ***************************************************************************/
-
-    protected SCPEnvelopeStore makeSCPEnvelopeStore (string data_dir)
-    {
-        return new SCPEnvelopeStore(buildPath(data_dir, "scp_envelopes.dat"));
     }
 
     /***************************************************************************
