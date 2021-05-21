@@ -454,7 +454,8 @@ public class Validator : FullNode, API
 
     public AdminInterface makeAdminInterface ()
     {
-        return new AdminInterface(this.config.validator.key_pair, this.clock);
+        return new AdminInterface(this.config.validator.key_pair, this.clock,
+            this.enroll_man);
     }
 
     /***************************************************************************
