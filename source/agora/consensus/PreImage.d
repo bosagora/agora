@@ -286,7 +286,7 @@ public struct PreImageCycle
 {
     @safe nothrow:
 
-    /// Make sure we get initializedby disabling the default ctor
+    /// Make sure we get initialized by disabling the default ctor
     @disable public this ();
 
     public static immutable ulong NumberOfCycles = 100;
@@ -304,7 +304,7 @@ public struct PreImageCycle
 
     /***************************************************************************
 
-        Get a pre-mage at the specified height.
+        Get a pre-image at the specified height.
 
         This routine might first need to seek to the given `height`,
         hence calls might have various latency depending if the image is
