@@ -1,0 +1,54 @@
+name: Build and publish devel images
+
+on:
+  push:
+    branches:
+      - 'v*.*.x'
+  pull_request:
+    branches:
+      - 'v*.*.x'
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    # https://github.com/actions/runner/issues/953#issuecomment-821537265
+    env:
+      HAVE_DOCKERHUB_SECRET: ${{ secrets.DOCKERHUB_TOKEN != '' && secrets.DOCKERHUB_USERNAME != '' }}
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        id: login
+        # Only login if the push is upstream (or the user setup those)
+        if: github.event_name == 'push' && env.HAVE_DOCKERHUB_SECRET
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+        # This step will checkout the source with all the submodules
+      - name: '[Agora] Build and push'
+        id: agore_build
+        uses: docker/build-push-action@v2
+        with:
+          push: ${{ steps.login.outcome == 'success' }}
+          tags: bpfk/agora:devel
+          build-args: |
+            AGORA_VERSION=${{ github.sha }}
+
+      - name: '[Registry] Build and push'
+        id: registry_build
+        uses: docker/build-push-action@v2
+        with:
+          push: ${{ steps.login.outcome == 'success' }}
+          file: ./Dockerfile.NameRegistry
+          tags: bpfk/name-registry:devel
+
+      - name: Image digest
+        run: |
+          echo ${{ steps.agora_build.outputs.digest }}
+          echo ${{ steps.registry_build.outputs.digest }}
