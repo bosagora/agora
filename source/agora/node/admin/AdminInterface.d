@@ -20,6 +20,7 @@ module agora.node.admin.AdminInterface;
 import agora.api.Admin;
 import agora.common.Types;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.EnrollmentManager;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
@@ -72,6 +73,9 @@ public class AdminInterface : NodeControlAPI
     /// Clock instance
     private Clock clock;
 
+    /// Enrollment manager
+    private EnrollmentManager enroll_man;
+
     /***************************************************************************
 
         Constructor
@@ -79,14 +83,16 @@ public class AdminInterface : NodeControlAPI
         Params:
             key_pair = the keypair of this node
             clock = clock instance
+            enroll_man = the enrollmentManager
 
     ***************************************************************************/
 
-    public this (const KeyPair key_pair, Clock clock)
+    public this (const KeyPair key_pair, Clock clock, EnrollmentManager enroll_man)
     {
         this.log = Logger(__MODULE__);
         this.key_pair = key_pair;
         this.clock = clock;
+        this.enroll_man = enroll_man;
     }
 
     ///
@@ -183,9 +189,8 @@ public class AdminInterface : NodeControlAPI
     public override string encryptionKeyQR (
         string app, ulong height, out string contentType, out string vary)
     {
-        // TODO: PreImage to be released at that height
-        // Or it can be pre-released, so it can be `height + PreimageRevealPeriod`
-        PreImageInfo pre_image;
+        // Gets the pre-image of the requested height.
+        Hash pre_image = this.enroll_man.getOurPreimage(Height(height));
 
         // blake2b hashing
         const Hash key = hashMulti(pre_image, app);
@@ -325,7 +330,7 @@ unittest
     S x;
     const KeyPair kp = KeyPair.random();
     auto clock = new Clock(null, null);
-    auto qRCodeInterface = new AdminInterface(kp, clock);
+    auto qRCodeInterface = new AdminInterface(kp, clock, null);
     string qr_svg = qRCodeInterface.createQRcode(x);
     string sample_svg =
 `<?xml version="1.0" encoding="UTF-8"?>
