@@ -457,7 +457,7 @@ public class FeeManager
         foreach (const ref tx; tx_set)
         {
             // Coinbase TXs are not subject to fees
-            if (tx.type == TxType.Coinbase)
+            if (tx.isCoinbase)
                 continue;
 
             Amount tot_in, tot_out;
@@ -502,12 +502,12 @@ public class FeeManager
 
         Amount double_stake = Amount.MinFreezeAmount; assert(double_stake.mul(2));
         auto frozen_txs = [
-            Transaction(TxType.Freeze, [], [Output(Amount.MinFreezeAmount,
-                WK.Keys[0].address)]),
-            Transaction(TxType.Freeze, [], [Output(Amount.MinFreezeAmount,
-                WK.Keys[0].address)]),
-            Transaction(TxType.Freeze, [], [Output(double_stake,
-                WK.Keys[0].address)]),
+            Transaction([], [Output(Amount.MinFreezeAmount,
+                WK.Keys[0].address, OutputType.Freeze)]),
+            Transaction([], [Output(Amount.MinFreezeAmount,
+                WK.Keys[0].address, OutputType.Freeze)]),
+            Transaction([], [Output(double_stake,
+                WK.Keys[0].address, OutputType.Freeze)]),
         ];
 
         frozen_txs.each!(tx => utxoset.put(tx));
@@ -559,8 +559,7 @@ unittest
     auto fee_man = new FeeManager();
 
     Transaction freeze_tx = Transaction(
-        TxType.Freeze,
-        [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address) ]);
+        [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze) ]);
 
     auto utxo_set = new TestUTXOSet;
     utxo_set.put(freeze_tx);
@@ -569,12 +568,10 @@ unittest
     Hash stake_hash = UTXO.getHash(txhash, 0);
 
     Transaction gen_tx = Transaction(
-        TxType.Payment,
         [ Output(Amount(2_000_000L), WK.Keys.NODE2.address) ]);
     utxo_set.put(gen_tx);
 
     Transaction spend_tx = Transaction(
-        TxType.Payment,
         [ Input(gen_tx.hashFull(), 0)],
         [ Output(Amount(1_000_000L), WK.Keys.NODE2.address) ]);
 

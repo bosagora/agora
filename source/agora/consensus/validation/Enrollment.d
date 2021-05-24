@@ -16,6 +16,7 @@ module agora.consensus.validation.Enrollment;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.Transaction;
 import agora.consensus.state.UTXOCache;
 import agora.consensus.state.ValidatorSet;
 import agora.consensus.data.PreImageInfo;
@@ -28,7 +29,6 @@ import std.conv;
 
 version (unittest)
 {
-    import agora.consensus.data.Transaction;
     import agora.consensus.data.Params;
     import agora.common.ManagedDatabase;
     import agora.consensus.PreImage;
@@ -62,7 +62,7 @@ public string isInvalidReason (in Enrollment enrollment,
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
         return "Enrollment: UTXO not found";
 
-    if (utxo_set_value.type != typeof(utxo_set_value.type).Freeze)
+    if (utxo_set_value.output.type != OutputType.Freeze)
         return "Enrollment: UTXO is not frozen";
 
     Point address = utxo_set_value.output.address;
@@ -126,25 +126,21 @@ unittest
 
     // normal frozen transaction
     Transaction tx1 = Transaction(
-        TxType.Freeze, null,
-        [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
+        [Output(Amount.MinFreezeAmount, key_pairs[0].address, OutputType.Freeze)]
     );
 
     // payment transaction
     Transaction tx2 = Transaction(
-        TxType.Payment, null,
         [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
     );
 
     // Insufficient freeze amount transaction
     Transaction tx3 = Transaction(
-        TxType.Freeze, null,
-        [Output(Amount(1), key_pairs[2].address)]
+        [Output(Amount(1), key_pairs[2].address, OutputType.Freeze)]
     );
 
     // normal freeze amount transaction
     Transaction tx4 = Transaction(
-        TxType.Freeze, null,
         [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
     );
 
@@ -247,7 +243,7 @@ unittest
 
     Enrollment invalid;
     assert(isInvalidReason(invalid,
-        (in Hash, out UTXO utxo) { utxo.type = TxType.Freeze; return true; },
+        (in Hash, out UTXO utxo) { utxo.output.type = OutputType.Freeze; return true; },
         Height(0), null)
         == "Enrollment: Address is not a valid point on Curve25519");
 }

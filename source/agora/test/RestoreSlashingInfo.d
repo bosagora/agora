@@ -57,7 +57,7 @@ unittest
     // prepare frozen outputs for outsider validators to enroll
     blocks[0].spendable().drop(1).takeExactly(1)
         .map!(txb => txb
-            .split(keys).sign(TxType.Freeze))
+            .split(keys).sign(OutputType.Freeze))
             .each!(tx => set_a[0].putTransaction(tx));
 
     network.generateBlocks(Height(GenesisValidatorCycle - 1));

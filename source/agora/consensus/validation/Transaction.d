@@ -64,7 +64,7 @@ public string isInvalidReason (
     import std.algorithm;
     import std.conv;
 
-    if (tx.type != TxType.Coinbase && tx.inputs.length == 0)
+    if (!tx.isCoinbase && tx.inputs.length == 0)
         return "Transaction: No input";
 
     if (tx.outputs.length == 0)
@@ -89,16 +89,9 @@ public string isInvalidReason (
         if (output.value == Amount(0))
             return "Transaction: Value of output is 0";
 
-        // Each output of a freezing transaction must have at least
-        // `Amount.MinFreezeAmount`, save for the first one which
-        // will be considered a refund if it is less than that.
-        if (tx.type == TxType.Freeze &&
-            output.value < Amount.MinFreezeAmount)
-            {
-                if (tx.outputs.length == 1 ||
-                    tx.outputs.count!(o => o.value < Amount.MinFreezeAmount) > 1)
-                    return "Transaction: All non-refund outputs must be over the minimum freezing amount";
-            }
+        // Each freeze output of a transaction must have at least `Amount.MinFreezeAmount`.
+        if (output.type == OutputType.Freeze && output.value < Amount.MinFreezeAmount)
+            return "Transaction: All non-refund outputs must be over the minimum freezing amount";
     }
 
     const tx_hash = hashFull(tx);
@@ -129,8 +122,11 @@ public string isInvalidReason (
 
     Amount sum_unspent;
 
-    if (tx.type == TxType.Freeze)
+    if (tx.isFreeze)
     {
+        if (tx.outputs.count!(o => o.type == OutputType.Payment) > 1)
+            return "Transaction: Freeze cannot have multiple refund payment outputs";
+
         if (tx.payload.bytes.length != 0)
             return "Transaction: Freeze cannot have data payload";
 
@@ -140,14 +136,14 @@ public string isInvalidReason (
             if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
                 return fail_reason;
 
-            if (utxo_value.type == TxType.Freeze)
-                return "Transaction: Can't freeze an already frozen transaction";
+            if (utxo_value.output.type == OutputType.Freeze)
+                return "Transaction: Can't freeze an already frozen input";
         }
 
         if (sum_unspent.integral() < Amount.MinFreezeAmount.integral())
             return "Transaction: available when the amount is at least 40,000 BOA";
     }
-    else if (tx.type == TxType.Payment)
+    else if (tx.isPayment)
     {
         uint count_freeze = 0;
         foreach (input; tx.inputs)
@@ -158,11 +154,11 @@ public string isInvalidReason (
 
             // when status is frozen, it will begin to melt
             // In this case, all inputs must be frozen.
-            if (utxo_value.type == TxType.Freeze)
+            if (utxo_value.output.type == OutputType.Freeze)
                 count_freeze++;
 
             // when status is (frozen->melting->melted) or (frozen->melting)
-            if (utxo_value.type == TxType.Payment)
+            if (utxo_value.output.type == OutputType.Payment)
             {
                 // when status is still melting
                 if (height < utxo_value.unlock_height)
@@ -175,8 +171,10 @@ public string isInvalidReason (
             return "Transaction: Rejected combined inputs (freeze & payment)";
 
     }
-    else if (tx.type == TxType.Coinbase)
+    else if (tx.isCoinbase)
     {
+        if (tx.outputs.any!(o => o.type != OutputType.Coinbase))
+            return "Transaction: If an output is Coinbase they all should be";
         if (tx.inputs.length != 1)
             return "Transaction: Coinbase transactions must" ~
                 "include a single Input";
@@ -188,12 +186,12 @@ public string isInvalidReason (
             return "Transaction: Coinbase transactions can't include payload";
     }
     else
-        return "Transaction: Invalid transaction type";
+        return "Transaction: Invalid output types";
 
     Amount new_unspent;
     if (!tx.getSumOutput(new_unspent))
         return "Transaction: Referenced Output(s) overflow";
-    if (tx.type != TxType.Coinbase && !sum_unspent.sub(new_unspent))
+    if (!tx.isCoinbase && !sum_unspent.sub(new_unspent))
         return "Transaction: Output(s) are higher than Input(s)";
     // NOTE: Make sure fees are always checked last
     return checkFee(tx, sum_unspent);
@@ -227,7 +225,7 @@ unittest
     scope checker = &payload_checker.check;
 
     // Creates the first transaction.
-    Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount(100), key_pairs[0].address) ]);
+    Transaction previousTx = Transaction([ Output(Amount(100), key_pairs[0].address) ]);
 
     // Save
     Hash previousHash = hashFull(previousTx);
@@ -235,7 +233,6 @@ unittest
 
     // Creates the second transaction.
     Transaction secondTx = Transaction(
-        TxType.Payment,
         [
             Input(previousHash, 0)
         ],
@@ -272,7 +269,7 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
-    Transaction tx_1 = Transaction(TxType.Payment, [ Output(Amount(1000), key_pairs[0].address) ]);
+    Transaction tx_1 = Transaction([ Output(Amount(1000), key_pairs[0].address) ]);
     Hash tx_1_hash = hashFull(tx_1);
 
     scope payload_checker = new FeeManager();
@@ -283,7 +280,6 @@ unittest
 
     // Creates the second transaction.
     Transaction tx_2 = Transaction(
-        TxType.Payment,
         [Input(tx_1_hash, 0)],
         // oops
         [Output(Amount.invalid(-400_000), key_pairs[1].address)]);
@@ -295,7 +291,6 @@ unittest
     // Creates the third transaction.
     // Reject a transaction whose output value is zero
     Transaction tx_3 = Transaction(
-        TxType.Payment,
         [Input(tx_1_hash, 0)],
         [Output(Amount.invalid(0), key_pairs[1].address)]);
 
@@ -320,13 +315,12 @@ unittest
     scope checker = &payload_checker.check;
 
     // Create the first transaction.
-    Transaction genesisTx = Transaction(TxType.Payment, [ Output(Amount(100_000), key_pairs[0].address) ]);
+    Transaction genesisTx = Transaction([ Output(Amount(100_000), key_pairs[0].address) ]);
     Hash genesisHash = hashFull(genesisTx);
     storage.put(genesisTx);
 
     // Create the second transaction.
     Transaction tx1 = Transaction(
-        TxType.Payment,
         [
             Input(genesisHash, 0)
         ],
@@ -344,7 +338,6 @@ unittest
            format("Transaction signature is not validated %s", tx1));
 
     Transaction tx2 = Transaction(
-        TxType.Payment,
         [
             Input(tx1Hash, 0)
         ],
@@ -377,25 +370,22 @@ unittest
     // Second transaction is valid.
     {
         storage.clear;
-        // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
+        // Create the previous transaction with type `OutputType.Payment`
+        Transaction previousTx = Transaction([ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
             const UTXO utxo_value = {
                 unlock_height: 0,
-                type: TxType.Payment,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
         }
 
         // Creates the freezing transaction.
-        secondTx = Transaction(
-            TxType.Freeze,
-            [Input(previousHash, 0)],
-            [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+        secondTx = Transaction([Input(previousHash, 0)],
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address, OutputType.Freeze)]
         );
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
@@ -407,15 +397,14 @@ unittest
     // Second transaction is invalid.
     {
         storage.clear;
-        // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
+        // Create the previous transaction with type `OutputType.Payment`
+        Transaction previousTx = Transaction([ Output(Amount.MinFreezeAmount, key_pairs[0].address, OutputType.Freeze) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
             const UTXO utxo_value = {
                 unlock_height: 0,
-                type: TxType.Freeze,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -423,9 +412,8 @@ unittest
 
         // Creates the freezing transaction.
         secondTx = Transaction(
-            TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address, OutputType.Freeze)]
         );
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
@@ -437,15 +425,14 @@ unittest
     // Second transaction is invalid.
     {
         storage.clear;
-        // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount(100_000_000_000L), key_pairs[0].address) ]);
+        // Create the previous transaction with type `OutputType.Payment`
+        Transaction previousTx = Transaction([ Output(Amount(100_000_000_000L), key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
             const UTXO utxo_value = {
                 unlock_height: 0,
-                type: TxType.Payment,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -453,9 +440,8 @@ unittest
 
         // Creates the freezing transaction.
         secondTx = Transaction(
-            TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount(100_000_000_000L), key_pairs[1].address)]
+            [Output(Amount(100_000_000_000L), key_pairs[1].address, OutputType.Freeze)]
         );
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
@@ -466,15 +452,14 @@ unittest
     // When the privious transaction with too many amount at freezings.
     // Second transaction is valid.
     {
-        // Create the previous transaction with type `TxType.Payment`
-        Transaction previousTx = Transaction(TxType.Payment, [ Output(Amount(500_000_000_000L), key_pairs[0].address) ]);
+        // Create the previous transaction with type `OutputType.Payment`
+        Transaction previousTx = Transaction([ Output(Amount(500_000_000_000L), key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
             const Hash utxo_hash = hashMulti(previousHash, idx);
             const UTXO utxo_value = {
                 unlock_height: 0,
-                type: TxType.Payment,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -482,9 +467,8 @@ unittest
 
         // Creates the freezing transaction.
         secondTx = Transaction(
-            TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount(500_000_000_000L), key_pairs[1].address)]
+            [Output(Amount(500_000_000_000L), key_pairs[1].address, OutputType.Freeze)]
         );
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
@@ -528,13 +512,13 @@ unittest
     Hash thirdHash;
     Hash fifthHash;
 
-    // Create the previous transaction with type `TxType.Payment`
+    // Create the previous transaction with type `OutputType.Payment`
     // Expected height : 0
     // Expected Status : melted
     {
         height = 0;
         Transaction previousTx = Transaction(
-            TxType.Payment, [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
+            [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
 
         // Save to UTXOSet
         previousHash = hashFull(previousTx);
@@ -543,7 +527,6 @@ unittest
             const Hash utxo_hash = hashMulti(previousHash, idx);
             const UTXO utxo_value = {
                 unlock_height: height+1,
-                type: TxType.Payment,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -558,9 +541,8 @@ unittest
     {
         height = 1;
         secondTx = Transaction(
-            TxType.Freeze,
             [Input(previousHash, 0)],
-            [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address, OutputType.Freeze)]
         );
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
@@ -574,7 +556,6 @@ unittest
             const Hash utxo_hash = hashMulti(secondHash, idx);
             const UTXO utxo_value = {
                 unlock_height: height+1,
-                type: TxType.Freeze,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -588,9 +569,7 @@ unittest
     // Expected Status : melting
     {
         height = 2;
-        thirdTx = Transaction(
-            TxType.Payment,
-            [Input(secondHash, 0)],
+        thirdTx = Transaction([Input(secondHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[2].address)]
         );
         thirdTx.inputs[0].unlock = signUnlock(key_pairs[1], thirdTx);
@@ -605,7 +584,6 @@ unittest
             const Hash utxo_hash = hashMulti(thirdHash, idx);
             const UTXO utxo_value = {
                 unlock_height: height+2016,
-                type: TxType.Payment,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -619,9 +597,7 @@ unittest
     // Expected Status : melting
     {
         height = 2+2015;  //  this is melting, not melted
-        fourthTx = Transaction(
-            TxType.Payment,
-            [Input(thirdHash, 0)],
+        fourthTx = Transaction([Input(thirdHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
         fourthTx.inputs[0].unlock = signUnlock(key_pairs[2], fourthTx);
@@ -638,8 +614,7 @@ unittest
     {
         height = 2+2016;  //  this is melted
         fifthTx = Transaction(
-            TxType.Payment,
-            [Input(thirdHash, 0)],
+                [Input(thirdHash, 0)],
             [Output(Amount.MinFreezeAmount, key_pairs[3].address)]
         );
         fifthTx.inputs[0].unlock = signUnlock(key_pairs[2], fourthTx);
@@ -654,7 +629,6 @@ unittest
             const Hash utxo_hash = hashMulti(fifthHash, idx);
             const UTXO utxo_value = {
                 unlock_height: height+1,
-                type: TxType.Payment,
                 output: output
             };
             storage[utxo_hash] = utxo_value;
@@ -677,7 +651,6 @@ unittest
 
     // create a transaction having no input
     Transaction oneTx = Transaction(
-        TxType.Payment,
         [],
         [Output(Amount(50), key_pair.address)]
     );
@@ -688,13 +661,12 @@ unittest
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
-    Transaction firstTx = Transaction(TxType.Payment, [ Output(Amount(100_1000), key_pair.address) ]);
+    Transaction firstTx = Transaction([ Output(Amount(100_1000), key_pair.address) ]);
     Hash firstHash = hashFull(firstTx);
     storage.put(firstTx);
 
     // create a transaction having no output
     Transaction secondTx = Transaction(
-        TxType.Payment,
         [Input(firstHash, 0)],
         []
     );
@@ -717,7 +689,6 @@ unittest
 
     // create the first transaction.
     Transaction firstTx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
@@ -726,16 +697,14 @@ unittest
 
     // create the second transaction.
     Transaction secondTx = Transaction(
-        TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output(Amount(100), key_pairs[0].address)]
+        [Output(Amount(100), key_pairs[0].address, OutputType.Freeze)]
     );
     Hash secondHash = hashFull(secondTx);
     storage.put(secondTx);
 
     // create the third transaction
     Transaction thirdTx = Transaction(
-        TxType.Payment,
         [Input(firstHash, 0), Input(secondHash, 0)],
         [Output(Amount(100), key_pairs[1].address)]
     );
@@ -749,22 +718,20 @@ unittest
         format("Tx having combined inputs should not pass validation. tx: %s", thirdTx));
 }
 
-/// test for unknown transaction type
+/// test for unknown transaction output type
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     Transaction[Hash] storage;
-    TxType unknown_type = cast(TxType)100; // any number is OK for test except 0 and 1
+    OutputType unknown_type = cast(OutputType)100; // picking value beyond enum range
     KeyPair key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
     // create a transaction having unknown transaction type
-    Transaction firstTx = Transaction(
-        unknown_type,
-        [Input(Hash.init, 0)],
-        [Output(Amount(100), key_pair.address)]
+    Transaction firstTx = Transaction([Input(Hash.init, 0)],
+        [Output(Amount(100), key_pair.address, unknown_type)]
     );
     Hash firstHash = hashFull(firstTx);
     storage[firstHash] = firstTx;
@@ -786,7 +753,6 @@ unittest
 
     // create the first transaction
     auto firstTx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount.MaxUnitSupply, key_pairs[0].address)]
     );
@@ -795,7 +761,6 @@ unittest
 
     // create the second transaction
     auto secondTx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
@@ -804,7 +769,6 @@ unittest
 
     // create the third transaction
     auto thirdTx = Transaction(
-        TxType.Payment,
         [Input(firstHash, 0), Input(secondHash, 0)],
         [Output(Amount(100), key_pairs[1].address)]
     );
@@ -819,9 +783,8 @@ unittest
 
     // create the fourth transaction
     auto fourthTx = Transaction(
-        TxType.Freeze,
         [Input(firstHash, 0), Input(secondHash, 0)],
-        [Output(Amount(100), key_pairs[1].address)]
+        [Output(Amount(100), key_pairs[1].address, OutputType.Freeze)]
     );
     storage.put(fourthTx);
     auto fourthHash = hashFull(fourthTx);
@@ -845,7 +808,6 @@ unittest
 
     // create the first transaction
     auto firstTx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
@@ -854,7 +816,6 @@ unittest
 
     // create the second transaction
     auto secondTx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(100), key_pairs[0].address)]
     );
@@ -863,7 +824,6 @@ unittest
 
     // create the third transaction
     auto thirdTx = Transaction(
-        TxType.Payment,
         [Input(firstHash, 0), Input(secondHash, 0)],
         [Output(Amount.MaxUnitSupply, key_pairs[1].address),
             Output(Amount(100), key_pairs[1].address)]
@@ -890,7 +850,6 @@ unittest
 
     // create the payment transaction.
     Transaction paymentTx = Transaction(
-        TxType.Payment,
         [Input(Hash.init)],
         [Output(Amount(80_000L * 10_000_000L), key_pair.address)]
     );
@@ -899,9 +858,8 @@ unittest
 
     // create the frozen transaction.
     Transaction frozenTx = Transaction(
-        TxType.Freeze,
         [Input(Hash.init)],
-        [Output(Amount(80_000L * 10_000_000L), key_pair.address)]
+        [Output(Amount(80_000L * 10_000_000L), key_pair.address, OutputType.Freeze)]
     );
     storage.put(frozenTx);
     Hash frozen_utxo = UTXO.getHash(frozenTx.hashFull(), 0);
@@ -930,7 +888,6 @@ unittest
     // Test 1. Too large data
     // create a transaction with large data
     dataTx = Transaction(
-        TxType.Payment,
         [Input(payment_utxo)],
         [
             Output(large_data_fee, payload_checker.params.CommonsBudgetAddress),
@@ -949,7 +906,6 @@ unittest
     // Test 2. With not enough fee
     // create a transaction with not enough fee
     dataTx = Transaction(
-        TxType.Payment,
         [Input(payment_utxo)],
         [Output(Amount(80_000L * 10_000_000L - normal_data_fee.integral + 1),
             key_pair.address)],
@@ -967,7 +923,6 @@ unittest
     Amount rem_amount = paymentTx.outputs[0].value;
     rem_amount.sub(normal_data_fee);
     dataTx = Transaction(
-        TxType.Payment,
         [Input(payment_utxo)],
         [Output(rem_amount, key_pair.address)],
         DataPayload(normal_data)
@@ -983,7 +938,6 @@ unittest
     // Test 5. Using frozen input
     // create the data transaction.
     dataTx = Transaction(
-        TxType.Payment,
         [Input(frozen_utxo)],
         [
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
@@ -1001,10 +955,9 @@ unittest
     // Test 6. The transaction with the type of Freeze
     // create the data transaction.
     dataTx = Transaction(
-        TxType.Freeze,
         [Input(payment_utxo)],
         [
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+            Output(Amount(40_000L * 10_000_000L), key_pair.address, OutputType.Freeze)
         ],
         DataPayload(normal_data)
     );
@@ -1028,11 +981,9 @@ unittest
 
     // Only output transaction
     auto tx = Transaction(
-        TxType.Coinbase,
-        [],
         [
-            Output(Amount(2826), key_pair.address),
-            Output(Amount(3895), key_pair.address),
+            Output(Amount(2826), key_pair.address, OutputType.Coinbase),
+            Output(Amount(3895), key_pair.address, OutputType.Coinbase),
         ].sort.array,
     );
     // No input
@@ -1063,11 +1014,11 @@ unittest
 
     KeyPair kp = KeyPair.random();
 
-    Transaction prev_tx = Transaction(TxType.Payment, [Output(Amount(100), kp.address)]);
+    Transaction prev_tx = Transaction([Output(Amount(100), kp.address)]);
     storage.put(prev_tx);
 
     Transaction tx = Transaction(
-        TxType.Payment, [Input(hashFull(prev_tx), 0)],
+        [Input(hashFull(prev_tx), 0)],
         [Output(Amount(50), kp.address)]);
 
     // effectively disabled lock
