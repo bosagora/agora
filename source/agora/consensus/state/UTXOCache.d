@@ -58,14 +58,8 @@ abstract class UTXOCache
 
         bool melting = false;
 
-        // check if the payments are from frozen transactions
-        if ((tx.type == TxType.Payment)
-            && tx.inputs.any!(input =>
-                (
-                    (this.getUTXO(input.utxo).type == TxType.Freeze)
-                )
-            )
-        )
+        // check if any inputs are from frozen output
+        if (tx.inputs.any!(input => this.getUTXO(input.utxo).output.type == OutputType.Freeze))
         {
             melting = true;
         }
@@ -76,7 +70,6 @@ abstract class UTXOCache
         }
 
         Hash tx_hash = tx.hashFull();
-        bool frozen_refund_added = false;
         foreach (idx, output; tx.outputs)
         {
             auto utxo_hash = UTXO.getHash(tx_hash, idx);
@@ -85,19 +78,10 @@ abstract class UTXOCache
             // UTXOs which are towards the Commons Budget are excluded from this
             // rule, and will be available from the next block.
             if (melting && output.address != commons_budget)
-                this.add(utxo_hash, UTXO(height + 2016, tx.type, output));
-            // Additionally, if a transaction has two or more outputs,
-            // one is allowed to be under the minimum freezing amount.
-            // If it is, it will not be considered frozen.
-            else if (!frozen_refund_added && tx.type == TxType.Freeze
-                && tx.outputs.length >= 2 && output.value < Amount.MinFreezeAmount)
-                {
-                    this.add(utxo_hash, UTXO(height + 1, TxType.Payment, output));
-                    frozen_refund_added = true;
-                }
+                this.add(utxo_hash, UTXO(height + 2016, output));
             // Finally, the following is the most common case
             else
-                this.add(utxo_hash, UTXO(height + 1, tx.type, output));
+                this.add(utxo_hash, UTXO(height + 1, output));
         }
     }
 
@@ -254,7 +238,6 @@ public class TestUTXOSet : UTXOCache
         {
             Hash h = UTXO.getHash(txhash, idx);
             UTXO v = {
-                type: tx.type,
                 output: output_
             };
             this.storage[h] = v;

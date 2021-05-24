@@ -131,7 +131,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     bool only_coinbase = true;
     foreach (const ref tx; block.txs)
     {
-        only_coinbase &= tx.type == TxType.Coinbase;
+        only_coinbase &= tx.isCoinbaseTx;
         if (auto fail_reason = VTx.isInvalidReason(tx, engine, findUTXO,
             block.header.height, checkFee))
             return fail_reason;
@@ -142,8 +142,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
 
     auto expected_cb_txs = getCoinbaseTX(block.txs,
         block.header.missing_validators);
-    auto incoming_cb_txs = block.txs.filter!(
-            tx => tx.type == TxType.Coinbase);
+    auto incoming_cb_txs = block.txs.filter!(tx => tx.isCoinbaseTx);
     if (!isPermutation(expected_cb_txs, incoming_cb_txs))
         return "Invalid Coinbase transaction";
 
@@ -269,8 +268,8 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
     UTXO[Hash] utxo_set;
     foreach (const ref tx; block.txs)
     {
-        if (!(tx.type == TxType.Payment || tx.type == TxType.Freeze))
-            return "GenesisBlock: Invalid enum value for type field";
+        if (!(tx.outputs.any!(o => o.type == OutputType.Coinbase)))
+            return "GenesisBlock: Outputs must not be Coinbase";
 
         if (tx.inputs.length != 0)
              return "GenesisBlock: Transactions must not have input";
@@ -296,7 +295,6 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
 
             const UTXO utxo_value = {
                 unlock_height: 0,
-                type: tx.type,
                 output: output
             };
             utxo_set[UTXO.getHash(tx_hash, idx)] = utxo_value;
@@ -411,7 +409,6 @@ unittest
     Transaction makeNewTx ()
     {
         Transaction new_tx = Transaction(
-            TxType.Payment,
             [Output(Amount(100), KeyPair.random().address)]);
         return new_tx;
     }
@@ -454,17 +451,16 @@ unittest
 
         // Txs type check
         auto pre_type_change_txs = block.txs.dup;
-        block.txs[0].type = cast(TxType)2;
+        block.txs[0].outputs = [ Output(Amount(1), KeyPair.random().address, cast(OutputType)4) ];
         buildMerkleTree(block);
-        assert(block.isGenesisBlockInvalidReason()
-               .canFind("Invalid enum value"));
+        assert(block.isGenesisBlockInvalidReason().canFind("Invalid enum value"));
 
         block.txs = pre_type_change_txs;
         buildMerkleTree(block);
         checkValidity(block);
 
-        assert(block.txs.any!(tx => tx.type == TxType.Payment));
-        assert(block.txs.any!(tx => tx.type == TxType.Freeze));
+        assert(block.txs.any!(tx => tx.isPaymentTx));
+        assert(block.txs.any!(tx => tx.isFreezeTx));
 
         // Input empty check
         block.txs[0].inputs ~= Input.init;
@@ -537,13 +533,9 @@ unittest
         fee_man.params.TxPayloadFeeFactor);
 
     // create a transaction with data payload and enough fee
-    Transaction dataTx = Transaction(
-        TxType.Payment,
-        [],
-        [
-            Output(normal_data_fee, fee_man.params.CommonsBudgetAddress),
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)
-        ].sort.array,
+    Transaction dataTx = Transaction(null,
+        [ Output(normal_data_fee, fee_man.params.CommonsBudgetAddress),
+            Output(Amount(40_000L * 10_000_000L), key_pair.address)].sort.array,
         DataPayload(normal_data)
     );
 
@@ -809,7 +801,6 @@ unittest
         {
             used_set[utxo_hash] = *utxo;
             value.unlock_height = 0;
-            value.type = TxType.Payment;
             value.output = *utxo;
             return true;
         }
@@ -823,7 +814,7 @@ unittest
         findNonSpent, Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
 
     // All `payment` utxos have been consumed
-    assert(GenesisBlock.frozens.front.type == TxType.Freeze);
+    assert(GenesisBlock.payments.count == 0);
     assert(used_set.length + GenesisBlock.frozens.front.outputs.length == utxo_set_len);
 
     // reset state
@@ -902,19 +893,11 @@ unittest
 
     KeyPair keypair = KeyPair.random();
     Transaction[] txs_2;
-    Output[] no_outputs;
     foreach (idx, pre_tx; txs_1)
     {
         Input input = Input(hashFull(pre_tx), 0);
 
-        Transaction tx = Transaction(
-            TxType.Freeze,
-            [input],
-            null
-        );
-        if (idx > 3)
-            tx.type = TxType.Payment;
-
+        Transaction tx = Transaction([input], null);
         if (idx == 7)
         {
             foreach (_; 0 .. 8)
@@ -922,6 +905,7 @@ unittest
                 Output output;
                 output.value = Amount(100);
                 output.lock = genKeyLock(keypair.address);
+                output.type = OutputType.Payment;
                 tx.outputs ~= output;
             }
         }
@@ -930,6 +914,7 @@ unittest
             Output output;
             output.value = Amount.MinFreezeAmount;
             output.lock = genKeyLock(keypair.address);
+            output.type = OutputType.Freeze;
             tx.outputs ~= output;
         }
         tx.outputs.sort;
@@ -950,7 +935,6 @@ unittest
         Input input = Input(hashFull(txs_2[7]), idx);
 
         Transaction tx = Transaction(
-            TxType.Payment,
             [input],
             [Output(Amount(1), keypair2.address)]);
         tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
@@ -1032,23 +1016,20 @@ unittest
 
     KeyPair keypair = KeyPair.random();
     Transaction[] txs_2;
-    Output[] no_outputs;
     foreach (idx, pre_tx; txs_1)
     {
         Transaction tx = Transaction(
-            TxType.Freeze,
             [Input(hashFull(pre_tx), 0)],
             null);
 
         if (idx <= 2)
         {
-            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address);
-            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address);
-            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address);
+            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
+            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
+            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
         }
         else
         {
-            tx.type = TxType.Payment;
             foreach (_; 0 .. 8)
                 tx.outputs ~= Output(Amount(100), keypair.address);
         }
@@ -1071,7 +1052,6 @@ unittest
         foreach (idx; 0 .. 8)
         {
             Transaction tx = Transaction(
-                TxType.Payment,
                 [Input(hashFull(txs_2[$-4]), idx)],
                 [Output(Amount(1), keypair2.address)]);
             tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
@@ -1095,7 +1075,6 @@ unittest
         foreach (idx; 0 .. 8)
         {
             Transaction tx = Transaction(
-                TxType.Payment,
                 [Input(hashFull(txs_2[$-3]), idx)],
                 [Output(Amount(1), keypair2.address)]);
             tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);
@@ -1137,7 +1116,6 @@ unittest
         foreach (idx; 0 .. 8)
         {
             Transaction tx = Transaction(
-                TxType.Payment,
                 [Input(hashFull(txs_2[$-1]), idx)],
                 [Output(Amount(1), keypair2.address)]);
             tx.inputs[0].unlock = VTx.signUnlock(keypair, tx);

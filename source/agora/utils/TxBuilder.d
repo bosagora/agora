@@ -257,7 +257,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public Transaction sign (in TxType type = TxType.Payment, const(ubyte)[] data = [],
+    public Transaction sign (in OutputType type = OutputType.Payment, const(ubyte)[] data = [],
         Height lock_height = Height(0), uint unlock_age = 0,
         Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
         unlocker = null) @safe nothrow
@@ -268,7 +268,6 @@ public struct TxBuilder
 
         if (unlocker is null)
             unlocker = &this.keyUnlocker;
-        this.data.type = type;
         this.data.lock_height = lock_height;
 
         // Finalize the transaction by adding inputs
@@ -278,7 +277,10 @@ public struct TxBuilder
         // Add the refund tx, if needed
         if (this.leftover.value > Amount(0))
         {
-            this.data.outputs = [ this.leftover ] ~ this.data.outputs;
+            if (type == OutputType.Freeze && this.data.outputs.count == 0)
+                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
+            else
+                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, type) ] ~ this.data.outputs;
             this.data.outputs.sort;
         }
 
@@ -319,7 +321,7 @@ public struct TxBuilder
     {
         assert(this.inputs.length > 0);
 
-        this.leftover = Output(Amount(0), toward);
+        this.leftover = Output(Amount(0), toward, OutputType.Payment);
         this.inputs.each!(val => this.leftover.value.mustAdd(val.output.value));
         this.data.outputs = null;
 

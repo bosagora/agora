@@ -20,7 +20,7 @@ void manyValidators (size_t validators)
     import agora.test.Base : TestConf, GenesisValidators, GenesisValidatorCycle,
         makeTestNetwork, TestAPIManager;
     import agora.common.Types : Height;
-    import agora.consensus.data.Transaction : TxType;
+    import agora.consensus.data.Transaction;
     import agora.utils.Test : genesisSpendable, retryFor;
     import std.algorithm;
     import std.format;
@@ -48,7 +48,7 @@ void manyValidators (size_t validators)
     {
         // prepare frozen outputs for outsider validators to enroll
         genesisSpendable().dropExactly(1).takeExactly(1)
-            .map!(txb => txb.split(keys).sign(TxType.Freeze))
+            .map!(txb => txb.split(keys).sign(OutputType.Freeze))
             .each!(tx => network.clients[0].putTransaction(tx));
     }
 

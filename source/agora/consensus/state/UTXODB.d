@@ -91,12 +91,12 @@ package class UTXODB
             foreach (row; results)
             {
                 auto unlock_height = Height(row.peek!ulong(0));
-                auto type = row.peek!TxType(1);
                 // DMD BUG: Cannot construct the object directly, `inout` bug
                 Output output;
+                output.type = row.peek!OutputType(1);
                 output.value = Amount(row.peek!ulong(2));
                 output.lock  = Lock(row.peek!(LockType)(3), row.peek!(ubyte[])(4));
-                value = UTXO(unlock_height, type, output);
+                value = UTXO(unlock_height, output);
                 return true;
             }
             return false;
@@ -135,14 +135,13 @@ package class UTXODB
         {
             auto hash = Hash(row.peek!(const(char)[], PeekMode.slice)(0));
             auto unlock_height = Height(row.peek!ulong(1));
-            auto type = row.peek!TxType(2);
             // DMD BUG, see above
             Output output;
+            output.type = row.peek!OutputType(2);
             output.value = Amount(row.peek!ulong(3));
             output.lock  = Lock(LockType.Key, row.peek!(ubyte[])(4));
             UTXO value = {
                 unlock_height: unlock_height,
-                type: type,
                 output: output,
             };
             utxos[hash] = value;
@@ -165,7 +164,7 @@ package class UTXODB
     {
         db.execute("INSERT INTO utxo (hash, unlock_height, type, amount, locktype, lock) " ~
                    "VALUES (?, ?, ?, ?, ?, ?)",
-                   key, value.unlock_height, value.type,
+                   key, value.unlock_height, value.output.type,
                    value.output.value, value.output.lock.type, value.output.lock.bytes);
     }
 

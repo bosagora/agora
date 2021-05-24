@@ -181,7 +181,6 @@ public Transaction createFundingTx (in Hash utxo, in Amount capacity,
     in Point pair_pk) @safe nothrow
 {
     Transaction funding_tx = Transaction(
-        TxType.Payment,
         [Input(utxo)],
         [
             Output(capacity,
@@ -211,7 +210,6 @@ public Transaction createClosingTx (in Hash utxo, in Output[] outputs)
     @safe nothrow
 {
     Transaction closing_tx = Transaction(
-        TxType.Payment,
         [Input(utxo)],
         outputs.dup);
 
@@ -238,7 +236,6 @@ public Transaction createSettleTx (in Transaction prev_tx,
     in uint settle_age, in Output[] outputs) @safe nothrow
 {
     Transaction settle_tx = Transaction(
-        TxType.Payment,
         [Input(prev_tx, 0 /* index */, settle_age)],
         outputs.dup);
 
@@ -271,7 +268,6 @@ public Transaction createUpdateTx (in ChannelConfig chan_conf,
         chan_conf.num_peers);
 
     Transaction update_tx = Transaction(
-        TxType.Payment,
         [ Input(prev_tx, 0 /* index */, 0 /* unlock age */)] ,
         [ Output(chan_conf.capacity, Lock) ]);
 

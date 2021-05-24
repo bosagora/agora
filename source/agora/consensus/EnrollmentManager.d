@@ -997,7 +997,7 @@ unittest
         .enumerate
         .map!(tup => tup.value
             .refund(pairs[tup.index].address)
-            .sign(TxType.Freeze))
+            .sign(OutputType.Freeze))
         .each!((tx) {
             utxo_set.put(tx);
             utxo_hashes ~= UTXO.getHash(tx.hashFull(), 0);
@@ -1140,7 +1140,7 @@ unittest
         .enumerate
         .map!(tup => tup.value
             .refund(pairs[tup.index].address)
-            .sign(TxType.Freeze))
+            .sign(OutputType.Freeze))
         .each!((tx) {
             utxo_set.put(tx);
             utxo_hashes ~= UTXO.getHash(tx.hashFull(), 0);
@@ -1231,7 +1231,7 @@ unittest
         new immutable(ConsensusParams)(validator_cycle));
 
     scope utxo_set = new UTXOSet(man.db);
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
         .each!(tx => utxo_set.updateUTXOCache(tx, Height(1), man.params.CommonsBudgetAddress));
     auto utxos = utxo_set.getUTXOs(key_pair.address);
 
@@ -1298,7 +1298,7 @@ unittest
         .enumerate
         .map!(tup => tup.value
             .refund(pairs[tup.index].address)
-            .sign(TxType.Freeze))
+            .sign(OutputType.Freeze))
         .each!((tx) {
             storage.put(tx);
             utxos ~= UTXO.getHash(tx.hashFull(), 0);
@@ -1342,7 +1342,7 @@ unittest
 
     auto utxo_set = new TestUTXOSet;
     genesisSpendable()
-        .map!(txb => txb.refund(WK.Keys.A.address).sign(TxType.Freeze))
+        .map!(txb => txb.refund(WK.Keys.A.address).sign(OutputType.Freeze))
         .each!(tx => utxo_set.put(tx));
     auto man = new EnrollmentManager(WK.Keys.A,
         new immutable(ConsensusParams)(10));
@@ -1362,7 +1362,7 @@ unittest
     scope utxo_set = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random();
 
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
         .each!(tx => utxo_set.put(tx));
     Hash[] utxo_hashes = utxo_set.keys;
 
@@ -1404,7 +1404,7 @@ unittest
     auto man = new EnrollmentManager(key_pair, params);
 
     scope utxo_set = new UTXOSet(man.db);
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
         .each!(tx => utxo_set.updateUTXOCache(tx, Height(1), man.params.CommonsBudgetAddress));
     auto utxos = utxo_set.getUTXOs(key_pair.address);
     Hash[] utxo_hashes = utxos.keys;
@@ -1473,7 +1473,7 @@ unittest
     auto utxo_set = new TestUTXOSet;
     genesisSpendable()
         .enumerate.map!(tup => tup.value
-            .refund(WK.Keys[tup.index].address).sign(TxType.Freeze))
+            .refund(WK.Keys[tup.index].address).sign(OutputType.Freeze))
         .each!((tx) {
             utxo_set.put(tx);
             utxos ~= UTXO.getHash(tx.hashFull(), 0);

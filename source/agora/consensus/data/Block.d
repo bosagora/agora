@@ -129,7 +129,7 @@ unittest
     PublicKey pubkey = PublicKey.fromString(address);
 
     Output[1] outputs = [ Output(Amount(100), pubkey) ];
-    Transaction tx = Transaction(TxType.Payment, [], outputs[]);
+    Transaction tx = Transaction(outputs[]);
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
@@ -436,13 +436,13 @@ public struct Block
     /// Returns a range of any freeze transactions in this block
     public auto frozens () const @safe pure nothrow
     {
-        return this.txs.filter!(tx => tx.type == TxType.Freeze);
+        return this.txs.filter!(tx => tx.isFreezeTx);
     }
 
     /// Returns a range of any payment transactions in this block
     public auto payments () const @safe pure nothrow
     {
-        return this.txs.filter!(tx => tx.type == TxType.Payment);
+        return this.txs.filter!(tx => tx.isPaymentTx);
     }
 }
 
@@ -458,7 +458,6 @@ unittest
     PublicKey pubkey = PublicKey.fromString(address);
 
     Transaction tx = Transaction(
-        TxType.Payment,
         [
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
             Output(Amount(62_500_000L * 10_000_000L), pubkey),
@@ -696,7 +695,7 @@ unittest
     Hash last_hash = Hash.init;
     for (int idx = 0; idx < 8; idx++)
     {
-        auto tx = Transaction(TxType.Payment, [Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
+        auto tx = Transaction([Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
         last_hash = hashFull(tx);
         tx.inputs[0].unlock = genKeyUnlock(
             key_pairs[idx].sign(last_hash[]));
@@ -766,7 +765,7 @@ unittest
 
     foreach (amount; 0 .. 9)
     {
-        txs ~= Transaction(TxType.Payment,
+        txs ~= Transaction(
             [Input(Hash.init, 0)],
             [Output(Amount(amount + 1), kp.address)]);
         hashes ~= hashFull(txs[$ - 1]);

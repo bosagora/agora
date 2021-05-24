@@ -30,14 +30,6 @@ import agora.serialization.Serializer;
 import std.algorithm;
 import std.array;
 
-/// Type of the transaction: defines the content that follows and the semantic of it
-public enum TxType : ubyte
-{
-    Payment,
-    Freeze,
-    Coinbase,
-}
-
 /*******************************************************************************
 
     Represents a transaction (shortened as 'tx')
@@ -52,37 +44,27 @@ public struct Transaction
     @safe:
 
     /// ctor with only outputs
-    public this (in TxType type, Output[] outputs) nothrow
+    public this (Output[] outputs) nothrow
     {
-        this.type = type;
         outputs.sort;
         this.outputs = outputs;
     }
 
-    /// ctor with only inputs
-    public this (Input[] inputs) nothrow
-    {
-        this.type = TxType.Freeze;  // Can only be freeze
-        inputs.sort;
-        this.inputs = inputs;
-    }
-
     /// ctor without DataPayload
-    public this (in TxType type, Input[] inputs, Output[] outputs,
+    public this (Input[] inputs, Output[] outputs,
         in Height lock_height = Height(0)) nothrow
     {
-        this(type, outputs);
+        this(outputs);
         inputs.sort;
         this.inputs = inputs;
         this.lock_height = lock_height;
     }
 
     /// ctor with immutable fields so the inputs and outputs must be already sorted
-    public this (in TxType type, inout Input[] inputs, inout Output[] outputs,
+    public this (inout Input[] inputs, inout Output[] outputs,
         inout DataPayload payload = DataPayload.init,
         in Height lock_height = Height(0)) inout nothrow
     {
-        this.type = type;
         this.inputs = inputs;
         this.outputs = outputs;
         this.payload = payload;
@@ -100,9 +82,6 @@ public struct Transaction
         }
     }
 
-    /// Transaction type
-    public TxType type;
-
     /// The list of unspent `outputs` from previous transaction(s) that will be spent
     public Input[] inputs;
 
@@ -115,7 +94,7 @@ public struct Transaction
     /// The size of the Transaction object
     public ulong sizeInBytes () const nothrow pure @nogc
     {
-        ulong size = this.type.sizeof + this.payload.sizeInBytes();
+        ulong size = this.payload.sizeInBytes();
         foreach (const ref input; this.inputs)
             size += input.sizeInBytes();
         foreach (const ref output; this.outputs)
@@ -138,8 +117,6 @@ public struct Transaction
 
     public void serialize (scope SerializeDg dg) const
     {
-        serializePart(this.type, dg);
-
         serializePart(this.inputs.length, dg);
         foreach (const ref input; this.inputs)
             serializePart(input, dg);
@@ -159,6 +136,26 @@ public struct Transaction
     {
         return hashFull(this).opCmp(hashFull(other));
     }
+
+    pure nothrow @nogc:
+
+    public bool isFreezeTx () const
+    {
+        // There may be a refund whicj is a `payment` output
+        return this.outputs.any!(o => o.type == OutputType.Freeze);
+    }
+
+    public bool isCoinbaseTx () const
+    {
+        // The check that all are coinbase outputs is performed in the `Transaction` validation
+        return this.outputs.any!(o => o.type == OutputType.Coinbase);
+    }
+
+    public bool isPaymentTx () const
+    {
+        // A `payment tx` is with all outputs as payment
+        return this.outputs.all!(o => o.type == OutputType.Payment);
+    }
 }
 
 unittest
@@ -167,6 +164,14 @@ unittest
     static Transaction identity (ref Transaction tx) { return tx; }
     Transaction[] txs = [ Transaction.init, Transaction.init ];
     assert(!txs.isStrictlyMonotonic!((a, b) => identity(a) < identity(b)));
+}
+
+/// Indicates if output is frozen (staking), payment (spending) or coinbase (rewards / fees)
+public enum OutputType : ubyte
+{
+    Payment,
+    Freeze,
+    Coinbase,
 }
 
 /*******************************************************************************
@@ -186,22 +191,27 @@ public struct Output
     /// The lock condition for this Output
     public Lock lock;
 
+    /// Type of output
+    public OutputType type;
+
     /// The size of the Output object
     public ulong sizeInBytes () const nothrow pure @safe @nogc
     {
-        return this.value.sizeof + this.lock.sizeInBytes();
+        return ubyte.sizeof + this.value.sizeof + this.lock.sizeInBytes();
     }
 
     /// Ctor
-    public this (Amount value, inout(Lock) lock) inout pure nothrow @trusted
+    public this (Amount value, inout(Lock) lock, inout(OutputType) type = OutputType.Payment) inout pure nothrow @trusted
     {
+        this.type = type;
         this.value = value;
         this.lock = lock;
     }
 
     /// Kept here for backwards-compatibility
-    public this (Amount value, PublicKey key) inout pure nothrow @trusted
+    public this (Amount value, PublicKey key, inout(OutputType) type = OutputType.Payment) inout pure nothrow @trusted
     {
+        this.type = type;
         this.value = value;
         // Bug: Used to call `genLockKey` but `-preview=in` triggers:
         // source/agora/consensus/data/Transaction.d(142,31):
@@ -240,9 +250,27 @@ public struct Output
     /// Support for sorting
     public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
     {
+        if (this.type != rhs.type)
+            return this.type < rhs.type ? -1 : 1;
         if (this.lock != rhs.lock)
             return this.lock < rhs.lock ? -1 : 1;
         return this.value.opCmp(rhs.value);
+    }
+
+    /***************************************************************************
+
+        Transactions Serialization
+
+        Params:
+            dg = Serialize function
+
+    ***************************************************************************/
+
+    public void serialize (scope SerializeDg dg) const @trusted
+    {
+        serializePart(this.value, dg);
+        serializePart(this.lock, dg);
+        serializePart(this.type, dg);
     }
 }
 
@@ -324,21 +352,18 @@ unittest
     testSymmetry!Transaction();
 
     Transaction payment_tx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
-        [Output.init]
+        [Output(Amount(20), Lock.init)]
     );
     testSymmetry(payment_tx);
 
     Transaction freeze_tx = Transaction(
-        TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output.init]
+        [Output(Amount(20), Lock.init, OutputType.Freeze)]
     );
     testSymmetry(freeze_tx);
 
     Transaction data_tx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output.init],
         DataPayload([1,2,3])
@@ -346,11 +371,8 @@ unittest
     testSymmetry(data_tx);
 
     Transaction cb_tx = Transaction(
-        TxType.Coinbase,
         [Input(Height(0))],
-        [Output.init],
-        DataPayload([1,2,3])
-    );
+        [Output(Amount(20), Lock.init, OutputType.Coinbase)]);
     testSymmetry(cb_tx);
 }
 
@@ -365,7 +387,6 @@ unittest
 unittest
 {
     Transaction payment_tx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output.init]
     );
@@ -376,9 +397,8 @@ unittest
     assert(expected1 == tx_payment_hash, expected1.toString());
 
     Transaction freeze_tx = Transaction(
-        TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output.init]
+        [Output(Amount(20), Lock.init, OutputType.Freeze)]
     );
 
     const tx_freeze_hash = Hash(
@@ -414,7 +434,6 @@ unittest
 {
     import vibe.data.json;
     Transaction old_tx = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output.init],
         DataPayload([1,2,3])
@@ -430,18 +449,12 @@ unittest
 unittest
 {
     Transaction h0_tx = Transaction(
-        TxType.Coinbase,
         [Input(Height(0))],
-        [Output.init],
-        DataPayload([1,2,3])
-    );
+        [Output(Amount(20), Lock.init, OutputType.Coinbase)]);
 
     Transaction h1_tx = Transaction(
-        TxType.Coinbase,
         [Input(Height(1))],
-        [Output.init],
-        DataPayload([1,2,3])
-    );
+        [Output(Amount(20), Lock.init, OutputType.Coinbase)]);
 
     assert(h0_tx.hashFull() != h1_tx.hashFull());
 }

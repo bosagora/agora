@@ -129,9 +129,8 @@ unittest
 
     // create the first transaction
     Transaction tx1 = Transaction(
-        TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output(Amount.MinFreezeAmount, key_pairs[0].address)]
+        [Output(Amount.MinFreezeAmount, key_pairs[0].address, OutputType.Freeze)]
     );
     utxo_set.updateUTXOCache(tx1, Height(0), TESTNET.CommonsBudgetAddress);
     Hash hash1 = hashFull(tx1);
@@ -143,17 +142,15 @@ unittest
 
     // create the second transaction
     Transaction tx2 = Transaction(
-        TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address)]
+        [Output(Amount(100_000 * 10_000_000L), key_pairs[0].address, OutputType.Freeze)]
     );
     utxo_set.updateUTXOCache(tx2, Height(0), TESTNET.CommonsBudgetAddress);
 
     // create the third transaction
     Transaction tx3 = Transaction(
-        TxType.Freeze,
         [Input(Hash.init, 0)],
-        [Output(Amount.MinFreezeAmount, key_pairs[1].address)]
+        [Output(Amount.MinFreezeAmount, key_pairs[1].address, OutputType.Freeze)]
     );
     utxo_set.updateUTXOCache(tx3, Height(0), TESTNET.CommonsBudgetAddress);
 

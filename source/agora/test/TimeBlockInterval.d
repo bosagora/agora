@@ -34,7 +34,7 @@ unittest
     auto node_1 = nodes[0];
 
     auto spendable = network.blocks[0].txs
-        .filter!(tx => tx.type == TxType.Payment)
+        .filter!(tx => tx.isPaymentTx)
         .map!(tx => iota(tx.outputs.length)
             .map!(idx => TxBuilder(tx, cast(uint)idx)))
         .joiner().take(8).array;

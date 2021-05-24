@@ -784,7 +784,7 @@ unittest
 
     Hash[] utxos;
     genesisSpendable().take(8).enumerate
-        .map!(en => en.value.refund(WK.Keys[en.index].address).sign(TxType.Freeze))
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
         .each!((tx) {
             storage.put(tx);
             utxos ~= UTXO.getHash(tx.hashFull(), 0);

@@ -275,7 +275,7 @@ unittest
 public auto spendable (const ref Block block) @safe pure nothrow
 {
     return block.txs
-        .filter!(tx => tx.type == TxType.Payment)
+        .filter!(tx => tx.isPaymentTx)
         .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder(tx, cast(uint)idx)))
         .joiner();
 }

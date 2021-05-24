@@ -42,7 +42,7 @@ unittest
     auto node0 = nodes[0];
     auto node1 = nodes[1];
 
-    auto input_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).front();
+    auto input_tx = GenesisBlock.txs.filter!(tx => tx.isPaymentTx).front();
     Amount input_tx_amount = input_tx.outputs[0].value;
     auto output_addr = WK.Keys.AA.address;
 
@@ -82,5 +82,5 @@ unittest
 
     // verify that the transaction with fee 13000 is the only one included in the block
     assert(block.txs.length == 2); // Coinbase + our transaction
-    assert(block.txs.filter!(tx => tx.type == TxType.Payment).front() == txs[4]);
+    assert(block.txs.filter!(tx => tx.isPaymentTx).front() == txs[4]);
 }

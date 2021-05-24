@@ -308,8 +308,8 @@ private struct OutputFmt
     {
         try
         {
-            formattedWrite(sink, "%s(%s)",
-                PubKeyFmt(this.value.address), AmountFmt(this.value.value));
+            formattedWrite(sink, "%s(%s)<%s>",
+                PubKeyFmt(this.value.address), AmountFmt(this.value.value), this.value.type);
         }
         catch (Exception ex)
         {
@@ -344,12 +344,13 @@ private struct TransactionFmt
 
             if (this.value.inputs.length)
                 formattedWrite(sink, "Type : %s, Inputs (%d):%s%(%(%s, %),\n%)\n",
-                    this.value.type,
+                    this.value.isPaymentTx ? "Payment" : this.value.isFreezeTx ? "Freeze" : "Coinbase",
                     this.value.inputs.length,
                     this.value.inputs.length > InputPerLine ? "\n" : " ",
                     this.value.inputs.map!(v => InputFmt(v)).chunks(InputPerLine));
             else
-                formattedWrite(sink, "Type : %s, Inputs: None\n", this.value.type);
+                formattedWrite(sink, "Type : %s, Inputs: None\n",
+                    this.value.isPaymentTx ? "Payment" : this.value.isFreezeTx ? "Freeze" : "Coinbase",);
 
             formattedWrite(sink, "Outputs (%d):%s%(%(%s, %),\n%)",
                 this.value.outputs.length,
@@ -559,8 +560,7 @@ Outputs (1): boa1xzgenes5...gm67(61,000,000)
     }
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign(TxType.Payment,
-            null, Height(0), 0, &unlocker)), 0, Hash.init, genesis_validator_keys.length);
+        genesisSpendable().take(2).map!(txb => txb.sign(OutputType.Payment, null, Height(0), 0, &unlocker)), 0, Hash.init, genesis_validator_keys.length);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;
