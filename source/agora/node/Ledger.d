@@ -1638,15 +1638,16 @@ unittest
     {
         auto findUTXO = ledger.utxo_set.getUTXOFinder();
         UTXO utxo;
-        assert(
-            blocks[$ - 1].txs.all!(
-                tx => iota(tx.outputs.length).all!(
+        blocks[$ - 1].txs.each!(
+            (tx) {
+                assert(tx.outputs.isSorted!((a, b) => a < b));
+                iota(tx.outputs.length).each!(
                     (idx) {
-                        return findUTXO(UTXO.getHash(tx.hashFull(), idx), utxo) &&
-                            utxo.output == tx.outputs[idx];
+                        findUTXO(UTXO.getHash(tx.hashFull(), idx), utxo);
+                        assert(utxo.output == tx.outputs[idx]);
                     }
-                )
-            )
+                );
+            }
         );
     }
 }
@@ -2094,7 +2095,7 @@ unittest
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     test!"=="(data.missing_validators.length, 3);
-    test!"=="(data.missing_validators, [1, 2, 3]);
+    test!"=="(data.missing_validators, [0, 1, 2]);
 
     // check validity of slashing information
     assert(ledger.validateSlashingData(Height(22), data) == null);
@@ -2137,14 +2138,11 @@ unittest
 
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
 
     // Add preimages for all validators (except for two of them) till end of cycle
-    // Make sure not to pick enrollment index of NODE2 if used in TestLedger ctor above
     auto skip_indexes = [ 2, 5 ];
 
-    // Make sure we are not simulating slashing for current node as we always assume the preimage is revealed for current ledger node
-    assert(!skip_indexes.canFind(ledger.enroll_man.getIndexOfEnrollment(Height(1))));
     simulatePreimages(ledger.enroll_man, Height(params.ValidatorCycle), skip_indexes);
 
     // Block with no fee

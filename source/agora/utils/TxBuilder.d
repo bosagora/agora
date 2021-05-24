@@ -83,6 +83,8 @@ import std.algorithm;
 import std.format;
 import std.range;
 
+static bool frozen_output = false;
+
 /// Ditto
 public struct TxBuilder
 {
@@ -102,13 +104,13 @@ public struct TxBuilder
 
     public this (in PublicKey refundMe) @safe pure nothrow
     {
-        this.leftover = Output(Amount(0), refundMe);
+        this.leftover = Output(Amount(0), refundMe, true);
     }
 
     /// Ditto
     public this (in Lock lock) @safe pure nothrow
     {
-        this.leftover = Output(Amount(0), lock);
+        this.leftover = Output(Amount(0), lock, true);
     }
 
     /// Ditto
@@ -275,10 +277,14 @@ public struct TxBuilder
         foreach (ref in_; this.inputs)
             this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
 
-        // Add the refund tx, if needed
+        // Add the refund output if needed
         if (this.leftover.value > Amount(0))
         {
-            this.data.outputs = [ this.leftover ] ~ this.data.outputs;
+            // If it is a freeze tx and has only single output it must be frozen output
+            if (type == TxType.Freeze && this.data.outputs.length == 0)
+                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, frozen_output) ];
+            else
+                this.data.outputs = [ this.leftover ] ~ this.data.outputs;
             this.data.outputs.sort;
         }
 
@@ -319,7 +325,7 @@ public struct TxBuilder
     {
         assert(this.inputs.length > 0);
 
-        this.leftover = Output(Amount(0), toward);
+        this.leftover = Output(Amount(0), toward, true);
         this.inputs.each!(val => this.leftover.value.mustAdd(val.output.value));
         this.data.outputs = null;
 
@@ -556,7 +562,7 @@ unittest
     assert(result.outputs.length == 4);
 
     assert(result.outputs == [
-        Output(Amount(2), WK.Keys.Z.address),
+        Output(Amount(2), WK.Keys.Z.address, true),
         Output(Amount(162_666_666_6666_666L), WK.Keys.A.address),
         Output(Amount(162_666_666_6666_666L), WK.Keys.C.address),
         Output(Amount(162_666_666_6666_666L), WK.Keys.D.address),
@@ -578,7 +584,7 @@ unittest
 
     assert(result.inputs.length == 4);
     assert(result.outputs.length == 1);
-    assert(result.outputs[0] == Output(Amount(1000), WK.Keys.F.address));
+    assert(result.outputs[0] == Output(Amount(1000), WK.Keys.F.address, true));
 }
 
 ///

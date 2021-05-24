@@ -415,13 +415,13 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x255b...9a9e, Enrollments: [
-{ utxo: 0x00df...d43b, seed: 0x45a8...6332, cycles: 20, sig: 0xe3f9...c449 }
-{ utxo: 0x398b...ac20, seed: 0x6724...e510, cycles: 20, sig: 0x07ff...52af }
-{ utxo: 0x8583...8893, seed: 0x0725...9c0c, cycles: 20, sig: 0x375e...0205 }
-{ utxo: 0x9191...51c8, seed: 0x2789...37bb, cycles: 20, sig: 0xe9a3...a5d8 }
-{ utxo: 0xa5a4...6bda, seed: 0x0d74...0a8e, cycles: 20, sig: 0x0183...ef2c }
-{ utxo: 0xada5...fb97, seed: 0xe2f3...cf5d, cycles: 20, sig: 0xa72e...80b9 }]
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x8c24...beed, Enrollments: [
+{ utxo: 0x29bb...85d8, seed: 0x2789...37bb, cycles: 20, sig: 0xe9a3...39c0 }
+{ utxo: 0x5735...815c, seed: 0xe2f3...cf5d, cycles: 20, sig: 0xa72e...82a4 }
+{ utxo: 0x85f4...7252, seed: 0x45a8...6332, cycles: 20, sig: 0xe3f9...b6e8 }
+{ utxo: 0x96e2...3cd0, seed: 0x6724...e510, cycles: 20, sig: 0x07ff...73c3 }
+{ utxo: 0x9c87...f3d7, seed: 0x0725...9c0c, cycles: 20, sig: 0x375e...8c4b }
+{ utxo: 0xd17c...1ec2, seed: 0x0d74...0a8e, cycles: 20, sig: 0x0183...e78b }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -458,13 +458,13 @@ private struct BlockFmt
 
 @safe unittest
 {
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x255b...9a9e, Enrollments: [
-{ utxo: 0x00df...d43b, seed: 0x45a8...6332, cycles: 20, sig: 0xe3f9...c449 }
-{ utxo: 0x398b...ac20, seed: 0x6724...e510, cycles: 20, sig: 0x07ff...52af }
-{ utxo: 0x8583...8893, seed: 0x0725...9c0c, cycles: 20, sig: 0x375e...0205 }
-{ utxo: 0x9191...51c8, seed: 0x2789...37bb, cycles: 20, sig: 0xe9a3...a5d8 }
-{ utxo: 0xa5a4...6bda, seed: 0x0d74...0a8e, cycles: 20, sig: 0x0183...ef2c }
-{ utxo: 0xada5...fb97, seed: 0xe2f3...cf5d, cycles: 20, sig: 0xa72e...80b9 }]
+    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0x8c24...beed, Enrollments: [
+{ utxo: 0x29bb...85d8, seed: 0x2789...37bb, cycles: 20, sig: 0xe9a3...39c0 }
+{ utxo: 0x5735...815c, seed: 0xe2f3...cf5d, cycles: 20, sig: 0xa72e...82a4 }
+{ utxo: 0x85f4...7252, seed: 0x45a8...6332, cycles: 20, sig: 0xe3f9...b6e8 }
+{ utxo: 0x96e2...3cd0, seed: 0x6724...e510, cycles: 20, sig: 0x07ff...73c3 }
+{ utxo: 0x9c87...f3d7, seed: 0x0725...9c0c, cycles: 20, sig: 0x375e...8c4b }
+{ utxo: 0xd17c...1ec2, seed: 0x0d74...0a8e, cycles: 20, sig: 0x0183...e78b }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -513,13 +513,13 @@ private struct RangeFmt (R)
 {
     static immutable ResultStr = `
 ====================================================
-Height: 0, Prev: 0x0000...0000, Root: 0x255b...9a9e, Enrollments: [
-{ utxo: 0x00df...d43b, seed: 0x45a8...6332, cycles: 20, sig: 0xe3f9...c449 }
-{ utxo: 0x398b...ac20, seed: 0x6724...e510, cycles: 20, sig: 0x07ff...52af }
-{ utxo: 0x8583...8893, seed: 0x0725...9c0c, cycles: 20, sig: 0x375e...0205 }
-{ utxo: 0x9191...51c8, seed: 0x2789...37bb, cycles: 20, sig: 0xe9a3...a5d8 }
-{ utxo: 0xa5a4...6bda, seed: 0x0d74...0a8e, cycles: 20, sig: 0x0183...ef2c }
-{ utxo: 0xada5...fb97, seed: 0xe2f3...cf5d, cycles: 20, sig: 0xa72e...80b9 }]
+Height: 0, Prev: 0x0000...0000, Root: 0x8c24...beed, Enrollments: [
+{ utxo: 0x29bb...85d8, seed: 0x2789...37bb, cycles: 20, sig: 0xe9a3...39c0 }
+{ utxo: 0x5735...815c, seed: 0xe2f3...cf5d, cycles: 20, sig: 0xa72e...82a4 }
+{ utxo: 0x85f4...7252, seed: 0x45a8...6332, cycles: 20, sig: 0xe3f9...b6e8 }
+{ utxo: 0x96e2...3cd0, seed: 0x6724...e510, cycles: 20, sig: 0x07ff...73c3 }
+{ utxo: 0x9c87...f3d7, seed: 0x0725...9c0c, cycles: 20, sig: 0x375e...8c4b }
+{ utxo: 0xd17c...1ec2, seed: 0x0d74...0a8e, cycles: 20, sig: 0x0183...e78b }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: [0],
 Random seed: [0x0000...0000],
@@ -535,15 +535,15 @@ boa1xzgenes5...gm67(61,000,000), boa1xzgenes5...gm67(61,000,000), boa1xzgenes5..
 boa1xzgenes5...gm67(61,000,000), boa1xzgenes5...gm67(61,000,000), boa1xzgenes5...gm67(61,000,000),
 boa1xzgenes5...gm67(61,000,000), boa1xzgenes5...gm67(61,000,000)
 ====================================================
-Height: 1, Prev: 0x65be...bb6f, Root: 0x1d5d...4302, Enrollments: []
+Height: 1, Prev: 0x531a...f97f, Root: 0xda10...b4e8, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: [64],
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Type : Payment, Inputs (1): 0x6313...dcd4:0x4b6e...a32f
+Type : Payment, Inputs (1): 0xae35...8418:0x4b6e...a32f
 Outputs (1): boa1xzgenes5...gm67(61,000,000)
-Type : Payment, Inputs (1): 0x6071...4a18:0x4b6e...a32f
+Type : Payment, Inputs (1): 0xdeeb...1b71:0x4b6e...a32f
 Outputs (1): boa1xzgenes5...gm67(61,000,000)
 ====================================================
 `;
@@ -680,7 +680,7 @@ unittest
         time_offset: 123,
     };
 
-    static immutable Res1 = `{ tx_set: [0x669b...36f6, 0xd4b2...9ecd], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 123 }`;
+    static immutable Res1 = `{ tx_set: [0x17c2...c615, 0x8b56...3562], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 123 }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));

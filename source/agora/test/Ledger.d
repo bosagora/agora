@@ -252,6 +252,7 @@ unittest
         ).front;
 
     assert(tx.outputs.length == 2);
+    assert(tx.outputs.count!(o => o.refund) == 1);
     network.clients[0].putTransaction(tx);
 
     // Wait for the block to be created

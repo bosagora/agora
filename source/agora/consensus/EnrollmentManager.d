@@ -1326,13 +1326,13 @@ unittest
 
     utxos.sort();  // must be sorted by enrollment key
     assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0x917a965581b2fe9c2ebdc8475c40f8771d865641e3d1559e22c8b3314ec2c855c2a123e565fade481180b2a1e06a3e14f81ca9e32f60d0a8a00b5fbcbe9d35f5`));
+        Hash(`0xd9e5133ad98d346ca7e205ddb74824069c97330b7726f60b91b353243395f8dc17fc33be5c2cb785bb3dfec764953d7e4c45bf76e0a178c3b28241f0012754fd`));
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)) ==
-        Hash(`0x7a801f54575a58aba6bf344cfbd70f21b4d62d1fe5bca36ea8942f714b829054b6d51930c7f3e4091382f341c74750749406edacb216cdd02cf25ace5390be1e`));
+        Hash(`0x887702ce24d2c552b5b9304dd8f2b3e255f6f300eacc1bb91b69f46f9b21fd587d51a973d9928593cdbddb5ccf8da2c833689f37956730d1e07437ff8a164604`));
 
     assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle)) ==
-        Hash(`0xfa749e8c23fa62ca2a0a61134b062b781821fb746f485ab4410da7b436ad50c1c3582a5a8b59cad05139230358dec11214f7f12a23d373c66187fb2cf6212f3b`));
+        Hash(`0xe295262bb47bee2c09bef92f886c7584761b2a705ba87633acb998f6f5b8b83003ce9deee97f7cbc74ec04bf37f058b3e501ef71d3f60c2d79f085b3512fa941`));
 }
 
 // Tests for get/set a enrollment key

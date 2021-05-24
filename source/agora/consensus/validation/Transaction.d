@@ -79,6 +79,9 @@ public string isInvalidReason (
     if (!isSorted!"a < b"(tx.outputs))
         return "Transaction: The outputs are not sorted in ascending order";
 
+    if (tx.outputs.count!(o => o.refund) > 1)
+        return "Transaction: Only single refund output is allowed";
+
     foreach (idx, output; tx.outputs)
     {
         // disallow negative amounts
@@ -90,15 +93,9 @@ public string isInvalidReason (
             return "Transaction: Value of output is 0";
 
         // Each output of a freezing transaction must have at least
-        // `Amount.MinFreezeAmount`, save for the first one which
-        // will be considered a refund if it is less than that.
-        if (tx.type == TxType.Freeze &&
-            output.value < Amount.MinFreezeAmount)
-            {
-                if (tx.outputs.length == 1 ||
-                    tx.outputs.count!(o => o.value < Amount.MinFreezeAmount) > 1)
-                    return "Transaction: All non-refund outputs must be over the minimum freezing amount";
-            }
+        // `Amount.MinFreezeAmount`, except for a single refund output.
+        if (tx.type == TxType.Freeze && !output.refund && output.value < Amount.MinFreezeAmount)
+            return "Transaction: All non-refund outputs must be over minimum freezing amount";
     }
 
     const tx_hash = hashFull(tx);

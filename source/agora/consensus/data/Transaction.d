@@ -186,6 +186,9 @@ public struct Output
     /// The lock condition for this Output
     public Lock lock;
 
+    /// Refund (possibly in a `freeze` transaction where it will still be considered not frozen)
+    public bool refund;
+
     /// The size of the Output object
     public ulong sizeInBytes () const nothrow pure @safe @nogc
     {
@@ -193,15 +196,17 @@ public struct Output
     }
 
     /// Ctor
-    public this (Amount value, inout(Lock) lock) inout pure nothrow @trusted
+    public this (Amount value, inout(Lock) lock, bool refund = false) inout pure nothrow @trusted
     {
+        this.refund = refund;
         this.value = value;
         this.lock = lock;
     }
 
     /// Kept here for backwards-compatibility
-    public this (Amount value, PublicKey key) inout pure nothrow @trusted
+    public this (Amount value, PublicKey key, bool refund = false) inout pure nothrow @trusted
     {
+        this.refund = refund;
         this.value = value;
         // Bug: Used to call `genLockKey` but `-preview=in` triggers:
         // source/agora/consensus/data/Transaction.d(142,31):
@@ -240,6 +245,8 @@ public struct Output
     /// Support for sorting
     public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
     {
+        if (this.refund != rhs.refund)
+            return this.refund < rhs.refund ? -1 : 1;
         if (this.lock != rhs.lock)
             return this.lock < rhs.lock ? -1 : 1;
         return this.value.opCmp(rhs.value);
@@ -371,7 +378,7 @@ unittest
     );
 
     const tx_payment_hash = Hash(
-        `0xef5d99551a2d15e723f77a468fcd1d1a9635d0ff2eb6924445e8b005108e0c7007c60135014a46c4513bfaaa3c6e0ff826c28c86f63c8976f5c5527599d46bac`);
+        `0xa23db583b102749cf9f416c5da958c8dc294c9c47a55abe53f0e182f1e4b3c3aefa7303c2dc7d936735d8eb0b2d7062e006128813d1e859547b56fe557514bc4`);
     const expected1 = payment_tx.hashFull();
     assert(expected1 == tx_payment_hash, expected1.toString());
 
@@ -382,7 +389,7 @@ unittest
     );
 
     const tx_freeze_hash = Hash(
-        `0x9f7f610a6b2689b2c88ec3c62bbd7cf393737700f660793d6642b2852773de0abc2c0d4bb3a7d4a807dfd869f88e91e28471f6a4d2c990442b9c250585c25051`);
+        `0x4b833f789bcc2274e20adf374b03364f47b370d38560fd25e56c3bf5b5fd84f79f489179f8d370bd67f86264ebf54ecf9bbc6bdd6d4d3135344d573853ba7f54`);
     const expected2 = freeze_tx.hashFull();
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }
