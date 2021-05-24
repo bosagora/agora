@@ -65,42 +65,42 @@ unittest
 /// The enrollments that are part of the genesis block
 private immutable Enrollment[] Enrollments =
     [
-        // boa1xzdmznw099p8e2h54pe8ed7599c99qez0f2m756ecmtamqtlq0vm73jg5mj
-        Enrollment(
-            Hash(`0x03b2c926071d92528f7401afb2144c1f9bfc4dbd60d116076f7dbbb4779556b628689e0c6bb8f12212a27b6ca93f8dfe8c6e951ef367302ee22dd0cb1e8b83ce`),
-            Hash(`0x2e6c60eb300e240a25dcc0cef5a7d0488294b103c569754061547cfbf1455bfde84a3b445eb76c6dfe49282a404d34f02cf89b6a5076930ecea93fbfde54df96`),
-            1008,
-            Signature.fromString(`0xf45c14a6f9220b53128f1f08aa666ddefd125ccf2512015937a2b97248f25ce90ee306cc3ee1a422155b8ae29c92113ba66a533530558be867f86a82d5f71e7a`)),
-        // boa1xzd6zuhueq5nyd0m4c4qm66az5dyq8r29hrynd3phezh50gf5c7u54eqtdh
-        Enrollment(
-            Hash(`0x6e05cf3391eceafec28bb35beaf30d17bc2e5df1a13c9326c9ea565a304e8cf5439e6f972b3e7ac82a3ac19e17586898d9c9d84327d437af6e838636f2ee4e78`),
-            Hash(`0x07decf74191a485b86533f7bcaf34456288c27a9ea589d32b1407c5bcfc0fdeb312ec86f021597611aad7f988b99279d10cfb7d536b516b2f7f8d5bac7b36971`),
-            1008,
-            Signature.fromString(`0x6633727a9a0b55b2dafbdd951682b089b2b45b9644d09522370c6f1c4e2c9b2f03e1d337008a2870cb8a1bf63542539f3610af2aef502f4596b15ad20624ff47`)),
         // boa1xzd7zmk7rnun06psp9d0r0p0lj2m6zfz63w55pguzlem7nkv274e6hn2hg3
         Enrollment(
-            Hash(`0x9544c71cece09f1a585f730c0df3d0ee8ad5cbbfa0bdc9d9d294f92e2972b746f97c3b97611f693491b7dc1ddccee0081b4663876cd02e494edc5409f40818ac`),
+            Hash(`0x2bc74413d4eceb3db7ef48724e9085f7c60b3438c7fdb6052585dcfc5b325bb6587c7e5d98a54f029841b4f4db48fb7b66ea99fc87155ceba9bcea42ee1cdbaf`),
             Hash(`0x7709cc2b7b1b6228fa0554417bfc33341f9e6a160b20da255b24b8d2bc199a277eecb2e717652acce1dd9c45a2f32789f5a9d548c5209e4e7eb84df191c77647`),
             1008,
-            Signature.fromString(`0xbcab099143e5161f6a7861601a7dd3f834d6a6ff9dab1e48ac05d02c8c993c0e0e4db77439a1a08dc1c56abce1b71e4c9e6a0a20091c5168d5ebd2bfa293189c`)),
-        // boa1xzduznmm7kp7gg20azr8k9c9pzdwapx6culll96s8dqah5kj5cjsj0le8rk
-        Enrollment(
-            Hash(`0x980a42069faaa81a090c5e0ba8d9264f126c569542ac83da159a06078e432f23a2a9bcd366f8b850fbb464cc1e2b636b0fae4ec71484ef1102c543e24c88fc77`),
-            Hash(`0x4aae1b6921cd6ba2ea3389008ce329436f7ed455fbd731b7084183d8dcb584334ddbc2edc9e2f781bf3a5613a24cf816493e7610812587b2040909ed41ef1af1`),
-            1008,
-            Signature.fromString(`0x907ef65138cae7cad57d9c6804700188f66f69cfb7c4b283e4cf380a8067a23f0443dd1c84906959c97797944c7802cc3670e14d32266c617698fd71200dcce9`)),
-        // boa1xzdlzl5znnssm3dlslqgrayrl4frdmh0s7dyqwgvkdqaqkf5994aw53cn58
-        Enrollment(
-            Hash(`0xe7596f3e910432fdeb5c9168cde5f1ba3a0ff5ca8cd8a5e89eab39775d89b2ab106887615aecdb9f6ccc9691ef7bc893f08d28e053ba8de26cbf61d88a26112e`),
-            Hash(`0x437706c76be50fda4dc65e3d914f0fb6f550a685e4701b124f15338f969ef1909f6ad9475e89417324a612f248a893c9cb309bf33c7d9629fae69ec09624e51a`),
-            1008,
-            Signature.fromString(`0xcc1d153578be5cd72e52d51a5b71f4802d574da2be4f015764aae44f39180f9a0372280688caa4a929e4c71174a7153162d834289ba52db88e830ebf1f15eabf`)),
+            Signature.fromString(`0xbcab099143e5161f6a7861601a7dd3f834d6a6ff9dab1e48ac05d02c8c993c0e00633364fb65c2d78d160084fe979fda2e63a8deefb194df8110e69738f89cb1`)),
         // boa1xzdaz4hx35kmp7zfd854yf98hx6ksdv3ps363dunvfl6l39m4v63qmyccsm
         Enrollment(
-            Hash(`0xee93cf1aeed5015e453897263560fed541492963b82d73261750a92fcb120823b9af7f95ea5f85b19a03c48e7cb23035f36637487f457060fabee1720d030771`),
+            Hash(`0x4a4f31d2a5ec190c5e265fb50f476ba765c3da173022e42e54095feefb729a4ac80f592788ac23d5c42a837d227070cfabbc5cb5914fe0044d2d93fdbbbecc31`),
             Hash(`0x07d842b1d0ae9ccc697418c1aab67c2de12466bcf38c580365470360a3cfd770c6929c509b5ed6d5b8431246cc47775e122a7252723c8d726a2e0dff01e174fa`),
             1008,
-            Signature.fromString(`0x39fc8b1202724ee3d09e2815199ae6a1424f8d84a0987760e87eca04951de58b061c9b60d3353c95eb134e9099167a7979b460d09f5e2a9091c69f5a8b6f4700`)),
+            Signature.fromString(`0x39fc8b1202724ee3d09e2815199ae6a1424f8d84a0987760e87eca04951de58b09d5544c23501a0bc98d9d5ce350c50df0a92f294e3a44cebd4503a64656192c`)),
+        // boa1xzdlzl5znnssm3dlslqgrayrl4frdmh0s7dyqwgvkdqaqkf5994aw53cn58
+        Enrollment(
+            Hash(`0x9301380ac22ce13428e89a814c65be405e13b0018a24e9cda865a0c909b94070de66c1f6aa7912817fe892ce3f2aaa6eaa5a362e490659b3890e0897def32d33`),
+            Hash(`0x437706c76be50fda4dc65e3d914f0fb6f550a685e4701b124f15338f969ef1909f6ad9475e89417324a612f248a893c9cb309bf33c7d9629fae69ec09624e51a`),
+            1008,
+            Signature.fromString(`0xcc1d153578be5cd72e52d51a5b71f4802d574da2be4f015764aae44f39180f9a0aea3001cf8a5dbf50e1633a13c01b3ca74bbdfc45773912252860da17336911`)),
+        // boa1xzdmznw099p8e2h54pe8ed7599c99qez0f2m756ecmtamqtlq0vm73jg5mj
+        Enrollment(
+            Hash(`0xa7f6179d9e78e50ea4c7acb7b9acceff4f2d99467e7d30bda57ad985700738ee80d127d65d685cd684ab95d4e53a986eb4a711bf6b432fd9d6ace1985f99ea26`),
+            Hash(`0x2e6c60eb300e240a25dcc0cef5a7d0488294b103c569754061547cfbf1455bfde84a3b445eb76c6dfe49282a404d34f02cf89b6a5076930ecea93fbfde54df96`),
+            1008,
+            Signature.fromString(`0xf45c14a6f9220b53128f1f08aa666ddefd125ccf2512015937a2b97248f25ce901579289871fa903e675bafadbf1282578a21da1a9e16cf76d9c8ee42ac741f4`)),
+        // boa1xzd6zuhueq5nyd0m4c4qm66az5dyq8r29hrynd3phezh50gf5c7u54eqtdh
+        Enrollment(
+            Hash(`0xcecbebc5b219d0d11e12b1213336a0fbdcf01ae5996a38da69ed12246ce2380757d34e5aac35c9a943d97343b400b777e6f32c1f6e052dc983565f8e3684febf`),
+            Hash(`0x07decf74191a485b86533f7bcaf34456288c27a9ea589d32b1407c5bcfc0fdeb312ec86f021597611aad7f988b99279d10cfb7d536b516b2f7f8d5bac7b36971`),
+            1008,
+            Signature.fromString(`0x6633727a9a0b55b2dafbdd951682b089b2b45b9644d09522370c6f1c4e2c9b2f051fffc1247c4ac414a9d8b4315aad487528b427bde047255c520e04fe607947`)),
+        // boa1xzduznmm7kp7gg20azr8k9c9pzdwapx6culll96s8dqah5kj5cjsj0le8rk
+        Enrollment(
+            Hash(`0xe1797e8a4f21502777ae1fdd25aa0bed6d4cccab4fc0abdded9079b3305ded3cb047f075c2b2ce8402d53c29935913712f3b3b9fcb7bcd635a59d736df2085ca`),
+            Hash(`0x4aae1b6921cd6ba2ea3389008ce329436f7ed455fbd731b7084183d8dcb584334ddbc2edc9e2f781bf3a5613a24cf816493e7610812587b2040909ed41ef1af1`),
+            1008,
+            Signature.fromString(`0x907ef65138cae7cad57d9c6804700188f66f69cfb7c4b283e4cf380a8067a23f0af53ded5ea8496f457540df78e0f01135533060b7fc26cdd417591b24e4360e`)),
     ];
 
 ///
@@ -110,7 +110,6 @@ private immutable Hash GenesisMerkleRoot = GenesisMerkleTree[$ - 1];
 private immutable Transaction[] GenesisTransactions =
     [
         Transaction(
-            TxType.Payment,
             [
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
@@ -122,21 +121,20 @@ private immutable Transaction[] GenesisTransactions =
                 Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
             ]),
         Transaction(
-            TxType.Freeze,
             [
-                Output(Amount(2_000_000L * 10_000_000L), NODE2_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE3_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE4_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE5_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE6_ADDRESS),
-                Output(Amount(2_000_000L * 10_000_000L), NODE7_ADDRESS),
-            ])
+                Output(Amount(2_000_000L * 10_000_000L), NODE2_ADDRESS, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), NODE3_ADDRESS, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), NODE4_ADDRESS, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), NODE5_ADDRESS, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), NODE6_ADDRESS, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), NODE7_ADDRESS, OutputType.Freeze),
+            ]),
     ];
 
 private immutable Hash[] GenesisMerkleTree = [
-    Hash(`0x184f8aad95102ccafe881916261f22f892ffa9f9e2524068cd417df58a7fcb6487ef3039efb323286a99e9b0f86a5ebee074cf1f6cbc2a172ef9f5cef1a78ebf`),
-    Hash(`0xf9c6b41297791941f76b2415afbfbf863f139947ccbd36dd13ec71af206202852086342df1dc0f56003cb04c506854b0029849c67a0587936a459a99e0af5078`),
-    Hash(`0xd3976f40312a29cce0d5dfeee3bc2e67c4caca8a7117eb5b0b02466770734c620f0358fd94c2eb6c920815bcf57f24f648adb0b6efc776860cc4af73b3fcefdc`),
+    Hash(`0x539dab37f74322d84c0268c71be625dc01b550968022c6ec80163399162feb04ddc6eb2ce70e5e512081900cd46b01a14f25f61ddcfd678b32b5f3c918890c84`),
+    Hash(`0xd138ebeb4c21aacedf15e4cfd335d06ef7c08934252c5a16c2662017764dc73d9ec2176038e38a7be4b982986a49884ed525b9d3be13dd86bf3660bf14d0174e`),
+    Hash(`0x291bee5e2d3e728090403e6689f0f0b7d6c2031e5d6bbed9fae5cb6f42d292bb375d2ddffc00f25ef55a9cddfaac9c5a6bc39bfc219bbd879bf7e73b765785c5`),
 ];
 
 // TODO: Replace with the foundation's pubkey

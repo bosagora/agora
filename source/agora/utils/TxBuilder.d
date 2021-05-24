@@ -244,7 +244,9 @@ public struct TxBuilder
         Finalize the transaction, signing the input, and reset the builder
 
         Params:
-            type = type of `Transaction`
+            outputs_type = sets the outputs to `Payment` (default), `Freeze` or
+                `Coinbase`. In case of `Freeze` a single refund `Payment` output
+                will be created with any leftover.
             data = data payload of `Transaction`
 			lock_height = the transaction-level height lock
             unlock_age = the unlock age for each input in the transaction
@@ -257,7 +259,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public Transaction sign (in TxType type = TxType.Payment, const(ubyte)[] data = [],
+    public Transaction sign (in OutputType outputs_type = OutputType.Payment, const(ubyte)[] data = [],
         Height lock_height = Height(0), uint unlock_age = 0,
         Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
         unlocker = null) @safe nothrow
@@ -268,20 +270,24 @@ public struct TxBuilder
 
         if (unlocker is null)
             unlocker = &this.keyUnlocker;
-        this.data.type = type;
         this.data.lock_height = lock_height;
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
             this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
 
-        // Add the refund tx, if needed
+        foreach (ref o_; this.data.outputs)
+            o_.type = outputs_type;
+
+        // Add the refund output if needed
         if (this.leftover.value > Amount(0))
         {
-            this.data.outputs = [ this.leftover ] ~ this.data.outputs;
+            if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
+                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
+            else
+                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
             this.data.outputs.sort;
         }
-
         this.data.payload = DataPayload(data);
 
         // Get the hash to sign
@@ -319,7 +325,7 @@ public struct TxBuilder
     {
         assert(this.inputs.length > 0);
 
-        this.leftover = Output(Amount(0), toward);
+        this.leftover = Output(Amount(0), toward, OutputType.Payment);
         this.inputs.each!(val => this.leftover.value.mustAdd(val.output.value));
         this.data.outputs = null;
 
@@ -590,6 +596,24 @@ unittest
     genesisSpendable.each!(txb => total.mustAdd(txb.leftover.value));
     // Arbitrarily low value
     assert(total > Amount.MinFreezeAmount);
+}
+
+/// Test with unfrozen remainder
+unittest
+{
+    const result = TxBuilder(GenesisBlock.payments.front)
+        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+        .sign(OutputType.Freeze);
+
+    // This transaction has 4 outputs (3 freeze + 1 refund)
+    assert(result.inputs.length == 8);
+    assert(result.outputs.length == 4);
+
+    // 488M / 3
+    assert(result.outputs.count!(o =>
+        o.value == Amount(162_666_666_6666_666L) && o.type == OutputType.Freeze) == 3);
+    assert(result.outputs.count!(o =>
+        o.value == Amount(2) && o.type == OutputType.Payment) == 1); // left over change
 }
 
 /*******************************************************************************

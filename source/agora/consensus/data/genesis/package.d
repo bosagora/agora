@@ -100,7 +100,7 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     in Block genesisBlock, in KeyPair[] keys, uint cycle_length)
 {
     import agora.consensus.data.Enrollment;
-    import agora.consensus.data.Transaction : Transaction, TxType;
+    import agora.consensus.data.Transaction : Transaction;
     import agora.consensus.data.UTXO;
     import agora.consensus.EnrollmentManager;
     import std.format;
@@ -108,7 +108,7 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     import std.conv;
     import std.algorithm;
 
-    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.type == TxType.Freeze).front;
+    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.isFreeze).front;
     Output[] sorted_freeze_outputs = freeze_tx.outputs.dup.sort.array;
     assert(sorted_freeze_outputs == freeze_tx.outputs);
     Hash txhash = hashFull(freeze_tx);

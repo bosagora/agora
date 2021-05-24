@@ -61,7 +61,7 @@ version(none) unittest
     // prepare frozen outputs for outsider validators to enroll
     blocks[0].spendable().drop(1)
         .map!(txb => txb
-            .split(keys).sign(TxType.Freeze))
+            .split(keys).sign(OutputType.Freeze))
         .each!(tx => set_a[0].putTransaction(tx));
 
     // wait for other nodes to get to same block height

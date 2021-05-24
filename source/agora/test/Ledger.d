@@ -215,7 +215,7 @@ unittest
     auto reason = txs[0].isInvalidReason(new Engine(16_384, 512),
         (in Hash utxo, out UTXO value)
         {
-            value = UTXO(0, TxType.Payment, txs[0].outputs[0]);
+            value = UTXO(0, txs[0].outputs[0]);
             return true;
         }, Height(0),
         checker);
@@ -248,7 +248,7 @@ unittest
     freezeAmount.mustSub(1_000.coins);
     auto tx = network.blocks[0].spendable
         .map!(txb => txb
-              .draw(freezeAmount, WK.Keys.AA.address.only).sign(TxType.Freeze)
+              .draw(freezeAmount, WK.Keys.AA.address.only).sign(OutputType.Freeze)
         ).front;
 
     assert(tx.outputs.length == 2);

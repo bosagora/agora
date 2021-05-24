@@ -605,7 +605,7 @@ public class Validator : FullNode, API
         const pub_key = this.config.validator.key_pair.address;
         foreach (key, utxo; this.utxo_set.getUTXOs(pub_key))
         {
-            if (utxo.type == TxType.Freeze &&
+            if (utxo.output.type == OutputType.Freeze &&
                 utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
                 return key;
         }

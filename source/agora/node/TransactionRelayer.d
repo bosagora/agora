@@ -396,12 +396,11 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         import agora.utils.Test;
         import std.array;
 
-        auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).front;
+        auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.isPayment).front;
         Amount amount = genesis_tx.outputs[gen_out_ind].value;
         amount.mustSub(fee);
         Transaction tx = Transaction(
-            TxType.Payment,
-            [Input(genesis_tx.hashFull(), gen_out_ind)],
+                [Input(genesis_tx.hashFull(), gen_out_ind)],
             [Output(amount, WK.Keys.AA.address)]);
 
         return tx;
@@ -425,7 +424,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         Config config = {node: node_config};
         auto transaction_relayer = new TransactionRelayerFeeImp(config);
 
-        transaction_relayer.utxo_set.put(GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).array()[0]);
+        transaction_relayer.utxo_set.put(GenesisBlock.txs.filter!(tx => tx.isPayment).array()[0]);
         auto tx_size = getTX(0, Amount(0)).sizeInBytes();
 
         // transaction fee too low

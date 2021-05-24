@@ -411,7 +411,7 @@ public class TransactionPool
     private bool isValidTransaction (in Transaction tx) @trusted
     {
         // Transaction pool should never deal with CoinBase TXs
-        assert(tx.type != TxType.Coinbase);
+        assert(!tx.isCoinbase);
         return !this.hasTransactionHash(tx.hashFull());
     }
 
@@ -615,13 +615,11 @@ unittest
 
     // create first transaction
     Transaction tx1 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(0), WK.Keys.A.address)]);
 
     // create second transaction
     Transaction tx2 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(0), WK.Keys.C.address)]);
 
@@ -646,17 +644,14 @@ unittest
     auto pool = new TransactionPool();
 
     Transaction tx1 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(0), WK.Keys.FR.address)]);
 
     Transaction tx2 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 1)],
         [Output(Amount(0), WK.Keys.UK.address)]);
 
     Transaction tx3 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 1)],
         [Output(Amount(0), WK.Keys.NL.address)]);
 
@@ -677,17 +672,14 @@ unittest
     auto pool = new TransactionPool();
 
     Transaction tx1 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(0), WK.Keys.ZA.address)]);
 
     Transaction tx2 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0), Input(Hash.init, 1)],
         [Output(Amount(0), WK.Keys.ZC.address)]);
 
     Transaction tx3 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 1)],
         [Output(Amount(0), WK.Keys.ZD.address)]);
 
@@ -731,12 +723,10 @@ unittest
     auto pool = new TransactionPool(new ManagedDatabase(":memory:"), &selector);
 
     Transaction tx1 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(2), WK.Keys.US.address)]);
 
-    Transaction tx2 = Transaction(TxType.Payment,
-        [Input(Hash.init, 0), Input(Hash.init, 1)],
+    Transaction tx2 = Transaction([Input(Hash.init, 0), Input(Hash.init, 1)],
         [Output(Amount(1), WK.Keys.KR.address)]);
 
     assert(pool.add(tx1));
@@ -793,20 +783,20 @@ unittest
         };
     auto pool = new TransactionPool(new ManagedDatabase(":memory:"), selector);
 
-    auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.type == TxType.Payment).array()[0];
+    auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.isPayment).array()[0];
 
     // parent transaction
-    Transaction tx1 = Transaction(TxType.Payment, [Input(genesis_tx.hashFull(), 0)],
+    Transaction tx1 = Transaction([Input(genesis_tx.hashFull(), 0)],
         [Output(Amount(1000), WK.Keys.KR.address)]);
 
     utxo_set.put(tx1);
 
     // double spent transaction, transaction trying to spend parent
-    Transaction tx2 = Transaction(TxType.Payment, [Input(tx1.hashFull(), 0)],
+    Transaction tx2 = Transaction([Input(tx1.hashFull(), 0)],
         [Output(Amount(200), WK.Keys.NZ.address)]);
 
     // double spent transaction, trying to spend parent
-    Transaction tx3 = Transaction(TxType.Payment, [Input(tx1.hashFull(), 0)],
+    Transaction tx3 = Transaction([Input(tx1.hashFull(), 0)],
         [Output(Amount(100), WK.Keys.AU.address)]);
 
     assert(pool.add(tx2));
@@ -834,12 +824,10 @@ unittest
     auto pool = new TransactionPool();
 
     Transaction tx1 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 0)],
         [Output(Amount(2), WK.Keys.GE.address)]);
 
     Transaction tx2 = Transaction(
-        TxType.Payment,
         [Input(Hash.init, 1)],
         [Output(Amount(1), WK.Keys.CA.address)]);
 

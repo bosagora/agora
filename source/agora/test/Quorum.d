@@ -61,7 +61,7 @@ unittest
 
     // Freeze outputs for outsiders
     genesisSpendable.drop(2).takeExactly(1)
-        .map!(txb => txb.split(keys).sign(TxType.Freeze))
+        .map!(txb => txb.split(keys).sign(OutputType.Freeze))
         .each!(tx => nodes[0].putTransaction(tx));
 
     // at block height 19 the freeze tx's are available

@@ -1603,7 +1603,7 @@ unittest
     //   <sig>
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    const Transaction tx = Transaction(TxType.Payment, [Input.init], null);
+    const Transaction tx = Transaction([Input.init], null);
     test!("==")(engine.execute(
         Lock(LockType.Script, [OP.CHECK_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]),
         "CHECK_SEQ_SIG opcode requires 4 items on the stack");

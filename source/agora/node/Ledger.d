@@ -287,7 +287,7 @@ public class Ledger
         const Height expected_height = this.getBlockHeight() + 1;
         string reason;
 
-        if (tx.type == TxType.Coinbase ||
+        if (tx.isCoinbase ||
             (reason = tx.isInvalidReason(this.engine,
                 this.utxo_set.getUTXOFinder(),
                 expected_height, &this.fee_man.check)) !is null ||
@@ -409,7 +409,6 @@ public class Ledger
             auto remain_amount = Amount(utxo_value.output.value);
             remain_amount.sub(this.params.SlashPenaltyAmount);
             Transaction slashing_tx = Transaction(
-                TxType.Payment,
                 [Input(utxo)],
                 [
                     Output(this.params.SlashPenaltyAmount,
@@ -550,25 +549,20 @@ public class Ledger
         const commons_fee = this.fee_man.getCommonsBudgetFee(tot_fee,
             tot_data_fee, stakes);
 
-        // An empty coinbase TX
-        auto coinbase_tx = Transaction(
-            TxType.Coinbase,
-            [Input(height)],
-            [],
-        );
-
+        Output[] coinbase_tx_outputs;
         // pay the commons budget
         if (commons_fee > Amount(0))
-            coinbase_tx.outputs ~= Output(commons_fee,
-                this.params.CommonsBudgetAddress);
+            coinbase_tx_outputs ~= Output(commons_fee,
+                this.params.CommonsBudgetAddress, OutputType.Coinbase);
 
         // pay the validator for the past blocks
         if (auto payouts = this.fee_man.getAccumulatedFees(height))
             foreach (pair; payouts.byKeyValue())
                 if (pair.value > Amount(0))
-                    coinbase_tx.outputs ~= Output(pair.value, pair.key);
-        coinbase_tx.outputs.sort;
-        return coinbase_tx.outputs.length > 0 ? [coinbase_tx] : [];
+                    coinbase_tx_outputs ~= Output(pair.value, pair.key, OutputType.Coinbase);
+        coinbase_tx_outputs.sort;
+        return coinbase_tx_outputs.length > 0 ?
+            [ Transaction([Input(height)], coinbase_tx_outputs) ] : [];
     }
 
     /// Error message describing the reason of validation failure
@@ -1007,7 +1001,7 @@ public class Ledger
         Amount tot_fee, tot_data_fee;
         scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
             const err = this.fee_man.check(tx, sum_unspent);
-            if (!err && tx.type != TxType.Coinbase)
+            if (!err && !tx.isCoinbase)
             {
                 tot_fee.add(sum_unspent);
                 tot_data_fee.add(
@@ -1053,9 +1047,8 @@ public class Ledger
         }
 
         // Check if we have any real TXs
-        foreach (tx; tx_set)
-            if (tx.type != TxType.Coinbase)
-                return null;
+        if (tx_set.any!(tx => !tx.isCoinbase))
+            return null;
         return InvalidConsensusDataReason.OnlyCoinbaseTX;
     }
 
@@ -1920,7 +1913,7 @@ unittest
     txs = txs.enumerate()
         .map!(en => TxBuilder(en.value)
               .deduct(data_fee)
-              .sign(TxType.Payment, data))
+              .sign(OutputType.Payment, data))
               .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
@@ -1929,11 +1922,10 @@ unittest
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
 
-    auto not_coinbase_txs = blocks[2].txs.filter!(tx =>
-        tx.type != TxType.Coinbase).array;
+    auto not_coinbase_txs = blocks[2].txs.filter!(tx => tx.isPayment).array;
     foreach (ref tx; not_coinbase_txs)
     {
-        assert(tx.type == TxType.Payment);
+        assert(tx.outputs.any!(o => o.type != OutputType.Coinbase));
         assert(tx.outputs.length > 0);
         assert(tx.payload.bytes == data);
     }
@@ -1993,7 +1985,7 @@ unittest
     // generate a block with only freezing transactions
     auto new_txs = txs[0 .. 4].enumerate()
         .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address)
-            .sign(TxType.Freeze)).array;
+            .sign(OutputType.Freeze)).array;
     new_txs ~= txs[4 .. 7].enumerate()
         .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address).sign())
         .array;
@@ -2122,8 +2114,8 @@ unittest
     // This is a block with no fees, a ConsensusData with Coinbase TXs should
     // fail validation. But since the Ledger does not know about the hash, it will
     // think someone else may validate it.
-    data.tx_set ~= Transaction(TxType.Coinbase, [Input(Height(blocks.length))],
-        [Output(Amount(1), CommonsBudgetAddress)]).hashFull();
+    data.tx_set ~= Transaction([Input(Height(blocks.length))],
+        [Output(Amount(1), CommonsBudgetAddress, OutputType.Coinbase)]).hashFull();
     assert(ledger.validateConsensusData(data) ==
         Ledger.InvalidConsensusDataReason.MayBeValid);
 
@@ -2133,8 +2125,7 @@ unittest
     blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
     // No Coinbase TX
-    assert(blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
-        .array.length == 0);
+    assert(blocks[$-1].txs.filter!(tx => tx.isCoinbase).array.length == 0);
 
     // Create blocks from height 2 to 6, with fees
     foreach (height; 2..7)
@@ -2151,7 +2142,9 @@ unittest
         data.tx_set = data.tx_set[0 .. $ - 1];
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
         // Add Invalid coinbase TX
-        data.tx_set ~= Transaction(TxType.Coinbase, null).hashFull();
+        data.tx_set ~= Transaction([
+            Output(Amount(1), CommonsBudgetAddress, OutputType.Coinbase),
+            Output(Amount(1), CommonsBudgetAddress, OutputType.Payment)]).hashFull();
         assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
 
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
@@ -2159,8 +2152,7 @@ unittest
         assert(ledger.getBlockHeight() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
-        auto cb_txs = blocks[$-1].txs.filter!(tx => tx.type == TxType.Coinbase)
-            .array;
+        auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
         assert(cb_txs.length == 1);
         // Payout block should pay the CommonsBudget + all validators (excl MPV)
         // other blocks should only pay CommonsBudget

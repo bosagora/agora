@@ -369,7 +369,7 @@ unittest
         return false;
     }
 
-    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(TxType.Freeze))
+    genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
         .each!(tx => storage.put(tx));
 
     // Add enrollments

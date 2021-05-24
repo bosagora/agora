@@ -37,7 +37,7 @@ private class SameKeyValidator : TestValidatorNode
             this.config.validator.key_pair.address);
         foreach (key, utxo; utxos)
         {
-            if (utxo.type == TxType.Freeze &&
+            if (utxo.output.type == OutputType.Freeze &&
                 utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
             {
                 utxo_hashes ~= key;
@@ -132,7 +132,7 @@ unittest
     auto freeze_txs = freezable
         .enumerate
         .map!(pair => pair.value.refund(genesis_validator_keys[0].address)
-            .sign(TxType.Freeze))
+            .sign(OutputType.Freeze))
         .array;
     assert(freeze_txs.length == 8);
 

@@ -26,9 +26,6 @@ public struct UTXO
     /// Height of the block to be unlock
     ulong unlock_height;
 
-    /// Transaction type
-    TxType type;
-
     /// Unspend transaction output
     Output output;
 
