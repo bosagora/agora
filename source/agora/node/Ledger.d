@@ -1482,20 +1482,6 @@ version (unittest)
                 simulatePreimages(this.enroll_man, block.header.height);
             super.replayStoredBlock(block);
         }
-
-        ///
-        protected override void updateSlashedUTXOSet (in Block block)
-            @safe
-        {
-            return;
-        }
-
-        ///
-        protected override void updateSlashedValidatorSet (in Block block)
-            @safe
-        {
-            return;
-        }
     }
 
     // sensible defaults
@@ -2143,6 +2129,12 @@ unittest
     // Make sure not to pick enrollment index of NODE2 if used in TestLedger ctor above
     auto skip_indexes = [ 2, 5 ];
 
+    Hash[] utxos;
+    assert(ledger.enroll_man.getEnrolledUTXOs(Height(1), utxos));
+    UTXO[] mpv_stakes;
+    foreach (skip; skip_indexes)
+        assert(ledger.utxo_set.peekUTXO(utxos[skip], mpv_stakes[(++mpv_stakes.length) - 1]));
+
     // Make sure we are not simulating slashing for current node as we always assume the preimage is revealed for current ledger node
     assert(!skip_indexes.canFind(ledger.enroll_man.getIndexOfEnrollment(Height(1))));
     simulatePreimages(ledger.enroll_man, Height(params.ValidatorCycle), skip_indexes);
@@ -2203,13 +2195,9 @@ unittest
         else
             assert(cb_txs[0].outputs.length == 1);
 
-        Hash[] utxos;
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(height), utxos));
         // MPV should never be paid
-        UTXO mpv_stake;
-        skip_indexes.each!((i)
+        mpv_stakes.each!((mpv_stake)
         {
-            assert(ledger.utxo_set.peekUTXO(utxos[i], mpv_stake));
             assert(cb_txs[0].outputs.filter!(output => output.address ==
                 mpv_stake.output.address).array.length == 0);
         });
