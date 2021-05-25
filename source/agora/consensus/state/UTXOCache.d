@@ -220,6 +220,14 @@ abstract class UTXOCache
     ***************************************************************************/
 
     protected abstract void add (in Hash utxo, UTXO value) @safe;
+
+    /***************************************************************************
+
+        Clear the UTXO cache
+
+    ***************************************************************************/
+
+    public abstract void clear () @safe;
 }
 
 /*******************************************************************************
@@ -316,5 +324,16 @@ public class TestUTXOSet : UTXOCache
             if (key_val.value.output.lock.bytes[] == pubkey[])
                 utxos[key_val.key] = key_val.value;
         return utxos;
+    }
+
+    /***************************************************************************
+
+        Clear the UTXO cache
+
+    ***************************************************************************/
+
+    public override void clear () @trusted
+    {
+        this.storage.clear();
     }
 }

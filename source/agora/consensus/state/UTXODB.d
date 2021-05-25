@@ -182,4 +182,15 @@ package class UTXODB
     {
         db.execute("DELETE FROM utxo WHERE hash = ?", key);
     }
+
+    /***************************************************************************
+
+        Clear the UTXO database
+
+    ***************************************************************************/
+
+    public void clear () @trusted
+    {
+        db.execute("DELETE FROM utxo");
+    }
 }
