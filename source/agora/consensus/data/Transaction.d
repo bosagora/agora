@@ -238,7 +238,7 @@ public struct Output
     }
 
     /// Support for sorting
-    public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
+    public int opCmp (in typeof(this) rhs) const nothrow @safe @nogc
     {
         if (this.lock != rhs.lock)
             return this.lock < rhs.lock ? -1 : 1;
@@ -312,7 +312,7 @@ public struct Input
     }
 
     /// Support for sorting
-    public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
+    public int opCmp (in typeof(this) rhs) const nothrow @safe @nogc
     {
         return this.utxo.opCmp(rhs.utxo);
     }
