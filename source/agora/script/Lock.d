@@ -74,7 +74,7 @@ public struct Lock
     }
 
     /// Support for sorting
-    public int opCmp ( const typeof(this) rhs ) const nothrow @safe @nogc
+    public int opCmp (in typeof(this) rhs) const nothrow @safe @nogc
     {
         import std.algorithm;
 
