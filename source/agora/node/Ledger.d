@@ -165,9 +165,10 @@ public class Ledger
             throw new Exception("Genesis block loaded from disk is " ~
                 "different from the one in the config file");
 
-        if (this.utxo_set.length == 0)
+        if (this.utxo_set.length == 0
+            || this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
         {
-            // clear validator set
+            this.utxo_set.clear();
             this.enroll_man.removeAllValidators();
 
             // Calling `addValidatedBlock` will reset this value
@@ -175,25 +176,6 @@ public class Ledger
             foreach (height; 0 .. HighestHeight + 1)
             {
                 this.replayStoredBlock(this.storage.readBlock(Height(height)));
-            }
-        }
-        else if (this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
-        {
-            // +1 because the genesis block counts as one
-            const ulong block_count = this.last_block.header.height + 1;
-
-            // we are only interested in the last 1008 blocks,
-            // because that is the maximum length of an enrollment.
-            const Height min_height =
-                block_count >= this.params.ValidatorCycle
-                ? Height(block_count - this.params.ValidatorCycle) : Height(0);
-
-            // restore validator set from the blockchain.
-            // using block_count, as the range is inclusive
-            foreach (block_idx; min_height .. block_count)
-            {
-                Block block = this.storage.readBlock(block_idx);
-                this.updateValidatorSet(block);
             }
         }
     }
