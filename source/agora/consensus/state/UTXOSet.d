@@ -92,6 +92,12 @@ public class UTXOSet : UTXOCache
     {
         this.utxo_db[utxo] = value;
     }
+
+    ///
+    public override void clear () @safe
+    {
+        this.utxo_db.clear();
+    }
 }
 
 /// Thread safe version of the UTXOSet, should only be used for testing
@@ -164,4 +170,7 @@ unittest
     // test for getting UTXOs for the second KeyPair
     utxos = utxo_set.getUTXOs(key_pairs[1].address);
     assert(utxos.length == 1);
+
+    utxos.clear();
+    assert(utxos.length == 0);
 }
