@@ -92,4 +92,4 @@ services:
       - node-5
       - node-6
       - node-7
-    command: http://node-7:7826
+    command: [ "-c", "none", "http://node-7:7826" ]
