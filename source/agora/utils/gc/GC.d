@@ -85,11 +85,6 @@ __gshared long lockTime;
 
 ulong bytesAllocated;   // thread local counter
 
-static this ()
-{
-    ___tracy_init_thread();
-}
-
 private
 {
     extern (C)
