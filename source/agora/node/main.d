@@ -29,6 +29,7 @@ import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
 import agora.utils.Workarounds;
+import agora.utils.TracyAPI;
 
 import vibe.core.core;
 import vibe.inet.url;
@@ -40,6 +41,11 @@ import std.stdio;
 import std.typecons : Nullable;
 
 import core.exception;
+
+static this ()
+{
+    ___tracy_init_thread();
+}
 
 /// Application entry point
 private int main (string[] args)
