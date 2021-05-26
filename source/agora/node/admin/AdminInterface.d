@@ -193,8 +193,10 @@ public class AdminInterface : NodeControlAPI
         EncryptionKey encryptionKey = EncryptionKey(
             app,
             Height(height),
-            key
+            key,
+            this.key_pair.address,
         );
+        encryptionKey.signature = this.key_pair.secret.sign(encryptionKey);
 
         contentType = "image/svg+xml";
         vary = "Accept-Encoding";
@@ -317,6 +319,52 @@ public struct EncryptionKey
 
     // Encryption key
     public Hash value;
+
+    // Validator that owns this encryption key
+    public PublicKey validator;
+
+    // Signed the EncryptionKey with the validator private key
+    public Signature signature;
+
+    /***************************************************************************
+
+        Implements hashing support
+
+        Params:
+            dg = hashing function
+
+    ***************************************************************************/
+
+    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    {
+        hashPart(this.app, dg);
+        hashPart(this.height.value, dg);
+        hashPart(this.value, dg);
+        hashPart(this.validator, dg);
+    }
+}
+
+unittest
+{
+    import agora.utils.Test;
+
+    auto key_pair = WK.Keys.A;
+    string app = "Votera";
+    PreImageInfo pre_image;
+
+    EncryptionKey encryptionKey = EncryptionKey(
+        app,
+        Height(100),
+        hashMulti(pre_image, app),
+        key_pair.address,
+    );
+
+    Hash hash = hashFull(encryptionKey);
+    encryptionKey.signature = key_pair.secret.sign(hash);
+    assert(encryptionKey.validator.verify(encryptionKey.signature, hash));
+    assert(hash == Hash("0xda361e1772c9030afe761e6a7b3b0c79be6a28779750cd45891d9" ~
+        "3bf51440d2839a81d97c66c1f4706d2a90e442c9955406a412598c5" ~
+        "196fb8200c92844bd38a"));
 }
 
 unittest
