@@ -705,6 +705,23 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the pre-image hash for this validator
+
+        Params:
+            height = the block height of pre-image to be returned
+
+        Returns:
+            The preimage hash if found otherwise Hash.init
+
+    ***************************************************************************/
+
+    public Hash getOurPreimage (in Height height) @safe nothrow
+    {
+        return this.cycle[height];
+    }
+
+    /***************************************************************************
+
         Get the public key of node that is used for a enrollment
 
         Returns:
