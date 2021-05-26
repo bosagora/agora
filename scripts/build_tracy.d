@@ -36,7 +36,7 @@ version (Windows)
     immutable ObjExt = `.obj`;
     immutable CppCmd = [
         `cl`, `/std:c++14`, `/DEBUG`, `/c`, `/D "TRACY_ENABLE"`,
-        `/Fo"` ~ OutputFile ~ `"`, TracySourcePath,
+        `/D "TRACY_ON_DEMAND"`,`/Fo"` ~ OutputFile ~ `"`, TracySourcePath,
     ];
 }
 else
@@ -44,7 +44,7 @@ else
     immutable ObjExt = `.o`;
     immutable CppCmd = [
         `clang++`, `-std=c++14`, `-g`, `-c`, `-DTRACY_ENABLE`,
-        `-fPIC`, `-o`, OutputFile, TracySourcePath,
+        `-DTRACY_ON_DEMAND`, `-fPIC`, `-o`, OutputFile, TracySourcePath,
     ];
 }
 
