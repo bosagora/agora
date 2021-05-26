@@ -61,6 +61,7 @@ import core.time : Duration, seconds;
 
 version (unittest)
 {
+    import agora.consensus.data.genesis.Test: genesis_validator_keys;
     import agora.utils.Test;
     import ocean.core.Test;
 }
@@ -1567,7 +1568,7 @@ unittest
 /// basic block verification
 unittest
 {
-    scope ledger = new TestLedger(WK.Keys.NODE2);
+    scope ledger = new TestLedger(genesis_validator_keys[0]);
 
     Block invalid_block;  // default-initialized should be invalid
     assert(!ledger.acceptBlock(invalid_block));
@@ -1597,7 +1598,7 @@ unittest
     }
 
     // And provide it to the ledger
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks);
 
     assert(ledger.utxo_set.length
            == /* Genesis, Frozen */ 6 + 8 /* Block #1 Payments*/);
@@ -1627,7 +1628,7 @@ unittest
 
     auto getLedger (Clock clock)
     {
-        auto ledger = new TestLedger(WK.Keys.NODE2, null, new immutable(ConsensusParams)(20, 7, 80), 600.seconds, clock);
+        auto ledger = new TestLedger(genesis_validator_keys[0], null, new immutable(ConsensusParams)(20, 7, 80), 600.seconds, clock);
         auto txs = genesisSpendable().enumerate()
             .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
             .array();
@@ -1680,7 +1681,7 @@ private immutable(Block)[] genBlocksToIndex (
     size_t count, scope immutable(ConsensusParams) params)
 {
     const(Block)[] blocks = [ params.Genesis ];
-    scope ledger = new TestLedger(WK.Keys.NODE2);
+    scope ledger = new TestLedger(genesis_validator_keys[0]);
     foreach (_; 0 .. count)
     {
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
@@ -1885,7 +1886,7 @@ unittest
 
 unittest
 {
-    scope ledger = new TestLedger(WK.Keys.NODE2);
+    scope ledger = new TestLedger(genesis_validator_keys[0]);
     scope fee_man = new FeeManager();
 
     // Generate payment transactions to the first 8 well-known keypairs
@@ -1950,7 +1951,7 @@ unittest
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
 
     Transaction[] genTransactions (Transaction[] txs)
     {
@@ -2046,23 +2047,17 @@ unittest
     assert(ledger.getBlockHeight() == Height(21));
 
     // check missing validators not revealing pre-images.
-    // there are three missing validators at the height of 22.
     auto temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
-    auto preimage = PreImageInfo(
-        enrollments[0].utxo_key,
-        cycles[0][Height(22)],
-        Height(22));
-    ledger.enroll_man.addPreimage(preimage);
-    auto gotten_image =
-        ledger.enroll_man.getValidatorPreimage(enrollments[0].utxo_key);
-    assert(gotten_image == preimage);
+    // Add preimages for validators at height 22 but skip for a couple
+    auto skip_indexes = [ 1, 3 ];
+    simulatePreimages(ledger.enroll_man, Height(22), skip_indexes);
 
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
-    test!"=="(data.missing_validators.length, 3);
-    test!"=="(data.missing_validators, [1, 2, 3]);
+    test!"=="(data.missing_validators.length, 2);
+    test!"=="(data.missing_validators, skip_indexes);
 
     // check validity of slashing information
     assert(ledger.validateSlashingData(Height(22), data) == null);
@@ -2070,18 +2065,8 @@ unittest
     forged_data.missing_validators = [3, 2, 1];
     assert(ledger.validateSlashingData(Height(22), forged_data) != null);
 
-    // reveal preimages of all the validators
-    foreach (idx, cycle; cycles[1 .. $])
-    {
-        preimage = PreImageInfo(
-            enrollments[idx + 1].utxo_key,
-            cycle[Height(22)],
-            Height(22));
-        ledger.enroll_man.addPreimage(preimage);
-        gotten_image =
-            ledger.enroll_man.getValidatorPreimage(enrollments[idx + 1].utxo_key);
-        assert(gotten_image == preimage);
-    }
+    // Now reveal for all active validators at height 22
+    simulatePreimages(ledger.enroll_man, Height(22));
 
     // there's no missing validator at the height of 22
     // after revealing preimages
@@ -2105,10 +2090,9 @@ unittest
 
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
 
     // Add preimages for all validators (except for two of them) till end of cycle
-    // Make sure not to pick enrollment index of NODE2 if used in TestLedger ctor above
     auto skip_indexes = [ 2, 5 ];
 
     Hash[] utxos;
@@ -2117,8 +2101,6 @@ unittest
     foreach (skip; skip_indexes)
         assert(ledger.utxo_set.peekUTXO(utxos[skip], mpv_stakes[(++mpv_stakes.length) - 1]));
 
-    // Make sure we are not simulating slashing for current node as we always assume the preimage is revealed for current ledger node
-    assert(!skip_indexes.canFind(ledger.enroll_man.getIndexOfEnrollment(Height(1))));
     simulatePreimages(ledger.enroll_man, Height(params.ValidatorCycle), skip_indexes);
 
     // Block with no fee
@@ -2198,7 +2180,7 @@ unittest
 
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(WK.Keys.NODE2, blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
 
     auto txs = blocks[$-1].spendable.map!(txb =>
         txb.deduct(Amount.UnitPerCoin).sign()).array();
