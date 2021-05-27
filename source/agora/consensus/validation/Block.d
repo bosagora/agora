@@ -288,12 +288,12 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
             // disallow negative amounts
             if (!output.value.isValid())
                 return "GenesisBlock: Output(s) overflow or underflow"
-                    ~ "in the transaction";
+                    ~ " in the transaction";
 
             // disallow 0 amount
             if (output.value == Amount(0))
                 return "GenesisBlock: Value of output is 0"
-                    ~ "in the transaction";
+                    ~ " in the transaction";
 
             const UTXO utxo_value = {
                 unlock_height: 0,
