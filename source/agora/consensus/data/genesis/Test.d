@@ -75,19 +75,19 @@ public immutable Block GenesisBlock = {
             Hash(`0x072582e862efa9daf7a53a100989a07ad0ee0f0d5bfadf74909d6a6b3cf3c7a7e5d2e218f51df416d052b486e0d65608cbe70e51f0372fd211d68f353d299c0c`),
             20,
             Signature.fromString(`0x375eefbe1990a6e37b2f9a11b1ba68e3c8f8d0976f51a5de55e4d58a6798cd4f0d01b743c2f4d896914df0477790eafe6eab24d58f33bed756827e3028cc0205`)),
-        // boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8
+        // boa1xzval5zfar2etl3xzkkyec5xvy03pxnhn9l4c0anl6pejep0xn9wwsrmnc4
         Enrollment(
             Hash(`0x91913c4daff74612e122c38b2aceb1c7dea38a01f4a8120f8d79730696af1329153f3d91f14d2fae64f5692edf401a8a3e4b1e8c961ae1e31815ab4b606f51c8`),
             Hash(`0x27892eed27841003e3a5a6ad1e6de90fcb2bc0627ca138bdc0b12b1bbb413e3ca06331de912a90a5787a602511fbf5663903b8fee57f6b1f1978f93439e237bb`),
             20,
             Signature.fromString(`0xe9a3c6c63d9810e61561fb7e4379849d57d7d47942d6ca4ecf993ad7aafe76f5075d4e67b3f13b00e5f2776642c84416e028308a3afe1b0101cf0bc97c73a5d8`)),
-        // boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh
+        // boa1xzval7zrjx7wn00tpcqyxpfyayf32je8apv3h2g5km0rgpljg49a7s6we9a
         Enrollment(
             Hash(`0xa5a485b67fd6e478366c256ff543f70b131810919a7010b413e9cbec1d4ab02aeb8088a8cc5c51ca8dc64d6486a38b72b9e55e5bf62b6eb34955219c57db6bda`),
             Hash(`0x0d74a7d76f9157f307e9f9b2792931479ba62bfed768e1e21675ebd20f8db701444bb319e037913a378f913e65611710ac8ad26251807ae2e288ffa1d6d30a8e`),
             20,
             Signature.fromString(`0x018389f5876ebac77ad4c2269415bf8a5b14e2374e9d30a933f70a10abbca2a40fe1fbaf1af6d0cbd4fa632841c86233345c05596d1835e38e8b40d2d318ef2c`)),
-        // boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5
+        // boa1xzval6zletrt49ls5r2mqylcljutfat6dtd5hwslp2gxas5kwvsw5ngea9p
         Enrollment(
             Hash(`0xada56d41308399ae70eba69c1192e3b486439676942f22895dc7ceaca599d1fbabc5a8f6202a5a4ebae3eb5fa85a6f12cb51d48cb5c54233d33e0c2c0b5afb97`),
             Hash(`0xe2f3bf5daf2d2522289cc93901e7a9d4fd5df8e85efa93960fa8eb46a85a45781f3121bb895fa5203108f3d690d21085f9c1cfccbd98de9b8e7e95ae070bcf5d`),

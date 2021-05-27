@@ -1181,13 +1181,13 @@ static immutable NODE3 = KeyPair(PublicKey(Point([153, 223, 199, 183, 56, 189, 1
 // val4: boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy - SBIJAVYYCSRV5RNO2WVTT25H6VZTEV3YSE7U7WT7UQUNSVBUGB6QNBWG
 static immutable NODE4 = KeyPair(PublicKey(Point([153, 223, 214, 108, 31, 21, 153, 23, 111, 24, 86, 15, 95, 171, 229, 173, 214, 103, 99, 35, 48, 186, 164, 240, 217, 9, 27, 16, 184, 93, 56, 248])), SecretKey(Scalar([80, 144, 87, 24, 20, 163, 94, 197, 174, 213, 171, 57, 235, 167, 245, 115, 50, 87, 120, 145, 63, 79, 218, 127, 164, 40, 217, 84, 52, 48, 125, 6])));
 
-// val5: boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8 - SAZO4WA5SXUN3J6XBXZCFPXJJZ62IQAJYAG2KBVWF2QZKTU2WK3QTNMV
+// val5: boa1xzval5zfar2etl3xzkkyec5xvy03pxnhn9l4c0anl6pejep0xn9wwsrmnc4 - SABQSYXZIG3ONZHJNZBDR76HTVBT672MYWYDN6QIPZ6OCJ2UTL5A52XP
 static immutable NODE5 = KeyPair(PublicKey(Point([217, 223, 208, 98, 222, 250, 162, 138, 245, 232, 16, 200, 237, 152, 232, 238, 238, 189, 199, 26, 23, 114, 71, 229, 103, 101, 20, 145, 201, 41, 203, 82])), SecretKey(Scalar([50, 238, 88, 29, 149, 232, 221, 167, 215, 13, 242, 34, 190, 233, 78, 125, 164, 64, 9, 192, 13, 165, 6, 182, 46, 161, 149, 78, 154, 178, 183, 9])));
 
-// val6: boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5 - SAFIQC7HRZPVPEG47ZHS3OBBCYDREHNC4DEKM3QODM7WKPZPU7VQXCPI
+// val6: boa1xzval6zletrt49ls5r2mqylcljutfat6dtd5hwslp2gxas5kwvsw5ngea9p - SAV6R6W6D2XBTGVRC7R32Y2BDY47UJ5ORZNSRUH23B3TV47SXDBQ7GYR
 static immutable NODE6 = KeyPair(PublicKey(Point([217, 223, 234, 237, 60, 4, 220, 217, 100, 22, 138, 153, 130, 78, 2, 115, 43, 242, 163, 96, 194, 239, 246, 247, 40, 239, 222, 136, 65, 100, 40, 141])), SecretKey(Scalar([10, 136, 11, 231, 142, 95, 87, 144, 220, 254, 79, 45, 184, 33, 22, 7, 18, 29, 162, 224, 200, 166, 110, 14, 27, 63, 101, 63, 47, 167, 235, 11])));
 
-// val7: boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh - SAWI3JZWDDSQR6AX4DRG2OMS26Y6XY4X2WA3FK6D5UW4WTU74GUQXRZP
+// val7: boa1xzval7zrjx7wn00tpcqyxpfyayf32je8apv3h2g5km0rgpljg49a7s6we9a - SC7SAZXF726MPSE5A67QNFLTGQL7XDQM5E2T3O7LZUFI36YE32NA4R3Q
 static immutable NODE7 = KeyPair(PublicKey(Point([217, 223, 249, 14, 188, 133, 91, 20, 125, 7, 45, 137, 177, 83, 168, 255, 84, 153, 126, 174, 212, 66, 231, 164, 215, 233, 176, 53, 53, 68, 215, 49])), SecretKey(Scalar([44, 141, 167, 54, 24, 229, 8, 248, 23, 224, 226, 109, 57, 146, 215, 177, 235, 227, 151, 213, 129, 178, 171, 195, 237, 45, 203, 78, 159, 225, 169, 11])));
 
 /*******************************************************************************
