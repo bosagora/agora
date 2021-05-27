@@ -544,10 +544,8 @@ public class Ledger
     public Transaction[] getCoinbaseTX (in Height height, in Amount tot_fee, in Amount tot_data_fee,
         in uint[] missing_validators) nothrow @safe
     {
-        const next_height = this.getBlockHeight() + 1;
-
         UTXO[] stakes;
-        this.enroll_man.getValidatorStakes(next_height, &this.utxo_set.peekUTXO, stakes,
+        this.enroll_man.getValidatorStakes(height, &this.utxo_set.peekUTXO, stakes,
             missing_validators);
         const commons_fee = this.fee_man.getCommonsBudgetFee(tot_fee,
             tot_data_fee, stakes);
@@ -555,7 +553,7 @@ public class Ledger
         // An empty coinbase TX
         auto coinbase_tx = Transaction(
             TxType.Coinbase,
-            [Input(next_height)],
+            [Input(height)],
             [],
         );
 
@@ -565,7 +563,7 @@ public class Ledger
                 this.params.CommonsBudgetAddress);
 
         // pay the validator for the past blocks
-        if (auto payouts = this.fee_man.getAccumulatedFees(next_height))
+        if (auto payouts = this.fee_man.getAccumulatedFees(height))
             foreach (pair; payouts.byKeyValue())
                 if (pair.value > Amount(0))
                     coinbase_tx.outputs ~= Output(pair.value, pair.key);
