@@ -259,9 +259,6 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
         return "GenesisBlock: Header.prev_block is not empty";
 
     if (block.txs.length == 0)
-        return "GenesisBlock: Transaction(s) are empty";
-
-    if (block.txs.length == 0)
         return "GenesisBlock: Must contain at least one transaction";
 
     if (!block.txs.isSorted())
