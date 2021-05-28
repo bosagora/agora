@@ -114,7 +114,7 @@ private class BadNominatingVN : TestValidatorNode
         return new BadNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.txs_to_nominate, this.test_start_time);
+            &this.acceptBlock, this.test_start_time);
     }
 }
 

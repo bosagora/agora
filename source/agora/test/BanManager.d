@@ -25,14 +25,12 @@ import core.thread;
 /// test node banning after putTransaction fails a number of times
 unittest
 {
-    const txs_to_nominate = 8;
     TestConf conf =
     {
         full_nodes : 1,
         retry_delay : 10.msecs,
         max_retries : 10,
-        txs_to_nominate : txs_to_nominate,
-        max_failed_requests : 4 * txs_to_nominate
+        max_failed_requests : 32
     };
 
     auto network = makeTestNetwork!TestAPIManager(conf);

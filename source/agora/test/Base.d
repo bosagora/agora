@@ -487,49 +487,17 @@ public class TestBanManager : BanManager
 public extern (C++) class TestNominator : Nominator
 {
 extern(D):
-    /// number of txs required for nomination
-    protected ulong txs_to_nominate;
-
     /// test start time
     protected ulong test_start_time;
 
     ///
     public this (Parameters!(Nominator.__ctor) args,
-        ulong txs_to_nominate, ulong test_start_time)
+        ulong test_start_time)
     {
         super(args);
-        this.txs_to_nominate = txs_to_nominate;
         this.test_start_time = test_start_time;
     }
 
-    /// Overrides the default behavior and changes nomination behavior based
-    /// on the TestConf 'txs_to_nominate' option
-    protected override bool prepareNominatingSet (out ConsensusData data) @safe
-    {
-        // if 0 take all txs, otherwise nominate exactly this many txs
-        this.ledger.prepareNominatingSet(data,
-            this.txs_to_nominate ? this.txs_to_nominate : ulong.max, this.nomination_start_time);
-        if (data.tx_set.length < this.txs_to_nominate)
-        {
-            log.trace("Nomination: Not enough transactions ({} < {})",
-                      data.tx_set.length, this.txs_to_nominate);
-            return false;  // not enough txs
-        }
-
-        // defensive coding, same as base class
-        // (but may be overruled by derived classes)
-        if (auto msg = this.ledger.validateConsensusData(data))
-        {
-            log.error("Nomination: Invalid consensus data: {}. Data: {}",
-                      msg, data.prettify);
-
-            if (this.onInvalidNomination)
-                this.onInvalidNomination(data, msg);
-            return false;
-        }
-
-        return true;
-    }
 }
 
 /// We use a pair of (key, client) rather than a hashmap client[key],
@@ -686,7 +654,8 @@ public class TestAPIManager
 
     ***************************************************************************/
 
-    public void expectHeightAndPreImg (Height height, const(BlockHeader) enroll_header,
+    public void expectHeightAndPreImg (Height height,
+        const(BlockHeader) enroll_header = GenesisBlock.header,
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
@@ -696,7 +665,8 @@ public class TestAPIManager
 
     /// Ditto
     public void expectHeightAndPreImg (Idxs)(Idxs clients_idxs, Height height,
-        const(BlockHeader) enroll_header, Duration timeout = 10.seconds,
+        const(BlockHeader) enroll_header = GenesisBlock.header,
+        Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
@@ -1077,16 +1047,13 @@ public class TestAPIManager
         // Get spendables from last block
         auto spendables = last_block.spendable().array;
 
-        // Ensure at least one tx will be taken
-        auto tx_count = max(1, this.test_conf.txs_to_nominate);
-
         // Show the last block if not enough spendables
-        assert(spendables.length >= tx_count,
-            format!"[%s:%s] Less than %s spendables in block:\n%s"
-                (file, line, tx_count, prettify(last_block)));
+        assert(spendables.length >= 1,
+            format!"[%s:%s] No spendables in block:\n%s"
+                (file, line, prettify(last_block)));
 
-        // Send transactions to the first client
-        spendables.takeExactly(tx_count)
+        // Send transaction to the first client
+        spendables.takeExactly(1)
             .map!(txb => txb.sign())
             .each!(tx => first_client.putTransaction(tx));
 
@@ -1692,12 +1659,8 @@ public class TestClock : Clock
 /// A FullNode which also implements test routines in TestAPI
 public class TestFullNode : FullNode, TestAPI
 {
-    /// txs to nominate in the TestNominator
-    protected ulong txs_to_nominate;
-
     ///
     mixin TestNodeMixin!();
-
 
     ///
     public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
@@ -1760,9 +1723,6 @@ public class TestFullNode : FullNode, TestAPI
 /// A Validator which also implements test routines in TestAPI
 public class TestValidatorNode : Validator, TestAPI
 {
-    /// for TestNominator
-    protected ulong txs_to_nominate;
-
     ///
     mixin TestNodeMixin!();
 
@@ -1773,7 +1733,6 @@ public class TestValidatorNode : Validator, TestAPI
         this.registry = reg;
         this.nregistry = nreg;
         this.blocks = blocks;
-        this.txs_to_nominate = test_conf.txs_to_nominate;
         this.cur_time = cur_time;
         this.test_start_time = *cur_time;
         super(config);
@@ -1802,7 +1761,7 @@ public class TestValidatorNode : Validator, TestAPI
         return new TestNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.txs_to_nominate, this.test_start_time);
+            &this.acceptBlock, this.test_start_time);
     }
 
     /// Provides a unittest-adjusted clock source for the node
@@ -1908,16 +1867,8 @@ public struct TestConf
     /// registry address
     string registry_address = "name.registry";
 
-    /// Number of transactions nominated for each nomination slot.
-    /// This is only used for the TestNominator - it's not part of Consensus rules.
-    /// Many existing tests have been originally written with the assumption that
-    /// a block contains 8 transactions.
-    /// If set to 0 there will be no limits on the number of nominated transactions
-    /// (unless Consensus rules dictate otherwise)
-    ulong txs_to_nominate = 8;
-
     /// How often blocks should be created - in seconds
-    uint block_interval_sec = 1;
+    uint block_interval_sec = 600; // unit tests can set clock forward
 
     /// If the enrollments will be renewed or not at the end of the cycle
     bool recurring_enrollment = true;

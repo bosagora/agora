@@ -90,7 +90,6 @@ private class SameKeyNodeAPIManager : TestAPIManager
 unittest
 {
     TestConf conf = {
-        txs_to_nominate : 0, // zero allows any number of txs for nomination
         recurring_enrollment : false
     };
 

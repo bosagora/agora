@@ -61,7 +61,7 @@ unittest
             .map!(idx => TxBuilder(tx, cast(uint)idx, lock)))
         .joiner().map!(txb => txb.sign());
 
-    lock_txs.each!(tx => node_1.putTransaction(tx));
+    lock_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(6), network.blocks[0].header);
 
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
@@ -83,9 +83,9 @@ unittest
             &keyUnlocker)).array;
 
     // txs with unlock height 2 should be rejected by the lock script
-    unlock_height_2.each!(tx => node_1.putTransaction(tx));
+    unlock_height_2.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     // unlock height 3 accepted
-    unlock_height_3.each!(tx => node_1.putTransaction(tx));
+    unlock_height_3.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(7), network.blocks[0].header);
 
     const block_7 = node_1.getBlocksFrom(7, 1)[0];
@@ -120,7 +120,7 @@ unittest
         .split(key_lock.repeat.take(8)).sign();
 
     // height 1, many Outputs
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     auto split_up = txs
@@ -132,21 +132,21 @@ unittest
     auto txs_1 = split_up[1].map!(txb => txb.sign()).array;
     auto txs_2 = split_up[2].map!(txb => txb.sign()).array;
 
-    txs_0.each!(tx => node_1.putTransaction(tx));      // accepted
+    txs_0.each!(tx => nodes.each!(node => node.putTransaction(tx)));      // accepted
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     auto blocks = node_1.getBlocksFrom(2, 1);
     assert(blocks.length == 1);
     sort(txs_0);
     assert(blocks[0].txs == txs_0);
 
-    txs_1.each!(tx => node_1.putTransaction(tx));      // accepted
+    txs_1.each!(tx => nodes.each!(node => node.putTransaction(tx)));      // accepted
     network.expectHeightAndPreImg(Height(3), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(3, 1);
     assert(blocks.length == 1);
     sort(txs_1);
     assert(blocks[0].txs == txs_1);
 
-    txs_2.each!(tx => node_1.putTransaction(tx));      // accepted
+    txs_2.each!(tx => nodes.each!(node => node.putTransaction(tx)));      // accepted
     network.expectHeightAndPreImg(Height(4), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(4, 1);
     assert(blocks.length == 1);
@@ -173,8 +173,8 @@ unittest
             .sign(OutputType.Payment, null, Height(0), UnlockAge_3, &keyUnlocker))
         .array();
 
-    age_2_txs.each!(tx => node_1.putTransaction(tx));
-    age_3_txs.each!(tx => node_1.putTransaction(tx));
+    age_2_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
+    age_3_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(5), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(5, 1);
     assert(blocks.length == 1);
@@ -216,7 +216,7 @@ unittest
         .split(key_lock.repeat.take(8)).sign();
 
     // height 1, many Outputs
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     auto split_up = txs
@@ -225,7 +225,7 @@ unittest
 
     auto txs_0 = split_up[0].map!(txb => txb.sign()).array;
 
-    txs_0.each!(tx => node_1.putTransaction(tx));
+    txs_0.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     auto blocks = node_1.getBlocksFrom(2, 1);
     assert(blocks.length == 1);
@@ -254,8 +254,10 @@ unittest
                 }))
         .array();
 
-    true_a_txs.each!(tx => node_1.putTransaction(tx));
-    true_b_txs.each!(tx => node_1.putTransaction(tx));
+    // We don't want to rely on gossip before we set time for nominate or we will not know
+    //  the chosen tx set for sure. We just send to all so that all will be included next block.
+    true_a_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
+    true_b_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(3), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(3, 1);
     assert(blocks.length == 1);
@@ -284,8 +286,8 @@ unittest
                 }))
         .array();
 
-    false_a_txs.each!(tx => node_1.putTransaction(tx));
-    false_b_txs.each!(tx => node_1.putTransaction(tx));
+    false_a_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
+    false_b_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
     network.expectHeightAndPreImg(Height(4), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(4, 1);
     assert(blocks.length == 1);

@@ -74,7 +74,6 @@ unittest
 
     TestConf conf = {
         quorum_threshold : 100,
-        txs_to_nominate : 1,
     };
     auto network = makeTestNetwork!NoGossipAPIManager(conf);
     network.start();
@@ -86,13 +85,14 @@ unittest
     auto blocks = network.clients[0].getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    // create enough tx's for a single block
-    auto txs = blocks[0].spendable().map!(txb => txb.sign()).array();
-
-    txs.enumerate.each!((idx, tx) => network.clients[idx % network.clients.length]
-        .putTransaction(tx));
-
-    network.expectHeightAndPreImg(Height(1), blocks[0].header);
+    // Create 6 transactions - one for each validator
+    auto txs = blocks[0].spendable().map!(txb => txb.sign());
+    // Distribute them to different clients
+    txs.takeExactly(6).enumerate.each!((idx, tx) =>
+        network.clients[idx % network.clients.length]
+            .putTransaction(tx));
+    network.expectHeightAndPreImg(Height(1));
+    network.assertSameBlocks(Height(1));
 }
 
 // A node never receives the TXs that was externalized. It should be able to
@@ -150,7 +150,6 @@ unittest
 
     TestConf conf = {
         quorum_threshold : 80,
-        txs_to_nominate : 1,
     };
     auto network = makeTestNetwork!PickyAPIManager(conf);
     network.start();
@@ -164,10 +163,10 @@ unittest
     auto blocks = picky_node.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    auto txs = blocks[0].spendable().map!(txb => txb.sign()).array();
+    auto txs = blocks[0].spendable().map!(txb => txb.sign());
     txs.each!(tx => node.putTransaction(tx));
     Thread.sleep(1.seconds);
     txs.each!(tx => assert(!picky_node.hasTransactionHash(tx.hashFull())));
 
-    network.expectHeightAndPreImg(Height(1), blocks[0].header);
+    network.expectHeightAndPreImg(Height(1));
 }

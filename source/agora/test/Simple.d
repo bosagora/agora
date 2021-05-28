@@ -28,10 +28,7 @@ import agora.test.Base;
 /// Simple test
 unittest
 {
-    TestConf conf = {
-        txs_to_nominate : 1,
-    };
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!TestAPIManager(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

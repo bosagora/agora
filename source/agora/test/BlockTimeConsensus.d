@@ -23,7 +23,7 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = { txs_to_nominate : 2, block_interval_sec : 2 };
+    TestConf conf = { block_interval_sec : 2 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.setTimeFor(Height(0));
     network.start();
@@ -36,26 +36,18 @@ unittest
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).take(8).array;
 
-    // 8 transactions is enough for 4 blocks with 2 txs each
-    txs.each!(tx => nodes[0].putTransaction(tx));
-
-    // check for propagation
-    nodes.each!(node =>
-       txs.each!(tx =>
-           node.hasAcceptedTxHash(hashFull(tx)).retryFor(2.seconds)
-    ));
-
     const b0 = nodes[0].getBlocksFrom(0, 1)[0];
 
     void checkHeight(Height height)
     {
         network.waitForPreimages(b0.header.enrollments, height);
+        nodes[0].putTransaction(txs[height.value]);
         network.setTimeFor(height);
         network.assertSameBlocks(height);
         auto time_offset = nodes[0].getBlocksFrom(height, 1)[0].header.time_offset;
-        assert( time_offset == conf.block_interval_sec * height, "actual time offset in header for height " ~ height.to!string ~ ": " ~ to!string(time_offset));
+        assert(time_offset == conf.block_interval_sec * height);
     }
 
     // Check for adding blocks 1 to 4
-    [1, 2, 3, 4].each!(h => checkHeight(Height(h)));
+    only(1, 2, 3, 4).each!(h => checkHeight(Height(h)));
 }

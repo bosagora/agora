@@ -27,9 +27,7 @@ import std.range;
 ///
 unittest
 {
-    TestConf conf = { txs_to_nominate : 2,
-        block_interval_sec : 1, max_quorum_nodes : 5, quorum_threshold : 100
-    };
+    TestConf conf = { block_interval_sec : 1, max_quorum_nodes : 5, quorum_threshold : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
