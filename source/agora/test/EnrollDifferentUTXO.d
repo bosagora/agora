@@ -19,6 +19,7 @@ import agora.common.Amount;
 import agora.common.Config;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.genesis.Test: genesis_validator_keys;
 import agora.test.Base;
 
 import core.thread;
@@ -112,7 +113,7 @@ unittest
         .array;
 
     // 8 utxos for freezing, 24 utxos for creating a block later
-    txs ~= spendable[4].split(WK.Keys.NODE2.address.repeat(8)).sign();
+    txs ~= spendable[4].split(genesis_validator_keys[0].address.repeat(8)).sign();
     txs ~= spendable[5].split(WK.Keys.Z.address.repeat(8)).sign();
     txs ~= spendable[6].split(WK.Keys.Z.address.repeat(8)).sign();
     txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
@@ -130,7 +131,7 @@ unittest
     // Create 8 freeze TXs
     auto freeze_txs = freezable
         .enumerate
-        .map!(pair => pair.value.refund(WK.Keys.NODE2.address)
+        .map!(pair => pair.value.refund(genesis_validator_keys[0].address)
             .sign(TxType.Freeze))
         .array;
     assert(freeze_txs.length == 8);
