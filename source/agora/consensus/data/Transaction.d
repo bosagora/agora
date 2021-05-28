@@ -159,6 +159,26 @@ public struct Transaction
     {
         return hashFull(this).opCmp(hashFull(other));
     }
+
+    pure nothrow @nogc:
+
+    /// A `Freeze` transaction
+    public bool isFreeze () const
+    {
+        return this.type == TxType.Freeze;
+    }
+
+    /// A `Coinbase` transaction
+    public bool isCoinbase () const
+    {
+        return this.type == TxType.Coinbase;
+    }
+
+    /// A `Payment` transaction
+    public bool isPayment () const
+    {
+        return this.type == TxType.Payment;
+    }
 }
 
 unittest
