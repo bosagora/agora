@@ -16,37 +16,35 @@ module agora.test.VariableBlockSize;
 version (unittest):
 
 import agora.api.Validator;
+import agora.consensus.data.genesis.Test: GenesisBlock;
+import agora.utils.Test: genesisSpendable;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
+
+import std.algorithm;
+import std.range;
 
 ///
 unittest
 {
-    const txs_to_nominate = 2;
-    TestConf conf = { txs_to_nominate : txs_to_nominate };
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!TestAPIManager(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto spendable = network.blocks[0].txs
-        .filter!(tx => tx.isPayment)
-        .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx)))
-        .joiner().take(8).array;
+    // create 8 txs
+    auto txs = genesisSpendable.map!(txb =>
+        txb.refund(WK.Keys.Genesis.address).sign());
 
-    auto txs = spendable
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
-        .array;
-
-    foreach (block_idx, block_txs; txs.chunks(txs_to_nominate).enumerate)
-    {
-        block_txs.each!(tx => network.clients[0].putTransaction(tx));
-        network.expectHeightAndPreImg(Height(block_idx + 1), network.blocks[0].header,
-            5.seconds);
-    }
-
-    // 8 txs will create 4 blocks if we nominate 2 per block
-    network.assertSameBlocks(Height(4));
+    auto height = Height(0);
+    // variable number of txs for each block
+    only(1, 3, 4).each!((i) {
+        txs.take(i).each!(tx => network.clients[0].putTransaction(tx));
+        txs = txs.drop(i);
+        height++;
+        network.expectHeightAndPreImg(height, GenesisBlock.header, 5.seconds);
+        assert(network.clients.front.getBlocksFrom(height, 1)[0].txs.length == i);
+    });
+    network.assertSameBlocks(height);
 }

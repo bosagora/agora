@@ -296,16 +296,6 @@ extern(D):
 
         Check whether we're ready to nominate a new block.
 
-        Overriden in unittests to get fine-grained control
-        of when blocks are created:
-
-        - We may want to create blocks faster than `BlockIntervalSeconds`
-          in order to speed up the unittests.
-        - We may want to wait until we have a specific number of TXs in the
-          pool before we start nominating. Otherwise timing issues may cause
-          the unittest nodes to nominate wildly different transaction sets,
-          skewing the assumptions in the tests and causing failures.
-
         Returns:
             true if the validator is ready to start nominating
 

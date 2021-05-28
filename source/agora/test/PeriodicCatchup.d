@@ -76,7 +76,7 @@ private class TestNode () : TestValidatorNode
         return new DoesNotExternalizeBlockNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.txs_to_nominate, this.test_start_time);
+            &this.acceptBlock, this.test_start_time);
     }
 }
 
@@ -106,8 +106,7 @@ private class NodeManager (): TestAPIManager
 /// All nodes should have same blocks given enough time for periodic catchup to take place
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1 };
-    auto network = makeTestNetwork!(NodeManager!())(conf);
+    auto network = makeTestNetwork!(NodeManager!())(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

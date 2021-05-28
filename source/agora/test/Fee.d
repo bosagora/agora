@@ -225,7 +225,6 @@ unittest
     import core.thread;
 
     TestConf conf = {
-        txs_to_nominate : 1,
         payout_period : 1,
         quorum_threshold : 100
     };

@@ -29,10 +29,7 @@ import core.thread.osthread : Thread;
 ///
 unittest
 {
-    TestConf conf = {
-        txs_to_nominate : 0,
-    };
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!TestAPIManager(TestConf.init);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

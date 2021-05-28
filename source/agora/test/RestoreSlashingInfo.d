@@ -33,7 +33,6 @@ unittest
     TestConf conf = {
         timeout : 10.seconds,
         outsider_validators : 3,
-        txs_to_nominate : 0, // zero allows any number of txs for nomination
         recurring_enrollment : false
     };
     auto network = makeTestNetwork!TestAPIManager(conf);

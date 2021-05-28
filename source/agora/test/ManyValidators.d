@@ -28,8 +28,7 @@ void manyValidators (size_t validators)
     import core.time : seconds;
     import agora.crypto.Key;
 
-    TestConf conf = { outsider_validators : validators - GenesisValidators,
-        txs_to_nominate : 0 };
+    TestConf conf = { outsider_validators : validators - GenesisValidators };
 
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();

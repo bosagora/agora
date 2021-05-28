@@ -539,7 +539,7 @@ private class FlashListener : TestFlashListenerAPI
 //version (none)
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -645,7 +645,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -777,7 +777,7 @@ unittest
         }
     }
 
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -885,7 +885,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1032,7 +1032,7 @@ unittest
 /// Test path probing
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1206,7 +1206,7 @@ unittest
 /// Test path probing
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1432,7 +1432,7 @@ unittest
         }
     }
 
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1514,7 +1514,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1605,7 +1605,7 @@ unittest
 /// test various error cases
 unittest
 {
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1807,7 +1807,7 @@ unittest
         }
     }
 
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1921,7 +1921,7 @@ unittest
         }
     }
 
-    TestConf conf = { txs_to_nominate : 1, payout_period : 100 };
+    TestConf conf = { payout_period : 100 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();

@@ -106,7 +106,7 @@ private class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new BadBlockSigningNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.txs_to_nominate, this.test_start_time, reason);
+            &this.acceptBlock, this.test_start_time, reason);
     }
 }
 
@@ -140,7 +140,7 @@ private class ByzantineManager (ByzantineReason reason) : TestAPIManager
 /// The block should only have 5 / 6 block signatures added
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 , txs_to_nominate : 1 };
+    TestConf conf = { quorum_threshold : 83 };
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSignature))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -159,7 +159,7 @@ unittest
 /// The block should only have 5 / 6 block signatures added
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 , txs_to_nominate : 1 };
+    TestConf conf = { quorum_threshold : 83 };
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadCommitmentR))(conf);
     network.start();
     scope(exit) network.shutdown();
