@@ -15,7 +15,7 @@ import ButtonRequest from "./buttonRequest"
 import ButtonCancelRequest from "./buttonCancelRequest"
 import { isDesktop } from "./../../shared/services/responsive.service"
 
-import variables from './../../values.scss'
+import variables from './../../values.module.scss'
 import styles from "./requestDialog.module.scss"
 
 const CssDialog = withStyles({

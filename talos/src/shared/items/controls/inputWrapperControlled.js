@@ -5,7 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 
 import { isDesktop } from "../../services/responsive.service"
 
-import variables from './../../../values.scss'
+import variables from './../../../values.module.scss'
 import styles from "./inputWrapperControlled.module.scss"
 
 const CssTextField = withStyles({
