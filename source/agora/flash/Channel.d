@@ -110,7 +110,7 @@ public class Channel
 
     /// @WORKAROUND@: LocalRest issue with timings and sleep not working until
     /// node ctor is done (see Flash restart tests)
-    private FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient;
+    private FlashAPI delegate (in PublicKey peer_pk, Duration timeout) getFlashClient;
 
     /// Retry delay algorithm
     private Backoff backoff;
@@ -203,7 +203,7 @@ public class Channel
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete,
-        FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
+        FlashAPI delegate (in PublicKey peer_pk, Duration timeout) getFlashClient,
         ManagedDatabase db)
     {
         this.db = db;
@@ -248,16 +248,16 @@ public class Channel
 
     ***************************************************************************/
 
-    public static Channel[Hash][Point] loadChannels (FlashConfig flash_conf,
+    public static Channel[Hash][PublicKey] loadChannels (FlashConfig flash_conf,
         ManagedDatabase db,
-        FlashAPI delegate (in Point peer_pk, Duration timeout) getFlashClient,
+        FlashAPI delegate (in PublicKey peer_pk, Duration timeout) getFlashClient,
         Engine engine, ITaskManager taskman,
         void delegate (Transaction) txPublisher, PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete )
     {
-        Channel[Hash][Point] channels;
+        Channel[Hash][PublicKey] channels;
 
         db.execute("CREATE TABLE IF NOT EXISTS channels " ~
             "(key BLOB NOT NULL, chan_id BLOB NOT NULL, data BLOB NOT NULL, " ~
@@ -2253,7 +2253,7 @@ private mixin template ChannelMetadata ()
     public bool is_owner;
 
     /// The public key of the counter-party (for logging)
-    public Point peer_pk;
+    public PublicKey peer_pk;
 
     /// Our private nonce for the first trigger tx
     public PrivateNonce priv_nonce;

@@ -194,7 +194,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     }
 
     ///
-    protected override TestFlashAPI getFlashClient (in Point peer_pk,
+    protected override TestFlashAPI getFlashClient (in PublicKey peer_pk,
         Duration timeout) @trusted
     {
         if (auto peer = peer_pk in this.known_peers)
@@ -320,7 +320,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     private Registry!TestFlashListenerAPI listener_registry;
 
     /// list of flash addresses
-    private Point[] addresses;
+    private PublicKey[] addresses;
 
     /// list of listener addresses
     private string[] listener_addresses;
@@ -374,11 +374,12 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
             &this.flash_registry, &this.listener_registry,
             10.seconds);  // timeout from main thread
 
-        this.addresses ~= pair.V;
+        auto pk = PublicKey(pair.V);
+        this.addresses ~= pk;
         this.nodes ~= api;
-        this.flash_registry.register(pair.V.to!string, api.listener());
+        this.flash_registry.register(pk.to!string, api.listener());
         api.start();
-        const key_pair = KeyPair(PublicKey(pair.V), SecretKey(pair.v));
+        const key_pair = KeyPair(pk, SecretKey(pair.v));
         api.registerKey(key_pair.secret);
 
         return api;
