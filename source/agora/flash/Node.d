@@ -241,10 +241,8 @@ public abstract class FlashNode : FlashControlAPI
         auto secret = SecretKey(scalar);
         auto address = PublicKey(scalar.toPoint()[]);
         this.managed_keys[address] = secret;
-        Channel[Hash] def;
-        this.channels[address] = def;
-        DList!ChannelConfig def2;
-        this.pending_channels[address] = def2;
+        this.channels[address] = typeof(this.channels[address]).init;
+        this.pending_channels[address] = typeof(this.pending_channels[address]).init;
     }
 
     /***************************************************************************
