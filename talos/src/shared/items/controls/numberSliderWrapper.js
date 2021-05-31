@@ -6,7 +6,7 @@ import { withStyles } from '@material-ui/core/styles';
 
 import { subdivideNumber } from "../../services/service.number"
 
-import variables from './../../../values.scss'
+import variables from './../../../values.module.scss'
 import styles from "./numberSliderWrapper.module.scss"
 
 const AirbnbThumbComponent = props => {

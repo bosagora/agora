@@ -6,7 +6,7 @@ import { debounce } from 'throttle-debounce';
 
 import { isDesktop } from "./../../services/responsive.service"
 
-import variables from './../../../values.scss'
+import variables from './../../../values.module.scss'
 import styles from "./inputWrapper.module.scss"
 
 const CssTextField = withStyles({

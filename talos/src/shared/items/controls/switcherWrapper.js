@@ -3,7 +3,7 @@ import { get, has } from "lodash"
 import Switch from '@material-ui/core/Switch';
 import { withStyles } from '@material-ui/core/styles';
 
-import variables from './../../../values.scss'
+import variables from './../../../values.module.scss'
 import styles from './switcherWrapper.module.scss'
 
 const AntSwitch = withStyles(theme => ({

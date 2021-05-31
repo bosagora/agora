@@ -10,7 +10,7 @@ import StepsControls from "./../../shared/stepsControls"
 
 import "./banManagement.scss"
 import "./../../shared/services/service.step.scss"
-import variables from './../../values.scss'
+import variables from './../../values.module.scss'
 
 var timeOut
 
