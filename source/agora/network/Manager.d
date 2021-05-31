@@ -843,25 +843,6 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Params:
-            key = the public key
-
-        Returns:
-            the address for the given public key, or return null.
-
-    ***************************************************************************/
-
-    public string getAddress (in PublicKey key) @safe
-    {
-        auto list = this.peers[].filter!(p => p.key == key);
-        if (list.empty)
-            return null;
-
-        return list.front.client.address;
-    }
-
-    /***************************************************************************
-
         Retrieve blocks starting from height up to the highest block
         that's available from the connected nodes.
 
