@@ -108,8 +108,7 @@ public class Channel
     /// Ditto
     private OnUpdateComplete onUpdateComplete;
 
-    /// @WORKAROUND@: LocalRest issue with timings and sleep not working until
-    /// node ctor is done (see Flash restart tests)
+    /// Fetch the Flash Client for the peer
     private FlashAPI delegate (in PublicKey peer_pk, Duration timeout) getFlashClient;
 
     /// Retry delay algorithm
@@ -524,8 +523,8 @@ public class Channel
         if (this.getState == ChannelState.Closed)
             return;
 
-        // if it's a preloaded channel we can only retrieve the flash client
-        // once the event loop is running (LocalRest issue)
+        // Peer might not registered yet at the time we construct
+        // the Channel, so we might need to re-try here in the event loop.
         if (this.peer is null)
         {
             this.peer = getFlashClient(this.peer_pk, this.flash_conf.timeout);
