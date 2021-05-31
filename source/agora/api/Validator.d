@@ -63,6 +63,9 @@ public struct Identity
     /// Public Key of the node
     PublicKey key;
 
+    /// UTXO that is used as collateral
+    Hash utxo;
+
     /// MAC
     ubyte[] mac;
 }
