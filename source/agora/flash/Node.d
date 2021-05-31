@@ -261,19 +261,10 @@ public abstract class FlashNode : FlashControlAPI
 
     public override ChannelConfig[] getManagedChannels (PublicKey[] keys) @safe
     {
-        PublicKey[] filtered;
-        if (keys.length)
-            filtered = this.channels.byKey.filter!(k => keys.canFind(k)).array;
-        else
-            filtered = this.channels.byKey.array;
-        sort(filtered);
-
-        ChannelConfig[] all;
-        foreach (key; filtered)
-            foreach (chan; this.channels[key])
-                all ~= chan.conf;
-
-        return all;
+        auto filtered = sort(this.channels.byKey
+            .filter!(k => !keys.length || keys.canFind(k)).array);
+        return filtered.map!(key =>
+            this.channels[key].byValue.map!(chan => chan.conf)).joiner().array;
     }
 
     /***************************************************************************
