@@ -651,7 +651,6 @@ public abstract class FlashNode : FlashControlAPI
     {
         log.info("gossipChannelsOpen() with {} channels", chan_configs.length);
 
-        ChannelConfig[] to_gossip;
         foreach (conf; chan_configs)
         {
             if (conf.chan_id in this.known_channels)
@@ -665,12 +664,8 @@ public abstract class FlashNode : FlashControlAPI
             this.known_channels[conf.chan_id] = conf;
             this.network.addChannel(conf);
 
-            to_gossip ~= conf;  // gossip only new channels
+            this.gossip_queue.insertBack(GossipEvent(conf));  // gossip only new channels
         }
-
-        // also gossip new channels to peers later
-        to_gossip.each!(chan =>
-            this.gossip_queue.insertBack(GossipEvent(chan)));
     }
 
     /// See `FlashAPI.gossipChannelUpdates`
@@ -678,7 +673,6 @@ public abstract class FlashNode : FlashControlAPI
     {
         log.info("gossipChannelUpdates() with {} channels", chan_updates.length);
 
-        ChannelUpdate[] to_gossip;
         foreach (update; chan_updates)
         {
             if (auto conf = update.chan_id in this.known_channels)
@@ -696,14 +690,10 @@ public abstract class FlashNode : FlashControlAPI
                 if (!verify(pk, update.sig, update))
                     continue;
                 this.channel_updates[update.chan_id][update.direction] = update;
-                to_gossip ~= update;
+                this.gossip_queue.insertBack(GossipEvent(update));
                 this.dump();
             }
         }
-
-        // also gossip new updates to peers later
-        to_gossip.each!(update =>
-            this.gossip_queue.insertBack(GossipEvent(update)));
     }
 
     /// See `FlashAPI.requestCloseSig`
