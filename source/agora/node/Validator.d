@@ -273,7 +273,8 @@ public class Validator : FullNode, API
         endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
             1, "public_key", "http");
 
-        Identity id = Identity(this.config.validator.key_pair.address);
+        Identity id = Identity(this.config.validator.key_pair.address,
+                               this.enroll_man.getEnrollmentKey());
         if (key == PublicKey.init)
             return id;
 

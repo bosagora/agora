@@ -70,7 +70,10 @@ public class NetworkManager
         /// Is this node a Validator
         bool is_validator;
 
-        /// Public key of the node, only set if the node is a Validator
+        /// Hash of the output used as collateral, only set if the node is a Validator
+        Hash utxo;
+
+        /// PublicKey of the node. TODO: Remove and just use utxo.
         PublicKey key;
 
         /// Client
@@ -155,6 +158,7 @@ public class NetworkManager
                 this.outer.node_config.max_retries);
 
             PublicKey key;
+            Hash utxo;
             while (1)
             {
                 try
@@ -182,6 +186,7 @@ public class NetworkManager
                         return;
                     }
 
+                    utxo = id.utxo;
                     key = id.key;
                     client.setIdentity(id.key);
                     break;
@@ -215,7 +220,7 @@ public class NetworkManager
                     return;
                 }
 
-                log.info("Found new Validator: {} (key: {})", address, key);
+                log.info("Found new Validator: {} (UTXO: {}, key: {})", address, utxo, key);
             }
             else
                 log.info("Found new FullNode: {}", address);
@@ -223,6 +228,7 @@ public class NetworkManager
             NodeConnInfo node = {
                 is_validator : is_validator,
                 key : key,
+                utxo: utxo,
                 client : client
             };
 
