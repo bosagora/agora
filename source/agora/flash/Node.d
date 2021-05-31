@@ -390,24 +390,14 @@ public abstract class FlashNode : FlashControlAPI
     /// Handle an outgoing gossip event
     private void handleGossip (GossipEvent event)
     {
+        foreach (peer; this.known_peers.byKeyValue)
         final switch (event.type) with (GossipType)
         {
         case Open:
-            foreach (pair; this.known_peers.byKeyValue)
-            {
-                static ChannelConfig[1] open_buffer;
-                open_buffer[0] = event.open;
-                pair.value.gossipChannelsOpen(open_buffer[]);
-            }
+            peer.value.gossipChannelsOpen([event.open].staticArray);
             break;
-
         case Update:
-            foreach (pair; this.known_peers.byKeyValue)
-            {
-                static ChannelUpdate[1] update_buffer;
-                update_buffer[0] = event.update;
-                pair.value.gossipChannelUpdates(update_buffer[]);
-            }
+            peer.value.gossipChannelUpdates([event.update].staticArray);
             break;
         }
     }
