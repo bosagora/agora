@@ -131,13 +131,13 @@ public abstract class FlashNode : FlashControlAPI
     protected Network network;
 
     /// List of channels which are pending to be opened
-    protected DList!ChannelConfig[Point] pending_channels;
+    protected DList!ChannelConfig[PublicKey] pending_channels;
 
     /// All channels which we are the participants of (open / pending / closed)
-    protected Channel[Hash][Point] channels;
+    protected Channel[Hash][PublicKey] channels;
 
     /// All known connected peers (used for gossiping)
-    protected FlashAPI[Point] known_peers;
+    protected FlashAPI[PublicKey] known_peers;
 
     /// Any listener
     protected FlashListenerAPI listener;
@@ -263,7 +263,7 @@ public abstract class FlashNode : FlashControlAPI
 
     public override ChannelConfig[] getManagedChannels (PublicKey[] keys) @safe
     {
-        Point[] filtered;
+        PublicKey[] filtered;
         if (keys.length)
             filtered = this.channels.byKey.filter!(k => keys.canFind(k)).array;
         else
@@ -541,7 +541,7 @@ public abstract class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    protected abstract FlashAPI getFlashClient (in Point peer_pk,
+    protected abstract FlashAPI getFlashClient (in PublicKey peer_pk,
         Duration timeout) @trusted;
 
     /***************************************************************************
@@ -1650,23 +1650,22 @@ public class AgoraFlashNode : FlashNode
 
     ***************************************************************************/
 
-    protected override FlashAPI getFlashClient (in Point peer_pk,
+    protected override FlashAPI getFlashClient (in PublicKey peer_pk,
         Duration timeout) @trusted
     {
         if (auto peer = peer_pk in this.known_peers)
             return *peer;
 
-        auto pk = PublicKey(peer_pk[]);
-        log.info("getFlashClient searching peer: {}", pk);
+        log.info("getFlashClient searching peer: {}", peer_pk);
 
-        auto payload = this.registry_client.getValidator(pk);
+        auto payload = this.registry_client.getValidator(peer_pk);
         if (payload == RegistryPayload.init)
         {
             log.warn("Could not find mapping in registry for key {}", peer_pk);
             return null;
         }
 
-        if (!payload.verifySignature(pk))
+        if (!payload.verifySignature(peer_pk))
         {
             log.warn("RegistryPayload signature is incorrect for {}", peer_pk);
             return null;

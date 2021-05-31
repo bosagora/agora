@@ -83,13 +83,13 @@ public struct ChannelConfig
     public Hash gen_hash;
 
     /// Public key of the funder of the channel.
-    public Point funder_pk;
+    public PublicKey funder_pk;
 
     /// Public key of the counter-party to the channel.
-    public Point peer_pk;
+    public PublicKey peer_pk;
 
     /// Sum of `funder_pk + peer_pk`.
-    public Point pair_pk;
+    public PublicKey pair_pk;
 
     /// Total number of co-signers needed to make update/settlement transactions
     /// in this channel.
@@ -98,7 +98,7 @@ public struct ChannelConfig
     /// The public key sum used for validating Update transactions.
     /// This key is derived and remains static throughout the
     /// lifetime of the channel.
-    public /*const*/ Point update_pair_pk;
+    public /*const*/ PublicKey update_pair_pk;
 
     /// The funding transaction from which the trigger transaction may spend.
     /// This transaction is unsigned - only the funder may sign & send it
