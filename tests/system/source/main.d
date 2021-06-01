@@ -121,7 +121,7 @@ int main (string[] args)
     assert(blocks.length == 1);
     assert(blocks[0] == TestGenesis.GenesisBlock, format!"%s Not using expected TestGenesis.GenesisBlock"(PREFIX));
 
-    auto target_height = 2;
+    auto target_height = 42;
     iota(target_height).each!(h => assertBlockHeightAtleast(h));
     writefln("%s All nodes reached target height %s", PREFIX, target_height);
 
