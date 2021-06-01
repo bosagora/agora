@@ -32,7 +32,6 @@ module agora.utils.Test;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
-import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.crypto.ECC;

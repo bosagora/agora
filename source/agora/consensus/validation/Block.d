@@ -17,7 +17,6 @@ import agora.common.Amount;
 import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Block;
-import agora.consensus.data.DataPayload;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
@@ -275,7 +274,7 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
         if (tx.outputs.length == 0)
             return "GenesisBlock: No output(s) in the transaction";
 
-        if (tx.payload.bytes.length != 0)
+        if (tx.payload.length != 0)
             return "GenesisBlock: The data payload cannot be stored";
 
         Hash tx_hash = tx.hashFull();
@@ -537,7 +536,7 @@ unittest
     Transaction dataTx = Transaction(null,
         [ Output(normal_data_fee, fee_man.params.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)].sort.array,
-        DataPayload(normal_data)
+        normal_data,
     );
 
     // add a new transaction with data payload to block

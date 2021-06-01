@@ -763,12 +763,12 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Returns an instance of a DataPayloadChecker
+        Returns a new instance of a FeeManager
 
         Unittests can override this method.
 
         Returns:
-            the DataPayloadChecker instance
+            the FeeManager instance
 
     ***************************************************************************/
 

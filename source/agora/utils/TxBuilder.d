@@ -71,7 +71,6 @@ module agora.utils.TxBuilder;
 import agora.common.Amount;
 import agora.common.Types;
 version (unittest) import agora.consensus.data.genesis.Test;
-import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
@@ -259,7 +258,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public Transaction sign (in OutputType outputs_type = OutputType.Payment, const(ubyte)[] data = [],
+    public Transaction sign (in OutputType outputs_type = OutputType.Payment, ubyte[] data = null,
         Height lock_height = Height(0), uint unlock_age = 0,
         Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
         unlocker = null) @safe nothrow
@@ -288,7 +287,7 @@ public struct TxBuilder
                 this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
             this.data.outputs.sort;
         }
-        this.data.payload = DataPayload(data);
+        this.data.payload = data;
 
         // Get the hash to sign
         const txHash = this.data.hashFull();

@@ -1005,7 +1005,7 @@ public class Ledger
             {
                 tot_fee.add(sum_unspent);
                 tot_data_fee.add(
-                    this.fee_man.getDataFee(tx.payload.bytes.length));
+                    this.fee_man.getDataFee(tx.payload.length));
             }
             return err;
         };
@@ -1267,7 +1267,7 @@ public class ValidatingLedger : Ledger
                 {
                     tot_fee.add(sum_unspent);
                     tot_data_fee.add(
-                        this.fee_man.getDataFee(tx.payload.bytes.length));
+                        this.fee_man.getDataFee(tx.payload.length));
                 }
                 return err;
             };
@@ -1927,7 +1927,7 @@ unittest
     {
         assert(tx.outputs.any!(o => o.type != OutputType.Coinbase));
         assert(tx.outputs.length > 0);
-        assert(tx.payload.bytes == data);
+        assert(tx.payload == data);
     }
 
     // Generate a block to reuse transactions used for data storage
