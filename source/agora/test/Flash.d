@@ -69,7 +69,7 @@ public interface TestFlashListenerAPI : FlashListenerAPI
 
     /// wait until we get a notification about the given channel state,
     /// and return any associated error codes
-    ErrorCode waitUntilChannelState (Hash, ChannelState);
+    ErrorCode waitUntilChannelState (Hash, ChannelState, PublicKey node = PublicKey.init);
 }
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
@@ -335,7 +335,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     private static const ListenerAddress = "flash-listener";
 
     /// Flash listener (Wallet)
-    public RemoteAPI!TestFlashListenerAPI listener;
+    public TestFlashListenerAPI listener;
 
     /// Ctor
     public this (Registry!TestAPI* agora_registry)
@@ -474,7 +474,7 @@ private class FlashListener : TestFlashListenerAPI
         ErrorCode error;
     }
 
-    State[Hash] channel_state;
+    State[PublicKey][Hash] channel_state;
     ErrorCode[Invoice] invoices;
     LocalRestTaskManager taskman;
 
@@ -507,16 +507,23 @@ private class FlashListener : TestFlashListenerAPI
         }
     }
 
-    public ErrorCode waitUntilChannelState (Hash chan_id, ChannelState state)
+    public ErrorCode waitUntilChannelState (Hash chan_id, ChannelState state,
+        PublicKey node = PublicKey.init)
     {
+        scope (exit) this.channel_state.remove(chan_id);
         while (1)
         {
-            if (auto chan_state = chan_id in this.channel_state)
+            if (auto chan_states = chan_id in this.channel_state)
             {
-                if (chan_state.state == state)
+                if (auto chan_state = node in *chan_states)
+                    if ((*chan_state).state >= state)
+                        return (*chan_state).error;
+                if (node == PublicKey.init)
                 {
-                    scope (exit) this.channel_state.remove(chan_id);
-                    return chan_state.error;
+                    auto states = chan_states.byValue
+                        .filter!(chan_state => chan_state.state >= state);
+                    if (!states.empty())
+                        return states.front.error;
                 }
             }
 
@@ -527,7 +534,9 @@ private class FlashListener : TestFlashListenerAPI
     public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
         ErrorCode error)
     {
-        this.channel_state[chan_id] = State(state, error);
+        if (chan_id !in this.channel_state)
+            this.channel_state[chan_id] = typeof(this.channel_state[chan_id]).init;
+        this.channel_state[chan_id][pk] = State(state, error);
     }
 
     public string onRequestedChannelOpen (PublicKey pk, ChannelConfig conf)
@@ -1319,7 +1328,7 @@ unittest
     const bob_charlie_chan_id_2 = bob_charlie_chan_id_2_res.value;
     log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id_2);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
-        ChannelState.SettingUp);
+        ChannelState.SettingUp, bob_pubkey);
 
     auto chans = bob.getManagedChannels(null);
     assert(chans.length == 3, chans.to!string);
