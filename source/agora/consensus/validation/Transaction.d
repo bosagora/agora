@@ -15,7 +15,6 @@ module agora.consensus.validation.Transaction;
 
 import agora.common.Amount;
 import agora.common.Types;
-import agora.consensus.data.DataPayload;
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXOCache;
@@ -127,7 +126,7 @@ public string isInvalidReason (
         if (tx.outputs.count!(o => o.type == OutputType.Payment) > 1)
             return "Transaction: Freeze cannot have multiple refund payment outputs";
 
-        if (tx.payload.bytes.length != 0)
+        if (tx.payload.length != 0)
             return "Transaction: Freeze cannot have data payload";
 
         foreach (input; tx.inputs)
@@ -182,7 +181,7 @@ public string isInvalidReason (
         if (tx.inputs[0] != Input(height))
             return "Transaction: Coinbase transaction contains invalid input";
 
-        if (tx.payload.bytes.length != 0)
+        if (tx.payload.length != 0)
             return "Transaction: Coinbase transactions can't include payload";
     }
     else
@@ -893,7 +892,7 @@ unittest
             Output(large_data_fee, payload_checker.params.CommonsBudgetAddress),
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ].sort.array,
-        DataPayload(large_data)
+        large_data,
     );
     dataHash = hashFull(dataTx);
     dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
@@ -909,7 +908,7 @@ unittest
         [Input(payment_utxo)],
         [Output(Amount(80_000L * 10_000_000L - normal_data_fee.integral + 1),
             key_pair.address)],
-        DataPayload(normal_data)
+        normal_data,
     );
     dataHash = hashFull(dataTx);
     dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
@@ -925,7 +924,7 @@ unittest
     dataTx = Transaction(
         [Input(payment_utxo)],
         [Output(rem_amount, key_pair.address)],
-        DataPayload(normal_data)
+        normal_data,
     );
     dataHash = hashFull(dataTx);
     dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
@@ -942,7 +941,7 @@ unittest
         [
             Output(Amount(40_000L * 10_000_000L), key_pair.address)
         ],
-        DataPayload(normal_data)
+        normal_data,
     );
     dataHash = hashFull(dataTx);
     dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
@@ -959,7 +958,7 @@ unittest
         [
             Output(Amount(40_000L * 10_000_000L), key_pair.address, OutputType.Freeze)
         ],
-        DataPayload(normal_data)
+        normal_data,
     );
     dataHash = hashFull(dataTx);
     dataTx.inputs[0].unlock = signUnlock(key_pair, dataTx);
@@ -995,7 +994,7 @@ unittest
 
     // Add some data, should not validate
     ubyte[] data = [0xDE, 0xAD, 0xBE, 0xEF];
-    tx.payload = DataPayload(data);
+    tx.payload = data;
     assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
 
     // Remove the inputs, still should not validate

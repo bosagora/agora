@@ -21,7 +21,6 @@ module agora.consensus.data.Transaction;
 
 import agora.common.Amount;
 import agora.common.Types;
-import agora.consensus.data.DataPayload;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.script.Lock;
@@ -50,7 +49,7 @@ public struct Transaction
         this.outputs = outputs;
     }
 
-    /// ctor without DataPayload
+    /// ctor without payload
     public this (Input[] inputs, Output[] outputs,
         in Height lock_height = Height(0)) nothrow
     {
@@ -62,7 +61,7 @@ public struct Transaction
 
     /// ctor with immutable fields so the inputs and outputs must be already sorted
     public this (inout Input[] inputs, inout Output[] outputs,
-        inout DataPayload payload = DataPayload.init,
+        inout(ubyte)[] payload = null,
         in Height lock_height = Height(0)) inout nothrow
     {
         this.inputs = inputs;
@@ -89,12 +88,12 @@ public struct Transaction
     public Output[] outputs;
 
     /// The data to store
-    public DataPayload payload;
+    public ubyte[] payload;
 
     /// The size of the Transaction object
     public ulong sizeInBytes () const nothrow pure @nogc
     {
-        ulong size = this.payload.sizeInBytes();
+        ulong size = this.payload.length;
         foreach (const ref input; this.inputs)
             size += input.sizeInBytes();
         foreach (const ref output; this.outputs)
@@ -361,7 +360,7 @@ unittest
     Transaction data_tx = Transaction(
         [Input(Hash.init, 0)],
         [Output.init],
-        DataPayload([1,2,3])
+        [1,2,3],
     );
     testSymmetry(data_tx);
 
@@ -431,13 +430,13 @@ unittest
     Transaction old_tx = Transaction(
         [Input(Hash.init, 0)],
         [Output.init],
-        DataPayload([1,2,3])
+        [1,2,3],
     );
     auto json_str = old_tx.serializeToJsonString();
 
     Transaction new_tx = deserializeJson!Transaction(json_str);
-    assert(new_tx.payload.bytes.length == old_tx.payload.bytes.length);
-    assert(new_tx.payload.bytes == old_tx.payload.bytes);
+    assert(new_tx.payload.length == old_tx.payload.length);
+    assert(new_tx.payload == old_tx.payload);
 }
 
 // Check exact same Coinbase TXs for different heights generate different hashes
