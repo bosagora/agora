@@ -129,8 +129,6 @@ public struct ScopeCondition
 ///
 nothrow @safe @nogc unittest
 {
-    import ocean.core.Test;
-
     ScopeCondition sc;
     assert(sc.empty());
     assert(sc.isTrue());

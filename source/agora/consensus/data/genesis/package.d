@@ -74,13 +74,11 @@ unittest
     import std.array;
     import std.conv;
 
-    import ocean.core.Test;
-
     auto sorted_enrollments = checkGenesisEnrollments(GenesisBlock, [ WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
         WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7 ], 20);
 
     // For unit tests we want the index of the nodes to match the order of the enrollments
-    test!"=="(genesis_validator_keys.map!(k => k.address).array, sorted_enrollments.map!(e => e.key).array);
+    assert(genesis_validator_keys.map!(k => k.address).array == sorted_enrollments.map!(e => e.key).array);
 
     checkGenesisTransactions(GenesisBlock);
     assert(GenesisBlock.isGenesisBlockInvalidReason() == null);

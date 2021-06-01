@@ -1016,7 +1016,6 @@ unittest
 /// transaction-level absolute time lock
 unittest
 {
-    import ocean.core.Test;
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     scope storage = new TestUTXOSet;
     scope payload_checker = new FeeManager();
@@ -1034,17 +1033,17 @@ unittest
     // effectively disabled lock
     tx.lock_height = Height(0);
     tx.inputs[0].unlock = signUnlock(kp, tx);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker), null);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker), null);
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker) is null);
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker) is null);
 
     tx.lock_height = Height(10);
     tx.inputs[0].unlock = signUnlock(kp, tx);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker),
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker) ==
         "Transaction: Not unlocked for this height");
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(9), checker),
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(9), checker) ==
         "Transaction: Not unlocked for this height");
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(10), checker),
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(10), checker) ==
         null);
-    test!"=="(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker),
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker) ==
         null);
 }
