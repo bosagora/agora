@@ -15,7 +15,6 @@ module agora.stats.Utils;
 
 public import ocean.util.prometheus.collector.Collector;
 import ocean.util.prometheus.collector.CollectorRegistry;
-import vibe.vibe;
 
 import std.stdio;
 
