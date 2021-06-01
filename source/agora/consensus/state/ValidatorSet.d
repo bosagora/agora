@@ -806,7 +806,6 @@ unittest
 {
     import agora.consensus.data.Transaction;
     import agora.consensus.EnrollmentManager;
-    import ocean.core.Test;
     import std.algorithm;
     import std.conv;
     import std.range;
@@ -827,47 +826,47 @@ unittest
     // add enrollments
     auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, set.params.ValidatorCycle);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
-    test!"=="(set.countActive(FirstEnrollHeight), 0);
-    test!"=="(set.countActive(FirstEnrollHeight + 1), 1);    // Will be active next block
+    assert(set.countActive(FirstEnrollHeight) == 0);
+    assert(set.countActive(FirstEnrollHeight + 1) == 1);    // Will be active next block
     ExpiringValidator[] ex_validators;
-    test!"=="(set.getExpiringValidators(
-        FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length, 1);
+    assert(set.getExpiringValidators(
+        FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 1);
     assert(set.hasEnrollment(FirstEnrollHeight, utxos[0]));
-    test!"=="(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address), "Already enrolled at this height");
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) == "Already enrolled at this height");
 
     auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight, set.params.ValidatorCycle);
-    test!"=="(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address), null);
-    test!"=="(set.countActive(FirstEnrollHeight + 1), 2);
-    test!"=="(set.getExpiringValidators(FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length, 2);
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
+    assert(set.countActive(FirstEnrollHeight + 1) == 2);
+    assert(set.getExpiringValidators(FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 2);
     // Too early
-    test!"=="(set.getExpiringValidators(
-        FirstEnrollHeight + (set.params.ValidatorCycle - 1), ex_validators).length, 0);
+    assert(set.getExpiringValidators(
+        FirstEnrollHeight + (set.params.ValidatorCycle - 1), ex_validators).length == 0);
     // Already expired
-    test!"=="(set.getExpiringValidators(
-        FirstEnrollHeight + (set.params.ValidatorCycle + 1), ex_validators).length, 0);
+    assert(set.getExpiringValidators(
+        FirstEnrollHeight + (set.params.ValidatorCycle + 1), ex_validators).length == 0);
 
     const SecondEnrollHeight = Height(9);
     auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight, set.params.ValidatorCycle);
-    test!"=="(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address), null);
-    test!"=="(set.countActive(SecondEnrollHeight + 1), 3);
-    test!"=="(set.getExpiringValidators(
-        SecondEnrollHeight + set.params.ValidatorCycle, ex_validators).length, 1);
+    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
+    assert(set.countActive(SecondEnrollHeight + 1) == 3);
+    assert(set.getExpiringValidators(
+        SecondEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 1);
 
     // check if enrolled heights are not set
     Hash[] keys;
     set.getEnrolledUTXOs(SecondEnrollHeight + 1, keys);
-    test!"=="(keys.length, 3);
+    assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
     // slash ValidatorSet
     set.slashValidator(utxos[1], SecondEnrollHeight + 1);
-    test!"=="(set.countActive(SecondEnrollHeight + 1), 2);
+    assert(set.countActive(SecondEnrollHeight + 1) == 2);
     assert(set.hasEnrollment(SecondEnrollHeight + 1,utxos[0]));
     set.slashValidator(utxos[0], SecondEnrollHeight + 1);
     // The enrollment will remain even though it is slashed
     assert(set.hasEnrollment(SecondEnrollHeight + 1, utxos[0]));
     set.removeAll();
-    test!"=="(set.countActive(SecondEnrollHeight + 1), 0);
+    assert(set.countActive(SecondEnrollHeight + 1) == 0);
 
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
@@ -879,51 +878,51 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (i, ordered_enroll; ordered_enrollments)
-        test!"=="(set.add(FirstEnrollHeight, storage.getUTXOFinder(), ordered_enroll, WK.Keys[i].address), null);
+        assert(set.add(FirstEnrollHeight, storage.getUTXOFinder(), ordered_enroll, WK.Keys[i].address) is null);
     set.getEnrolledUTXOs(FirstEnrollHeight + 1, keys);
-    test!"=="(keys.length, 3);
+    assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
     // test for adding and getting preimage
-    test!"=="(set.getPreimage(utxos[0]), PreImageInfo(enroll.utxo_key, enroll.commitment, FirstEnrollHeight));
-    test!"=="(cache[FirstEnrollHeight], enroll.commitment);
+    assert(set.getPreimage(utxos[0]) == PreImageInfo(enroll.utxo_key, enroll.commitment, FirstEnrollHeight));
+    assert(cache[FirstEnrollHeight] == enroll.commitment);
     auto preimage_11 = PreImageInfo(utxos[0], cache[SecondEnrollHeight + 2], SecondEnrollHeight + 2);
     assert(set.addPreimage(preimage_11));
-    test!"=="(set.getPreimage(utxos[0]), preimage_11);
-    test!"=="(set.getPreimageAt(utxos[0], Height(FirstEnrollHeight - 1)),  // N/A: enrolled at height 1!
+    assert(set.getPreimage(utxos[0]) == preimage_11);
+    assert(set.getPreimageAt(utxos[0], Height(FirstEnrollHeight - 1)) is  // N/A: enrolled at height 1!
         PreImageInfo.init);
-    test!"=="(set.getPreimageAt(utxos[0], SecondEnrollHeight + 3),  // N/A: not revealed yet!
+    assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 3) is  // N/A: not revealed yet!
         PreImageInfo.init);
-    test!"=="(set.getPreimageAt(utxos[0], FirstEnrollHeight + 1),
+    assert(set.getPreimageAt(utxos[0], FirstEnrollHeight + 1) ==
         PreImageInfo(enroll.utxo_key, cache[FirstEnrollHeight + 1], FirstEnrollHeight + 1));
-    test!"=="(set.getPreimageAt(utxos[0], SecondEnrollHeight + 2), preimage_11);
-    test!"=="(set.getPreimageAt(utxos[0], SecondEnrollHeight + 1),
+    assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 2) == preimage_11);
+    assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 1) ==
         PreImageInfo(utxos[0], hashFull(preimage_11.hash), Height(preimage_11.height - 1)));
 
     // test for clear up expired validators
     enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight, set.params.ValidatorCycle);
-    test!"=="(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address), null);
+    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
     keys.length = 0;
     assert(set.getEnrolledUTXOs(Height(1016), keys));
-    test!"=="(keys.length, 1);
-    test!"=="(keys[0], utxos[3]);
+    assert(keys.length == 1);
+    assert(keys[0] == utxos[3]);
 
     // add enrollment at the genesis block:
     // validates blocks [1 .. ValidatorCycle] inclusively
-    test!">"(set.params.ValidatorCycle, 10);
+    assert(set.params.ValidatorCycle > 10);
     set.removeAll();  // clear all
 
-    test!"=="(set.countActive(SecondEnrollHeight + 1), 0);
+    assert(set.countActive(SecondEnrollHeight + 1) == 0);
     enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, set.params.ValidatorCycle);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // still active at height 1008
     keys.length = 0;
 
-    test!"=="(set.countActive(Height(set.params.ValidatorCycle)), 1);
+    assert(set.countActive(Height(set.params.ValidatorCycle)) == 1);
     assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle), keys));
-    test!"=="(keys.length, 1);
-    test!"=="(keys[0], utxos[0]);
+    assert(keys.length == 1);
+    assert(keys[0] == utxos[0]);
 
     // cleared after a new cycle was started (which started at height 1 so add 2)
     assert(set.countActive(Height(set.params.ValidatorCycle + 2)) == 0);

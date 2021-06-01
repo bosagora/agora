@@ -63,7 +63,6 @@ version (unittest)
 {
     import agora.consensus.data.genesis.Test: genesis_validator_keys;
     import agora.utils.Test;
-    import ocean.core.Test;
 }
 
 /// Ditto
@@ -2110,8 +2109,8 @@ unittest
 
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
-    test!"=="(data.missing_validators.length, 2);
-    test!"=="(data.missing_validators, skip_indexes);
+    assert(data.missing_validators.length == 2);
+    assert(data.missing_validators == skip_indexes);
 
     // check validity of slashing information
     assert(ledger.validateSlashingData(Height(22), data) == null);

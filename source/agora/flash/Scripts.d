@@ -27,11 +27,6 @@ import agora.script.Script;
 
 import std.bitmanip;
 
-version (unittest)
-{
-    import ocean.core.Test;
-}
-
 /*******************************************************************************
 
     Create a Flash lock script.
@@ -538,28 +533,28 @@ unittest
     auto recv_sig = sign(recv_kp, tx);
     auto bad_tx_send_sig = sign(send_kp, bad_tx);
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         lock_script,
-        createUnlockHTLC(recv_sig, secret), tx, Input.init),
-        null);  // receiver can unlock with secret + signature
+        createUnlockHTLC(recv_sig, secret), tx, Input.init)
+        is null);  // receiver can unlock with secret + signature
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         lock_script,
-        createUnlockHTLC(send_sig, secret), tx, Input.init),
-        "Script failed");  // wrong signature (expected receiver sig)
+        createUnlockHTLC(send_sig, secret), tx, Input.init)
+        == "Script failed");  // wrong signature (expected receiver sig)
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         lock_script,
-        createUnlockHTLC(send_sig, wrong_secret), tx, Input.init),
-        null);  // sender can unlock with ELSE branch + timelock + signature
+        createUnlockHTLC(send_sig, wrong_secret), tx, Input.init)
+        is null);  // sender can unlock with ELSE branch + timelock + signature
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         lock_script,
-        createUnlockHTLC(recv_sig, wrong_secret), tx, Input.init),
-        "Script failed");  // wrong signature (expected sender key)
+        createUnlockHTLC(recv_sig, wrong_secret), tx, Input.init)
+        == "Script failed");  // wrong signature (expected sender key)
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         lock_script,
-        createUnlockHTLC(bad_tx_send_sig, wrong_secret), bad_tx, Input.init),
-        "VERIFY_LOCK_HEIGHT height lock of transaction is too low");  // timelock is wrong
+        createUnlockHTLC(bad_tx_send_sig, wrong_secret), bad_tx, Input.init)
+        == "VERIFY_LOCK_HEIGHT height lock of transaction is too low");  // timelock is wrong
 }

@@ -25,8 +25,6 @@ import agora.test.Base;
 import core.thread;
 import core.time;
 
-import ocean.core.Test;
-
 /// test for enrollment process & revealing a pre-image periodically
 unittest
 {
@@ -121,7 +119,7 @@ unittest
     PreImageInfo preimage_26 = nodes[0].getPreimage(node0_utxo);
 
     // Check if the new pre-image is valid from the restarted node
-    test!"=="(preimage_26.isInvalidReason(b20_preimage), null);
+    assert(preimage_26.isInvalidReason(b20_preimage) is null);
 }
 
 // Situation: A pre-image already known by all nodes is sent on the network

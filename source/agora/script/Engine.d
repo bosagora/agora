@@ -40,7 +40,6 @@ version (unittest)
 {
     import agora.crypto.Schnorr;
     import agora.utils.Test;
-    import ocean.core.Test;
     import std.stdio : writefln, writeln;  // avoid importing LockType
 }
 
@@ -1100,40 +1099,40 @@ version (unittest)
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [OP.DUP]), Unlock.init, Transaction.init,
-            Input.init),
+            Input.init) ==
         "DUP opcode requires an item on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 2, OP.CHECK_EQUAL]), Unlock.init,
-            Transaction.init, Input.init),
+            Transaction.init, Input.init) ==
         "CHECK_EQUAL opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 1, OP.DUP, OP.CHECK_EQUAL]), Unlock.init,
-            Transaction.init, Input.init),
-        null);  // CHECK_EQUAL will always succeed after an OP.DUP
+            Transaction.init, Input.init)
+        is null);  // CHECK_EQUAL will always succeed after an OP.DUP
 }
 
 // OP.HASH
 unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [OP.HASH]), Unlock.init, Transaction.init,
-            Input.init),
+            Input.init) ==
         "HASH opcode requires an item on the stack");
     const ubyte[] bytes = [42];
     const Hash hash = HashNoLength(bytes).hashFull();
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(bytes)
             ~ [ubyte(OP.HASH)]
             ~ toPushOpcode(hash[])
             ~ [ubyte(OP.CHECK_EQUAL)]),
-        Unlock.init, Transaction.init, Input.init),
-        null);
+        Unlock.init, Transaction.init, Input.init)
+        is null);
 }
 
 // OP.CHECK_EQUAL
@@ -1141,22 +1140,22 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx;
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.CHECK_EQUAL]), Unlock.init, tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.CHECK_EQUAL]), Unlock.init, tx, Input.init) ==
         "CHECK_EQUAL opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [1, 1, OP.CHECK_EQUAL]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "CHECK_EQUAL opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 1, 1, 1, OP.CHECK_EQUAL]),
-        Unlock.init, tx, Input.init),
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, tx, Input.init)
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 2, 1, 1, OP.CHECK_EQUAL]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Script failed");
 }
 
@@ -1165,22 +1164,22 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx;
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.VERIFY_EQUAL]), Unlock.init, tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.VERIFY_EQUAL]), Unlock.init, tx, Input.init) ==
         "VERIFY_EQUAL opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [1, 1, OP.VERIFY_EQUAL]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "VERIFY_EQUAL opcode requires two items on the stack");
-    test!("==")(engine.execute(   // OP.TRUE needed as VERIFY does not push to stack
+    assert(engine.execute(   // OP.TRUE needed as VERIFY does not push to stack
         Lock(LockType.Script,
             [1, 1, 1, 1, OP.VERIFY_EQUAL, OP.TRUE]),
-        Unlock.init, tx, Input.init),
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, tx, Input.init)
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 2, 1, 1, OP.VERIFY_EQUAL, OP.TRUE]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "VERIFY_EQUAL operation failed");
 }
 
@@ -1189,48 +1188,48 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx;
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.CHECK_SIG]), Unlock.init, tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.CHECK_SIG]), Unlock.init, tx, Input.init) ==
         "CHECK_SIG opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [1, 1, OP.CHECK_SIG]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "CHECK_SIG opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 1, 1, 1, OP.CHECK_SIG]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "CHECK_SIG opcode requires 32-byte public key on the stack");
 
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
     Point invalid_key;
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(1)]
             ~ [ubyte(32)] ~ invalid_key[]
-            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init) ==
         "CHECK_SIG 32-byte public key on the stack is invalid");
 
     Point valid_key = Point.fromString(
         "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(1)]
             ~ [ubyte(32)] ~ valid_key[]
-            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init) ==
         "CHECK_SIG opcode requires 64-byte signature on the stack");
 
     Signature invalid_sig;
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ invalid_sig.toBlob()[]
             ~ [ubyte(32)] ~ valid_key[]
-            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init) ==
         "Script failed");
     const Pair kp = Pair.random();
     const sig = sign(kp, tx);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ sig.toBlob()[]
             ~ [ubyte(32)] ~ kp.V[]
-            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init),
-        null);
+            ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init)
+        is null);
 }
 
 // OP.VERIFY_SIG
@@ -1238,53 +1237,53 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx;
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.VERIFY_SIG]), Unlock.init, tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.VERIFY_SIG]), Unlock.init, tx, Input.init) ==
         "VERIFY_SIG opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [OP.PUSH_BYTES_1, 1, OP.VERIFY_SIG]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "VERIFY_SIG opcode requires two items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.PUSH_BYTES_1, 1, OP.PUSH_BYTES_1, 1, OP.VERIFY_SIG]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "VERIFY_SIG opcode requires 32-byte public key on the stack");
 
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
     Point invalid_key;
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(OP.PUSH_BYTES_1), ubyte(1)]
             ~ [ubyte(32)] ~ invalid_key[]
-            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "VERIFY_SIG 32-byte public key on the stack is invalid");
 
     Point valid_key = Point.fromString(
         "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(OP.PUSH_BYTES_1), ubyte(1)]
             ~ [ubyte(32)] ~ valid_key[]
-            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "VERIFY_SIG opcode requires 64-byte signature on the stack");
 
     Signature invalid_sig;
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ invalid_sig.toBlob()[]
             ~ [ubyte(32)] ~ valid_key[]
-            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "VERIFY_SIG signature failed validation");
     const Pair kp = Pair.random();
     const sig = sign(kp, tx);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ sig.toBlob()[]
             ~ [ubyte(32)] ~ kp.V[]
-            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init),
+            ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "Script failed");  // VERIFY_SIG does not push TRUE to the stack
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ sig.toBlob()[]
             ~ [ubyte(32)] ~ kp.V[]
-            ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init),
-        null);
+            ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init)
+        is null);
 }
 
 // OP.CHECK_MULTI_SIG / OP.VERIFY_MULTI_SIG
@@ -1292,42 +1291,42 @@ unittest
 {
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx;
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.CHECK_MULTI_SIG]), Unlock.init, tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.CHECK_MULTI_SIG]), Unlock.init, tx, Input.init) ==
         "CHECK_MULTI_SIG opcode requires at minimum four items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.CHECK_MULTI_SIG]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "CHECK_MULTI_SIG opcode requires at minimum four items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.PUSH_NUM_1, OP.PUSH_NUM_1,
                 OP.CHECK_MULTI_SIG]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "CHECK_MULTI_SIG opcode requires 32-byte public key on the stack");
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
     Point invalid_key;
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // required sigs
             ~ [ubyte(32)] ~ invalid_key[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ Signature.init.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "CHECK_MULTI_SIG 32-byte public key on the stack is invalid");
     // valid key, invalid signature
     Point valid_key = Point.fromString(
         "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // required sigs
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ Signature.init.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
 
     const Pair kp1 = Pair.random();
@@ -1342,16 +1341,16 @@ unittest
     const sig5 = sign(kp5, tx);
 
     // valid key + signature
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // required sigs
             ~ [ubyte(32)] ~ kp1.V[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),
-        tx, Input.init),
-        null);
-    test!("==")(engine.execute(
+        tx, Input.init)
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // fails: more sigs than keys
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1359,9 +1358,9 @@ unittest
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig2.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "CHECK_MULTI_SIG opcode cannot accept more signatures than there are keys");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1369,10 +1368,10 @@ unittest
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),  // fails: not enough sigs pushed
-        tx, Input.init),
+        tx, Input.init) ==
         "CHECK_MULTI_SIG not enough signatures on the stack");
     // valid
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1381,10 +1380,10 @@ unittest
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig2.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // invalid order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp2.V[]
@@ -1393,10 +1392,10 @@ unittest
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig2.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
     // ditto invalid order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1405,10 +1404,10 @@ unittest
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig2.toBlob()[]
              ~ [ubyte(64)] ~ sig1.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
     // 1 of 2 is ok
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1416,10 +1415,10 @@ unittest
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // ditto 1 of 2 is ok
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1427,10 +1426,10 @@ unittest
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig2.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // 1 of 5: any sig is enough
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1441,10 +1440,10 @@ unittest
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // 1 of 5: ditto
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1455,10 +1454,10 @@ unittest
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig2.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // 2 of 5: ok when sigs are in the same order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1470,10 +1469,10 @@ unittest
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig5.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // 2 of 5: fails when sigs are in the wrong order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1485,10 +1484,10 @@ unittest
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig5.toBlob()[]
              ~ [ubyte(64)] ~ sig1.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
     // 3 of 5: ok when sigs are in the same order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1501,10 +1500,10 @@ unittest
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig3.toBlob()[]
              ~ [ubyte(64)] ~ sig5.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // 3 of 5: fails when sigs are in the wrong order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1517,10 +1516,10 @@ unittest
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig5.toBlob()[]
              ~ [ubyte(64)] ~ sig3.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
     // 5 of 5: ok when sigs are in the same order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_5)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1535,10 +1534,10 @@ unittest
              ~ [ubyte(64)] ~ sig3.toBlob()[]
              ~ [ubyte(64)] ~ sig4.toBlob()[]
              ~ [ubyte(64)] ~ sig5.toBlob()[]),
-        tx, Input.init),
-        null);
+        tx, Input.init)
+        is null);
     // 5 of 5: fails when sigs are in the wrong order
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_5)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1553,10 +1552,10 @@ unittest
              ~ [ubyte(64)] ~ sig2.toBlob()[]
              ~ [ubyte(64)] ~ sig4.toBlob()[]
              ~ [ubyte(64)] ~ sig5.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
     // ditto but with VERIFY_MULTI_SIG
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.V[]
@@ -1569,7 +1568,7 @@ unittest
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
              ~ [ubyte(64)] ~ sig5.toBlob()[]
              ~ [ubyte(64)] ~ sig3.toBlob()[]),
-        tx, Input.init),
+        tx, Input.init) ==
         "VERIFY_MULTI_SIG signature failed validation");
 }
 
@@ -1589,20 +1588,20 @@ unittest
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx = Transaction([Input.init], null);
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.CHECK_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.CHECK_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 4 items on the stack");
-    test!("==")(engine.execute(
-        Lock(LockType.Script, [OP.VERIFY_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]),
+    assert(engine.execute(
+        Lock(LockType.Script, [OP.VERIFY_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]) ==
         "VERIFY_SEQ_SIG opcode requires 4 items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [1, 42, 1, 42, 1, 42, OP.CHECK_SEQ_SIG]),
-        Unlock.init, tx, tx.inputs[0]),
+        Unlock.init, tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 4 items on the stack");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [1, 42, 1, 42, 1, 42, 1, 42, OP.CHECK_SEQ_SIG]),
-        Unlock.init, tx, tx.inputs[0]),
+        Unlock.init, tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 8-byte minimum sequence on the stack");
 
     const seq_0 = ulong(0);
@@ -1610,30 +1609,30 @@ unittest
     const seq_0_bytes = nativeToLittleEndian(seq_0);
     const seq_1_bytes = nativeToLittleEndian(seq_1);
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(1), ubyte(1)]  // wrong pubkey size
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ Signature.init.toBlob()[]
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 32-byte public key on the stack");
 
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ Point.init[]  // size ok, form is wrong
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ Signature.init.toBlob()[]
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG 32-byte public key on the stack is invalid");
 
     Point rand_key = Point.fromString(
         "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
             ~ toPushOpcode(seq_0_bytes)
@@ -1641,65 +1640,65 @@ unittest
         Unlock(
             [ubyte(64)] ~ Signature.init.toBlob()[]
             // wrong sequence size
-            ~ toPushOpcode(nativeToLittleEndian(ubyte(1)))), tx, tx.inputs[0]),
+            ~ toPushOpcode(nativeToLittleEndian(ubyte(1)))), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 8-byte sequence on the stack");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ Signature.init.toBlob()[]
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "Script failed");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(1)] ~ [ubyte(1)]  // wrong signature size
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 64-byte signature on the stack");
 
     const Pair kp = Pair.random();
     const bad_sig = sign(kp, tx);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ bad_sig.toBlob()[]
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "Script failed");  // still fails, signature didn't hash the sequence
 
     // create the proper signature which blanks the input and encodes the sequence
     const challenge_0 = getSequenceChallenge(tx, seq_0, 0);
     const seq_0_sig = sign(kp, challenge_0);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.V[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ seq_0_sig.toBlob()[]
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
-        null);
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0])
+        is null);
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.V[]
             ~ toPushOpcode(seq_1_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ seq_0_sig.toBlob()[]
-            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG sequence is not equal to or greater than min_sequence");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.V[]
             ~ toPushOpcode(seq_0_bytes)
@@ -1711,34 +1710,34 @@ unittest
 
     const challenge_1 = getSequenceChallenge(tx, seq_1, 0);
     const seq_1_sig = sign(kp, challenge_1);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.V[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ seq_1_sig.toBlob()[]
-            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),
-        null);
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0])
+        is null);
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]  // key mismatch
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ seq_1_sig.toBlob()[]
-            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]) ==
         "VERIFY_SEQ_SIG signature failed validation");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.V[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
         Unlock(
             [ubyte(64)] ~ seq_0_sig.toBlob()[]
-            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),  // sig mismatch
+            ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]) ==  // sig mismatch
         "VERIFY_SEQ_SIG signature failed validation");
 }
 
@@ -1752,40 +1751,40 @@ unittest
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx_10 = Transaction(Height(10));
     const Transaction tx_11 = Transaction(Height(11));
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_9)
             ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, tx_10, Input.init)
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_10)
             ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),  // tx with matching unlock height
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, tx_10, Input.init)  // tx with matching unlock height
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_11)
             ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
+        Unlock.init, tx_10, Input.init) ==
         "VERIFY_LOCK_HEIGHT height lock of transaction is too low");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(height_11)
             ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_11, Input.init),  // tx with matching unlock height
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, tx_11, Input.init)  // tx with matching unlock height
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(nativeToLittleEndian(ubyte(9)))
             ~ [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
+        Unlock.init, tx_10, Input.init) ==
         "VERIFY_LOCK_HEIGHT height lock must be an 8-byte number");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [ubyte(OP.VERIFY_LOCK_HEIGHT), ubyte(OP.TRUE)]),
-        Unlock.init, tx_10, Input.init),
+        Unlock.init, tx_10, Input.init) ==
         "VERIFY_LOCK_HEIGHT opcode requires a lock height on the stack");
 }
 
@@ -1800,40 +1799,40 @@ unittest
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Input input_10 = Input(Hash.init, 0, 10 /* unlock_age */);
     const Input input_11 = Input(Hash.init, 0, 11 /* unlock_age */);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(age_9)
             ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
-        Unlock.init, Transaction.init, input_10),
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, Transaction.init, input_10)
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(age_10)
             ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
-        Unlock.init, Transaction.init, input_10),  // input with matching unlock age
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, Transaction.init, input_10)  // input with matching unlock age
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(age_11)
             ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
-        Unlock.init, Transaction.init, input_10),
+        Unlock.init, Transaction.init, input_10) ==
         "VERIFY_UNLOCK_AGE unlock age of input is too low");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(age_11)
             ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
-        Unlock.init, Transaction.init, input_11),  // input with matching unlock age
-        null);
-    test!("==")(engine.execute(
+        Unlock.init, Transaction.init, input_11)  // input with matching unlock age
+        is null);
+    assert(engine.execute(
         Lock(LockType.Script,
             toPushOpcode(age_overflow)
             ~ [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
-        Unlock.init, Transaction.init, input_10),
+        Unlock.init, Transaction.init, input_10) ==
         "VERIFY_UNLOCK_AGE unlock age must be a 4-byte number");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [ubyte(OP.VERIFY_UNLOCK_AGE), ubyte(OP.TRUE)]),
-        Unlock.init, Transaction.init, input_10),
+        Unlock.init, Transaction.init, input_10) ==
         "VERIFY_UNLOCK_AGE opcode requires an unlock age on the stack");
 }
 
@@ -1845,32 +1844,32 @@ unittest
     const sig = sign(kp, tx);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
-        Lock(LockType.Key, kp.V[]), Unlock(sig.toBlob()[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Key, kp.V[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
         null);
     const bad_sig = sign(kp, "foobar");
-    test!("==")(engine.execute(
-        Lock(LockType.Key, kp.V[]), Unlock(bad_sig.toBlob()[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Key, kp.V[]), Unlock(bad_sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key signature in unlock script failed validation");
     const bad_key = Pair.random().V;
-    test!("==")(engine.execute(
-        Lock(LockType.Key, bad_key[]), Unlock(sig.toBlob()[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Key, bad_key[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key signature in unlock script failed validation");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Key, ubyte(42).repeat(64).array),
-        Unlock(sig.toBlob()[]), tx, Input.init),
+        Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key requires 32-byte key argument in the lock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Key, ubyte(0).repeat(32).array),
-        Unlock(sig.toBlob()[]), tx, Input.init),
+        Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key 32-byte public key in lock script is invalid");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Key, kp.V[]),
-        Unlock(ubyte(42).repeat(32).array), tx, Input.init),
+        Unlock(ubyte(42).repeat(32).array), tx, Input.init) ==
         "LockType.Key requires a 64-byte signature in the unlock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Key, kp.V[]),
-        Unlock(ubyte(42).repeat(65).array), tx, Input.init),
+        Unlock(ubyte(42).repeat(65).array), tx, Input.init) ==
         "LockType.Key requires a 64-byte signature in the unlock script");
 }
 
@@ -1885,41 +1884,41 @@ unittest
     const sig2 = sign(kp2, tx);  // valid sig, but for a different key-pair
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init),
-        null);
+    assert(engine.execute(
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init)
+        is null);
     const bad_sig = sign(kp, "foo");
-    test!("==")(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(bad_sig.toBlob()[] ~ kp.V[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.KeyHash, key_hash[]), Unlock(bad_sig.toBlob()[] ~ kp.V[]), tx, Input.init) ==
         "LockType.KeyHash signature in unlock script failed validation");
-    test!("==")(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig2.toBlob()[] ~ kp2.V[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig2.toBlob()[] ~ kp2.V[]), tx, Input.init) ==
         "LockType.KeyHash hash of key does not match key hash set in lock script");
     const bad_key = Pair.random().V;
-    test!("==")(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ bad_key[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ bad_key[]), tx, Input.init) ==
         "LockType.KeyHash hash of key does not match key hash set in lock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.KeyHash, ubyte(42).repeat(63).array),
-        Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init),
+        Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte key hash argument in the lock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.KeyHash, ubyte(42).repeat(65).array),
-        Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init),
+        Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte key hash argument in the lock script");
-    test!("==")(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
-    test!("==")(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(kp.V[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.KeyHash, key_hash[]), Unlock(kp.V[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.V[] ~ [ubyte(0)]),
-        tx, Input.init),
+        tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.KeyHash, key_hash[]),
-        Unlock(sig.toBlob()[] ~ ubyte(0).repeat(32).array), tx, Input.init),
+        Unlock(sig.toBlob()[] ~ ubyte(0).repeat(32).array), tx, Input.init) ==
         "LockType.KeyHash public key in unlock script is invalid");
 }
 
@@ -1935,32 +1934,32 @@ unittest
     const Script unlock = createUnlockP2PKH(sig, kp.V);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
-        Lock(LockType.Script, lock[]), Unlock(unlock[]), tx, Input.init),
-        null);
+    assert(engine.execute(
+        Lock(LockType.Script, lock[]), Unlock(unlock[]), tx, Input.init)
+        is null);
     // simple push
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             ubyte(42).repeat(65).array.toPushOpcode
             ~ ubyte(42).repeat(65).array.toPushOpcode
             ~ [ubyte(OP.CHECK_EQUAL)]),
-        Unlock(unlock[]), tx, Input.init),
-        null);
+        Unlock(unlock[]), tx, Input.init)
+        is null);
 
     Script bad_key_unlock = createUnlockP2PKH(sig, Pair.random.V);
-    test!("==")(engine.execute(
-        Lock(LockType.Script, lock[]), Unlock(bad_key_unlock[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, lock[]), Unlock(bad_key_unlock[]), tx, Input.init) ==
         "VERIFY_EQUAL operation failed");
 
     // native script stack overflow test
     scope small = new Engine(TestStackMaxItemSize * 2, TestStackMaxItemSize);
-    test!("==")(small.execute(
+    assert(small.execute(
         Lock(LockType.Script, lock[]),
         Unlock(
             ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()
             ~ ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()
             ~ ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()), tx,
-        Input.init),
+        Input.init) ==
         "Stack overflow while executing PUSH_DATA_2");
 }
 
@@ -1978,53 +1977,53 @@ unittest
     // unlock is: <push(sig)> <redeem>
     // redeem is: check sig against the key embedded in the redeem script
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(redeem[])),
-        tx, Input.init),
-        null);
-    test!("==")(engine.execute(
+        tx, Input.init)
+        is null);
+    assert(engine.execute(
         Lock(LockType.Redeem, ubyte(42).repeat(32).array),
         Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(redeem[])),
-        tx, Input.init),
+        tx, Input.init) ==
         "LockType.Redeem requires 64-byte script hash in the lock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Redeem, ubyte(42).repeat(65).array),
         Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(redeem[])),
-        tx, Input.init),
+        tx, Input.init) ==
         "LockType.Redeem requires 64-byte script hash in the lock script");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock(null),
-        tx, Input.init),
+        tx, Input.init) ==
         "LockType.Redeem requires unlock script to push a redeem script to the stack");
     scope small = new Engine(TestStackMaxItemSize * 2, TestStackMaxItemSize);
-    test!("==")(small.execute(
+    assert(small.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock(ubyte(42).repeat(TestStackMaxItemSize * 2).array.toPushOpcode()),
-        tx, Input.init),
+        tx, Input.init) ==
         "PUSH_DATA_2 opcode payload size is not within StackMaxItemSize limits");
-    test!("==")(small.execute(
+    assert(small.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock(
             ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()
             ~ ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()
             ~ ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()),
-        tx, Input.init),
+        tx, Input.init) ==
         "Stack overflow while executing PUSH_DATA_2");
     const Script wrong_redeem = makeScript([ubyte(32)] ~ Pair.random.V[]
         ~ [ubyte(OP.CHECK_SIG)]);
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(wrong_redeem[])),
-        tx, Input.init),
+        tx, Input.init) ==
         "LockType.Redeem unlock script pushed a redeem script which does "
         ~ "not match the redeem hash in the lock script");
     auto wrong_sig = sign(kp, "bad");
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock([ubyte(64)] ~ wrong_sig.toBlob()[] ~ toPushOpcode(redeem[])),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script failed");
 
     // note: a redeem script cannot contain an overflown payload size
@@ -2033,20 +2032,20 @@ unittest
     // the unlock script then the unlock script validation would have already
     // failed before the redeem script validation could ever fail.
     const Script bad_opcode_redeem = makeScript([ubyte(255)]);
-    test!("==")(small.execute(
+    assert(small.execute(
         Lock(LockType.Redeem, bad_opcode_redeem.hashFull()[]),
         Unlock(toPushOpcode(bad_opcode_redeem[])),
-        tx, Input.init),
+        tx, Input.init) ==
         "Script contains an unrecognized opcode");
 
     // however it may include opcodes which overflow the stack during execution.
     // here 1 byte => 64 bytes, causing a stack overflow
     scope tiny = new Engine(10, 10);
     const Script overflow_redeem = makeScript([OP.TRUE, OP.HASH]);
-    test!("==")(tiny.execute(
+    assert(tiny.execute(
         Lock(LockType.Redeem, overflow_redeem.hashFull()[]),
         Unlock(toPushOpcode(overflow_redeem[])),
-        tx, Input.init),
+        tx, Input.init) ==
         "Stack overflow while executing HASH");
 }
 
@@ -2063,18 +2062,18 @@ unittest
 
     const invalid_script = makeScript([255]);
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
-    test!("==")(engine.execute(
-        Lock(LockType.Script, lock[]), Unlock(unlock[]), tx, Input.init),
-        null);
+    assert(engine.execute(
+        Lock(LockType.Script, lock[]), Unlock(unlock[]), tx, Input.init)
+        is null);
     // invalid scripts / sigs
-    test!("==")(engine.execute(
-        Lock(LockType.Script, []), Unlock(unlock[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, []), Unlock(unlock[]), tx, Input.init) ==
         "Lock script must not be empty");
-    test!("==")(engine.execute(
-        Lock(LockType.Script, invalid_script[]), Unlock(unlock[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, invalid_script[]), Unlock(unlock[]), tx, Input.init) ==
         "Script contains an unrecognized opcode");
-    test!("==")(engine.execute(
-        Lock(LockType.Script, lock[]), Unlock(invalid_script[]), tx, Input.init),
+    assert(engine.execute(
+        Lock(LockType.Script, lock[]), Unlock(invalid_script[]), tx, Input.init) ==
         "Script contains an unrecognized opcode");
 }
 
@@ -2085,16 +2084,16 @@ unittest
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     const Transaction tx;
     const StackMaxItemSize = 512;
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(42)] ~ [ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
-        null);
+        Unlock.init, tx, Input.init)
+        is null);
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, ubyte(42).repeat(TestStackMaxItemSize + 1)
             .array.toPushOpcode()
             ~ [ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "PUSH_DATA_2 opcode payload size is not within StackMaxItemSize limits");
 
     const MaxItemPush = ubyte(42).repeat(TestStackMaxItemSize).array
@@ -2105,70 +2104,70 @@ unittest
 
     // overflow with PUSH_DATA_1
     scope tiny = new Engine(120, 77);
-    test!("==")(tiny.execute(
+    assert(tiny.execute(
         Lock(LockType.Script,
             ubyte(42).repeat(76).array.toPushOpcode()
             ~ ubyte(42).repeat(76).array.toPushOpcode()
             ~ ubyte(42).repeat(76).array.toPushOpcode()
             ~ [ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while executing PUSH_DATA_1");
 
     // ditto with PUSH_DATA_2
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes + 1).joiner.array
             ~ [ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while executing PUSH_DATA_2");
 
     // within limit, but missing OP.TRUE on stack
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Script failed");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
             ~ [ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while pushing TRUE to the stack");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
             ~ [ubyte(OP.FALSE)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while pushing FALSE to the stack");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
             ~ [ubyte(1), ubyte(1)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while executing PUSH_BYTES_*");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
             ~ [ubyte(1), ubyte(1)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while executing PUSH_BYTES_*");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
             ~ [ubyte(OP.DUP)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while executing DUP");
 
     // will fit, pops TestStackMaxItemSize and pushes 64 bytes
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
             ~ [ubyte(OP.HASH), ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
-        null);
+        Unlock.init, tx, Input.init)
+        is null);
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes - 1).joiner.array
             ~ [ubyte(1), ubyte(1)].repeat(TestStackMaxItemSize).joiner.array
             ~ ubyte(OP.HASH) ~ [ubyte(OP.TRUE)]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Stack overflow while executing HASH");
 
     // stack overflow in only one of the branches.
@@ -2184,12 +2183,12 @@ unittest
             ubyte(OP.TRUE),
          ubyte(OP.END_IF)]);
 
-    test!("==")(tiny.execute(
-        lock_if, Unlock([ubyte(OP.TRUE)]), tx, Input.init),
+    assert(tiny.execute(
+        lock_if, Unlock([ubyte(OP.TRUE)]), tx, Input.init) ==
         "Stack overflow while executing PUSH_DATA_1");
-    test!("==")(tiny.execute(
-        lock_if, Unlock([ubyte(OP.FALSE)]), tx, Input.init),
-        null);
+    assert(tiny.execute(
+        lock_if, Unlock([ubyte(OP.FALSE)]), tx, Input.init)
+        is null);
 }
 
 // IF, NOT_IF, ELSE, END_IF conditional logic
@@ -2199,59 +2198,59 @@ unittest
     const Transaction tx;
 
     // IF true => execute if branch
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.TRUE, OP.IF, OP.TRUE, OP.ELSE, OP.FALSE, OP.END_IF]),
-        Unlock.init, tx, Input.init),
-        null);
+        Unlock.init, tx, Input.init)
+        is null);
 
     // IF false => execute else branch
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.FALSE, OP.IF, OP.TRUE, OP.ELSE, OP.FALSE, OP.END_IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Script failed");
 
     // NOT_IF true => execute if branch
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.FALSE, OP.NOT_IF, OP.TRUE, OP.ELSE, OP.FALSE, OP.END_IF]),
-        Unlock.init, tx, Input.init),
-        null);
+        Unlock.init, tx, Input.init)
+        is null);
 
     // NOT_IF false => execute else branch
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.TRUE, OP.NOT_IF, OP.TRUE, OP.ELSE, OP.FALSE, OP.END_IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Script failed");
 
     // dangling IF / NOT_IF
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.TRUE, OP.IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "IF / NOT_IF requires a closing END_IF");
 
     // ditto
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.TRUE, OP.NOT_IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "IF / NOT_IF requires a closing END_IF");
 
     // unmatched ELSE
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.TRUE, OP.ELSE]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Cannot have an ELSE without an associated IF / NOT_IF");
 
     // unmatched END_IF
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script,
             [OP.TRUE, OP.END_IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "Cannot have an END_IF without an associated IF / NOT_IF");
 
     /* nested conditionals */
@@ -2273,13 +2272,13 @@ unittest
                  OP.END_IF,
              OP.END_IF]);
 
-    test!("==")(engine.execute(lock_1, Unlock([OP.TRUE, OP.TRUE]), tx, Input.init),
-        null);
-    test!("==")(engine.execute(lock_1, Unlock([OP.TRUE, OP.FALSE]), tx, Input.init),
+    assert(engine.execute(lock_1, Unlock([OP.TRUE, OP.TRUE]), tx, Input.init)
+        is null);
+    assert(engine.execute(lock_1, Unlock([OP.TRUE, OP.FALSE]), tx, Input.init) ==
         "Script failed");
-    test!("==")(engine.execute(lock_1, Unlock([OP.FALSE, OP.TRUE]), tx, Input.init),
+    assert(engine.execute(lock_1, Unlock([OP.FALSE, OP.TRUE]), tx, Input.init) ==
         "Script failed");
-    test!("==")(engine.execute(lock_1, Unlock([OP.FALSE, OP.FALSE]), tx, Input.init),
+    assert(engine.execute(lock_1, Unlock([OP.FALSE, OP.FALSE]), tx, Input.init) ==
         "Script failed");
 
     // IF true => NOT_IF true => OP.TRUE
@@ -2300,28 +2299,28 @@ unittest
              OP.END_IF]);
 
     // note: remember that it's LIFO, second push is evaluted first!
-    test!("==")(engine.execute(lock_2, Unlock([OP.TRUE, OP.TRUE]), tx, Input.init),
+    assert(engine.execute(lock_2, Unlock([OP.TRUE, OP.TRUE]), tx, Input.init) ==
         "Script failed");
-    test!("==")(engine.execute(lock_2, Unlock([OP.TRUE, OP.FALSE]), tx, Input.init),
+    assert(engine.execute(lock_2, Unlock([OP.TRUE, OP.FALSE]), tx, Input.init) ==
         "Script failed");
-    test!("==")(engine.execute(lock_2, Unlock([OP.FALSE, OP.TRUE]), tx, Input.init),
+    assert(engine.execute(lock_2, Unlock([OP.FALSE, OP.TRUE]), tx, Input.init) ==
         null);
-    test!("==")(engine.execute(lock_2, Unlock([OP.FALSE, OP.FALSE]), tx, Input.init),
+    assert(engine.execute(lock_2, Unlock([OP.FALSE, OP.FALSE]), tx, Input.init) ==
         "Script failed");
 
     /* syntax checks */
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [OP.IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "IF/NOT_IF opcode requires an item on the stack");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(2), OP.IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "IF/NOT_IF may only be used with OP.TRUE / OP.FALSE values");
 
-    test!("==")(engine.execute(
+    assert(engine.execute(
         Lock(LockType.Script, [OP.TRUE, OP.IF]),
-        Unlock.init, tx, Input.init),
+        Unlock.init, tx, Input.init) ==
         "IF / NOT_IF requires a closing END_IF");
 }

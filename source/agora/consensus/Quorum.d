@@ -32,8 +32,6 @@ import scpd.types.Utils;
 import scpd.types.XDRBase;
 import scpd.quorum.QuorumTracker;
 
-import ocean.core.Test;
-
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -129,7 +127,7 @@ unittest
         hashFull(1), QuorumParams.init, 0);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys), [1]);
+    assert(countNodeInclusions(quorums, keys) == [1]);
 }
 
 // 2 nodes
@@ -140,7 +138,7 @@ unittest
         hashFull(1), QuorumParams.init, 1);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys), [2, 2]);
+    assert(countNodeInclusions(quorums, keys) == [2, 2]);
 }
 
 // 3 nodes with equal stakes
@@ -151,7 +149,7 @@ unittest
         hashFull(1), QuorumParams.init, 2);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys), [3, 3, 3]);
+    assert(countNodeInclusions(quorums, keys) == [3, 3, 3]);
 }
 
 // 4 nodes with equal stakes
@@ -162,7 +160,7 @@ unittest
         hashFull(1), QuorumParams.init, 3);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    test!"=="(countNodeInclusions(quorums, keys), [4, 4, 4, 4]);
+    assert(countNodeInclusions(quorums, keys) == [4, 4, 4, 4]);
 }
 
 // 8 nodes with equal stakes
@@ -173,13 +171,13 @@ unittest
         hashFull(1), QuorumParams.init, 4);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys), [6, 5, 8, 8, 7, 8, 8, 6]);
+    assert(countNodeInclusions(quorums_1, keys) == [6, 5, 8, 8, 7, 8, 8, 6]);
 
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
         hashFull(2), QuorumParams.init, 5);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys), [7, 8, 7, 7, 8, 7, 7, 5]);
+    assert(countNodeInclusions(quorums_2, keys) == [7, 8, 7, 7, 8, 7, 7, 5]);
 }
 
 // 16 nodes with equal stakes
@@ -190,14 +188,14 @@ unittest
         hashFull(1), QuorumParams.init, 6);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    assert(countNodeInclusions(quorums_1, keys) ==
         [5, 8, 5, 9, 8, 7, 5, 7, 6, 8, 9, 7, 6, 7, 11, 4]);
 
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
         hashFull(2), QuorumParams.init, 7);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    assert(countNodeInclusions(quorums_2, keys) ==
         [5, 5, 4, 6, 4, 8, 7, 11, 7, 9, 10, 10, 7, 6, 6, 7]);
 }
 
@@ -211,14 +209,14 @@ unittest
         QuorumParams.init, 8);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    assert(countNodeInclusions(quorums_1, keys) ==
         [4, 3, 9, 4, 6, 6, 8, 5, 3, 8, 9, 10, 8, 9, 9, 11]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init, 9);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    assert(countNodeInclusions(quorums_2, keys) ==
         [4, 2, 7, 8, 8, 5, 5, 5, 9, 7, 9, 8, 8, 8, 10, 9]);
 }
 
@@ -232,14 +230,14 @@ unittest
         QuorumParams.init, 10);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    assert(countNodeInclusions(quorums_1, keys) ==
         [16, 4, 6, 5, 9, 6, 7, 6, 5, 5, 6, 6, 6, 5, 5, 15]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init, 11);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    assert(countNodeInclusions(quorums_2, keys) ==
         [16, 8, 3, 4, 6, 2, 9, 5, 4, 7, 5, 7, 9, 9, 2, 16]);
 }
 
@@ -255,7 +253,7 @@ unittest
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 seconds)
     //verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    assert(countNodeInclusions(quorums_1, keys) ==
         [31, 7, 9, 5, 5, 4, 4, 7, 6, 6, 5, 7, 6, 5, 6, 4, 7, 5, 6, 6, 7, 1, 6,
          2, 6, 5, 5, 6, 8, 4, 2, 31]);
 
@@ -265,7 +263,7 @@ unittest
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 seconds)
     //verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    assert(countNodeInclusions(quorums_2, keys) ==
         [31, 7, 4, 9, 6, 5, 8, 3, 4, 6, 6, 8, 3, 3, 7, 7, 8, 4, 4, 7, 5, 5, 6,
          6, 2, 6, 5, 2, 6, 6, 3, 32]);
 }
@@ -282,7 +280,7 @@ unittest
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 minutes)
     //verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    assert(countNodeInclusions(quorums_1, keys) ==
         [62, 5, 2, 5, 5, 3, 6, 7, 4, 7, 5, 5, 8, 2, 2, 5, 7, 7, 4, 4, 5, 5,
          3, 10, 3, 8, 2, 6, 6, 7, 4, 4, 4, 7, 8, 6, 7, 4, 5, 6, 4, 7, 7, 9,
          6, 7, 5, 5, 6, 2, 7, 4, 6, 6, 3, 6, 6, 4, 5, 5, 5, 3, 3, 62]);
@@ -293,7 +291,7 @@ unittest
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 minutes)
     //verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    assert(countNodeInclusions(quorums_2, keys) ==
         [64, 7, 4, 3, 1, 4, 1, 7, 5, 3, 4, 7, 5, 5, 10, 3, 6, 4, 5, 6, 2, 5, 4,
          7, 5, 5, 8, 6, 6, 3, 7, 10, 4, 8, 7, 6, 4, 3, 4, 4, 6, 6, 3, 6, 7, 4,
          8, 3, 7, 7, 2, 10, 5, 7, 6, 4, 4, 4, 3, 8, 6, 3, 6, 61]);
@@ -310,7 +308,7 @@ unittest
     verifyQuorumsSanity(quorums_1);
     // not verified to work.
     //verifyQuorumsIntersect(quorums_1);
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    assert(countNodeInclusions(quorums_1, keys) ==
         [125, 7, 7, 9, 2, 8, 6, 4, 5, 4, 4, 3, 6, 3, 3, 3, 2, 6, 3, 3, 2, 3, 2,
          8, 4, 5, 6, 5, 7, 5, 3, 8, 4, 3, 8, 6, 3, 5, 7, 5, 4, 3, 2, 4, 3, 5, 8,
          3, 11, 3, 6, 6, 9, 4, 7, 8, 7, 4, 8, 7, 8, 5, 3, 4, 3, 5, 8, 6, 6, 3,
@@ -323,7 +321,7 @@ unittest
     verifyQuorumsSanity(quorums_2);
     // not verified to work.
     //verifyQuorumsIntersect(quorums_2);
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    assert(countNodeInclusions(quorums_2, keys) ==
         [122, 4, 8, 4, 10, 6, 3, 5, 5, 6, 7, 4, 6, 4, 4, 4, 3, 5, 6, 3, 4, 2,
          8, 6, 3, 3, 3, 5, 5, 8, 6, 3, 4, 7, 6, 8, 3, 4, 4, 4, 5, 6, 3, 4, 7,
          4, 7, 5, 2, 7, 3, 7, 5, 7, 3, 2, 5, 6, 5, 4, 7, 6, 2, 2, 4, 5, 6, 6,
@@ -341,9 +339,9 @@ unittest
         hashFull(1), qp_1, 18);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    quorums_1.byValue.each!(qc => test!"<="(qc.nodes.length, 4));
-    quorums_1.byValue.each!(qc => test!"=="(qc.threshold, 4));
-    test!"=="(countNodeInclusions(quorums_1, keys),
+    quorums_1.byValue.each!(qc => assert(qc.nodes.length <= 4));
+    quorums_1.byValue.each!(qc => assert(qc.threshold == 4));
+    assert(countNodeInclusions(quorums_1, keys) ==
         [3, 4, 5, 5, 3, 2, 6, 4, 2, 6]);
 
     QuorumParams qp_2 = { MaxQuorumNodes : 8, QuorumThreshold : 80 };
@@ -351,9 +349,9 @@ unittest
         hashFull(1), qp_2, 19);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    quorums_2.byValue.each!(qc => test!"<="(qc.nodes.length, 8));
-    quorums_2.byValue.each!(qc => test!"=="(qc.threshold, 7));
-    test!"=="(countNodeInclusions(quorums_2, keys),
+    quorums_2.byValue.each!(qc => assert(qc.nodes.length <= 8));
+    quorums_2.byValue.each!(qc => assert(qc.threshold == 7));
+    assert(countNodeInclusions(quorums_2, keys) ==
         [6, 9, 9, 7, 6, 9, 10, 8, 8, 8]);
 
     QuorumParams qp_3 = { MaxQuorumNodes : 8, QuorumThreshold : 60 };
@@ -361,9 +359,9 @@ unittest
         hashFull(1), qp_3, 20);
     verifyQuorumsSanity(quorums_3);
     verifyQuorumsIntersect(quorums_3);
-    quorums_3.byValue.each!(qc => test!"<="(qc.nodes.length, 8));
-    quorums_3.byValue.each!(qc => test!"=="(qc.threshold, 5));
-    test!"=="(countNodeInclusions(quorums_3, keys),
+    quorums_3.byValue.each!(qc => assert(qc.nodes.length <= 8));
+    quorums_3.byValue.each!(qc => assert(qc.threshold == 5));
+    assert(countNodeInclusions(quorums_3, keys),
         [9, 7, 6, 9, 8, 7, 10, 9, 5, 10]);
 }
 
@@ -393,9 +391,9 @@ private ulong toShortHash (in Hash hash) @trusted nothrow
 unittest
 {
     const hash1 = hashMulti(WK.Keys.A.address, 1);
-    test!"=="(toShortHash(hash1), 501230441541515792);
+    assert(toShortHash(hash1) == 501230441541515792);
     const hash2 = hashMulti(WK.Keys.A.address, 2);
-    test!"=="(toShortHash(hash2), 9723839611455071876);
+    assert(toShortHash(hash2) == 9723839611455071876);
 }
 
 /*******************************************************************************

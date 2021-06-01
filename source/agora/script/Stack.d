@@ -29,7 +29,6 @@ import std.range;
 
 version (unittest)
 {
-    import ocean.core.Test;
     import std.stdio;
 }
 
@@ -240,10 +239,10 @@ unittest
     assert(stack.used_bytes == 0);
     stack.push([1, 2, 3]);
     assert(stack.count() == 1);
-    test!"=="(stack.used_bytes, 3);
+    assert(stack.used_bytes == 3);
     stack.push([255]);
     assert(stack.count() == 2);
-    test!"=="(stack.used_bytes, 4);
+    assert(stack.used_bytes == 4);
     assert(stack.peek() == [255]);
     assert(stack.count() == 2);     // did not consume
     assert(stack.peek() == [255]);  // ditto
@@ -252,18 +251,18 @@ unittest
     // copies disabled: either use 'ref' or explicitly do a 'copy()'
     static assert(!is(typeof( { Stack nogo = stack; } )));
     Stack copy = stack.copy();
-    test!("==")(copy.StackMaxTotalSize, stack.StackMaxTotalSize);
-    test!("==")(copy.StackMaxItemSize, stack.StackMaxItemSize);
-    test!("==")(copy.stack.empty(), stack.stack.empty());
-    test!("==")(copy.num_items, stack.num_items);
-    test!("==")(copy.used_bytes, stack.used_bytes);
+    assert(copy.StackMaxTotalSize == stack.StackMaxTotalSize);
+    assert(copy.StackMaxItemSize == stack.StackMaxItemSize);
+    assert(copy.stack.empty() == stack.stack.empty());
+    assert(copy.num_items == stack.num_items);
+    assert(copy.used_bytes == stack.used_bytes);
     assert(stack.pop() == [255]);
     assert(stack.count() == 1);
-    test!"=="(stack.used_bytes, 3);
+    assert(stack.used_bytes == 3);
     assert(!stack.empty());
     assert(stack.pop() == [1, 2, 3]);
     assert(stack.count() == 0);
-    test!"=="(stack.used_bytes, 0);
+    assert(stack.used_bytes == 0);
     assert(stack.empty());
     assert(copy.count() == 2);     // did not consume copy
     assert(copy.used_bytes == 4);  // ditto
