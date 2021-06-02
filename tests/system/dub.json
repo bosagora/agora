@@ -2,7 +2,7 @@
     "name": "systemtest-simple",
     "targetType": "executable",
     "targetPath": "build",
-    "dflags": [ "-i", "-preview=in" ],
+    "dflags": [ "-i", "-preview=in", "-revert=dtorfields" ],
     "libs-posix": [ "sodium", "sqlite3" ],
     "libs-windows": [ "libsodium", "libsqlite3" ],
     "versions":

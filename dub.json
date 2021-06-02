@@ -66,7 +66,7 @@
         "source/scpp/build/uint128_t.obj"
     ],
 
-    "dflags": [ "-extern-std=c++14", "-preview=in" ],
+    "dflags": [ "-extern-std=c++14", "-preview=in", "-revert=dtorfields" ],
     "lflags-posix": [ "-lstdc++", "-lsqlite3" ],
     "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],
     "lflags-linux": [ "--export-dynamic" ],
@@ -209,16 +209,16 @@
     ],
 
     "dependencies": {
-        "barcode":          { "version": "*", "dflags" : ["-preview=in"] },
-        "base32":           { "version": "*", "dflags" : ["-preview=in"] },
-        "bitblob":          { "version": "*", "dflags" : ["-preview=in"] },
-        "crypto":           { "version": "*", "dflags" : ["-preview=in"] },
-        "d2sqlite3":        { "version": "*", "dflags" : ["-preview=in"] },
-        "dyaml":            { "version": "*", "dflags" : ["-preview=in"] },
-        "libsodiumd":       { "version": "*", "dflags" : ["-preview=in"] },
-        "localrest":        { "version": "*", "dflags" : ["-preview=in"] },
-        "ocean":            { "version": "*", "dflags" : ["-preview=in"] },
-        "serialization":    { "version": "*", "dflags" : ["-preview=in"] },
-        "vibe-d":           { "version": "*", "dflags" : ["-preview=in"] }
+        "barcode":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "base32":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "bitblob":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "crypto":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "d2sqlite3":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "dyaml":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "libsodiumd":       { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "localrest":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "ocean":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "serialization":    { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "vibe-d":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] }
     }
 }
