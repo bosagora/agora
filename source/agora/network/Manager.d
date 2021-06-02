@@ -114,9 +114,10 @@ public class NetworkManager
 
         ***********************************************************************/
 
-        public this (in Address address,
+        public this (Address address,
             void delegate (scope ref NodeConnInfo node) onHandshakeComplete,
             bool delegate (in Address address) onFailedRequest)
+            @safe pure nothrow @nogc
         {
             this.address = address;
             this.onHandshakeComplete = onHandshakeComplete;
@@ -129,7 +130,7 @@ public class NetworkManager
 
         ***********************************************************************/
 
-        public void start ()
+        public void start () nothrow
         {
             this.outer.taskman.runTask(&this.connect);
         }
@@ -148,7 +149,17 @@ public class NetworkManager
 
         ***********************************************************************/
 
-        private void connect ()
+        private void connect () nothrow
+        {
+            try
+                this.connect_canthrow();
+            catch (Exception exc)
+                log.error("Unexpected exception while contacting {}: {}",
+                          this.address, exc);
+        }
+
+        /// Ditto, just behind a trampoline to avoid function-wide try/catch
+        private void connect_canthrow ()
         {
             auto client = this.outer.getNetworkClient(this.outer.taskman,
                 this.outer.banman, this.address,
@@ -289,7 +300,7 @@ public class NetworkManager
 
         ***********************************************************************/
 
-        public void run ()
+        public void run () nothrow
         {
             if (!this.is_running)
             {
@@ -320,7 +331,7 @@ public class NetworkManager
 
         ***********************************************************************/
 
-        private void getNewAddresses ()
+        private void getNewAddresses () nothrow
         {
             while (1)
             {
@@ -631,7 +642,7 @@ public class NetworkManager
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
-    public void discover (Set!PublicKey required_peer_keys = Set!PublicKey.init)
+    public void discover (Set!PublicKey required_peer_keys = Set!PublicKey.init) nothrow
     {
         log.info("Doing network discovery..");
 
@@ -679,7 +690,7 @@ public class NetworkManager
 
         /// Returns: true if we should keep trying to connect to an address,
         /// else false if the address was banned
-        bool onFailedRequest (in Address address)
+        bool onFailedRequest (in Address address) nothrow
         {
             if (this.banman.isBanned(address))
             {
