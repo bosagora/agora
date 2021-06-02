@@ -439,7 +439,7 @@ public class FullNode : API
     protected void startPeriodicDiscovery ()
     {
         this.taskman.runTask(
-        ()
+        () nothrow
         {
             void discover () { this.network.discover(); }
             discover(); // avoid delay

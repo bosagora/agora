@@ -53,7 +53,7 @@ public abstract class ITaskManager
 
     ***************************************************************************/
 
-    public abstract void runTask (void delegate() dg) nothrow;
+    public abstract void runTask (void delegate () nothrow dg) nothrow;
 
     /***************************************************************************
 

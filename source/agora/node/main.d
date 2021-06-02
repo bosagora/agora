@@ -172,7 +172,25 @@ private int main (string[] args)
     }
     scope(exit) file_based_lock.unlock();
 
-    runTask(() => listeners = runNode(config.get()));
+    runTask(
+        () nothrow {
+            try
+                listeners = runNode(config.get());
+            catch (Exception exc)
+            {
+                try
+                    writeln("Agora initialization failed! The following Exception might help: ", exc);
+                catch (Exception nexc)
+                {
+                    printf("FATAL ERROR: Agora initialization failed: %.*s\n",
+                           cast(int) exc.msg.length, exc.msg.ptr);
+                    printf("This error was followed by: %*.s\n",
+                           cast(int) nexc.msg.length, nexc.msg.ptr);
+                }
+                printf("Terminating event loop...\n");
+                exitEventLoop();
+            }
+        });
     scope (exit)
     {
         // Note: Listener could be default-initialized, in which case all checks

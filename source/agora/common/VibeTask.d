@@ -24,7 +24,7 @@ import core.time;
 public final class VibeTaskManager : ITaskManager
 {
     ///
-    public override void runTask (void delegate() dg) nothrow
+    public override void runTask (void delegate() nothrow dg) nothrow
     {
         this.tasks_started++;
         vibe.core.core.runTask(dg);
