@@ -58,7 +58,7 @@ public struct Set (T)
     }
 
     /// Walk over all elements and call dg(elem)
-    public int opApply (scope int delegate(T) @safe dg) @safe
+    private int opApplyImpl (DGT) (scope DGT dg)
     {
         foreach (key; this._set.byKey)
         {
@@ -72,7 +72,25 @@ public struct Set (T)
     /// Ditto
     public int opApply (scope int delegate(T) dg)
     {
-        return this.opApply( cast(int delegate(T) @safe) dg);
+        return this.opApplyImpl(dg);
+    }
+
+    /// Ditto
+    public int opApply (scope int delegate(T) @safe dg) @safe
+    {
+        return this.opApplyImpl(dg);
+    }
+
+    /// Ditto
+    public int opApply (scope int delegate(T) nothrow dg) nothrow
+    {
+        return this.opApplyImpl(dg);
+    }
+
+    /// Ditto
+    public int opApply (scope int delegate(T) @safe nothrow dg) @safe nothrow
+    {
+        return this.opApplyImpl(dg);
     }
 
     /// Build a new Set out of the provided range
