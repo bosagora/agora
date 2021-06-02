@@ -30,6 +30,7 @@ import vibe.core.core;
 import vibe.http.server;
 import vibe.http.router;
 import vibe.web.rest;
+import vibe.stream.tls;
 
 import std.algorithm : filter;
 import std.file;
@@ -128,6 +129,7 @@ public Listeners runNode (Config config)
 
     setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
 
+    auto tls_ctx = getTLSContext();
     if (result.admin !is null)
     {
         log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
@@ -135,6 +137,7 @@ public Listeners runNode (Config config)
         adminrouter.registerRestInterface(result.admin);
         auto settings = new HTTPServerSettings(config.admin.address);
         settings.port = config.admin.port;
+        settings.tlsContext = tls_ctx;
         result.http ~= listenHTTP(settings, adminrouter);
     }
 
@@ -144,6 +147,7 @@ public Listeners runNode (Config config)
         auto settings = new HTTPServerSettings(interface_.address);
         settings.port = interface_.port;
         settings.rejectConnectionPredicate = isBannedDg;
+        settings.tlsContext = tls_ctx;
         log.info("Node will be listening on HTTP interface: {}:{}", interface_.address, settings.port);
         result.http ~= listenHTTP(settings, router);
     }
@@ -200,4 +204,48 @@ private void setVibeLogLevel (ILogger.Level level) @safe
         setLogLevel(LogLevel.none);
         break;
     }
+}
+
+/*******************************************************************************
+
+    Search multiple paths for SSL certificate and create the TLS context
+
+    Returns:
+        TLS context
+
+*******************************************************************************/
+
+private TLSContext getTLSContext ()
+{
+    const cert_file = "agora-cert.pem";
+    const cert_search_paths = [
+        "./",
+        "/etc/ssl/certs/",
+        "/etc/pki/tls/certs/",
+    ];
+
+    const key_file = "agora-key.pem";
+    const key_search_paths = [
+        "./",
+        "/etc/ssl/private/",
+        "/etc/pki/tls/private/",
+    ];
+
+    TLSContext ctx;
+    foreach (idx; 0 .. cert_search_paths.length)
+    {
+        const cert_path = cert_search_paths[idx] ~ cert_file;
+        const key_path = key_search_paths[idx] ~ key_file;
+
+        // Enable TLS
+        if (exists(cert_path) && exists(key_path))
+        {
+            ctx = createTLSContext(TLSContextKind.server);
+            ctx.useCertificateChainFile(cert_path);
+            ctx.usePrivateKeyFile(key_path);
+            break;
+        }
+    }
+
+    return ctx;
 }
