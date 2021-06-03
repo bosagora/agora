@@ -940,8 +940,11 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Retrieve blocks starting from height up to the highest block
-        that's available from the connected nodes.
+        Try to retrieve TXs that this node does not have in its pool but
+        have seen the hash in nominations
+
+        Params:
+            ledger = Ledger instance
 
     ***************************************************************************/
 
