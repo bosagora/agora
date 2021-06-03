@@ -35,6 +35,7 @@ import agora.common.Task;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -390,7 +391,7 @@ public class NetworkManager
     protected Set!Address connected_peers;
 
     /// Keeps track of Validator keys we're already connected to
-    private Set!PublicKey connected_validator_keys;
+    private Set!Hash connected_validator_keys;
 
     /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
@@ -401,10 +402,10 @@ public class NetworkManager
     /// For a Validator, NodeInfo.state will be Complete only
     /// if it has connected to all of its quorum peers.
     /// See 'minPeersConnected'
-    private Set!PublicKey required_peer_keys;
+    private Set!Hash required_peers;
 
     /// Current quorum set
-    private Set!PublicKey quorum_set_keys;
+    private Set!Hash quorum_set_keys;
 
     /// Address ban manager
     protected BanManager banman;
@@ -470,8 +471,8 @@ public class NetworkManager
 
         if (node.is_validator)
         {
-            this.required_peer_keys.remove(node.key);
-            this.connected_validator_keys.put(node.key);
+            this.required_peers.remove(node.utxo);
+            this.connected_validator_keys.put(node.utxo);
         }
 
         this.discovery_task.add(node.client);
@@ -597,7 +598,7 @@ public class NetworkManager
 
         foreach (node; this.validators())
         {
-            if (node.key !in this.quorum_set_keys)
+            if (node.utxo !in this.quorum_set_keys)
                 continue;
 
             const req_start = this.clock.localTime();
@@ -642,19 +643,25 @@ public class NetworkManager
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
-    public void discover (Set!PublicKey required_peer_keys = Set!PublicKey.init) nothrow
+    public void discover (UTXO[Hash] required_peer_utxos = null) nothrow
     {
         log.info("Doing network discovery..");
 
-        this.quorum_set_keys = required_peer_keys;
-        this.required_peer_keys = Set!PublicKey.from(
-            required_peer_keys.byKey()
-            .filter!(key => key !in this.connected_validator_keys));
+        this.quorum_set_keys.from(Set!Hash.init);
+        this.required_peers.from(Set!Hash.init);
 
-        if (this.registry_client !is null)
+        foreach (peer; required_peer_utxos.byKeyValue)
         {
-            foreach (key; this.required_peer_keys)
+            this.quorum_set_keys.put(peer.key);
+            if (peer.key !in this.connected_validator_keys)
+                this.required_peers.put(peer.key);
+        }
+
+        if (this.registry_client !is null && required_peer_utxos !is null)
+        {
+            foreach (peer; required_peer_utxos.byKeyValue)
             {
+                auto key = peer.value.output.address;
                 // Do not query the registry about ourself
                 if (key == this.validator_config.key_pair.address)
                     continue;
@@ -1063,13 +1070,13 @@ public class NetworkManager
     ///
     private bool minPeersConnected ()  pure nothrow @safe
     {
-        return this.required_peer_keys.length == 0 &&
+        return this.required_peers.length == 0 &&
             this.peers[].walkLength >= this.node_config.min_listeners;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
-        return this.required_peer_keys.length == 0 &&
+        return this.required_peers.length == 0 &&
             this.peers[].filter!(node =>
                 !this.banman.isBanned(node.client.address)).count >= this.node_config.max_listeners;
     }

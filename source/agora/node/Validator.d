@@ -63,8 +63,8 @@ public class Validator : FullNode, API
     /// Nominator instance
     protected Nominator nominator;
 
-    /// The current required set of peer keeys to connect to
-    protected Set!PublicKey required_peer_keys;
+    /// The current required set of peers UTXOs to connect to
+    protected UTXO[Hash] required_peer_utxos;
 
     /// Currently active quorum configuration
     protected QuorumConfig qc;
@@ -137,11 +137,23 @@ public class Validator : FullNode, API
             return;
         }
 
+        // We get the enrollment key for this validator.
+        auto this_utxo = this.enroll_man.getEnrollmentKey();
+
+        Hash[] utxo_keys;
+        // We add one to height as we are interested in enrolled at next block
+        if (!this.enroll_man.getEnrolledUTXOs(height + 1, utxo_keys) ||
+            utxo_keys.length == 0)
+        {
+            log.fatal("Could not retrieve enrollments / no enrollments found");
+            assert(0);
+        }
+
         static QuorumConfig[] other_qcs;
-        this.rebuildQuorumConfig(this.qc, other_qcs, height);
+        this.rebuildQuorumConfig(this.qc, other_qcs, this_utxo, utxo_keys, height);
         this.nominator.setQuorumConfig(this.qc, other_qcs);
-        buildRequiredKeys(this.config.validator.key_pair.address, this.qc,
-            this.required_peer_keys);
+        buildRequiredKeys(this_utxo, this.qc, utxo_keys,
+            &this.utxo_set.peekUTXO, this.required_peer_utxos);
 
         if (this.started)
             this.nominator.startNominatingTimer();
@@ -155,22 +167,18 @@ public class Validator : FullNode, API
         Params:
             qc = will contain the quorum configuration
             other_qcs = will contain the list of other nodes' quorum configs.
+            filter_utxo = the UTXO to filter out (UTXO of the self node)
+            utxos = The UTXO hashes of all the validators
             height = current block height
 
     ***************************************************************************/
 
     private void rebuildQuorumConfig (ref QuorumConfig qc,
-        ref QuorumConfig[] other_qcs, Height height) nothrow @safe
+        ref QuorumConfig[] other_qcs, in Hash filter_utxo, in Hash[] utxos,
+        Height height) nothrow @safe
     {
         import std.algorithm;
-
-        Hash[] keys;
-        // We add one to height as we are interested in enrolled at next block
-        if (!this.enroll_man.getEnrolledUTXOs(height + 1, keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
+        import std.array;
 
         try
         {
@@ -182,16 +190,18 @@ public class Validator : FullNode, API
                 this.ledger.getLastBlock().header.random_seed :
                 this.ledger.getBlocksFrom(height).front.header.random_seed;
             qc = buildQuorumConfig(this.config.validator.key_pair.address,
-                keys, this.utxo_set.getUTXOFinder(), rand_seed,
+                utxos, this.utxo_set.getUTXOFinder(), rand_seed,
                 this.quorum_params);
-            auto pub_keys = this.getEnrolledPublicKeys(keys);
+
             other_qcs.length = 0;
             () @trusted { assumeSafeAppend(other_qcs); }();
 
-            foreach (pub_key; pub_keys.filter!(
-                pk => pk != this.config.validator.key_pair.address))  // skip our own
+            foreach (utxo; utxos.filter!(
+                utxo => utxo != filter_utxo))  // skip our own
             {
-                other_qcs ~= buildQuorumConfig(pub_key, keys,
+                UTXO utxo_value;
+                assert(this.utxo_set.peekUTXO(utxo, utxo_value));
+                other_qcs ~= buildQuorumConfig(utxo_value.output.address, utxos,
                     this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
             }
         }
@@ -256,7 +266,7 @@ public class Validator : FullNode, API
     /// Ditto
     protected override void discoveryTask ()
     {
-        this.network.discover(this.required_peer_keys);
+        this.network.discover(this.required_peer_utxos);
     }
 
     /// GET /public_key
@@ -498,23 +508,30 @@ public class Validator : FullNode, API
         Supports recalling `sub_quorums` config structures.
 
         Params:
-            filter = the key to filter out (the self node)
+            filter_utxo = the UTXO to filter out (UTXO of the self node)
             quorum_conf = The SCP quorum set configuration
+            utxos = The UTXO hashes of all the validators
+            peekUTXO = An `UTXOFinder` without replay-protection
             nodes = Will contain the set of public keys to connect to
 
     ***************************************************************************/
 
-    private static void buildRequiredKeys (in PublicKey filter,
-        in QuorumConfig quorum_conf, ref Set!PublicKey nodes) @safe nothrow
+    private static void buildRequiredKeys (in Hash filter_utxo,
+        in QuorumConfig quorum_conf, in Hash[] utxos,
+        scope UTXOFinder peekUTXO, ref UTXO[Hash] nodes)
+        @safe nothrow
     {
-        foreach (node; quorum_conf.nodes)
+        import std.algorithm;
+
+        foreach (utxo; utxos.filter!(utxo => utxo != filter_utxo))
         {
-            if (node != filter)
-                nodes.put(node);
+            UTXO utxo_value;
+            assert(peekUTXO(utxo, utxo_value));
+            nodes[utxo] = utxo_value;
         }
 
         foreach (sub_conf; quorum_conf.quorums)
-            buildRequiredKeys(filter, sub_conf, nodes);
+            buildRequiredKeys(filter_utxo, sub_conf, utxos, peekUTXO, nodes);
     }
 
     /***************************************************************************
