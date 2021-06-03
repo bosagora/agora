@@ -161,7 +161,8 @@ public struct LoggerConfig
     public Ocean.Level level;
 
     /// Whether to propagate that level to the children
-    public bool propagate;
+    /// Default to `true` as this is the expected behavior for most users
+    public bool propagate = true;
 
     /// Whether to use console output or not
     public bool console;
