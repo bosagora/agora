@@ -141,13 +141,6 @@ CPPOBJECTINST(std::set<PublicKey>);
 CPPOBJECTINST(std::set<SCPBallot>);
 CPPOBJECTINST(std::set<unsigned int>);
 
-CPPOBJECTINST(std::vector<unsigned char>);
-CPPOBJECTINST(std::vector<Value>);
-CPPOBJECTINST(std::vector<PublicKey>);
-CPPOBJECTINST(std::vector<SCPQuorumSet>);
-CPPOBJECTINST(std::vector<SCPEnvelope>);
-CPPOBJECTINST(std::vector<Slot::HistoricalStatement>);
-
 #define CPPUNIQUEPTRINST(T) CPPDEFAULTCTORINST(std::unique_ptr<T>) \
                             CPPDTORINST(std::unique_ptr<T>)        \
                             CPPSIZEOFINST(std::unique_ptr<T>)

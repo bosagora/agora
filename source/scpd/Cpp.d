@@ -37,46 +37,44 @@ import vibe.data.json;
 public enum CppCtor { Use = 0 }
 
 extern(C++) {
-@trusted nothrow @nogc pure:
-    void defaultCtorCPPObject(T) (inout(T)* ptr);
-    void dtorCPPObject(T) (inout(T)* ptr);
-    void opAssignCPPObject(T) (inout(T)* lhs, inout(T)* rhs);
-    void copyCtorCPPObject(T) (inout(T)* ptr, inout(T)* rhs);
+@trusted nothrow @nogc:
+    void defaultCtorCPPObject(T) (T* ptr);
+    void dtorCPPObject(T) (T* ptr);
+    void opAssignCPPObject(T) (T* lhs, T* rhs);
+    void copyCtorCPPObject(T) (T* ptr, inout(T)* rhs);
+    void copyCtorCPPObject(T) (immutable(T)* ptr, inout(T)* rhs);
     int getCPPSizeof(T) ();
 }
 
-public mixin template CPPBindingMixin (T, bool Copyable = true, bool DefaultConstructable = false)
+private mixin template CPPBindingMixin (T, bool Copyable = true, bool DefaultConstructable = false)
 {
     extern(D)
     {
-        import std.traits : Fields, FieldNameTuple;
-
-        static if (!DefaultConstructable) 
-            @disable this ();
-
-        this (CppCtor use) inout @trusted nothrow @nogc pure
+        static if (!DefaultConstructable) @disable this();
+        this (CppCtor use) @trusted nothrow @nogc
         {
             defaultCtorCPPObject!T(&this);
         }
 
-        ~this () inout @trusted nothrow @nogc pure
+        ~this () @trusted nothrow @nogc
         {
             dtorCPPObject!T(&this);
         }
 
         static if (Copyable)
-        this (ref return scope inout T rhs) inout @trusted nothrow @nogc pure
+        this (ref return scope inout T rhs) @trusted nothrow @nogc
         {
-            static const _dummy = false;
-            // Without this, compiler thinks we are not initializing anything
-            if (_dummy)
-                static foreach (field; FieldNameTuple!T)
-                    __traits(getMember, this, field) = __traits(getMember, this, field).init;
             copyCtorCPPObject!T(&this, &rhs);
         }
 
         static if (Copyable)
-        void opAssign()(auto ref inout(T) rhs) inout @trusted nothrow @nogc pure
+        this (ref return scope inout T rhs) immutable @trusted nothrow @nogc
+        {
+            copyCtorCPPObject!T(&this, &rhs);
+        }
+
+        static if (Copyable)
+        void opAssign()(auto ref T rhs) @trusted nothrow @nogc
         {
             opAssignCPPObject!T(&this, &rhs);
         }
@@ -322,8 +320,6 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
 
     alias ElementType = T;
 
-    mixin CPPBindingMixin!(vector, true, true);
-
     extern(D)
     {
         /// TODO: Separate from `vector` definition
@@ -387,9 +383,9 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             // note: cannot do 'return this.innerSets[] == rhs.innerSets[];'
             // object.d(358,64): Error: `cast(const(vector))(cast(const(vector)*)r)[i]`
             // is not an lvalue and cannot be modified
-            foreach (idx; 0 .. this.length)
+            foreach (const ref left, const ref right; zip(this[], rhs[]))
             {
-                if (this[idx] != rhs[idx])
+                if (left != right)
                     return false;
             }
 
@@ -456,7 +452,7 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             return () @trusted { return cast(QT) ret; }();
         }
 
-        public void push_back (ref T value) inout @trusted pure nothrow @nogc
+        public void push_back (ref T value) @trusted pure nothrow @nogc
         {
             import Utils = scpd.types.Utils;
             import scpd.types.XDRBase;
@@ -487,10 +483,8 @@ unittest
     iota(5).each!((num) {ubyte b = cast(ubyte)num; vec_ubyte.push_back(b);});
     auto serialized = vec_ubyte.toString();
     assert(serialized == `"AAECAwQ="`, "actual serialized: " ~ serialized);
-    vector!ubyte deserialized = vec_ubyte.fromString(serialized);
-    assert(deserialized[] == [0, 1, 2, 3, 4], "actual deserialized: " ~ to!string(deserialized));
-    vector!ubyte vec_copy = deserialized;
-    assert(vec_copy._start != deserialized._start);
+    auto deserialized = vec_ubyte.fromString(serialized)[];
+    assert(deserialized == [0, 1, 2, 3, 4], "actual deserialized: " ~ to!string(deserialized));
 }
 
 unittest

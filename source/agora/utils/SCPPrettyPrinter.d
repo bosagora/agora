@@ -516,8 +516,8 @@ unittest
     testAssert(PrepareRes4, scpPrettify(&env, &getQSet));
 
     /** SCP CONFIRM */
-    env.statement.pledges = env.statement.pledges.init;
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
+    env.statement.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; // must initialize
     env.statement.pledges.confirm_.ballot = ballot;
     env.statement.pledges.confirm_.nPrepared = 42;
     env.statement.pledges.confirm_.nCommit = 100;
@@ -550,8 +550,8 @@ unittest
     static immutable ExtRes3 = `{ statement: { node: boa1xzval2a3...gsh2, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x7b56...bd2a, quorum: { thresh: 2, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0000...be78 }`;
 
     /** SCP EXTERNALIZE */
-    env.statement.pledges = env.statement.pledges.init;
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
+    env.statement.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; // must initialize
     env.statement.pledges.externalize_.commit = ballot;
     env.statement.pledges.externalize_.nH = 100;
 
@@ -572,8 +572,8 @@ unittest
     static immutable NomRes2 = `{ statement: { node: boa1xzval2a3...gsh2, slotIndex: 0, pledge: Nominate { qset: { hash: 0x7b56...bd2a, quorum: <unknown> }, votes: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }], accepted: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }] } }, sig: 0x0000...be78 }`;
 
     /** SCP NOMINATE */
-    env.statement.pledges = env.statement.pledges.init;
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
+    env.statement.pledges.nominate_ = SCPNomination.init; // must initialize
 
     auto value = cd.serializeFull[].toVec();
 
