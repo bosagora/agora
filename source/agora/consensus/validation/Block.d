@@ -125,6 +125,9 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
         Enrollment.MinValidatorCount)
         return "Block: Insufficient number of active validators";
 
+    if (!block.header.missing_validators.isStrictlyMonotonic())
+        return "Block: Header's missing_validator field is not sorted";
+
     if (!block.txs.isSorted())
         return "Block: Transactions are not sorted";
 
