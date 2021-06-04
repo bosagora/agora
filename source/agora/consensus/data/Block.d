@@ -551,34 +551,6 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     return block;
 }
 
-/***************************************************************************
-
-    Create the block random seed from the provided pre-images
-
-    It might be that not all validators provide their `pre-image` and in
-    that case the length of the preimages can be less than the number of
-    active validators.
-
-    Params:
-        preimages = preimages sorted by the utxo keys of the validators
-
-    Returns:
-        Hash of all provided pre-images or Hash.init if an exception is thrown
-
-***************************************************************************/
-
-
-public static Hash createRandomSeed (Preimages)(Preimages preimages) @safe
-in
-{
-    static assert (isInputRange!Preimages);
-}
-do
-{
-    assert(preimages.count != 0);
-    return preimages.reduce!((a , b) => hashMulti(a, b));
-}
-
 /// only used in unittests with some defaults
 version (unittest)
 {
@@ -597,7 +569,7 @@ version (unittest)
         assert(revealed.length == key_pairs.length - missing_validators.length);
         try
         {
-            Hash random_seed = createRandomSeed(pre_images);
+            Hash random_seed = pre_images.reduce!((a, b) => hashMulti(a, b));
 
             // the time_offset passed to makeNewBlock should really be
             // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
