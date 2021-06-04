@@ -24,6 +24,7 @@ module update;
 
 import std.algorithm : among;
 static import std.file;
+import std.format;
 import std.path;
 import std.process;
 import std.stdio;
@@ -140,9 +141,11 @@ Action askSingle (const(char)[] question)
 bool updateFile (string source, string target)
 {
     if (!std.file.exists(target) || !std.file.isFile(target))
-        return !fail("Error: %s does not exists or is not a file", target);
+        return ask(format("Target file '%s' does not exists or is not a file, skip it and continue", target))
+            == Action.Yes;
     if (!std.file.exists(source) || !std.file.isFile(source))
-        return !fail("Error: %s does not exists or is not a file", source);
+        return ask(format("Origin file '%s' does not exists or is not a file, skip it and continue", target))
+            == Action.Yes;
 
     auto pid = executeShell("diff " ~ target ~ " " ~ source ~ " | " ~ ColorDiff);
     if (pid.status != 0)
