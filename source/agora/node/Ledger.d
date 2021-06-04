@@ -922,26 +922,46 @@ public class Ledger
                 preimages for the height
 
         Returns:
-            the random seed if there are one or more valid preimages,
-            otherwise Hash.init.
+            The random seed for all validators not in `missing_validators`
+
+        Throws:
+            If some pre-images are not known.
 
     ***************************************************************************/
 
-    public Hash getRandomSeed (in Height height,
-        in uint[] missing_validators) @safe
+    public Hash getRandomSeed (in Height height, in uint[] missing_validators)
+        @safe
     {
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
-        Hash[] valid_keys;
-        foreach (idx, key; keys)
+        // A case where a > b should never happen, but better be conservative
+        if (missing_validators.length >= keys.length)
+            throw new Exception("Ledger.getRandomSeed() called with all-missing validators");
+
+        // Safety check, as the order will affect `missing_validators`
+        assert(missing_validators.isStrictlyMonotonic());
+        assert(keys.isStrictlyMonotonic!((a, b) => a < b));
+
+        Hash getPreimage (Hash key)
         {
-            if (!missing_validators.canFind(idx))
-                valid_keys ~= key;
+            const preimage = this.enroll_man.validator_set.getPreimageAt(key, height);
+            if (preimage == PreImageInfo.init)
+            {
+                log.error("No preimage at height {} for validator key {}", height, key);
+                throw new Exception("Ledger is missing pre-images required for the random seed");
+            }
+            return preimage.hash;
         }
 
-        return this.enroll_man.getRandomSeed(valid_keys, height);
+        return keys
+            // Filter out entries in `missing_validators`
+            .enumerate.filter!(en => !missing_validators.canFind(en.index))
+            // Lookup
+            .map!(en => getPreimage(en.value))
+            // Generate the final value
+            .reduce!((a , b) => hashMulti(a, b));
     }
 
     /***************************************************************************

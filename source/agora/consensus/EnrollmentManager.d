@@ -579,46 +579,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Generate the random seed reduced from the preimages for the provided
-        block height.
-
-        Params:
-            keys = the utxo keys to look up (must be sorted)
-            height = the desired block height to look up the images for
-
-        Returns:
-            the random seed
-
-    ***************************************************************************/
-
-    public Hash getRandomSeed (Keys)(Keys keys, in Height height) @safe
-    in
-    {
-        static assert (isInputRange!Keys);
-        static assert (is(ElementType!Keys : Hash));
-        assert(keys.length != 0);
-        assert(keys.isStrictlyMonotonic!((a, b) => a < b));
-    }
-    do
-    {
-        Hash getPreimage (Hash key)
-        {
-            const preimage = this.validator_set.getPreimageAt(key, height);
-            // We could have a misbehaving validator that does not reveal
-            // its preimages in real world. In order to deal with the validator,
-            // We implement the slashing protocol.
-            if (preimage == PreImageInfo.init)
-            {
-                log.info("No preimage at height {} for validator key {}", height.value, key);
-            }
-            return preimage.hash;
-        }
-
-        return createRandomSeed(keys.map!(key => getPreimage(key)).filter!(p => p != Hash.init));
-    }
-
-    /***************************************************************************
-
         Get validator's pre-image from the validator set.
 
         Params:
@@ -1341,16 +1301,6 @@ unittest
 
         assert(man.addPreimage(preimage));
     }
-
-    utxos.sort();  // must be sorted by enrollment key
-    assert(man.getRandomSeed(utxos, Height(1)) ==
-        Hash(`0xe22f972c54cc95ccce9595561005b76da44260c3943880a4fa8919c5d3d9c9aecdd0c92429a46402f59a26a137de9007fe8232b5f471cf9b0e5410e21554348f`));
-
-    assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle / 2)) ==
-        Hash(`0x006752a88c7c5fa1ef921d717e98a8dc6fdc1250485ed08b7f35cb30ebec7f0d8459cfd0eb67342a8144e81910d1a85b36390f8369e3a5cdde0ad0569d64d607`));
-
-    assert(man.getRandomSeed(utxos, Height(params.ValidatorCycle)) ==
-        Hash(`0x2367765f757f438eb7c47413b5078305830bcdc19bf6fe28d5400d69a8275b68231b8a9c7fdf773b3e314af3172f5810d246b1c70a8d477d8adb8becdfb74dde`));
 }
 
 // Tests for get/set a enrollment key
