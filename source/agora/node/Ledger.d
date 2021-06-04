@@ -747,9 +747,9 @@ public class Ledger
                 this.enroll_man.validator_set.countActive(block.header.height + 1),
                 this.last_block.header.time_offset,
                 cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
-                block_time_offset_tolerance,
-                &this.getCoinbaseTX))
+                block_time_offset_tolerance))
             return reason;
+
         try
         {
             if (block.header.random_seed != this.getRandomSeed(block.header.height, block.header.missing_validators))
@@ -760,6 +760,11 @@ public class Ledger
             this.log.error("validateBlock: Exception thrown by getRandomSeed while externalizing valid block: {}", exc);
             return "Internal error: Could not calculate random seed at current height";
         }
+
+        auto expected_cb_txs = this.getCoinbaseTX(block.txs, block.header.missing_validators);
+        auto incoming_cb_txs = block.txs.filter!(tx => tx.isCoinbase);
+        if (!isPermutation(expected_cb_txs, incoming_cb_txs))
+            return "Invalid Coinbase transaction";
 
         // Finally, validate the signatures
         return this.validateBlockSignature(block);

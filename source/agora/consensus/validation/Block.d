@@ -85,8 +85,6 @@ version (unittest)
         curr_time_offset = the current time offset
         block_time_tolerance = the proposed block time offset should be less
                 than curr_time_offset + block_time_tolerance
-        getCoinbaseTX = delegate to get the expected Coinbase TX for a given TX
-            set
 
     Returns:
         `null` if the block is valid, a string explaining the reason it
@@ -97,9 +95,8 @@ version (unittest)
 public string isInvalidReason (in Block block, Engine engine, Height prev_height,
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
     scope EnrollmentFinder findEnrollment, size_t active_validators_next_block,
-    ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance,
-    Transaction[] delegate (in Transaction[] tx_set, in uint[] missing_validators)
-                               nothrow @safe getCoinbaseTX) nothrow @safe
+    ulong prev_time_offset, ulong curr_time_offset, Duration block_time_tolerance)
+    @safe nothrow
 {
     import std.algorithm;
     import std.string;
@@ -142,12 +139,6 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
 
     if (only_coinbase)
         return "Block: Must contain other transactions than Coinbase";
-
-    auto expected_cb_txs = getCoinbaseTX(block.txs,
-        block.header.missing_validators);
-    auto incoming_cb_txs = block.txs.filter!(tx => tx.isCoinbase);
-    if (!isPermutation(expected_cb_txs, incoming_cb_txs))
-        return "Invalid Coinbase transaction";
 
     Hash[] merkle_tree;
     if (block.header.merkle_root != Block.buildMerkleTree(block.txs, merkle_tree))
@@ -619,11 +610,7 @@ version (unittest)
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
             checkFee, findEnrollment, enrolled_validators,
             prev_time_offset, (curr_time_offset == ulong.max) ? block.header.time_offset : curr_time_offset,
-            block_time_tolerance,
-            (in Transaction[] tx_set, in uint[] missing_validators)
-            {
-                return (Transaction[]).init;
-            });
+            block_time_tolerance);
     }
 
     /// Helper function that will log the reason if the block turns out
