@@ -524,9 +524,11 @@ public class FullNode : API
         if (this.ledger.acceptBlock(block))
         {
             this.recordBlockStats(block);
-            ex_validators.each!(ex => this.network.unwhitelist(ex.pubkey));
-            PublicKey[] active_validators = this.enroll_man.getActiveValidatorPublicKeys(block.header.height);
-            active_validators.each!(ex => this.network.whitelist(ex));
+            ex_validators.each!(ex => this.network.unwhitelist(ex.utxo));
+            Hash[] active_validators;
+            assert(this.enroll_man.getEnrolledUTXOs(block.header.height,
+                active_validators));
+            active_validators.each!(utxo => this.network.whitelist(utxo));
         }
         // We return if height in ledger is reached for this block to prevent fetching again
         return this.ledger.getBlockHeight() >= block.header.height;

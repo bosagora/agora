@@ -1266,31 +1266,31 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Whitelist a PublicKey to avoid banning it
+        Whitelist a Hash of a UTXO to avoid banning it
 
         Params:
-            key = the PublicKey to whitelist
+            hash = the Hash of the UTXO to whitelist
 
     ***************************************************************************/
 
-    public void whitelist (PublicKey key)
+    public void whitelist (Hash utxo)
     {
-        this.peers[].filter!(p => p.key == key)
+        this.peers[].filter!(p => p.utxo == utxo)
             .each!(p => this.banman.whitelist(p.client.address));
     }
 
     /***************************************************************************
 
-        Unwhitelist a PublicKey to allow banning it
+        Unwhitelist a Hash of a UTXO to allow banning it
 
         Params:
-            key = the PublicKey to unwhitelist
+            key = hash = the Hash of the UTXO to unwhitelist
 
     ***************************************************************************/
 
-    public void unwhitelist (PublicKey key)
+    public void unwhitelist (Hash utxo)
     {
-        this.peers[].filter!(p => p.key == key)
+        this.peers[].filter!(p => p.utxo == utxo)
             .each!(p => this.banman.unwhitelist(p.client.address));
     }
 }

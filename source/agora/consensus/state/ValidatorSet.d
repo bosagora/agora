@@ -55,7 +55,7 @@ public alias EnrollmentFinder = bool delegate (in Hash enroll_key, out Enrollmen
 
 /// A Height and PublicKey pair to represent expiring Validators
 public alias ExpiringValidator = Tuple!(Height, "enrolled_height",
-    PublicKey, "pubkey");
+    Hash, "utxo", PublicKey, "pubkey");
 
 /// Ditto
 public class ValidatorSet
@@ -726,13 +726,15 @@ public class ValidatorSet
 
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height, public_key " ~
-                "FROM validator WHERE enrolled_height + cycle_length = ?", height.value);
+            auto results = this.db.execute("SELECT enrolled_height, key, public_key " ~
+                "FROM validator WHERE enrolled_height + cycle_length = ?",
+                height.value);
 
             foreach (row; results)
             {
                 ex_validators ~= ExpiringValidator(Height(row.peek!(ulong)(0)),
-                    PublicKey.fromString(row.peek!(char[])(1)));
+                    Hash(row.peek!(char[])(1)),
+                    PublicKey.fromString(row.peek!(char[])(2)));
             }
         }
         catch (Exception ex)
