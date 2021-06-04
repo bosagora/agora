@@ -155,7 +155,7 @@ public class Validator : FullNode, API
         Params:
             qc = will contain the quorum configuration
             other_qcs = will contain the list of other nodes' quorum configs.
-            height = next block height
+            height = current block height
 
     ***************************************************************************/
 
@@ -172,10 +172,15 @@ public class Validator : FullNode, API
             assert(0);
         }
 
-        // We take random seed from last block as next is not available yet
         try
         {
-            const rand_seed = this.enroll_man.getRandomSeed(keys, height);
+            // We take random seed from last block as next is not available yet
+            // In the fast path, this is called immediately after a block has been
+            // externalized, so we can simply use the Ledger. Otherwise we need
+            // to run from storage.
+            const rand_seed = this.ledger.getBlockHeight() == height ?
+                this.ledger.getLastBlock().header.random_seed :
+                this.ledger.getBlocksFrom(height).front.header.random_seed;
             qc = buildQuorumConfig(this.config.validator.key_pair.address,
                 keys, this.utxo_set.getUTXOFinder(), rand_seed,
                 this.quorum_params);
