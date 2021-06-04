@@ -151,7 +151,10 @@ unittest
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
+    // Trigger generation of block
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
+    // Make sure the client we will check is in sync with others (except for byzantine)
+    network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 
@@ -170,7 +173,10 @@ unittest
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
+    // Trigger generation of block
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
+    // Make sure the client we will check is in sync with others (except for byzantine)
+    network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 
