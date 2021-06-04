@@ -1783,8 +1783,10 @@ public class TestValidatorNode : Validator, TestAPI
         Hash[] utxos;
         // We add one to height as we are interested in active validators in next block
         assert(this.enroll_man.getEnrolledUTXOs(height + 1, utxos) && utxos.length > 0);
-        // We have to use the randomSeed from the last block as it is available now
-        const rand_seed = this.enroll_man.getRandomSeed(utxos, height);
+        // See `Validator.rebuildQuorumConfig`
+        const rand_seed = this.ledger.getBlockHeight() == height ?
+            this.ledger.getLastBlock().header.random_seed :
+            this.ledger.getBlocksFrom(height).front.header.random_seed;
         QuorumConfig[] quorums;
         foreach (pub_key; pub_keys)
             quorums ~= buildQuorumConfig(pub_key, utxos,
