@@ -375,8 +375,6 @@ public class FullNode : API
 
     public void start ()
     {
-        this.startPeriodicDiscovery();
-        this.startPeriodicCatchup();
         if (config.node.stats_listening_port != 0)
             this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
@@ -385,6 +383,14 @@ public class FullNode : API
         // Block externalized handler is set and push for Genesis block.
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
             this.pushBlock(this.params.Genesis);
+
+        this.timers ~= this.taskman.setTimer(
+            this.config.node.network_discovery_interval, &this.discoveryTask, Periodic.Yes);
+        this.timers ~= this.taskman.setTimer(
+            this.config.node.block_catchup_interval, &this.catchupTask, Periodic.Yes);
+
+        // Immediately run discovery to avoid delays at startup
+        this.taskman.runTask(&this.discoveryTask);
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -432,20 +438,13 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Starts the periodic network discovery task.
+        Periodically discovers new nodes in the network
 
     ***************************************************************************/
 
-    protected void startPeriodicDiscovery ()
+    protected void discoveryTask () nothrow
     {
-        this.taskman.runTask(
-        () nothrow
-        {
-            void discover () { this.network.discover(); }
-            discover(); // avoid delay
-            this.timers ~= this.taskman.setTimer(
-                this.config.node.network_discovery_interval, &discover, Periodic.Yes);
-        });
+        this.network.discover();
     }
 
     /***************************************************************************
@@ -458,26 +457,16 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void startPeriodicCatchup ()
+    protected void catchupTask () nothrow
     {
-        this.taskman.runTask(
-        ()
-        {
-            void catchup ()
-            {
-                if (this.network.peers.empty())  // no clients yet (discovery)
-                    return;
+        if (this.network.peers.empty())  // no clients yet (discovery)
+            return;
 
-                this.network.getBlocksFrom(
-                    Height(this.ledger.getBlockHeight() + 1),
-                    &this.addBlocks);
-                this.network.getUnknownTXs(this.ledger);
-                this.network.getMissingBlockSigs(this.ledger);
-            }
-            catchup(); // avoid delay
-            this.timers ~= this.taskman.setTimer(
-                this.config.node.block_catchup_interval, &catchup, Periodic.Yes);
-        });
+        this.network.getBlocksFrom(
+            Height(this.ledger.getBlockHeight() + 1),
+            &this.addBlocks);
+        this.network.getUnknownTXs(this.ledger);
+        this.network.getMissingBlockSigs(this.ledger);
     }
 
     /***************************************************************************
