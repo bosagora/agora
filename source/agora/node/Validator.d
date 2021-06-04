@@ -248,21 +248,10 @@ public class Validator : FullNode, API
             this.checkAndEnroll(this.ledger.getBlockHeight());
     }
 
-    /***************************************************************************
-
-        Starts the periodic network discovery task.
-
-    ***************************************************************************/
-
-    protected override void startPeriodicDiscovery ()
+    /// Ditto
+    protected override void discoveryTask ()
     {
-        this.taskman.runTask(
-        ()
-        {
-            void discover () { this.network.discover(this.required_peer_keys); }
-            discover();  // avoid delay
-            this.timers ~= this.taskman.setTimer(5.seconds, &discover, Periodic.Yes);
-        });
+        this.network.discover(this.required_peer_keys);
     }
 
     /// GET /public_key
