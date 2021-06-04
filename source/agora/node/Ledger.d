@@ -731,9 +731,6 @@ public class Ledger
     public string validateBlock (in Block block,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
-        import agora.crypto.ECC;
-        import agora.crypto.Schnorr;
-
         // If it's the genesis block, we only need to validate it for syntactic
         // correctness, no need to check signatures.
         if (block.header.height == 0)
@@ -765,6 +762,56 @@ public class Ledger
         }
 
         // Finally, validate the signatures
+        return this.validateBlockSignature(block);
+    }
+
+    /***************************************************************************
+
+        Validate the signature of a block
+
+        This validate that the signature in a block header is consistent with
+        the enrolled validators, and cryptographically correct.
+        Note that since this requires to know which nodes are validators,
+        this method is contextful and can only guarantee the signature
+        of the next block, as the validator set might change after that.
+
+        Implementation_details:
+          A block signature is an Schnorr signature. Schnorr signatures are
+          usually a pair `(R, s)`, consisting of a point `R` and a scalar `s`.
+
+          The signature is done on the block header, with the two fields
+          used to store signatures (`validators` and `signature`) excluded.
+
+          To allow for nodes to independently generate compatible signatures
+          without an additional protocol, nodes need to know the set of signers
+          and their `R`, which we refer to as signature noise.
+
+          The set of signers is defined as all the validators having revealed
+          a pre-image. For this reason, pre-images are allowed and encouraged
+          to be revealed earlier than they are needed (although not too early).
+
+          With the set of signers known, we derive the block-specific `R`
+          by adding the `R` used in the enrollment to `p * B`, where `p` is
+          the pre-image reduced to a scalar and `B` is Curve25519 base point.
+
+          Hence, the signature present in the block is actually just the
+          aggregated `s`. To verify this signature, we need to store which
+          nodes actually signed, this is stored in the header's
+          `validators` field.
+
+        Params:
+            block = the block to verify the signature of
+
+        Returns:
+            the error message if block validation failed, otherwise null
+
+    ***************************************************************************/
+
+    private string validateBlockSignature (in Block block) @safe nothrow
+    {
+        import agora.crypto.ECC;
+        import agora.crypto.Schnorr;
+
         Point sum_K;
         Point sum_R;
         const Scalar challenge = hashFull(block);
