@@ -254,7 +254,10 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     ///
     public override void waitForChannelDiscovery (in Hash chan_id)
     {
-        while (chan_id !in this.known_channels)
+        // Wait for discovery and first set of updates
+        while (chan_id !in this.known_channels ||
+                chan_id !in this.channel_updates ||
+                this.channel_updates[chan_id].length < 2)
             this.taskman.wait(100.msecs);
     }
 
