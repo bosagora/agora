@@ -9,7 +9,7 @@ namespace stellar
 bool threadIsMain();
 void assertThreadIsMain();
 
-static void dbgAbort() { int* ptr = 0; *ptr = 42; }
+inline void dbgAbort() { int* ptr = 0; *ptr = 42; }
 
 #ifdef NDEBUG
 
