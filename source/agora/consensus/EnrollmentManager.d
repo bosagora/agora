@@ -1079,7 +1079,7 @@ unittest
         EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], EnrollAt9, params.ValidatorCycle),
             pairs[1].address, EnrollAt9, &utxo_set.peekUTXO));
     // The expired enrollments in the pool from height 1 are cleared on this next call
-    // to get enrollments at a highter height. We do have an enrollment at height 9
+    // to get enrollments at a higher height. We do have an enrollment at height 9
     assert(man.getEnrollments(EnrollAt9, &utxo_set.peekUTXO).length == 1);
     assert(man.addValidator(
                ordered_enrollments[1], pairs[0].address, EnrollAt9, &utxo_set.peekUTXO, utxos)
@@ -1091,7 +1091,7 @@ unittest
     assert(man.validator_set.countActive(EnrollAt9 + params.ValidatorCycle) == 1);
     // Check block in next cycle is no longer active
     assert(man.validator_set.countActive(EnrollAt9 + params.ValidatorCycle + 1) == 0);
-    // Pool shoud now be empty
+    // Pool should now be empty
     assert(man.enroll_pool.count() == 0);
 
     assert(man.getEnrollments(EnrollAt9, &utxo_set.peekUTXO).length == 0);
