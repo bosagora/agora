@@ -1168,8 +1168,6 @@ public abstract class FlashNode : FlashControlAPI
             &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, this.db);
         this.channels[reg_pk][chan_conf.chan_id] = channel;
-        this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
-            ChannelState.SettingUp, ErrorCode.None);
     }
 
     ///

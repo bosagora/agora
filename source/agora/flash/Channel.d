@@ -493,6 +493,8 @@ public class Channel
     {
         this.state = ChannelState.SettingUp;
         assert(this.cur_seq_id == 0);
+        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            ErrorCode.None);
 
         // initial output allocates all the funds back to the channel creator
         const seq_id = 0;
