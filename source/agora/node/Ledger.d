@@ -1424,6 +1424,27 @@ public class ValidatingLedger : Ledger
         ConsensusData data;
         this.prepareNominatingSet(data, max_txs, this.clock.networkTime());
         assert(data.tx_set.length >= max_txs);
+
+        // If the user provided enrollments, do not re-enroll automatically
+        // If they didn't, check to see if the next block needs them
+        // In which case, we simply re-enroll the validators already enrolled
+        if (data.enrolls.length == 0 &&
+            this.enroll_man.validator_set.countActive(next_block + 1) == 0)
+        {
+            Hash[] stakes;
+            assert(this.enroll_man.getEnrolledUTXOs(this.getBlockHeight(), stakes));
+            foreach (utxo; stakes)
+            {
+                UTXO utxo_value;
+                assert(this.utxo_set.peekUTXO(utxo, utxo_value));
+                auto kp = WK.Keys[utxo_value.output.address];
+                auto enroll = EnrollmentManager.makeEnrollment(
+                    utxo, kp, next_block, this.params.ValidatorCycle);
+
+                data.enrolls ~= enroll;
+            }
+        }
+
         const expected_ts = this.params.GenesisTimestamp + data.time_offset;
         if (this.clock.networkTime() < expected_ts ||
             this.clock.networkTime() > (expected_ts + block_time_offset_tolerance.total!"seconds"))
