@@ -10,7 +10,8 @@ README.md
 .dub/
 build/
 docs/
-source/scpp/build/
+source/scpp/build/*.o
+source/scpp/build/*.obj
 
 # Dependency build files
 submodules/*/.dub/
