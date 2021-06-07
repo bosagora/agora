@@ -903,7 +903,7 @@ unittest
     enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight, set.params.ValidatorCycle);
     assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
     keys.length = 0;
-    assert(set.getEnrolledUTXOs(Height(1016), keys));
+    assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle + 8), keys));
     assert(keys.length == 1);
     assert(keys[0] == utxos[3]);
 

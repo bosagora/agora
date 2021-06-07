@@ -1910,7 +1910,7 @@ unittest
     // Validator set reverted
     {
         const blocks = genBlocksToIndex(params.ValidatorCycle, params);
-        assert(blocks.length == 1009);  // +1 for genesis
+        assert(blocks.length == 21);  // +1 for genesis
 
         scope ledger = new ThrowingLedger(
             WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
