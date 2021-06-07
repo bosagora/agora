@@ -77,10 +77,10 @@
     "buildRequirements": [ "allowWarnings" ],
 
     "toolchainRequirements": {
-        "dub": "~>1.24",
+        "dub": "~>1.25",
 	"dmd": "no",
 	"gdc": "no",
-	"ldc": "~>1.25"
+	"ldc": "~>1.26"
     },
 
     "configurations": [
