@@ -66,7 +66,7 @@ public Listeners runNode (Config config)
     {
         if (settings.name.length == 0 || settings.name == "vibe")
             setVibeLogLevel(settings.level);
-        configureLogger(settings);
+        configureLogger(settings, true);
     }
 
     auto log = Logger(__MODULE__);

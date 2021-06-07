@@ -100,36 +100,25 @@ public class AdminInterface : NodeControlAPI
         Nullable!(LogLevel) level, Nullable!bool additive,
         Nullable!bool console, Nullable!string file) @trusted
     {
-        import ocean.util.log.AppendConsole;
-
-        Ocean.Logger logger = name == "root" ? Ocean.Log.root :
-            Ocean.Log.lookup(name);
+        LoggerConfig config;
+        config.name = name == "root" ? null : name;
 
         if (!additive.isNull())
-            logger.additive = additive.get();
+            config.additive = additive.get();
         if (!level.isNull())
-            logger.level(level.get(), propagate);
+            config.level = level.get();
+        if (!console.isNull())
+            config.console = console.get();
+        if (!file.isNull())
+            config.file = file.get();
+        // No buffer_size
 
         // If either parameter was provided, clear the list of appender
         // It would be better if we had a way to remove a specific appender,
         // e.g. set `console=false` would disable console but leave file intact,
         // but the Logger API doesn't expose this. It would also complicate
         // matters if we wanted to have multiple file outputs.
-        if (!console.isNull() || !file.isNull())
-            logger.clear();
-
-        if (!console.isNull())
-        {
-            auto appender = new AppendConsole();
-            appender.layout(new AgoraLayout());
-            logger.add(appender);
-        }
-        if (!file.isNull())
-        {
-            auto appender = new PhobosFileAppender(file.get());
-            appender.layout(new AgoraLayout());
-            logger.add(appender);
-        }
+        configureLogger(config, !console.isNull() || !file.isNull());
     }
 
     /***************************************************************************

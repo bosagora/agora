@@ -183,17 +183,19 @@ public struct LoggerConfig
 
     Params:
         settings = Configuration to apply
+        clear    = Whether the to clear the logger or reconfigure only
 
 ***************************************************************************/
 
-public void configureLogger (in LoggerConfig settings)
+public void configureLogger (in LoggerConfig settings, bool clear)
 {
 	auto log = settings.name ? Log.lookup(settings.name) : Log.root;
 
+    if (clear)
+        log.clear();
+
     if (settings.buffer_size)
         log.buffer(new char[](settings.buffer_size));
-
-    log.clear();
 
 	// if console/file/syslog is specifically set, don't inherit other
     // appenders (unless we have been specifically asked to be additive)
