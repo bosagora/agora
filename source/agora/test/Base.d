@@ -1864,9 +1864,6 @@ public struct TestConf
     /// max listener nodes. If set to 0, set to this.nodes - 1
     size_t max_listeners;
 
-    /// registry address
-    string registry_address = "name.registry";
-
     /// How often blocks should be created - in seconds
     uint block_interval_sec = 600; // unit tests can set clock forward
 
@@ -2022,7 +2019,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             enabled : true,
             key_pair : key_pair,
             addresses_to_register : [self_address],
-            registry_address : test_conf.registry_address,
+            registry_address : "name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
             nomination_interval: 100.msecs,
