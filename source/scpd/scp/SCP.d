@@ -30,13 +30,13 @@ public alias PSCallback = extern(C++) bool function(uint64_t);
 
 shared static this ()
 {
-    initialize_byteslice_hasher();
+    initialize();
 }
 
 extern(C++, `stellar`):
 
 // needed for some utility hashing routines
-extern(C++, `shortHash`) private void initialize_byteslice_hasher ();
+extern(C++, `shortHash`) private void initialize ();
 
 // typedef std::shared_ptr<SCPQuorumSet> SCPQuorumSetPtr;
 
