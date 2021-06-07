@@ -671,16 +671,18 @@ unittest
 {
     auto pool = new TransactionPool();
 
+    const hash1 = 1.hashFull;
+    const hash2 = 2.hashFull;
     Transaction tx1 = Transaction(
-        [Input(Hash.init, 0)],
+        [Input(hash1, 0)],
         [Output(Amount(0), WK.Keys.ZA.address)]);
 
     Transaction tx2 = Transaction(
-        [Input(Hash.init, 0), Input(Hash.init, 1)],
+        [Input(hash1, 0), Input(hash2, 1)],
         [Output(Amount(0), WK.Keys.ZC.address)]);
 
     Transaction tx3 = Transaction(
-        [Input(Hash.init, 1)],
+        [Input(hash2, 1)],
         [Output(Amount(0), WK.Keys.ZD.address)]);
 
     assert(pool.add(tx1));
@@ -722,11 +724,14 @@ unittest
 
     auto pool = new TransactionPool(new ManagedDatabase(":memory:"), &selector);
 
+    const hash1 = 1.hashFull;
+    const hash2 = 2.hashFull;
+
     Transaction tx1 = Transaction(
-        [Input(Hash.init, 0)],
+        [Input(hash1, 0)],
         [Output(Amount(2), WK.Keys.US.address)]);
 
-    Transaction tx2 = Transaction([Input(Hash.init, 0), Input(Hash.init, 1)],
+    Transaction tx2 = Transaction([Input(hash1, 0), Input(hash2, 1)],
         [Output(Amount(1), WK.Keys.KR.address)]);
 
     assert(pool.add(tx1));

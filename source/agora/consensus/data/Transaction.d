@@ -46,7 +46,7 @@ public struct Transaction
     public this (Output[] outputs) nothrow
     {
         outputs.sort;
-        this.outputs = outputs;
+        this.outputs_ = outputs;
     }
 
     /// ctor without payload
@@ -55,7 +55,7 @@ public struct Transaction
     {
         this(outputs);
         inputs.sort;
-        this.inputs = inputs;
+        this.inputs_ = inputs;
         this.lock_height = lock_height;
     }
 
@@ -64,12 +64,44 @@ public struct Transaction
         inout(ubyte)[] payload = null,
         in Height lock_height = Height(0)) inout nothrow
     {
-        this.inputs = inputs;
-        this.outputs = outputs;
+        this.inputs_ = inputs;
+        this.outputs_ = outputs;
         this.payload = payload;
         this.lock_height = lock_height;
-        assert(this.inputs.dup.isStrictlyMonotonic!((a, b) => a < b));
-        assert(this.outputs.dup.isSorted!((a, b) => a < b));
+        assert(this.inputs_.dup.isStrictlyMonotonic!((a, b) => a < b));
+        assert(this.outputs_.dup.isSorted!((a, b) => a < b));
+    }
+
+    /// The list of unspent `outputs` from previous transaction(s) that will be spent
+    private Input[] inputs_;
+
+    // Setter for inputs where it is validated as sorted with unique entries
+    public ref Transaction inputs (Input[] inputs) scope return @safe nothrow @nogc
+    {
+        assert(inputs.isStrictlyMonotonic());
+        this.inputs_ = inputs;
+        return this;
+    }
+
+    public inout(Input[]) inputs () inout @safe nothrow pure @nogc
+    {
+        return this.inputs_;
+    }
+
+    /// The list of newly created outputs to put in the UTXO
+    private Output[] outputs_;
+
+    // Setter for outputs where it is validated as sorted
+    public ref Transaction outputs (Output[] outputs) scope return @safe nothrow @nogc
+    {
+        assert(outputs.isSorted());
+        this.outputs_ = outputs;
+        return this;
+    }
+
+    public inout(Output[]) outputs () inout @safe nothrow pure @nogc
+    {
+        return this.outputs_;
     }
 
     /// Used in some unit tests with only the lock_height set
@@ -80,12 +112,6 @@ public struct Transaction
             this.lock_height = Height(lock_height);
         }
     }
-
-    /// The list of unspent `outputs` from previous transaction(s) that will be spent
-    public Input[] inputs;
-
-    /// The list of newly created outputs to put in the UTXO
-    public Output[] outputs;
 
     /// The data to store
     public ubyte[] payload;

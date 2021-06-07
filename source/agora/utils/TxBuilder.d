@@ -206,7 +206,7 @@ public struct TxBuilder
     ***************************************************************************/
 
     public ref typeof(this) attach (RNG) (scope RNG rng)
-        @safe pure nothrow return
+        @safe nothrow return
     {
         alias ET = ElementType!RNG;
 
@@ -272,29 +272,33 @@ public struct TxBuilder
         this.data.lock_height = lock_height;
 
         // Finalize the transaction by adding inputs
+        Input[] inputs;
         foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
+            inputs ~= Input(in_.hash, Unlock.init, unlock_age);
 
-        foreach (ref o_; this.data.outputs)
-            o_.type = outputs_type;
+        Output[] outputs;
+        foreach (ref o; this.data.outputs)
+            outputs ~= Output(outputs_type, o.lock, o.value);
 
         // Add the refund output if needed
         if (this.leftover.value > Amount(0))
         {
             if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
-                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
+                outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
             else
-                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
-            this.data.outputs.sort;
+            {
+                outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ outputs;
+                outputs.sort;
+            }
         }
         this.data.payload = data;
 
-        // Get the hash to sign
-        const txHash = this.data.hashFull();
+        inputs.sort;
+        this.data.inputs = inputs;
+        this.data.outputs = outputs;
         // Sign all inputs using WK keys
         foreach (idx, ref in_; this.inputs)
             this.data.inputs[idx].unlock = unlocker(this.data, in_);
-
         // Return the result and reset this
         this.inputs = null;
         this.leftover = Output.init;
@@ -358,16 +362,17 @@ public struct TxBuilder
         assert(!toward.empty, "No beneficiary in `draw` transaction");
         assert(amount > Amount(0), "Cannot have outputs of value `0`");
 
+        Output[] outputs;
         toward.each!((key)
         {
-            this.data.outputs ~= Output(amount, key);
-            this.data.outputs.sort;
+            outputs ~= Output(amount, key);
             // Provide friendlier error message for developers
             if (!this.leftover.value.sub(amount))
                 assert(0, format("Error: Withdrawing %d times %s BOA underflown",
                                  toward.length, amount));
         });
-
+        outputs.sort;
+        this.data.outputs = outputs;
         return this;
     }
 
@@ -398,15 +403,16 @@ public struct TxBuilder
         // Cannot reuse `draw` because we might have an input range only
         // So we append new outputs and act on them directly
         size_t oldLen = this.data.outputs.length;
-        this.data.outputs ~= toward.map!(key => Output(Amount(0), key)).array;
-        auto newOutputs = this.data.outputs[oldLen .. $];
+        Output[] new_outputs = toward.map!(key => Output(Amount(0), key)).array;
 
         // Now we know by how much we can divide out leftover
         auto forEach = this.leftover.value;
-        this.leftover.value = forEach.div(newOutputs.length);
-        newOutputs.each!((ref output) { output.value = forEach; });
-        assert(newOutputs.all!(output => output.value > Amount(0)));
-        this.data.outputs.sort;
+        this.leftover.value = forEach.div(new_outputs.length);
+        new_outputs.each!((ref output) { output.value = forEach; });
+        assert(new_outputs.all!(output => output.value > Amount(0)));
+        auto outputs = this.data.outputs ~ new_outputs;
+        outputs.sort;
+        this.data.outputs = outputs;
         return this;
     }
 
@@ -480,6 +486,7 @@ unittest
     // they all have the same value
     const ExpectedAmount = genesisSpendable().front().leftover.value;
     assert(tx.outputs.all!(val => val.value == ExpectedAmount));
+    assert(tx.inputs.isStrictlyMonotonic());
 }
 
 /// Test with twice as many outputs as inputs
@@ -578,7 +585,7 @@ unittest
         Output(Amount(400), WK.Keys.E.address),
     ];
 
-    auto tup_rng = outs[].zip(iota(outs.length).map!(_ => Hash.init));
+    auto tup_rng = outs[].zip(iota(outs.length).map!(i => i.hashFull));
     auto result = TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
 
     assert(result.inputs.length == 4);

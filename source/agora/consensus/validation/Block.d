@@ -457,7 +457,8 @@ unittest
         assert(block.txs.any!(tx => tx.isFreeze));
 
         // Input empty check
-        block.txs[0].inputs ~= Input.init;
+        auto inputs = block.txs[0].inputs ~ Input.init;
+        block.txs[0].inputs = inputs;
         buildMerkleTree(block);
         assert(!block.isGenesisBlockValid());
 
@@ -473,8 +474,7 @@ unittest
         // disallow 0 amount
         Output zeroOutput =
             Output(Amount.invalid(0), WK.Keys[0].address);
-        block.txs[0].outputs ~= zeroOutput;
-        block.txs[0].outputs.sort;
+        block.txs[0].outputs = [ zeroOutput ];
         buildMerkleTree(block);
         assert(!block.isGenesisBlockValid());
     }
@@ -885,6 +885,7 @@ unittest
     foreach (idx, pre_tx; txs_1)
     {
         Input input = Input(hashFull(pre_tx), 0);
+        Output[] outputs = null;
 
         Transaction tx = Transaction([input], null);
         if (idx == 7)
@@ -895,7 +896,7 @@ unittest
                 output.value = Amount(100);
                 output.lock = genKeyLock(keypair.address);
                 output.type = OutputType.Payment;
-                tx.outputs ~= output;
+                outputs ~= output;
             }
         }
         else
@@ -904,9 +905,10 @@ unittest
             output.value = Amount.MinFreezeAmount;
             output.lock = genKeyLock(keypair.address);
             output.type = OutputType.Freeze;
-            tx.outputs ~= output;
+            outputs ~= output;
         }
-        tx.outputs.sort;
+        outputs.sort;
+        tx.outputs = outputs;
         tx.inputs[0].unlock = VTx.signUnlock(gen_key, tx);
         txs_2 ~= tx;
     }
@@ -1010,19 +1012,20 @@ unittest
         Transaction tx = Transaction(
             [Input(hashFull(pre_tx), 0)],
             null);
-
+        Output[] outputs;
         if (idx <= 2)
         {
-            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
-            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
-            tx.outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
+            outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
+            outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
+            outputs ~= Output(Amount.MinFreezeAmount, keypair.address, OutputType.Freeze);
         }
         else
         {
             foreach (_; 0 .. 8)
-                tx.outputs ~= Output(Amount(100), keypair.address);
+                outputs ~= Output(Amount(100), keypair.address);
         }
-        tx.outputs.sort;
+        outputs.sort;
+        tx.outputs = outputs;
         tx.inputs[0].unlock = VTx.signUnlock(gen_key, tx);
         txs_2 ~= tx;
     }

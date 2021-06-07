@@ -249,16 +249,18 @@ unittest
     assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
-    secondTx.outputs ~= Output(Amount(50), key_pairs[2].address);
-    secondTx.outputs.sort;
+    Output[] outputs = secondTx.outputs ~ Output(Amount(50), key_pairs[2].address);
+    outputs.sort;
+    secondTx.outputs = outputs;
     secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
     // It is validated. (the sum of `Output` == the sum of `Input`)
     assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
            format("Transaction data is not validated %s", secondTx));
 
-    secondTx.outputs ~= Output(Amount(50), key_pairs[3].address);
-    secondTx.outputs.sort;
+    outputs ~= Output(Amount(50), key_pairs[3].address);
+    outputs.sort;
+    secondTx.outputs = outputs;
     secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
     // It isn't validated. (the sum of `Output` > the sum of `Input`)
@@ -1000,7 +1002,7 @@ unittest
     assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
 
     // Add the expected input, should validate
-    tx.inputs ~= Input(Height(0));
+    tx.inputs = [ Input(Height(0)) ];
     assert(isValid(tx, engine, utxoFinder, Height(0), checker));
 
     // Add some data, should not validate
@@ -1009,7 +1011,7 @@ unittest
     assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
 
     // Remove the inputs, still should not validate
-    tx.inputs.length = 0;
+    tx.inputs = null;
     assert(!isValid(tx, engine, utxoFinder, Height(0), checker));
 }
 

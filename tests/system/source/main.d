@@ -119,7 +119,7 @@ int main (string[] args)
     // Make sure the nodes use the test genesis block
     const blocks = clients[0].getBlocksFrom(0, 1);
     assert(blocks.length == 1);
-    assert(blocks[0] == TestGenesis.GenesisBlock, format!"%s Not using expected TestGenesis.GenesisBlock"(PREFIX));
+    assert(blocks[0] == TestGenesis.GenesisBlock, format!"%s Not using expected TestGenesis.GenesisBlock: \n%s"(PREFIX, blocks[0].prettify));
 
     auto target_height = 2;
     iota(target_height).each!(h => assertBlockHeightAtleast(h));
