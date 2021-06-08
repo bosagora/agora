@@ -12,7 +12,7 @@
 node:
   testing: true
   limit_test_validators: 1
-  block_interval_sec: 20
+  block_interval_sec: 5
   data_dir: .single/data/
   # Can be used with curl or just a browser
   stats_listening_port: 9111
@@ -42,8 +42,9 @@ network:
 
 logging:
   root:
-    # You might want to use `Trace` and separate output
     level: Info
     console: true
-    propagate: true
-    file: .single/log/root.log
+  # agora:
+  #   level: Trace
+  #   console: false
+  #   file: .single/log/agora.log
