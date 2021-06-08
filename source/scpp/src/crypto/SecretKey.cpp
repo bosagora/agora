@@ -16,7 +16,7 @@
 namespace stellar
 {
 
-SecretKey::SecretKey() : mKeyType(PUBLIC_KEY_TYPE_ED25519)
+SecretKey::SecretKey()
 {
     static_assert(crypto_sign_PUBLICKEYBYTES == sizeof(uint256),
                   "Unexpected public key length");
@@ -49,10 +49,7 @@ SecretKey::getPublicKey() const
 SecretKey::Seed
 SecretKey::getSeed() const
 {
-    assert(mKeyType == PUBLIC_KEY_TYPE_ED25519);
-
     Seed seed;
-    seed.mKeyType = mKeyType;
     if (crypto_sign_ed25519_sk_to_seed(seed.mSeed.data(), mSecretKey.data()) !=
         0)
     {
@@ -64,8 +61,6 @@ SecretKey::getSeed() const
 SecretValue
 SecretKey::getStrKeySeed() const
 {
-    assert(mKeyType == PUBLIC_KEY_TYPE_ED25519);
-
     return strKey::toStrKey(strKey::STRKEY_SEED_ED25519, getSeed().mSeed);
 }
 
@@ -91,8 +86,6 @@ SecretKey::isZero() const
 Signature
 SecretKey::sign(ByteSlice const& bin) const
 {
-    assert(mKeyType == PUBLIC_KEY_TYPE_ED25519);
-
     Signature out;
     if (crypto_sign_detached(out.data(), NULL, bin.data(), bin.size(),
                              mSecretKey.data()) != 0)
@@ -106,8 +99,7 @@ SecretKey
 SecretKey::random()
 {
     SecretKey sk;
-    assert(sk.mKeyType == PUBLIC_KEY_TYPE_ED25519);
-    if (crypto_sign_keypair(sk.mPublicKey.ed25519().data(),
+    if (crypto_sign_keypair(sk.mPublicKey.data(),
                             sk.mSecretKey.data()) != 0)
     {
         throw std::runtime_error("error generating random secret key");
@@ -154,13 +146,12 @@ SecretKey
 SecretKey::fromSeed(ByteSlice const& seed)
 {
     SecretKey sk;
-    assert(sk.mKeyType == PUBLIC_KEY_TYPE_ED25519);
 
     if (seed.size() != crypto_sign_SEEDBYTES)
     {
         throw std::runtime_error("seed does not match byte size");
     }
-    if (crypto_sign_seed_keypair(sk.mPublicKey.ed25519().data(),
+    if (crypto_sign_seed_keypair(sk.mPublicKey.data(),
                                  sk.mSecretKey.data(), seed.data()) != 0)
     {
         throw std::runtime_error("error generating secret key from seed");
@@ -190,58 +181,33 @@ KeyFunctions<PublicKey>::getKeyVersionIsSupported(
 PublicKeyType
 KeyFunctions<PublicKey>::toKeyType(strKey::StrKeyVersionByte keyVersion)
 {
-    switch (keyVersion)
-    {
-    case strKey::STRKEY_PUBKEY_ED25519:
-        return PublicKeyType::PUBLIC_KEY_TYPE_ED25519;
-    default:
-        throw std::invalid_argument("invalid public key type");
-    }
+    return 0;
 }
 
 strKey::StrKeyVersionByte
 KeyFunctions<PublicKey>::toKeyVersion(PublicKeyType keyType)
 {
-    switch (keyType)
-    {
-    case PublicKeyType::PUBLIC_KEY_TYPE_ED25519:
-        return strKey::STRKEY_PUBKEY_ED25519;
-    default:
-        throw std::invalid_argument("invalid public key type");
-    }
+    return strKey::STRKEY_PUBKEY_ED25519;
 }
 
 uint256&
 KeyFunctions<PublicKey>::getKeyValue(PublicKey& key)
 {
-    switch (key.type())
-    {
-    case PUBLIC_KEY_TYPE_ED25519:
-        return key.ed25519();
-    default:
-        throw std::invalid_argument("invalid public key type");
-    }
+    return key;
 }
 
 uint256 const&
 KeyFunctions<PublicKey>::getKeyValue(PublicKey const& key)
 {
-    switch (key.type())
-    {
-    case PUBLIC_KEY_TYPE_ED25519:
-        return key.ed25519();
-    default:
-        throw std::invalid_argument("invalid public key type");
-    }
+    return key;
 }
 
 PublicKey
 PubKeyUtils::random()
 {
     PublicKey pk;
-    pk.type(PUBLIC_KEY_TYPE_ED25519);
-    pk.ed25519().resize(crypto_sign_PUBLICKEYBYTES);
-    randombytes_buf(pk.ed25519().data(), pk.ed25519().size());
+    pk.resize(crypto_sign_PUBLICKEYBYTES);
+    randombytes_buf(pk.data(), pk.size());
     return pk;
 }
 
@@ -251,16 +217,5 @@ HashUtils::random()
     Hash res;
     randombytes_buf(res.data(), res.size());
     return res;
-}
-}
-
-namespace std
-{
-size_t
-hash<stellar::PublicKey>::operator()(stellar::PublicKey const& k) const noexcept
-{
-    assert(k.type() == stellar::PUBLIC_KEY_TYPE_ED25519);
-
-    return std::hash<stellar::uint256>()(k.ed25519());
 }
 }

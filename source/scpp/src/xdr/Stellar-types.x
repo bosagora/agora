@@ -14,16 +14,7 @@ typedef int int32;
 typedef unsigned hyper uint64;
 typedef hyper int64;
 
-enum PublicKeyType
-{
-    PUBLIC_KEY_TYPE_ED25519 = KEY_TYPE_ED25519
-};
-
-union PublicKey switch (PublicKeyType type)
-{
-case PUBLIC_KEY_TYPE_ED25519:
-    uint256 ed25519;
-};
+typedef uint2565 PublicKey;
 
 // fixed size as we use a 64-byte Signature in Agora
 typedef opaque Signature[64];

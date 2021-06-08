@@ -5,6 +5,7 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include "scp/SCP.h"
+#include "util/HashOfHash.h"
 #include "util/NonCopyable.h"
 #include "util/UnorderedMap.h"
 #include "util/UnorderedSet.h"

@@ -1511,46 +1511,38 @@ private struct SCPEnvelopeHash
     auto getStHash () @trusted { return SCPStatementHash(&st); }
 
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xd0af1ceb655cb7f376076eaaee79b0c6cd5d99258e48c2a9393f3748fdc6c99f333d01433631664c993b39f18938ce98ae74fcf73647b0505a9fcdc0a9ff0201"),
-        getStHash().hashFull().to!string);
+        "0x5364136f3ae0093a65e9371a66368512bb80b748ad4362eea14c16eb0c1276eee842cf88cd1116dfe833496e4e627e315f6b5568f0d1e18dc93d43692c5c13d0"));
 
     prep.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x64db448aae015955a2c022d7b415619e71b56cb9ca8329f2620ae4468576ebb7bb323d38829d02b89185147c8ba6d0a30ef7630d6c31cdea4703dc8b5c23dc80"),
-        getStHash().hashFull().to!string);
+        "0x8fe1c781219cc7bdf803ca4ac734c9c2e29d1d4de7184dc04d0da7eab5e8d3f2bc29a0df230b984ff652c98a142b3a5e2516f3fa9d4e0631e4a90318d12aedfc"));
 
     prep_prime.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x150f1e058a1b4296cb5e2765d475f1183f15c49011a568dd95fe825049d3a8fddbb12fb2e37bbf12de4719afe452e1e9908dd4e88f7dd88200fab8a7ac0f29e9"),
-        getStHash().hashFull().to!string);
+        "0x48d0cc62dc9a015c5c4b941a91cff376b0b5cb52897027ac8ad79aa8a29246e59a11dfcde18ad8e94979f4051fe3525cb0a0852e7d26595ca4ac98f3dec4fe20"));
 
     () @trusted { st.pledges.prepare_.prepared = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x47b526fb78d939a2a1814fc2143e6aa9190b96ec37222c6e79ff038fa51ecc7bdf6e58f19b73c2236c9a3c24d21fa253f344c1e740dec225fdc3ccb2e1c8d5c8"),
-        getStHash().hashFull().to!string);
+        "0x308409f19835412fca6c22f95bf2097fd292f5190ac35db78907ce76a56b435817d7b912f5ca23e89a9793d59953506035323f7f92c63434eb0c1116fe667eb0"));
 
     () @trusted { st.pledges.prepare_.preparedPrime = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x932507364adead54419d46354f43da574c80461aa2ecddc0045e32709b84396cc8cfa024fa029638c61bb1d8cb82744a8270b65df5dc3cfca39a72474cee2e27"),
-        getStHash().hashFull().to!string);
+        "0xcdf64b3616112b53c9e0d422a876f1644d69a15b638a1341a29dc5362c827d2d57e0e5f7a5e4a25a0b475167edd6fbe0b01feb0599342c4148a83ac1d1a70a4d"));
 
     () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x3af032546fa5435d63902781b6d1d0432ce08a20b9989b1ad2aaa05a0dc7c161991fd5663fed875a1a72b7ffabbcea951d44ec20f5ecf0514620fcc36e62652c"),
-        getStHash().hashFull().to!string);
+        "0x0664bde2dd296bcc77d039dfd17495dc90a1c478777acfbd09de70298dda4c96d8266f61746e980838e1f404c9eb266e213d06904c4c3c21211f0f0f829d3fa6"));
 
     () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x6770df82a25becf382fa11a8dc23131b9b3559270d7b6936395db2986f91da4d70d148e105e22168110f41aa737d5eb246fdf3927a0c02a41840fb3f5ed597a3"),
-        getStHash().hashFull().to!string);
+        "0x99b6963f5d75c2edf026bfc440a0e400e116f1ef332224f144fc8703356daed752167738a55ce7be4787eb15a58f11ed31df2cfb1586b0e5fca65090b8853285"));
 
     () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x53bf3b4c096a94e0022a09bad1d02a7f447fe4a5060f4981afdcda86a82248a1c611825b2a311cca991d85a5514267d5839887fe52eb42afb4c305f67a92033f"),
-        getStHash().hashFull().to!string);
+        "0x51e9f93b9acd323694d0192e7ff10fe2d9aa2a6fbc55877aa88b8ca29efcc119b1d8113961c71657e359c5aa8fc6a195db589b974a7bc030ca81e6b80f415e95"));
 
     SCPEnvelope env;
     auto getEnvHash () @trusted { return SCPEnvelopeHash(&env); }
@@ -1558,25 +1550,22 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x3f5564eb9fb0586ff40d21fb72fc53001e64323b40fa1697113df3169d61d5251dfdae87cd34e16c9ee4604fd4214d0fd4562b81ac5bacbacecc445977855610"),
-    getEnvHash().hashFull().to!string);
+        "0xcbebb1c5901e6d7cd593b4608d9815dbb723e92b27abbfe863ff31a422b91da54198b33f03195a84682108504b03a98d0b87cd6c7bc34b2265f686cce7ea21e3"));
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x256cdc6a2286a21d4ff4297d6a438939e60195016d15ad4693fd4e6dfa18dff1eac5b4237da250d1065293da9a0c947502c6dccc0cf85d6291da2ac5b36f55f5"),
-    getEnvHash().hashFull().to!string);
+        "0x77d1b82e4ccff42730d9f0d11e7629bc518abb9258954e4060e6f843ea561abaacab37ba9af571c0bd27f22302f579970b4b5dd0d3f34b91a79526a7041982ef"));
 
     // import agora.utils.Test;
     // import std.stdio;
-    // writeln(WK.Keys.NODE5.sign(getStHash);
+    // writeln(WK.Keys.NODE5.sign(getStHash));
     env.signature = Signature.fromString(
-        "0xdf167aadc11b25de15ca6fd4bfb04dc965dea837536a69883c7f3438707eac5d" ~
-        "0030310bb98c310134e53f3daf84674b32abd30f505126375a163587cf4008be")
+        "0x969c0879ffedac8d03034a60b59cf9ff8f195052ae5e5fae247823fe349462a0" ~
+        "08f8a0f915d0598cbab106a5bda6ccabe30327f2c4bc980ed817592a9bebb04b")
         .toBlob();
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x5e6451029926ccc643c740376a618a60caeb271d62b91864113f6edbb0f0784177875cd2e56c65870d256752b6499f21e2955d605945f85e8527a64d1919f421"),
-    getEnvHash().hashFull().to!string);
+        "0x5ee8649f04528b083a2bd03d666d7ced845681be58f93bdc5964cf3af2bc1f7c19511084c698f0d500ae4c6c9a38f5d0ecc41fa42f68dc5f355e8f518e793a7d"));
 }
