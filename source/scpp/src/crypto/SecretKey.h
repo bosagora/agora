@@ -17,7 +17,6 @@ namespace stellar
 
 class ByteSlice;
 struct SecretValue;
-struct SignerKey;
 
 class SecretKey
 {

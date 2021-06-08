@@ -44,13 +44,10 @@ CPPSIZEOF(SCPQuorumSet)
 
 /// scpd.types.Stellar_types
 CPPSIZEOF(Hash)
-CPPSIZEOF(CryptoKeyType)
 CPPSIZEOF(PublicKeyType)
-CPPSIZEOF(SignerKeyType)
 CPPSIZEOF(PublicKey)
 // Signature is removed because it is the same as Hash.
 static_assert(std::is_same<Signature, Hash>::value, "Signature and Hash must be the same type");
-CPPSIZEOF(SignatureHint)
 CPPSIZEOF(ByteSlice)
 
 // macros suck

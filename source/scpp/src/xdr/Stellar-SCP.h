@@ -11,6 +11,7 @@
 
 namespace stellar {
 
+using NodeID = PublicKey;
 using Value = xdr::opaque_vec<>;
 
 struct SCPBallot {
@@ -617,7 +618,7 @@ template<> struct xdr_traits<::stellar::SCPEnvelope>
 
 struct SCPQuorumSet {
   uint32 threshold{};
-  xdr::xvector<PublicKey> validators{};
+  xdr::xvector<NodeID> validators{};
   xdr::xvector<SCPQuorumSet> innerSets{};
 
   SCPQuorumSet() = default;
