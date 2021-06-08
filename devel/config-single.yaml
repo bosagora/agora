@@ -27,7 +27,8 @@ consensus:
 
 validator:
   enabled: true
-  seed: SAQXRDHTWME4GUIVNYCKPN433VJ4BJP2L2T7UWHGSSW47VFC67EQFY3S
+  # We use first of Genesis Block enrollments: val7: boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh
+  seed: SAWI3JZWDDSQR6AX4DRG2OMS26Y6XY4X2WA3FK6D5UW4WTU74GUQXRZP
   registry_address: disabled
 
 admin:
