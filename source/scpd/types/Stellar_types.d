@@ -33,20 +33,8 @@ alias Hash = opaque_array!64;
 alias uint256 = opaque_array!32;
 alias uint512 = opaque_array!64;
 
-enum CryptoKeyType : int32_t {
-  KEY_TYPE_ED25519 = 0,
-  KEY_TYPE_PRE_AUTH_TX = 1,
-  KEY_TYPE_HASH_X = 2,
-}
-
 enum PublicKeyType : int32_t {
-  PUBLIC_KEY_TYPE_ED25519 = CryptoKeyType.KEY_TYPE_ED25519,
-}
-
-enum SignerKeyType : int32_t {
-  SIGNER_KEY_TYPE_ED25519 = CryptoKeyType.KEY_TYPE_ED25519,
-  SIGNER_KEY_TYPE_PRE_AUTH_TX = CryptoKeyType.KEY_TYPE_PRE_AUTH_TX,
-  SIGNER_KEY_TYPE_HASH_X = CryptoKeyType.KEY_TYPE_HASH_X,
+  PUBLIC_KEY_TYPE_ED25519 = 0,
 }
 
 /// Modified to suits scpd's needs
@@ -69,5 +57,4 @@ struct PublicKey {
 }
 
 alias Signature = opaque_array!64;
-alias SignatureHint = opaque_array!4;
 alias NodeID = PublicKey;

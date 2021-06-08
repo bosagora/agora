@@ -55,11 +55,8 @@ alias TypesNoLayout = AliasSeq!
     /// scpd.types.Stellar_SCP
     Value,
     SCPStatementType,
-    CryptoKeyType,
     PublicKeyType,
-    SignerKeyType,
     Signature,
-    SignatureHint,
 
     /// scpd.types.XDRBase
     xvector!Value,
