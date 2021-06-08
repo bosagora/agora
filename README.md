@@ -75,6 +75,9 @@ At the moment, the three main ways to run the test are:
 - `rdmd tests/runner.d`: Run a serie of simple integrations tests
 - `ci/system_integration_test.d`: Run a full-fledged system integration test, including building the docker image.
 
+## Running single test node using TESTNET GenesisBlock
+- `rm -rfv .single && dub run -- -c devel/config-single.yaml` : Run a single node for testing purposes
+
 # Debugging memory usage
 
 Agora integrates its own GC in [agora.utils.gc.GC](source/agora/utils/gc/), which is mostly a copy of
