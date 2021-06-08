@@ -274,9 +274,10 @@ public struct TxBuilder
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
             this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
+        this.data.inputs.sort;
 
-        foreach (ref o_; this.data.outputs)
-            o_.type = outputs_type;
+        foreach (ref o; this.data.outputs)
+            o.type = outputs_type;
 
         // Add the refund output if needed
         if (this.leftover.value > Amount(0))
@@ -285,13 +286,11 @@ public struct TxBuilder
                 this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
             else
                 this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
-            this.data.outputs.sort;
         }
+        this.data.outputs.sort;
         this.data.payload = data;
 
-        // Get the hash to sign
-        const txHash = this.data.hashFull();
-        // Sign all inputs using WK keys
+        // Sign all inputs using unlocker
         foreach (idx, ref in_; this.inputs)
             this.data.inputs[idx].unlock = unlocker(this.data, in_);
 
