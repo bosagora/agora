@@ -523,7 +523,9 @@ unittest
 
     // This transaction has 4 txs (3 targets + 1 refund)
     assert(result.inputs.length == 8);
+    assert(result.inputs.isSorted);
     assert(result.outputs.length == 4);
+    assert(result.outputs.isSorted);
 
     // 488M / 3
     assert(result.outputs.count!(o => o.value == Amount(162_666_666_6666_666L)) == 3);
