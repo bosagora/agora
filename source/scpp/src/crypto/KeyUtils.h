@@ -70,32 +70,6 @@ toShortString(T const& key)
 
 std::size_t getKeyVersionSize(strKey::StrKeyVersionByte keyVersion);
 
-template <typename T>
-T
-fromStrKey(std::string const& s)
-{
-    T key;
-    uint8_t verByte;
-    std::vector<uint8_t> k;
-    if (!strKey::fromStrKey(s, verByte, k))
-    {
-        throw std::invalid_argument("bad " + KeyFunctions<T>::getKeyTypeName());
-    }
-
-    strKey::StrKeyVersionByte ver =
-        static_cast<strKey::StrKeyVersionByte>(verByte);
-    if (!KeyFunctions<T>::getKeyVersionIsSupported(ver) ||
-        (k.size() != getKeyVersionSize(ver)) ||
-        (s.size() != strKey::getStrKeySize(getKeyVersionSize(ver))))
-    {
-        throw std::invalid_argument("bad " + KeyFunctions<T>::getKeyTypeName());
-    }
-
-    key.type(KeyFunctions<T>::toKeyType(ver));
-    std::copy(k.begin(), k.end(), KeyFunctions<T>::getKeyValue(key).begin());
-    return key;
-}
-
 template <typename T, typename F>
 bool
 canConvert(F const& fromKey)

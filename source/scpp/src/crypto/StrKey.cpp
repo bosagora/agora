@@ -37,39 +37,5 @@ getStrKeySize(size_t dataSize)
     dataSize += 3; // version and crc
     return decoder::encoded_size32(dataSize);
 }
-
-bool
-fromStrKey(std::string const& strKey, uint8_t& outVersion,
-           std::vector<uint8_t>& decoded)
-{
-    // check that there is no trailing data
-    size_t s = strKey.size();
-    // base 32 data size is (s * 5)/8 => has to be a multiple of 8
-    if ((s & 0x07) != 0)
-    {
-        return false;
-    }
-    decoder::decode_b32(strKey, decoded);
-    if (decoded.size() < 3)
-    {
-        return false;
-    }
-    uint16_t crc = 0;
-    crc = decoded.back();
-    decoded.pop_back();
-    crc <<= 8;
-    crc |= decoded.back();
-    decoded.pop_back();
-
-    if (crc16((char*)decoded.data(), (int)decoded.size()) != crc)
-    {
-        return false;
-    }
-
-    outVersion = decoded.at(0) >> 3; // only keep 5 bits from the version
-    decoded.erase(decoded.begin());
-
-    return true;
-}
 }
 }
