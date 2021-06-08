@@ -32,29 +32,6 @@ extern(C++, `stellar`):
 alias Hash = opaque_array!64;
 alias uint256 = opaque_array!32;
 alias uint512 = opaque_array!64;
-
-enum PublicKeyType : int32_t {
-  PUBLIC_KEY_TYPE_ED25519 = 0,
-}
-
-/// Modified to suits scpd's needs
-/// Note: should only be used within this package
-package(scpd)
-struct PublicKey {
-    extern(D) this(uint256 key) @safe pure nothrow @nogc
-    {
-        this.ed25519_ = key;
-    }
-
-    extern(D) this(typeof(this.tupleof) args) @safe pure nothrow @nogc
-    {
-        this.tupleof = args;
-    }
-
-    int32_t type_;
-    uint256 ed25519_;
-    alias ed25519_ this;
-}
-
+alias PublicKey = uint256;
 alias Signature = opaque_array!64;
 alias NodeID = PublicKey;

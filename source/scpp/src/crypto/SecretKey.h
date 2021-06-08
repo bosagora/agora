@@ -18,16 +18,16 @@ namespace stellar
 class ByteSlice;
 struct SecretValue;
 
+using PublicKeyType = std::int32_t;
+
 class SecretKey
 {
     using uint512 = xdr::opaque_array<64>;
-    PublicKeyType mKeyType;
     uint512 mSecretKey;
     PublicKey mPublicKey;
 
     struct Seed
     {
-        PublicKeyType mKeyType;
         uint256 mSeed;
         ~Seed();
     };
@@ -76,7 +76,7 @@ class SecretKey
     bool
     operator==(SecretKey const& rh) const
     {
-        return (mKeyType == rh.mKeyType) && (mSecretKey == rh.mSecretKey);
+        return (mSecretKey == rh.mSecretKey);
     }
 };
 
@@ -105,12 +105,4 @@ namespace HashUtils
 {
 Hash random();
 }
-}
-
-namespace std
-{
-template <> struct hash<stellar::PublicKey>
-{
-    size_t operator()(stellar::PublicKey const& x) const noexcept;
-};
 }

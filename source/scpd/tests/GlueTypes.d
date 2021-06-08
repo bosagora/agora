@@ -43,7 +43,6 @@ alias TypesWithLayout = AliasSeq!
     SCPQuorumSet,
 
     /// scpd.types.Stellar_types
-    PublicKey,
     Hash,
 );
 
@@ -55,7 +54,7 @@ alias TypesNoLayout = AliasSeq!
     /// scpd.types.Stellar_SCP
     Value,
     SCPStatementType,
-    PublicKeyType,
+    PublicKey,
     Signature,
 
     /// scpd.types.XDRBase

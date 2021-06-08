@@ -134,13 +134,6 @@ FieldInfo cppFieldInfo ( SCPQuorumSet &object, const char *field_name )
 
 /// scpd.types.Stellar_types
 
-FieldInfo cppFieldInfo ( PublicKey &object, const char *field_name )
-{
-    HANDLE(type_)
-    HANDLE(ed25519_)
-    return FieldInfo(-1, -1);  // assert on the D side for better error messages
-}
-
 FieldInfo cppFieldInfo ( ByteSlice &object, const char *field_name )
 {
     HANDLE(mData)
