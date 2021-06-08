@@ -40,7 +40,7 @@ unittest
     auto height = Height(0);
     // variable number of txs for each block
     only(1, 3, 4).each!((i) {
-        txs.take(i).each!(tx => network.clients[0].putTransaction(tx));
+        txs.takeExactly(i).each!(tx => network.clients[0].putTransaction(tx));
         txs = txs.drop(i);
         height++;
         network.expectHeightAndPreImg(height, GenesisBlock.header, 5.seconds);
