@@ -56,8 +56,8 @@ public struct BlockHeader
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
 
-    /// Bitfield containing the validators' key indices which signed the block
     public BitField!ubyte validators;
+    /// Bitfield containing the validators' key indices which signed the block
 
     /// Block height (genesis is #0)
     public Height height;
@@ -204,6 +204,34 @@ public struct Block
                 this.header.merkle_root,
                 this.header.random_seed,
                 signature,
+                validators,
+                this.header.height,
+                this.header.enrollments.dup,
+                this.header.missing_validators.dup,
+                this.header.time_offset),
+            // TODO: Optimize this by using dup for txs also
+            this.txs.map!(tx =>
+                tx.serializeFull.deserializeFull!Transaction).array,
+            this.merkle_tree.dup);
+    }
+
+    /***************************************************************************
+
+        Returns:
+            a copy of this block
+
+    ***************************************************************************/
+
+    public Block dup () inout @safe
+    {
+        auto validators = BitField!ubyte(this.header.validators.length);
+        this.header.validators.enumerate.map!(en => validators[en.index] = en.value);
+        return immutable Block(
+            BlockHeader(
+                this.header.prev_block,
+                this.header.merkle_root,
+                this.header.random_seed,
+                this.header.signature,
                 validators,
                 this.header.height,
                 this.header.enrollments.dup,

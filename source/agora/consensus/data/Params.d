@@ -41,8 +41,11 @@ module agora.consensus.data.Params;
 import agora.common.Amount;
 import agora.consensus.data.Block;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
+import agora.consensus.data.Transaction;
 
 import core.time;
+import std.algorithm;
 
 /// Ditto
 public immutable class ConsensusParams
@@ -88,8 +91,8 @@ public immutable class ConsensusParams
                  ConsensusConfig config = ConsensusConfig.init,
                  Duration block_interval = 1.seconds)
     {
-        this.Genesis = genesis;
-        this.CommonsBudgetAddress = commons_budget_address,
+        this.Genesis = genesis.dup;
+        this.CommonsBudgetAddress = commons_budget_address;
         this.BlockInterval = block_interval;
         this.data = config;
     }
@@ -109,6 +112,12 @@ public immutable class ConsensusParams
         };
         this(GenesisBlock, CommonsBudget.address, config);
     }
+}
+
+unittest
+{
+    immutable params = new immutable(ConsensusParams)();
+    assert(params.Genesis.txs[0].outputs.count > 0);
 }
 
 /// Ditto
