@@ -168,29 +168,6 @@ SecretKey::fromSeed(ByteSlice const& seed)
     return sk;
 }
 
-SecretKey
-SecretKey::fromStrKeySeed(std::string const& strKeySeed)
-{
-    uint8_t ver;
-    std::vector<uint8_t> seed;
-    if (!strKey::fromStrKey(strKeySeed, ver, seed) ||
-        (ver != strKey::STRKEY_SEED_ED25519) ||
-        (seed.size() != crypto_sign_SEEDBYTES) ||
-        (strKeySeed.size() != strKey::getStrKeySize(crypto_sign_SEEDBYTES)))
-    {
-        throw std::runtime_error("invalid seed");
-    }
-
-    SecretKey sk;
-    assert(sk.mKeyType == PUBLIC_KEY_TYPE_ED25519);
-    if (crypto_sign_seed_keypair(sk.mPublicKey.ed25519().data(),
-                                 sk.mSecretKey.data(), seed.data()) != 0)
-    {
-        throw std::runtime_error("error generating secret key from seed");
-    }
-    return sk;
-}
-
 std::string
 KeyFunctions<PublicKey>::getKeyTypeName()
 {
@@ -266,66 +243,6 @@ PubKeyUtils::random()
     pk.ed25519().resize(crypto_sign_PUBLICKEYBYTES);
     randombytes_buf(pk.ed25519().data(), pk.ed25519().size());
     return pk;
-}
-
-static void
-logPublicKey(std::ostream& s, PublicKey const& pk)
-{
-    s << "PublicKey:" << std::endl
-      << "  strKey: " << KeyUtils::toStrKey(pk) << std::endl
-      << "  hex: " << binToHex(pk.ed25519()) << std::endl;
-}
-
-static void
-logSecretKey(std::ostream& s, SecretKey const& sk)
-{
-    s << "Seed:" << std::endl
-      << "  strKey: " << sk.getStrKeySeed().value << std::endl;
-    logPublicKey(s, sk.getPublicKey());
-}
-
-void
-StrKeyUtils::logKey(std::ostream& s, std::string const& key)
-{
-    // if it's a hex string, display it in all forms
-    try
-    {
-        uint256 data = hexToBin256(key);
-        PublicKey pk;
-        pk.type(PUBLIC_KEY_TYPE_ED25519);
-        pk.ed25519() = data;
-        logPublicKey(s, pk);
-
-        SecretKey sk(SecretKey::fromSeed(data));
-        logSecretKey(s, sk);
-        return;
-    }
-    catch (...)
-    {
-    }
-
-    // see if it's a public key
-    try
-    {
-        PublicKey pk = KeyUtils::fromStrKey<PublicKey>(key);
-        logPublicKey(s, pk);
-        return;
-    }
-    catch (...)
-    {
-    }
-
-    // see if it's a seed
-    try
-    {
-        SecretKey sk = SecretKey::fromStrKeySeed(key);
-        logSecretKey(s, sk);
-        return;
-    }
-    catch (...)
-    {
-    }
-    s << "Unknown key type" << std::endl;
 }
 
 Hash

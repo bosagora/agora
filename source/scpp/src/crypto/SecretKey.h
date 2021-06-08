@@ -70,17 +70,6 @@ class SecretKey
     static SecretKey pseudoRandomForTestingFromSeed(unsigned int seed);
 #endif
 
-    // Decode a secret key from a provided StrKey seed value.
-    static SecretKey fromStrKeySeed(std::string const& strKeySeed);
-    static SecretKey
-    fromStrKeySeed(std::string&& strKeySeed)
-    {
-        SecretKey ret = fromStrKeySeed(strKeySeed);
-        for (std::size_t i = 0; i < strKeySeed.size(); ++i)
-            strKeySeed[i] = 0;
-        return ret;
-    }
-
     // Decode a secret key from a binary seed value.
     static SecretKey fromSeed(ByteSlice const& seed);
 
@@ -110,13 +99,6 @@ template <> struct KeyFunctions<PublicKey>
 namespace PubKeyUtils
 {
 PublicKey random();
-}
-
-namespace StrKeyUtils
-{
-// logs a key (can be a public or private key) in all
-// known formats
-void logKey(std::ostream& s, std::string const& key);
 }
 
 namespace HashUtils
