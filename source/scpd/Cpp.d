@@ -29,12 +29,15 @@ import agora.crypto.Hash;
 import agora.serialization.Serializer;
 
 //import core.stdcpp.exception;
+import core.stdcpp.string;
 import core.stdcpp.xutility;
 import std.meta;
 
 import vibe.data.json;
 
 public enum CppCtor { Use = 0 }
+
+public alias std_string = basic_string!char;
 
 extern(C++) {
 @trusted nothrow @nogc:

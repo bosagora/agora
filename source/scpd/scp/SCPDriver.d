@@ -118,42 +118,15 @@ nothrow:
     // returning Value() means no valid value could be extracted
     ValueWrapperPtr extractValidValue(uint64_t slotIndex, ref const(Value) value);
 
-    version (Windows)
-    {
-        // TODO: Take temporary action to support mangling in Windows MSVC
-        // MSVC mangles the return value, while POSIX does not,
-        // and `getValueString`, `toStrKey`, and `toShortString` return `std::string` for which we need bindings
-        // `getValueString` is used for debugging
-        // default implementation is the hash of the value
-        //std::string getValueString(ref const(Value) v) const;
-        pragma(mangle, `?getValueString@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBU?$xvector@E$0PPPPPPPM@@xdr@@@Z`)
-        void* getValueString(ref const(Value) v) const;
+    // `getValueString` is used for debugging
+    // default implementation is the hash of the value
+    std_string getValueString(ref const(Value) v) const;
 
-        // `toStrKey` returns StrKey encoded string representation
-        //std::string toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
-        pragma(mangle, `?toStrKey@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBUPublicKey@2@_N@Z`)
-        void* toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
+    // `toStrKey` returns StrKey encoded string representation
+    std_string toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
 
-        // `toShortString` converts to the common name of a key if found
-        //std::string toShortString(ref const(NodeID) pk) const;
-        pragma(mangle, `?toShortString@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBUPublicKey@2@@Z`)
-        void* toShortString(ref const(NodeID) pk) const;
-    }
-    else
-    {
-        // `getValueString` is used for debugging
-        // default implementation is the hash of the value
-        //std::string getValueString(ref const(Value) v) const;
-        void* getValueString(ref const(Value) v) const;
-
-        // `toStrKey` returns StrKey encoded string representation
-        //std::string toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
-        void* toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
-
-        // `toShortString` converts to the common name of a key if found
-        //std::string toShortString(ref const(NodeID) pk) const;
-        void* toShortString(ref const(NodeID) pk) const;
-    }
+    // `toShortString` converts to the common name of a key if found
+    std_string toShortString(ref const(NodeID) pk) const;
 
     // `getHashOf` computes the hash for the given vector of byte vector
     abstract Hash getHashOf(ref vector!Value vals) const;
