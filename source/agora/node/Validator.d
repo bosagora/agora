@@ -15,6 +15,7 @@ module agora.node.Validator;
 
 import agora.api.Validator;
 import agora.common.Amount;
+import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -45,6 +46,7 @@ import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
 
 import std.algorithm;
+import std.range : array, enumerate;
 
 import core.stdc.stdlib : abort;
 import core.time;
@@ -228,12 +230,14 @@ public class Validator : FullNode, API
             this.config.validator.preimage_reveal_interval,
             &this.onPreImageRevealTimer, Periodic.Yes);
 
+        this.timers ~= this.taskman.setTimer(
+            this.config.validator.preimage_reveal_interval,
+            &this.preImageCatchupTask, Periodic.Yes);
+
         if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.utxo_set.peekUTXO))
             this.nominator.startNominatingTimer();
         if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.getBlockHeight());
-
-        this.timers ~= this.taskman.setTimer(config.validator.preimage_catchup_interval, () {this.network.retrievePreimages(ledger);}, Periodic.Yes);
     }
 
     /// Ditto
@@ -246,6 +250,77 @@ public class Validator : FullNode, API
     public override Identity handshake (in PublicKey peer)
     {
         return this.getPublicKey(peer);
+    }
+
+    /***************************************************************************
+
+        Periodically retrieve pre-images if we are missing any.
+
+    ***************************************************************************/
+
+    protected void preImageCatchupTask () nothrow
+    {
+        import std.algorithm.mutation : remove;
+
+        if (this.network.peers.empty())  // no clients yet (discovery)
+            return;
+
+        // Only query pre-images if we need them, to avoid flooding peers
+        // with queries
+        const next_height = this.ledger.getBlockHeight() + 1;
+
+        if (!this.enroll_man.isEnrolled(next_height, &this.utxo_set.peekUTXO))
+            return;
+
+        // Currently using this hack as we know we hold a ValidatingLedger,
+        // but we store it as a simple Ledger. A future refactor should get
+        // rid of this cast.
+        auto vledger = cast(ValidatingLedger) this.ledger;
+        assert(vledger !is null);
+
+        auto validators = () {
+            try return this.ledger.getValidators(next_height);
+            catch (Exception exc)
+            {
+                log.error("PreImage catchup task errored: {}", exc);
+                return null;
+            }
+        }();
+        if (!validators.length) return;
+
+        auto missing = Set!Hash.from(
+            validators.filter!(en => en.preimage.height < next_height)
+            .map!(vi => vi.utxo));
+        if (!missing.length)
+            return;
+
+        log.warn("Currently missing pre-images for next height ({}): {}",
+                 next_height, missing);
+
+        auto query = this.network.peers[]
+            .map!(peer => peer.client.getPreimagesForEnrollKeys(missing));
+
+        foreach (preimages; query)
+        {
+            preimages.each!((PreImageInfo pi) {
+                if (this.ledger.addPreimage(pi))
+                {
+                    try this.pushPreImage(pi);
+                    catch (Exception exc) {}
+
+                    // We updated a pre-image, but it's still behind
+                    if (pi.height < next_height)
+                        return;
+                    // Updated a pre-image, but not one of those that we were looking for
+                    if (!missing.remove(pi.utxo))
+                        return;
+
+                    log.info("Caught up preimage: {}", prettify(pi));
+                }
+            });
+            if (!missing.length)
+                break;
+        }
     }
 
     /// GET /public_key
