@@ -209,7 +209,7 @@ qSetCompareInt(SCPQuorumSet const& l, SCPQuorumSet const& r)
     // compare by validators first
     auto res = intLexicographicalCompare(
         lvals.begin(), lvals.end(), rvals.begin(), rvals.end(),
-        [](PublicKey const& l, PublicKey const& r) {
+        [](NodeID const& l, NodeID const& r) {
             if (l < r)
             {
                 return -1;

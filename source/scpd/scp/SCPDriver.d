@@ -130,14 +130,14 @@ nothrow:
         void* getValueString(ref const(Value) v) const;
 
         // `toStrKey` returns StrKey encoded string representation
-        //std::string toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+        //std::string toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
         pragma(mangle, `?toStrKey@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBUPublicKey@2@_N@Z`)
-        void* toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+        void* toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
 
         // `toShortString` converts to the common name of a key if found
-        //std::string toShortString(ref const(PublicKey) pk) const;
+        //std::string toShortString(ref const(NodeID) pk) const;
         pragma(mangle, `?toShortString@SCPDriver@stellar@@UEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBUPublicKey@2@@Z`)
-        void* toShortString(ref const(PublicKey) pk) const;
+        void* toShortString(ref const(NodeID) pk) const;
     }
     else
     {
@@ -147,12 +147,12 @@ nothrow:
         void* getValueString(ref const(Value) v) const;
 
         // `toStrKey` returns StrKey encoded string representation
-        //std::string toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
-        void* toStrKey(ref const(PublicKey) pk, bool fullKey = true) const;
+        //std::string toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
+        void* toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
 
         // `toShortString` converts to the common name of a key if found
-        //std::string toShortString(ref const(PublicKey) pk) const;
-        void* toShortString(ref const(PublicKey) pk) const;
+        //std::string toShortString(ref const(NodeID) pk) const;
+        void* toShortString(ref const(NodeID) pk) const;
     }
 
     // `getHashOf` computes the hash for the given vector of byte vector
