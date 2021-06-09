@@ -120,7 +120,7 @@ unittest
     Transaction[] txs;
 
     // create enough tx's for a single block
-    txs = blocks[0].spendable().map!(txb => txb
+    txs = blocks[0].spendable().takeExactly(1).map!(txb => txb
         .deduct(Amount.UnitPerCoin).sign()).array();
 
     // send it to one node
@@ -184,7 +184,7 @@ unittest
     void createAndExpectNewBlock (Height new_height)
     {
         // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().map!(txb => txb
+        txs = blocks[new_height - 1].spendable().takeExactly(1).map!(txb => txb
             .deduct(Amount.UnitPerCoin).sign()).array();
 
         // send it to one node

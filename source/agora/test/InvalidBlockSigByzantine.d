@@ -149,7 +149,7 @@ unittest
     auto nodes = network.clients;
     auto last_node = nodes[$ - 1];
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
-    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
+    auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
     // Trigger generation of block
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
@@ -171,7 +171,7 @@ unittest
     auto nodes = network.clients;
     auto last_node = nodes[$ - 1];
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
-    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
+    auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.putTransaction(tx));
     // Trigger generation of block
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
