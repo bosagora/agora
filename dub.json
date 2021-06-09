@@ -21,6 +21,7 @@
         "source/scpp/build/*.obj"
     ],
 
+    "versions": [ "_GLIBCXX_USE_CXX98_ABI" ],
     "dflags": [ "-extern-std=c++14", "-preview=in", "-revert=dtorfields" ],
     "lflags-posix": [ "-lstdc++", "-lsqlite3" ],
     "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],

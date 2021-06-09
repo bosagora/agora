@@ -120,13 +120,43 @@ nothrow:
 
     // `getValueString` is used for debugging
     // default implementation is the hash of the value
-    std_string getValueString(ref const(Value) v) const;
+    std_string getValueString(ref const(Value) v) const
+    {
+        import agora.crypto.Hash;
+        try
+            return std_string(v.hashFull().toString());
+        catch (Exception exc)
+        {
+            scope (failure) assert(0);
+            return std_string("SCPDriver.getValueString() threw an Exception");
+        }
+    }
 
     // `toStrKey` returns StrKey encoded string representation
-    std_string toStrKey(ref const(NodeID) pk, bool fullKey = true) const;
+    std_string toStrKey(ref const(NodeID) pk, bool fullKey = true) const
+    {
+        import agora.crypto.Key : PublicKey;
+        try
+            return std_string(PublicKey(pk[]).toString());
+        catch (Exception exc)
+        {
+            scope (failure) assert(0);
+            return std_string("SCPDriver.toStrKey() threw an Exception");
+        }
+    }
 
     // `toShortString` converts to the common name of a key if found
-    std_string toShortString(ref const(NodeID) pk) const;
+    std_string toShortString(ref const(NodeID) pk) const
+    {
+        import agora.crypto.Key : PublicKey;
+        try
+            return std_string(PublicKey(pk[]).toString());
+        catch (Exception exc)
+        {
+            scope (failure) assert(0);
+            return std_string("SCPDriver.toShortString() threw an Exception");
+        }
+    }
 
     // `getHashOf` computes the hash for the given vector of byte vector
     abstract Hash getHashOf(ref vector!Value vals) const;

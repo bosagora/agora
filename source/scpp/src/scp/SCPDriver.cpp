@@ -52,26 +52,6 @@ SCPDriver::wrapValue(Value const& value)
     return res;
 }
 
-std::string
-SCPDriver::getValueString(Value const& v) const
-{
-    Hash valueHash = getHashOf({xdr::xdr_to_opaque(v)});
-
-    return hexAbbrev(valueHash);
-}
-
-std::string
-SCPDriver::toStrKey(NodeID const& pk, bool fullKey) const
-{
-    return fullKey ? KeyUtils::toStrKey(pk) : toShortString(pk);
-}
-
-std::string
-SCPDriver::toShortString(NodeID const& pk) const
-{
-    return KeyUtils::toShortString(pk);
-}
-
 // values used to switch hash function between priority and neighborhood checks
 static const uint32 hash_N = 1;
 static const uint32 hash_P = 2;
