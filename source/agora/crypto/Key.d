@@ -58,10 +58,10 @@ public struct KeyPair
     @safe:
 
     /// Public key
-    public const PublicKey address;
+    public PublicKey address;
 
     /// Secret key
-    public const SecretKey secret;
+    public SecretKey secret;
 
     /// Create a keypair from a `SecretKey`
     public static KeyPair fromSeed (const SecretKey seed) nothrow @nogc
