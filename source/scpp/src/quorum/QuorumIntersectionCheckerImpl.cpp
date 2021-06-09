@@ -347,7 +347,7 @@ QuorumIntersectionCheckerImpl::QuorumIntersectionCheckerImpl(
     buildSCCs();
 }
 
-std::pair<std::vector<PublicKey>, std::vector<PublicKey>>
+std::pair<std::vector<NodeID>, std::vector<NodeID>>
 QuorumIntersectionCheckerImpl::getPotentialSplit() const
 {
     return mPotentialSplit;
@@ -775,7 +775,7 @@ QuorumIntersectionCheckerImpl::networkEnjoysQuorumIntersection() const
 }
 
 bool
-pointsToCandidate(SCPQuorumSet const& p, PublicKey const& candidate)
+pointsToCandidate(SCPQuorumSet const& p, NodeID const& candidate)
 {
     for (auto const& k : p.validators)
     {
@@ -796,12 +796,12 @@ pointsToCandidate(SCPQuorumSet const& p, PublicKey const& candidate)
 
 void
 findCriticalityCandidates(SCPQuorumSet const& p,
-                          std::set<std::set<PublicKey>>& candidates, bool root)
+                          std::set<std::set<NodeID>>& candidates, bool root)
 {
     // Make a singleton-set for every validator, always.
     for (auto const& k : p.validators)
     {
-        std::set<PublicKey> singleton{k};
+        std::set<NodeID> singleton{k};
         candidates.insert(singleton);
     }
 
@@ -809,7 +809,7 @@ findCriticalityCandidates(SCPQuorumSet const& p,
     // record it!
     if (!root && p.innerSets.empty())
     {
-        std::set<PublicKey> inner;
+        std::set<NodeID> inner;
         for (auto const& k : p.validators)
         {
             inner.insert(k);
@@ -825,7 +825,7 @@ findCriticalityCandidates(SCPQuorumSet const& p,
 }
 
 std::string
-groupString(std::set<PublicKey> const& group)
+groupString(std::set<NodeID> const& group)
 {
     std::ostringstream out;
     bool first = true;

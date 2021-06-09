@@ -503,14 +503,14 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
 
     // State to capture a counterexample found during search, for later
     // reporting.
-    mutable std::pair<std::vector<stellar::PublicKey>,
-                      std::vector<stellar::PublicKey>>
+    mutable std::pair<std::vector<stellar::NodeID>,
+                      std::vector<stellar::NodeID>>
         mPotentialSplit;
 
     // These are the key state of the checker: the mapping from node public keys
     // to graph node numbers, and the graph of QBitSets itself.
-    std::vector<stellar::PublicKey> mBitNumPubKeys;
-    std::unordered_map<stellar::PublicKey, size_t> mPubKeyBitNums;
+    std::vector<stellar::NodeID> mBitNumPubKeys;
+    std::unordered_map<stellar::NodeID, size_t> mPubKeyBitNums;
     QGraph mGraph;
 
     // This is a temporary structure that's reused very often within the
@@ -548,7 +548,7 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
                                   bool quiet = false);
     bool networkEnjoysQuorumIntersection() const override;
 
-    std::pair<std::vector<stellar::PublicKey>, std::vector<stellar::PublicKey>>
+    std::pair<std::vector<stellar::NodeID>, std::vector<stellar::NodeID>>
     getPotentialSplit() const override;
     size_t getMaxQuorumsFound() const override;
 };

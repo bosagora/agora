@@ -320,7 +320,7 @@ struct SCPQuorumSet {
     import agora.crypto.Hash;
 
     uint32_t threshold;
-    xvector!(PublicKey) validators;
+    xvector!(NodeID) validators;
     xvector!(SCPQuorumSet) innerSets;
 
     /// Hashing support
