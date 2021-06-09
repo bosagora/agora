@@ -20,18 +20,18 @@ import agora.consensus.data.PreImageInfo;
 import agora.utils.Test;
 import agora.test.Base;
 
-/// doesn't reveal any preimages, except during nomination or when
-/// reveal_preimage is set to true
-public class NoPreImageExceptNominationVN : NoPreImageVN
+/// Doesn't actively reveal any preimages, but can be queried for it
+public class NoActivePINode : TestValidatorNode
 {
     ///
     mixin ForwardCtor!();
 
-    /// GET: /preimages_for_enroll_keys
-    public override PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
-    {
-        return TestValidatorNode.getPreimagesForEnrollKeys(enroll_keys);
-    }
+    ///
+    public override void onPreImageRevealTimer () @safe {}
+
+    /// To be extra sure, we also disable receiving a pre-image
+    /// so that the node may gossip them
+    public override void receivePreimage (in PreImageInfo preimage) @safe {}
 }
 
 unittest
@@ -42,7 +42,7 @@ unittest
     conf.consensus.quorum_threshold = 100;
 
     // set up nodes
-    auto network = makeTestNetwork!(LazyAPIManager!NoPreImageExceptNominationVN)(conf);
+    auto network = makeTestNetwork!(TestNetwork!NoActivePINode)(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

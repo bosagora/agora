@@ -115,9 +115,6 @@ public class Ledger
     /// but less than current time + block_time_offset_tolerance
     public Duration block_time_offset_tolerance;
 
-    /// Enrollment keys for unknown preimages for the next height
-    private Set!Hash enrolls_keys_for_unknown_preimages;
-
     /***************************************************************************
 
         Constructor
@@ -1172,20 +1169,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Get the enrollment keys for unknown preimages
-
-        Returns:
-            the enrollment keys for unknown preimages
-
-    ***************************************************************************/
-
-    public Set!Hash getEnrollKeysForUnknownPreimages () @safe nothrow
-    {
-        return this.enrolls_keys_for_unknown_preimages;
-    }
-
-    /***************************************************************************
-
         Check if information for pre-images and slashed validators is valid
 
         Params:
@@ -1212,11 +1195,6 @@ public class Ledger
         uint[] missing_validators_lower_bound = validators.enumerate
             .filter!(kv => kv.value.preimage.height < height)
             .map!(kv => cast(uint) kv.index).array();
-
-        // trying to retrieve preimages that - based on the consensus data -
-        // was shared with other nodes
-        foreach (const validator_ind; setDifference(missing_validators_lower_bound, missing_validators))
-            this.enrolls_keys_for_unknown_preimages.put(validators[validator_ind].utxo());
 
         // NodeA will check the candidate from NodeB in the following way:
         //
