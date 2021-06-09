@@ -45,7 +45,6 @@ unittest
     auto node_1 = nodes[0];
 
     Transaction[][] block_txes; /// per-block array of transactions (genesis not included)
-    Transaction[] last_txs;
 
     // Get the genesis block, make sure it's the only block externalized
     auto blocks = node_1.getBlocksFrom(0, 2);
@@ -54,15 +53,20 @@ unittest
     foreach (block_idx; 0 .. 10)  // create 10 blocks
     {
         // create enough tx's for a single block
-        auto txs = blocks[block_idx].spendable().map!(txb => txb.sign()).array();
+        Transaction[] txs = blocks[block_idx].spendable().map!(txb => txb.sign()).array;
 
-        // send it to one node
+        // send each tx to one node
         txs.each!(tx => node_1.putTransaction(tx));
+        // wait for all nodes get the txs
+        txs.each!(tx =>
+            nodes.each!(node =>
+                node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)));
+        // now create the next block
         network.expectHeightAndPreImg(Height(block_idx + 1), blocks[0].header);
 
-        blocks ~= node_1.getBlocksFrom(block_idx + 1, 1);
+        blocks ~= node_1.getBlocksFrom(block_idx + 1, 2);
+        assert(blocks.length == block_idx + 2);
         block_txes ~= txs.sort.array;
-        last_txs = txs;
     }
 
     assert(blocks[0] == network.blocks[0]);
