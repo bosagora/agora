@@ -163,7 +163,7 @@ unittest
     auto blocks = picky_node.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    auto txs = blocks[0].spendable().map!(txb => txb.sign());
+    auto txs = blocks[0].spendable().takeExactly(1).map!(txb => txb.sign());
     txs.each!(tx => node.putTransaction(tx));
     Thread.sleep(1.seconds);
     txs.each!(tx => assert(!picky_node.hasTransactionHash(tx.hashFull())));
