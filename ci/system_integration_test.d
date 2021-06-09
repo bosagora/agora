@@ -24,7 +24,7 @@ immutable EnvFile = IntegrationPath.buildPath("environment.sh");
 /// e.g. all dependencies are installed and the binary isn't corrupt.
 immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
                        "-t", "agora", RootPath, ];
-immutable TestContainer = [ "docker", "run", "agora", "--help", ];
+immutable TestContainer = [ "docker", "run", "--rm", "agora", "--help", ];
 immutable DockerCompose = [ "docker-compose", "-f", ComposeFile, "--env-file", EnvFile ];
 immutable DockerComposeUp = DockerCompose ~ [ "up", "--abort-on-container-exit",
     "--scale", "fuzzer=0",];
