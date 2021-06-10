@@ -146,5 +146,6 @@ unittest
     // All nodes should've banned impersonator_node
     foreach (node; network.nodes)
         if (node != impersonator_node)
-            assert(node.client.isBanned(impersonator_node.address));
+            assert(node.client.isBanned(impersonator_node.address),
+                format!"Node %s did not ban %s"(node.address, impersonator_node.address));
 }
