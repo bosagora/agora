@@ -579,6 +579,7 @@ node:
 private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
 {
     const validator_cycle = get!(uint, "consensus", "validator_cycle")(cmdln, node);
+    const genesis_ts = get!(ulong, "consensus", "genesis_timestamp")(cmdln, node);
     const max_quorum_nodes = get!(uint, "consensus", "max_quorum_nodes")(cmdln, node);
     const quorum_threshold = get!(uint, "consensus", "quorum_threshold")(cmdln, node);
     const quorum_shuffle_interval = get!(uint, "consensus", "quorum_shuffle_interval")(cmdln, node);
@@ -593,6 +594,7 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
 
     ConsensusConfig result = {
         validator_cycle: validator_cycle,
+        genesis_timestamp: genesis_ts,
         max_quorum_nodes: max_quorum_nodes,
         quorum_threshold: quorum_threshold,
         quorum_shuffle_interval: quorum_shuffle_interval,
@@ -624,6 +626,7 @@ consensus:
     validator_tx_fee_cut:      69
     payout_period:           9999
     slash_penalty_amount:   20000
+    genesis_timestamp:     424242
 `;
 
     auto node = Loader.fromString(conf_example).load();
@@ -637,6 +640,7 @@ consensus:
     assert(config.validator_tx_fee_cut == 69);
     assert(config.payout_period == 9999);
     assert(config.slash_penalty_amount == 20_000.coins);
+    assert(config.genesis_timestamp == 424242);
 }
 
 /// Parse the validator config section
