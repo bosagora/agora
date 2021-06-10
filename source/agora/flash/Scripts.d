@@ -16,6 +16,7 @@ module agora.flash.Scripts;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
@@ -162,26 +163,28 @@ public Unlock createUnlockSettle (Signature sig, in ulong seq_id)
     transaction or the closing transaction will spend from.
 
     Params:
-        prev_tx = the previous transaction.
-        settle_age = the relative unlock age that the settlement will be
-            encumbered by.
-        outputs = the balance distribution.
+        utxo = funding UTXO
+        utxo_hash = hash of `utxo`
+        capacity = initial capacity of the channel
+        pair_pk = Pair PublicKey
 
     Returns:
         the funding transaction
 
 *******************************************************************************/
 
-public Transaction createFundingTx (in Hash utxo, in Amount capacity,
-    in Point pair_pk) @safe nothrow
+public Transaction createFundingTx (in UTXO utxo, in Hash utxo_hash, 
+    in Amount capacity, in Point pair_pk) @safe nothrow
 {
-    Transaction funding_tx = Transaction(
-        [Input(utxo)],
-        [
-            Output(capacity,
-                Lock(LockType.Key, pair_pk[].dup))]);
+    auto inputs = [Input(utxo_hash)];
+    auto outputs = [Output(capacity,
+        Lock(LockType.Key, pair_pk[].dup))];
 
-    return funding_tx;
+    Amount rem_funds = utxo.output.value;
+    if (rem_funds.sub(capacity) && rem_funds > 0.coins)
+        outputs ~= Output(rem_funds, utxo.output.lock);
+
+    return Transaction(inputs, outputs);
 }
 
 /*******************************************************************************
@@ -217,7 +220,7 @@ public Transaction createClosingTx (in Hash utxo, in Output[] outputs)
     transaction.
 
     Params:
-        prev_tx = the previous transaction.
+        prev_utxo_hash = the previous UTXO.
         settle_age = the relative unlock age that the settlement will be
             encumbered by.
         outputs = the balance distribution.
@@ -227,11 +230,11 @@ public Transaction createClosingTx (in Hash utxo, in Output[] outputs)
 
 *******************************************************************************/
 
-public Transaction createSettleTx (in Transaction prev_tx,
+public Transaction createSettleTx (in Hash prev_utxo_hash,
     in uint settle_age, in Output[] outputs) @safe nothrow
 {
     Transaction settle_tx = Transaction(
-        [Input(prev_tx, 0 /* index */, settle_age)],
+        [Input(prev_utxo_hash, Unlock.init, settle_age)],
         outputs.dup);
 
     return settle_tx;
@@ -248,7 +251,7 @@ public Transaction createSettleTx (in Transaction prev_tx,
     Params:
         chan_conf = the channel configuration.
         seq_id = the sequence ID.
-        prev_tx = the previous update / trigger transaction.
+        prev_utxo_hash = the previous update / trigger transaction output.
 
     Returns:
         the updeate transaction.
@@ -256,14 +259,14 @@ public Transaction createSettleTx (in Transaction prev_tx,
 *******************************************************************************/
 
 public Transaction createUpdateTx (in ChannelConfig chan_conf,
-    in uint seq_id, in Transaction prev_tx) @safe nothrow
+    in uint seq_id, in Hash prev_utxo_hash) @safe nothrow
 {
     const Lock = createFlashLock(chan_conf.settle_time,
         chan_conf.funding_tx_hash, chan_conf.pair_pk, seq_id,
         chan_conf.num_peers);
 
     Transaction update_tx = Transaction(
-        [ Input(prev_tx, 0 /* index */, 0 /* unlock age */)] ,
+        [ Input(prev_utxo_hash)] ,
         [ Output(chan_conf.capacity, Lock) ]);
 
     return update_tx;

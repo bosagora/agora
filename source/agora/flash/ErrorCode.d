@@ -112,5 +112,9 @@ public enum ErrorCode : ushort
     MismatchingBlockHeight,
 
     /// Receiving node implements a different version of the Onion protocol
-    VersionMismatch
+    VersionMismatch,
+
+    /// Either funding UTXO does not belong to the given PublicKey or does not
+    /// have enough funds
+    RejectedFundingUTXO,
 }

@@ -110,7 +110,7 @@ public struct ChannelConfig
     public Hash funding_tx_hash;
 
     /// The utxo that will actually be spent from the funding tx (just index 0)
-    public Hash funding_utxo;
+    public uint funding_utxo_idx;
 
     /// The total amount funded in this channel. This information is
     /// derived from the Outputs of the funding transaction.
