@@ -794,7 +794,7 @@ public class BlockStorage : IBlockStorage
         assert(result.length + DataSize <= MapSize,
             "Checksum size is too large to fit in the map");
     }
-    body
+    do
     {
         assert(data.length < 1 << 20,
             "Data length for checksum should not exceed 1MB");
