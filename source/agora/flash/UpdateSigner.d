@@ -21,9 +21,11 @@ import agora.common.ManagedDatabase;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
+import agora.crypto.Hash;
 import agora.flash.api.FlashAPI;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
@@ -298,7 +300,7 @@ public class UpdateSigner
 
     public Result!UpdatePair collectSignatures (FlashAPI peer,
         uint seq_id, Output[] outputs, PrivateNonce priv_nonce,
-        PublicNonce peer_nonce, Transaction prev_tx)
+        PublicNonce peer_nonce, Hash prev_utxo_hash, UTXO prev_utxo)
     {
         this.clearState();
 
@@ -306,14 +308,14 @@ public class UpdateSigner
         this.outputs = outputs;
         this.priv_nonce = priv_nonce;
         this.peer_nonce = peer_nonce;
-        this.prev_tx = prev_tx;
 
         this.is_collecting = true;
         scope (exit) this.is_collecting = false;
 
         this.pending_update = this.createPendingUpdate(priv_nonce, peer_nonce,
-            prev_tx);
-        this.pending_settle = this.createPendingSettle(this.pending_update.tx,
+            prev_utxo_hash);
+        this.pending_settle = this.createPendingSettle(
+            UTXO.getHash(hashFull(this.pending_update.tx), 0),
             outputs, priv_nonce, peer_nonce);
 
         // todo: need to validate settlement against update, in case
@@ -396,7 +398,7 @@ public class UpdateSigner
             return Result!UpdatePair(update_res.error, update_res.message);
 
         if (auto error = this.isInvalidUpdateMultiSig(this.pending_update,
-            update_res.value, priv_nonce, peer_nonce, prev_tx))
+            update_res.value, priv_nonce, peer_nonce, prev_utxo))
         {
             // todo: inform? ban?
             log.info("{}: Error during validation: {}. For update "
@@ -502,7 +504,7 @@ public class UpdateSigner
         Params:
             priv_nonce = the private nonce to use for signing.
             peer_nonce = the counter-party's public nonce to use for signing.
-            prev_tx = the transaction this update / trigger transaction is
+            prev_utxo_hash = the UTXO this update / trigger transaction is
                 spending from.
 
         Returns:
@@ -511,9 +513,9 @@ public class UpdateSigner
     ***************************************************************************/
 
     private PendingUpdate createPendingUpdate (in PrivateNonce priv_nonce,
-        in PublicNonce peer_nonce, in Transaction prev_tx)
+        in PublicNonce peer_nonce, in Hash prev_utxo_hash)
     {
-        auto update_tx = createUpdateTx(this.conf, seq_id, prev_tx);
+        auto update_tx = createUpdateTx(this.conf, seq_id, prev_utxo_hash);
         const sig = this.makeUpdateSig(update_tx, priv_nonce, peer_nonce);
 
         PendingUpdate update =
@@ -546,7 +548,7 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    private PendingSettle createPendingSettle (in Transaction update_tx,
+    private PendingSettle createPendingSettle (in Hash update_utxo_hash,
         in Output[] outputs, in PrivateNonce priv_nonce,
         in PublicNonce peer_nonce)
     {
@@ -557,7 +559,7 @@ public class UpdateSigner
         const nonce_pair_pk = priv_nonce.settle.V + peer_nonce.settle;
 
         const uint input_idx = 0; // todo: this should ideally not be hardcoded
-        auto settle_tx = createSettleTx(update_tx, this.conf.settle_time,
+        auto settle_tx = createSettleTx(update_utxo_hash, this.conf.settle_time,
             outputs);
         const challenge_settle = getSequenceChallenge(settle_tx, this.seq_id,
             input_idx);
@@ -643,7 +645,7 @@ public class UpdateSigner
 
     private string isInvalidUpdateMultiSig (ref PendingUpdate update,
         in Signature peer_sig, in PrivateNonce priv_nonce,
-        in PublicNonce peer_nonce, in Transaction prev_tx)
+        in PublicNonce peer_nonce, in UTXO prev_utxo)
     {
         const nonce_pair_pk = priv_nonce.update.V + peer_nonce.update;
         const update_multi_sig = Signature(nonce_pair_pk,
@@ -654,7 +656,7 @@ public class UpdateSigner
 
         const Unlock update_unlock = this.makeUpdateUnlock(update_multi_sig);
         update_tx.inputs[0].unlock = update_unlock;
-        const lock = prev_tx.outputs[0].lock;
+        const lock = prev_utxo.output.lock;
 
         // note: must always use the execution engine to validate and never
         // try to validate the signatures manually.
@@ -788,7 +790,4 @@ private mixin template UpdateSignerMetadata ()
 
     /// the public nonce pair the counter-party will use for signing
     private PublicNonce peer_nonce;
-
-    /// The tx from which to spend from
-    private Transaction prev_tx;
 }

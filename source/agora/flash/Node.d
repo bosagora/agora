@@ -1081,8 +1081,8 @@ public abstract class FlashNode : FlashControlAPI
 
     ///
     public override Result!Hash openNewChannel (PublicKey reg_pk,
-        /* in */ Hash funding_utxo, /* in */ Amount capacity,
-        /* in */ uint settle_time, /* in */ Point recv_pk)
+        /* in */ UTXO funding_utxo, /* in */ Hash funding_utxo_hash,
+        /* in */ Amount capacity, /* in */ uint settle_time, /* in */ Point recv_pk)
     {
         log.info("openNewChannel({}, {}, {})",
                  capacity, settle_time, recv_pk.flashPrettify);
@@ -1093,12 +1093,22 @@ public abstract class FlashNode : FlashControlAPI
                 format("The provided key %s is not managed by this Flash node.",
                     reg_pk));
 
+        if (funding_utxo.output.address != reg_pk)
+            return Result!Hash(ErrorCode.RejectedFundingUTXO,
+                format("The provided UTXO does not belong to %s",
+                    reg_pk));
+
+        if (funding_utxo.output.value < capacity)
+            return Result!Hash(ErrorCode.RejectedFundingUTXO,
+                format("The provided UTXO does not have requested (%s BOA) funds",
+                    capacity));
+
         const key_pair = () @trusted { return KeyPair.fromSeed(*secret_key); }();
         const pair_pk = key_pair.address + recv_pk;
 
         // create funding, don't sign it yet as we'll share it first
-        auto funding_tx = createFundingTx(funding_utxo, capacity,
-            pair_pk);
+        auto funding_tx = createFundingTx(funding_utxo, funding_utxo_hash,
+            capacity, pair_pk);
 
         const funding_tx_hash = hashFull(funding_tx);
         const Hash chan_id = funding_tx_hash;
@@ -1115,6 +1125,8 @@ public abstract class FlashNode : FlashControlAPI
                 ~ "pending / existing channel");
         }
 
+        const funding_utxo_idx = funding_tx.outputs.map!(output => output.address).countUntil(pair_pk);
+        assert(funding_utxo_idx != -1);
         const num_peers = 2;
         ChannelConfig chan_conf =
         {
@@ -1126,7 +1138,7 @@ public abstract class FlashNode : FlashControlAPI
             update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
             funding_tx      : funding_tx,
             funding_tx_hash : funding_tx_hash,
-            funding_utxo    : UTXO.getHash(funding_tx.hashFull(), 0),
+            funding_utxo_idx: cast (uint) funding_utxo_idx,
             capacity        : capacity,
             settle_time     : settle_time,
         };

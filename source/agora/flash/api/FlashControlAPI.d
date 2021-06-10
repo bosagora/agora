@@ -23,6 +23,7 @@ import agora.flash.Config;
 import agora.flash.Invoice;
 import agora.flash.Route;
 import agora.flash.Types;
+import agora.consensus.data.UTXO;
 
 import core.stdc.time;
 
@@ -95,6 +96,7 @@ public interface FlashControlAPI : FlashAPI
             channel open request. If this key is not managed by this Flash
             node then an error will be returned.
             funding_utxo = the UTXO that will be used to fund the setup tx
+            funding_utxo_hash = hash of `funding_utxo`
             capacity = the amount that will be used to fund the setup tx
             settle_time = closing settle time in number of blocks since last
                 setup / update tx was published on the blockchain
@@ -107,8 +109,9 @@ public interface FlashControlAPI : FlashAPI
     ***************************************************************************/
 
     public Result!Hash openNewChannel (PublicKey reg_pk,
-        /* in */ Hash funding_utxo, /* in */ Amount capacity,
-        /* in */ uint settle_time, /* in */ Point peer_pk);
+        /* in */ UTXO funding_utxo, /* in */ Hash funding_utxo_hash,
+        /* in */ Amount capacity, /* in */ uint settle_time,
+        /* in */ Point peer_pk);
 
     /***************************************************************************
 

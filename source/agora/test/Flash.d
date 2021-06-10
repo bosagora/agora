@@ -597,9 +597,10 @@ unittest
     //const Settle_10_Blocks = 10;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
@@ -702,9 +703,10 @@ unittest
     const Settle_4_Blocks = 4;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, Amount(10_000), Settle_4_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
@@ -835,9 +837,10 @@ unittest
     //const Settle_10_Blocks = 10;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
@@ -953,9 +956,10 @@ unittest
     /+ OPEN ALICE => BOB CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_utxo = UTXO(0, txs[0].outputs[0]);
+    const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pk);
     assert(alice_bob_chan_id_res.error == ErrorCode.None,
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
@@ -978,9 +982,10 @@ unittest
     /+ OPEN BOB => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
+    const bob_utxo = UTXO(0, txs[1].outputs[0]);
+    const bob_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo, Amount(3_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo, bob_utxo_hash, Amount(3_000), Settle_1_Blocks, charlie_pk);
     assert(bob_charlie_chan_id_res.error == ErrorCode.None,
         bob_charlie_chan_id_res.message);
     const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
@@ -1111,9 +1116,10 @@ unittest
     /+ OPEN ALICE => BOB CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_utxo = UTXO(0, txs[0].outputs[0]);
+    const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pk);
     assert(alice_bob_chan_id_res.error == ErrorCode.None,
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
@@ -1135,9 +1141,10 @@ unittest
     /+ OPEN BOB => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo = UTXO.getHash(hashFull(txs[1]), 0);
+    const bob_utxo = UTXO(0, txs[1].outputs[0]);
+    const bob_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const bob_charlie_chan_id_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo, bob_utxo_hash, Amount(10_000), Settle_1_Blocks, charlie_pk);
     assert(bob_charlie_chan_id_res.error == ErrorCode.None,
         bob_charlie_chan_id_res.message);
     const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
@@ -1159,9 +1166,10 @@ unittest
     /+ OPEN CHARLIE => ALICE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const charlie_utxo = UTXO.getHash(hashFull(txs[2]), 0);
+    const charlie_utxo = UTXO(0, txs[2].outputs[0]);
+    const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const charlie_alice_chan_id_res = charlie.openNewChannel(charlie_pubkey,
-        charlie_utxo, Amount(10_000), Settle_1_Blocks, alice_pk);
+        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, alice_pk);
     assert(charlie_alice_chan_id_res.error == ErrorCode.None,
         charlie_alice_chan_id_res.message);
     const charlie_alice_chan_id = charlie_alice_chan_id_res.value;
@@ -1274,9 +1282,10 @@ unittest
     /+ OPEN ALICE => BOB CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_utxo = UTXO(0, txs[0].outputs[0]);
+    const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, Amount(10_000), Settle_1_Blocks, bob_pk);
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pk);
     assert(alice_bob_chan_id_res.error == ErrorCode.None,
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
@@ -1298,9 +1307,10 @@ unittest
     /+ OPEN BOB => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo = UTXO.getHash(hashFull(txs[2]), 0);
+    const bob_utxo = UTXO(0, txs[2].outputs[0]);
+    const bob_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const bob_charlie_chan_id_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo, Amount(10_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo, bob_utxo_hash, Amount(10_000), Settle_1_Blocks, charlie_pk);
     assert(bob_charlie_chan_id_res.error == ErrorCode.None,
         bob_charlie_chan_id_res.message);
     const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
@@ -1327,9 +1337,10 @@ unittest
     /+ OPEN SECOND BOB => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo_2 = UTXO.getHash(hashFull(txs[3]), 0);
+    const bob_utxo_2 = UTXO(0, txs[3].outputs[0]);
+    const bob_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
     const bob_charlie_chan_id_2_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo_2, Amount(10_000), Settle_1_Blocks, charlie_pk);
+        bob_utxo_2, bob_utxo_hash_2, Amount(10_000), Settle_1_Blocks, charlie_pk);
     assert(bob_charlie_chan_id_2_res.error == ErrorCode.None,
         bob_charlie_chan_id_2_res.message);
     const bob_charlie_chan_id_2 = bob_charlie_chan_id_2_res.value;
@@ -1489,9 +1500,10 @@ unittest
     /+ OPEN ALICE => BOB CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const alice_utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_utxo = UTXO(0, txs[0].outputs[0]);
+    const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, Amount(10_000), 0, bob_pk);
+        alice_utxo, alice_utxo_hash, Amount(10_000), 0, bob_pk);
     assert(alice_bob_chan_id_res.error == ErrorCode.None,
         alice_bob_chan_id_res.message);
     const alice_bob_chan_id = alice_bob_chan_id_res.value;
@@ -1572,9 +1584,10 @@ unittest
     const Settle_1_Blocks = 0;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
@@ -1670,7 +1683,8 @@ unittest
     const Settle_10_Blocks = 10;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
 
     // error on mismatching genesis hash
     ChannelConfig bad_conf = { funder_pk : alice_pair.V };
@@ -1683,7 +1697,7 @@ unittest
 
     // error on capacity too low
     auto res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(1), Settle_10_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(1), Settle_10_Blocks, bob_pair.V);
     assert(res.error == ErrorCode.None);
 
     auto error = factory.listener.waitUntilChannelState(res.value,
@@ -1696,7 +1710,7 @@ unittest
 
     // error on capacity too high
     res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(1_000_000_000), Settle_10_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, bob_pair.V);
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
@@ -1705,16 +1719,25 @@ unittest
 
     // error on settle time too low
     res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(10_000), 5, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), 5, bob_pair.V);
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected);
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
-    // error on settle time too high
+    // error on not enough funds on funding UTXO
     res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(10_000), 1000, bob_pair.V);
+        utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, bob_pair.V);
+    assert(res.error == ErrorCode.RejectedFundingUTXO);
+
+    // error on not own funding UTXO
+    res = bob.openNewChannel(bob_pubkey,
+        utxo, utxo_hash, Amount(10_000), 1000, alice_pair.V);
+    assert(res.error == ErrorCode.RejectedFundingUTXO);
+
+    res = alice.openNewChannel(alice_pubkey,
+        utxo, utxo_hash, Amount(10_000), 1000, bob_pair.V);
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
@@ -1722,7 +1745,7 @@ unittest
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(10_000), Settle_10_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     factory.listener.waitUntilChannelState(res.value, ChannelState.SettingUp);
     const chan_id = chan_id_res.value;
@@ -1738,7 +1761,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
-    res = alice.openNewChannel(alice_pubkey, utxo, Amount(10_000),
+    res = alice.openNewChannel(alice_pubkey, utxo, utxo_hash, Amount(10_000),
         Settle_10_Blocks, bob_pair.V);
     assert(res.error == ErrorCode.DuplicateChannelID, res.to!string);
 
@@ -1878,9 +1901,10 @@ unittest
     const Settle_1_Blocks = 0;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.SettingUp);
@@ -1990,9 +2014,10 @@ unittest
     const Settle_1_Blocks = 0;
 
     // the utxo the funding tx will spend (only relevant to the funder)
-    const utxo = UTXO.getHash(hashFull(txs[0]), 0);
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
 

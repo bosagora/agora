@@ -501,8 +501,12 @@ public class Channel
         const Balance balance = { refund_amount : this.conf.capacity };
         Output[] outputs = this.buildBalanceOutputs(balance);
 
+        const funding_utxo = UTXO(0,
+            this.conf.funding_tx.outputs[this.conf.funding_utxo_idx]);
+        const funding_utxo_hash = UTXO.getHash(
+            hashFull(this.conf.funding_tx), this.conf.funding_utxo_idx);
         auto pair_res = this.update_signer.collectSignatures(this.peer, 0,
-            outputs, priv_nonce, peer_nonce, this.conf.funding_tx);
+            outputs, priv_nonce, peer_nonce, funding_utxo_hash, funding_utxo);
         assert(pair_res.error == ErrorCode.None);  // todo: handle
         this.onSetupComplete(pair_res.value);
 
@@ -970,9 +974,15 @@ LOuter: while (1)
         const old_balance = this.cur_balance;
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
+
+        assert(this.channel_updates[0].update_tx.outputs.length == 1);
+        const update_utxo = UTXO(0,
+            this.channel_updates[0].update_tx.outputs[0]);
+        const update_utxo_hash = UTXO.getHash(
+            hashFull(this.channel_updates[0].update_tx),0);
         auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             new_seq_id, new_outputs, priv_nonce, peer_nonce,
-            this.channel_updates[0].update_tx);  // spend from trigger tx
+            update_utxo_hash, update_utxo);  // spend from trigger tx
         assert(update_pair_res.error == ErrorCode.None); // todo: handle
         auto update_pair = update_pair_res.value;
         this.known_settle_txs.put(update_pair.settle_tx.hashFull());
@@ -1101,9 +1111,15 @@ LOuter: while (1)
 
         this.cur_seq_id = payment.seq_id;
 
+        assert(this.channel_updates[0].update_tx.outputs.length == 1);
+        const update_utxo = UTXO(0,
+            this.channel_updates[0].update_tx.outputs[0]);
+        const update_utxo_hash = UTXO.getHash(
+            hashFull(this.channel_updates[0].update_tx),0);
+
         auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             payment.seq_id, new_outputs, payment.priv_nonce, payment.peer_nonce,
-            this.channel_updates[0].update_tx);  // spend from trigger tx
+            update_utxo_hash, update_utxo);  // spend from trigger tx
 
         if (update_pair_res.error)
         {
@@ -1220,9 +1236,15 @@ LOuter: while (1)
         log.info("{}: Created outgoing payment balance request: {}",
             this.kp.address.flashPrettify, new_balance);
 
+        assert(this.channel_updates[0].update_tx.outputs.length == 1);
+        const update_utxo = UTXO(0,
+            this.channel_updates[0].update_tx.outputs[0]);
+        const update_utxo_hash = UTXO.getHash(
+            hashFull(this.channel_updates[0].update_tx),0);
+
         auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             new_seq_id, new_outputs, priv_nonce, peer_nonce,
-            this.channel_updates[0].update_tx);  // spend from trigger tx
+            update_utxo_hash, update_utxo);  // spend from trigger tx
 
         if (update_pair_res.error)
         {
@@ -1260,11 +1282,17 @@ LOuter: while (1)
     {
         const old_balance = this.cur_balance;
 
+        assert(this.channel_updates[0].update_tx.outputs.length == 1);
+        const update_utxo = UTXO(0,
+            this.channel_updates[0].update_tx.outputs[0]);
+        const update_utxo_hash = UTXO.getHash(
+            hashFull(this.channel_updates[0].update_tx),0);
+
         auto update_pair_res = this.update_signer.collectSignatures(this.peer,
             update.seq_id,
             update.outputs, update.priv_nonce,
             update.peer_nonce,
-            this.channel_updates[0].update_tx);  // spend from trigger tx
+            update_utxo_hash, update_utxo);  // spend from trigger tx
 
         if (update_pair_res.error != ErrorCode.None)
         {
@@ -1666,7 +1694,8 @@ LOuter: while (1)
             return false;
 
         // todo: this is also the close tx, check its utxo first
-        if (tx.inputs[0].utxo == this.conf.funding_utxo)
+        if (tx.inputs[0].utxo == UTXO.getHash(
+            hashFull(this.conf.funding_tx), this.conf.funding_utxo_idx))
             return true;
 
         // todo: could there be a timing issue here if our `channel_updates`
