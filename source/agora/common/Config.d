@@ -587,7 +587,6 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
     const tx_payload_fee_factor = get!(uint, "consensus", "tx_payload_fee_factor")(cmdln, node);
     const validator_tx_fee_cut = get!(ubyte, "consensus", "validator_tx_fee_cut")(cmdln, node);
     const payout_period = get!(uint, "consensus", "payout_period")(cmdln, node);
-    const slash_penalty_value = opt!(ulong, "node", "slash_penalty_amount")(cmdln, node);
 
     if (quorum_threshold < 1 || quorum_threshold > 100)
         throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
@@ -602,7 +601,6 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
         tx_payload_fee_factor: tx_payload_fee_factor,
         validator_tx_fee_cut: validator_tx_fee_cut,
         payout_period: payout_period,
-        slash_penalty_amount : slash_penalty_value.coins,
     };
 
     return result;
@@ -625,7 +623,6 @@ consensus:
     tx_payload_fee_factor:   2100
     validator_tx_fee_cut:      69
     payout_period:           9999
-    slash_penalty_amount:   20000
     genesis_timestamp:     424242
 `;
 
@@ -639,7 +636,6 @@ consensus:
     assert(config.tx_payload_fee_factor == 2100);
     assert(config.validator_tx_fee_cut == 69);
     assert(config.payout_period == 9999);
-    assert(config.slash_penalty_amount == 20_000.coins);
     assert(config.genesis_timestamp == 424242);
 }
 
