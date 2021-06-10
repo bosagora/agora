@@ -111,31 +111,6 @@ public struct Transaction
         return hashFull(this).opCmp(hashFull(other));
     }
 
-    /***************************************************************************
-
-        Transactions Serialization
-
-        Params:
-            dg = Serialize function
-
-    ***************************************************************************/
-
-    public void serialize (scope SerializeDg dg) const
-    {
-        serializePart(this.inputs.length, dg);
-        foreach (const ref input; this.inputs)
-            serializePart(input, dg);
-
-        serializePart(this.outputs.length, dg);
-        assert(this.outputs.isSorted!((a, b) => a < b));
-        foreach (const ref output; this.outputs)
-            serializePart(output, dg);
-
-        serializePart(payload, dg);
-
-        serializePart(this.lock_height, dg);
-    }
-
     pure nothrow @nogc:
 
     /// A `Freeze` transaction is one that has one or more `Freeze` outputs
