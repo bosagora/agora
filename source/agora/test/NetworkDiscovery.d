@@ -102,7 +102,7 @@ unittest
         mixin ForwardCtor!();
 
         /// GET /public_key
-        protected override Identity getPublicKey (PublicKey key = PublicKey.init) 
+        protected override Identity getPublicKey (PublicKey key = PublicKey.init)
             nothrow @trusted
         {
             atomicOp!"+="(call_count, 1);
