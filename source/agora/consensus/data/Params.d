@@ -59,6 +59,9 @@ public immutable class ConsensusParams
     /// Underlying data
     private ConsensusConfig data;
 
+    /// The amount of a penalty for slashed validators
+    public Amount SlashPenaltyAmount = 10_000.coins;
+
     mixin ROProperty!("ValidatorCycle", "validator_cycle");
     mixin ROProperty!("MaxQuorumNodes", "max_quorum_nodes");
     mixin ROProperty!("QuorumThreshold", "quorum_threshold");
@@ -67,7 +70,6 @@ public immutable class ConsensusParams
     mixin ROProperty!("TxPayloadFeeFactor", "tx_payload_fee_factor");
     mixin ROProperty!("ValidatorTXFeeCut", "validator_tx_fee_cut");
     mixin ROProperty!("PayoutPeriod", "payout_period");
-    mixin ROProperty!("SlashPenaltyAmount", "slash_penalty_amount");
     mixin ROProperty!("GenesisTimestamp", "genesis_timestamp");
     mixin ROProperty!("MinFee", "min_fee");
 
@@ -142,9 +144,6 @@ public struct ConsensusConfig
 
     /// How frequent the payments to Validators will be in blocks
     public uint payout_period = 144;
-
-    /// The amount of a penalty for slashed validators
-    public Amount slash_penalty_amount = 10_000.coins;
 
     /// The minimum (transaction size adjusted) fee.
     /// Transaction size adjusted fee = tx fee / tx size in bytes.

@@ -1880,9 +1880,6 @@ public struct TestConf
     /// How frequent the payments to Validators will be
     public uint payout_period = 5;
 
-    /// The amount of a penalty for slashed validators
-    Amount slash_penalty_amount = 10_000.coins;
-
     /// The minimum (transaction size adjusted) fee.
     /// Transaction size adjusted fee = tx fee / tx size in bytes.
     public Amount min_fee = Amount(0);
@@ -1949,7 +1946,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             quorum_shuffle_interval : test_conf.quorum_shuffle_interval,
             validator_tx_fee_cut : test_conf.validator_tx_fee_cut,
             payout_period : test_conf.payout_period,
-            slash_penalty_amount : test_conf.slash_penalty_amount,
             min_fee : test_conf.min_fee,
         };
 
