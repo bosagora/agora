@@ -90,6 +90,10 @@ public struct Transaction
     /// The data to store
     public ubyte[] payload;
 
+    /// This transaction may only be included in a block with `height >= lock_height`.
+    /// Note that another tx with a lower lock time could double-spend this tx.
+    public Height lock_height = Height(0);
+
     /// The size of the Transaction object
     public ulong sizeInBytes () const nothrow pure @nogc
     {
@@ -101,9 +105,11 @@ public struct Transaction
         return size;
     }
 
-    /// This transaction may only be included in a block with `height >= lock_height`.
-    /// Note that another tx with a lower lock time could double-spend this tx.
-    public Height lock_height = Height(0);
+    /// Support for sorting transactions
+    public int opCmp (in Transaction other) const nothrow @nogc
+    {
+        return hashFull(this).opCmp(hashFull(other));
+    }
 
     /***************************************************************************
 
@@ -128,12 +134,6 @@ public struct Transaction
         serializePart(payload, dg);
 
         serializePart(this.lock_height, dg);
-    }
-
-    /// Support for sorting transactions
-    public int opCmp (in Transaction other) const nothrow @nogc
-    {
-        return hashFull(this).opCmp(hashFull(other));
     }
 
     pure nothrow @nogc:
