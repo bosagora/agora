@@ -1197,8 +1197,10 @@ extern(D):
                 // for all the candidates might take long.
                 version (unittest)
                 if (auto msg = this.ledger.validateConsensusData(data))
-                    assert(0, format!"combineCandidates: Invalid consensus data: %s"(
-                        msg));
+                {
+                    log.error("combineCandidates: Invalid consensus data: {}", msg);
+                    continue;
+                }
 
                 Amount total_adjusted_fee;
                 foreach (const ref tx_hash; data.tx_set)
