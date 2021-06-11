@@ -77,9 +77,6 @@ public class NetworkManager
         /// Hash of the output used as collateral, only set if the node is a Validator
         Hash utxo;
 
-        /// PublicKey of the node. TODO: Remove and just use utxo.
-        PublicKey key;
-
         /// Client
         NetworkClient client;
     }
@@ -242,7 +239,6 @@ public class NetworkManager
 
             NodeConnInfo node = {
                 is_validator : is_validator,
-                key : key,
                 utxo: utxo,
                 client : client
             };
@@ -615,7 +611,15 @@ public class NetworkManager
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
             const offset = (node_time - dist_delay) - req_start;
-            offsets ~= TimeInfo(node.key, node_time, req_delay, offset);
+
+            UTXO utxo_value;
+            this.getEnrollmentUTXO(node.utxo, utxo_value);
+            if(utxo_value == UTXO.init)
+            {
+                log.fatal("Couldn't find the UTXO for this node: {}.", node.utxo);
+                assert(0);
+            }
+            offsets ~= TimeInfo(utxo_value.output.address, node_time, req_delay, offset);
         }
 
         // we heard from at least one quorum slice
