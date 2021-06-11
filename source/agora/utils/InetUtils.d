@@ -35,10 +35,10 @@ mixin AddLogger!();
 ///
 public enum HostType : ubyte
 {
+    Invalid,
     IPv4,
     IPv6,
     Domain,
-    Invalid,
 }
 
 ///
@@ -234,7 +234,7 @@ version (Windows)
         }
         catch(Exception e)
         {
-            return HostPortTup("",0, HostType.Invalid);
+            return HostPortTup.init;
         }
 
         HostType host_type = HostType.Domain;
