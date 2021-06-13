@@ -240,6 +240,10 @@ public class FullNode : API
 
     public this (Config config)
     {
+        // Not at global scope because it would conflict with our `Clock` type
+        import std.datetime.systime : SysTime, unixTimeToStdTime;
+        import std.datetime.timezone: UTC;
+
         this.config = config;
         this.log = this.makeLogger();
         this.params = FullNode.makeConsensusParams(config);
@@ -295,6 +299,7 @@ public class FullNode : API
             __TIMESTAMP__, __VERSION__.to!string,
             config.validator.enabled
                 ? config.validator.key_pair.address.toString() : null,
+            SysTime(unixTimeToStdTime(this.params.GenesisTimestamp), UTC()).toISOString(),
         );
     }
 
