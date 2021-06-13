@@ -37,6 +37,8 @@ public struct ApplicationStatsLabels
     public string frontend_version;
     /// Expose this node's public key, if any
     public string public_key;
+    /// The genesis timestamp used (useful for TestNet)
+    public string genesis_timestamp;
 }
 
 /// Dummy stats with a single variable
