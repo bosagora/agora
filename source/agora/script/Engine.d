@@ -22,9 +22,9 @@ module agora.script.Engine;
 
 import agora.common.Types;
 import agora.consensus.data.Transaction;
-import agora.crypto.ECC;
 import agora.crypto.Hash;
-import agora.crypto.Schnorr;
+import agora.crypto.Schnorr : Signature;
+import agora.crypto.Key;
 import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.ScopeCondition;
@@ -152,17 +152,17 @@ public class Engine
         in Transaction tx) nothrow @safe
     {
         // assumed sizes
-        static assert(Point.sizeof == 32);
+        static assert(PublicKey.sizeof == 32);
         static assert(Hash.sizeof == 64);
 
         switch (lock.type)
         {
         case LockType.Key:
-            const Point key = Point(lock.bytes);
+            const PublicKey key = PublicKey(lock.bytes);
             if (unlock.bytes.length != Signature.sizeof)
                 return "LockType.Key requires a 64-byte signature in the unlock script";
             const sig = unlock.bytes.toSignature();
-            if (!verify(key, sig, tx))
+            if (!key.verify(sig, tx))
                 return "LockType.Key signature in unlock script failed validation";
 
             break;
@@ -170,20 +170,20 @@ public class Engine
         case LockType.KeyHash:
             const Hash key_hash = Hash(lock.bytes);
             const(ubyte)[] bytes = unlock.bytes;
-            if (bytes.length != Signature.sizeof + Point.sizeof)
+            if (bytes.length != Signature.sizeof + PublicKey.sizeof)
                 return "LockType.KeyHash requires a 64-byte signature "
                      ~ "and a 32-byte key in the unlock script";
             const sig = bytes[0 .. Signature.sizeof].toSignature();
             bytes.popFrontN(Signature.sizeof);
 
-            const Point key = Point(bytes);
+            const PublicKey key = PublicKey(bytes);
             if (!key.isValid())
                 return "LockType.KeyHash public key in unlock script is invalid";
 
             if (hashFull(key) != key_hash)
                 return "LockType.KeyHash hash of key does not match key hash set in lock script";
 
-            if (!verify(key, sig, tx))
+            if (!key.verify(sig, tx))
                 return "LockType.KeyHash signature in unlock script failed validation";
 
             break;
@@ -729,7 +729,7 @@ public class Engine
         static assert(op == OP.CHECK_SIG || op == OP.VERIFY_SIG);
 
         // if changed, check assumptions
-        static assert(Point.sizeof == 32);
+        static assert(PublicKey.sizeof == 32);
         static assert(Signature.sizeof == 64);
 
         if (stack.count() < 2)
@@ -740,14 +740,14 @@ public class Engine
         }
 
         const key_bytes = stack.pop();
-        if (key_bytes.length != Point.sizeof)
+        if (key_bytes.length != PublicKey.sizeof)
         {
             static immutable err2 = op.to!string
                 ~ " opcode requires 32-byte public key on the stack";
             return err2;
         }
 
-        const point = Point(key_bytes);
+        const point = PublicKey(key_bytes);
         if (!point.isValid())
         {
             static immutable err3 = op.to!string
@@ -764,7 +764,7 @@ public class Engine
         }
 
         const sig = sig_bytes.toSignature();
-        sig_valid = verify(point, sig, tx);
+        sig_valid = point.verify(sig, tx);
         return null;
     }
 
@@ -809,7 +809,7 @@ public class Engine
         static assert(op == OP.CHECK_MULTI_SIG || op == OP.VERIFY_MULTI_SIG);
 
         // if changed, check assumptions
-        static assert(Point.sizeof == 32);
+        static assert(PublicKey.sizeof == 32);
         static assert(Signature.sizeof == 64);
 
         // todo: move to consensus params?
@@ -861,18 +861,18 @@ public class Engine
         }
 
         // buffer
-        Point[MAX_PUB_KEYS] pub_keys_buffer;
+        PublicKey[MAX_PUB_KEYS] pub_keys_buffer;
         foreach (idx, ref key; pub_keys_buffer[0 .. key_count])
         {
             const key_bytes = stack.pop();
-            if (key_bytes.length != Point.sizeof)
+            if (key_bytes.length != PublicKey.sizeof)
             {
                 static immutable err6 = op.to!string
                     ~ " opcode requires 32-byte public key on the stack";
                 return err6;
             }
 
-            key = Point(key_bytes);
+            key = PublicKey(key_bytes);
             if (!key.isValid())
             {
                 static immutable err7 = op.to!string
@@ -882,7 +882,7 @@ public class Engine
         }
 
         // slice
-        Point[] keys = pub_keys_buffer[0 .. key_count];
+        PublicKey[] keys = pub_keys_buffer[0 .. key_count];
 
         const sig_count_arr = stack.pop();
         if (sig_count_arr.length != 1)
@@ -939,7 +939,7 @@ public class Engine
         // compare with.
         while (sigs.length > 0 && sigs.length <= keys.length)
         {
-            if (verify(keys.front, sigs.front, tx))
+            if (keys.front.verify(sigs.front, tx))
                 sigs.popFront();
 
             keys.popFront();
@@ -983,7 +983,7 @@ public class Engine
         static assert(op == OP.CHECK_SEQ_SIG || op == OP.VERIFY_SEQ_SIG);
 
         // if changed, check assumptions
-        static assert(Point.sizeof == 32);
+        static assert(PublicKey.sizeof == 32);
         static assert(Signature.sizeof == 64);
 
         // top to bottom: <min_seq> <key> <new_seq> <sig>
@@ -1008,15 +1008,15 @@ public class Engine
             min_seq_bytes[0 .. ulong.sizeof]);
 
         const key_bytes = stack.pop();
-        if (key_bytes.length != Point.sizeof)
+        if (key_bytes.length != PublicKey.sizeof)
         {
             static immutable err3 = op.to!string
                 ~ " opcode requires 32-byte public key on the stack";
             return err3;
         }
 
-        const Point point = Point(key_bytes);
-        if (!point.isValid())
+        const pubkey = PublicKey(key_bytes);
+        if (!pubkey.isValid())
         {
             static immutable err4 = op.to!string
                 ~ " 32-byte public key on the stack is invalid";
@@ -1056,7 +1056,7 @@ public class Engine
         assert(input_idx != -1, "Input does not belong to this transaction");
 
         const Hash challenge = getSequenceChallenge(tx, sequence, input_idx);
-        sig_valid = verify(point, sig, challenge);
+        sig_valid = pubkey.verify(sig, challenge);
         return null;
     }
 }
@@ -1202,15 +1202,15 @@ unittest
         "CHECK_SIG opcode requires 32-byte public key on the stack");
 
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
-    Point invalid_key;
+    PublicKey invalid_key;
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(1)]
             ~ [ubyte(32)] ~ invalid_key[]
             ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init) ==
         "CHECK_SIG 32-byte public key on the stack is invalid");
 
-    Point valid_key = Point.fromString(
-        "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
+    PublicKey valid_key = PublicKey.fromString(
+        "boa1xzqceczgxtdxmulc9un3wxutx330f5dv56kku38zw80k6nt9fdqygxv43qs");
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(1), ubyte(1)]
             ~ [ubyte(32)] ~ valid_key[]
@@ -1223,11 +1223,11 @@ unittest
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init) ==
         "Script failed");
-    const Pair kp = Pair.random();
-    const sig = sign(kp, tx);
+    const kp = KeyPair.random();
+    const sig = kp.sign(tx);
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ sig.toBlob()[]
-            ~ [ubyte(32)] ~ kp.V[]
+            ~ [ubyte(32)] ~ kp.address[]
             ~ [ubyte(OP.CHECK_SIG)]), Unlock.init, tx, Input.init)
         is null);
 }
@@ -1251,15 +1251,15 @@ unittest
         "VERIFY_SIG opcode requires 32-byte public key on the stack");
 
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
-    Point invalid_key;
+    PublicKey invalid_key;
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(OP.PUSH_BYTES_1), ubyte(1)]
             ~ [ubyte(32)] ~ invalid_key[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "VERIFY_SIG 32-byte public key on the stack is invalid");
 
-    Point valid_key = Point.fromString(
-        "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
+    PublicKey valid_key = PublicKey.fromString(
+        "boa1xzqceczgxtdxmulc9un3wxutx330f5dv56kku38zw80k6nt9fdqygxv43qs");
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(OP.PUSH_BYTES_1), ubyte(1)]
             ~ [ubyte(32)] ~ valid_key[]
@@ -1272,16 +1272,16 @@ unittest
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "VERIFY_SIG signature failed validation");
-    const Pair kp = Pair.random();
-    const sig = sign(kp, tx);
+    const kp = KeyPair.random();
+    const sig = kp.sign(tx);
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ sig.toBlob()[]
-            ~ [ubyte(32)] ~ kp.V[]
+            ~ [ubyte(32)] ~ kp.address[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock.init, tx, Input.init) ==
         "Script failed");  // VERIFY_SIG does not push TRUE to the stack
     assert(engine.execute(
         Lock(LockType.Script, [ubyte(64)] ~ sig.toBlob()[]
-            ~ [ubyte(32)] ~ kp.V[]
+            ~ [ubyte(32)] ~ kp.address[]
             ~ [ubyte(OP.VERIFY_SIG)]), Unlock([ubyte(OP.TRUE)]), tx, Input.init)
         is null);
 }
@@ -1306,7 +1306,7 @@ unittest
         Unlock.init, tx, Input.init) ==
         "CHECK_MULTI_SIG opcode requires 32-byte public key on the stack");
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
-    Point invalid_key;
+    PublicKey invalid_key;
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // required sigs
@@ -1317,8 +1317,8 @@ unittest
         tx, Input.init) ==
         "CHECK_MULTI_SIG 32-byte public key on the stack is invalid");
     // valid key, invalid signature
-    Point valid_key = Point.fromString(
-        "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
+    PublicKey valid_key = PublicKey.fromString(
+        "boa1xzqceczgxtdxmulc9un3wxutx330f5dv56kku38zw80k6nt9fdqygxv43qs");
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // required sigs
@@ -1329,22 +1329,22 @@ unittest
         tx, Input.init) ==
         "Script failed");
 
-    const Pair kp1 = Pair.random();
-    const sig1 = sign(kp1, tx);
-    const Pair kp2 = Pair.random();
-    const sig2 = sign(kp2, tx);
-    const Pair kp3 = Pair.random();
-    const sig3 = sign(kp3, tx);
-    const Pair kp4 = Pair.random();
-    const sig4 = sign(kp4, tx);
-    const Pair kp5 = Pair.random();
-    const sig5 = sign(kp5, tx);
+    const kp1 = KeyPair.random();
+    const sig1 = kp1.sign(tx);
+    const kp2 = KeyPair.random();
+    const sig2 = kp2.sign(tx);
+    const kp3 = KeyPair.random();
+    const sig3 = kp3.sign(tx);
+    const kp4 = KeyPair.random();
+    const sig4 = kp4.sign(tx);
+    const kp5 = KeyPair.random();
+    const sig5 = kp5.sign(tx);
 
     // valid key + signature
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // required sigs
-            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),
@@ -1353,7 +1353,7 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // fails: more sigs than keys
-            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1363,8 +1363,8 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),  // fails: not enough sigs pushed
@@ -1374,8 +1374,8 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1386,8 +1386,8 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp1.V[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1398,8 +1398,8 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig2.toBlob()[]
@@ -1410,8 +1410,8 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),
@@ -1421,8 +1421,8 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig2.toBlob()[]),
@@ -1432,11 +1432,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]),
@@ -1446,11 +1446,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_1)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig2.toBlob()[]),
@@ -1460,11 +1460,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1475,11 +1475,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig5.toBlob()[]
@@ -1490,11 +1490,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1506,11 +1506,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1522,11 +1522,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_5)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1540,11 +1540,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_5)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1558,11 +1558,11 @@ unittest
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(OP.PUSH_NUM_2)]  // number of sigs
-            ~ [ubyte(32)] ~ kp1.V[]
-            ~ [ubyte(32)] ~ kp2.V[]
-            ~ [ubyte(32)] ~ kp3.V[]
-            ~ [ubyte(32)] ~ kp4.V[]
-            ~ [ubyte(32)] ~ kp5.V[]
+            ~ [ubyte(32)] ~ kp1.address[]
+            ~ [ubyte(32)] ~ kp2.address[]
+            ~ [ubyte(32)] ~ kp3.address[]
+            ~ [ubyte(32)] ~ kp4.address[]
+            ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.VERIFY_MULTI_SIG)]),
         Unlock([ubyte(64)] ~ sig1.toBlob()[]
@@ -1622,7 +1622,7 @@ unittest
     // invalid key (crypto_core_ed25519_is_valid_point() fails)
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(32)] ~ Point.init[]  // size ok, form is wrong
+              [ubyte(32)] ~ PublicKey.init[]  // size ok, form is wrong
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
@@ -1630,8 +1630,8 @@ unittest
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG 32-byte public key on the stack is invalid");
 
-    Point rand_key = Point.fromString(
-        "0x44404b654d6ddf71e2446eada6acd1f462348b1b17272ff8f36dda3248e08c81");
+    PublicKey rand_key = PublicKey.fromString(
+        "boa1xzqceczgxtdxmulc9un3wxutx330f5dv56kku38zw80k6nt9fdqygxv43qs");
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
@@ -1663,8 +1663,8 @@ unittest
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 64-byte signature on the stack");
 
-    const Pair kp = Pair.random();
-    const bad_sig = sign(kp, tx);
+    const kp = KeyPair.random();
+    const bad_sig = kp.sign(tx);
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
@@ -1677,10 +1677,10 @@ unittest
 
     // create the proper signature which blanks the input and encodes the sequence
     const challenge_0 = getSequenceChallenge(tx, seq_0, 0);
-    const seq_0_sig = sign(kp, challenge_0);
+    const seq_0_sig = kp.sign(challenge_0);
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(32)] ~ kp.V[]
+              [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
@@ -1690,7 +1690,7 @@ unittest
 
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(32)] ~ kp.V[]
+              [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_1_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
@@ -1700,7 +1700,7 @@ unittest
 
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(32)] ~ kp.V[]
+              [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
@@ -1709,10 +1709,10 @@ unittest
         "Script failed");
 
     const challenge_1 = getSequenceChallenge(tx, seq_1, 0);
-    const seq_1_sig = sign(kp, challenge_1);
+    const seq_1_sig = kp.sign(challenge_1);
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(32)] ~ kp.V[]
+              [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
@@ -1732,7 +1732,7 @@ unittest
 
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(32)] ~ kp.V[]
+              [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
         Unlock(
@@ -1839,19 +1839,19 @@ unittest
 // LockType.Key (Native P2PK - Pay to Public Key), consumes 33 bytes
 unittest
 {
-    const Pair kp = Pair.random();
+    const kp = KeyPair.random();
     const Transaction tx;
-    const sig = sign(kp, tx);
+    const sig = kp.sign(tx);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     assert(engine.execute(
-        Lock(LockType.Key, kp.V[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
+        Lock(LockType.Key, kp.address[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
         null);
-    const bad_sig = sign(kp, "foobar");
+    const bad_sig = kp.sign("foobar");
     assert(engine.execute(
-        Lock(LockType.Key, kp.V[]), Unlock(bad_sig.toBlob()[]), tx, Input.init) ==
+        Lock(LockType.Key, kp.address[]), Unlock(bad_sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key signature in unlock script failed validation");
-    const bad_key = Pair.random().V;
+    const bad_key = KeyPair.random().address;
     assert(engine.execute(
         Lock(LockType.Key, bad_key[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key signature in unlock script failed validation");
@@ -1864,11 +1864,11 @@ unittest
         Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.Key 32-byte public key in lock script is invalid");
     assert(engine.execute(
-        Lock(LockType.Key, kp.V[]),
+        Lock(LockType.Key, kp.address[]),
         Unlock(ubyte(42).repeat(32).array), tx, Input.init) ==
         "LockType.Key requires a 64-byte signature in the unlock script");
     assert(engine.execute(
-        Lock(LockType.Key, kp.V[]),
+        Lock(LockType.Key, kp.address[]),
         Unlock(ubyte(42).repeat(65).array), tx, Input.init) ==
         "LockType.Key requires a 64-byte signature in the unlock script");
 }
@@ -1876,44 +1876,44 @@ unittest
 // LockType.KeyHash (Native P2PKH - Pay to Public Key Hash), consumes 65 bytes
 unittest
 {
-    const Pair kp = Pair.random();
-    const key_hash = hashFull(kp.V);
+    const kp = KeyPair.random();
+    const key_hash = hashFull(kp.address);
     const Transaction tx;
-    const sig = sign(kp, tx);
-    const Pair kp2 = Pair.random();
-    const sig2 = sign(kp2, tx);  // valid sig, but for a different key-pair
+    const sig = kp.sign(tx);
+    const kp2 = KeyPair.random();
+    const sig2 = kp2.sign(tx);  // valid sig, but for a different key-pair
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     assert(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init)
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.address[]), tx, Input.init)
         is null);
-    const bad_sig = sign(kp, "foo");
+    const bad_sig = kp.sign("foo");
     assert(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(bad_sig.toBlob()[] ~ kp.V[]), tx, Input.init) ==
+        Lock(LockType.KeyHash, key_hash[]), Unlock(bad_sig.toBlob()[] ~ kp.address[]), tx, Input.init) ==
         "LockType.KeyHash signature in unlock script failed validation");
     assert(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig2.toBlob()[] ~ kp2.V[]), tx, Input.init) ==
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig2.toBlob()[] ~ kp2.address[]), tx, Input.init) ==
         "LockType.KeyHash hash of key does not match key hash set in lock script");
-    const bad_key = Pair.random().V;
+    const bad_key = KeyPair.random().address;
     assert(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ bad_key[]), tx, Input.init) ==
         "LockType.KeyHash hash of key does not match key hash set in lock script");
     assert(engine.execute(
         Lock(LockType.KeyHash, ubyte(42).repeat(63).array),
-        Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init) ==
+        Unlock(sig.toBlob()[] ~ kp.address[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte key hash argument in the lock script");
     assert(engine.execute(
         Lock(LockType.KeyHash, ubyte(42).repeat(65).array),
-        Unlock(sig.toBlob()[] ~ kp.V[]), tx, Input.init) ==
+        Unlock(sig.toBlob()[] ~ kp.address[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte key hash argument in the lock script");
     assert(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
     assert(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(kp.V[]), tx, Input.init) ==
+        Lock(LockType.KeyHash, key_hash[]), Unlock(kp.address[]), tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
     assert(engine.execute(
-        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.V[] ~ [ubyte(0)]),
+        Lock(LockType.KeyHash, key_hash[]), Unlock(sig.toBlob()[] ~ kp.address[] ~ [ubyte(0)]),
         tx, Input.init) ==
         "LockType.KeyHash requires a 64-byte signature and a 32-byte key in the unlock script");
     assert(engine.execute(
@@ -1925,13 +1925,13 @@ unittest
 // LockType.Script
 unittest
 {
-    const Pair kp = Pair.random();
+    const kp = KeyPair.random();
     const Transaction tx;
-    const sig = sign(kp, tx);
-    const key_hash = hashFull(kp.V);
+    const sig = kp.sign(tx);
+    const key_hash = hashFull(kp.address);
     // emulating bitcoin-style P2PKH
     const Script lock = createLockP2PKH(key_hash);
-    const Script unlock = createUnlockP2PKH(sig, kp.V);
+    const Script unlock = createUnlockP2PKH(sig, kp.address);
 
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
     assert(engine.execute(
@@ -1946,7 +1946,7 @@ unittest
         Unlock(unlock[]), tx, Input.init)
         is null);
 
-    Script bad_key_unlock = createUnlockP2PKH(sig, Pair.random.V);
+    Script bad_key_unlock = createUnlockP2PKH(sig, KeyPair.random.address);
     assert(engine.execute(
         Lock(LockType.Script, lock[]), Unlock(bad_key_unlock[]), tx, Input.init) ==
         "VERIFY_EQUAL operation failed");
@@ -1966,12 +1966,12 @@ unittest
 // LockType.Redeem (Pay to Script Hash)
 unittest
 {
-    const Pair kp = Pair.random();
+    const kp = KeyPair.random();
     const Transaction tx;
     const Script redeem = makeScript(
-        [ubyte(32)] ~ kp.V[] ~ [ubyte(OP.CHECK_SIG)]);
+        [ubyte(32)] ~ kp.address[] ~ [ubyte(OP.CHECK_SIG)]);
     const redeem_hash = hashFull(redeem);
-    const sig = sign(kp, tx);
+    const sig = kp.sign(tx);
 
     // lock is: <redeem hash>
     // unlock is: <push(sig)> <redeem>
@@ -2011,7 +2011,7 @@ unittest
             ~ ubyte(42).repeat(TestStackMaxItemSize).array.toPushOpcode()),
         tx, Input.init) ==
         "Stack overflow while executing PUSH_DATA_2");
-    const Script wrong_redeem = makeScript([ubyte(32)] ~ Pair.random.V[]
+    const Script wrong_redeem = makeScript([ubyte(32)] ~ KeyPair.random.address[]
         ~ [ubyte(OP.CHECK_SIG)]);
     assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
@@ -2019,7 +2019,7 @@ unittest
         tx, Input.init) ==
         "LockType.Redeem unlock script pushed a redeem script which does "
         ~ "not match the redeem hash in the lock script");
-    auto wrong_sig = sign(kp, "bad");
+    auto wrong_sig = kp.sign("bad");
     assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock([ubyte(64)] ~ wrong_sig.toBlob()[] ~ toPushOpcode(redeem[])),
@@ -2052,13 +2052,13 @@ unittest
 // Basic invalid script verification
 unittest
 {
-    Pair kp = Pair.random();
+    auto kp = KeyPair.random();
     Transaction tx;
-    const sig = sign(kp, tx);
+    const sig = kp.sign(tx);
 
-    const key_hash = hashFull(kp.V);
+    const key_hash = hashFull(kp.address);
     Script lock = createLockP2PKH(key_hash);
-    Script unlock = createUnlockP2PKH(sig, kp.V);
+    Script unlock = createUnlockP2PKH(sig, kp.address);
 
     const invalid_script = makeScript([255]);
     scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
