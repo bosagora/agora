@@ -2005,7 +2005,8 @@ unittest
     txs = txs.enumerate()
         .map!(en => TxBuilder(en.value)
               .deduct(data_fee)
-              .sign(OutputType.Payment, data))
+              .payload(data)
+              .sign())
               .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx)));
     ledger.forceCreateBlock();
