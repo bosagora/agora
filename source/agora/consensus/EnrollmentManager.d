@@ -479,31 +479,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get all the enrolled validator's public keys.
-
-        Params:
-            height = the height of proposed block
-
-        Returns:
-            The set of public keys
-
-        Throws:
-            If no public keys were found
-
-    ***************************************************************************/
-
-    public PublicKey[] getActiveValidatorPublicKeys (in Height height) @safe
-    {
-        PublicKey[] keys;
-        if (!this.validator_set.getActiveValidatorPublicKeys(keys, height))
-            assert(0);
-        if (!keys.length)
-            throw new Exception(format("No active validator public keys for height: %s", height));
-        return keys;
-    }
-
-    /***************************************************************************
-
         Check if an enrollment is a valid candidate for the proposed height
 
         This method is very similar to `addEnrollment`. This one deals with

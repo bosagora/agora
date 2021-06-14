@@ -208,6 +208,21 @@ public class Ledger
 
     /***************************************************************************
 
+        Returns:
+            A list of validators that can sign the block at `height`
+
+    ***************************************************************************/
+
+    public ValidatorInfo[] getValidators (in Height height) scope @safe
+    {
+        auto result = this.enroll_man.validator_set.getValidators(height);
+        if (result.length == 0)
+            throw new Exception("Ledger.getValidators didn't find any validator");
+        return result;
+    }
+
+    /***************************************************************************
+
         Add a block to the ledger.
 
         If the block fails verification, it is not added to the ledger.
@@ -450,7 +465,7 @@ public class Ledger
         }
 
         const Height next = block.header.height + 1;
-        auto keys = this.enroll_man.getActiveValidatorPublicKeys(next);
+        auto keys = this.getValidators(next).map!(vi => vi.address).array();
         this.log.trace("Update validator lookup maps at height {}: {}", next, keys);
         this.enroll_man.keymap.update(next, keys);
         this.updateSlashedValidatorSet(block);
@@ -819,9 +834,9 @@ public class Ledger
         Point sum_K;
         Point sum_R;
         const Scalar challenge = hashFull(block);
-        PublicKey[] validators;
+        ValidatorInfo[] validators;
         try
-            validators = this.enroll_man.getActiveValidatorPublicKeys(block.header.height);
+            validators = this.getValidators(block.header.height);
         catch (Exception exc)
         {
             this.log.error("Exception thrown by getActiveValidatorPublicKey while externalizing valid block: {}", exc);
@@ -839,8 +854,9 @@ public class Ledger
         }
 
         log.trace("Checking signature, participants: {}/{}", signed, validators.length);
-        foreach (idx, K; validators)
+        foreach (idx, validator; validators)
         {
+            const K = validator.address;
             assert(K != PublicKey.init, "Could not find the public key associated with a validator");
 
             if (!block.header.validators[idx])
@@ -1235,22 +1251,20 @@ public class Ledger
     {
         try
         {
-            KeyPair[] key_pairs = enroll_man.getActiveValidatorPublicKeys(height).map!(k => WK.Keys[k]).array;
-            Hash[] utxos;
-            assert(enroll_man.getEnrolledUTXOs(height, utxos));
+            auto validators = this.getValidators(height);
 
             void addPreimages (in PublicKey public_key, in PreImageInfo preimage_info)
             {
                 log.info("Adding test preimages for height {} for validator {}: {}", height, public_key, preimage_info);
                 this.enroll_man.addPreimages([ preimage_info ]);
             }
-            key_pairs.enumerate.each!((idx, kp)
+            validators.enumerate.each!((idx, val)
             {
                 if (skip_indexes.length && skip_indexes.canFind(idx))
                     log.info("Skip add preimage for validator idx {} at height {} as requested by test", idx, height);
                 else
-                    addPreimages(kp.address, PreImageInfo(utxos[idx],
-                        getWellKnownPreimages(kp)[height], height));
+                    addPreimages(val.address, PreImageInfo(val.preimage.utxo,
+                        getWellKnownPreimages(WK.Keys[val.address])[height], height));
             });
         } catch (Exception e)
         {
@@ -1448,8 +1462,8 @@ public class ValidatingLedger : Ledger
         import agora.utils.Test : WK;
 
         auto next_block = Height(this.last_block.header.height + 1);
-        auto key_pairs = this.enroll_man.getActiveValidatorPublicKeys(next_block)
-            .map!(K => WK.Keys[K])
+        auto key_pairs = this.getValidators(next_block)
+            .map!(vi => WK.Keys[vi.address])
             .array();
 
         Transaction[] externalized_tx_set;
