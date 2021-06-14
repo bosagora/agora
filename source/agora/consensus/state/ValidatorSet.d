@@ -50,6 +50,25 @@ public struct EnrollmentState
     PreImageInfo preimage;
 }
 
+/// Return value for `getValidators`
+public struct ValidatorInfo
+{
+    /// Height at which the `Enrollment` was accepted
+    public Height enrolled;
+
+    /// Convenience alias
+    public ref inout(Hash) utxo () inout scope return @safe pure nothrow @nogc
+    {
+        return this.preimage.utxo;
+    }
+
+    /// Public key associated with the UTXO
+    public PublicKey address;
+
+    /// The most up-to-date pre-image
+    public PreImageInfo preimage;
+}
+
 /// Delegate type to query the history of Enrollments
 public alias EnrollmentFinder = bool delegate (in Hash enroll_key, out EnrollmentState state) @trusted nothrow;
 
@@ -292,37 +311,46 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get all the current validators in ascending order of the utxo key
+        Get all the validators able to sign block at `height`
+
+        The validators are returned sorted by UTXO (the normal sorting order).
+        The list does not include validators for which the enrollment was
+        accepted at height `height`, unless they were already enrolled before
+        (as those will only be able to sign `height + 1`).
 
         Params:
-            pub_keys = will contain the public keys
             height = the block height for which we want the active validators
 
         Returns:
-            Return true if there was no error in getting the public keys
+            A structure containing all infos about current validators
+
+        Throws:
+            If there is an internal error.
 
     ***************************************************************************/
 
-    public bool getActiveValidatorPublicKeys (ref PublicKey[] pub_keys, Height height)
-        @trusted nothrow
+    public ValidatorInfo[] getValidators (in Height height) @trusted
     {
-        try
-        {
-            pub_keys.length = 0;
-            assumeSafeAppend(pub_keys);
-            auto results = this.db.execute("SELECT public_key FROM validator " ~
-                "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
-                "AND (slashed_height is null OR slashed_height > ?) " ~
-                "ORDER BY key ASC", this.minEnrollmentHeight(height), height, height);
-            foreach (row; results)
-                pub_keys ~= PublicKey.fromString(row.peek!(char[])(0));
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error: {}", ex.msg);
-            return false;
-        }
+        auto results = this.db.execute(
+            "SELECT enrolled_height, public_key, key, preimage, height " ~
+            "FROM validator " ~
+            "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
+            "AND (slashed_height is null OR slashed_height > ?) " ~
+            "ORDER BY key ASC", this.minEnrollmentHeight(height), height, height);
+
+        ValidatorInfo[] ret;
+        foreach (row; results)
+            ret ~= ValidatorInfo(
+                /* enrolled: */ Height(row.peek!(ulong)(0)),
+                /* address:  */ PublicKey.fromString(row.peek!(char[], PeekMode.slice)(1)),
+                /* preimage: */ PreImageInfo(
+                /*     utxo:   */ Hash(row.peek!(const(char)[], PeekMode.slice)(2)),
+                /*     hash:   */ Hash(row.peek!(const(char)[], PeekMode.slice)(3)),
+                /*     height: */ Height(row.peek!(ulong)(4)),
+                    ),
+                );
+
+        return ret;
     }
 
     /***************************************************************************
