@@ -394,7 +394,6 @@ public struct TxBuilder
         toward.each!((key)
         {
             this.data.outputs ~= Output(amount, key);
-            this.data.outputs.sort;
             // Provide friendlier error message for developers
             if (!this.leftover.value.sub(amount))
                 assert(0, format("Error: Withdrawing %d times %s BOA underflown",
@@ -439,7 +438,6 @@ public struct TxBuilder
         this.leftover.value = forEach.div(newOutputs.length);
         newOutputs.each!((ref output) { output.value = forEach; });
         assert(newOutputs.all!(output => output.value > Amount(0)));
-        this.data.outputs.sort;
         return this;
     }
 
