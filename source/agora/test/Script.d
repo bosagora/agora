@@ -74,13 +74,11 @@ unittest
 
     const lock_height_2 = Height(2);
     auto unlock_height_2 = block_6.spendable()
-        .map!(txb => txb.sign(OutputType.Payment, null, lock_height_2, 0,
-            &keyUnlocker));
+        .map!(txb => txb.lock(lock_height_2).sign(OutputType.Payment, 0, &keyUnlocker));
 
     const lock_height_3 = Height(3);
     auto unlock_height_3 = block_6.spendable()
-        .map!(txb => txb.sign(OutputType.Payment, null, lock_height_3, 0,
-            &keyUnlocker)).array;
+        .map!(txb => txb.lock(lock_height_3).sign(OutputType.Payment, 0, &keyUnlocker)).array;
 
     // txs with unlock height 2 should be rejected by the lock script
     unlock_height_2.each!(tx => nodes.each!(node => node.putTransaction(tx)));
@@ -164,13 +162,13 @@ unittest
     const uint UnlockAge_2 = 2;
     auto age_2_txs = iota(cast(uint)txs[3].outputs.length)
         .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, null, Height(0), UnlockAge_2, &keyUnlocker))
+            .sign(OutputType.Payment, UnlockAge_2, &keyUnlocker))
         .array();
 
     const uint UnlockAge_3 = 3;
     auto age_3_txs = iota(cast(uint)txs[3].outputs.length)
         .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, null, Height(0), UnlockAge_3, &keyUnlocker))
+            .sign(OutputType.Payment, UnlockAge_3, &keyUnlocker))
         .array();
 
     age_2_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
@@ -235,7 +233,7 @@ unittest
     // using IF branch
     auto true_a_txs = iota(cast(uint)txs[3].outputs.length)
         .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, null, Height(0), 0,
+            .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_a.sign(tx);
@@ -246,7 +244,7 @@ unittest
     // ditto, but different key-pair
     auto true_b_txs = iota(cast(uint)txs[3].outputs.length)
         .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, null, Height(0), 0,
+            .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_b.sign(tx);
@@ -267,7 +265,7 @@ unittest
     // using ELSE branch
     auto false_a_txs = iota(cast(uint)txs[4].outputs.length)
         .map!(idx => TxBuilder(txs[4], idx)
-            .sign(OutputType.Payment, null, Height(0), 0,
+            .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_a.sign(tx);
@@ -278,7 +276,7 @@ unittest
     // ditto, but different key-pair
     auto false_b_txs = iota(cast(uint)txs[4].outputs.length)
         .map!(idx => TxBuilder(txs[4], idx)
-            .sign(OutputType.Payment, null, Height(0), 0,
+            .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
                     auto sig = kp_b.sign(tx);

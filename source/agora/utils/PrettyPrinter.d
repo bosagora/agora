@@ -558,7 +558,7 @@ Outputs (1): boa1xzgenes5...gm67(61,000,000)<Payment>
     }
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign(OutputType.Payment, null, Height(0), 0, &unlocker)), 0, Hash.init, genesis_validator_keys.length);
+        genesisSpendable().take(2).map!(txb => txb.sign(OutputType.Payment, 0, &unlocker)), 0, Hash.init, genesis_validator_keys.length);
 
     auto validators = BitField!ubyte(2);
     validators[1] = true;

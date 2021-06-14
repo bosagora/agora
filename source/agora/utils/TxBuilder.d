@@ -240,14 +240,39 @@ public struct TxBuilder
 
     /***************************************************************************
 
+        Set the payload used by the Transaction
+
+    ***************************************************************************/
+
+    public ref typeof(this) payload (ubyte[] data) return scope
+        @safe nothrow @nogc pure
+    {
+        this.data.payload = data;
+        return this;
+    }
+
+
+    /***************************************************************************
+
+        Set the `lock_height` property of the resulting transaction
+
+    ***************************************************************************/
+
+    public ref typeof(this) lock (in Height height) return scope
+        @safe nothrow @nogc pure
+    {
+        this.data.lock_height = height;
+        return this;
+    }
+
+    /***************************************************************************
+
         Finalize the transaction, signing the input, and reset the builder
 
         Params:
             outputs_type = sets the outputs to `Payment` (default), `Freeze` or
                 `Coinbase`. In case of `Freeze` a single refund `Payment` output
                 will be created with any leftover.
-            data = data payload of `Transaction`
-			lock_height = the transaction-level height lock
             unlock_age = the unlock age for each input in the transaction
             unlocker = optional delegate to generate the unlock script.
                 If one is not provided then a LockType.Key unlock script
@@ -258,8 +283,19 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public Transaction sign (in OutputType outputs_type = OutputType.Payment, ubyte[] data = null,
+    // Temnporarily kept for Faucet compatibility
+    deprecated("Use the data / lock_height less overload")
+    public Transaction sign (in OutputType outputs_type, ubyte[] data,
         Height lock_height = Height(0), uint unlock_age = 0,
+        Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
+        unlocker = null) @safe nothrow
+    {
+        return this.payload(data).lock(lock_height)
+            .sign(outputs_type, unlock_age, unlocker);
+    }
+
+    public Transaction sign (
+        in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0,
         Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
         unlocker = null) @safe nothrow
     {
@@ -269,7 +305,6 @@ public struct TxBuilder
 
         if (unlocker is null)
             unlocker = &this.keyUnlocker;
-        this.data.lock_height = lock_height;
 
         // Finalize the transaction by adding inputs
         foreach (ref in_; this.inputs)
@@ -288,7 +323,6 @@ public struct TxBuilder
                 this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
         }
         this.data.outputs.sort;
-        this.data.payload = data;
 
         // Sign all inputs using unlocker
         foreach (idx, ref in_; this.inputs)
