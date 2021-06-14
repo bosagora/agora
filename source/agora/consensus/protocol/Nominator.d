@@ -983,8 +983,9 @@ extern(D):
         // new network connections might need to be established).
         if (!this.acceptBlock(signed_block))
         {
-            log.error("Block was not accepted by node {}", this.kp.address);
-            assert(0, format!"Block was not accepted"());
+            auto msg = this.ledger.validateBlock(signed_block);
+            log.error("Block was not accepted by node {}: {}", this.kp.address, msg);
+            assert(0, "Block was not accepted: " ~ msg);
         }
     }
 
