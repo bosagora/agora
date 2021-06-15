@@ -668,16 +668,25 @@ public class NetworkManager
 
                 taskman.runTask
                 ({
+                    // https://github.com/bosagora/agora/issues/2197
+                    const ckey = key;
                     retry!
                     ({
-                        auto payload = this.registry_client.getValidator(key);
+                        auto payload = this.registry_client.getValidator(ckey);
                         if (payload == RegistryPayload.init)
                         {
                             log.warn("Could not find mapping in registry for key {}", key);
                             return false;
                         }
 
-                        if (!payload.verifySignature(key))
+                        if (payload.data.public_key != ckey)
+                        {
+                            log.error("Registry answered with the wrong key: {} => {}",
+                                      ckey, payload);
+                            return false;
+                        }
+
+                        if (!payload.verifySignature(ckey))
                         {
                             log.error("RegistryPayload signature is incorrect for {}: {}", key, payload);
                             return false;
