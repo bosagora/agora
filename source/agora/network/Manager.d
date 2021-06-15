@@ -679,7 +679,7 @@ public class NetworkManager
 
                         if (!payload.verifySignature(key))
                         {
-                            log.warn("RegistryPayload signature is incorrect for {}", key);
+                            log.error("RegistryPayload signature is incorrect for {}: {}", key, payload);
                             return false;
                         }
                         foreach (addr; payload.data.addresses)
