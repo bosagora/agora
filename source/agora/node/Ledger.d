@@ -1885,34 +1885,6 @@ unittest
 
     const params = new immutable(ConsensusParams)();
 
-    // normal test: UTXO set and Validator set updated
-    version (none)
-        // FIXME: This test is invalid as it is missing Enrollments
-        // However Enrollments cannot be trivially added, as pre-images are
-        // also necessary, hence this is temporarily disabled
-    {
-        const blocks = genBlocksToIndex(params.ValidatorCycle, params);
-        assert(blocks.length == params.ValidatorCycle + 1);  // +1 for genesis
-
-        scope ledger = new ThrowingLedger(
-            WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
-        Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(20), keys));
-        assert(keys.length == 6);
-        auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
-        assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
-
-        auto next_block = blocks[$ - 1];
-        ledger.addValidatedBlock(next_block);
-        assert(ledger.last_block == next_block);
-        utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
-        assert(utxos.length == 8);
-        utxos.each!(utxo => assert(utxo.unlock_height == 1009));
-        assert(ledger.enroll_man.getEnrolledUTXOs(ledger.last_block.header.height + 1, keys));
-        assert(keys.length == 0);
-    }
-
     // throws in updateUTXOSet() => rollback() called, UTXO set reverted,
     // Validator set was not modified
     {
