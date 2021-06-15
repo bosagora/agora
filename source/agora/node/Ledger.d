@@ -397,7 +397,10 @@ public class Ledger
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx));
 
-        this.updateSlashedUTXOSet(block);
+        // Slashing requires the validator set, however there is no slashing
+        // in genesis, and the validator set isn't ready yet.
+        if (block.header.height != 0)
+            this.updateSlashedUTXOSet(block);
     }
 
     /***************************************************************************
