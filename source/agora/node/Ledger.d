@@ -877,15 +877,19 @@ public class Ledger
                           block.header.height, K, idx);
                 return "Block: Couldn't find commitment for this validator";
             }
-            const preimage_info = this.enroll_man.validator_set.getPreimageAt(
-                this.enroll_man.validator_set.getEnrollmentForKey(block.header.height, K), block.header.height);
-            if (preimage_info.hash == Hash.init)
+
+            const key = this.enroll_man.validator_set
+                        .getEnrollmentForKey(block.header.height, K);
+            const preimage = (this.enroll_man.getEnrollmentKey() == key) ?
+                this.enroll_man.getOurPreimage(block.header.height)
+                : this.enroll_man.validator_set.getPreimageAt(key, block.header.height).hash;
+            if (preimage == Hash.init)
             {
                 log.error("Block#{}: Validator {} (idx: {}) Couldn't find pre-image for validator",
                           block.header.height, K, idx);
                 return "Block: Couldn't find pre-image for validator";
             }
-            Point R = CR + Scalar(preimage_info.hash).toPoint();
+            Point R = CR + Scalar(preimage).toPoint();
             sum_K = sum_K + K;
             sum_R = sum_R + R;
         }
@@ -1713,7 +1717,7 @@ unittest
     }
 
     // And provide it to the ledger
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, new immutable(ConsensusParams)(20));
 
     assert(ledger.utxo_set.length
            == /* Genesis, Frozen */ 6 + 8 /* Block #1 Payments*/);
