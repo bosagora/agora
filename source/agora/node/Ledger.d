@@ -951,34 +951,41 @@ public class Ledger
     public Hash getRandomSeed (in Height height, in uint[] missing_validators)
         @safe
     {
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
-            assert(0, "Could not retrieve enrollments / no enrollments found");
+        auto validators = this.getValidators(height);
 
         // A case where a > b should never happen, but better be conservative
-        if (missing_validators.length >= keys.length)
+        if (missing_validators.length >= validators.length)
             throw new Exception("Ledger.getRandomSeed() called with all-missing validators");
 
         // Safety check, as the order will affect `missing_validators`
         assert(missing_validators.isStrictlyMonotonic());
-        assert(keys.isStrictlyMonotonic!((a, b) => a < b));
+        assert(validators.isStrictlyMonotonic!((a, b) => a.utxo < b.utxo));
 
-        Hash getPreimage (Hash key)
+        auto signing = validators
+            // Filter out entries in `missing_validators`
+            .enumerate.filter!(en => !missing_validators.canFind(en.index));
+
+        // Ideally, the following should never happen, as we would catch this
+        // before we reach this point, but this safety checks ensures we don't
+        // generate a wrong random seed (we would otherwise hash in `Hash.init`
+        // or trigger an assertion failure in `PreImageInfo.adjust`).
+        bool missing = false;
+        foreach (entry; signing.save.filter!(en => en.value.preimage.height < height))
         {
-            const preimage = this.enroll_man.validator_set.getPreimageAt(key, height);
-            if (preimage == PreImageInfo.init)
-            {
-                log.error("No preimage at height {} for validator key {}", height, key);
-                throw new Exception("Ledger is missing pre-images required for the random seed");
-            }
-            return preimage.hash;
+            log.error("Validator {} (index: {}, address: {}) missing pre-image for height {} (known: {})",
+                      entry.value.utxo, entry.index, entry.value.address,
+                      height, entry.value.preimage.height);
+            missing = true;
         }
+        if (missing)
+            throw new Exception("Requested pre-images for validators that are not yet known");
 
-        return keys
+        return validators
             // Filter out entries in `missing_validators`
             .enumerate.filter!(en => !missing_validators.canFind(en.index))
-            // Lookup
-            .map!(en => getPreimage(en.value))
+            // We made sure in the previous `foreach` that `height >= pi.height`
+            // Note that map is needed for`reduce` to be able to deduce the seed type
+            .map!(en => en.value.preimage.adjust(en.value.preimage.height - height).hash)
             // Generate the final value
             .reduce!((a , b) => hashMulti(a, b));
     }
