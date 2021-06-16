@@ -372,6 +372,14 @@ public class FullNode : API
             block.header.height.value);
     }
 
+    /// Convenience function to increase an endpoint stats
+    protected void recordReq (string endpoint, uint weight = 1) scope
+        @safe pure nothrow
+    {
+        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
+            weight, endpoint, "http");
+    }
+
     /***************************************************************************
 
         Begins asynchronous tasks for node discovery and periodic catchup.
@@ -852,8 +860,7 @@ public class FullNode : API
     /// GET: /node_info
     public override NodeInfo getNodeInfo () pure nothrow @safe
     {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "node_info", "http");
+        this.recordReq("node_info");
         return this.network.getNetworkInfo();
     }
 
@@ -871,8 +878,7 @@ public class FullNode : API
 
     public override void putTransaction (Transaction tx) @safe
     {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "transaction", "http");
+        this.recordReq("transaction");
         auto tx_hash = hashFull(tx);
         if (this.pool.hasTransactionHash(tx_hash) ||
             !ledger.isAcceptableDoubleSpent(tx, config.node.double_spent_threshold_pct))
@@ -894,17 +900,14 @@ public class FullNode : API
     /// GET: /has_transaction_hash
     public override bool hasTransactionHash (Hash tx) @safe
     {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(
-                1, "has_transaction_hash", "http");
+        this.recordReq("has_transaction_hash");
         return this.pool.hasTransactionHash(tx);
     }
 
     /// GET: /block_height
     public override ulong getBlockHeight ()
     {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "block_height", "http");
+        this.recordReq("block_heigth");
         return this.ledger.getBlockHeight();
     }
 
@@ -912,8 +915,7 @@ public class FullNode : API
     public override const(Block)[] getBlocksFrom (ulong height,
         uint max_blocks)  @safe
     {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks_from", "http");
+        this.recordReq("blocks_from");
         return this.ledger.getBlocksFrom(Height(height))
             .take(min(max_blocks, MaxBatchBlocksSent)).array;
     }
@@ -921,15 +923,14 @@ public class FullNode : API
     /// GET: /blocks/:height
     public override const(Block) getBlock (ulong height)  @safe
     {
-        this.endpoint_request_stats
-            .increaseMetricBy!"agora_endpoint_calls_total"(1, "blocks", "http");
+        this.recordReq("blocks");
         return this.ledger.getBlocksFrom(Height(height)).front();
     }
 
     /// GET: /merkle_path
     public override Hash[] getMerklePath (ulong height, Hash hash) @safe
     {
-        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "merkle_path", "http");
+        this.recordReq("merkle_path");
 
         const Height stored_height = Height(height);
 
@@ -946,7 +947,7 @@ public class FullNode : API
     /// PUT: /enroll_validator
     public override void enrollValidator (Enrollment enroll) @safe
     {
-        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "enroll_validator", "http");
+        this.recordReq("enroll_validator");
 
         UTXO utxo;
         this.utxo_set.peekUTXO(enroll.utxo_key, utxo);
@@ -962,14 +963,14 @@ public class FullNode : API
     /// GET: /enrollment
     public override Enrollment getEnrollment (Hash enroll_hash) @safe
     {
-        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "enrollment", "http");
+        this.recordReq("enrollment");
         return this.enroll_man.getEnrollment(enroll_hash);
     }
 
     /// PUT: /receive_preimage
     public override void receivePreimage (PreImageInfo preimage) @safe
     {
-        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_preimage", "http");
+        this.recordReq("receive_preimage");
         log.trace("Received Preimage: {}", prettify(preimage));
 
         if (this.enroll_man.addPreimage(preimage))
@@ -983,14 +984,15 @@ public class FullNode : API
     /// GET: /preimage
     public override PreImageInfo getPreimage (Hash enroll_key)
     {
-        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "preimage", "http");
+        this.recordReq("preimage");
         return this.enroll_man.getValidatorPreimage(enroll_key);
     }
 
-    /// GET: /preimages_from
+    /// GET: /preimages
     public override PreImageInfo[] getPreimages (ulong start_height,
         ulong end_height) @safe nothrow
     {
+        this.recordReq("preimages");
         return this.enroll_man.getValidatorPreimages(Height(start_height),
             Height(end_height)).array();
     }
@@ -998,7 +1000,7 @@ public class FullNode : API
     /// GET /local_time
     public override TimePoint getLocalTime () @safe nothrow
     {
-        this.endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "local_time", "http");
+        this.recordReq("local_time");
         return this.clock.localTime();
     }
 
@@ -1125,6 +1127,8 @@ public class FullNode : API
 
     public Transaction[] getTransactions (Set!Hash tx_hashes) @safe
     {
+        this.recordReq("transactions");
+
         Transaction[] found_txs;
         foreach (hash; tx_hashes)
         {
@@ -1152,6 +1156,7 @@ public class FullNode : API
         import std.algorithm: min;
         import std.conv;
 
+        this.recordReq("block_headers");
         BlockHeader[] headers;
         if (!heights.empty)
         {

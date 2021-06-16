@@ -249,8 +249,8 @@ public class Validator : FullNode, API
     {
         import agora.flash.OnionPacket : generateSharedSecret;
         import libsodium.crypto_auth;
-        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
-            1, "public_key", "http");
+
+        this.recordReq("public_key");
 
         Identity id = Identity(this.config.validator.key_pair.address,
                                this.enroll_man.getEnrollmentKey());
@@ -341,8 +341,7 @@ public class Validator : FullNode, API
 
     public override void receiveEnvelope (SCPEnvelope envelope) @safe
     {
-        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(
-            1, "receive_envelope", "http");
+        this.recordReq("receive_envelope");
         this.nominator.receiveEnvelope(envelope);
     }
 
@@ -360,7 +359,7 @@ public class Validator : FullNode, API
 
     public override void receiveBlockSignature (ValidatorBlockSig block_sig) @safe
     {
-        endpoint_request_stats.increaseMetricBy!"agora_endpoint_calls_total"(1, "receive_block_signature", "http");
+        this.recordReq("receive_block_signature");
         this.nominator.receiveBlockSignature(block_sig);
     }
 
