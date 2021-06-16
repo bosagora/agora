@@ -186,7 +186,8 @@ struct SCPStatement {
         {
             import agora.crypto.Hash : HashDg, hashPart;
             /// Hashing support
-            public void computeHash (scope HashDg dg) const @trusted @nogc nothrow
+            public void computeHash (scope HashDg dg) const scope
+                @trusted pure @nogc nothrow
             {
                 hashPart(this.type_, dg);
                 switch (this.type_)
@@ -324,7 +325,8 @@ struct SCPQuorumSet {
     xvector!(SCPQuorumSet) innerSets;
 
     /// Hashing support
-    extern(D) public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    extern(D) public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.threshold, dg);
 

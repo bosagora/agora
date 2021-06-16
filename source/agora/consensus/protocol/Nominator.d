@@ -1368,7 +1368,8 @@ private struct SCPStatementHash
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.st.nodeID, dg);
         hashPart(this.st.slotIndex, dg);
@@ -1388,7 +1389,7 @@ private struct SCPStatementHash
 
     public static void computeHash (
         const ref SCPStatement._pledges_t._prepare_t prep,
-        scope HashDg dg) nothrow @safe @nogc
+        scope HashDg dg) @safe pure nothrow @nogc
     {
         hashPart(prep.quorumSetHash[], dg);
         hashPart(prep.ballot, dg);
@@ -1417,7 +1418,7 @@ private struct SCPStatementHash
 
     public static void computeHash (
         const ref SCPStatement._pledges_t._confirm_t conf,
-        scope HashDg dg) nothrow @safe @nogc
+        scope HashDg dg) @safe pure nothrow @nogc
     {
         hashPart(conf.ballot, dg);
         hashPart(conf.nPrepared, dg);
@@ -1438,7 +1439,7 @@ private struct SCPStatementHash
 
     public static void computeHash (
         const ref SCPStatement._pledges_t._externalize_t ext, scope HashDg dg)
-        nothrow @safe @nogc
+        @safe pure nothrow @nogc
     {
         hashPart(ext.commit, dg);
         hashPart(ext.nH, dg);
@@ -1456,7 +1457,7 @@ private struct SCPStatementHash
     ***************************************************************************/
 
     public static void computeHash (const ref SCPNomination nom, scope HashDg dg)
-        nothrow @safe @nogc
+        @safe pure nothrow @nogc
     {
         hashPart(nom.quorumSetHash[], dg);
         hashPart(nom.votes[], dg);
@@ -1486,7 +1487,7 @@ private struct SCPEnvelopeHash
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @trusted @nogc
+    public void computeHash (scope HashDg dg) scope const @trusted pure nothrow @nogc
     {
         hashPart(SCPStatementHash(&this.env.statement), dg);
         hashPart(this.env.signature[], dg);

@@ -83,7 +83,8 @@ public struct BlockHeader
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         dg(this.prev_block[]);
         hashPart(this.height.value, dg);
@@ -179,7 +180,8 @@ public struct Block
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.header, dg);
     }
