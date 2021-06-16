@@ -346,11 +346,11 @@ public class FullNode : API
 
     private void collectValidatorStats (Collector collector)
     {
-        Hash[] keys;
-        if (this.ledger.enrollment_manager.getEnrolledUTXOs(this.ledger.getBlockHeight() + 1, keys))
-            foreach (const ref key; keys)
-                this.validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
-                    this.ledger.enrollment_manager.validator_set.getPreimage(key).height, key.toString());
+        auto validators = this.ledger.getValidators(this.ledger.getBlockHeight() + 1);
+
+        foreach (const ref val; validators)
+            this.validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
+                val.preimage.height, val.address.toString());
 
         foreach (stat; this.validator_preimages_stats.getStats())
             collector.collect(stat.value, stat.label);
