@@ -53,8 +53,8 @@ validator:
 ################################################################################
 network:
   # Supported value: IPv4, IPv6
-  - http://node-2:2735
-  - http://node-3:3735
-  - http://node-4:4735
-  - http://node-5:5735
-  - http://node-6:6735
+  - https://node-2:2735
+  - https://node-3:3735
+  - https://node-4:4735
+  - https://node-5:5735
+  - https://node-6:6735

@@ -3,7 +3,7 @@
     "targetType": "executable",
     "targetPath": "build",
     "dflags": [ "-i", "-preview=in", "-revert=dtorfields" ],
-    "libs-posix": [ "sodium", "sqlite3" ],
+    "libs-posix": [ "sodium", "sqlite3", "openssl" ],
     "libs-windows": [ "libsodium", "libsqlite3" ],
     "versions":
     [
@@ -34,7 +34,8 @@
         "Have_vibe_d_textfilter",
         "Have_vibe_d_tls",
         "Have_vibe_d_utils",
-        "Have_vibe_d_web"
+        "Have_vibe_d_web",
+        "Have_openssl",
     ],
     "versions-linux": [ "EventcoreEpollDriver" ],
     "versions-osx":   [ "EventcoreCFRunLoopDriver" ],
@@ -62,6 +63,7 @@
         "../../submodules/vibe.d/textfilter",
         "../../submodules/vibe.d/tls",
         "../../submodules/vibe.d/utils",
-        "../../submodules/vibe.d/web"
+        "../../submodules/vibe.d/web",
+        "../../submodules/openssl",
     ]
 }
