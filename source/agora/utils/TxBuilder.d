@@ -306,10 +306,13 @@ public struct TxBuilder
         if (unlocker is null)
             unlocker = &this.keyUnlocker;
 
-        // Finalize the transaction by adding inputs
-        foreach (ref in_; this.inputs)
-            this.data.inputs ~= Input(in_.hash, Unlock.init, unlock_age);
-        this.data.inputs.sort;
+        // First we sort the OutputRefs as later we set the unlock by index
+        this.inputs.sort;
+        // Add the inputs with just their unlocks to be added
+        // (unlock is not part of Transaction hash but we need transaction hash to create the unlock)
+        this.inputs.each!(o => this.data.inputs ~= Input(o.hash, Unlock.init, unlock_age));
+
+        assert(this.data.inputs.isStrictlyMonotonic);
 
         foreach (ref o; this.data.outputs)
             o.type = outputs_type;
@@ -328,9 +331,10 @@ public struct TxBuilder
         foreach (idx, ref in_; this.inputs)
             this.data.inputs[idx].unlock = unlocker(this.data, in_);
 
-        // Return the result and reset this
+        // Reset ready for next time
         this.inputs = null;
         this.leftover = Output.init;
+        // Reset transaction if it is returned successfully
         scope (success) this.data = Transaction.init;
         return this.data;
     }
@@ -487,7 +491,7 @@ public struct TxBuilder
     private Output leftover;
 
     /// Stores the inputs to consume until `sign` is called
-    private const(OutputRef)[] inputs;
+    private OutputRef[] inputs;
 
     /// Transactions to be built and returned
     private Transaction data;
@@ -611,7 +615,9 @@ unittest
         Output(Amount(400), WK.Keys.E.address),
     ];
 
-    auto tup_rng = outs[].zip(iota(outs.length).map!(_ => Hash.init));
+    // The hash is incorrect (it's not a proper UTXO hash)
+    // but TxBuilder only care about strictly monotonic hashes
+    auto tup_rng = outs[].zip(outs[].map!(o => o.hashFull()));
     auto result = TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
 
     assert(result.inputs.length == 4);
@@ -661,8 +667,13 @@ unittest
 public struct OutputRef
 {
     /// The `Output` being referenced
-    public const Output output;
+    public Output output;
 
     /// The hash of the Output, to build the transaction
-    public const Hash hash;
+    public Hash hash;
+
+    public int opCmp (in typeof(this) rhs) const nothrow @safe @nogc
+    {
+        return this.hash.opCmp(rhs.hash);
+    }
 }
