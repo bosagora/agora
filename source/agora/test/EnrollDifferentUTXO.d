@@ -46,11 +46,10 @@ private class SameKeyValidator : TestValidatorNode
 
         // Find a UTXO which is not used for the enrollments in Genesis block
         Hash unused_utxo;
-        Hash[] enroll_keys;
-        assert(this.enroll_man.getEnrolledUTXOs(Height(1), enroll_keys));
+        auto validators = this.ledger.getValidators(Height(1));
         foreach (utxo; utxo_hashes)
         {
-            if (!canFind(enroll_keys, utxo))
+            if (!validators.map!(val => val.utxo).canFind(utxo))
             {
                 unused_utxo = utxo;
                 break;

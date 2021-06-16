@@ -1498,15 +1498,12 @@ public class ValidatingLedger : Ledger
         if (data.enrolls.length == 0 &&
             this.enroll_man.validator_set.countActive(next_block + 1) == 0)
         {
-            Hash[] stakes;
-            assert(this.enroll_man.getEnrolledUTXOs(this.getBlockHeight(), stakes));
-            foreach (utxo; stakes)
+            auto validators = this.getValidators(this.getBlockHeight());
+            foreach (v; validators)
             {
-                UTXO utxo_value;
-                assert(this.utxo_set.peekUTXO(utxo, utxo_value));
-                auto kp = WK.Keys[utxo_value.output.address];
+                auto kp = WK.Keys[v.address];
                 auto enroll = EnrollmentManager.makeEnrollment(
-                    utxo, kp, next_block, this.params.ValidatorCycle);
+                    v.utxo, kp, next_block, this.params.ValidatorCycle);
 
                 data.enrolls ~= enroll;
             }
@@ -1812,9 +1809,7 @@ unittest
     // Default test genesis block has 6 validators
     {
         scope ledger = new TestLedger(WK.Keys.A);
-        Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(1), keys));
-        assert(keys.length == 6);
+        assert(ledger.getValidators(Height(1)).length == 6);
     }
 
     // One block before `ValidatorCycle`, validator is still active
@@ -1824,8 +1819,7 @@ unittest
         const blocks = genBlocksToIndex(ValidatorCycle - 1, params);
         scope ledger = new TestLedger(WK.Keys.A, blocks, params);
         Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(ValidatorCycle), keys));
-        assert(keys.length == 6);
+        assert(ledger.getValidators(Height(ValidatorCycle)).length == 6);
     }
 
     // Past `ValidatorCycle`, validator is inactive
@@ -1896,9 +1890,7 @@ unittest
 
         scope ledger = new ThrowingLedger(
             WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
-        Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(params.ValidatorCycle), keys));
-        assert(keys.length == 6);
+        assert(ledger.getValidators(Height(params.ValidatorCycle)).length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
@@ -1910,8 +1902,8 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(params.ValidatorCycle), keys));
-        assert(keys.length == 6);  // not updated
+        // not updated
+        assert(ledger.getValidators(Height(params.ValidatorCycle)).length == 6);
     }
 
     // throws in updateValidatorSet() => rollback() called, UTXO set and
@@ -1922,9 +1914,7 @@ unittest
 
         scope ledger = new ThrowingLedger(
             WK.Keys.A, blocks.takeExactly(params.ValidatorCycle), params);
-        Hash[] keys;
-        assert(ledger.enroll_man.getEnrolledUTXOs(Height(params.ValidatorCycle), keys));
-        assert(keys.length == 6);
+        assert(ledger.getValidators(Height(params.ValidatorCycle)).length == 6);
         auto utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));
@@ -1936,8 +1926,7 @@ unittest
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(ledger.enroll_man.getEnrolledUTXOs(ledger.last_block.header.height, keys));
-        assert(keys.length == 6);  // reverted
+        assert(ledger.getValidators(ledger.last_block.header.height).length == 6);
     }
 }
 
@@ -2178,11 +2167,10 @@ unittest
     // Add preimages for all validators (except for two of them) till end of cycle
     auto skip_indexes = [ 2, 5 ];
 
-    Hash[] utxos;
-    assert(ledger.enroll_man.getEnrolledUTXOs(Height(1), utxos));
+    auto validators = ledger.getValidators(Height(1));
     UTXO[] mpv_stakes;
     foreach (skip; skip_indexes)
-        assert(ledger.utxo_set.peekUTXO(utxos[skip], mpv_stakes[(++mpv_stakes.length) - 1]));
+        assert(ledger.utxo_set.peekUTXO(validators[skip].utxo, mpv_stakes[(++mpv_stakes.length) - 1]));
 
     ledger.simulatePreimages(Height(params.ValidatorCycle), skip_indexes);
 
