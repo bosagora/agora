@@ -1061,7 +1061,7 @@ unittest
     assert(man.addValidator(ordered_enrollments[1], WK.Keys[1].address, Height(11),
             &utxo_set.peekUTXO, utxos) is null);
     assert(man.validator_set.countActive(Height(12)) == 2);
-    assert(man.getEnrolledUTXOs(Height(12), keys));
+    assert(man.validator_set.getEnrolledUTXOs(Height(12), keys));
     assert(keys.length == 2);
 
     // set an enrolled height for validator C
@@ -1071,7 +1071,7 @@ unittest
                ordered_enrollments[2], WK.Keys[2].address, Height(12), &utxo_set.peekUTXO, utxos)
            is null);
     assert(man.validator_set.countActive(Height(params.ValidatorCycle + 12)) == 1);
-    assert(man.getEnrolledUTXOs(Height(params.ValidatorCycle + 12), keys));
+    assert(man.validator_set.getEnrolledUTXOs(Height(params.ValidatorCycle + 12), keys));
     assert(keys.length == 1);
     assert(keys[0] == ordered_enrollments[2].utxo_key);
 }
