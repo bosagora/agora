@@ -214,31 +214,6 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        Params:
-            utxos = the list of enrolled utxos
-
-        Returns:
-            the list of all enrolled public keys
-
-    ***************************************************************************/
-
-    protected PublicKey[] getEnrolledPublicKeys (Hash[] utxos) @safe nothrow
-    {
-        PublicKey[] keys;
-        auto finder = this.utxo_set.getUTXOFinder();
-        foreach (utxo; utxos)
-        {
-            UTXO value;
-            if (!finder(utxo, value))
-                assert(0);
-            keys ~= value.output.address;
-        }
-
-        return keys;
-    }
-
-    /***************************************************************************
-
         Begins asynchronous tasks for node discovery and periodic catchup.
 
     ***************************************************************************/
