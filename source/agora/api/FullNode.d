@@ -15,11 +15,11 @@
 
 module agora.api.FullNode;
 
+import agora.common.Types;
+import agora.common.Set;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
-import agora.common.Types;
-import agora.common.Set;
 import agora.consensus.data.Transaction;
 
 import vibe.data.serialization;
