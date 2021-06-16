@@ -21,6 +21,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
+public import agora.consensus.data.ValidatorInfo;
 import agora.consensus.PreImage;
 import agora.consensus.state.UTXOCache;
 import agora.crypto.ECC;
@@ -48,25 +49,6 @@ public struct EnrollmentState
 
     /// The most recently revealed PreImage
     PreImageInfo preimage;
-}
-
-/// Return value for `getValidators`
-public struct ValidatorInfo
-{
-    /// Height at which the `Enrollment` was accepted
-    public Height enrolled;
-
-    /// Convenience alias
-    public ref inout(Hash) utxo () inout scope return @safe pure nothrow @nogc
-    {
-        return this.preimage.utxo;
-    }
-
-    /// Public key associated with the UTXO
-    public PublicKey address;
-
-    /// The most up-to-date pre-image
-    public PreImageInfo preimage;
 }
 
 /// Delegate type to query the history of Enrollments
