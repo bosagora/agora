@@ -302,7 +302,8 @@ public struct Input
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         dg(this.utxo[]);
         hashPart(this.unlock_age, dg);

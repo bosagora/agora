@@ -168,7 +168,8 @@ public struct ChannelUpdate
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.chan_id, dg);
         hashPart(this.direction, dg);

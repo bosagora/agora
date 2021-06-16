@@ -61,7 +61,8 @@ public struct Enrollment
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.utxo_key, dg);
         hashPart(this.commitment, dg);

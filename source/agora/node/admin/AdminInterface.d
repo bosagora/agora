@@ -284,7 +284,8 @@ public struct VoterCard
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.validator, dg);
         hashPart(this.address, dg);
@@ -329,7 +330,8 @@ public struct EncryptionKey
 
     ***************************************************************************/
 
-    public void computeHash (scope HashDg dg) const nothrow @safe @nogc
+    public void computeHash (scope HashDg dg) const scope
+        @safe pure nothrow @nogc
     {
         hashPart(this.app, dg);
         hashPart(this.height.value, dg);
