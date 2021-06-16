@@ -219,7 +219,8 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     /// Sends an array of transactions ordered by fee to known network clients.
     public void relayTransactions () @safe nothrow
     {
-        this.getRelayTransactions().each!(tx => (*this.clients).each!(node_info => node_info.client.sendTransaction(tx)));
+        if ((*this.clients)[].canFind!(client => client.is_validator))
+            this.getRelayTransactions().each!(tx => (*this.clients).each!(node_info => node_info.client.sendTransaction(tx)));
     }
 
     /// Cleans expired entries from the internal datastructures.
