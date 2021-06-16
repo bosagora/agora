@@ -21,6 +21,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
+import agora.consensus.data.ValidatorInfo;
 
 import vibe.data.serialization;
 import vibe.http.common;
@@ -306,4 +307,20 @@ public interface API
     ***************************************************************************/
 
     public BlockHeader[] getBlockHeaders (Set!ulong heights);
+
+    /***************************************************************************
+
+        API:
+            GET /validators
+
+        Params:
+            height = Height at which the information is desired
+                     (default: current)
+
+    ***************************************************************************/
+
+    public ValidatorInfo[] getValidators (ulong height);
+
+    /// Ditto
+    public ValidatorInfo[] getValidators ();
 }
