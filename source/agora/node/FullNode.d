@@ -1168,4 +1168,17 @@ public class FullNode : API
         }
         return headers;
     }
+
+    ///
+    public ValidatorInfo[] getValidators (ulong height)
+    {
+        this.recordReq("validators");
+        return this.ledger.getValidators(Height(height));
+    }
+
+    ///
+    public ValidatorInfo[] getValidators ()
+    {
+        return this.getValidators(this.ledger.getBlockHeight());
+    }
 }
