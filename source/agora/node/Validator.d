@@ -293,7 +293,7 @@ public class Validator : FullNode, API
 
     protected override bool acceptBlock (const ref Block block) @trusted
     {
-        import agora.common.BitField;
+        import agora.common.BitMask;
         import agora.crypto.Schnorr;
         import std.algorithm;
         import std.range;
@@ -302,9 +302,8 @@ public class Validator : FullNode, API
         if (!super.acceptBlock(block))
             return false;
 
-        auto validators = this.enroll_man.getCountOfValidators(block.header.height);
-        auto signed_validators = BitField!ubyte(validators);
-        iota(0, validators).each!(i => signed_validators[i]= block.header.validators[i]);
+        auto signed_validators = BitMask(block.header.validators.count);
+        signed_validators |= block.header.validators;
 
         auto node_validator_index = this.nominator.enroll_man
             .getIndexOfValidator(block.header.height, this.config.validator.key_pair.address);
@@ -318,7 +317,8 @@ public class Validator : FullNode, API
         }
 
         auto sig = this.nominator.createBlockSignature(block);
-        assert(node_validator_index < validators, format!"The validator index %s is invalid"(node_validator_index));
+        assert(node_validator_index < block.header.validators.count,
+            format!"The validator index %s is invalid"(node_validator_index));
         if (signed_validators[node_validator_index])
         {
             log.trace("This node's signature is already in the block signature");

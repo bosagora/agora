@@ -14,7 +14,7 @@
 module agora.consensus.data.genesis.Coinnet;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Types;
 import agora.crypto.Schnorr: Signature;
 import agora.crypto.ECC;
@@ -34,7 +34,7 @@ public immutable Block GenesisBlock =
         height:      Height(0),
         merkle_root: GenesisMerkleRoot,
         enrollments: Enrollments,
-        validators:  BitField!ubyte(6),
+        validators:  BitMask(0),    // Validators do not sign GenesisBlock
         signature:   Signature.init,
         time_offset: 0, // In subsequent blocks this will be the offset in seconds from Genesis time
     },

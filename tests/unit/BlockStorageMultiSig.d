@@ -16,7 +16,7 @@
 module unit.BlockStorageMultiSig;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;
@@ -60,7 +60,7 @@ private void main ()
     {
         block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, Hash.init, genesis_validator_keys.length);
         block.header.signature = Signature(Scalar.random().toPoint(), Scalar.random());
-        block.header.validators = BitField!ubyte(6);
+        block.header.validators = BitMask(6);
         block.header.validators[1] = true;
         storage.saveBlock(block);
         // Prepare transactions for the next block

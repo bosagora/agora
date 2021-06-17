@@ -1003,7 +1003,7 @@ public class NetworkManager
             log.trace("Catchup signatures since block height {}", start_height);
             auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
             size_t[Height] enrolled_validators = headers.map!(header =>
-                tuple(header.height, ledger.enrollment_manager().getCountOfValidators(header.height))).assocArray;
+                tuple(header.height, header.validators.count)).assocArray;
 
             Set!ulong heightsMissingSigs ()
             {

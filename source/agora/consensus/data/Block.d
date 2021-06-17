@@ -16,7 +16,7 @@
 module agora.consensus.data.Block;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Types;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
@@ -56,8 +56,8 @@ public struct BlockHeader
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
 
-    /// Bitfield containing the validators' key indices which signed the block
-    public BitField!ubyte validators;
+    /// BitMask containing the validators' key indices which signed the block
+    public BitMask validators;
 
     /// Block height (genesis is #0)
     public Height height;
@@ -75,7 +75,7 @@ public struct BlockHeader
 
         Implements hashing support
 
-        Note that validators bitfield & the signature are not hashed
+        Note that validators bitmask bits & the signature are not hashed
         since they must sign the block header hash.
 
         Params:
@@ -92,6 +92,7 @@ public struct BlockHeader
         foreach (enrollment; this.enrollments)
             hashPart(enrollment, dg);
         dg(this.random_seed[]);
+        hashPart(this.validators.count, dg); // Include just the count of possible signers
         foreach (validator; this.missing_validators)
             hashPart(validator, dg);
         hashPart(this.time_offset, dg);
@@ -137,7 +138,7 @@ unittest
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
-    auto exp_hash = Hash("0x07370a2271bdacd3d4abfe6fd26705da8f1f2e66fb4c02f10e41a521fbd43a3c5d3df40841de24421a4cd130565233cfa4f56694e6834e231771d344b85bafa3");
+    auto exp_hash = Hash("0x311b65a2f0b637034df2f50ec2961bc9948fc89072b74b66816704246e3d41dfb45c1077938a8a5a0541528d80106a679bc117caf776079c8c06d4fe5c7ca45c");
     assert(hash == exp_hash, hash.to!string);
 }
 
@@ -197,7 +198,7 @@ public struct Block
 
     ***************************************************************************/
 
-    public Block updateSignature (in Signature signature, BitField!ubyte validators)
+    public Block updateSignature (in Signature signature, BitMask validators)
         const @safe
     {
         return Block(
@@ -535,7 +536,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     block.header.height = prev_block.header.height + 1;
     block.header.time_offset = time_offset;
     block.header.random_seed = random_seed;
-    block.header.validators = BitField!ubyte(validators);
+    block.header.validators = BitMask(validators);
     block.header.enrollments = enrollments;
     block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
@@ -580,7 +581,7 @@ version (unittest)
             auto block = makeNewBlock(prev_block, txs,
                     time_offset ? time_offset : prev_block.header.time_offset + 1,
                     random_seed, key_pairs.length, enrollments, missing_validators);
-            auto validators = BitField!ubyte(key_pairs.length);
+            auto validators = BitMask(key_pairs.length);
             Signature[] sigs;
             ulong offset = 0;
             key_pairs.enumerate.each!((i, k)

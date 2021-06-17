@@ -21,7 +21,7 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
@@ -770,7 +770,7 @@ public class Ledger
                 this.utxo_set.getUTXOFinder(),
                 &this.fee_man.check,
                 this.enroll_man.getEnrollmentFinder(),
-                this.enroll_man.validator_set.countActive(block.header.height + 1),
+                block.header.validators.count,
                 this.last_block.header.time_offset,
                 cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
                 block_time_offset_tolerance))
@@ -855,8 +855,9 @@ public class Ledger
             return "Internal error: Could not list active validators at current height";
         }
 
+        assert(validators.length == block.header.validators.count);
         // Check that more than half have signed
-        auto signed = iota(0, validators.length).filter!(i => block.header.validators[i]).count();
+        auto signed = block.header.validators.setCount;
         if (signed <= validators.length / 2)
         {
             log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",

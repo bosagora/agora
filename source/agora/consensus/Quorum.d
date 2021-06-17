@@ -14,7 +14,7 @@
 module agora.consensus.Quorum;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Config;
 import agora.common.Set;
 import agora.common.Types;
@@ -90,7 +90,7 @@ public QuorumConfig buildQuorumConfig (in PublicKey key,
     quorum.nodes ~= key;  // add ourself first
 
     // for filtering duplicates from dice()
-    auto added = BitField!uint(stakes.length);
+    auto added = BitMask(stakes.length);
     auto RNG_gen = getGenerator(key, rand_seed);
     auto stake_amounts = stakes.map!(stake => stake.amount.integral);
 
