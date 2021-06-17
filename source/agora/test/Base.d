@@ -26,7 +26,7 @@ import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Validator : ValidatorAPI = API, Identity;
 import agora.common.Amount;
 import agora.common.BanManager;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.Metadata;

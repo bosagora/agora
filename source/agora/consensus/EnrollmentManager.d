@@ -219,7 +219,7 @@ public class EnrollmentManager
 
         Params:
             height = the height at which to look up the mapping for
-            K = the Key for which to find the bitfield index to use
+            K = the Key for which to find the bit mask index
 
         Returns:
             the index of this key, or ulong.max if none was found

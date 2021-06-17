@@ -17,7 +17,7 @@
 module agora.node.BlockStorage;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.crypto.Hash;
@@ -96,7 +96,7 @@ public interface IBlockStorage
 
     /***************************************************************************
 
-        Update block in the storage with updated signature and bitfield for
+        Update block in the storage with updated signature and `BitMask` for
         validator signers.
 
         Params:
@@ -111,7 +111,7 @@ public interface IBlockStorage
     ***************************************************************************/
 
     public void updateBlockSig (in Height height, in Hash hash,
-        in Signature sig, in BitField!ubyte validators);
+        in Signature sig, in BitMask validators);
 
     /***************************************************************************
 
@@ -456,7 +456,7 @@ public class BlockStorage : IBlockStorage
 
     /// Implements `IBlockStorage.updateBlockSig`
     public override void updateBlockSig (in Height height, in Hash hash,
-        in Signature sig, in BitField!ubyte validators) @safe
+        in Signature sig, in BitMask validators) @safe
     {
         const size_t block_position = this.height_idx.findBlockPosition(height);
         if (block_position == 0)
@@ -959,7 +959,7 @@ public class MemBlockStorage : IBlockStorage
 
     /// Implements `IBlockStorage.updateBlockSig`
     public override void updateBlockSig (in Height height, in Hash hash,
-        in Signature sig, in BitField!ubyte validators) @safe
+        in Signature sig, in BitMask validators) @safe
     {
         if (this.blocks.length < height)
             throw new Exception("No such block");
@@ -967,12 +967,11 @@ public class MemBlockStorage : IBlockStorage
         Block block = deserializeFull!Block(this.blocks[height.value]);
         if (hash != block.hashFull())
             throw new Exception("Mismatch in block hash while updating signatures");
-        if (block.header.validators.length != validators.length)
+        if (block.header.validators.count != validators.count)
             throw new Exception("Number of validators doesn't match while updating signatures");
 
         block.header.signature = sig;
-        foreach (idx; 0 .. validators.length)
-            block.header.validators[idx] = validators[idx];
+        block.header.validators |= validators;
 
         this.blocks[height.value] = serializeFull(block);
     }
@@ -1055,8 +1054,7 @@ private void testStorage (IBlockStorage storage)
     Transaction[] last_txs;
     Transaction[] txs;
     Block last_block;
-    auto signed = BitField!ubyte(6);
-    iota(0, 5).each!(i => signed[i] = true); // last validator does not sign
+    auto signed = BitMask.fromString("111110"); // last validator does not sign
     void genBlocks (size_t count)
     {
         while (--count)

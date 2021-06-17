@@ -17,7 +17,7 @@ module agora.test.PeriodicCatchup;
 
 version (unittest):
 
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Config;
 import agora.common.Types;
 import agora.consensus.data.Block;

@@ -14,7 +14,7 @@
 module agora.consensus.protocol.Nominator;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.serialization.Serializer;
@@ -1015,7 +1015,7 @@ extern(D):
         }
         const Signature[PublicKey] block_sigs = this.slot_sigs[block.header.height];
 
-        auto validator_mask = BitField!ubyte(all_validators);
+        auto validator_mask = BitMask(all_validators);
         foreach (K; block_sigs.byKey())
         {
             ulong idx = this.enroll_man.getIndexOfValidator(block.header.height, K);

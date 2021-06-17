@@ -23,7 +23,7 @@
 module agora.consensus.data.genesis.Test;
 
 import agora.common.Amount;
-import agora.common.BitField;
+import agora.common.BitMask;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -54,7 +54,7 @@ public immutable Block GenesisBlock = {
         height:      Height(0),
         merkle_root: GenesisMerkleTree[$ - 1],
         time_offset: 0, // In subsequent blocks this will be the offset in seconds from Genesis time
-        validators:  BitField!ubyte(6),
+        validators:  BitMask(0),
         signature:   Signature.init,
         enrollments: [
             // boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh
