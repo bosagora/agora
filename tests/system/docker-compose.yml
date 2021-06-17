@@ -93,4 +93,4 @@ services:
       - node-6
       - node-7
     volumes:
-      - "./node/faucet/:/root/faucet/"
+      - "./node/faucet/config.yaml:/root/faucet/config.yaml"
