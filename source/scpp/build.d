@@ -57,7 +57,7 @@ version (Posix)
         "-Wno-unused-parameter",
         "-fPIC",
         "-D_GLIBCXX_USE_CXX11_ABI=0",
-        "-std=c++14",
+        "-std=c++17",
     ];
     immutable CppCmd = [ "clang++" ] ~ CppFlags;
 }

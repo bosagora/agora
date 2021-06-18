@@ -110,7 +110,7 @@ class SCPDriver
     // passes
     // the validity checks, kMaybeValidValue can be returned. This will cause
     // the current slot to be marked as a non validating slot: the local node
-    // will abstain from emiting its position.
+    // will abstain from emitting its position.
     // validation can be *more* restrictive during nomination as needed
     // NB: validation levels are ordered
     enum ValidationLevel
@@ -141,8 +141,7 @@ class SCPDriver
     virtual std::string getValueString(Value const& v) const;
 
     // `toStrKey` returns StrKey encoded string representation
-    virtual std::string toStrKey(NodeID const& pk,
-                                 bool fullKey = true) const;
+    virtual std::string toStrKey(NodeID const& pk, bool fullKey = true) const;
 
     // `toShortString` converts to the common name of a key if found
     virtual std::string toShortString(NodeID const& pk) const;

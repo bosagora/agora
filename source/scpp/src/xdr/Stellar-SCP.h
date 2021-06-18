@@ -627,7 +627,7 @@ struct SCPQuorumSet {
            typename _innerSets_T,
            typename = typename
            std::enable_if<std::is_constructible<uint32, _threshold_T>::value
-                          && std::is_constructible<xdr::xvector<PublicKey>, _validators_T>::value
+                          && std::is_constructible<xdr::xvector<NodeID>, _validators_T>::value
                           && std::is_constructible<xdr::xvector<SCPQuorumSet>, _innerSets_T>::value
                          >::type>
   explicit SCPQuorumSet(_threshold_T &&_threshold,
