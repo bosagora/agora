@@ -72,7 +72,7 @@ BallotProtocol::isNewerStatement(SCPStatement const& oldst,
         }
         else if (t == SCPStatementType::SCP_ST_CONFIRM)
         {
-            // sorted by (b, p, p', h) (p' = 0 implicitely)
+            // sorted by (b, p, p', h) (p' = 0 implicitly)
             auto const& oldC = oldst.pledges.confirm();
             auto const& c = st.pledges.confirm();
             int compBallot = compareBallots(oldC.ballot, c.ballot);
@@ -1614,7 +1614,7 @@ BallotProtocol::setPrepared(SCPBallot const& ballot)
 {
     bool didWork = false;
 
-    // p and p' are the two higest prepared and incompatible ballots
+    // p and p' are the two highest prepared and incompatible ballots
     if (mPrepared)
     {
         int comp = compareBallots(mPrepared->getBallot(), ballot);
@@ -1991,8 +1991,8 @@ BallotProtocol::sendLatestEnvelope()
     }
 }
 
-const char* BallotProtocol::phaseNames[SCP_PHASE_NUM] = {"PREPARE", "FINISH",
-                                                         "EXTERNALIZE"};
+std::array<const char*, BallotProtocol::SCP_PHASE_NUM>
+    BallotProtocol::phaseNames = std::array{"PREPARE", "FINISH", "EXTERNALIZE"};
 
 Json::Value
 BallotProtocol::getJsonInfo()

@@ -161,7 +161,7 @@ CPPMAPINST(PublicKey, SCPEnvelope, 1)
 CPPMAPINST(uint64_t, std::shared_ptr<Slot>, 2)
 CPPMAPINST(stellar::PublicKey, std::shared_ptr<SCPEnvelopeWrapper>, 3)
 
-#define CPPUNORDEREDMAPRANDHASHINST(K, V, id)   typedef std::unordered_map<K, V, std::RandHasher<K, std::hash<K > > > rand_map_type_##id;  \
+#define CPPUNORDEREDMAPRANDHASHINST(K, V, id)   typedef std::unordered_map<K, V, stellar::RandHasher<K, std::hash<K > > > rand_map_type_##id;  \
                                 CPPOBJECTINST(rand_map_type_##id);
 
 

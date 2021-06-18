@@ -92,7 +92,7 @@ extern(C++, (StdNamespace)) extern(C++, class) struct allocator (T) {}
 
 extern(C++, (StdNamespace)) extern(C++, class) struct less (T) {}
 
-extern(C++, `std`) extern(C++, class) struct RandHasher (T, Hasher = hash!T) { }
+extern(C++, `stellar`) extern(C++, class) struct RandHasher (T, Hasher = hash!T) { }
 
 extern(C++, (StdNamespace)) extern(C++, class) struct default_delete (T) {}
 

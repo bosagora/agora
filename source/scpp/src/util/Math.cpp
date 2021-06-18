@@ -68,7 +68,7 @@ k_meansPP(std::vector<double> const& points, uint32_t k)
     auto backlog = points;
 
     auto moveIndexToCentroid = [&](size_t index) {
-        // @BUG: undefined symbol printAssertFailureAndThrow()
+        // We disabled `releaseAssertOrThrow` as it brings in its host of dependencies
         // releaseAssertOrThrow(index < backlog.size());
         auto it = backlog.begin() + index;
         auto val = *it;

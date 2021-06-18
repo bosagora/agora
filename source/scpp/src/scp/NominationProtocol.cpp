@@ -13,7 +13,6 @@
 #include "util/Logging.h"
 #include "util/XDROperators.h"
 #include "xdrpp/marshal.h"
-
 #include <algorithm>
 #include <functional>
 
