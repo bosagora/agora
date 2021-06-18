@@ -81,13 +81,15 @@ public QuorumConfig buildQuorumConfig (in PublicKey key,
 {
     // special-case: only 1 validator is active
     if (utxo_keys.length == 1)
-        return QuorumConfig(1, [key]);
+        return QuorumConfig(1, [utxo_keys[0]], []);
 
     // not including our own
     NodeStake[] stakes = buildStakesDescending(key, utxo_keys, finder);
 
     QuorumConfig quorum;
-    quorum.nodes ~= key;  // add ourself first
+    // quorum.nodes ~= key;  // add ourself first
+    UTXO utxo_value;
+    quorum.nodes ~= getUTXOFromKey(key, utxo_value);
 
     // for filtering duplicates from dice()
     auto added = BitField!uint(stakes.length);
@@ -109,7 +111,8 @@ public QuorumConfig buildQuorumConfig (in PublicKey key,
         if (added[idx])  // skip duplicate
             continue;
 
-        quorum.nodes ~= stakes[idx].key;
+        // quorum.nodes ~= stakes[idx].key;
+        quorum.nodes ~= getUTXOFromKey(stakes[idx].key, utxo_value);
         added[idx] = true;  // mark used
     }
 
@@ -117,6 +120,20 @@ public QuorumConfig buildQuorumConfig (in PublicKey key,
     quorum.threshold = max(1, cast(uint)ceil(
         (params.QuorumThreshold * double(0.01)) * quorum.nodes.length));
     return quorum;
+}
+
+// Temporary functions
+UTXO[PublicKey] pu;
+Hash[PublicKey] ph;
+
+public Hash getUTXOFromKey(in PublicKey key, out UTXO utxo_value) @safe nothrow
+{
+    if (key in ph)
+    {
+        utxo_value = pu[key];
+        return ph[key];
+    }
+    assert(0);
 }
 
 /// 1 node
@@ -459,6 +476,10 @@ private NodeStake[] buildStakesDescending (const ref PublicKey filter,
         UTXO value;
         assert(finder(utxo_key, value), "UTXO for validator not found!");
 
+        /// Should be deleted
+        ph[value.output.address] = utxo_key;
+        pu[value.output.address] = value;
+
         if (value.output.address != filter)
             stakes ~= NodeStake(value.output.address, value.output.value);
     }
@@ -486,6 +507,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
     assert(amounts.length == keys.length);
     QuorumConfig[PublicKey] quorums;
     TestUTXOSet storage = new TestUTXOSet;
+    Hash[PublicKey] key_to_hash;
     foreach (idx, const ref amount; amounts.save.enumerate)
     {
         Transaction tx = Transaction([ Output(amount, keys[idx], OutputType.Freeze) ]);
@@ -499,6 +521,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
                 output: output_
             };
             storage[txhash] = v;
+            key_to_hash[output_.address] = h;
         }
     }
 
@@ -506,7 +529,7 @@ private QuorumConfig[PublicKey] buildTestQuorums (Range)(Range amounts,
     foreach (idx, _; amounts.enumerate)
     {
         quorums[keys[idx]] = buildQuorumConfig(
-            keys[idx], utxos, &storage.peekUTXO, rand_seed, params);
+            keys[idx], key_to_hash[Keys[idx]], utxos, &storage.peekUTXO, rand_seed, params);
     }
 
     return quorums;

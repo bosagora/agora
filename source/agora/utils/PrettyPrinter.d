@@ -696,7 +696,7 @@ private struct QuorumConfigFmt
         {
             formattedWrite(sink, "{ thresh: %s, nodes: %s, subqs: %s }",
                 this.data.threshold,
-                this.data.nodes.map!(node => PubKeyFmt(node)),
+                this.data.nodes.map!(node => HashFmt(node)),
                 this.data.quorums.map!(subq => QuorumConfigFmt(subq)));
         }
         catch (Exception ex)

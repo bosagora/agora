@@ -946,7 +946,7 @@ public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
 
     foreach (ref const node; quorum_conf.nodes)
     {
-        auto pub_key = NodeID(node.data[][0 .. NodeID.sizeof]);
+        auto pub_key = NodeID(node[][0 .. NodeID.sizeof]);
         quorum.validators.push_back(pub_key);
     }
 
@@ -975,12 +975,13 @@ public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
     @safe nothrow
 {
     import std.conv;
-    import scpd.types.Stellar_types : Hash, NodeID;
+    import scpd.types.Stellar_types : NodeID;
+    import agora.crypto.Hash;
 
-    PublicKey[] nodes;
+    Hash[] nodes;
 
     foreach (node; scp_quorum.validators.constIterator)
-        nodes ~= PublicKey(node[]);
+        nodes ~= Hash(node[]);
 
     QuorumConfig[] quorums;
     foreach (ref sub_quorum; scp_quorum.innerSets.constIterator)

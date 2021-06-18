@@ -413,7 +413,11 @@ unittest
     import agora.consensus.data.genesis.Test;
     import agora.crypto.Hash;
     import agora.utils.Test;
+<<<<<<< HEAD
     import scpd.types.Stellar_types : NodeID, StellarHash = Hash;
+=======
+    import scpd.types.Stellar_types : NodeID, uint512, StellarHash = Hash;
+>>>>>>> Apply UTXO to NodeID
     import scpd.types.Utils;
 
     Hash quorumSetHash;
