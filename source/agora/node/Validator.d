@@ -99,6 +99,13 @@ public class Validator : FullNode, API
             this.clock, this.network, vledger, this.enroll_man, this.taskman);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
 
+        // Make sure our ValidatorSet has our pre-image
+        // This is especially important on initialization, as replaying blocks
+        // does not call `onAcceptedBlock`.
+        PreImageInfo self;
+        if (this.ledger.enrollment_manager.getNextPreimage(self, this.ledger.getBlockHeight()))
+            this.ledger.enrollment_manager.addPreimage(self);
+
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
         this.regenerateQuorums(this.ledger.getBlockHeight());
