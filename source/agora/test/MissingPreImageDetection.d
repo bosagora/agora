@@ -53,29 +53,6 @@ private void unexpectBlock (Clients)(Clients clients, Height height)
     }
 }
 
-private class MissingPreImageEM : EnrollmentManager
-{
-    mixin ForwardCtor!();
-
-    /// This does not reveal pre-images intentionally
-    public override bool getNextPreimage (out PreImageInfo preimage,
-        in Height height) @safe
-    {
-        return false;
-    }
-}
-
-private class NoPreImageVN : TestValidatorNode
-{
-    mixin ForwardCtor!();
-
-    protected override EnrollmentManager makeEnrollmentManager ()
-    {
-        return new MissingPreImageEM(this.stateDB, this.cacheDB,
-            this.config.validator.key_pair, params);
-    }
-}
-
 private class BadNominator : TestNominator
 {
     /// Ctor
@@ -127,11 +104,14 @@ unittest
     {
         mixin ForwardCtor!();
 
+        // Always `false`
+        private shared bool neverRevealPreImage;
+
         ///
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 0)
-                this.addNewNode!NoPreImageVN(conf, file, line);
+                this.addNewNode!NoPreImageVN(conf, &this.neverRevealPreImage, file, line);
             else
                 super.createNewNode(conf, file, line);
         }
@@ -169,11 +149,14 @@ unittest
     {
         mixin ForwardCtor!();
 
+        // Always `false`
+        private shared bool neverRevealPreImage;
+
         ///
         public override void createNewNode (Config conf, string file, int line)
         {
             if (this.nodes.length == 0)
-                this.addNewNode!NoPreImageVN(conf, file, line);
+                this.addNewNode!NoPreImageVN(conf, &this.neverRevealPreImage, file, line);
             else if (this.nodes.length == 5)
                 this.addNewNode!BadNominatingVN(conf, file, line);
             else
