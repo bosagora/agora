@@ -111,7 +111,7 @@ else version (Windows)
         "/Zc:forScope",
         "/RTC1",
         "/Gd",
-        "/std:c++14",
+        "/std:c++17",
         "/FC",
         "/EHsc",
         "/c"
