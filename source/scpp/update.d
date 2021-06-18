@@ -26,12 +26,30 @@ import std.algorithm : among;
 static import std.file;
 import std.format;
 import std.path;
+import std.range;
 import std.process;
 import std.stdio;
 
 private:
 
 immutable ScriptPath = __FILE_FULL_PATH__.dirName();
+
+struct Mapping
+{
+    // Path inside stellar-core
+    string source;
+    // Path inside Agora's repo
+    string target;
+}
+
+immutable Mapping[] Mappings = [
+    { source: "lib/util/cbitset.c", target: "lib/util/cbitset.cpp" },
+    { source: "src/herder/QuorumIntersectionChecker.h", target: "src/quorum/QuorumIntersectionChecker.h" },
+    { source: "src/herder/QuorumIntersectionCheckerImpl.cpp", target: "src/quorum/QuorumIntersectionCheckerImpl.cpp" },
+    { source: "src/herder/QuorumIntersectionCheckerImpl.h", target: "src/quorum/QuorumIntersectionCheckerImpl.h" },
+    { source: "src/herder/QuorumTracker.cpp", target: "src/quorum/QuorumTracker.cpp" },
+    { source: "src/herder/QuorumTracker.h", target: "src/quorum/QuorumTracker.h" },
+];
 
 immutable string ColorDiff;
 shared static this ()
@@ -48,11 +66,19 @@ int main (string[] args)
 
     immutable rootPath = ScriptPath.absolutePath();
     immutable stellarPath = args[1].absolutePath();
+    string[string] maps;
 
     if (!std.file.exists(stellarPath))
         return fail("Error: %s does not exists", stellarPath);
     if (!std.file.isDir(stellarPath))
         return fail("Error: %s is not a directory", stellarPath);
+
+    // Populate mappings using absolute path
+    // Since the update is driven by the files in agora,
+    // use the target as the key to the AA.
+    foreach (const ref m; Mappings)
+        maps[cast(string)rootPath.buildPath(m.target).asNormalizedPath.array]
+            = stellarPath.buildPath(m.source);
 
     bool updateDirectory (const(char)[] directory)
     {
@@ -61,9 +87,20 @@ int main (string[] args)
                                          std.file.SpanMode.depth);
         foreach (target; files)
         {
-            import std.range;
-            auto source = stellarPath.buildPath(directory, target.asRelativePath(path).array);
-            if (!updateFile(source, target))
+            const relTarget = target.asRelativePath(path).array;
+            const absTarget = buildPath(rootPath, directory, relTarget).asNormalizedPath().array;
+
+            const char[] source = () {
+                // Make the compiler infer the correct return type...
+                if (42 == 84) return (const(char)[]).init;
+                // Check if there's a mapping overriding the default behavior
+                if (auto t = absTarget in maps)
+                    return *t;
+                // Otherwise assume the file name is the same
+                return only(stellarPath, directory, relTarget)
+                    .buildPath().asNormalizedPath.array;
+            }();
+            if (!updateFile(source, absTarget))
                 return false;
         }
         return true;
@@ -138,7 +175,7 @@ Action askSingle (const(char)[] question)
 ///
 /// Returns:
 /// `true` => Keep updating, `false` => Exit
-bool updateFile (string source, string target)
+bool updateFile (const(char)[] source, const(char)[] target)
 {
     if (!std.file.exists(target) || !std.file.isFile(target))
         return ask(format("Target file '%s' does not exists or is not a file, skip it and continue", target))
