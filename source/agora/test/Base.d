@@ -2164,3 +2164,45 @@ private immutable(Block)[] generateExtraBlocks (
     }
     return blocks.assumeUnique;
 }
+
+/// This derived `TestValidatorNode` does not reveal any preimages
+/// until told to do so. Make sure to set `reveal_preimage` using atomic ops.
+public class NoPreImageVN : TestValidatorNode
+{
+    private shared bool* reveal_preimage;
+
+    ///
+    public this (Parameters!(TestValidatorNode.__ctor) args,
+        shared(bool)* reveal_preimage)
+    {
+        this.reveal_preimage = reveal_preimage;
+        super(args);
+    }
+
+    protected override void onPreImageRevealTimer ()
+    {
+        if (atomicLoad(*this.reveal_preimage))
+            super.onPreImageRevealTimer();
+    }
+
+    public override PreImageInfo getPreimage (Hash enroll_key)
+    {
+        if (enroll_key != this.enroll_man.getEnrollmentKey())
+            return super.getPreimage(enroll_key);
+        else if (atomicLoad(*this.reveal_preimage))
+            return super.getPreimage(enroll_key);
+        else
+            throw new Exception("No such PreImage");
+    }
+
+    /// GET: /preimages
+    public override PreImageInfo[] getPreimages (ulong start_height,
+        ulong end_height) @safe nothrow
+    {
+        if (atomicLoad(*this.reveal_preimage))
+            return super.getPreimages(start_height, end_height);
+        const ek = this.enroll_man.getEnrollmentKey();
+        return super.getPreimages(start_height, end_height)
+            .filter!(pi => pi.utxo != ek).array();
+    }
+}

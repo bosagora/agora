@@ -230,7 +230,7 @@ public class Validator : FullNode, API
         this.clock.startSyncing();
         this.timers ~= this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
-            &this.checkRevealPreimage, Periodic.Yes);
+            &this.onPreImageRevealTimer, Periodic.Yes);
 
         if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.utxo_set.peekUTXO))
             this.nominator.startNominatingTimer();
@@ -472,7 +472,7 @@ public class Validator : FullNode, API
 
         // FIXME: Add our pre-image to the validator set so that `getValidators`
         // works as expected. This will need to be fixed in the Ledger in the
-        // future, as `checkRevealPreimage` has some issues, but doing it here
+        // future, as `onPreImageRevealTimer` has some issues, but doing it here
         // allows us to unify usage of `getValidators`.
         PreImageInfo self;
         if (this.ledger.enrollment_manager.getNextPreimage(self, block.header.height))
@@ -518,12 +518,13 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        Periodically check for pre-images revelation
+        Periodically called to perform pre-images revelation.
+
         Increase the next reveal height by revelation period if necessary.
 
     ***************************************************************************/
 
-    private void checkRevealPreimage () @safe
+    protected void onPreImageRevealTimer () @safe
     {
         PreImageInfo preimage;
         if (this.enroll_man.getNextPreimage(preimage,
