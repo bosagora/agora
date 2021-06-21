@@ -1079,21 +1079,25 @@ public class NetworkManager
     }
 
     ///
-    private bool minPeersConnected ()  pure nothrow @safe
+    private bool minPeersConnected () nothrow @safe
     {
         return this.required_peers.length == 0 &&
-            this.peers[].walkLength >= this.node_config.min_listeners;
+            this.peers[].walkLength >= this.node_config.min_listeners &&
+            this.validators().filter!(node =>
+                !this.banman.isBanned(node.client.address)).count != 0;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peers.length == 0 &&
             this.peers[].filter!(node =>
-                !this.banman.isBanned(node.client.address)).count >= this.node_config.max_listeners;
+                !this.banman.isBanned(node.client.address)).count >= this.node_config.max_listeners &&
+            this.validators().filter!(node =>
+                !this.banman.isBanned(node.client.address)).count != 0;
     }
 
     /// Returns: the list of node IPs this node is connected to
-    public NodeInfo getNetworkInfo () pure nothrow @safe
+    public NodeInfo getNetworkInfo () nothrow @safe
     {
         return NodeInfo(
             this.minPeersConnected()
