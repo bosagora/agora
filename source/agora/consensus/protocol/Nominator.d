@@ -1313,29 +1313,7 @@ extern(D):
     // `getHashOf` computes the hash for the given vector of byte vector
     override StellarHash getHashOf (ref vector!Value vals) const nothrow
     {
-        import libsodium.crypto_generichash;
-        Hash hash = void;
-        crypto_generichash_state state;
-
-        auto dg = () @trusted {
-            crypto_generichash_init(&state, null, 0, Hash.sizeof);
-            scope HashDg dg = (in ubyte[] data) @trusted {
-                crypto_generichash_update(&state, data.ptr, data.length);
-            };
-            return dg;
-        }();
-
-        foreach (value; vals)
-        {
-            const ubyte[] bytes = value[];
-            hashPart(bytes, dg);
-        }
-        void trusted () @trusted
-        {
-            crypto_generichash_final(&state, hash[].ptr, Hash.sizeof);
-        }
-        trusted();
-
+        auto hash = hashMulti(vals);
         ubyte[64] bytes = hash[][0..64];
         return StellarHash(bytes);
     }
