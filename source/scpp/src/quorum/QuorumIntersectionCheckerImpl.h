@@ -359,14 +359,6 @@
 
 namespace
 {
-
-template <typename T>
-typename std::enable_if<!std::is_same<T, stellar::SecretKey>::value, std::string>::type
-toShortString(T const& key)
-{
-    return stellar::KeyUtils::toStrKey(key).substr(0, 5);
-}
-
 struct QBitSet;
 using QGraph = std::vector<QBitSet>;
 class QuorumIntersectionCheckerImpl;
