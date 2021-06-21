@@ -454,14 +454,37 @@ public class AgoraLayout : Appender.Layout
 ***************************************************************************/
 
 private extern(C++) void writeDLog (const(char)* logger, int level,
-    const(char)* msg)
+    const(char)* msg) nothrow
 {
-    if (level >= LogLevel.min && level <= LogLevel.max)
+    try
     {
-        import std.string;
+        if (level >= LogLevel.min && level <= LogLevel.max)
+        {
+            import std.string;
 
-        auto log = Log.lookup(fromStringz(logger));
-        assert(log !is null);
-        log.format(cast(LogLevel) level, fromStringz(msg));
+            auto log = Log.lookup(fromStringz(logger));
+            assert(log !is null);
+            log.format(cast(LogLevel) level, fromStringz(msg));
+        }
+    }
+    catch (Exception exc)
+    {
+        printf("ERROR while logging: %.*s\n", cast(int) exc.msg.length, exc.msg.ptr);
+        try
+        {
+            auto trace = exc.toString();
+            printf("Full error: %.*s\n", cast(int) trace.length, trace.ptr);
+        }
+        catch (Exception e2)
+        {
+            // At this point there's not much we can do
+            printf("ERROR: Couldn't print stack trace\n");
+        }
+        // Abort here, because we don't want to silently swallow Exceptions
+        // The better thing to do might be to ignore it
+        // e.g. if Exceptions *can* happen, but currently they're not supposed to.
+        // Not catching Exceptions, however, would lead to a cryptic message:
+        // "libc++: terminated from uncaught foreign exception"
+        assert(0);
     }
 }
