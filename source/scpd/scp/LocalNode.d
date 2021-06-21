@@ -40,11 +40,17 @@ extern(C++, class) public struct LocalNode
     Hash            gSingleQSetHash;  // hash of the singleton qset
     SCPQuorumSetPtr mSingleQSet;      // {{mNodeID}}
 
-    SCP* mSCP;
+    /// Never null (it's a ref on the C++ side)
+    SCPDriver* mSCP;
 
   public:
-    this(ref const(NodeID) nodeID, bool isValidator,
-         ref const(SCPQuorumSet) qSet, SCP scp);
+    // Commented out because we cannot bind it in D, as `SCPDriver` is a class
+    // passed by `ref` and not by pointer
+    // However we do not need it from the D side, since the instantiation is
+    // performed by the `SCP` class.
+    // ----------------------------
+    // this(ref const(NodeID) nodeID, bool isValidator,
+    //      ref const(SCPQuorumSet) qSet, SCPDriver& scp);
 
     ref const(NodeID) getNodeID();
 
