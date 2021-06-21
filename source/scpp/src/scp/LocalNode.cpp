@@ -5,7 +5,6 @@
 #include "LocalNode.h"
 
 #include "crypto/Hex.h"
-#include "crypto/KeyUtils.h"
 #include "lib/json/json.h"
 #include "scp/QuorumSetUtils.h"
 #include "util/Logging.h"
@@ -25,7 +24,7 @@ LocalNode::LocalNode(NodeID const& nodeID, bool isValidator,
     mQSetHash = driver.getHashOf({xdr::xdr_to_opaque(mQSet)});
 
     CLOG(INFO, "SCP") << "LocalNode::LocalNode"
-                      << "@" << KeyUtils::toShortString(mNodeID)
+                      << "@" << driver.toShortString(mNodeID)
                       << " qSet: " << hexAbbrev(mQSetHash);
 
     mSingleQSet = std::make_shared<SCPQuorumSet>(buildSingletonQSet(mNodeID));
