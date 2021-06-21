@@ -284,14 +284,14 @@ public class CircularAppender (size_t BufferSize = 2^^20) : Appender
         // (avoids trailing empty lines with only a newline)
         if (this.used_length > 0)
         {
-            formattedWrite(this.cyclic, "\n");
+            this.cyclic.put("\n");
             this.used_length++;
         }
 
         this.layout.format(event,
             (cstring content)
             {
-                formattedWrite(this.cyclic, content);
+                this.cyclic.put(content);
                 this.used_length = min(this.buffer.length,
                     this.used_length + content.length);
             });
@@ -345,6 +345,9 @@ unittest
     // the internal buffer size is smaller than the length of the messages
     // that we are trying to log
     assert(get_log_output("0123456789") == "3456789");
+
+    // Make sure we don't trip on stray format specifiers
+    assert(get_log_output("Thou shalt ignore random %s in the string") == " string");
 }
 
 /// A file appender that uses Phobos
