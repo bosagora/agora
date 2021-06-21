@@ -122,68 +122,6 @@ unittest
     assert(preimage_26.isInvalidReason(b20_preimage) is null);
 }
 
-// Situation: A pre-image already known by all nodes is sent on the network
-// Expectation: The new pre-image is rejected because it's already known
-unittest
-{
-    import agora.common.Config;
-    import geod24.Registry;
-
-    /// A node that will assert if it gets more than 400 calls to
-    /// `receivePreimage`.
-    static final class TestNode : TestValidatorNode
-    {
-        private size_t count;
-
-        mixin ForwardCtor!();
-
-        public override void receivePreimage (PreImageInfo preimage)
-        {
-            this.count++;
-            assert(this.count < 100);
-            super.receivePreimage(preimage);
-        }
-    }
-
-    static final class BadAPIManager : TestAPIManager
-    {
-        mixin ForwardCtor!();
-
-        /// see base class
-        public override void createNewNode (Config conf, string file, int line)
-        {
-            if (this.nodes.length == 0)
-                this.addNewNode!TestNode(conf, file, line);
-            else
-                super.createNewNode(conf, file, line);
-        }
-    }
-
-    auto network = makeTestNetwork!BadAPIManager(TestConf.init);
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery();
-
-    const blocks = network.clients.front().getBlocksFrom(0, 1);
-    assert(blocks.length == 1);
-    assert(blocks[0].header.enrollments.length >= 1);
-    const enroll = blocks[0].header.enrollments[0];
-
-    const known_preimage = network.clients.front().getPreimage(enroll.utxo_key);
-    assert(known_preimage.height == 0);
-    assert(known_preimage.hash == enroll.commitment);
-    // Send the same pre-image as received
-    network.clients().front().receivePreimage(
-        PreImageInfo(enroll.utxo_key, enroll.commitment, Height(0)));
-
-    // Just to be sure, in case this unittest runs last
-    Thread.sleep(50.msecs);
-
-    assert(network.clients().each!(
-        client => client.getPreimage(enroll.utxo_key).height == 0));
-}
-
 /// Situation: One misbehaving node sends an Enrollment for an
 ///            already-enrolled validator.
 /// Expectation: The nomination is rejected.
