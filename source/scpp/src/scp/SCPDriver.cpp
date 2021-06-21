@@ -7,7 +7,6 @@
 #include <algorithm>
 
 #include "crypto/Hex.h"
-#include "crypto/KeyUtils.h"
 #include "crypto/SecretKey.h"
 #include "xdrpp/marshal.h"
 
