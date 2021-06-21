@@ -5,6 +5,7 @@
 #include "QuorumIntersectionCheckerImpl.h"
 #include "QuorumIntersectionChecker.h"
 
+#include "crypto/KeyUtils.h"
 #include "util/Logging.h"
 #include "util/Math.h"
 
@@ -693,7 +694,7 @@ QuorumIntersectionCheckerImpl::buildSCCs()
 std::string
 QuorumIntersectionCheckerImpl::nodeName(size_t node) const
 {
-    return toShortString(mBitNumPubKeys.at(node));
+    return stellar::KeyUtils::toShortString(mBitNumPubKeys.at(node));
 }
 
 bool
