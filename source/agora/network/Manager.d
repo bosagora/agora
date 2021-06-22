@@ -68,9 +68,6 @@ public class NetworkManager
     /// Node information
     public static struct NodeConnInfo
     {
-        /// Is this node a Validator
-        bool is_validator;
-
         /// Hash of the output used as collateral, only set if the node is a Validator
         Hash utxo;
 
@@ -79,6 +76,12 @@ public class NetworkManager
 
         /// Client
         NetworkClient client;
+
+        ///
+        public bool isValidator () const scope @safe pure nothrow @nogc
+        {
+            return this.key != PublicKey.init;
+        }
     }
 
     /***************************************************************************
@@ -238,7 +241,6 @@ public class NetworkManager
                 log.info("Found new FullNode: {}", address);
 
             NodeConnInfo node = {
-                is_validator : is_validator,
                 key : key,
                 utxo: utxo,
                 client : client
@@ -469,7 +471,7 @@ public class NetworkManager
         this.connected_peers.put(node.client.address);
         this.peers.insertBack(node);
 
-        if (node.is_validator)
+        if (node.isValidator())
         {
             this.required_peers.remove(node.utxo);
             this.connected_validator_keys.put(node.utxo);
@@ -867,7 +869,7 @@ public class NetworkManager
 
     public auto validators () return @safe nothrow pure
     {
-        return this.peers[].filter!(p => p.is_validator);
+        return this.peers[].filter!(p => p.isValidator());
     }
 
     /***************************************************************************
