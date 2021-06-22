@@ -56,9 +56,6 @@ immutable Mapping[] Mappings = [
 /// but the file still needs to keep the same name for include purpose,
 /// or the file does not exists in SCP.
 immutable string[] Excluded = [
-    // We want to get rid of those two files, but dependencies still exist
-    "src/crypto/SecretKey.cpp",
-    "src/crypto/SecretKey.h",
     // We replace upstream's logging with our own, so we have a large diff
     "src/util/Logging.cpp",
     "src/util/Logging.h",
