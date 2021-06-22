@@ -63,6 +63,7 @@ immutable string[] Excluded = [
     "src/util/Logging.cpp",
     "src/util/Logging.h",
     // We define our own types
+    "src/xdr/Agora-types.h",
     "src/xdr/Stellar-types.h",
 ];
 

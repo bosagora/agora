@@ -1,24 +1,12 @@
 // -*- C++ -*-
-// Automatically generated from xdr/Stellar-types.x.
-// DO NOT EDIT or your changes may be overwritten
+//
+// This file is included by multiple files in scp and XDR, hence it remains its
+// original name, to avoid having to replace every single #include,
+// however it should *not* be kept in sync with Stellar-core.
+//
+// In Stellar-core, This file defines the base types used in SCP,
+// such as `NodeID` and `Signature`.
+// We defines our own types for those, which are in `xdr/agora-types.h`.
 
-#ifndef __XDR_XDR_STELLAR_TYPES_H_INCLUDED__
-#define __XDR_XDR_STELLAR_TYPES_H_INCLUDED__ 1
-
-#include <xdrpp/types.h>
-
-namespace stellar {
-
-using Hash = xdr::opaque_array<64>;
-using uint256 = xdr::opaque_array<32>;
-using uint512 = xdr::opaque_array<64>;
-using uint32 = std::uint32_t;
-using int32 = std::int32_t;
-using uint64 = std::uint64_t;
-using int64 = std::int64_t;
-
-using PublicKey = uint256;
-using Signature = xdr::opaque_array<64>;
-}
-
-#endif // !__XDR_XDR_STELLAR_TYPES_H_INCLUDED__
+#pragma once
+#include "xdr/Agora-types.h"
