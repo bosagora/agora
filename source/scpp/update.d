@@ -51,6 +51,21 @@ immutable Mapping[] Mappings = [
     { source: "src/herder/QuorumTracker.h", target: "src/quorum/QuorumTracker.h" },
 ];
 
+/// The list of target files that should be ignored by this script
+/// The main reason to ignore a file is that a large diff is to be expected,
+/// but the file still needs to keep the same name for include purpose,
+/// or the file does not exists in SCP.
+immutable string[] Excluded = [
+    // We want to get rid of those two files, but dependencies still exist
+    "src/crypto/SecretKey.cpp",
+    "src/crypto/SecretKey.h",
+    // We replace upstream's logging with our own, so we have a large diff
+    "src/util/Logging.cpp",
+    "src/util/Logging.h",
+    // We define our own types
+    "src/xdr/Stellar-types.h",
+];
+
 immutable string ColorDiff;
 shared static this ()
 {
@@ -67,6 +82,7 @@ int main (string[] args)
     immutable rootPath = ScriptPath.absolutePath();
     immutable stellarPath = args[1].absolutePath();
     string[string] maps;
+    bool[string] excludedSet;
 
     if (!std.file.exists(stellarPath))
         return fail("Error: %s does not exists", stellarPath);
@@ -79,6 +95,8 @@ int main (string[] args)
     foreach (const ref m; Mappings)
         maps[cast(string)rootPath.buildPath(m.target).asNormalizedPath.array]
             = stellarPath.buildPath(m.source);
+    foreach (const ref e; Excluded)
+        excludedSet[cast(string)rootPath.buildPath(e).asNormalizedPath.array] = true;
 
     bool updateDirectory (const(char)[] directory)
     {
@@ -90,6 +108,12 @@ int main (string[] args)
             const relTarget = target.asRelativePath(path).array;
             const absTarget = buildPath(rootPath, directory, relTarget).asNormalizedPath().array;
 
+            if (absTarget in excludedSet)
+            {
+                stdout.writeln("Skipping excluded file ", absTarget);
+                continue;
+            }
+
             const char[] source = () {
                 // Make the compiler infer the correct return type...
                 if (42 == 84) return (const(char)[]).init;
@@ -100,6 +124,7 @@ int main (string[] args)
                 return only(stellarPath, directory, relTarget)
                     .buildPath().asNormalizedPath.array;
             }();
+
             if (!updateFile(source, absTarget))
                 return false;
         }
