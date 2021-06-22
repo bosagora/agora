@@ -1,18 +1,19 @@
 // Copyright Mathias Lang
 // Not originally part of SCP but required for the D side to work
 
+#include <functional>
+
 #include "DUtils.h"
-#include "xdrpp/marshal.h"
-#include "xdr/Stellar-SCP.h"
 #include "quorum/QuorumTracker.h"
 #include "quorum/QuorumIntersectionChecker.h"
-#include "scp/Slot.h"
-#include "scp/NominationProtocol.h"
 #include "scp/BallotProtocol.h"
+#include "scp/NominationProtocol.h"
 #include "scp/SCP.h"
 #include "scp/SCPDriver.h"
-#include <functional>
-#include <set>
+#include "scp/Slot.h"
+#include "util/XDROperators.h"
+#include "xdr/Stellar-SCP.h"
+#include "xdrpp/marshal.h"
 
 using namespace xdr;
 using namespace stellar;
