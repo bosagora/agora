@@ -5,16 +5,20 @@
 
 #include <xdrpp/types.h>
 
-namespace stellar {
+namespace stellar
+{
+    // Base types used in Stellar and Agora alike
+    using uint32 = std::uint32_t;
+    using int32  = std::int32_t;
+    using uint64 = std::uint64_t;
+    using int64  = std::int64_t;
 
-using Hash = xdr::opaque_array<64>;
-using uint256 = xdr::opaque_array<32>;
-using uint512 = xdr::opaque_array<64>;
-using uint32 = std::uint32_t;
-using int32 = std::int32_t;
-using uint64 = std::uint64_t;
-using int64 = std::int64_t;
+    // Opaque value types (BitBlob!{32,64} on the Agora side, ABI compatible)
+    using uint256 = xdr::opaque_array<32>;
+    using uint512 = xdr::opaque_array<64>;
 
-using PublicKey = uint256;
-using Signature = xdr::opaque_array<64>;
+    // Logical types used by SCP / Agora
+    using Hash =      uint512;
+    using NodeID =    uint256; // Currently a `PublicKey`
+    using Signature = uint512; // `(R,s)`, could be reduced to `(s)`
 }

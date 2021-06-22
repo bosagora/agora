@@ -54,12 +54,12 @@ alias TypesNoLayout = AliasSeq!
     /// scpd.types.Stellar_SCP
     Value,
     SCPStatementType,
-    PublicKey,
+    NodeID,
     Signature,
 
     /// scpd.types.XDRBase
     xvector!Value,
-    xvector!PublicKey,
+    xvector!NodeID,
     xvector!SCPQuorumSet,
 
     LocalNode,
