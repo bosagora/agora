@@ -1735,6 +1735,11 @@ unittest
         utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, bob_pair.V);
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
+    // error on not enough funds on funding UTXO for TX fees
+    res = alice.openNewChannel(alice_pubkey,
+        utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, bob_pair.V);
+    assert(res.error == ErrorCode.RejectedFundingUTXO);
+
     // error on not own funding UTXO
     res = bob.openNewChannel(bob_pubkey,
         utxo, utxo_hash, Amount(10_000), 1000, alice_pair.V);
