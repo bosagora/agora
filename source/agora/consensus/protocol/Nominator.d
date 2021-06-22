@@ -45,8 +45,7 @@ import scpd.scp.SCP;
 import scpd.scp.SCPDriver;
 import scpd.scp.Slot;
 import scpd.scp.Utils;
-import scpd.types.Stellar_types : uint256, uint512, NodeID;
-import scpd.types.Stellar_types : StellarHash = Hash;
+import scpd.types.Stellar_types : NodeID, StellarHash = Hash;
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 import scpd.types.XDRBase : opaque_array;
@@ -182,7 +181,7 @@ extern(D):
         this.network = network;
         this.empty_value = ConsensusData.init.serializeFull().toVec();
         this.kp = key_pair;
-        auto node_id = NodeID(uint256(key_pair.address.data[][0 .. uint256.sizeof]));
+        auto node_id = NodeID(key_pair.address.data[][0 .. NodeID.sizeof]);
         const IsValidator = true;
         const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
         this.scp = createSCP(this, node_id, IsValidator, no_quorum);
@@ -1298,8 +1297,8 @@ extern(D):
         const uint hash_P = 2;
 
         const seed = this.ledger.getLastBlock().header.hashFull();
-        uint512 hash = uint512(hashMulti(slot_idx, prev[],
-            is_priority ? hash_P : hash_N, round_num, node_id, seed));
+        const Hash hash = hashMulti(slot_idx, prev[],
+            is_priority ? hash_P : hash_N, round_num, node_id, seed);
 
         uint64_t res = 0;
         for (size_t i = 0; i < res.sizeof; i++)
@@ -1308,14 +1307,10 @@ extern(D):
         return res;
     }
 
-    import scpd.types.Stellar_types : StellarHash = Hash;
-
     // `getHashOf` computes the hash for the given vector of byte vector
     override StellarHash getHashOf (ref vector!Value vals) const nothrow
     {
-        auto hash = hashMulti(vals);
-        ubyte[64] bytes = hash[][0..64];
-        return StellarHash(bytes);
+        return StellarHash(hashMulti(vals)[][0 .. Hash.sizeof]);
     }
 }
 
@@ -1548,4 +1543,11 @@ private struct SCPEnvelopeHash
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
         "0x5ee8649f04528b083a2bd03d666d7ced845681be58f93bdc5964cf3af2bc1f7c19511084c698f0d500ae4c6c9a38f5d0ecc41fa42f68dc5f355e8f518e793a7d"));
+}
+
+// Size assumptions made by this module
+unittest
+{
+    static assert(NodeID.sizeof == PublicKey.sizeof);
+    static assert(StellarHash.sizeof == Hash.sizeof);
 }
