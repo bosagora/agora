@@ -44,8 +44,8 @@ CPPSIZEOF(SCPQuorumSet)
 
 /// scpd.types.Stellar_types
 CPPSIZEOF(Hash)
-CPPSIZEOF(PublicKey)
-// Signature is removed because it is the same as Hash.
+CPPSIZEOF(NodeID)
+// Signature and hash are both aliases to uint512
 static_assert(std::is_same<Signature, Hash>::value, "Signature and Hash must be the same type");
 CPPSIZEOF(ByteSlice)
 
@@ -55,7 +55,7 @@ CPPSIZEOF(ByteSlice)
 /// scpd.types.XDRBase
 CPPSIZEOF(xarray<std::uint8_t COMMA 4>)
 CPPSIZEOF(xvector<Value>)
-CPPSIZEOF(xvector<PublicKey>)
+CPPSIZEOF(xvector<NodeID>)
 CPPSIZEOF(xvector<SCPQuorumSet>)
 
 CPPSIZEOF(LocalNode)

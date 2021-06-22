@@ -41,7 +41,7 @@ opaque_vec<> XDRToOpaque(const stellar::SCPStatement& param)
 #define PUSHBACKINST2(T, VT) template void push_back<T, VT>(VT&, T&);
 #define PUSHBACKINST3(T, V) template void push_back<T, V<T>>(V<T>&, T&);
 
-PUSHBACKINST2(const PublicKey, xvector<PublicKey>)
+PUSHBACKINST2(const NodeID, xvector<NodeID>)
 PUSHBACKINST3(xvector<unsigned char>, std::vector)
 PUSHBACKINST3(unsigned char, std::vector)
 
@@ -66,9 +66,9 @@ opaque_vec<> duplicate_value (void const *value_)
     return dup;
 }
 
-PUSHBACKINST1(PublicKey)
+PUSHBACKINST1(NodeID)
 PUSHBACKINST1(SCPQuorumSet)
-PUSHBACKINST3(PublicKey, std::vector)
+PUSHBACKINST3(NodeID, std::vector)
 PUSHBACKINST3(SCPEnvelope, std::vector)
 PUSHBACKINST3(SCPQuorumSet, std::vector)
 
@@ -77,7 +77,7 @@ CPPSETFOREACHINST(int)
 CPPSETFOREACHINST(Value)
 CPPSETFOREACHINST(ValueWrapperPtr)
 CPPSETFOREACHINST(SCPBallot)
-CPPSETFOREACHINST(PublicKey)
+CPPSETFOREACHINST(NodeID)
 CPPSETFOREACHINST(unsigned int)
 
 #define CPPSETEMPTYINST(T) template bool cpp_set_empty<T>(const void*);
@@ -85,7 +85,7 @@ CPPSETEMPTYINST(int)
 CPPSETEMPTYINST(Value)
 CPPSETEMPTYINST(ValueWrapperPtr)
 CPPSETEMPTYINST(SCPBallot)
-CPPSETEMPTYINST(PublicKey)
+CPPSETEMPTYINST(NodeID)
 CPPSETEMPTYINST(unsigned int)
 
 #define CPPUNORDEREDMAPASSIGNINST(K, V) template void cpp_unordered_map_assign<K, V>(void*, const K&, const V&);
@@ -138,7 +138,7 @@ CPPOBJECTINST(std::shared_ptr<SCPEnvelopeWrapper>);
 
 CPPOBJECTINST(std::set<int>);
 CPPOBJECTINST(std::set<Value>);
-CPPOBJECTINST(std::set<PublicKey>);
+CPPOBJECTINST(std::set<NodeID>);
 CPPOBJECTINST(std::set<SCPBallot>);
 CPPOBJECTINST(std::set<unsigned int>);
 
@@ -158,16 +158,16 @@ CPPUNORDEREDMAPINST(int, int, 1)
 #define CPPMAPINST(K, V, id)   typedef std::map<K, V> map_type_##id;  \
                                 CPPOBJECTINST(map_type_##id);
 CPPMAPINST(int, int, 0)
-CPPMAPINST(PublicKey, SCPEnvelope, 1)
+CPPMAPINST(NodeID, SCPEnvelope, 1)
 CPPMAPINST(uint64_t, std::shared_ptr<Slot>, 2)
-CPPMAPINST(stellar::PublicKey, std::shared_ptr<SCPEnvelopeWrapper>, 3)
+CPPMAPINST(stellar::NodeID, std::shared_ptr<SCPEnvelopeWrapper>, 3)
 
 #define CPPUNORDEREDMAPRANDHASHINST(K, V, id)   typedef std::unordered_map<K, V, stellar::RandHasher<K, std::hash<K > > > rand_map_type_##id;  \
                                 CPPOBJECTINST(rand_map_type_##id);
 
 
 CPPUNORDEREDMAPRANDHASHINST(int, int, 0);
-CPPUNORDEREDMAPRANDHASHINST(stellar::PublicKey, stellar::QuorumTracker::NodeInfo, 1);
+CPPUNORDEREDMAPRANDHASHINST(stellar::NodeID, stellar::QuorumTracker::NodeInfo, 1);
 
 // typedef std::set<ValueWrapperPtr, WrappedValuePtrComparator*> ValueWrapperPtrSet2;
 

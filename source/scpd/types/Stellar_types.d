@@ -29,9 +29,21 @@ extern(C++, `stellar`):
 // we can just swap it, and get a much more D-friendly interface.
 
 // todo: replace with BitBlob and use pragma(mangle) to force it to link
-alias Hash = opaque_array!64;
 alias uint256 = opaque_array!32;
 alias uint512 = opaque_array!64;
-alias PublicKey = uint256;
-alias Signature = opaque_array!64;
-alias NodeID = PublicKey;
+
+
+alias Hash      = uint512;
+alias NodeID    = uint256;
+alias Signature = uint512;
+
+unittest
+{
+    static import agora.crypto.Hash;
+    static import agora.crypto.Key;
+    static import agora.crypto.Schnorr;
+
+    static assert(agora.crypto.Hash.Hash.sizeof == Hash.sizeof);
+    static assert(agora.crypto.Key.PublicKey.sizeof == NodeID.sizeof);
+    static assert(agora.crypto.Schnorr.Signature.sizeof == Signature.sizeof);
+}

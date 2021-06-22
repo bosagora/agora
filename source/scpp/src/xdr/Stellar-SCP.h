@@ -10,8 +10,6 @@
 #include "xdr/Stellar-types.h"
 
 namespace stellar {
-
-using NodeID = PublicKey;
 using Value = xdr::opaque_vec<>;
 
 struct SCPBallot {
