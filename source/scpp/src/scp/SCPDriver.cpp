@@ -7,7 +7,6 @@
 #include <algorithm>
 
 #include "crypto/Hex.h"
-#include "crypto/SecretKey.h"
 #include "xdrpp/marshal.h"
 
 namespace stellar
