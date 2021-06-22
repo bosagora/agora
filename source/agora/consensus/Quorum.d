@@ -27,7 +27,7 @@ import agora.crypto.Key;
 
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;
-import scpd.types.Stellar_types : uint256, NodeID;
+import scpd.types.Stellar_types : NodeID;
 import scpd.types.Utils;
 import scpd.types.XDRBase;
 import scpd.quorum.QuorumTracker;
@@ -609,7 +609,7 @@ private void verifyQuorumsIntersect (QuorumConfig[PublicKey] quorums)
     {
         auto scp = toSCPQuorumSet(quorum);
         auto scp_quorum = makeSharedSCPQuorumSet(scp);
-        auto scp_key = NodeID(uint256(key[][0 .. uint256.sizeof]));
+        auto scp_key = NodeID(key[][0 .. NodeID.sizeof]);
         qm[scp_key] = QuorumTracker.NodeInfo(scp_quorum);
     }
 

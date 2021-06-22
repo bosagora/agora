@@ -413,7 +413,7 @@ unittest
     import agora.consensus.data.genesis.Test;
     import agora.crypto.Hash;
     import agora.utils.Test;
-    import scpd.types.Stellar_types : NodeID, uint256, StellarHash = Hash;
+    import scpd.types.Stellar_types : NodeID, StellarHash = Hash;
     import scpd.types.Utils;
 
     Hash quorumSetHash;
@@ -467,7 +467,7 @@ unittest
     }
 
     SCPEnvelope env;
-    env.statement.nodeID = NodeID(uint256(pair.address[][0 .. uint256.sizeof]));
+    env.statement.nodeID = NodeID(pair.address[][0 .. NodeID.sizeof]);
 
     /** SCP PREPARE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_PREPARE;

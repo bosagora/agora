@@ -22,7 +22,7 @@ import scpd.quorum.QuorumIntersectionChecker;
 import scpd.quorum.QuorumTracker;
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;
-import scpd.types.Stellar_types : uint256, NodeID;
+import scpd.types.Stellar_types : NodeID;
 import scpd.types.Utils;
 import scpd.types.XDRBase;
 import agora.common.Config;
@@ -739,5 +739,5 @@ private const shared_ptr!SCPQuorumSet nullquorum;
 /// helper conversion for PublicKey => NodeID
 private NodeID toStellarKey (PublicKey address)
 {
-    return NodeID(uint256(address));
+    return NodeID(address);
 }

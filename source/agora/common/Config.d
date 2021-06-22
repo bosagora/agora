@@ -939,14 +939,14 @@ private auto get (string section, string name, Converter) (
 public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
 {
     import std.conv;
-    import scpd.types.Stellar_types : uint256, NodeID;
+    import scpd.types.Stellar_types : NodeID;
 
     SCPQuorumSet quorum;
     quorum.threshold = quorum_conf.threshold;
 
     foreach (ref const node; quorum_conf.nodes)
     {
-        auto pub_key = NodeID(uint256(node.data[][0 .. uint256.sizeof]));
+        auto pub_key = NodeID(node.data[][0 .. NodeID.sizeof]);
         quorum.validators.push_back(pub_key);
     }
 
