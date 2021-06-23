@@ -22,6 +22,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.ValidatorInfo;
+import agora.crypto.Key;
 
 import vibe.data.serialization;
 import vibe.http.common;
@@ -42,6 +43,19 @@ public struct NodeInfo
 
     /// Partial or full view of the addresses of the node's quorum (based on is_complete)
     public Set!string addresses;
+}
+
+/// Identity of a Validator node
+public struct Identity
+{
+    /// Public Key of the node
+    PublicKey key;
+
+    /// UTXO that is used as collateral
+    Hash utxo;
+
+    /// MAC
+    ubyte[] mac;
 }
 
 /*******************************************************************************
@@ -71,6 +85,24 @@ public interface API
 {
 // The REST generator requires @safe methods
 @safe:
+
+    /***************************************************************************
+
+        Endpoint used by other FullNodes or Validator to establish a long
+        connection to this node.
+
+        Note that this is done in the FullNode API, as a node doesn't know if
+        another node is a full node or validator just from the address (but can
+        expect a validator, e.g. when contacting a registry-provided address).
+
+        Params:
+          peer = `PublicKey` of the node initiating the connection.
+                 This is used for establishing a shared secret and doesn't
+                 need to be an enrolled key.
+
+    ***************************************************************************/
+
+    public Identity handshake (PublicKey peer);
 
     /***************************************************************************
 

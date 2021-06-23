@@ -251,6 +251,12 @@ public class Validator : FullNode, API
         this.network.discover(this.required_peer_utxos);
     }
 
+    ///
+    public override Identity handshake (PublicKey peer)
+    {
+        return this.getPublicKey(peer);
+    }
+
     /// GET /public_key
     public override Identity getPublicKey (PublicKey key = PublicKey.init) nothrow @safe
     {
