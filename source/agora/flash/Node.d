@@ -1072,7 +1072,7 @@ public abstract class FlashNode : FlashControlAPI
     {
         if (auto chans = reg_pk in this.channels)
             if (auto channel = chan_id in *chans)
-                return channel.beginCollaborativeClose();
+                return channel.beginCollaborativeClose(this.listener.getEstimatedTxFee());
 
         return Result!bool(ErrorCode.InvalidChannelID, "Channel ID not found");
     }

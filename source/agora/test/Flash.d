@@ -1414,7 +1414,7 @@ unittest
     auto close_tx = bob.getClosingTx(bob_pubkey, bob_charlie_chan_id_2);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
-    assert(close_tx.outputs.count!(o => o.value == Amount(2000)) == 1);
+    assert(close_tx.outputs.count!(o => o.value == Amount(2000 - close_tx.sizeInBytes)) == 1);
     network.expectTxExternalization(close_tx);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
         ChannelState.Closed);
@@ -1426,7 +1426,7 @@ unittest
     close_tx = alice.getClosingTx(alice_pubkey, alice_bob_chan_id);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
-    assert(close_tx.outputs.count!(o => o.value == Amount(2010)) == 1);
+    assert(close_tx.outputs.count!(o => o.value == Amount(2010 - close_tx.sizeInBytes)) == 1);
     network.expectTxExternalization(close_tx);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.Closed);
