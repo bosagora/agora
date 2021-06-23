@@ -392,9 +392,6 @@ public class NetworkManager
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
 
-    /// Keeps track of Validator keys we're already connected to
-    private Set!Hash connected_validator_keys;
-
     /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
 
@@ -472,10 +469,7 @@ public class NetworkManager
         this.peers.insertBack(node);
 
         if (node.isValidator())
-        {
             this.required_peers.remove(node.utxo);
-            this.connected_validator_keys.put(node.utxo);
-        }
 
         this.discovery_task.add(node.client);
         this.metadata.peers.put(node.client.address);
@@ -655,7 +649,7 @@ public class NetworkManager
         foreach (peer; required_peer_utxos.byKeyValue)
         {
             this.quorum_set_keys.put(peer.key);
-            if (peer.key !in this.connected_validator_keys)
+            if (!this.peers[].map!(ni => ni.utxo).canFind(peer.key))
                 this.required_peers.put(peer.key);
         }
 
