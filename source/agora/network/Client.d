@@ -260,6 +260,12 @@ public class NetworkClient
             key);
     }
 
+    ///
+    public Identity handshake (PublicKey key) @trusted
+    {
+        return this.attemptRequest!(API.handshake, Throw.Yes)(this.api, key);
+    }
+
     /***************************************************************************
 
         Register the node's address to listen for gossiping messages.

@@ -57,19 +57,6 @@ import vibe.web.rest;
 ///
 public import agora.api.FullNode;
 
-/// Identity of a Validator node
-public struct Identity
-{
-    /// Public Key of the node
-    PublicKey key;
-
-    /// UTXO that is used as collateral
-    Hash utxo;
-
-    /// MAC
-    ubyte[] mac;
-}
-
 /*******************************************************************************
 
     Define the API a validator exposes to other validators

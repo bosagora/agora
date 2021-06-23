@@ -181,11 +181,10 @@ public class NetworkManager
                     import agora.flash.OnionPacket : generateSharedSecret;
                     import libsodium.crypto_auth;
 
-                    // LocalRest will return PublicKey.init,
-                    // vibe.d will throw HTTPStatusException with status == 404
                     const ephemeral_kp = KeyPair.random();
-                    auto id = client.getPublicKey(ephemeral_kp.address);
+                    auto id = client.handshake(ephemeral_kp.address);
 
+                    // No identity, either a full node or not enrolled
                     if (id.key == PublicKey.init)
                         break;
 
@@ -208,13 +207,6 @@ public class NetworkManager
                 }
                 catch (Exception ex)
                 {
-                    if (auto http = cast(HTTPStatusException)ex)
-                    {
-                        // 404 => API not implemented, it's a FullNode
-                        if (http.status == 404)
-                            break;
-                    }
-
                     if (!this.onFailedRequest(this.address))
                         return;
 

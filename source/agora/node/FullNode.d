@@ -839,6 +839,12 @@ public class FullNode : API
     * the business code.                                                       *
     ***************************************************************************/
 
+    ///
+    public override Identity handshake (PublicKey peer)
+    {
+        return Identity.init;
+    }
+
     /***************************************************************************
 
         Register the given address as a listener for gossip / consensus messages.
