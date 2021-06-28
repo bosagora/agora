@@ -46,9 +46,14 @@ export const request = (data) => {
         }, 2000)
       })
       .catch((error) => {
-
         setTimeout(function () {
-          dispatch(requestFailureRequest())
+          // Somehow this is a user error (e.g. bad config)
+          if (error.response)
+            dispatch(requestFailureRequest(error.response.data.status))
+          else if (error.request)
+            dispatch(requestFailureRequest("No response received from the server"))
+          else
+            dispatch(requestFailureRequest("Internal error (" + error.message + ")"))
         }, 2000)
       })
 
