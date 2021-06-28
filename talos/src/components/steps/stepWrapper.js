@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import { withAppState } from "../../containers/AppState"
+import { withAppState } from "./AppState"
 
 import FirstTitle from "../items/static/firstTitle"
 import Icon from "../items/static/icon"

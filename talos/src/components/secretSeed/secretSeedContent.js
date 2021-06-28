@@ -1,7 +1,7 @@
 import React from 'react';
 import { get } from "lodash"
 
-import { withSecretSeed } from "../../containers/SecretSeed"
+import { withSecretSeed } from "./Container"
 
 import SecondTitleBold from "../items/static/secondTitleBold"
 import Icon from "../items/static/icon"

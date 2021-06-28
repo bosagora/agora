@@ -6,7 +6,7 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import { withStyles } from '@material-ui/core/styles';
 
 import { REQUEST } from "../../actions/appStateActions"
-import { withAppState } from "../../containers/AppState"
+import { withAppState } from "../steps/AppState"
 
 import Loader from "../items/static/loader"
 import PrevButton from "../items/static/prevButton"

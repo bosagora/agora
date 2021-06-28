@@ -1,11 +1,11 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withStepsState } from "../../containers/StepsState"
-import { withSecretSeed } from "../../containers/SecretSeed"
-import { withNetworkOptions } from "../../containers/NetworkOptions"
-import { withBanManagement } from "../../containers/BanManagement"
-import { withAdministrativeInterface } from "../../containers/AdminInterface"
+import { withStepsState } from "../steps/Container"
+import { withSecretSeed } from "../secretSeed/Container"
+import { withNetworkOptions } from "../networkOptions/Container"
+import { withBanManagement } from "../banManagement/Container"
+import { withAdministrativeInterface } from "../administrativeInterface/Container"
 
 import ButtonToNextStep from "../items/controls/buttonToNextStep"
 import NextButton from "../items/static/nextButton"

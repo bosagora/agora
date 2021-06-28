@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { steps } from "../steps/static"
 
-import { withStepsState } from "../../containers/StepsState"
+import { withStepsState } from "../steps/Container"
 
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import SecretSeedContent from "./secretSeedContent"

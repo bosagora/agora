@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import {
   changeSecretSeedItems as onChangeSecretSeedItems,
   setValidStateSecretSeedItem as onSetValidStateSecretSeedItem,
-} from '../actions/secretSeedActions'
+} from '../../actions/secretSeedActions'
 
 const mapStateToProps = (state) => ({
   secretSeed: {

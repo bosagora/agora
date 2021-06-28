@@ -2,8 +2,8 @@ import React, { Component } from 'react';
 
 import { steps } from "./../steps/static"
 
-import { withStepsState } from "../../containers/StepsState"
-import { withAppState } from "../../containers/AppState"
+import { withStepsState } from "../steps/Container"
+import { withAppState } from "../steps/AppState"
 
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import AdministrativeInterfaceContent from "./administrativeInterfaceContent"
