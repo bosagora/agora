@@ -1,15 +1,15 @@
 import React, { Component } from 'react';
-import { steps } from "./../../shared/static.steps"
+import { steps } from "./../steps/static"
 
-import { withStepsState } from "../../shared/containers/containerStepsState"
+import { withStepsState } from "../../containers/StepsState"
 
-import { isCurrentStep, buildStepClassName } from "../../shared/services/service.step"
+import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import BanManagementContent from "./banManagementContent"
-import IsDesktopWrapper from "./../../shared/isDesktopWrapper"
-import StepsControls from "./../../shared/stepsControls"
+import IsDesktopWrapper from "./../../utils/isDesktopWrapper"
+import StepsControls from "./../steps/stepsControls"
 
 import "./banManagement.scss"
-import "./../../shared/services/service.step.scss"
+import "./../../services/service.step.scss"
 import variables from './../../values.module.scss'
 
 var timeOut

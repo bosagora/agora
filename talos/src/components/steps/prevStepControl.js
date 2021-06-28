@@ -1,11 +1,11 @@
 import React from 'react';
-import { steps } from "./static.steps"
+import { steps } from "./static"
 
-import { withStepsState } from "./containers/containerStepsState"
+import { withStepsState } from "../../containers/StepsState"
 
-import ButtonToPreviewLink from "./../components/preview/buttonToPreviewLink"
-import ButtonToPrevStep from "./items/controls/buttonToPrevStep"
-import PrevButton from "./items/static/prevButton"
+import ButtonToPreviewLink from "../preview/buttonToPreviewLink"
+import ButtonToPrevStep from "../items/controls/buttonToPrevStep"
+import PrevButton from "../items/static/prevButton"
 
 const PrevStepControl = props => {
   const { currentIndex } = props
@@ -25,4 +25,3 @@ const PrevStepControl = props => {
 }
 
 export default withStepsState(PrevStepControl)
-

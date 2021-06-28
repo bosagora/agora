@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
-import { steps } from "./static.steps"
+import { steps } from "./static"
 
-import { withStepsState } from "./containers/containerStepsState"
+import { withStepsState } from "../../containers/StepsState"
 
-import ButtonStaticStep from "./items/controls/buttonStaticStep"
-import ScrollHorizontalMenuWrapper from "./items/controls/scrollHorizontalMenuWrapper"
-import Icon from "./items/static/icon"
+import ButtonStaticStep from "../items/controls/buttonStaticStep"
+import ScrollHorizontalMenuWrapper from "../items/controls/scrollHorizontalMenuWrapper"
+import Icon from "../items/static/icon"
 
 import styles from './mobileMenuList.module.scss'
 
@@ -91,4 +91,3 @@ class MobileMenuList extends Component {
 }
 
 export default withStepsState(MobileMenuList)
-

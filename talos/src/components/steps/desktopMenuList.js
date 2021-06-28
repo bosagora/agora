@@ -1,9 +1,9 @@
 import React from 'react';
-import { steps } from "./static.steps"
+import { steps } from "./static"
 
-import { withStepsState } from "./containers/containerStepsState"
+import { withStepsState } from "../../containers/StepsState"
 
-import ButtonStep from "./items/controls/buttonStep"
+import ButtonStep from "../items/controls/buttonStep"
 
 import styles from './desktopMenuList.module.scss'
 

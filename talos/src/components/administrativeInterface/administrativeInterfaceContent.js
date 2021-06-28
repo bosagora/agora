@@ -1,14 +1,14 @@
 import React from 'react';
 import { get } from 'lodash'
 
-import { withAdministrativeInterface } from "../../shared/containers/containerAdministrativeInterface"
+import { withAdministrativeInterface } from "../../containers/AdminInterface"
 
-import SecondTitleBold from "../../shared/items/static/secondTitleBold"
-// import InputWrapper from "../../shared/items/controls/inputWrapper"
-import InputWrapperControlled from "../../shared/items/controls/inputWrapperControlled"
-import InputPopoverWrapper from "../../shared/items/controls/inputPopoverWrapper"
-import SwitcherWrapper from "../../shared/items/controls/switcherWrapper"
-import Paragraph from "../../shared/items/static/paragraph"
+import SecondTitleBold from "./../items/static/secondTitleBold"
+// import InputWrapper from "./../items/controls/inputWrapper"
+import InputWrapperControlled from "./../items/controls/inputWrapperControlled"
+import InputPopoverWrapper from "./../items/controls/inputPopoverWrapper"
+import SwitcherWrapper from "./../items/controls/switcherWrapper"
+import Paragraph from "./../items/static/paragraph"
 
 import styles from "./administrativeInterfaceContent.module.scss"
 

@@ -1,15 +1,15 @@
 import React from 'react';
 import { get } from "lodash"
 
-import { withSecretSeed } from "../../shared/containers/containerSecretSeed"
+import { withSecretSeed } from "../../containers/SecretSeed"
 
-import SecondTitleBold from "../../shared/items/static/secondTitleBold"
-import Icon from "../../shared/items/static/icon"
-import Bold from "../../shared/items/static/bold"
-// import InputWrapper from "../../shared/items/controls/inputWrapper"
-import InputWrapperControlled from "../../shared/items/controls/inputWrapperControlled"
-import InputPopoverWrapper from "../../shared/items/controls/inputPopoverWrapper"
-import TypeSecretSeedItem from "../../shared/items/controls/typeSecretSeedItem"
+import SecondTitleBold from "../items/static/secondTitleBold"
+import Icon from "../items/static/icon"
+import Bold from "../items/static/bold"
+// import InputWrapper from "../items/controls/inputWrapper"
+import InputWrapperControlled from "../items/controls/inputWrapperControlled"
+import InputPopoverWrapper from "../items/controls/inputPopoverWrapper"
+import TypeSecretSeedItem from "../items/controls/typeSecretSeedItem"
 
 import styles from "./secretSeedContent.module.scss"
 

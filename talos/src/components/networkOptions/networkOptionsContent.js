@@ -1,11 +1,11 @@
 import React from 'react';
-import { validateDNS, validateNetwork } from "../../shared/services/service.validate"
+import { validateDNS, validateNetwork } from "../../services/service.validate"
 
-import { withNetworkOptions } from "../../shared/containers/containerNetworkOptions"
+import { withNetworkOptions } from "../../containers/NetworkOptions"
 
-import SecondTitleBold from "../../shared/items/static/secondTitleBold"
-import InputPopoverWrapper from "../../shared/items/controls/inputPopoverWrapper"
-import TokenInputWrapper from "../../shared/items/controls/tokenInputWrapper"
+import SecondTitleBold from "../items/static/secondTitleBold"
+import InputPopoverWrapper from "../items/controls/inputPopoverWrapper"
+import TokenInputWrapper from "../items/controls/tokenInputWrapper"
 
 import styles from "./networkOptionsContent.module.scss"
 

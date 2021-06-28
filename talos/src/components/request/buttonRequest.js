@@ -4,13 +4,13 @@ import { get } from "lodash"
 import { durationItems } from "./../banManagement/static.banDuration"
 import { maxFailedItems } from "./../banManagement/static.maxFailedItems"
 
-import { withSecretSeed } from "../../shared/containers/containerSecretSeed"
-import { withNetworkOptions } from "../../shared/containers/containerNetworkOptions"
-import { withBanManagement } from "../../shared/containers/containerBanManagement"
-import { withAdministrativeInterface } from "../../shared/containers/containerAdministrativeInterface"
-import { withAppState } from "../../shared/containers/containerAppState"
+import { withSecretSeed } from "../../containers/SecretSeed"
+import { withNetworkOptions } from "../../containers/NetworkOptions"
+import { withBanManagement } from "../../containers/BanManagement"
+import { withAdministrativeInterface } from "../../containers/AdminInterface"
+import { withAppState } from "../../containers/AppState"
 
-import ButtonReset from "../../shared/items/controls/buttonReset"
+import ButtonReset from "../items/controls/buttonReset"
 
 const ButtonRequest = props => {
 

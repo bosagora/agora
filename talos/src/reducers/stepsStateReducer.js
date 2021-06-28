@@ -1,5 +1,5 @@
 import { createReducer } from '../utils/helpers';
-import { steps } from "./../shared/static.steps"
+import { steps } from "./../components/steps/static"
 import {
   TO_STEP,
   TO_NEXT_STEP,

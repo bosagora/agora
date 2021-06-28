@@ -1,7 +1,7 @@
 import React from 'react';
 
 import Preview from "./preview/preview"
-import StepWrapper from "./../shared/stepWrapper"
+import StepWrapper from "./steps/stepWrapper"
 
 import './app.scss'
 

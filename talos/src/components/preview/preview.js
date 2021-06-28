@@ -1,14 +1,14 @@
 import React, { Component } from 'react';
 
-import { withAppState } from "./../../shared/containers/containerAppState"
+import { withAppState } from "../../containers/AppState"
 
-import SecondTitle from "./../../shared/items/static/secondTitle"
-import FirstTitleExtra from "./../../shared/items/static/firstTitleExtra"
-import NextDefaultButton from "./../../shared/items/static/nextDefaultButton"
-import ButtonFillDefault from "./../../shared/items/controls/buttonFillDefault"
-import Paragraph from "./../../shared/items/static/paragraph"
-import ParagraphTitle from "./../../shared/items/static/paragraphTitle"
-import Icon from "./../../shared/items/static/icon"
+import SecondTitle from "../items/static/secondTitle"
+import FirstTitleExtra from "../items/static/firstTitleExtra"
+import NextDefaultButton from "../items/static/nextDefaultButton"
+import ButtonFillDefault from "../items/controls/buttonFillDefault"
+import Paragraph from "../items/static/paragraph"
+import ParagraphTitle from "../items/static/paragraphTitle"
+import Icon from "../items/static/icon"
 
 import styles from "./preview.module.scss"
 
