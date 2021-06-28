@@ -5,7 +5,7 @@ import { withAppState } from "./../../shared/containers/containerAppState"
 import SecondTitle from "./../../shared/items/static/secondTitle"
 import FirstTitleExtra from "./../../shared/items/static/firstTitleExtra"
 import NextDefaultButton from "./../../shared/items/static/nextDefaultButton"
-import ButtonFillDafault from "./../../shared/items/controls/buttonFillDefault"
+import ButtonFillDefault from "./../../shared/items/controls/buttonFillDefault"
 import Paragraph from "./../../shared/items/static/paragraph"
 import ParagraphTitle from "./../../shared/items/static/paragraphTitle"
 import Icon from "./../../shared/items/static/icon"
@@ -61,9 +61,9 @@ class Preview extends Component {
                 <Paragraph>a highly secure and intuitive user interface that is quick and easy to use. This interface will assist you in the setup and management of your very own AGORA Validator or Full Node. Please follow the directions on the following screens to become part of AGORA. Whether you're setting up a new Validator or Full Node or managing your existing one – BOSAGORA has made it as easy as possible.</Paragraph>
               </div>
               <div className={styles.container_nextButton}>
-                <ButtonFillDafault onClick={onOpenAppOrder}>
+                <ButtonFillDefault onClick={onOpenAppOrder}>
                   <NextDefaultButton>Continue</NextDefaultButton>
-                </ButtonFillDafault>
+                </ButtonFillDefault>
               </div>
             </div>
           </div>

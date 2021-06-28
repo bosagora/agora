@@ -11,7 +11,7 @@ import ParagraphSmall from "./../shared/items/static/paragraphSmall"
 import ButtonText from "../shared/items/controls/buttonText"
 import PrevButton from "./../shared/items/static/prevButton"
 import ButtonFill from "../shared/items/controls/buttonFill"
-import ButtonFillDafault from "../shared/items/controls/buttonFillDefault"
+import ButtonFillDefault from "../shared/items/controls/buttonFillDefault"
 import NextButton from "./../shared/items/controls/nextButton"
 import SwitcherWrapper from "./../shared/items/controls/switcherWrapper"
 import InputLabel from "./../shared/items/static/inputLabel"
@@ -60,9 +60,9 @@ const StyleGuides = () => {
         </ButtonFill>
       </div>
       <div style={{ marginTop: "48px" }}>
-        <ButtonFillDafault>
+        <ButtonFillDefault>
           <NextButton>Continue</NextButton>
-        </ButtonFillDafault>
+        </ButtonFillDefault>
       </div>
       <div style={{ marginTop: "48px" }}>
         <SwitcherWrapper />
