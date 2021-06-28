@@ -41,22 +41,44 @@ const ButtonRequest = props => {
 
     const dns = get(props, ["networkOptions", "stepItems", "dns", "value"], [])
 
-    if (isValidStep) {
-      onRequest({
-        isvalidator: get(props, ["secretSeed", "stepItems", "isvalidator", "value"]),
-        seed: get(props, ["secretSeed", "stepItems", "seed", "value"], ""),
+      if (isValidStep) {
+          const network = get(props, ["networkOptions", "stepItems", "network", "value"], []).map(item => item.value);
 
-        network: get(props, ["networkOptions", "stepItems", "network", "value"], []).map(item => item.value),
-        dns: dns.length > 0 ? dns.map(item => item.value) : ["seed.bosagora.io"],
+          let config = {
+              validator: {
+                  enabled: get(props, ["secretSeed", "stepItems", "isvalidator", "value"]),
+              },
 
-        maxfailedrequests: get(props, ["banManagement", "stepItems", "maxfailedrequests", "value"], maxFailedItems[1].value),
-        banduration: get(props, ["banManagement", "stepItems", "banduration", "value"], durationItems[0].value),
+              dns: dns.length > 0 ? dns.map(item => item.value) : ["seed.bosagora.io"],
 
-        enabled: !get(props, ["administrativeInterface", "stepItems", "enabled", "value"], false),
-        address: get(props, ["administrativeInterface", "stepItems", "address", "value"], ""),
-        port: get(props, ["administrativeInterface", "stepItems", "port", "value"], 1),
-      })
-    }
+              banman: {
+                  max_failed_requests: get(props, ["banManagement", "stepItems", "maxfailedrequests", "value"], maxFailedItems[1].value),
+                  ban_duration: get(props, ["banManagement", "stepItems", "banduration", "seconds"], durationItems[0].seconds),
+              },
+
+              admin: {
+                  enabled: !get(props, ["administrativeInterface", "stepItems", "enabled", "value"], false),
+              },
+          };
+
+          if (network.length)
+              config.network = network;
+
+          if (config.validator.enabled)
+          {
+              config.validator.seed = get(props, ["secretSeed", "stepItems", "seed", "value"], null);
+              // TODO: Make configurable or remove
+              config.validator.registry_address = "https://registry.bosagora.io";
+          }
+
+          if (config.admin.enabled)
+          {
+              config.admin.address = get(props, ["administrativeInterface", "stepItems", "address", "value"], "");
+              config.admin.port = get(props, ["administrativeInterface", "stepItems", "port", "value"], 1);
+          }
+
+          onRequest(config);
+      }
   }
 
   return <ButtonReset onClick={handleValidateBanManagement.bind(this, props)}>
