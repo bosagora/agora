@@ -78,7 +78,7 @@ const isOpenDialog = (requestState) => {
 }
 
 const RequestDialog = props => {
-  const { requestState } = props
+  const { requestState, requestResult } = props
 
   return (
     <CssDialog
@@ -99,7 +99,7 @@ const RequestDialog = props => {
         requestState === REQUEST.ERROR
           ?
           <DialogContent>
-            <DialogTitle>Error...</DialogTitle>
+            <DialogTitle>Error: {requestResult.data} </DialogTitle>
             <DialogActions className="errorActions">
               <ButtonCancelRequest>
                 <PrevButton>Close</PrevButton>
