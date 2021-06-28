@@ -4,11 +4,11 @@ import { get } from "lodash"
 import { durationItems } from "./../banManagement/static.banDuration"
 import { maxFailedItems } from "./../banManagement/static.maxFailedItems"
 
-import { withSecretSeed } from "../../containers/SecretSeed"
-import { withNetworkOptions } from "../../containers/NetworkOptions"
-import { withBanManagement } from "../../containers/BanManagement"
-import { withAdministrativeInterface } from "../../containers/AdminInterface"
-import { withAppState } from "../../containers/AppState"
+import { withSecretSeed } from "../secretSeed/Container"
+import { withNetworkOptions } from "../networkOptions/Container"
+import { withBanManagement } from "../banManagement/Container"
+import { withAdministrativeInterface } from "../administrativeInterface/Container"
+import { withAppState } from "../steps/AppState"
 
 import ButtonReset from "../items/controls/buttonReset"
 

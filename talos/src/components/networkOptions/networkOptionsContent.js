@@ -1,7 +1,7 @@
 import React from 'react';
 import { validateDNS, validateNetwork } from "../../services/service.validate"
 
-import { withNetworkOptions } from "../../containers/NetworkOptions"
+import { withNetworkOptions } from "./Container"
 
 import SecondTitleBold from "../items/static/secondTitleBold"
 import InputPopoverWrapper from "../items/controls/inputPopoverWrapper"

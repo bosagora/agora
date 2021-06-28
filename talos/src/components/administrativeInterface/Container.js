@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import {
   changeAdministrativeInterfaceItems as onChangeAdministrativeInterfaceItems,
   setValidAdministrativeInterfaceItem as onSetValidAdministrativeInterfaceItem,
-} from '../actions/administrativeInterfaceActions'
+} from '../../actions/administrativeInterfaceActions'
 
 const mapStateToProps = (state) => ({
   administrativeInterface: {

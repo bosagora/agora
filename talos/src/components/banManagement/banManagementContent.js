@@ -2,7 +2,7 @@ import React from 'react';
 
 import { durationItems } from "./static.banDuration"
 import { maxFailedItems } from "./static.maxFailedItems"
-import { withBanManagement } from "../../containers/BanManagement"
+import { withBanManagement } from "./Container"
 
 import SecondTitleBold from "./../items/static/secondTitleBold"
 import CounterWrapper from "./counterWrapper"

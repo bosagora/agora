@@ -1,7 +1,7 @@
 import React from 'react';
 import { get } from 'lodash'
 
-import { withAdministrativeInterface } from "../../containers/AdminInterface"
+import { withAdministrativeInterface } from "./Container"
 
 import SecondTitleBold from "./../items/static/secondTitleBold"
 // import InputWrapper from "./../items/controls/inputWrapper"

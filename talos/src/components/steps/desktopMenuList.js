@@ -1,7 +1,7 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withStepsState } from "../../containers/StepsState"
+import { withStepsState } from "./Container"
 
 import ButtonStep from "../items/controls/buttonStep"
 
