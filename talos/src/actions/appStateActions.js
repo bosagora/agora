@@ -1,9 +1,11 @@
 import { createActionTypesOf } from '../utils/helpers';
-import { RequestService } from "./../shared/services/requestService"
+import axios from 'axios';
 
 export const OPEN_ORDER = createActionTypesOf("OPEN_ORDER")
 export const CLOSE_ORDER = createActionTypesOf("CLOSE_ORDER")
 export const REQUEST = createActionTypesOf("REQUEST")
+
+var api = axios.create({});
 
 export const openAppOrder = () => ({
   type: OPEN_ORDER.REQUEST,
@@ -36,7 +38,7 @@ export const request = (data) => {
 
     dispatch(requestRequest())
 
-    RequestService.request(data)
+    api.post('/writeConfig', data)
       .then((result) => {
 
         setTimeout(function () {
