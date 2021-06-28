@@ -5,7 +5,7 @@ import {
   toStep as onToStep,
   toNextStep as onToNextStep,
   toPrevStep as onToPrevStep,
-} from '../../actions/stepsStateActions'
+} from '../actions/stepsStateActions'
 
 const mapStateToProps = (state) => ({
   currentIndex: get(state, ["stepsState", "currentIndex"], 0),

@@ -3,7 +3,7 @@ import { get, has } from "lodash"
 import TextField from '@material-ui/core/TextField';
 import { withStyles } from '@material-ui/core/styles';
 
-import { isDesktop } from "../../services/responsive.service"
+import { isDesktop } from "../../../services/responsive.service"
 
 import variables from './../../../values.module.scss'
 import styles from "./inputWrapperControlled.module.scss"

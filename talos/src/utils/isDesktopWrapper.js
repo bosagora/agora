@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { addResizeListenerIsDesktop, isDesktop } from "./services/responsive.service"
+import { addResizeListenerIsDesktop, isDesktop } from "../services/responsive.service"
 
 class IsDesktopWrapper extends Component {
   constructor(props) {
@@ -22,4 +22,3 @@ class IsDesktopWrapper extends Component {
 }
 
 export default IsDesktopWrapper
-

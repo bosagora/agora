@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { withStepsState } from "../../containers/containerStepsState"
+import { withStepsState } from "../../../containers/StepsState"
 
 import ButtonReset from "./buttonReset"
 

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { addResizeListenerIsMobile, isMobile } from "./services/responsive.service"
+import { addResizeListenerIsMobile, isMobile } from "../services/responsive.service"
 
 class IsMobileWrapper extends Component {
   constructor(props) {
@@ -22,4 +22,3 @@ class IsMobileWrapper extends Component {
 }
 
 export default IsMobileWrapper
-

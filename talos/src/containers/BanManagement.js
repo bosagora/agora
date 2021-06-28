@@ -3,7 +3,7 @@ import get from 'lodash/get';
 
 import {
   changeBanManagementItems as onChangeBanManagementItems,
-} from '../../actions/banManagementActions'
+} from '../actions/banManagementActions'
 
 const mapStateToProps = (state) => ({
   banManagement: {

@@ -5,15 +5,15 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import { withStyles } from '@material-ui/core/styles';
 
-import { REQUEST } from "./../../actions/appStateActions"
-import { withAppState } from "../../shared/containers/containerAppState"
+import { REQUEST } from "../../actions/appStateActions"
+import { withAppState } from "../../containers/AppState"
 
-import Loader from "./../../shared/items/static/loader"
-import PrevButton from "./../../shared/items/static/prevButton"
-import NextButton from "./../../shared/items/static/nextButton"
+import Loader from "../items/static/loader"
+import PrevButton from "../items/static/prevButton"
+import NextButton from "../items/static/nextButton"
 import ButtonRequest from "./buttonRequest"
 import ButtonCancelRequest from "./buttonCancelRequest"
-import { isDesktop } from "./../../shared/services/responsive.service"
+import { isDesktop } from "../../services/responsive.service"
 
 import variables from './../../values.module.scss'
 import styles from "./requestDialog.module.scss"

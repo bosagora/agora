@@ -1,18 +1,18 @@
 import React, { Component } from 'react';
 
-import { withAppState } from "./containers/containerAppState"
+import { withAppState } from "../../containers/AppState"
 
-import FirstTitle from "./items/static/firstTitle"
-import Icon from "./items/static/icon"
-import Paragraph from "./items/static/paragraph"
-import ButtonToPreviewLink from "./../components/preview/buttonToPreviewLink"
-import SecretSeed from "./../components/secretSeed/secretSeed"
-import NetworkOptions from "./../components/networkOptions/networkOptions"
-import BanManagement from "./../components/banManagement/banManagement"
-import AdministrativeInterface from "./../components/administrativeInterface/administrativeInterface"
+import FirstTitle from "../items/static/firstTitle"
+import Icon from "../items/static/icon"
+import Paragraph from "../items/static/paragraph"
+import ButtonToPreviewLink from "./../preview/buttonToPreviewLink"
+import SecretSeed from "./../secretSeed/secretSeed"
+import NetworkOptions from "./../networkOptions/networkOptions"
+import BanManagement from "./../banManagement/banManagement"
+import AdministrativeInterface from "./../administrativeInterface/administrativeInterface"
 import StepsControls from "./stepsControls"
 import StepsMenuControls from "./stepsMenuControls"
-import IsMobileWrapper from "./isMobileWrapper"
+import IsMobileWrapper from "../../utils/isMobileWrapper"
 
 import styles from './stepWrapper.module.scss'
 
@@ -84,4 +84,3 @@ class StepWrapper extends Component {
 }
 
 export default withAppState(StepWrapper)
-

@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import { has, get } from 'lodash';
 
-import CounterItem from "./../../shared/items/controls/counterItem"
+import CounterItem from "../items/controls/counterItem"
 
 import styles from './counterWrapper.module.scss'
 

@@ -1,4 +1,4 @@
-import variables from './../../values.module.scss'
+import variables from '../values.module.scss'
 
 export const isDesktop = () => {
     return document.body.clientWidth > parseInt(variables.minMediaXS)

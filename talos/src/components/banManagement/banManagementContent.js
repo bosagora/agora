@@ -2,13 +2,13 @@ import React from 'react';
 
 import { durationItems } from "./static.banDuration"
 import { maxFailedItems } from "./static.maxFailedItems"
-import { withBanManagement } from "../../shared/containers/containerBanManagement"
+import { withBanManagement } from "../../containers/BanManagement"
 
-import SecondTitleBold from "../../shared/items/static/secondTitleBold"
+import SecondTitleBold from "./../items/static/secondTitleBold"
 import CounterWrapper from "./counterWrapper"
-import InputLabel from "../../shared/items/static/inputLabel"
-import ItemsSliderWrapper from "../../shared/items/controls/itemsSliderWrapper"
-import SliderPopoverWrapper from "../../shared/items/controls/sliderPopoverWrapper"
+import InputLabel from "./../items/static/inputLabel"
+import ItemsSliderWrapper from "./../items/controls/itemsSliderWrapper"
+import SliderPopoverWrapper from "./../items/controls/sliderPopoverWrapper"
 
 import styles from "./banManagementContent.module.scss"
 

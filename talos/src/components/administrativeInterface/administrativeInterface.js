@@ -1,19 +1,19 @@
 import React, { Component } from 'react';
 
-import { steps } from "./../../shared/static.steps"
+import { steps } from "./../steps/static"
 
-import { withStepsState } from "../../shared/containers/containerStepsState"
-import { withAppState } from "../../shared/containers/containerAppState"
+import { withStepsState } from "../../containers/StepsState"
+import { withAppState } from "../../containers/AppState"
 
-import { isCurrentStep, buildStepClassName } from "../../shared/services/service.step"
+import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import AdministrativeInterfaceContent from "./administrativeInterfaceContent"
 import RequestDialog from "./../request/requestDialog"
-import IsDesktopWrapper from "./../../shared/isDesktopWrapper"
-import StepsControls from "./../../shared/stepsControls"
+import IsDesktopWrapper from "./../../utils/isDesktopWrapper"
+import StepsControls from "./../steps/stepsControls"
 
 
 import "./administrativeInterface.scss"
-import "./../../shared/services/service.step.scss"
+import "./../../services/service.step.scss"
 import variables from './../../values.module.scss'
 
 var timeOut

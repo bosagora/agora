@@ -1,15 +1,15 @@
 import React from 'react';
-import { steps } from "./static.steps"
+import { steps } from "./static"
 
-import { withStepsState } from "./containers/containerStepsState"
-import { withSecretSeed } from "./containers/containerSecretSeed"
-import { withNetworkOptions } from "./containers/containerNetworkOptions"
-import { withBanManagement } from "./containers/containerBanManagement"
-import { withAdministrativeInterface } from "./containers/containerAdministrativeInterface"
+import { withStepsState } from "../../containers/StepsState"
+import { withSecretSeed } from "../../containers/SecretSeed"
+import { withNetworkOptions } from "../../containers/NetworkOptions"
+import { withBanManagement } from "../../containers/BanManagement"
+import { withAdministrativeInterface } from "../../containers/AdminInterface"
 
-import ButtonToNextStep from "./items/controls/buttonToNextStep"
-import NextButton from "./items/static/nextButton"
-import ButtonRequest from "./../components/request/buttonRequest"
+import ButtonToNextStep from "../items/controls/buttonToNextStep"
+import NextButton from "../items/static/nextButton"
+import ButtonRequest from "../request/buttonRequest"
 
 const NextStepControl = props => {
   const { currentIndex } = props
