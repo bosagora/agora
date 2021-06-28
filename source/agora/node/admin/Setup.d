@@ -140,7 +140,10 @@ public class SetupInterface
             res.writeJsonBody(Response(true, "Configuration successfully parsed"));
         }
         catch (Exception e)
+        {
             res.writeJsonBody(Response(false, e.msg), HTTPStatus.badRequest);
+            return;
+        }
 
         // Now try to write it and exit
         try
