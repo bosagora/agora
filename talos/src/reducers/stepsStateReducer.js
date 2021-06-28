@@ -4,7 +4,7 @@ import {
   TO_STEP,
   TO_NEXT_STEP,
   TO_PREV_STEP,
-} from '../actions/stepsStateActions'
+} from '../components/steps/Action'
 
 const initialState = {
   currentIndex: 0,

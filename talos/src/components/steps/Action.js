@@ -1,4 +1,4 @@
-import { createActionTypesOf } from '../utils/helpers';
+import { createActionTypesOf } from '../../utils/helpers';
 
 export const TO_STEP = createActionTypesOf("TO_STEP")
 export const TO_NEXT_STEP = createActionTypesOf("TO_NEXT_STEP")

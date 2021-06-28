@@ -3,7 +3,7 @@ import { has } from "lodash"
 import {
   CHANGE_ADMINISTRATIVEINTERFACE_ITEMS,
   SET_VALID_ADMINISTRATIVEINTERFACE_ITEM,
-} from '../actions/administrativeInterfaceActions'
+} from '../components/administrativeInterface/Action'
 
 const initialState = {
   stepItems: {}

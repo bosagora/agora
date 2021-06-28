@@ -7,7 +7,7 @@ import {
   request as onRequest,
   requestBegin as onRequestBegin,
   REQUEST
-} from '../../actions/appStateActions'
+} from './AppAction'
 
 const mapStateToProps = (state) => ({
   isOrderOn: get(state, ['appState', 'isOrderOn'], false),

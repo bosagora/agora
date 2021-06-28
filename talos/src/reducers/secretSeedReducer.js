@@ -3,7 +3,7 @@ import { has, get } from "lodash"
 import {
   CHANGE_SECRETSEED_ITEMS,
   SET_VALID_SECRETSEED_ITEM,
-} from '../actions/secretSeedActions'
+} from '../components/secretSeed/Action'
 
 const initialState = {
   stepItems: {}

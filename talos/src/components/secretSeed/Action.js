@@ -1,5 +1,5 @@
-import { createActionTypesOf } from '../utils/helpers';
-import { validatSecretKey } from '../services/service.validate'
+import { createActionTypesOf } from '../../utils/helpers';
+import { validatSecretKey } from '../../services/service.validate'
 
 export const CHANGE_SECRETSEED_ITEMS = createActionTypesOf("CHANGE_SECRETSEED_ITEMS")
 export const SET_VALID_SECRETSEED_ITEM = createActionTypesOf("SET_VALID_SECRETSEED_ITEM")

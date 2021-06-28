@@ -1,7 +1,7 @@
 import { createReducer } from '../utils/helpers';
 import {
   CHANGE_NETWORKOPTIONS_ITEMS,
-} from '../actions/networkOptionsActions'
+} from '../components/networkOptions/Action'
 
 const initialState = {
   stepItems: {}
