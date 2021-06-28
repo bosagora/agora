@@ -99,7 +99,13 @@ public class SetupInterface
     /// Returns: The path at which the Talos files are located
     private string getStaticFilePath () const
     {
-        // First check working directory
+        // This is the regular path that a developer would have
+        // Regular packages should use either the working directory (`talos/`)
+        // or the OS path (`/usr/share/...`), but this makes development easier.
+        if (std.file.exists("talos/build/index.html"))
+            return std.file.getcwd() ~ "/talos/build/";
+
+        // Then check the working directory
         if (std.file.exists("talos/index.html"))
             return std.file.getcwd() ~ "/talos/";
 
