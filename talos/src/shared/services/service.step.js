@@ -2,13 +2,13 @@ export const isCurrentStep = (currentIndex, stepIndex) => {
   return currentIndex === stepIndex
 }
 
-export const currentStepClassName = (currentIndex, stepIndex) => {
+const currentStepClassName = (currentIndex, stepIndex) => {
   return isCurrentStep(currentIndex, stepIndex)
     ? "-IsCurrent"
     : "-IsHidden"
 }
 
-export const animateDirectionClassName = (prevIndex, currentIndex, stepIndex) => {
+const animateDirectionClassName = (prevIndex, currentIndex, stepIndex) => {
   if (prevIndex === currentIndex - 1 && isCurrentStep(currentIndex, stepIndex))
     return "-ShowNext"
 
