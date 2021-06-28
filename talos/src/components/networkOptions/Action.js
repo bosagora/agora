@@ -1,5 +1,5 @@
-import { createActionTypesOf } from '../utils/helpers';
-import { validateDNS, validateNetwork } from '../services/service.validate'
+import { createActionTypesOf } from '../../utils/helpers';
+import { validateDNS, validateNetwork } from '../../services/service.validate'
 
 export const CHANGE_NETWORKOPTIONS_ITEMS = createActionTypesOf("CHANGE_NETWORKOPTIONS_ITEMS")
 

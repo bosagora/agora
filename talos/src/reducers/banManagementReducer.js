@@ -1,7 +1,7 @@
 import { createReducer } from '../utils/helpers';
 import {
   CHANGE_BANMANAGEMENT_ITEMS,
-} from '../actions/banManagementActions'
+} from '../components/banManagement/Action'
 
 const initialState = {
   stepItems: {}

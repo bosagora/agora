@@ -3,7 +3,7 @@ import {
   OPEN_ORDER,
   CLOSE_ORDER,
   REQUEST,
-} from '../actions/appStateActions'
+} from '../components/steps/AppAction'
 
 export const initialState = {
   isOrderOn: false,

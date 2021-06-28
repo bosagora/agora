@@ -5,7 +5,7 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import { withStyles } from '@material-ui/core/styles';
 
-import { REQUEST } from "../../actions/appStateActions"
+import { REQUEST } from "../steps/AppAction"
 import { withAppState } from "../steps/AppState"
 
 import Loader from "../items/static/loader"

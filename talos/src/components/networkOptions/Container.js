@@ -3,7 +3,7 @@ import get from 'lodash/get';
 
 import {
   changeNetworkOptionsItems as onChangeNetworkOptionsItems,
-} from '../../actions/networkOptionsActions'
+} from './Action'
 
 const mapStateToProps = (state) => ({
   networkOptions: {

@@ -1,4 +1,4 @@
-import { createActionTypesOf } from '../utils/helpers';
+import { createActionTypesOf } from '../../utils/helpers';
 import axios from 'axios';
 
 export const OPEN_ORDER = createActionTypesOf("OPEN_ORDER")

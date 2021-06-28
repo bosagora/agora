@@ -1,4 +1,4 @@
-import { createActionTypesOf } from '../utils/helpers';
+import { createActionTypesOf } from '../../utils/helpers';
 
 export const CHANGE_BANMANAGEMENT_ITEMS = createActionTypesOf("CHANGE_BANMANAGEMENT_ITEMS")
 
