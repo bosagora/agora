@@ -9,7 +9,6 @@ import StepsControls from "./../steps/stepsControls"
 
 import "./networkOptions.scss"
 import "./../../services/service.step.scss"
-import variables from './../../values.module.scss'
 
 class NetworkOptions extends Step {
   render() {

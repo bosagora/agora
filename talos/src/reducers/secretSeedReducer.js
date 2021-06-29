@@ -1,5 +1,5 @@
 import { createReducer } from './../utils/helpers';
-import { has, get } from "lodash"
+import { has } from "lodash"
 import {
   CHANGE_SECRETSEED_ITEMS,
   SET_VALID_SECRETSEED_ITEM,

@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { Component } from 'react';
 import { addResizeListenerIsMobile, isMobile } from "../services/responsive.service"
 
 class IsMobileWrapper extends Component {

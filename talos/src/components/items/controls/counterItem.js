@@ -3,7 +3,7 @@ import React from 'react'
 import styles from './counterItem.module.scss'
 
 const CounterItem = props => {
-  const { name, index, isActive, onClick } = props
+  const { index, isActive, onClick } = props
 
   return (
     <span className={isActive ? styles.counterItemActive : styles.counterItem} onClick={onClick}>

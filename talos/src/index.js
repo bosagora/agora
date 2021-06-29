@@ -6,23 +6,16 @@ import * as serviceWorker from './serviceWorker';
 import { Provider } from 'react-redux'
 import { createStore, applyMiddleware } from 'redux'
 import thunk from 'redux-thunk'
-import { createLogger } from 'redux-logger'
 
 import reducers from './reducers/index'
 
 import './assets/fonts/stylesheet.css';
 import './assets/icomoon/style.css';
 
-const logger = createLogger()
-
 let store = createStore(
   reducers,
   applyMiddleware(thunk)
 )
-// let store = createStore(
-//   reducers,
-//   applyMiddleware(thunk, logger)
-// )
 
 ReactDOM.render(
   <Provider store={store}>

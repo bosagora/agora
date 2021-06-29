@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars';
-import { SpringSystem, MathUtil } from 'rebound';
+import { SpringSystem } from 'rebound';
 
 import styles from "./scrollHorizontalMenuWrapper.module.scss"
 

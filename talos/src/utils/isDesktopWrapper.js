@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { Component } from 'react';
 import { addResizeListenerIsDesktop, isDesktop } from "../services/responsive.service"
 
 class IsDesktopWrapper extends Component {
