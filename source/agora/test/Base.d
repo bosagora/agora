@@ -1274,7 +1274,7 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override PreImageReceivedHandler getPreimageReceivedHandler
+    protected final override PreImageReceivedHandler getPreImageReceivedHandler
         (Address address)
     {
         assert(0, "Not supported");
