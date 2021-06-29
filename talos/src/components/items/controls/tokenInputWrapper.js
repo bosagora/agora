@@ -48,7 +48,7 @@ class TokenInputWrapper extends Component {
       onDelete
     } = props;
 
-    const { activated, error } = meta;
+    const { error } = meta;
 
     // if (activated) {
     //   return (

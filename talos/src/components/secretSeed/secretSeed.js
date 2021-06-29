@@ -9,7 +9,6 @@ import StepsControls from "../steps/stepsControls"
 
 import "./secretSeed.scss"
 import "../../services/service.step.scss"
-import variables from './../../values.module.scss'
 
 class SecretSeed extends Step {
   render() {

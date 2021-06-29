@@ -9,7 +9,6 @@ import StepsControls from "./../steps/stepsControls"
 
 import "./banManagement.scss"
 import "./../../services/service.step.scss"
-import variables from './../../values.module.scss'
 
 class BanManagement extends Step {
   render() {

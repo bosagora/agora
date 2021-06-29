@@ -1,7 +1,7 @@
 /**
  * A single step in the single-page application.
  */
-import React, { Component } from 'react';
+import { Component } from 'react';
 
 import { withAppState } from "./app/State"
 
@@ -46,8 +46,6 @@ export class Step extends Component {
     }
 
     render() {
-        const { currentIndex, onToNextStep } = this.props
-
         return this.state.enabled
             ? this.props.children
             : null;

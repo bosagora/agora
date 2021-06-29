@@ -1,9 +1,9 @@
-import React, { Component } from 'react';
+import React from 'react';
 
 import { withAppState } from "../app/State"
 
 import { Step } from "../Step"
-import { isCurrentStep, buildStepClassName } from "../../services/service.step"
+import { buildStepClassName } from "../../services/service.step"
 import AdministrativeInterfaceContent from "./administrativeInterfaceContent"
 import RequestDialog from "./../request/requestDialog"
 import IsDesktopWrapper from "./../../utils/isDesktopWrapper"
@@ -12,7 +12,6 @@ import StepsControls from "./../steps/stepsControls"
 
 import "./administrativeInterface.scss"
 import "./../../services/service.step.scss"
-import variables from './../../values.module.scss'
 
 class AdministrativeInterface extends Step {
 

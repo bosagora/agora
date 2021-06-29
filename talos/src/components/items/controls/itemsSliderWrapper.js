@@ -101,14 +101,8 @@ class ItemsSliderWrapper extends Component {
 
   getIndexItemsByValue(value) {
     const { items } = this.props
-    var nextIndex = 0
-
-    items.map((item, index) => {
-      if (item.value === value)
-        nextIndex = index
-    })
-
-    return nextIndex
+    var nextIndex = items.lastIndexOf(value);
+    return nextIndex >= 0 ? nextIndex : 0;
   }
 
   componentDidMount() {

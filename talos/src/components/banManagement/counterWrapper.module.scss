@@ -3,7 +3,7 @@
 .counterWrapper {
   display: flex;
   align-items: center;
-  justify-content: start;
+  justify-content: flex-start;
   margin: -20px -10px 0px;
 
   @media (max-width: $maxMediaMD) {
