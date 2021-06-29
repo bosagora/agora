@@ -13,33 +13,10 @@ import Icon from "../items/static/icon"
 import styles from "./preview.module.scss"
 
 class Preview extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      isOpen: true
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    const { currentIndex } = this.props
-
-    if (prevProps.currentIndex > 0 && currentIndex === 0)
-      this.setState({ isOpen: true })
-
-    if (prevProps.currentIndex === 0 && currentIndex > 0) {
-      window.scrollTo(0, 0)
-      setTimeout(function () {
-        this.setState({ isOpen: false })
-      }.bind(this), 1000)
-    }
-  }
-
   render() {
     const { currentIndex, onToNextStep } = this.props
 
-    return this.state.isOpen
-      ?
+    return (
       <div className={currentIndex === 0 ? styles.preview : styles.previewHidden}>
         <div className={styles.previewInner}>
           <div className={styles.container_sideLeft}>
@@ -69,7 +46,7 @@ class Preview extends Component {
           </div>
         </div>
       </div>
-      : null
+    );
   }
 }
 

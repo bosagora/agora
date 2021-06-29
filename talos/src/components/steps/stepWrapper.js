@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 
 import { withAppState } from "./AppState"
 
+import { Step } from "../Step"
 import FirstTitle from "../items/static/firstTitle"
 import Icon from "../items/static/icon"
 import Paragraph from "../items/static/paragraph"
@@ -16,31 +17,21 @@ import IsMobileWrapper from "../../utils/isMobileWrapper"
 
 import styles from './stepWrapper.module.scss'
 
-class StepWrapper extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      isOpen: false,
+class StepWrapper extends Step {
+    //
+    isDisabled (props) {
+        return props.currentIndex === 0;
     }
-  }
 
-  componentDidUpdate(prevProps) {
-    const { currentIndex } = this.props
-
-    if (prevProps.currentIndex > 0 && currentIndex === 0)
-      setTimeout(function () {
-        this.setState({ isOpen: false })
-      }.bind(this), 1000)
-
-    if (prevProps.currentIndex === 0 && currentIndex > 0)
-      this.setState({ isOpen: true })
-  }
+    //
+    isEnabled (props) {
+        return props.currentIndex !== 0;
+    }
 
   render() {
     const { currentIndex } = this.props
 
-    return this.state.isOpen
+    return this.state.enabled
       ?
       <div className={currentIndex > 0 ? styles.stepWrapper : styles.stepWrapperHidden}>
         <div className={styles.stepWrapperInner}>
@@ -63,10 +54,10 @@ class StepWrapper extends Component {
           </div>
           <div className={styles.container_rightSide}>
             <div className={styles.container_rightSideInner}>
-              <SecretSeed />
-              <NetworkOptions />
-              <BanManagement />
-              <AdministrativeInterface />
+              <SecretSeed navigationIndex={1} />
+              <NetworkOptions navigationIndex={2} />
+              <BanManagement navigationIndex={3} />
+              <AdministrativeInterface navigationIndex={4} />
             </div>
 
             <div className={styles.container_controlsMobile}>
