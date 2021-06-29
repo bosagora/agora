@@ -626,13 +626,16 @@ public class Ledger
 
         Params:
             data = consensus data
+            initial_missing_validators = missing validators at the beginning of
+               the nomination round
 
         Returns:
             the error message if validation failed, otherwise null
 
     ***************************************************************************/
 
-    public string validateConsensusData (in ConsensusData data) @trusted nothrow
+    public string validateConsensusData (in ConsensusData data,
+        in uint[] initial_missing_validators) @trusted nothrow
     {
         const validating = this.getBlockHeight() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
@@ -685,7 +688,7 @@ public class Ledger
                 return fail_reason;
         }
 
-        if (auto fail_reason = this.validateSlashingData(validating, data))
+        if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators))
             return fail_reason;
 
         return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
@@ -698,13 +701,16 @@ public class Ledger
 
         Params:
             data = consensus data
+            initial_missing_validators = missing validators at the beginning of
+               the nomination round
 
         Returns:
             the error message if validation failed, otherwise null
 
     ***************************************************************************/
 
-    public string validateSlashingData (in Height height, in ConsensusData data) @safe nothrow
+    public string validateSlashingData (in Height height, in ConsensusData data,
+        in uint[] initial_missing_validators) @safe nothrow
     {
         // If we are enrolled and not slashing ourselves
         if (this.enroll_man.isEnrolled(height, &this.utxo_set.peekUTXO) && this.isSelfSlashing(height, data))
@@ -713,7 +719,7 @@ public class Ledger
             assert(0);
         }
 
-        return this.isInvalidPreimageRootReason(height, data.missing_validators);
+        return this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators);
     }
 
     /***************************************************************************
@@ -1228,6 +1234,8 @@ public class Ledger
             height = the height of proposed block
             missing_validators = list of indices to the validator UTXO set
                 which have not revealed the preimage
+            missing_validators_higher_bound = missing validators at the beginning of
+               the nomination round
 
         Returns:
             `null` if the information is valid at the proposed height,
@@ -1236,23 +1244,43 @@ public class Ledger
     ***************************************************************************/
 
     private string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators) @safe nothrow
+        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe nothrow
     {
+        import std.algorithm.setops : setDifference;
+
         Hash[] keys;
         if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
             assert(0, "Could not retrieve enrollments / no enrollments found");
 
-        uint[] local_missing_validators;
+        uint[] missing_validators_lower_bound;
         foreach (idx, key; keys)
         {
             if (!this.hasRevealedPreimage(height, key))
-                local_missing_validators ~= cast(uint)idx;
+                missing_validators_lower_bound ~= cast(uint)idx;
         }
 
-        if (local_missing_validators != missing_validators)
-            return "The list of missing validators does not match with the local one. " ~
-                assumeWontThrow(to!string(missing_validators)) ~
-                " != " ~ assumeWontThrow(to!string(local_missing_validators));
+        // NodeA will check the candidate from NodeB in the following way:
+        //
+        // Current missing validators in NodeA(=sorted_missing_validators_lower_bound) ⊆
+        // missing validators in the candidate from NodeB(=sorted_missing_validators) ⊆
+        // missing validators in NodeA before the nomination round started
+        // (=sorted_missing_validators_higher_bound)
+        //
+        // If both of those conditions true, then NodeA will accept the candidate.
+
+        auto sorted_missing_validators = missing_validators.dup().sort();
+        auto sorted_missing_validators_lower_bound = missing_validators_lower_bound.dup().sort();
+        auto sorted_missing_validators_higher_bound = missing_validators_higher_bound.dup().sort();
+
+        if (!setDifference(sorted_missing_validators_lower_bound, sorted_missing_validators).empty())
+            return "Lower bound violation - Missing validator mismatch " ~
+                assumeWontThrow(to!string(sorted_missing_validators_lower_bound)) ~
+                " is not a subset of " ~ assumeWontThrow(to!string(sorted_missing_validators));
+
+        if (!setDifference(sorted_missing_validators, sorted_missing_validators_higher_bound).empty())
+            return "Higher bound violation - Missing validator mismatch " ~
+                assumeWontThrow(to!string(sorted_missing_validators)) ~
+                " is not a subset of " ~ assumeWontThrow(to!string(sorted_missing_validators_higher_bound));
 
         return null;
     }
@@ -1260,7 +1288,7 @@ public class Ledger
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated
-    private void simulatePreimages (in Height height, int[] skip_indexes = null) @safe nothrow
+    private void simulatePreimages (in Height height, uint[] skip_indexes = null) @safe nothrow
     {
         try
         {
@@ -2136,7 +2164,7 @@ unittest
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
     // Add preimages for validators at height 22 but skip for a couple
-    auto skip_indexes = [ 1, 3 ];
+    uint[] skip_indexes = [ 1, 3 ];
     ledger.simulatePreimages(Height(22), skip_indexes);
 
     ConsensusData data;
@@ -2145,10 +2173,10 @@ unittest
     assert(data.missing_validators == skip_indexes);
 
     // check validity of slashing information
-    assert(ledger.validateSlashingData(Height(22), data) == null);
+    assert(ledger.validateSlashingData(Height(22), data, skip_indexes) == null);
     ConsensusData forged_data = data;
     forged_data.missing_validators = [3, 2, 1];
-    assert(ledger.validateSlashingData(Height(22), forged_data) != null);
+    assert(ledger.validateSlashingData(Height(22), forged_data, skip_indexes) != null);
 
     // Now reveal for all active validators at height 22
     ledger.simulatePreimages(Height(22));
@@ -2178,7 +2206,45 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
 
     // Add preimages for all validators (except for two of them) till end of cycle
-    auto skip_indexes = [ 2, 5 ];
+    uint[] skip_indexes = [ 2, 5 ];
+
+    ledger.simulatePreimages(Height(params.ValidatorCycle), skip_indexes);
+
+    // Block with no fee
+    auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
+    no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+
+    ConsensusData data;
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+
+    assert(ledger.validateConsensusData(data, skip_indexes) is null);
+
+    data.missing_validators = [2,5,7];
+    assert(ledger.validateConsensusData(data, [2,3,5,7,9]) is null);
+
+    data.missing_validators = [2,5];
+    assert(ledger.validateConsensusData(data, [2]) == "Higher bound violation - Missing validator mismatch [2, 5] is not a subset of [2]");
+
+    data.missing_validators = [5];
+    assert(ledger.validateConsensusData(data, [2]) == "Lower bound violation - Missing validator mismatch [2, 5] is not a subset of [5]");
+}
+
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+    import agora.consensus.PreImage;
+    import agora.utils.WellKnownKeys : CommonsBudget;
+
+    ConsensusConfig config = { validator_cycle: 20, payout_period: 5 };
+    auto params = new immutable(ConsensusParams)(GenesisBlock,
+        CommonsBudget.address, config);
+
+    const(Block)[] blocks = [ GenesisBlock ];
+    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
+
+    // Add preimages for all validators (except for two of them) till end of cycle
+    uint[] skip_indexes = [ 2, 5 ];
 
     auto validators = ledger.getValidators(Height(1));
     UTXO[] mpv_stakes;
@@ -2198,7 +2264,7 @@ unittest
     // think someone else may validate it.
     data.tx_set ~= Transaction([Input(Height(blocks.length))],
         [Output(Amount(1), CommonsBudgetAddress, OutputType.Coinbase)]).hashFull();
-    assert(ledger.validateConsensusData(data) ==
+    assert(ledger.validateConsensusData(data, skip_indexes) ==
         Ledger.InvalidConsensusDataReason.MayBeValid);
 
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
@@ -2222,12 +2288,12 @@ unittest
 
         // Remove the coinbase TX
         data.tx_set = data.tx_set[0 .. $ - 1];
-        assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        assert(ledger.validateConsensusData(data, skip_indexes) == "Invalid Coinbase transaction");
         // Add Invalid coinbase TX
         data.tx_set ~= Transaction([
             Output(Amount(1), CommonsBudgetAddress, OutputType.Coinbase),
             Output(Amount(1), CommonsBudgetAddress, OutputType.Payment)]).hashFull();
-        assert(ledger.validateConsensusData(data) == "Invalid Coinbase transaction");
+        assert(ledger.validateConsensusData(data, skip_indexes) == "Invalid Coinbase transaction");
 
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
         ledger.externalize(data);
@@ -2283,7 +2349,7 @@ unittest
     data.tx_set ~= cb_tx_set.map!(tx => tx.hashFull()).array;
     assert(data.tx_set.length == 1);
     // Coinbase only nomination, Should not validate
-    assert(ledger.validateConsensusData(data) ==
+    assert(ledger.validateConsensusData(data, []) ==
         Ledger.InvalidConsensusDataReason.OnlyCoinbaseTX);
     assert(!ledger.externalize(data));
 
