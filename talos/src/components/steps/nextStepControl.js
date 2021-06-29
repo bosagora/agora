@@ -1,7 +1,7 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withAppState } from "../steps/AppState"
+import { withAppState } from "../app/State"
 import { withSecretSeed } from "../secretSeed/Container"
 import { withNetworkOptions } from "../networkOptions/Container"
 import { withBanManagement } from "../banManagement/Container"

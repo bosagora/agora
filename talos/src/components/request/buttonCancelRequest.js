@@ -1,5 +1,5 @@
 import React from 'react';
-import { withAppState } from "../steps/AppState"
+import { withAppState } from "../app/State"
 
 import ButtonReset from "../items/controls/buttonReset"
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import { get } from "lodash"
 
-import { withAppState } from "../../steps/AppState"
+import { withAppState } from "../../app/State"
 
 import ButtonReset from "./buttonReset"
 
