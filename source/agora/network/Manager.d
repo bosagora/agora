@@ -23,9 +23,7 @@
 module agora.network.Manager;
 
 import agora.api.Validator;
-import agora.api.handler.Block;
-import agora.api.handler.PreImage;
-import agora.api.handler.Transaction;
+import agora.api.Handlers;
 import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.Types;

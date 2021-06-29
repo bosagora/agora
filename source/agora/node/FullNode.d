@@ -23,9 +23,7 @@
 module agora.node.FullNode;
 
 import agora.api.FullNode;
-import agora.api.handler.Block;
-import agora.api.handler.PreImage;
-import agora.api.handler.Transaction;
+import agora.api.Handlers;
 import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
