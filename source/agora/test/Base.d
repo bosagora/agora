@@ -1197,9 +1197,7 @@ public class TestNetworkClient : NetworkClient
 
 public class TestNetworkManager : NetworkManager
 {
-    import agora.api.handler.Block;
-    import agora.api.handler.PreImage;
-    import agora.api.handler.Transaction;
+    import agora.api.Handlers;
 
     /// Remove this once `registerListener` is gone
     private string address;
