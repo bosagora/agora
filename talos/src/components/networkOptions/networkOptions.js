@@ -1,9 +1,8 @@
-import React, { Component } from 'react';
-import { steps } from "../steps/static"
-
+import React from 'react'
+import { Step } from "../Step"
 import { withAppState } from "../steps/AppState"
 
-import { isCurrentStep, buildStepClassName } from "../../services/service.step"
+import { buildStepClassName } from "../../services/service.step"
 import NetworkOptionsContent from "./networkOptionsContent"
 import IsDesktopWrapper from "./../../utils/isDesktopWrapper"
 import StepsControls from "./../steps/stepsControls"
@@ -12,59 +11,17 @@ import "./networkOptions.scss"
 import "./../../services/service.step.scss"
 import variables from './../../values.module.scss'
 
-var timeOut
-
-class NetworkOptions extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      isOpenNetwork: false,
-    }
-  }
-
-  componentDidMount() {
-    const { currentIndex } = this.props
-    const { isOpenNetwork } = this.state
-
-    if (isCurrentStep(currentIndex, steps.networkOptions) && !isOpenNetwork)
-      this.setState({ isOpenNetwork: true })
-  }
-
-  componentDidUpdate(prevProps) {
-    const { currentIndex } = this.props
-    const { isOpenNetwork } = this.state
-
-    if (!isCurrentStep(currentIndex, steps.networkOptions) && prevProps.currentIndex !== currentIndex && prevProps.currentIndex === steps.networkOptions) {
-
-      clearInterval(timeOut)
-      timeOut = setTimeout(function () {
-        if (isOpenNetwork)
-          this.setState({
-            isOpenNetwork: false,
-          })
-      }.bind(this), parseFloat(variables.animateSteps) * 1000)
-    }
-
-    if (isCurrentStep(currentIndex, steps.networkOptions) && prevProps.currentIndex !== currentIndex) {
-      clearInterval(timeOut)
-      this.setState({
-        isOpenNetwork: true,
-      })
-    }
-  }
-
+class NetworkOptions extends Step {
   render() {
-    const { currentIndex, prevIndex } = this.props
-    const { isOpenNetwork } = this.state
+    const { currentIndex, prevIndex, navigationIndex } = this.props
     const params = {
       className: "wrapperNetworkOptions",
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
-      stepIndex: steps.networkOptions,
+      stepIndex: navigationIndex,
     }
 
-    return isOpenNetwork ?
+    return this.state.enabled ?
       <div className={buildStepClassName({ params })}>
         <NetworkOptionsContent />
 

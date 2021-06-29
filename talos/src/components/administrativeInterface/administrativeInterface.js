@@ -1,9 +1,8 @@
 import React, { Component } from 'react';
 
-import { steps } from "./../steps/static"
-
 import { withAppState } from "../steps/AppState"
 
+import { Step } from "../Step"
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import AdministrativeInterfaceContent from "./administrativeInterfaceContent"
 import RequestDialog from "./../request/requestDialog"
@@ -15,59 +14,25 @@ import "./administrativeInterface.scss"
 import "./../../services/service.step.scss"
 import variables from './../../values.module.scss'
 
-var timeOut
-
-class AdministrativeInterface extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      inOpenAdministrativeInterface: false,
-    }
-  }
+class AdministrativeInterface extends Step {
 
   componentDidMount() {
-    const { currentIndex } = this.props
-    const { inOpenAdministrativeInterface } = this.state
-
-    if (isCurrentStep(currentIndex, steps.administrativeInterface) && !inOpenAdministrativeInterface)
-      this.setState({ inOpenAdministrativeInterface: true })
-  }
-
-  componentDidUpdate(prevProps) {
-    const { currentIndex } = this.props
-    const { inOpenAdministrativeInterface } = this.state
-
-    if (!isCurrentStep(currentIndex, steps.administrativeInterface) && prevProps.currentIndex !== currentIndex && prevProps.currentIndex === steps.administrativeInterface) {
-
-      clearInterval(timeOut)
-      timeOut = setTimeout(function () {
-        if (inOpenAdministrativeInterface)
-          this.setState({
-            inOpenAdministrativeInterface: false,
-          })
-      }.bind(this), parseFloat(variables.animateSteps) * 1000)
-    }
-
-    if (isCurrentStep(currentIndex, steps.administrativeInterface) && prevProps.currentIndex !== currentIndex) {
-      clearInterval(timeOut)
-      this.setState({
-        inOpenAdministrativeInterface: true,
-      })
-    }
+      if (this.isEnabled(this.props))
+          this.enable();
+      else
+          this.disable();
   }
 
   render() {
-    const { currentIndex, prevIndex } = this.props
-    const { inOpenAdministrativeInterface } = this.state
+      const { currentIndex, prevIndex, navigationIndex } = this.props
     const params = {
       className: "wrapperAdministrativeInterface",
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
-      stepIndex: steps.administrativeInterface,
+      stepIndex: navigationIndex,
     }
 
-    return inOpenAdministrativeInterface ?
+    return this.state.enabled ?
       <div className={buildStepClassName({ params })}>
         <AdministrativeInterfaceContent />
 
