@@ -141,6 +141,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Nomination start time
     protected TimePoint nomination_start_time;
 
+    /// The missing validators at the start of the nomination round
+    protected uint[] initial_missing_validators;
+
     /// List of incoming SCPEnvelopes that need to be processed
     private DList!SCPEnvelope queued_envelopes;
 
@@ -336,7 +339,7 @@ extern(D):
         }
 
         // check whether the consensus data is valid before nominating it.
-        if (auto msg = this.ledger.validateConsensusData(data))
+        if (auto msg = this.ledger.validateConsensusData(data, data.missing_validators))
         {
             this.log.error("prepareNominatingSet(): Invalid consensus data: {}. Data: {}",
                     msg, data.prettify);
@@ -409,13 +412,16 @@ extern(D):
             return;
         }
 
-        if (this.nomination_start_time == 0)
+        if (!this.is_nominating)
             this.nomination_start_time = cur_time;
 
         ConsensusData data;
         // `prepareNomintingSet` will log something if it returns `false`
         if (!this.prepareNominatingSet(data))
             return;
+
+        if (!this.is_nominating)
+            this.initial_missing_validators = data.missing_validators;
 
         log.info("Nominating {} at {}", data.prettify, cur_time);
         this.is_nominating = true;
@@ -880,7 +886,7 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
-        if (auto fail_reason = this.ledger.validateConsensusData(data))
+        if (auto fail_reason = this.ledger.validateConsensusData(data, this.initial_missing_validators))
         {
             log.error("validateValue(): Validation failed: {}. Data: {}",
                 fail_reason, data.prettify);
@@ -969,6 +975,7 @@ extern(D):
         this.gossipBlockSignature(ValidatorBlockSig(height, this.kp.address,
                     this.slot_sigs[height][this.kp.address].s));
         this.nomination_start_time = 0;
+        this.initial_missing_validators = [];
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
@@ -1193,10 +1200,7 @@ extern(D):
                 auto data = deserializeFull!ConsensusData(candidate[]);
                 log.trace("Consensus data: {}", data.prettify);
 
-                // Only allowed in unittests, as validating the consensus data
-                // for all the candidates might take long.
-                version (unittest)
-                if (auto msg = this.ledger.validateConsensusData(data))
+                if (auto msg = this.ledger.validateConsensusData(data, this.initial_missing_validators))
                     assert(0, format!"combineCandidates: Invalid consensus data: %s"(
                         msg));
 
