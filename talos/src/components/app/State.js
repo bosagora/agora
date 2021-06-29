@@ -8,7 +8,7 @@ import {
   request as onRequest,
   requestBegin as onRequestBegin,
   REQUEST
-} from './AppAction'
+} from './Action'
 
 const mapStateToProps = (state) => ({
   currentIndex: get(state, ["appState", "currentIndex"], 0),

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Step } from "../Step"
-import { withAppState } from "../steps/AppState"
+import { withAppState } from "../app/State"
 
 import { buildStepClassName } from "../../services/service.step"
 import SecretSeedContent from "./secretSeedContent"

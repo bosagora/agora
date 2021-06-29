@@ -1,7 +1,7 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withAppState } from "./AppState"
+import { withAppState } from "../app/State"
 
 import ButtonToPreviewLink from "../preview/buttonToPreviewLink"
 import ButtonToPrevStep from "../items/controls/buttonToPrevStep"

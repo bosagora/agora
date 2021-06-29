@@ -6,7 +6,7 @@ import {
   TO_NEXT_STEP,
   TO_PREV_STEP,
   REQUEST,
-} from '../components/steps/AppAction'
+} from '../components/app/Action'
 
 export const initialState = {
   currentIndex: 0,

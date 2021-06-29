@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { steps } from "./static"
 
-import { withAppState } from "./AppState"
+import { withAppState } from "../app/State"
 
 import ButtonStaticStep from "../items/controls/buttonStaticStep"
 import ScrollHorizontalMenuWrapper from "../items/controls/scrollHorizontalMenuWrapper"

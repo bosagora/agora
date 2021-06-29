@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import { withAppState } from "../steps/AppState"
+import { withAppState } from "../app/State"
 
 import { Step } from "../Step"
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"

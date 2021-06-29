@@ -8,7 +8,7 @@ import { withSecretSeed } from "../secretSeed/Container"
 import { withNetworkOptions } from "../networkOptions/Container"
 import { withBanManagement } from "../banManagement/Container"
 import { withAdministrativeInterface } from "../administrativeInterface/Container"
-import { withAppState } from "../steps/AppState"
+import { withAppState } from "../app/State"
 
 import ButtonReset from "../items/controls/buttonReset"
 

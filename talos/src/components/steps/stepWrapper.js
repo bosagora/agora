@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import { withAppState } from "./AppState"
+import { withAppState } from "../app/State"
 
 import { Step } from "../Step"
 import FirstTitle from "../items/static/firstTitle"

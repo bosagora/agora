@@ -3,7 +3,7 @@
  */
 import React, { Component } from 'react';
 
-import { withAppState } from "./steps/AppState"
+import { withAppState } from "./app/State"
 
 export class Step extends Component {
 
