@@ -121,7 +121,7 @@ public struct Config
     public immutable(LoggerConfig)[] logging;
 
     /// Event handler config
-    public EventHandlerConfig event_handlers;
+    public immutable(EventHandlerConfig)[] event_handlers;
 }
 
 /// Used to specify endpoint-specific configuration
@@ -276,17 +276,20 @@ public struct AdminConfig
     public ushort port = 0xB0B;
 }
 
+public enum HandlerType
+{
+    block_externalized = "block_externalized",
+    preimage_received = "preimage_received",
+    transaction_received = "transaction_received"
+}
+
 /// Configuration for URLs to push a data when an event occurs
 public struct EventHandlerConfig
 {
-    /// URLs to push a data when a block is externalized
-    public immutable string[] block_externalized_handler_addresses;
+    HandlerType handler_type;
 
-    /// URLs to push a data when a pre-image is updated
-    public immutable string[] preimage_updated_handler_addresses;
-
-    /// URLs to push a data when a transaction is received
-    public immutable string[] transaction_received_handler_addresses;
+    /// URLs to push data to
+    public immutable string[] handler_addresses;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
@@ -1037,20 +1040,22 @@ unittest
 
 *******************************************************************************/
 
-private EventHandlerConfig parserEventHandlers (Node* node, in CommandLine c)
+private immutable(EventHandlerConfig)[] parserEventHandlers (Node* node, in CommandLine c)
 {
-    if (node is null)
-        return EventHandlerConfig.init;
-
-    EventHandlerConfig handlers =
+    immutable(EventHandlerConfig)[] handlers;
+    with(HandlerType)
     {
-        block_externalized_handler_addresses:
-            assumeUnique(parseSequence("block_externalized", c, *node, true)),
-        preimage_updated_handler_addresses:
-            assumeUnique(parseSequence("preimage_received", c, *node, true)),
-        transaction_received_handler_addresses:
-            assumeUnique(parseSequence("transaction_received", c, *node, true)),
-    };
+        only(block_externalized, preimage_received, transaction_received)
+            .each!((HandlerType handler_type)
+            {
+                if (node !is null)
+                {
+                    auto addresses = parseSequence(handler_type, c, *node, true);
+                    if (addresses.length > 0)
+                        handlers ~= EventHandlerConfig(handler_type, assumeUnique(addresses));
+                }
+            });
+    }
 
     return handlers;
 }
@@ -1065,10 +1070,8 @@ unittest
 noexist_event_handlers:
 `;
         auto node = Loader.fromString(conf_example).load();
-        auto conf = parserEventHandlers("event_handlers" in node, cmdln);
-        assert(conf.block_externalized_handler_addresses.length == 0);
-        assert(conf.preimage_updated_handler_addresses.length == 0);
-        assert(conf.transaction_received_handler_addresses.length == 0);
+        auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
+        assert(handlers.length == 0);
     }
 
     // If the nodes and values exist
@@ -1079,14 +1082,41 @@ event_handlers:
   block_externalized:
     - http://127.0.0.1:3836
   preimage_received:
-    - http://127.0.0.1:3836
+    - http://127.0.0.3:3836
   transaction_received:
-    - http://127.0.0.1:3836
+    - http://127.0.0.4:3836
 `;
         auto node = Loader.fromString(conf_example).load();
-        auto conf = parserEventHandlers("event_handlers" in node, cmdln);
-        assert(conf.block_externalized_handler_addresses == [ `http://127.0.0.1:3836` ]);
-        assert(conf.preimage_updated_handler_addresses == [ `http://127.0.0.1:3836` ]);
-        assert(conf.transaction_received_handler_addresses == [ `http://127.0.0.1:3836` ]);
+        auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
+        with(HandlerType)
+        {
+            assert(handlers.filter!(h => h.handler_type == block_externalized).front.handler_addresses == [ `http://127.0.0.1:3836` ]);
+            assert(handlers.filter!(h => h.handler_type == preimage_received).front.handler_addresses == [ `http://127.0.0.3:3836` ]);
+            assert(handlers.filter!(h => h.handler_type == transaction_received).front.handler_addresses == [ `http://127.0.0.4:3836` ]);
+        }
+    }
+
+    // If the nodes and some values exist
+    {
+        CommandLine cmdln;
+        immutable conf_example = `
+event_handlers:
+  block_externalized:
+    - http://127.0.0.1:3836
+  transaction_received:
+    - http://127.0.0.4:3836
+    - http://127.0.0.5:3836
+`;
+        auto node = Loader.fromString(conf_example).load();
+        auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
+        with(HandlerType)
+        {
+            assert(handlers.filter!(h => h.handler_type == block_externalized)
+                .front.handler_addresses == [ `http://127.0.0.1:3836` ]);
+            assert(handlers.filter!(h => h.handler_type == transaction_received)
+                .front.handler_addresses == [ `http://127.0.0.4:3836`, `http://127.0.0.5:3836` ]);
+            assert(handlers.length == 2);
+            assert(handlers.count!(h => h.handler_type == preimage_received) == 0);
+        }
     }
 }

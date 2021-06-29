@@ -1197,78 +1197,53 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Instantiates a client object implementing `BlockExternalizedHandler`
-
-        In the default implementation, this returns a `BlockExternalizedHandler`
+        Instantiates a client object implementing the `BlockExternalizedHandler`
 
         Params:
             address = The address (IPv4, IPv6, hostname) of target Server
         Returns:
-            A BlockExternalizedHandler to communicate with the server
-            at `address`
+            A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public BlockExternalizedHandler getBlockExternalizedHandler
-        (Address address)
+    public BlockExternalizedHandler getBlockExternalizedHandler (Address address)
     {
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = this.node_config.timeout;
-        settings.httpClientSettings.readTimeout = this.node_config.timeout;
-        settings.httpClientSettings.proxyURL = this.proxy_url;
-
-        return new RestInterfaceClient!BlockExternalizedHandler(settings);
+        return new RestInterfaceClient!BlockExternalizedHandler(getRestInterfaceSettings(address));
     }
 
     /***************************************************************************
 
-        Instantiates a client object implementing `PreImageReceivedHandler`
-
-        In the default implementation, this returns a `PreImageReceivedHandler`
+        Instantiates a client object implementing the `PreImageReceivedHandler`
 
         Params:
             address = The address (IPv4, IPv6, hostname) of target Server
         Returns:
-            A PreImageReceivedHandler to communicate with the server
-            at `address`
+            A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public PreImageReceivedHandler getPreimageReceivedHandler
-        (Address address)
+    public PreImageReceivedHandler getPreImageReceivedHandler(Address address)
     {
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = this.node_config.timeout;
-        settings.httpClientSettings.readTimeout = this.node_config.timeout;
-        settings.httpClientSettings.proxyURL = this.proxy_url;
-
-        return new RestInterfaceClient!PreImageReceivedHandler(settings);
+        return new RestInterfaceClient!PreImageReceivedHandler(getRestInterfaceSettings(address));
     }
 
     /***************************************************************************
 
-        Instantiates a client object implementing `TransactionReceivedHandler`
-
-        In the default implementation, this returns a `TransactionReceivedHandler`
+        Instantiates a client object implementing the `TransactionReceivedHandler`
 
         Params:
             address = The address (IPv4, IPv6, hostname) of target Server
         Returns:
-            A TransactionReceivedHandler to communicate with the server
-            at `address`
+            A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public TransactionReceivedHandler getTransactionReceivedHandler
-        (Address address)
+    public TransactionReceivedHandler getTransactionReceivedHandler (Address address)
+    {
+        return new RestInterfaceClient!TransactionReceivedHandler(getRestInterfaceSettings(address));
+    }
+
+    private RestInterfaceSettings getRestInterfaceSettings (Address address)
     {
         import vibe.http.client;
 
@@ -1278,8 +1253,7 @@ public class NetworkManager
         settings.httpClientSettings.connectTimeout = this.node_config.timeout;
         settings.httpClientSettings.readTimeout = this.node_config.timeout;
         settings.httpClientSettings.proxyURL = this.proxy_url;
-
-        return new RestInterfaceClient!TransactionReceivedHandler(settings);
+        return settings;
     }
 
     /***************************************************************************
