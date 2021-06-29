@@ -22,12 +22,12 @@ class Preview extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { isOrderOn } = this.props
+    const { currentIndex } = this.props
 
-    if (prevProps.isOrderOn && !isOrderOn)
+    if (prevProps.currentIndex > 0 && currentIndex === 0)
       this.setState({ isOpen: true })
 
-    if (!prevProps.isOrderOn && isOrderOn) {
+    if (prevProps.currentIndex === 0 && currentIndex > 0) {
       window.scrollTo(0, 0)
       setTimeout(function () {
         this.setState({ isOpen: false })
@@ -36,11 +36,11 @@ class Preview extends Component {
   }
 
   render() {
-    const { isOrderOn, onOpenAppOrder } = this.props
+    const { currentIndex, onToNextStep } = this.props
 
     return this.state.isOpen
       ?
-      <div className={!isOrderOn ? styles.preview : styles.previewHidden}>
+      <div className={currentIndex === 0 ? styles.preview : styles.previewHidden}>
         <div className={styles.previewInner}>
           <div className={styles.container_sideLeft}>
             <div className={styles.sideLeftContainer}>
@@ -61,7 +61,7 @@ class Preview extends Component {
                 <Paragraph>a highly secure and intuitive user interface that is quick and easy to use. This interface will assist you in the setup and management of your very own AGORA Validator or Full Node. Please follow the directions on the following screens to become part of AGORA. Whether you're setting up a new Validator or Full Node or managing your existing one – BOSAGORA has made it as easy as possible.</Paragraph>
               </div>
               <div className={styles.container_nextButton}>
-                <ButtonFillDefault onClick={onOpenAppOrder}>
+                <ButtonFillDefault onClick={onToNextStep}>
                   <NextDefaultButton>Continue</NextDefaultButton>
                 </ButtonFillDefault>
               </div>

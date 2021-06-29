@@ -5,13 +5,10 @@ import {
   TO_STEP,
   TO_NEXT_STEP,
   TO_PREV_STEP,
-  OPEN_ORDER,
-  CLOSE_ORDER,
   REQUEST,
 } from '../components/steps/AppAction'
 
 export const initialState = {
-  isOrderOn: false,
   currentIndex: 0,
   prevIndex: 0,
   requestState: REQUEST.BEGIN,
@@ -49,15 +46,6 @@ const appStateReducer = createReducer(initialState, {
       }
       : state
   },
-  [OPEN_ORDER.REQUEST]: state => ({
-    ...state,
-    isOrderOn: true
-  }),
-  [CLOSE_ORDER.REQUEST]: state => ({
-    ...state,
-    isOrderOn: false,
-    requestState: REQUEST.BEGIN,
-  }),
   [REQUEST.BEGIN]: state => ({
     ...state,
     requestState: REQUEST.BEGIN,
