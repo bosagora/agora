@@ -1,11 +1,28 @@
 import { createActionTypesOf } from '../../utils/helpers';
 import axios from 'axios';
 
+var api = axios.create({});
+
 export const OPEN_ORDER = createActionTypesOf("OPEN_ORDER")
 export const CLOSE_ORDER = createActionTypesOf("CLOSE_ORDER")
 export const REQUEST = createActionTypesOf("REQUEST")
 
-var api = axios.create({});
+export const TO_STEP = createActionTypesOf("TO_STEP")
+export const TO_NEXT_STEP = createActionTypesOf("TO_NEXT_STEP")
+export const TO_PREV_STEP = createActionTypesOf("TO_PREV_STEP")
+
+export const toStep = (index) => ({
+  type: TO_STEP.REQUEST,
+  payLoad: { currentIndex: index }
+})
+
+export const toNextStep = () => ({
+  type: TO_NEXT_STEP.REQUEST,
+})
+
+export const toPrevStep = () => ({
+  type: TO_PREV_STEP.REQUEST,
+})
 
 export const openAppOrder = () => ({
   type: OPEN_ORDER.REQUEST,

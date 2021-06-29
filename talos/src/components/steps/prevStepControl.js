@@ -1,7 +1,7 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withStepsState } from "./Container"
+import { withAppState } from "./AppState"
 
 import ButtonToPreviewLink from "../preview/buttonToPreviewLink"
 import ButtonToPrevStep from "../items/controls/buttonToPrevStep"
@@ -24,4 +24,4 @@ const PrevStepControl = props => {
 
 }
 
-export default withStepsState(PrevStepControl)
+export default withAppState(PrevStepControl)

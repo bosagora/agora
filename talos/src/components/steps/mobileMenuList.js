@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { steps } from "./static"
 
-import { withStepsState } from "./Container"
+import { withAppState } from "./AppState"
 
 import ButtonStaticStep from "../items/controls/buttonStaticStep"
 import ScrollHorizontalMenuWrapper from "../items/controls/scrollHorizontalMenuWrapper"
@@ -90,4 +90,4 @@ class MobileMenuList extends Component {
   }
 }
 
-export default withStepsState(MobileMenuList)
+export default withAppState(MobileMenuList)

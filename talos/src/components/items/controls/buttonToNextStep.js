@@ -1,7 +1,7 @@
 import React from 'react'
 import { get } from "lodash"
 
-import { withStepsState } from "../../steps/Container"
+import { withAppState } from "../../steps/AppState"
 
 import ButtonReset from "./buttonReset"
 
@@ -39,4 +39,4 @@ const ButtonToNextStep = props => {
   )
 }
 
-export default withStepsState(React.memo(ButtonToNextStep))
+export default withAppState(React.memo(ButtonToNextStep))

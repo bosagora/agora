@@ -1,5 +1,10 @@
 import { createReducer } from '../utils/helpers';
+import { steps } from "./../components/steps/static"
+
 import {
+  TO_STEP,
+  TO_NEXT_STEP,
+  TO_PREV_STEP,
   OPEN_ORDER,
   CLOSE_ORDER,
   REQUEST,
@@ -7,11 +12,43 @@ import {
 
 export const initialState = {
   isOrderOn: false,
+  currentIndex: 0,
+  prevIndex: 0,
   requestState: REQUEST.BEGIN,
   requestResult: "",
 }
 
 const appStateReducer = createReducer(initialState, {
+  [TO_STEP.REQUEST]: (state, { payLoad: { currentIndex, prevIndex } }) => ({
+    ...state,
+    currentIndex: currentIndex,
+    prevIndex: prevIndex,
+  }),
+  [TO_NEXT_STEP.REQUEST]: state => {
+    const nextIndex = state.currentIndex + 1
+    const prevIndex = state.currentIndex
+    const stepsLenght = Object.keys(steps).length
+
+    return nextIndex <= stepsLenght - 1
+      ? {
+        ...state,
+        currentIndex: nextIndex,
+        prevIndex: prevIndex,
+      }
+      : state
+  },
+  [TO_PREV_STEP.REQUEST]: state => {
+    const nextIndex = state.currentIndex - 1
+    const prevIndex = state.currentIndex
+
+    return prevIndex >= 0
+      ? {
+        ...state,
+        currentIndex: nextIndex,
+        prevIndex: prevIndex,
+      }
+      : state
+  },
   [OPEN_ORDER.REQUEST]: state => ({
     ...state,
     isOrderOn: true
