@@ -1,7 +1,7 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withStepsState } from "../steps/Container"
+import { withAppState } from "../steps/AppState"
 import { withSecretSeed } from "../secretSeed/Container"
 import { withNetworkOptions } from "../networkOptions/Container"
 import { withBanManagement } from "../banManagement/Container"
@@ -50,4 +50,4 @@ const NextStepControl = props => {
 
 }
 
-export default withStepsState(withSecretSeed(withNetworkOptions(withBanManagement(withAdministrativeInterface(NextStepControl)))))
+export default withAppState(withSecretSeed(withNetworkOptions(withBanManagement(withAdministrativeInterface(NextStepControl)))))

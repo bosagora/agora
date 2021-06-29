@@ -2,7 +2,6 @@ import React, { Component } from 'react';
 
 import { steps } from "./../steps/static"
 
-import { withStepsState } from "../steps/Container"
 import { withAppState } from "../steps/AppState"
 
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"
@@ -84,4 +83,4 @@ class AdministrativeInterface extends Component {
   }
 }
 
-export default withAppState(withStepsState(AdministrativeInterface))
+export default withAppState(AdministrativeInterface)

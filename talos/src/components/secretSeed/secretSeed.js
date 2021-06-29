@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { steps } from "../steps/static"
 
-import { withStepsState } from "../steps/Container"
+import { withAppState } from "../steps/AppState"
 
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import SecretSeedContent from "./secretSeedContent"
@@ -79,4 +79,4 @@ class SecretSeed extends Component {
   }
 }
 
-export default withStepsState(SecretSeed)
+export default withAppState(SecretSeed)

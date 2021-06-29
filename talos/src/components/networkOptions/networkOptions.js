@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { steps } from "../steps/static"
 
-import { withStepsState } from "../steps/Container"
+import { withAppState } from "../steps/AppState"
 
 import { isCurrentStep, buildStepClassName } from "../../services/service.step"
 import NetworkOptionsContent from "./networkOptionsContent"
@@ -78,4 +78,4 @@ class NetworkOptions extends Component {
   }
 }
 
-export default withStepsState(NetworkOptions)
+export default withAppState(NetworkOptions)

@@ -1,7 +1,7 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withStepsState } from "./Container"
+import { withAppState } from "./AppState"
 
 import ButtonStep from "../items/controls/buttonStep"
 
@@ -31,4 +31,4 @@ const DesktopMenuList = props => {
   )
 }
 
-export default withStepsState(DesktopMenuList)
+export default withAppState(DesktopMenuList)

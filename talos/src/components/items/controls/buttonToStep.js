@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { withStepsState } from "../../steps/Container"
+import { withAppState } from "../../steps/AppState"
 
 import ButtonReset from "./buttonReset"
 
@@ -14,4 +14,4 @@ const ButtonToStep = props => {
   )
 }
 
-export default withStepsState(React.memo(ButtonToStep))
+export default withAppState(React.memo(ButtonToStep))
