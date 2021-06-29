@@ -9,9 +9,9 @@ import { withAppState } from "../steps/AppState"
 import ButtonReset from "../items/controls/buttonReset"
 
 const ButtonToPreviewLink = props => {
-  const { onCloseAppOrder } = props
+  const { onToStep } = props
 
-  return <ButtonReset onClick={onCloseAppOrder}>
+  return <ButtonReset onClick={() => onToStep(0)}>
     {props.children}
   </ButtonReset>
 }

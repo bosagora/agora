@@ -3,8 +3,6 @@ import axios from 'axios';
 
 var api = axios.create({});
 
-export const OPEN_ORDER = createActionTypesOf("OPEN_ORDER")
-export const CLOSE_ORDER = createActionTypesOf("CLOSE_ORDER")
 export const REQUEST = createActionTypesOf("REQUEST")
 
 export const TO_STEP = createActionTypesOf("TO_STEP")
@@ -23,14 +21,6 @@ export const toNextStep = () => ({
 export const toPrevStep = () => ({
   type: TO_PREV_STEP.REQUEST,
 })
-
-export const openAppOrder = () => ({
-  type: OPEN_ORDER.REQUEST,
-});
-
-export const closeAppOrder = () => ({
-  type: CLOSE_ORDER.REQUEST,
-});
 
 export const requestBegin = () => ({
   type: REQUEST.BEGIN

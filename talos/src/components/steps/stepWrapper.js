@@ -26,23 +26,23 @@ class StepWrapper extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { isOrderOn } = this.props
+    const { currentIndex } = this.props
 
-    if (prevProps.isOrderOn && !isOrderOn)
+    if (prevProps.currentIndex > 0 && currentIndex === 0)
       setTimeout(function () {
         this.setState({ isOpen: false })
       }.bind(this), 1000)
 
-    if (!prevProps.isOrderOn && isOrderOn)
+    if (prevProps.currentIndex === 0 && currentIndex > 0)
       this.setState({ isOpen: true })
   }
 
   render() {
-    const { isOrderOn } = this.props
+    const { currentIndex } = this.props
 
     return this.state.isOpen
       ?
-      <div className={isOrderOn ? styles.stepWrapper : styles.stepWrapperHidden}>
+      <div className={currentIndex > 0 ? styles.stepWrapper : styles.stepWrapperHidden}>
         <div className={styles.stepWrapperInner}>
           <div className={styles.container_leftSide}>
             <div className={styles.container_title}>
