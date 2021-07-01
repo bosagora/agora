@@ -68,6 +68,10 @@ interfaces:
     # Port on which we bind
     port:    2826    # 0xB0A, default value
 
+# Proxy to be used for outgoing Agora connections
+proxy:
+  url: http://127.0.0.0.1:8080
+
 ################################################################################
 ##                             Validator configuration                        ##
 ## The server can operate in two modes: full node and validator node.         ##
