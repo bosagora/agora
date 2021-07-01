@@ -24,6 +24,8 @@ import agora.crypto.Key;
 import agora.flash.Config;
 import agora.utils.Log;
 
+import vibe.inet.url;
+
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
@@ -93,6 +95,9 @@ public struct Config
 
     /// Configuration for interfaces the node expose (only http for now)
     public immutable InterfaceConfig[] interfaces = InterfaceConfig.Default;
+
+    /// Proxy to be used for outgoing Agora connections
+    public URL proxy_url;
 
     /// Consensus parameters for the chain
     public ConsensusConfig consensus;
@@ -451,6 +456,10 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
     else
         interfaces = InterfaceConfig.Default;
 
+    URL proxy_url;
+    if (Node* proxyNode = "proxy" in root)
+        proxy_url = URL.parse(get!(string, "proxy", "url")(cmdln, proxyNode));
+
     auto validator = parseValidatorConfig("validator" in root, cmdln);
     auto node = parseNodeConfig("node" in root, cmdln);
 
@@ -459,6 +468,7 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
         banman : parseBanManagerConfig("banman" in root, cmdln),
         node : node,
         interfaces: interfaces,
+        proxy_url: proxy_url,
         consensus: parseConsensusConfig("consensus" in root, cmdln),
         validator : validator,
         flash : parseFlashConfig("flash" in root, cmdln, node, validator),

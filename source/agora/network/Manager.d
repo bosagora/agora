@@ -49,6 +49,7 @@ import agora.utils.Utility;
 
 import vibe.http.common;
 import vibe.web.rest;
+import vibe.inet.url;
 
 import std.algorithm;
 import std.array;
@@ -413,12 +414,16 @@ public class NetworkManager
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
+    /// Proxy to be used for outgoing Agora connections
+    protected URL proxy_url;
+
     /// Ctor
     public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
         this.node_config = config.node;
+        this.proxy_url = config.proxy_url;
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
         this.metadata = metadata;
@@ -1119,6 +1124,7 @@ public class NetworkManager
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;
+        settings.httpClientSettings.proxyURL = this.proxy_url;
 
         return new RestInterfaceClient!API(settings);
     }
@@ -1151,6 +1157,7 @@ public class NetworkManager
         settings.httpClientSettings = new HTTPClientSettings();
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;
+        settings.httpClientSettings.proxyURL = this.proxy_url;
 
         return new RestInterfaceClient!NameRegistryAPI(settings);
     }
@@ -1214,6 +1221,7 @@ public class NetworkManager
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = this.node_config.timeout;
         settings.httpClientSettings.readTimeout = this.node_config.timeout;
+        settings.httpClientSettings.proxyURL = this.proxy_url;
 
         return new RestInterfaceClient!BlockExternalizedHandler(settings);
     }
@@ -1242,6 +1250,7 @@ public class NetworkManager
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = this.node_config.timeout;
         settings.httpClientSettings.readTimeout = this.node_config.timeout;
+        settings.httpClientSettings.proxyURL = this.proxy_url;
 
         return new RestInterfaceClient!PreImageReceivedHandler(settings);
     }
@@ -1270,6 +1279,7 @@ public class NetworkManager
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = this.node_config.timeout;
         settings.httpClientSettings.readTimeout = this.node_config.timeout;
+        settings.httpClientSettings.proxyURL = this.proxy_url;
 
         return new RestInterfaceClient!TransactionReceivedHandler(settings);
     }
