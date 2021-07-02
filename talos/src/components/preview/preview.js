@@ -16,7 +16,7 @@ class Preview extends Component {
     const { currentIndex, onToNextStep } = this.props
 
     return (
-      <div className={currentIndex === 0 ? styles.preview : styles.previewHidden}>
+      <div className={styles.preview + (currentIndex === 0 ? '' : ' hidden')}>
         <div className={styles.previewInner}>
           <div className={styles.container_sideLeft}>
             <div className={styles.sideLeftContainer}>
