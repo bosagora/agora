@@ -11,14 +11,12 @@
     &:not(.hidden) {
       @include animation-name(showFrame);
       @include animation-duration($animateEl);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
 
     &.hidden {
       @include animation-name(hideFrame);
       @include animation-duration($animateEl);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
   }
@@ -28,7 +26,6 @@
     &:not(.hidden) {
       @include animation-name(showDownPreviewFrame);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
 
@@ -37,7 +34,6 @@
         .container_sideLeft {
           @include animation-name(slideUpPreviewMainBanner);
           @include animation-duration(1.3s);
-          @include animation-iteration-count(1);
           @include animation-fill-mode(forwards);
           @include animation-timing-function(ease);
         }
@@ -47,7 +43,6 @@
           .container_secondTitle {
             @include animation-name(slideUpPreviewTitle);
             @include animation-duration(1.3s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }
@@ -55,7 +50,6 @@
           .container_content {
             @include animation-name(slideUpPreviewText);
             @include animation-duration(1.3s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }
@@ -63,7 +57,6 @@
           .container_nextButton {
             @include animation-name(slideUpPreviewButton);
             @include animation-duration(1.3s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }
@@ -78,7 +71,6 @@
       z-index: 5;
       @include animation-name(hideUpPreviewFrame);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
 
@@ -89,7 +81,6 @@
           .container_secondTitle {
             @include animation-name(slideDownOnHidePreviewTitle);
             @include animation-duration(1s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }
@@ -97,7 +88,6 @@
           .container_content {
             @include animation-name(slideDownOnHidePreviewText);
             @include animation-duration(1s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }
@@ -105,7 +95,6 @@
           .container_nextButton {
             @include animation-name(slideDownOnHidePreviewButton);
             @include animation-duration(1s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }

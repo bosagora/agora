@@ -14,14 +14,12 @@
     &:not(.hidden) {
       @include animation-name(showFrame);
       @include animation-duration($animateEl);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
 
     &.hidden {
       @include animation-name(hideFrame);
       @include animation-duration($animateEl);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
   }
@@ -33,7 +31,6 @@
       height: initial;
       @include animation-name(showUpStepsFrame);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
     }
@@ -44,7 +41,6 @@
       z-index: 4;
       @include animation-name(hideDownStepsFrame);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
     }
@@ -93,7 +89,6 @@
           margin-top: 61px;
           @include animation-name(slideUpOnViewTitle);
           @include animation-duration(1s);
-          @include animation-iteration-count(1);
           @include animation-fill-mode(forwards);
           @include animation-timing-function(ease);
         }
@@ -107,7 +102,6 @@
           margin-top: 6px;
           @include animation-name(slideUpOnViewDescription);
           @include animation-duration(0.9s);
-          @include animation-iteration-count(1);
           @include animation-fill-mode(forwards);
           @include animation-timing-function(ease);
         }
@@ -119,7 +113,6 @@
         @media (max-width: $maxMediaXS) {
           @include animation-name(slideUpOnViewStepsMenu);
           @include animation-duration(1s);
-          @include animation-iteration-count(1);
           @include animation-fill-mode(forwards);
           @include animation-timing-function(ease);
         }
@@ -188,7 +181,6 @@
           overflow: hidden;
           @include animation-name(slideUpOnViewInner);
           @include animation-duration(1s);
-          @include animation-iteration-count(1);
           @include animation-fill-mode(forwards);
           @include animation-timing-function(ease);
         }
@@ -206,7 +198,6 @@
           .container_controlsMobileInner {
             @include animation-name(slideUpOnViewInnerButtons);
             @include animation-duration(1.3s);
-            @include animation-iteration-count(1);
             @include animation-fill-mode(forwards);
             @include animation-timing-function(ease);
           }
