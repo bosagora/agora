@@ -32,9 +32,7 @@ export class Step extends Component {
 
     disable () {
         window.scrollTo(0, 0)
-        setTimeout(function () {
-            this.setState({ enabled: false })
-        }.bind(this), 1000)
+        this.setState({ enabled: false })
     }
 
     componentDidUpdate(prevProps) {
