@@ -14,14 +14,13 @@ class BanManagement extends Step {
   render() {
     const { currentIndex, prevIndex, navigationIndex } = this.props
     const params = {
-      className: "wrapperBanManagement",
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
       stepIndex: navigationIndex,
     }
 
     return this.state.enabled ?
-      <div className={buildStepClassName({ params })}>
+      <div className={"wrapperBanManagement " + buildStepClassName({ params })}>
         <BanManagementContent />
 
         <IsDesktopWrapper>
