@@ -376,8 +376,8 @@ LocalNode::findClosestVBlocking(SCPQuorumSet const& qset,
 Json::Value
 LocalNode::toJson(SCPQuorumSet const& qSet, bool fullKeys) const
 {
-    return toJson(qSet, [&](NodeID const& k) {
-        return mDriver.toStrKey(k, fullKeys);
+    return toJson(
+        qSet, [&](NodeID const& k) { return mDriver.toStrKey(k, fullKeys);
     });
 }
 
