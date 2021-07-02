@@ -14,14 +14,13 @@ class NetworkOptions extends Step {
   render() {
     const { currentIndex, prevIndex, navigationIndex } = this.props
     const params = {
-      className: "wrapperNetworkOptions",
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
       stepIndex: navigationIndex,
     }
 
     return this.state.enabled ?
-      <div className={buildStepClassName({ params })}>
+      <div className={"wrapperNetworkOptions " + buildStepClassName({ params })}>
         <NetworkOptionsContent />
 
         <IsDesktopWrapper>

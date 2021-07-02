@@ -25,14 +25,13 @@ class AdministrativeInterface extends Step {
   render() {
       const { currentIndex, prevIndex, navigationIndex } = this.props
     const params = {
-      className: "wrapperAdministrativeInterface",
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
       stepIndex: navigationIndex,
     }
 
     return this.state.enabled ?
-      <div className={buildStepClassName({ params })}>
+      <div className={"wrapperAdministrativeInterface " + buildStepClassName({ params })}>
         <AdministrativeInterfaceContent />
 
         <IsDesktopWrapper>

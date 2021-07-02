@@ -1,59 +1,56 @@
 @import "../base.scss";
 
-[class*='-step_animation'] {
+@media (max-width: $maxMediaXS) {
 
-  @media (max-width: $maxMediaXS) {
-
-    &[class*='-ShowPrev'] {
-      position: relative;
-      @include animation-name(showPrev);
-      @include animation-duration($animateSteps);
-      @include animation-fill-mode(forwards);
-      @include animation-timing-function(ease);
-    }
-
-    &[class*='-ShowNext'] {
-      position: relative;
-      @include animation-name(showNext);
-      @include animation-duration($animateSteps);
-      @include animation-fill-mode(forwards);
-      @include animation-timing-function(ease);
-    }
-
-    &[class*='-HideNext'] {
-      position: absolute;
-      top: 0px;
-      left: 0px;
-      width: 100%;
-      @include animation-name(hideNext);
-      @include animation-duration($animateSteps);
-      @include animation-fill-mode(forwards);
-      @include animation-timing-function(ease);
-    }
-
-    &[class*='-HidePrev'] {
-      position: absolute;
-      top: 0px;
-      left: 0px;
-      width: 100%;
-      @include animation-name(hidePrev);
-      @include animation-duration($animateSteps);
-      @include animation-fill-mode(forwards);
-      @include animation-timing-function(ease);
-    }
+  &.ShowPrev {
+    position: relative;
+    @include animation-name(showPrev);
+    @include animation-duration($animateSteps);
+    @include animation-fill-mode(forwards);
+    @include animation-timing-function(ease);
   }
 
-  @media (min-width: $minMediaXS) {
-    &[class*='-IsCurrent'] {
-      @include animation-name(showFrame);
-      @include animation-duration($animateEl);
-      @include animation-fill-mode(forwards);
-    }
+  &.ShowNext {
+    position: relative;
+    @include animation-name(showNext);
+    @include animation-duration($animateSteps);
+    @include animation-fill-mode(forwards);
+    @include animation-timing-function(ease);
+  }
 
-    &[class*='-IsHidden'] {
-      @include animation-name(hideFrame);
-      @include animation-duration($animateEl);
-      @include animation-fill-mode(forwards);
-    }
+  &.HideNext {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    @include animation-name(hideNext);
+    @include animation-duration($animateSteps);
+    @include animation-fill-mode(forwards);
+    @include animation-timing-function(ease);
+  }
+
+  &.HidePrev {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    @include animation-name(hidePrev);
+    @include animation-duration($animateSteps);
+    @include animation-fill-mode(forwards);
+    @include animation-timing-function(ease);
+  }
+}
+
+@media (min-width: $minMediaXS) {
+  &.IsCurrent {
+    @include animation-name(showFrame);
+    @include animation-duration($animateEl);
+    @include animation-fill-mode(forwards);
+  }
+
+  &.IsHidden {
+    @include animation-name(hideFrame);
+    @include animation-duration($animateEl);
+    @include animation-fill-mode(forwards);
   }
 }
