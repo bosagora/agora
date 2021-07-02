@@ -47,26 +47,16 @@ export const request = (data) => {
 
     api.post('/writeConfig', data)
       .then((result) => {
-
-        setTimeout(function () {
-          dispatch(responseRequest())
-        }, 2000)
+        dispatch(responseRequest())
       })
       .catch((error) => {
-        setTimeout(function () {
-          // Somehow this is a user error (e.g. bad config)
-          if (error.response)
-            dispatch(requestFailureRequest(error.response.data.status))
-          else if (error.request)
-            dispatch(requestFailureRequest("No response received from the server"))
-          else
-            dispatch(requestFailureRequest("Internal error (" + error.message + ")"))
-        }, 2000)
+        // Somehow this is a user error (e.g. bad config)
+        if (error.response)
+          dispatch(requestFailureRequest(error.response.data.status))
+        else if (error.request)
+          dispatch(requestFailureRequest("No response received from the server"))
+        else
+          dispatch(requestFailureRequest("Internal error (" + error.message + ")"))
       })
-
-
-    // setTimeout(function () {
-    //   dispatch(responseRequest())
-    // }, 4000)
   }
 }
