@@ -1,7 +1,6 @@
 @import "./../../base.scss";
 
-.preview,
-.previewHidden {
+.preview {
   display: flex;
   position: relative;
   background-color: $color-white;
@@ -9,14 +8,14 @@
 
   @media (min-width: $minMediaXS) {
 
-    &.preview {
+    &:not(.hidden) {
       @include animation-name(showFrame);
       @include animation-duration($animateEl);
       @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
 
-    &.previewHidden {
+    &.hidden {
       @include animation-name(hideFrame);
       @include animation-duration($animateEl);
       @include animation-iteration-count(1);
@@ -26,7 +25,7 @@
 
   @media (max-width: $maxMediaXS) {
 
-    &.preview {
+    &:not(.hidden) {
       @include animation-name(showDownPreviewFrame);
       @include animation-duration($animateSteps);
       @include animation-iteration-count(1);
@@ -72,7 +71,7 @@
       }
     }
 
-    &.previewHidden {
+    &.hidden {
       position: fixed;
       bottom: 0px;
       left: 0px;

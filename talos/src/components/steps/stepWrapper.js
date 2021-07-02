@@ -33,7 +33,7 @@ class StepWrapper extends Step {
 
     return this.state.enabled
       ?
-      <div className={currentIndex > 0 ? styles.stepWrapper : styles.stepWrapperHidden}>
+      <div className={styles.stepWrapper + (currentIndex > 0 ? '' : ' hidden')}>
         <div className={styles.stepWrapperInner}>
           <div className={styles.container_leftSide}>
             <div className={styles.container_title}>
