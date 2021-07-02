@@ -1,30 +1,29 @@
 import React from 'react';
 import { get } from "lodash"
 
-import { durationItems } from "./../banManagement/static.banDuration"
-import { maxFailedItems } from "./../banManagement/static.maxFailedItems"
+import { durationItems, maxFailedItems } from "components/config/steps/banman/static"
 
-import { withSecretSeed } from "../secretSeed/Container"
-import { withNetworkOptions } from "../networkOptions/Container"
-import { withBanManagement } from "../banManagement/Container"
-import { withAdministrativeInterface } from "../administrativeInterface/Container"
-import { withAppState } from "../app/State"
+import { withValidator } from "components/config/steps/validator/Container"
+import { withNetwork } from "components/config/steps/network/Container"
+import { withBanman } from "components/config/steps/banman/Container"
+import { withAdmin } from "components/config/steps/admin/Container"
+import { withAppState } from "components/app/State"
 
-import ButtonReset from "../items/controls/buttonReset"
+import ButtonReset from "components/items/controls/buttonReset"
 
 const ButtonRequest = props => {
 
-  const handleValidateBanManagement = props => {
+  const handleValidateBanman = props => {
     const {
-      administrativeInterface,
+      admin,
       onRequest,
-      onChangeAdministrativeInterfaceItems
+      onChangeAdminItems
     } = props
     var isValidStep = true
 
-    Object.keys(administrativeInterface.stepItems).map(key => {
+    Object.keys(admin.stepItems).map(key => {
 
-      const item = administrativeInterface.stepItems[key]
+      const item = admin.stepItems[key]
       if (!!item.isValid) {
         if (!item.isValid)
           isValidStep = false
@@ -33,31 +32,31 @@ const ButtonRequest = props => {
         isValidStep = false
 
         if (typeof item.isValid === "undefined")
-          onChangeAdministrativeInterfaceItems(key, !!item.value ? item.value : "")
+          onChangeAdminItems(key, !!item.value ? item.value : "")
       }
 
       return null
     })
 
-    const dns = get(props, ["networkOptions", "stepItems", "dns", "value"], [])
+    const dns = get(props, ["network", "stepItems", "dns", "value"], [])
 
       if (isValidStep) {
-          const network = get(props, ["networkOptions", "stepItems", "network", "value"], []).map(item => item.value);
+          const network = get(props, ["network", "stepItems", "network", "value"], []).map(item => item.value);
 
           let config = {
               validator: {
-                  enabled: get(props, ["secretSeed", "stepItems", "isvalidator", "value"]),
+                  enabled: get(props, ["validator", "stepItems", "isvalidator", "value"]),
               },
 
               dns: dns.length > 0 ? dns.map(item => item.value) : ["seed.bosagora.io"],
 
               banman: {
-                  max_failed_requests: get(props, ["banManagement", "stepItems", "maxfailedrequests", "value"], maxFailedItems[1].value),
-                  ban_duration: get(props, ["banManagement", "stepItems", "banduration", "seconds"], durationItems[0].seconds),
+                  max_failed_requests: get(props, ["banman", "stepItems", "maxfailedrequests", "value"], maxFailedItems[1].value),
+                  ban_duration: get(props, ["banman", "stepItems", "banduration", "seconds"], durationItems[0].seconds),
               },
 
               admin: {
-                  enabled: !get(props, ["administrativeInterface", "stepItems", "enabled", "value"], false),
+                  enabled: !get(props, ["admin", "stepItems", "enabled", "value"], false),
               },
           };
 
@@ -66,24 +65,24 @@ const ButtonRequest = props => {
 
           if (config.validator.enabled)
           {
-              config.validator.seed = get(props, ["secretSeed", "stepItems", "seed", "value"], null);
+              config.validator.seed = get(props, ["validator", "stepItems", "seed", "value"], null);
               // TODO: Make configurable or remove
               config.validator.registry_address = "https://registry.bosagora.io";
           }
 
           if (config.admin.enabled)
           {
-              config.admin.address = get(props, ["administrativeInterface", "stepItems", "address", "value"], "");
-              config.admin.port = get(props, ["administrativeInterface", "stepItems", "port", "value"], 1);
+              config.admin.address = get(props, ["admin", "stepItems", "address", "value"], "");
+              config.admin.port = get(props, ["admin", "stepItems", "port", "value"], 1);
           }
 
           onRequest(config);
       }
   }
 
-  return <ButtonReset onClick={handleValidateBanManagement.bind(this, props)}>
+  return <ButtonReset onClick={handleValidateBanman.bind(this, props)}>
     {props.children}
   </ButtonReset>
 }
 
-export default withAppState(withAdministrativeInterface(withBanManagement(withSecretSeed(withNetworkOptions(ButtonRequest)))))
+export default withAppState(withAdmin(withBanman(withValidator(withNetwork(ButtonRequest)))))

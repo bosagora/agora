@@ -1,0 +1,47 @@
+@import "base.scss";
+
+.wrapValidatorContent {
+  .chooseTypeValidator {
+    display: flex;
+    margin: -40px -20px 0px;
+
+    @media (max-width: $maxMediaXS) {
+      display: block;
+      margin: -20px -10px 0px;
+    }
+
+    .chooseTypeItemWrapper {
+      padding: 40px 20px 0px 20px;
+
+      @media (max-width: $maxMediaXS) {
+        padding: 20px 10px 0px 10px;
+      }
+    }
+  }
+
+  .container_typeValidator {
+    margin-top: 48px;
+
+
+    @media (max-width: $maxMediaMD) {
+      margin-top: 40px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 16px;
+    }
+  }
+
+  .container_validatorInput {
+    margin-top: 80px;
+
+
+    @media (max-width: $maxMediaMD) {
+      margin-top: 40px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 28px;
+    }
+  }
+}

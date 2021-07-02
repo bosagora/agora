@@ -5,17 +5,17 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import { withStyles } from '@material-ui/core/styles';
 
-import { REQUEST } from "../app/Action"
-import { withAppState } from "../app/State"
+import { REQUEST } from "components/app/Action"
+import { withAppState } from "components/app/State"
 
-import Loader from "../items/static/loader"
-import PrevButton from "../items/static/prevButton"
-import NextButton from "../items/static/nextButton"
+import Loader from "components/items/static/loader"
+import PrevButton from "components/items/static/prevButton"
+import NextButton from "components/items/static/nextButton"
 import ButtonRequest from "./buttonRequest"
 import ButtonCancelRequest from "./buttonCancelRequest"
-import { isDesktop } from "../../services/responsive.service"
+import { isDesktop } from "services/responsive.service"
 
-import variables from './../../values.module.scss'
+import variables from 'values.module.scss'
 import styles from "./requestDialog.module.scss"
 
 const CssDialog = withStyles({
