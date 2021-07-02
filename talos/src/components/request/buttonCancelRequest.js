@@ -1,7 +1,7 @@
 import React from 'react';
-import { withAppState } from "../app/State"
+import { withAppState } from "components/app/State"
 
-import ButtonReset from "../items/controls/buttonReset"
+import ButtonReset from "components/items/controls/buttonReset"
 
 const ButtonCancelRequest = props => {
   const {onRequestBegin} = props

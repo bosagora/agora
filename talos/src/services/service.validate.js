@@ -8,7 +8,7 @@ export const validateNetwork = string => {
     return reqExp.test(string);
 }
 
-export const validatSecretKey = string => {
+export const validateSecretKey = string => {
     const reqExp = /^S[0-9a-z]{55}$/;
     return reqExp.test(string);
 }

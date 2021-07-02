@@ -1,0 +1,26 @@
+@import "base.scss";
+
+.counterWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: -20px -10px 0px;
+
+  @media (max-width: $maxMediaMD) {
+    flex-wrap: wrap;
+    max-width: 500px;
+  }
+
+  @media (max-width: $maxMediaXS) {
+    max-width: 350px;
+    margin: -10px -5px 0px;
+  }
+
+  .counterItemWrapper {
+    padding: 20px 10px 0px;
+
+    @media (max-width: $maxMediaXS) {
+      padding: 8px 4px 0px;
+    }
+  }
+}
