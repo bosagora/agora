@@ -8,7 +8,6 @@
       position: relative;
       @include animation-name(showPrev);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
     }
@@ -17,7 +16,6 @@
       position: relative;
       @include animation-name(showNext);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
     }
@@ -29,7 +27,6 @@
       width: 100%;
       @include animation-name(hideNext);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
     }
@@ -41,7 +38,6 @@
       width: 100%;
       @include animation-name(hidePrev);
       @include animation-duration($animateSteps);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
       @include animation-timing-function(ease);
     }
@@ -51,14 +47,12 @@
     &[class*='-IsCurrent'] {
       @include animation-name(showFrame);
       @include animation-duration($animateEl);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
 
     &[class*='-IsHidden'] {
       @include animation-name(hideFrame);
       @include animation-duration($animateEl);
-      @include animation-iteration-count(1);
       @include animation-fill-mode(forwards);
     }
   }
