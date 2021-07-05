@@ -1,22 +1,21 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withAppState } from "components/app/State"
 import { withValidator } from "./steps/validator/Container"
 import { withNetwork } from "./steps/network/Container"
 import { withBanman } from "./steps/banman/Container"
-import { withAdmin } from "./steps/admin/Container"
 
 import ButtonToNextStep from "components/items/controls/buttonToNextStep"
 import NextButton from "components/items/static/nextButton"
 import ButtonRequest from "components/request/buttonRequest"
 
 const NextStepControl = props => {
-  const { currentIndex } = props
+  const { currentIndex, onToNextStep } = props
 
   switch (currentIndex) {
     case steps.validator:
       return <ButtonToNextStep
+        onToNextStep={onToNextStep}
         items={props.validator.stepItems}
         handleChange={props.onChangeValidatorItems}
       >
@@ -25,6 +24,7 @@ const NextStepControl = props => {
 
     case steps.network:
       return <ButtonToNextStep
+        onToNextStep={onToNextStep}
         items={props.network.stepItems}
         handleChange={props.onChangeNetworkItems}
       >
@@ -33,6 +33,7 @@ const NextStepControl = props => {
 
     case steps.banman:
       return <ButtonToNextStep
+        onToNextStep={onToNextStep}
         items={props.banman.stepItems}
         handleChange={props.onChangeBanmanItems}
       >
@@ -50,4 +51,4 @@ const NextStepControl = props => {
 
 }
 
-export default withAppState(withValidator(withNetwork(withBanman(withAdmin(NextStepControl)))))
+export default withValidator(withNetwork(withBanman(NextStepControl)))

@@ -12,7 +12,7 @@ import Loader from "components/items/static/loader"
 import PrevButton from "components/items/static/prevButton"
 import NextButton from "components/items/static/nextButton"
 import ButtonRequest from "./buttonRequest"
-import ButtonCancelRequest from "./buttonCancelRequest"
+import ButtonReset from "components/items/controls/buttonReset"
 import { isDesktop } from "services/responsive.service"
 
 import variables from 'values.module.scss'
@@ -78,7 +78,7 @@ const isOpenDialog = (requestState) => {
 }
 
 const RequestDialog = props => {
-  const { requestState, requestResult } = props
+  const { requestState, requestResult, onRequestBegin } = props
 
   return (
     <CssDialog
@@ -101,9 +101,9 @@ const RequestDialog = props => {
           <DialogContent>
             <DialogTitle>Error: {requestResult.data} </DialogTitle>
             <DialogActions className="errorActions">
-              <ButtonCancelRequest>
-                <PrevButton>Close</PrevButton>
-              </ButtonCancelRequest>
+            <ButtonReset onClick={onRequestBegin}>
+              <PrevButton>Close</PrevButton>
+            </ButtonReset>
 
               <ButtonRequest>
                 <NextButton>Retry</NextButton>
@@ -119,9 +119,9 @@ const RequestDialog = props => {
           <DialogContent>
             <DialogTitle>Success</DialogTitle>
             <DialogActions className="successActions">
-              <ButtonCancelRequest>
-                <NextButton>Continue</NextButton>
-              </ButtonCancelRequest>
+            <ButtonReset onClick={onRequestBegin}>
+              <NextButton>Continue</NextButton>
+            </ButtonReset>
             </DialogActions>
           </DialogContent>
           : null

@@ -1,7 +1,5 @@
 import React from 'react';
 
-import { withAppState } from "components/app/State"
-
 import { Frame } from 'components/Frame'
 import { buildStepClassName } from 'services/service.step'
 import AdminContent from "./Content"
@@ -22,7 +20,7 @@ class AdminStep extends Frame {
   }
 
   render() {
-      const { currentIndex, prevIndex, navigationIndex } = this.props
+      const { currentIndex, prevIndex, navigationIndex, onToNextStep, onToPrevStep } = this.props
     const params = {
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
@@ -35,7 +33,7 @@ class AdminStep extends Frame {
 
         <IsDesktopWrapper>
           <div className="container_controlsDesktop">
-            <StepsControls />
+            <StepsControls currentIndex={currentIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
           </div>
         </IsDesktopWrapper>
 
@@ -45,4 +43,4 @@ class AdminStep extends Frame {
   }
 }
 
-export default withAppState(AdminStep)
+export default AdminStep;

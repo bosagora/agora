@@ -1,8 +1,6 @@
 import React from 'react';
 import { steps } from "./static"
 
-import { withAppState } from "components/app/State"
-
 import ButtonStep from "components/items/controls/buttonStep"
 
 import styles from './desktopMenuList.module.scss'
@@ -31,4 +29,4 @@ const DesktopMenuList = props => {
   )
 }
 
-export default withAppState(DesktopMenuList)
+export default DesktopMenuList;

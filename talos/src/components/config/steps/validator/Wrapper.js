@@ -1,7 +1,6 @@
 import React from 'react'
 
 import { Frame } from "components/Frame"
-import { withAppState } from "components/app/State"
 import { buildStepClassName } from 'services/service.step'
 import ValidatorContent from "./Content"
 import IsDesktopWrapper from "utils/isDesktopWrapper"
@@ -12,7 +11,7 @@ import "services/service.step.scss"
 
 class ValidatorStep extends Frame {
   render() {
-    const { currentIndex, prevIndex, navigationIndex } = this.props
+    const { currentIndex, prevIndex, navigationIndex, onToNextStep, onToPrevStep } = this.props
     const params = {
       currentIndex: currentIndex,
       prevStepIndex: prevIndex,
@@ -25,7 +24,7 @@ class ValidatorStep extends Frame {
 
         <IsDesktopWrapper>
           <div className="container_controlsDesktop">
-            <StepsControls />
+            <StepsControls currentIndex={currentIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
           </div>
         </IsDesktopWrapper>
       </div>
@@ -33,4 +32,4 @@ class ValidatorStep extends Frame {
   }
 }
 
-export default withAppState(ValidatorStep)
+export default ValidatorStep;

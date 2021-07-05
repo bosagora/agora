@@ -32,7 +32,6 @@
  */
 import React from 'react';
 
-import Frame from "components/Frame"
 import Intro from "components/intro/intro"
 import ConfigPage from "components/config/Wrapper"
 
@@ -41,11 +40,8 @@ import './app.scss'
 const App = () => {
     return (
         <div>
-            <Frame navigationIndex={0}>
-                <Intro />
-            </Frame>
-
-            <ConfigPage />
+            <Intro navigationIndex={0} />
+            <ConfigPage navigationIndex={1} />
         </div>
     )
 }
