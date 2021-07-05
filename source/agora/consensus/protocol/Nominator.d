@@ -184,14 +184,11 @@ extern(D):
         this.network = network;
         this.empty_value = ConsensusData.init.serializeFull().toVec();
         this.kp = key_pair;
-        auto node_id = NodeID(key_pair.address.data[][0 .. NodeID.sizeof]);
-        const IsValidator = true;
-        const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
-        this.scp = createSCP(this, node_id, IsValidator, no_quorum);
         this.taskman = taskman;
         this.ledger = ledger;
         this.enroll_man = enroll_man;
         this.scp_envelope_store = new SCPEnvelopeStore(cacheDB);
+        this.createSCPObject();
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
@@ -213,6 +210,40 @@ extern(D):
             auto env = this.queued_envelopes.front;
             this.queued_envelopes.removeFront();
             this.handleSCPEnvelope(env);
+        }
+    }
+
+    /***************************************************************************
+
+        Create Stellar SCP object
+
+        A validator creates SCP object with the UTXO for enrollment. This
+        checks that the UTXO key for enrollment exists and new SCP should be
+        created because of new enrollment of this node.
+
+    ***************************************************************************/
+
+    public void createSCPObject () nothrow @safe
+    {
+        try
+        {
+            // TODO: We should apply the situation where this validator has
+            // enrolled with another UTXO after its previous enrollment expired.
+            auto self_enroll = this.enroll_man.getEnrollmentKey();
+            if (this.scp == null && self_enroll != Hash.init)
+            {
+                auto node_id = NodeID(this.kp.address.data[][0 .. NodeID.sizeof]);
+                const IsValidator = true;
+                const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
+                () @trusted {
+                    this.scp = createSCP(this, node_id, IsValidator, no_quorum);
+                }();
+            }
+        }
+        catch (Exception e)
+        {
+            log.fatal("createSCPObject: Exception thrown: {}", e);
+            assert(0);
         }
     }
 
@@ -309,7 +340,10 @@ extern(D):
     public void stopNominationRound (Height height) @safe nothrow
     {
         this.is_nominating = false;
-        () @trusted { this.scp.stopNomination(height); }();
+        () @trusted {
+            if (this.scp != null)
+                this.scp.stopNomination(height);
+        }();
 
         foreach (timer; this.active_timers)
         {
