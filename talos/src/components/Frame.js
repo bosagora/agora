@@ -25,7 +25,7 @@ export class Frame extends Component {
 
     //
     isEnabled (props) {
-        return props.currentIndex === props.navigationIndex;
+        return !this.isDisabled(props);
     }
 
     //
