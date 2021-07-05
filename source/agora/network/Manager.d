@@ -983,8 +983,8 @@ public class NetworkManager
 
     /***************************************************************************
 
-        Retrieve any missing block signatures from last 3 blocks from the
-        connected nodes.
+        Retrieve any missing block signatures from the connected nodes for
+        blocks since the last fee payment block.
 
     ***************************************************************************/
 
@@ -995,15 +995,13 @@ public class NetworkManager
         import std.range;
         import std.typecons;
 
-        // block count to check before the current block
-        const recent_block_count = 2;
-
         size_t[Height] signed_validators;
 
         try
         {
-            auto start_height = Height(max(1, ledger.getBlockHeight - recent_block_count));
-            BlockHeader[] headers = ledger.getBlocksFrom(start_height).map!(block => block.header).array;
+            auto start_height = ledger.getLastPaymentBlock();
+            log.trace("Catchup signatures since block height {}", start_height);
+            auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
             size_t[Height] enrolled_validators = headers.map!(header =>
                 tuple(header.height, ledger.enrollment_manager().getCountOfValidators(header.height))).assocArray;
 
