@@ -17,7 +17,7 @@ class Intro extends Component {
 
     return (
       <div className={styles.intro + (currentIndex === 0 ? '' : ' hidden')}>
-        <div className={styles.previewInner}>
+        <div className={styles.introInner}>
           <div className={styles.container_sideLeft}>
             <div className={styles.sideLeftContainer}>
               <div className={styles.container_mainTitle}>
