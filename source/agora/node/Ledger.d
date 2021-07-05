@@ -1466,6 +1466,24 @@ public class ValidatingLedger : Ledger
         return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
     }
 
+    /***************************************************************************
+
+        Get an UTXO, no double-spend protection.
+
+        Params:
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
+            value = the UTXO
+
+        Returns:
+            true if the UTXO was found
+
+    ***************************************************************************/
+
+    public bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
+    {
+        return this.utxo_set.peekUTXO(utxo, value);
+    }
+
     version (unittest):
 
     private bool externalize (ConsensusData data,

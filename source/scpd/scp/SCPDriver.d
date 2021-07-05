@@ -135,9 +135,8 @@ nothrow:
     // `toStrKey` returns StrKey encoded string representation
     std_string toStrKey(ref const(NodeID) pk, bool fullKey = true) const
     {
-        import agora.crypto.Key : PublicKey;
         try
-            return std_string(PublicKey(pk[]).toString());
+            return std_string(Hash(pk).toString());
         catch (Exception exc)
         {
             scope (failure) assert(0);
@@ -150,7 +149,7 @@ nothrow:
     {
         import agora.crypto.Key : PublicKey;
         try
-            return std_string(PublicKey(pk[]).toString());
+            return std_string(Hash(pk).toString());
         catch (Exception exc)
         {
             scope (failure) assert(0);

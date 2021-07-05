@@ -696,7 +696,7 @@ private struct QuorumConfigFmt
         {
             formattedWrite(sink, "{ thresh: %s, nodes: %s, subqs: %s }",
                 this.data.threshold,
-                this.data.nodes.map!(node => PubKeyFmt(node)),
+                this.data.nodes.map!(node => HashFmt(node)),
                 this.data.quorums.map!(subq => QuorumConfigFmt(subq)));
         }
         catch (Exception ex)
@@ -710,17 +710,17 @@ private struct QuorumConfigFmt
 unittest
 {
     auto quorum = immutable(QuorumConfig)(2,
-        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
-         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
+        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
+         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
         [immutable(QuorumConfig)(3,
-            [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
-             PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
+            [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
+             Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
             [immutable(QuorumConfig)(4,
-                [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
-                 PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2"),
-                 PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")])])]);
+                [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
+                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd"),
+                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")])])]);
 
-    static immutable Res1 = `{ thresh: 2, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2], subqs: [{ thresh: 3, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2], subqs: [{ thresh: 4, nodes: [boa1xp9rtxss...fs7r, boa1xpc2ugml...p0w2, boa1xpc2ugml...p0w2], subqs: [] }] }] }`;
+    static immutable Res1 = `{ thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [{ thresh: 3, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [{ thresh: 4, nodes: [0x11c6...ebf5, 0xdfca...e5fd, 0xdfca...e5fd], subqs: [] }] }] }`;
 
     assert(Res1 == format("%s", prettify(quorum)),
                    format("%s", prettify(quorum)));

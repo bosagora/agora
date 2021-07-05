@@ -25,6 +25,7 @@ import agora.consensus.data.Block;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
@@ -229,7 +230,7 @@ extern(D):
             auto self_enroll = this.enroll_man.getEnrollmentKey();
             if (this.scp == null && self_enroll != Hash.init)
             {
-                auto node_id = NodeID(this.kp.address.data[][0 .. NodeID.sizeof]);
+                auto node_id = NodeID(self_enroll[][0 .. NodeID.sizeof]);
                 const IsValidator = true;
                 const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
                 () @trusted {
@@ -575,7 +576,15 @@ extern(D):
             return;  // slot was already externalized or envelope is too new
         }
 
-        const PublicKey public_key = PublicKey(envelope.statement.nodeID[]);
+        const Hash utxo = envelope.statement.nodeID;
+        UTXO utxo_value;
+        if (!this.ledger.peekUTXO(utxo, utxo_value))
+        {
+            log.trace("Couldn't find UTXO {} at height {} to validate envelope's signature",
+                utxo, last_block.header.height);
+            return;
+        }
+        const PublicKey public_key = utxo_value.output.address;
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         if (!public_key.isValid())
         {
@@ -1520,38 +1529,38 @@ private struct SCPEnvelopeHash
     auto getStHash () @trusted { return SCPStatementHash(&st); }
 
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x5364136f3ae0093a65e9371a66368512bb80b748ad4362eea14c16eb0c1276eee842cf88cd1116dfe833496e4e627e315f6b5568f0d1e18dc93d43692c5c13d0"));
+        "0xe085bd947f8296c57cc6cf14ff020932780676ea6ca4a9d9831dde6f6c764c890c4487186c7b3693f423da26787cb6da6d081d364a2db141296741778fcc1a95"));
 
     prep.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x8fe1c781219cc7bdf803ca4ac734c9c2e29d1d4de7184dc04d0da7eab5e8d3f2bc29a0df230b984ff652c98a142b3a5e2516f3fa9d4e0631e4a90318d12aedfc"));
+        "0x478942c42b1d514d269f2ce3b266626d4ebd692fcec5e637ef1d08664956fcbd6f05b115252a0b99d34978d0daa7e994b101b0b56bb75992b0ed95797416a8c4"));
 
     prep_prime.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x48d0cc62dc9a015c5c4b941a91cff376b0b5cb52897027ac8ad79aa8a29246e59a11dfcde18ad8e94979f4051fe3525cb0a0852e7d26595ca4ac98f3dec4fe20"));
+        "0xf84b10d2cf3251a7d334686d1316f5c9fbcdb59031612c3c6f0e4a94882666afdc1b62d4ed5fb6af235518e35cd0b0b626644fdf337442ab4e75e9d8299dbf29"));
 
     () @trusted { st.pledges.prepare_.prepared = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x308409f19835412fca6c22f95bf2097fd292f5190ac35db78907ce76a56b435817d7b912f5ca23e89a9793d59953506035323f7f92c63434eb0c1116fe667eb0"));
+        "0x0144df2ed8fc66e7a15abb54aac8fc437d3427999daff481403c585d4657a16902c0aef9207055eaf44009dac580f6465efd4cf5a5ab3c02934a952d7536b715"));
 
     () @trusted { st.pledges.prepare_.preparedPrime = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xcdf64b3616112b53c9e0d422a876f1644d69a15b638a1341a29dc5362c827d2d57e0e5f7a5e4a25a0b475167edd6fbe0b01feb0599342c4148a83ac1d1a70a4d"));
+        "0xb9f0c756c5ef9ee07e37bb75467efa0c7c10b594b4d0fd0e508c9db8867c06d7886b0df95164f309d141e99db1e22f5eed390b261a953335210526f3f3c5a665"));
 
     () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x0664bde2dd296bcc77d039dfd17495dc90a1c478777acfbd09de70298dda4c96d8266f61746e980838e1f404c9eb266e213d06904c4c3c21211f0f0f829d3fa6"));
+        "0x71f43018c8ca9742ec8e90983cc19fdec13a1c8c3e3c4797ea1b6239caae0c8441905cb39bcddc84b95e8c94c08bb1129c5f0b664001c9feab7af50efe99b173"));
 
     () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x99b6963f5d75c2edf026bfc440a0e400e116f1ef332224f144fc8703356daed752167738a55ce7be4787eb15a58f11ed31df2cfb1586b0e5fca65090b8853285"));
+        "0xdf2973102da2b5d037c28a98567320d1f3b55b40ee1b4e72621be103f5adbbe24d408a593f84b09119eb90019ffea2c82736a45f26f8eff05aea63542da7c69e"));
 
     () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x51e9f93b9acd323694d0192e7ff10fe2d9aa2a6fbc55877aa88b8ca29efcc119b1d8113961c71657e359c5aa8fc6a195db589b974a7bc030ca81e6b80f415e95"));
+        "0x67869b462a3a7f9605891c131b3ef07c05491d4226c8dcd372461e56f499874fbd675c2de4fe5c416afd3072546688d9d6dad98aa88bba8a9f4109a56f82252a"));
 
     SCPEnvelope env;
     auto getEnvHash () @trusted { return SCPEnvelopeHash(&env); }
@@ -1559,12 +1568,12 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xcbebb1c5901e6d7cd593b4608d9815dbb723e92b27abbfe863ff31a422b91da54198b33f03195a84682108504b03a98d0b87cd6c7bc34b2265f686cce7ea21e3"));
+        "0x8f2b4abb0f946f92c3f7c9b0a0316e493cdf764a6d662203c97e9d5cf5a147e1dc9948491ec5f27551d82b64a600835ca18739516519203c0c8837f943034d44"));
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x77d1b82e4ccff42730d9f0d11e7629bc518abb9258954e4060e6f843ea561abaacab37ba9af571c0bd27f22302f579970b4b5dd0d3f34b91a79526a7041982ef"));
+        "0x14c8000eb81441eac3e9ac62ec475b3fe40bc88a1a88d4929ad974c61505ed7c9c7652b42744c081ca9388257e466970b724eb7f6c74a0eee58887157521f2af"));
 
     // import agora.utils.Test;
     // import std.stdio;
@@ -1576,12 +1585,12 @@ private struct SCPEnvelopeHash
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x5ee8649f04528b083a2bd03d666d7ced845681be58f93bdc5964cf3af2bc1f7c19511084c698f0d500ae4c6c9a38f5d0ecc41fa42f68dc5f355e8f518e793a7d"));
+        "0xc0ad0386ca5a9653db928716d25447ea3e3adfa7fac386f566d73ec0adf3a1faa6626e5cee021115a2e40aa759ec869e2b881bb73d7fac4054e83fa21080eb7a"));
 }
 
 // Size assumptions made by this module
 unittest
 {
-    static assert(NodeID.sizeof == PublicKey.sizeof);
+    static assert(NodeID.sizeof == Hash.sizeof);
     static assert(StellarHash.sizeof == Hash.sizeof);
 }

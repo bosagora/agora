@@ -43,7 +43,6 @@ CPPSIZEOF(SCPEnvelope)
 CPPSIZEOF(SCPQuorumSet)
 
 /// scpd.types.Stellar_types
-CPPSIZEOF(Hash)
 CPPSIZEOF(NodeID)
 // Signature and hash are both aliases to uint512
 static_assert(std::is_same<Signature, Hash>::value, "Signature and Hash must be the same type");

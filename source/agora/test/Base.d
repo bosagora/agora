@@ -1804,9 +1804,13 @@ public class TestValidatorNode : Validator, TestAPI
             this.ledger.getLastBlock().header.random_seed :
             this.ledger.getBlocksFrom(height).front.header.random_seed;
         QuorumConfig[] quorums;
-        foreach (pub_key; pub_keys)
-            quorums ~= buildQuorumConfig(pub_key, utxos,
+        foreach (utxo; utxos)
+        {
+            UTXO utxo_value;
+            this.utxo_set.peekUTXO(utxo, utxo_value);
+            quorums ~= buildQuorumConfig(utxo, utxos,
                 this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
+        }
         return quorums;
     }
 }
