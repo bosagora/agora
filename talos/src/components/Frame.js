@@ -6,8 +6,6 @@
  */
 import { Component } from 'react';
 
-import { withAppState } from "components/app/State"
-
 export class Frame extends Component {
 
     constructor(props) {
@@ -53,4 +51,4 @@ export class Frame extends Component {
     }
 }
 
-export default withAppState(Frame)
+export default Frame;

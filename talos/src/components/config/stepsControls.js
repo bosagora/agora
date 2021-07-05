@@ -1,18 +1,23 @@
 import React from 'react';
 
-import PrevStepControl from "./prevStepControl"
+import ButtonReset from "components/items/controls/buttonReset"
+import PrevButton from "components/items/static/prevButton"
 import NextStepControl from "./nextStepControl"
 
 import styles from './stepsControls.module.scss'
 
-const StepsControls = () => {
+const StepsControls = (props) => {
+  const { currentIndex, onToNextStep, onToPrevStep } = props;
+
   return (
     <div className={styles.container_stepControls}>
       <div className={styles.container_prevStepButton}>
-        <PrevStepControl />
-      </div>
+        <ButtonReset onClick={onToPrevStep}>
+          <PrevButton>Previous</PrevButton>
+        </ButtonReset>
+        </div>
       <div className={styles.container_nextStepButton}>
-        <NextStepControl />
+        <NextStepControl currentIndex={currentIndex} onToNextStep={onToNextStep} />
       </div>
     </div>
   )

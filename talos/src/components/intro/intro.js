@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React from 'react';
 
 import { withAppState } from "components/app/State"
 
@@ -10,13 +10,15 @@ import ParagraphTitle from "../items/static/paragraphTitle"
 import Icon from "../items/static/icon"
 
 import styles from "./intro.module.scss"
+import Frame from 'components/Frame';
 
-class Intro extends Component {
+class Intro extends Frame {
   render() {
-    const { currentIndex, onToNextStep } = this.props
+    const { onToNextStep } = this.props
 
-    return (
-      <div className={styles.intro + (currentIndex === 0 ? '' : ' hidden')}>
+    return this.state.enabled
+    ? (
+      <div className={styles.intro + (this.state.enabled ? '' : ' hidden')}>
         <div className={styles.introInner}>
           <div className={styles.container_sideLeft}>
             <div className={styles.sideLeftContainer}>
@@ -45,7 +47,8 @@ class Intro extends Component {
           </div>
         </div>
       </div>
-    );
+    )
+    : null;
   }
 }
 

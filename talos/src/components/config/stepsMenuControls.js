@@ -7,16 +7,18 @@ import MobileMenuList from "./mobileMenuList"
 
 import styles from './stepsMenuControls.module.scss'
 
-const StepsMenuControls = () => {
+const StepsMenuControls = (props) => {
+  const { currentIndex, onToStep } = props;
+
   return (
     <div className={styles.stepsMenuControlsWrapper}>
 
       <IsMobileWrapper>
-        <MobileMenuList />
+        <MobileMenuList currentIndex={currentIndex} />
       </IsMobileWrapper>
 
       <IsDesktopWrapper>
-        <DesktopMenuList />
+        <DesktopMenuList currentIndex={currentIndex} onToStep={onToStep} />
       </IsDesktopWrapper>
 
     </div>

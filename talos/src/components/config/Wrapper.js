@@ -6,7 +6,7 @@ import { Frame } from "../Frame"
 import FirstTitle from "../items/static/firstTitle"
 import Icon from "../items/static/icon"
 import Paragraph from "../items/static/paragraph"
-import ButtonToPreviewLink from "../intro/buttonToPreviewLink"
+import ButtonReset from "components/items/controls/buttonReset"
 import ValidatorStep from "./steps/validator/Wrapper"
 import NetworkStep from "./steps/network/Wrapper"
 import BanmanStep from "./steps/banman/Wrapper"
@@ -29,7 +29,7 @@ class ConfigPage extends Frame {
     }
 
   render() {
-    const { currentIndex } = this.props
+    const { currentIndex, prevIndex, onToStep, onToNextStep, onToPrevStep } = this.props
 
     return this.state.enabled
       ?
@@ -44,26 +44,26 @@ class ConfigPage extends Frame {
             </div>
 
             <div className={styles.container_stepsMenu}>
-              <StepsMenuControls />
+              <StepsMenuControls currentIndex={currentIndex} onToStep={onToStep}/>
             </div>
             <div className={styles.container_logo}>
-              <ButtonToPreviewLink>
+              <ButtonReset onClick={() => onToStep(0)}>
                 <Icon name="logo" />
-              </ButtonToPreviewLink>
+              </ButtonReset>
             </div>
           </div>
           <div className={styles.container_rightSide}>
             <div className={styles.container_rightSideInner}>
-              <ValidatorStep navigationIndex={1} />
-              <NetworkStep   navigationIndex={2} />
-              <BanmanStep    navigationIndex={3} />
-              <AdminStep     navigationIndex={4} />
+              <ValidatorStep navigationIndex={1} currentIndex={currentIndex} prevIndex={prevIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
+              <NetworkStep   navigationIndex={2} currentIndex={currentIndex} prevIndex={prevIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
+              <BanmanStep    navigationIndex={3} currentIndex={currentIndex} prevIndex={prevIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
+              <AdminStep     navigationIndex={4} currentIndex={currentIndex} prevIndex={prevIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
             </div>
 
             <div className={styles.container_controlsMobile}>
               <div className={styles.container_controlsMobileInner}>
                 <IsMobileWrapper>
-                  <StepsControls />
+                  <StepsControls currentIndex={currentIndex} onToNextStep={onToNextStep} onToPrevStep={onToPrevStep} />
                 </IsMobileWrapper>
               </div>
             </div>
