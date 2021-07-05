@@ -1285,6 +1285,12 @@ public class Ledger
         return null;
     }
 
+    /// return the last payment block before the current block
+    public Height getLastPaymentBlock () const scope @safe @nogc nothrow pure
+    {
+        return lastPaymentBlock(this.getBlockHeight, this.params.PayoutPeriod);
+    }
+
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated
@@ -1312,6 +1318,24 @@ public class Ledger
             log.error("simulatePreimages: height: {} exception thrown: {}", height, e);
         }
     }
+}
+
+private Height lastPaymentBlock(in Height height, uint payout_period) @safe @nogc nothrow pure
+{
+    return Height(height <= payout_period ? 1 : (height - 1) - ((height - 1) % payout_period));
+}
+
+// expected is the height of last payment block not including current if it is one
+unittest
+{
+    import std.range;
+    import std.typecons;
+
+    const uint paymentPeriod = 5;
+    only(tuple(0,1), tuple(1,1), tuple(4,1), tuple(5,1), // test before first reward block is externalized
+        tuple(6,5), tuple(9,5), tuple(10,5), // test before second reward block is externalized
+        tuple(11,10)).each!( // last we test after second
+        (height, expected) => assert(lastPaymentBlock(Height(height), paymentPeriod) == expected));
 }
 
 /*******************************************************************************
