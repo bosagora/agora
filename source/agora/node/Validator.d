@@ -196,12 +196,12 @@ public class Validator : FullNode, API
             // In the fast path, this is called immediately after a block has been
             // externalized, so we can simply use the Ledger. Otherwise we need
             // to run from storage.
+            auto self_enroll = this.enroll_man.getEnrollmentKey();
             const rand_seed = this.ledger.getBlockHeight() == height ?
                 this.ledger.getLastBlock().header.random_seed :
                 this.ledger.getBlocksFrom(height).front.header.random_seed;
-            qc = buildQuorumConfig(this.config.validator.key_pair.address,
-                utxos, this.utxo_set.getUTXOFinder(), rand_seed,
-                this.quorum_params);
+            qc = buildQuorumConfig(self_enroll, utxos, this.utxo_set.getUTXOFinder(),
+                rand_seed, this.quorum_params);
 
             other_qcs.length = 0;
             () @trusted { assumeSafeAppend(other_qcs); }();
@@ -209,9 +209,7 @@ public class Validator : FullNode, API
             foreach (utxo; utxos.filter!(
                 utxo => utxo != filter_utxo))  // skip our own
             {
-                UTXO utxo_value;
-                assert(this.utxo_set.peekUTXO(utxo, utxo_value));
-                other_qcs ~= buildQuorumConfig(utxo_value.output.address, utxos,
+                other_qcs ~= buildQuorumConfig(utxo, utxos,
                     this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
             }
         }

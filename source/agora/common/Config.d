@@ -956,7 +956,7 @@ public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
 
     foreach (ref const node; quorum_conf.nodes)
     {
-        auto pub_key = NodeID(node.data[][0 .. NodeID.sizeof]);
+        auto pub_key = NodeID(node[][0 .. NodeID.sizeof]);
         quorum.validators.push_back(pub_key);
     }
 
@@ -985,12 +985,12 @@ public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
     @safe nothrow
 {
     import std.conv;
-    import scpd.types.Stellar_types : Hash, NodeID;
+    import scpd.types.Stellar_types : NodeID;
 
-    PublicKey[] nodes;
+    Hash[] nodes;
 
     foreach (node; scp_quorum.validators.constIterator)
-        nodes ~= PublicKey(node[]);
+        nodes ~= node;
 
     QuorumConfig[] quorums;
     foreach (ref sub_quorum; scp_quorum.innerSets.constIterator)
@@ -1009,16 +1009,18 @@ public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
 ///
 unittest
 {
+    import agora.crypto.Hash;
+
     auto quorum = QuorumConfig(2,
-        [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
-         PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
+        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
+         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
         [QuorumConfig(2,
-            [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
-             PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")],
+            [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
+             Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
             [QuorumConfig(2,
-                [PublicKey.fromString("boa1xp9rtxssrry6zqc4yt40h5h3al6enaywnvxfsp0ng8jt0ywyecsszs3fs7r"),
-                 PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2"),
-                 PublicKey.fromString("boa1xpc2ugmlve2ttuq6sjl4fznrggf2l5hksk2h2nsakexn690zxg4gss4p0w2")])])]);
+                [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
+                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd"),
+                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")])])]);
 
     auto scp_quorum = toSCPQuorumSet(quorum);
     assert(scp_quorum.toQuorumConfig() == quorum);

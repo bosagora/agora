@@ -37,7 +37,7 @@ public struct QuorumConfig
     public uint threshold = 1;
 
     /// List of nodes in this quorum
-    public PublicKey[] nodes;
+    public Hash[] nodes;
 
     /// List of any sub-quorums
     public QuorumConfig[] quorums;
