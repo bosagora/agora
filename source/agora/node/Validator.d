@@ -156,6 +156,9 @@ public class Validator : FullNode, API
             assert(0);
         }
 
+        // We create new SCP object if the enrollment key is changed.
+        this.nominator.createSCPObject();
+
         static QuorumConfig[] other_qcs;
         this.rebuildQuorumConfig(this.qc, other_qcs, this_utxo, utxo_keys, height);
         this.nominator.setQuorumConfig(this.qc, other_qcs);
