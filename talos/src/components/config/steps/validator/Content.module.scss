@@ -3,19 +3,10 @@
 .wrapValidatorContent {
   .chooseTypeValidator {
     display: flex;
-    margin: -40px -20px 0px;
+    justify-content: flex-start;
 
     @media (max-width: $maxMediaXS) {
       display: block;
-      margin: -20px -10px 0px;
-    }
-
-    .chooseTypeItemWrapper {
-      padding: 40px 20px 0px 20px;
-
-      @media (max-width: $maxMediaXS) {
-        padding: 20px 10px 0px 10px;
-      }
     }
   }
 

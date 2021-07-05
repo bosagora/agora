@@ -1,23 +1,15 @@
 import React, { Component } from 'react';
-import { get, has } from "lodash"
 
 import styles from "./typeSecretSeedItem.module.scss"
 
 class TypeSecrerSeedItem extends Component {
-  componentDidMount() {
-    const { checked, onClick, name, value, valueStore } = this.props
-
-    if (!has(valueStore, [name, "value"]) && checked)
-      onClick(name, value)
-  }
-
   render() {
-    const { name, value, icon, title, valueStore, onClick } = this.props
+    const { icon, title, onClick, index, currentIndex } = this.props
 
     return (
       <div
-        className={get(valueStore, [name, "value"], "") === value ? styles.chooseTypeItemActive : styles.chooseTypeItem}
-        onClick={get(valueStore, [name, "value"], "") !== value ? onClick.bind(this, name, value) : () => { }}
+        className={index === currentIndex ? styles.chooseTypeItemActive : styles.chooseTypeItem}
+        onClick={() => onClick(index)}
       >
         <div className={styles.container_icon}>
           {icon}
