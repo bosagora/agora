@@ -24,6 +24,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.Block;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.PreImage;
 import agora.crypto.Hash;
 import agora.node.Ledger;
 import geod24.Registry;
@@ -103,7 +104,7 @@ unittest
         protected override EnrollmentManager makeEnrollmentManager ()
         {
             return new BadEnrollmentManager(this.stateDB, this.cacheDB,
-                this.config.validator.key_pair, this.params);
+                this.config.validator.key_pair, this.params, PreImageCycle.init);
         }
     }
 

@@ -166,17 +166,23 @@ public class EnrollmentManager
             cacheDB = The cache database, used by `EnrollmentPool`
             key_pair = the keypair of the owner node
             params = the consensus-critical constants
+            cycle = the `PreImageCycle` that is prepared in advance
 
     ***************************************************************************/
 
     public this (ManagedDatabase stateDB, ManagedDatabase cacheDB,
-                 KeyPair key_pair, immutable(ConsensusParams) params)
+        KeyPair key_pair, immutable(ConsensusParams) params,
+        PreImageCycle cycle = PreImageCycle.init)
     {
         this.log = Logger(__MODULE__);
         assert(params !is null);
         this.params = params;
         this.key_pair = key_pair;
-        this.cycle = PreImageCycle(key_pair.secret, params.ValidatorCycle);
+
+        if (cycle == PreImageCycle.init)
+            this.cycle = PreImageCycle(key_pair.secret, params.ValidatorCycle);
+        else
+            this.cycle = cycle;
 
         this.db = stateDB;
         this.validator_set = new ValidatorSet(stateDB, params);
@@ -193,10 +199,11 @@ public class EnrollmentManager
 
     /// Unittest-only constructor
     version (unittest) private this (
-        KeyPair key_pair, immutable(ConsensusParams) params)
+        KeyPair key_pair, immutable(ConsensusParams) params,
+        PreImageCycle cycle = PreImageCycle.init)
     {
         this(new ManagedDatabase(":memory:"), new ManagedDatabase(":memory:"),
-             key_pair, params);
+             key_pair, params, cycle);
     }
 
     /***************************************************************************
@@ -436,6 +443,17 @@ public class EnrollmentManager
     {
         // Generate the random seed to use
         auto cycle = PreImageCycle(key.secret, cycle_length);
+        return makeEnrollment(utxo, key, cycle[height], cycle_length);
+    }
+
+    /// Ditto
+    version (unittest) public static Enrollment makeEnrollment (
+        in Hash utxo, in KeyPair key, in Height height, uint cycle_length,
+        in Hash cycle_seed, in Height seed_pos)
+        @trusted nothrow
+    {
+        // Generate the random seed to use
+        auto cycle = PreImageCycle(cycle_seed, seed_pos, cycle_length);
         return makeEnrollment(utxo, key, cycle[height], cycle_length);
     }
 
@@ -958,7 +976,8 @@ unittest
 
     // create an EnrollmentManager object
     auto params = new immutable(ConsensusParams)();
-    auto man = new EnrollmentManager(key_pair, params);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1), params.ValidatorCycle);
+    auto man = new EnrollmentManager(key_pair, params, cycle);
     // Useful constant
     const EnrollAt1 = Height(1);
 
@@ -970,7 +989,8 @@ unittest
 
     // The UTXO belongs to key_pair but we sign with genesis key pair and check it fails
     Enrollment fail_enroll =
-        EnrollmentManager.makeEnrollment(utxo_hash, gen_key_pair, EnrollAt1, params.ValidatorCycle);
+        EnrollmentManager.makeEnrollment(utxo_hash, gen_key_pair, EnrollAt1,
+        params.ValidatorCycle, CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1));
     assert(!man.addEnrollment(fail_enroll, gen_key_pair.address, EnrollAt1,
             utxo_set.getUTXOFinder()));
 
@@ -980,8 +1000,8 @@ unittest
     Enrollment[] ordered_enrollments;
     foreach (idx, kp; pairs[0 .. 3])
     {
-        auto enroll = EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, EnrollAt1, params.ValidatorCycle);
+        auto enroll = EnrollmentManager.makeEnrollment(utxo_hashes[idx], kp,
+            EnrollAt1, params.ValidatorCycle, NodeCycleSeeds[idx], Height(params.ValidatorCycle * 2 - 1));
 
         assert(man.addEnrollment(enroll, kp.address, EnrollAt1, &utxo_set.peekUTXO));
         assert(man.enroll_pool.count() == idx + 1);
@@ -1011,7 +1031,8 @@ unittest
     assert(man.validator_set.getEnrolledHeight(EnrollAt9, utxo_hash) == ulong.max);
     // Add removed enrollment to the pool with the new height
     assert(man.addEnrollment(
-        EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], EnrollAt9, params.ValidatorCycle),
+            EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], EnrollAt9,
+                params.ValidatorCycle, CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1)),
             pairs[1].address, EnrollAt9, &utxo_set.peekUTXO));
     // The expired enrollments in the pool from height 1 are cleared on this next call
     // to get enrollments at a higher height. We do have an enrollment at height 9
@@ -1102,7 +1123,9 @@ unittest
 
     // create an EnrollmentManager object
     auto params = new immutable(ConsensusParams)(20);
-    auto man = new EnrollmentManager(key_pair, params);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1),
+        params.ValidatorCycle);
+    auto man = new EnrollmentManager(key_pair, params, cycle);
 
     Height height = Height(2);
 
@@ -1110,7 +1133,8 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         enrollments ~= EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, height, params.ValidatorCycle);
+            utxo_hashes[idx], kp, height, params.ValidatorCycle,
+            NodeCycleSeeds[idx], Height(params.ValidatorCycle * 2 - 1));
     }
 
     // create and add the first Enrollment object
@@ -1166,8 +1190,11 @@ unittest
     // Irrelevant for this test, the seed is only derived from the private key
     // and the offset (which is 0 in both cases)
     Hash utxo;
-    auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, Height(1), 10);
-    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.C, Height(1), 10);
+    const validator_cycle = 20;
+    auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, Height(1), 10,
+        NodeCycleSeeds[0], Height(validator_cycle * 2 - 1));
+    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.C, Height(1), 10,
+        NodeCycleSeeds[1], Height(validator_cycle * 2 - 1));
     assert(e1.commitment != e2.commitment);
 }
 
@@ -1180,8 +1207,10 @@ unittest
     // create an EnrollmentManager
     const validator_cycle = 20;
     KeyPair key_pair = KeyPair.random();
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(validator_cycle * 2 - 1),
+        validator_cycle);
     scope man = new EnrollmentManager(key_pair,
-        new immutable(ConsensusParams)(validator_cycle));
+        new immutable(ConsensusParams)(validator_cycle), cycle);
 
     scope utxo_set = new UTXOSet(man.db);
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
@@ -1258,17 +1287,32 @@ unittest
         });
 
     auto params = new immutable(ConsensusParams)(20);
-    scope man = new EnrollmentManager(KeyPair.random(), params);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1),
+        params.ValidatorCycle);
+    scope man = new EnrollmentManager(KeyPair.random(), params, cycle);
 
+    Hash[KeyPair] node_seeds = [
+        WK.Keys[0]: Hash(`0x3a481cb1576d79002755239b8d4019587d7e5394ddd448f92d5dca74baf742f4899dd53daefda9136e9d3cc6887b3456ffcfc85cfc711e5cf8659998047771cb`),
+        WK.Keys[1]: Hash(`0x1a7ebfe71dd438ac96da520917680ff4278c3e4de031890cea2305de009dc750dfd3d9b714ef7b4cf983633a540ca4614ff1eae38d9d121604907f2dc2a7e885`),
+        WK.Keys[2]: Hash(`0x64d1b6e98019df73b59c3593e2ca1baea53aeeb3cac18748d3ab50473a64963c76c318913158349caf368730b027eb8c4596b743308a7e53a65e484016c8e2ca`),
+        WK.Keys[3]: Hash(`0x0bb70cf7d265661d006bc5bfd5bf70a66c5b32e54d05ee37bf023c4c0bf9b3bc76faf38d656c25e254aae7ea73aabba1902192575da80cfe10a24363d3e41118`),
+        WK.Keys[4]: Hash(`0xbb19e8bae8f03ce2aee0c15f83089c87dd208b44d17683ace877696a98680730c4cae9f762366a70dd00885cf0ff2eb228f285885ebda9e6dc11c0288158d8cf`),
+        WK.Keys[5]: Hash(`0x90f2a3d469831bad2d27f4698c463dad56c8d942b28859e38c2f4b1bc975605f0641f62aff2edf23326b67ad3b34c47bc43f96167485d4db2529d5e84fc7e994`),
+        WK.Keys[6]: Hash(`0xa84c60d88e1c075d8d70c77426c4724ac8bd38f83030fb16a3db71890396548572031907fbf7adba1034a7f9b7b4f2ae11155010cf677ed81cc32728f6ec7a06`),
+        WK.Keys[7]: Hash(`0xe39ae981988560d89e85f340c087fea46f1d9eefe73400f2a85edd3d3adee2bc5a3efd6e6ce9de04d73a3fe2554a1b1035450b7be9eaade24bbb789585aa0015`),
+    ];
+
+    const cycles = 10;
     foreach (idx, kp; pairs)
     {
         const enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, Height(1), params.ValidatorCycle);
+            utxos[idx], kp, Height(1), params.ValidatorCycle,
+            node_seeds[kp], Height(params.ValidatorCycle * cycles - 1),);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
 
-        auto cache = PreImageCache(PreImageCycle.NumberOfCycles, params.ValidatorCycle);
-        cache.reset(hashMulti(kp.secret, "consensus.preimages", 0));
+        auto cache = PreImageCache(cycles, params.ValidatorCycle);
+        cache.reset(node_seeds[kp]);
 
         PreImageInfo preimage = { utxo : utxos[idx],
             height : Height(params.ValidatorCycle),
@@ -1287,8 +1331,11 @@ unittest
     genesisSpendable()
         .map!(txb => txb.refund(WK.Keys.A.address).sign(OutputType.Freeze))
         .each!(tx => utxo_set.put(tx));
-    auto man = new EnrollmentManager(WK.Keys.A,
-        new immutable(ConsensusParams)(10));
+
+    auto params = new immutable(ConsensusParams)(10);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1),
+        params.ValidatorCycle);
+    auto man = new EnrollmentManager(WK.Keys.A, params, cycle);
 
     assert(utxo_set.length == 8);
     man.setEnrollmentKey(utxo_set.keys[3]);
@@ -1310,8 +1357,10 @@ unittest
     Hash[] utxo_hashes = utxo_set.keys;
 
     // create an EnrollmentManager object
-    auto man = new EnrollmentManager(key_pair,
-        new immutable(ConsensusParams)());
+    auto params = new immutable(ConsensusParams)(10);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1),
+        params.ValidatorCycle);
+    auto man = new EnrollmentManager(key_pair, params, cycle);
 
     // check the return value of `getEnrollmentPublicKey`
     assert(key_pair.address == man.getEnrollmentPublicKey());
@@ -1344,7 +1393,9 @@ unittest
     // create an EnrollmentManager object
     KeyPair key_pair = KeyPair.random();
     auto params = new immutable(ConsensusParams)();
-    auto man = new EnrollmentManager(key_pair, params);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1),
+        params.ValidatorCycle);
+    auto man = new EnrollmentManager(key_pair, params, cycle);
 
     scope utxo_set = new UTXOSet(man.db);
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
@@ -1422,12 +1473,16 @@ unittest
             utxos ~= UTXO.getHash(tx.hashFull(), 0);
         });
 
-    auto man = new EnrollmentManager(WK.Keys.A,
-        new immutable(ConsensusParams)(20));
+    auto params = new immutable(ConsensusParams)(20);
+    auto cycle = PreImageCycle(CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1),
+        params.ValidatorCycle);
+    auto man = new EnrollmentManager(WK.Keys.A, params, cycle);
     auto e1 = EnrollmentManager.makeEnrollment(
-        utxos[0], WK.Keys.A, Height(1), man.params.ValidatorCycle);
+        utxos[0], WK.Keys.A, Height(1), man.params.ValidatorCycle,
+        NodeCycleSeeds[0], Height(params.ValidatorCycle * 2 - 1));
     auto e2 = EnrollmentManager.makeEnrollment(
-        utxos[1], WK.Keys.C, Height(1), man.params.ValidatorCycle);
+        utxos[1], WK.Keys.C, Height(1), man.params.ValidatorCycle,
+        NodeCycleSeeds[1], Height(params.ValidatorCycle * 2 - 1),);
 
     assert(man.addEnrollment(e1, WK.Keys.A.address, Height(1), &utxo_set.peekUTXO));
     assert(man.addEnrollment(e2, WK.Keys.C.address, Height(1), &utxo_set.peekUTXO));
