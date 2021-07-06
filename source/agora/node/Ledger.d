@@ -1593,9 +1593,15 @@ public class ValidatingLedger : Ledger
             auto validators = this.getValidators(this.getBlockHeight());
             foreach (v; validators)
             {
+                Hash cycle_seed;
+                Height cycle_seed_height;
                 auto kp = WK.Keys[v.address];
+                getCycleSeed(kp, this.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+                assert(cycle_seed != Hash.init);
+                assert(cycle_seed_height != Height(0));
                 auto enroll = EnrollmentManager.makeEnrollment(
-                    v.utxo, kp, next_block, this.params.ValidatorCycle);
+                    v.utxo, kp, next_block, this.params.ValidatorCycle,
+                    cycle_seed, cycle_seed_height);
 
                 data.enrolls ~= enroll;
             }
@@ -1648,7 +1654,9 @@ public class ValidatingLedger : Ledger
 /// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
 {
+    import agora.consensus.PreImage;
     import agora.consensus.validation.Block: getWellKnownPreimages;
+    version (unittest) import agora.test.Base;
     import core.stdc.time : time;
 
     /// A `Ledger` with sensible defaults for `unittest` blocks
@@ -1679,13 +1687,21 @@ version (unittest)
                     params.GenesisTimestamp +
                     (blocks.length * params.BlockInterval.total!"seconds"));
 
+            Hash cycle_seed;
+            Height cycle_seed_height;
+            getCycleSeed(key_pair, params.ValidatorCycle, cycle_seed, cycle_seed_height);
+            assert(cycle_seed != Hash.init);
+            assert(cycle_seed_height != Height(0));
+            auto cycle = PreImageCycle(cycle_seed, cycle_seed_height,
+                params.ValidatorCycle);
+
             auto stateDB = new ManagedDatabase(":memory:");
             auto cacheDB = new ManagedDatabase(":memory:");
             super(params,
                 new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(stateDB, cacheDB, key_pair, params),
+                new EnrollmentManager(stateDB, cacheDB, key_pair, params, cycle),
                 new TransactionPool(cacheDB),
                 new FeeManager(stateDB, params),
                 mock_clock,

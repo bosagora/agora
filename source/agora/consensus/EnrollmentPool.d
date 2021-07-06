@@ -351,6 +351,7 @@ public class EnrollmentPool
 /// test for function of EnrollmentPool
 unittest
 {
+    import agora.consensus.PreImage;
     import agora.consensus.data.Params;
     import agora.consensus.data.Transaction;
     import agora.consensus.EnrollmentManager;
@@ -378,7 +379,8 @@ unittest
     {
         auto utxo_hash = utxo_hashes[index];
         avail_height = Height(params.ValidatorCycle);
-        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height, params.ValidatorCycle);
+        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height,
+            params.ValidatorCycle, NodeCycleSeeds[index], Height(params.ValidatorCycle * 2 - 1));
         assert(pool.add(enrollments[$ - 1], avail_height,
                                 storage.getUTXOFinder(), &findEnrollment));
         assert(pool.count() == index + 1);

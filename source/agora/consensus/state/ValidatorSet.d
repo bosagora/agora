@@ -30,6 +30,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.serialization.Serializer;
 import agora.utils.Log;
+version (unittest) import agora.consensus.PreImage;
 version (unittest) import agora.utils.Test;
 
 import d2sqlite3.library;
@@ -836,7 +837,11 @@ unittest
         });
 
     // add enrollments
-    auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, set.params.ValidatorCycle);
+    Hash cycle_seed;
+    Height cycle_seed_height;
+    getCycleSeed(WK.Keys[0], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+    auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight,
+        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
     assert(set.countActive(FirstEnrollHeight) == 0);
     assert(set.countActive(FirstEnrollHeight + 1) == 1);    // Will be active next block
@@ -846,7 +851,9 @@ unittest
     assert(set.hasEnrollment(FirstEnrollHeight, utxos[0]));
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) == "Already enrolled at this height");
 
-    auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight, set.params.ValidatorCycle);
+    getCycleSeed(WK.Keys[1], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+    auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight,
+        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
     assert(set.countActive(FirstEnrollHeight + 1) == 2);
     assert(set.getExpiringValidators(FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 2);
@@ -858,7 +865,9 @@ unittest
         FirstEnrollHeight + (set.params.ValidatorCycle + 1), ex_validators).length == 0);
 
     const SecondEnrollHeight = Height(9);
-    auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight, set.params.ValidatorCycle);
+    getCycleSeed(WK.Keys[2], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+    auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight,
+        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
     assert(set.countActive(SecondEnrollHeight + 1) == 3);
     assert(set.getExpiringValidators(
@@ -912,7 +921,9 @@ unittest
         PreImageInfo(utxos[0], hashFull(preimage_11.hash), Height(preimage_11.height - 1)));
 
     // test for clear up expired validators
-    enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight, set.params.ValidatorCycle);
+    getCycleSeed(WK.Keys[3], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+    enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight,
+        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
     keys.length = 0;
     assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle + 8), keys));
@@ -925,7 +936,9 @@ unittest
     set.removeAll();  // clear all
 
     assert(set.countActive(SecondEnrollHeight + 1) == 0);
-    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, set.params.ValidatorCycle);
+    getCycleSeed(WK.Keys[0], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight,
+        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // still active at height 1008
