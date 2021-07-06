@@ -289,14 +289,15 @@ public struct PreImageCycle
     /// Make sure we get initialized by disabling the default ctor
     @disable public this ();
 
-    public static immutable ulong NumberOfCycles = 100;
+    /// The total number of pre-images
+    public static immutable ulong PreImageCount = 5_040_000;
 
     /// Construct an instance with the provided cycle length and number of cycles
-    public this (in Scalar secret, in uint cycle_length, in ulong cycles = PreImageCycle.NumberOfCycles,
+    public this (in Scalar secret, in uint cycle_length, in ulong preimage_count = PreImageCount,
         Height initial_seek = Height(0))
     {
         this.secret = secret;
-        this.cycles = cycles;
+        this.cycles = preimage_count / cycle_length;
         this.seeds = PreImageCache(cycles, cycle_length);
         this.preimages = PreImageCache(cycle_length, 1);
         this.seek(initial_seek);
@@ -427,7 +428,8 @@ version (unittest)
         import std.stdio;
 
         auto secret = Scalar.random();
-        auto cycle = PreImageCycle(secret, cycle_length, number_of_cycles);
+        auto cycle = PreImageCycle(secret, cycle_length,
+            number_of_cycles * cycle_length);
         ulong total_images = cycle_length * number_of_cycles;
         void testBatch (uint nonce)
         {
