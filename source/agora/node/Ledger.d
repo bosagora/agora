@@ -96,7 +96,7 @@ public class Ledger
     private EnrollmentManager enroll_man;
 
     /// Property for Enrollment manager
-    @property public EnrollmentManager enrollment_manager () @safe
+    @property public EnrollmentManager enrollment_manager () @safe nothrow
     {
         return this.enroll_man;
     }
@@ -114,6 +114,9 @@ public class Ledger
     /// The new block time_offset has to be greater than the previous block time_offset,
     /// but less than current time + block_time_offset_tolerance
     public Duration block_time_offset_tolerance;
+
+    /// Enrollment keys for unknown preimages for the next height
+    private Set!Hash enrolls_keys_for_unknown_preimages;
 
     /***************************************************************************
 
@@ -700,6 +703,7 @@ public class Ledger
         Check whether the slashing data is valid.
 
         Params:
+            height = height
             data = consensus data
             initial_missing_validators = missing validators at the beginning of
                the nomination round
@@ -712,14 +716,10 @@ public class Ledger
     public string validateSlashingData (in Height height, in ConsensusData data,
         in uint[] initial_missing_validators) @safe nothrow
     {
-        // If we are enrolled and not slashing ourselves
-        if (this.enroll_man.isEnrolled(height, &this.utxo_set.peekUTXO) && this.isSelfSlashing(height, data))
-        {
-            log.fatal("The node is slashing itself.");
-            assert(0);
-        }
+        if (auto res = this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators))
+            return res;
 
-        return this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators);
+        return this.isSelfSlashing(height, data);
     }
 
     /***************************************************************************
@@ -728,18 +728,19 @@ public class Ledger
         a node itself
 
         Params:
+            height = the height for which we want to check self slashing
             data = consensus data
 
         Returns:
-            true if the consensus data has the information that is slashing
-            a node itself.
+            error string, if node is trying to slash itself, null otherwise
 
     ***************************************************************************/
 
-    public bool isSelfSlashing (in Height height, in ConsensusData data) @safe nothrow
+    public string isSelfSlashing (in Height height, in ConsensusData data) @safe nothrow
     {
-        const index = this.enroll_man.getIndexOfEnrollment(this.last_block.header.height + 1);
-        return (index != ulong.max && !data.missing_validators.find(index).empty);
+        const index = this.enroll_man.getIndexOfEnrollment(height);
+        return (index != ulong.max && !data.missing_validators.find(index).empty) ?
+            "Node is attempting to slash itself" : null;
     }
 
     /***************************************************************************
@@ -1175,6 +1176,19 @@ public class Ledger
 
     /***************************************************************************
 
+        Get the enrollment keys for unknown preimages
+
+        Returns:
+            the enrollment keys for unknown preimages
+
+    ***************************************************************************/
+
+    public Set!Hash getEnrollKeysForUnknownPreimages () @safe nothrow
+    {
+        return this.enrolls_keys_for_unknown_preimages;
+    }
+    /***************************************************************************
+
         Get the UTXOs of the validators that do not reveal their pre-images
         by indices
 
@@ -1259,6 +1273,11 @@ public class Ledger
             if (!this.hasRevealedPreimage(height, key))
                 missing_validators_lower_bound ~= cast(uint)idx;
         }
+
+        // trying to retrieve preimages that - based on the consensus data -
+        // was shared with other nodes
+        foreach (const validator_ind; setDifference(missing_validators_lower_bound, missing_validators))
+            this.enrolls_keys_for_unknown_preimages.put(keys[validator_ind]);
 
         // NodeA will check the candidate from NodeB in the following way:
         //

@@ -983,6 +983,33 @@ public class NetworkManager
 
     /***************************************************************************
 
+        Retrieves the missing preimages that other nodes indirectly indicated
+        (through consensus data shared during nomination) they possess.
+
+        Params:
+            ledger = ledger instance
+
+    ***************************************************************************/
+
+    public void retrievePreimages (Ledger ledger) @safe nothrow
+    {
+        auto enroll_keys = ledger.getEnrollKeysForUnknownPreimages();
+
+        foreach (peer; this.peers[])
+        {
+            if (enroll_keys.empty())
+                break;
+
+            foreach (const ref preimage_info; peer.client.getPreimagesForEnrollKeys(enroll_keys))
+                if (ledger.enrollment_manager.addPreimage(preimage_info))
+                    enroll_keys.remove(preimage_info.utxo);
+        }
+
+        () @trusted {enroll_keys.clear();}();
+    }
+
+    /***************************************************************************
+
         Retrieve any missing block signatures from the connected nodes for
         blocks since the last fee payment block.
 

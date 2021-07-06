@@ -16,7 +16,6 @@ module agora.node.Validator;
 import agora.api.Validator;
 import agora.common.Amount;
 import agora.common.Config;
-import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -244,6 +243,8 @@ public class Validator : FullNode, API
             this.nominator.startNominatingTimer();
         if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.getBlockHeight());
+
+        this.timers ~= this.taskman.setTimer(config.validator.preimage_catchup_interval, () {this.network.retrievePreimages(ledger);}, Periodic.Yes);
     }
 
     /// Ditto

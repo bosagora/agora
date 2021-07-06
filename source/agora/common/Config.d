@@ -258,6 +258,10 @@ public struct ValidatorConfig
 
     /// How often the nomination timer should trigger, in seconds
     public Duration nomination_interval = 5.seconds;
+
+    /// How often the validator should try to catchup for the preimages for the
+    /// next block
+    public Duration preimage_catchup_interval = 2.seconds;
 }
 
 /// Admin API config
@@ -665,6 +669,8 @@ private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
     const preimage_reveal_interval = get!(Duration, "validator", "preimage_reveal_interval",
         str => str.to!ulong.seconds)(cmdln, node);
     const nomination_interval = get!(Duration, "validator", "nomination_interval",
+        str => str.to!ulong.seconds)(cmdln, node);
+    const preimage_catchup_interval = get!(Duration, "validator", "preimage_catchup_interval",
         str => str.to!ulong.seconds)(cmdln, node);
 
     ValidatorConfig result = {

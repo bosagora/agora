@@ -115,27 +115,10 @@ unittest
 ///     some failures.
 unittest
 {
-    static class LazyAPIManager : TestAPIManager
-    {
-        public shared bool reveal_preimage = false;
-
-        ///
-        mixin ForwardCtor!();
-
-        ///
-        public override void createNewNode (Config conf, string file, int line)
-        {
-            if (conf.validator.enabled == true)
-                this.addNewNode!NoPreImageVN(conf, &this.reveal_preimage, file, line);
-            else
-                super.createNewNode(conf, file, line);
-        }
-    }
-
     TestConf conf = {
         recurring_enrollment : false,
     };
-    auto network = makeTestNetwork!LazyAPIManager(conf);
+    auto network = makeTestNetwork!(LazyAPIManager!NoPreImageVN)(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

@@ -1015,6 +1015,31 @@ public class FullNode : API
         return this.enroll_man.getValidatorPreimage(enroll_key);
     }
 
+    /// GET: /preimages_for_enroll_keys
+    public override PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
+    {
+        this.recordReq("preimages_for_enroll_keys");
+
+        // if enroll_keys is empty, then all preimages should be returned
+        if (enroll_keys.empty())
+        {
+            Hash[] utxos;
+            if (this.enroll_man.validator_set.getEnrolledUTXOs(Height(ledger.getBlockHeight + 1), utxos))
+                foreach (const ref utxo; utxos)
+                    enroll_keys.put(utxo);
+        }
+
+        PreImageInfo[] preimage_infos;
+        foreach (const enroll_key; enroll_keys)
+        {
+            auto preimage_info = this.enroll_man.getValidatorPreimage(enroll_key);
+            if (preimage_info != PreImageInfo.init)
+                preimage_infos ~= preimage_info;
+        }
+
+        return preimage_infos;
+    }
+
     /// GET: /preimages
     public override PreImageInfo[] getPreimages (ulong start_height,
         ulong end_height) @safe nothrow

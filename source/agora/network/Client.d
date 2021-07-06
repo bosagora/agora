@@ -526,6 +526,29 @@ public class NetworkClient
 
     /***************************************************************************
 
+        Returns the preimages for the specified enroll keys.
+
+        Params:
+            enroll_keys = Set of enrollment keys. If the set of enroll_keys is
+            null or empty, then all preimages known to the node are returned.
+
+        Returns:
+            The preimages for the specified enroll keys. If the requested node
+            doesn't know the preimage for a specific enroll key, then it will
+            not be included in the result.
+
+        API:
+            GET /preimages_for_enroll_keys
+
+    ***************************************************************************/
+
+    public PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @trusted nothrow
+    {
+        return this.attemptRequest!(API.getPreimagesForEnrollKeys, Throw.No)(this.api, enroll_keys);
+    }
+
+    /***************************************************************************
+
         Attempt a request up to 'this.max_retries' attempts, and make the task
         wait this.retry_delay between each attempt.
 

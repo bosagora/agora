@@ -101,6 +101,9 @@ validator:
   recurring_enrollment: true
   # How often (in seconds) we should check for pre-images to reveal
   preimage_reveal_interval: 10
+  # How often the validator should try to catchup for the preimages for the
+  # next block
+  preimage_catchup_interval: 2
 
 ################################################################################
 ##                             Flash configuration                            ##
