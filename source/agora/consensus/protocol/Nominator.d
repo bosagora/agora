@@ -922,13 +922,6 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
-        if (this.ledger.isSelfSlashing(Height(slot_idx), data))
-        {
-            log.warn("validateValue(): Marking {} for data slashing us as invalid",
-                     nomination ? "nomination" : "vote");
-            return ValidationLevel.kInvalidValue;
-        }
-
         if (auto fail_reason = this.ledger.validateConsensusData(data, this.initial_missing_validators))
         {
             log.error("validateValue(): Validation failed: {}. Data: {}",

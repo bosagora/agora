@@ -1942,6 +1942,10 @@ public struct TestConf
         testing: true,
     };
 
+    /// How often the validator should try to catchup for the preimages for the
+    /// next block
+    public Duration preimage_catchup_interval = 100.seconds;
+
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
 
@@ -2064,6 +2068,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             recurring_enrollment : test_conf.recurring_enrollment,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
             nomination_interval: 100.msecs,
+            preimage_catchup_interval: test_conf.preimage_catchup_interval,
         };
 
         Config conf =
@@ -2153,6 +2158,24 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     return net;
 }
 
+/// API manager that creates nodes that are too lazy to reveal preimages
+/// (except when explicitely set to reveal)
+class LazyAPIManager(PreImageVN = NoPreImageVN) : TestAPIManager
+{
+    public shared bool reveal_preimage = false;
+
+    ///
+    mixin ForwardCtor!();
+
+    ///
+    public override void createNewNode (Config conf, string file, int line)
+    {
+        if (conf.validator.enabled == true)
+            this.addNewNode!PreImageVN(conf, &this.reveal_preimage, file, line);
+        else
+            super.createNewNode(conf, file, line);
+    }
+}
 
 /// Returns: the entire ledger from the provided node
 public const(Block)[] getAllBlocks (TestAPI node)
@@ -2247,5 +2270,14 @@ public class NoPreImageVN : TestValidatorNode
         const ek = this.enroll_man.getEnrollmentKey();
         return super.getPreimages(start_height, end_height)
             .filter!(pi => pi.utxo != ek).array();
+    }
+
+    /// GET: /preimages_for_enroll_keys
+    public override PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
+    {
+        if (!atomicLoad(*this.reveal_preimage))
+            enroll_keys.remove(this.enroll_man.getEnrollmentKey());
+
+        return super.getPreimagesForEnrollKeys(enroll_keys);
     }
 }
