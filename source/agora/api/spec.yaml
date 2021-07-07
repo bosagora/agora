@@ -1,0 +1,653 @@
+openapi: 3.0.0
+info:
+  title: Agora API
+  description: BOA CoinNet node Rest API
+  version: 0.0.1
+
+paths:
+  /handshake:
+    post:
+      summary: establish a long connection to this node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                peer:
+                  type: string
+      responses:
+        '200':
+          description: An Identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  utxo:
+                    type: string
+                  mac:
+                    type: string
+        default:
+          description: Unexpected error
+  /node_info:
+    get:
+      summary: The peer information on this node
+      responses:
+        '200':
+          description: The peer information on this node
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: integer
+                    format: uint8
+                  addresses:
+                    $ref: '#/components/schemas/Set'
+
+        default:
+          description: Unexpected error
+  /receive_preimage:
+    post:
+      summary: Reveals a pre-image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preimage:
+                  type: object
+                  properties:
+                    hash:
+                      type: string
+                    utxo:
+                      type: string
+                    height:
+                      type: string
+      responses:
+        '200':
+          description: Success
+        default:
+          description: Unexpected error
+  /block_height:
+    get:
+      summary: the highest block height
+      responses:
+        '200':
+          description: the highest block height
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: uint64
+        default:
+          description: Unexpected error
+  /preimages:
+    get:
+      summary: validators' pre-image information
+      parameters:
+        - in: query
+          name: start_height
+          required: true
+          schema:
+            type: integer
+            format: uint64
+        - in: query
+          name: end_height
+          required: true
+          schema:
+            type: integer
+            format: uint64
+      responses:
+        '200':
+          description: validators' pre-image information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PreImage'
+        default:
+          description: Unexpected error
+  /blocks_from:
+    get:
+      summary: validators' pre-image information
+      parameters:
+        - in: query
+          name: height
+          required: true
+          schema:
+            type: integer
+            format: uint64
+        - in: query
+          name: max_blocks
+          required: true
+          schema:
+            type: integer
+            format: uint64
+      responses:
+        '200':
+          description: validators' pre-image information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Block'
+        default:
+          description: Unexpected error
+  /transaction:
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tx:
+                  $ref: '#/components/schemas/Transaction'
+      responses:
+        '200':
+          description: Success
+        default:
+          description: Unexpected error
+  /local_time:
+    get:
+      summary: local clock time of this node
+      responses:
+        '200':
+          description: the highest block height
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: uint64
+        default:
+          description: Unexpected error
+  /enroll_validator:
+    post:
+      summary: Enroll as a validator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enroll:
+                  $ref: '#/components/schemas/Enrollment'
+      responses:
+        '200':
+          description: Success
+        default:
+          description: Unexpected error
+  /block_headers:
+    get:
+      summary: fetch headers
+      parameters:
+        - in: query
+          name: heights
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Set'
+      responses:
+        '200':
+          description: headers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockHeader'
+        default:
+          description: Unexpected error
+  /receive_block_signature:
+    post:
+      summary: Receives a block signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidatorBlockSig'
+      responses:
+        '200':
+          description: Success
+        default:
+          description: Unexpected error
+  /receive_envelope:
+    post:
+      summary: Receives an SCP envelope and processes it
+      requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+      responses:
+        '200':
+          description: Success
+        default:
+          description: Unexpected error
+  /transactions:
+    get:
+      summary: fetch txs
+      parameters:
+        - in: query
+          name: heights
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Set'
+      responses:
+        '200':
+          description: Txs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        default:
+          description: Unexpected error
+  /has_transaction_hash:
+    get:
+      summary: test if TX is in the pool
+      parameters:
+        - in: query
+          name: tx
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: boolean
+        default:
+          description: Unexpected error
+  /blocks/{height}:
+    get:
+      parameters:
+        - name: height
+          in: path
+          description: Height
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: validators' pre-image information
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/Block'
+        default:
+          description: Unexpected error
+  /merkle_path:
+    get:
+      summary: merkle path
+      parameters:
+        - in: query
+          name: height
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: hash
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        default:
+          description: Unexpected error
+  /preimage:
+    get:
+      summary: Get validator's pre-image information
+      parameters:
+        - in: query
+          name: enroll_key
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreImage'
+        default:
+          description: Unexpected error
+  /validators:
+    get:
+      parameters:
+      - in: query
+        name: height
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorInfo'
+        default:
+          description: Unexpected error
+
+components:
+  schemas:
+
+    PreImage:
+      type: object
+      properties:
+        utxo:
+          type: string
+        hash:
+          type: string
+        height:
+          type: string
+
+    ValidatorInfo:
+      type: object
+      properties:
+        enrolled:
+          type: string
+        address:
+          type: string
+        preimage:
+          $ref: '#/components/schemas/PreImage'
+
+    Input:
+      type: object
+      properties:
+        utxo:
+          type: string
+        unlock:
+          type: object
+          properties:
+            bytes:
+              type: string
+        unlock_age:
+          type: integer
+          format: uint64
+
+    Output:
+      type: object
+      properties:
+        type:
+          type: integer
+          format: uint32
+        lock:
+          type: object
+          properties:
+            type:
+              type: integer
+              format: uint8
+            bytes:
+              type: string
+        value:
+          type: string
+
+    Transaction:
+      type: object
+      properties:
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Input'
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Output'
+        payload:
+          type: string
+        lock_height:
+          type: string
+
+    Enrollment:
+      type: object
+      properties:
+        commitment:
+          type: string
+        cycle_length:
+          type: integer
+          format: uint32
+        enroll_sig:
+          type: string
+        utxo_key:
+          type: string
+
+    BlockHeader:
+      type: object
+      properties:
+        prev_block:
+          type: string
+        merkle_root:
+          type: string
+        random_seed:
+          type: string
+        signature:
+          type: string
+        validators:
+          type: string
+        height:
+          type: string
+        enrollments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+        missing_validators:
+          type: array
+          items:
+            type: integer
+            format: uint32
+        time_offset:
+            type: integer
+            format: uint64
+
+    Block:
+      type: object
+      properties:
+        header:
+          $ref: '#/components/schemas/BlockHeader'
+        txs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        merkle_tree:
+          type: array
+          items:
+            type: string
+
+    Set:
+      type: object
+      properties:
+        _set:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    ValidatorBlockSig:
+      type: object
+      properties:
+        public_key:
+          type: string
+        signature:
+          type: string
+        height:
+          type: string
+
+    Nominate:
+      type: object
+      properties:
+        accepted:
+          type: object
+          properties:
+            base:
+              type: string
+        quorumSetHash:
+          type: object
+          properties:
+            base:
+              type: string
+        votes:
+          type: object
+          properties:
+            base:
+              type: string
+
+    Prepare:
+      type: object
+      properties:
+        prepared:
+          type: object
+          properties:
+            counter:
+              type: integer
+            value:
+              type: object
+              properties:
+                base:
+                  type: string
+        preparedPrime:
+          type: object
+          properties:
+            counter:
+              type: integer
+            value:
+              type: object
+              properties:
+                base:
+                  type: string
+        nC:
+          type: integer
+        nH:
+          type: integer
+        quorumSetHash:
+          type: object
+          properties:
+            base:
+              type: string
+        ballot:
+          type: object
+          properties:
+            counter:
+              type: integer
+            value:
+              type: object
+              properties:
+                base:
+                  type: string
+
+    Confirm:
+      type: object
+      properties:
+        nPrepared:
+          type: integer
+        value_sig:
+          type: object
+          properties:
+            base:
+              type: string
+        nH:
+          type: integer
+        nCommit:
+          type: integer
+        quorumSetHash:
+          type: object
+          properties:
+            base:
+              type: string
+        ballot:
+          type: object
+          properties:
+            counter:
+              type: integer
+            value:
+              type: object
+              properties:
+                base:
+                  type: string
+
+    Externalize:
+      type: object
+      properties:
+        nH:
+          type: integer
+        commitQuorumSetHash:
+          type: object
+          properties:
+            base:
+              type: string
+        commit:
+          type: object
+          properties:
+            counter:
+              type: integer
+            value:
+              type: object
+              properties:
+                base:
+                  type: string
+
+    Envelope:
+      type: object
+      properties:
+        signature:
+          type: object
+          properties:
+            base:
+              type: string
+        statement:
+          type: object
+          properties:
+            nodeID:
+              type: object
+              properties:
+                base:
+                  type: string
+            pledges:
+              oneOf:
+                - type: object
+                  properties:
+                    prepare:
+                      $ref: '#/components/schemas/Prepare'
+                - type: object
+                  properties:
+                    confirm:
+                      $ref: '#/components/schemas/Confirm'
+                - type: object
+                  properties:
+                    externalize:
+                      $ref: '#/components/schemas/Externalize'
+                - type: object
+                  properties:
+                    nominate:
+                      $ref: '#/components/schemas/Nominate'
+            slotIndex:
+              type: integer
