@@ -67,6 +67,7 @@ import scpd.types.Utils;
 
 import vibe.data.json;
 import vibe.web.rest;
+import vibe.http.common;
 
 import std.algorithm;
 import std.conv : to, text;
@@ -926,7 +927,11 @@ public class FullNode : API
     public override const(Block) getBlock (ulong height)  @safe
     {
         this.recordReq("blocks");
-        return this.ledger.getBlocksFrom(Height(height)).front();
+
+        auto blocks = this.ledger.getBlocksFrom(Height(height));
+        if (blocks.empty)
+            throw new HTTPStatusException(400, "No block at requested height");
+        return blocks.front();
     }
 
     /// GET: /merkle_path
