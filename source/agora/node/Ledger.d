@@ -978,7 +978,7 @@ public class Ledger
         // Ideally, the following should never happen, as we would catch this
         // before we reach this point, but this safety checks ensures we don't
         // generate a wrong random seed (we would otherwise hash in `Hash.init`
-        // or trigger an assertion failure in `PreImageInfo.adjust`).
+        // or trigger an assertion failure in `PreImageInfo.opIndex`).
         bool missing = false;
         foreach (entry; signing.save.filter!(en => en.value.preimage.height < height))
         {
@@ -995,7 +995,7 @@ public class Ledger
             .enumerate.filter!(en => !missing_validators.canFind(en.index))
             // We made sure in the previous `foreach` that `height >= pi.height`
             // Note that map is needed for`reduce` to be able to deduce the seed type
-            .map!(en => en.value.preimage.adjust(en.value.preimage.height - height).hash)
+            .map!(en => en.value.preimage[height])
             // Generate the final value
             .reduce!((a , b) => hashMulti(a, b));
     }

@@ -92,8 +92,7 @@ public string isInvalidReason (in Enrollment enrollment,
         PreImageInfo enroll_preimage = PreImageInfo(
                 enrollment.utxo_key, enrollment.commitment, height);
         // Now we can check the preimages are consistent
-        auto distance = height - enroll_state.preimage.height;
-        if (enroll_preimage.adjust(distance).hash != enroll_state.preimage.hash)
+        if (enroll_preimage[enroll_state.preimage.height] != enroll_state.preimage.hash)
             return "The seed has an invalid hash value";
     }
 
