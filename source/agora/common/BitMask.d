@@ -56,7 +56,7 @@ public struct BitMask
     private size_t length;
 
     /// return the count of active validators
-    public size_t count() const @nogc
+    public size_t count () const scope @nogc
     {
         return this.length;
     }
