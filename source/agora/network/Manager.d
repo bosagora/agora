@@ -1033,6 +1033,7 @@ public class NetworkManager
                             {
                                 try
                                 {
+                                    log.trace("getMissingBlockSigs: updating header signature: {} validators: {}", header.signature, header.validators);
                                     ledger.updateBlockMultiSig(header);
                                 }
                                 catch (Exception e)
