@@ -598,7 +598,7 @@ public class ValidatorSet
 
                 auto pi = PreImageInfo(enroll_key, preimage, preimage_height);
                 assert(preimage_height >= height); // The query should ensure this
-                return pi.adjust(preimage_height - height);
+                return PreImageInfo(pi.utxo, pi[height], height);
             }
             else
             {

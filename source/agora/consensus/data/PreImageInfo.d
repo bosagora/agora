@@ -36,30 +36,29 @@ public struct PreImageInfo
 
     /***************************************************************************
 
-        Reduce the height and adjust `hash` accordingly
+        Compute the preimage at `target`
 
-        This method hashes `this.hash` `value` times, and offset `this.height`
-        by the same amount.
+        This method returns `this.hash` after hashing it
+        `height - this.height` times.
 
         Params:
-          value = The amount to offset the pre-image by.
-                  Must be lesser or equal to `this.height`.
+          target = The target height.
+                   Must be lesser or equal to `this.height`.
 
         Returns:
-          A reference to itself for easy chaining.
+          The resulting hash.
 
     ***************************************************************************/
 
-    public ref PreImageInfo adjust (size_t value) return @safe nothrow @nogc
+    public Hash opIndex (Height target) const scope @safe pure nothrow @nogc
     {
-        assert(this.height >= value);
-        while (value > 0)
+        assert(this.height >= target);
+        Hash result = this.hash;
+        for (size_t count = this.height - target; count > 0; --count)
         {
-            this.hash = this.hash.hashFull();
-            this.height -= 1;
-            --value;
+            result = result.hashFull();
         }
-        return this;
+        return result;
     }
 }
 
