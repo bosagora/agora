@@ -21,6 +21,7 @@ import agora.common.BitField;
 import agora.common.Config;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Schnorr: Signature;
 import agora.test.Base;
 import agora.utils.Log;
@@ -48,11 +49,6 @@ private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
         {
             if (slot_idx == 2)
             {
-                log.trace("Remove signatures for block 1 to test signature catchup");
-                BlockHeader header = super.ledger.getBlocksFrom(Height(1)).front.header;
-                header.validators = BitField!ubyte(6);
-                header.signature = Signature.init;
-                super.ledger.updateBlockMultiSig(header);
                 log.trace("Do not externalize block 2 to test periodic catchup of blocks");
                 return;
             }
@@ -62,6 +58,12 @@ private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
         {
             assert(0, format!"PeriodicCatchup exception thrown during test: %s"(e));
         }
+    }
+
+    extern(D) public override void receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
+    {
+        if (block_sig.height == 1)
+            log.trace("Ignore signatures for block 1 to test signature catchup");
     }
 }
 
