@@ -94,3 +94,14 @@ services:
       - node-7
     volumes:
       - "./node/faucet/config.yaml:/root/faucet/config.yaml"
+
+  # fuzzer
+  fuzzer:
+    image: "mcr.microsoft.com/restlerfuzzer/restler:v8.0.0"
+    env_file: fuzzer_environment.sh
+    volumes:
+      - "./fuzzer_workspace:/root/fuzzer_workspace"
+      - "./fuzzer_settings.json:/root/fuzzer_settings.json"
+      - "../../source/agora/api/spec.yaml:/root/spec.yaml"
+      - "../../scripts/fuzz.sh:/root/fuzz.sh"
+    command: /root/fuzz.sh

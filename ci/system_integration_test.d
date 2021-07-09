@@ -26,7 +26,8 @@ immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
                        "-t", "agora", RootPath, ];
 immutable TestContainer = [ "docker", "run", "agora", "--help", ];
 immutable DockerCompose = [ "docker-compose", "-f", ComposeFile, "--env-file", EnvFile ];
-immutable DockerComposeUp = DockerCompose ~ [ "up", "--abort-on-container-exit", ];
+immutable DockerComposeUp = DockerCompose ~ [ "up", "--abort-on-container-exit",
+    "--scale", "fuzzer=0",];
 immutable DockerComposeDown = DockerCompose ~ [ "down", "-t", "30", ];
 immutable DockerComposeLogs = DockerCompose ~ [ "logs", "-t", ];
 immutable RunIntegrationTests = [ "dub", "--root", IntegrationPath, "--",
