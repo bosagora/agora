@@ -279,6 +279,7 @@ public struct AdminConfig
 public enum HandlerType
 {
     block_externalized = "block_externalized",
+    block_header_updated = "block_header_updated",
     preimage_received = "preimage_received",
     transaction_received = "transaction_received"
 }
@@ -1045,7 +1046,7 @@ private immutable(EventHandlerConfig)[] parserEventHandlers (Node* node, in Comm
     immutable(EventHandlerConfig)[] handlers;
     with(HandlerType)
     {
-        only(block_externalized, preimage_received, transaction_received)
+        only(block_externalized, block_header_updated, preimage_received, transaction_received)
             .each!((HandlerType handler_type)
             {
                 if (node !is null)
@@ -1081,6 +1082,8 @@ noexist_event_handlers:
 event_handlers:
   block_externalized:
     - http://127.0.0.1:3836
+  block_header_updated:
+    - http://127.0.0.2:3836
   preimage_received:
     - http://127.0.0.3:3836
   transaction_received:
@@ -1091,6 +1094,7 @@ event_handlers:
         with(HandlerType)
         {
             assert(handlers.filter!(h => h.handler_type == block_externalized).front.handler_addresses == [ `http://127.0.0.1:3836` ]);
+            assert(handlers.filter!(h => h.handler_type == block_header_updated).front.handler_addresses == [ `http://127.0.0.2:3836` ]);
             assert(handlers.filter!(h => h.handler_type == preimage_received).front.handler_addresses == [ `http://127.0.0.3:3836` ]);
             assert(handlers.filter!(h => h.handler_type == transaction_received).front.handler_addresses == [ `http://127.0.0.4:3836` ]);
         }
@@ -1117,6 +1121,7 @@ event_handlers:
                 .front.handler_addresses == [ `http://127.0.0.4:3836`, `http://127.0.0.5:3836` ]);
             assert(handlers.length == 2);
             assert(handlers.count!(h => h.handler_type == preimage_received) == 0);
+            assert(handlers.count!(h => h.handler_type == block_header_updated) == 0);
         }
     }
 }

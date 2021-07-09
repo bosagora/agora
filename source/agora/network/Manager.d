@@ -988,7 +988,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void getMissingBlockSigs (Ledger ledger) @safe nothrow
+    public BlockHeader[] getMissingBlockSigs (Ledger ledger) @safe nothrow
     {
         import std.algorithm;
         import std.conv;
@@ -999,6 +999,8 @@ public class NetworkManager
         const recent_block_count = 2;
 
         size_t[Height] signed_validators;
+
+        BlockHeader[] headers_updated;
 
         try
         {
@@ -1036,6 +1038,7 @@ public class NetworkManager
                                 try
                                 {
                                     ledger.updateBlockMultiSig(header);
+                                    headers_updated ~= header;
                                 }
                                 catch (Exception e)
                                 {
@@ -1058,6 +1061,7 @@ public class NetworkManager
         {
             log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
         }
+        return headers_updated;
     }
 
     /// Shut down timers & dump the metadata
@@ -1209,6 +1213,22 @@ public class NetworkManager
     public BlockExternalizedHandler getBlockExternalizedHandler (Address address)
     {
         return new RestInterfaceClient!BlockExternalizedHandler(getRestInterfaceSettings(address));
+    }
+
+    /***************************************************************************
+
+        Instantiates a client object implementing the `BlockHeaderUpdatedHandler`
+
+        Params:
+            address = The address (IPv4, IPv6, hostname) of target Server
+        Returns:
+            A Handler to communicate with the server at `address`
+
+    ***************************************************************************/
+
+    public BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler (Address address)
+    {
+        return new RestInterfaceClient!BlockHeaderUpdatedHandler(getRestInterfaceSettings(address));
     }
 
     /***************************************************************************
