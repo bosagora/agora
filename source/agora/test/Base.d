@@ -1274,6 +1274,13 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
+    protected final override BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler
+        (Address address)
+    {
+        assert(0, "Not supported");
+    }
+
+    ///
     protected final override PreImageReceivedHandler getPreImageReceivedHandler
         (Address address)
     {

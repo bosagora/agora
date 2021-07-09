@@ -222,6 +222,9 @@ public class FullNode : API
     protected BlockExternalizedHandler[Address] block_handlers;
 
     /// Ditto
+    protected BlockHeaderUpdatedHandler[Address] block_header_handlers;
+
+    /// Ditto
     protected PreImageReceivedHandler[Address] preimage_handlers;
 
     /// Ditto
@@ -276,6 +279,11 @@ public class FullNode : API
                     .each!(address =>
                         this.block_handlers[address] = this.network.getBlockExternalizedHandler(address));
 
+            // Make `BlockHeaderUpdatedHandler`s from config
+            config.event_handlers.filter!(h => h.handler_type == HandlerType.block_header_updated)
+                .map!(handler => handler.handler_addresses).map!(a => a.to!Address)
+                    .each!(address =>
+                        this.block_header_handlers[address] = this.network.getBlockHeaderUpdatedHandler(address));
 
             // Make `PreImageReceivedHandler`s from config
             config.event_handlers.filter!(h => h.handler_type == HandlerType.preimage_received)
@@ -483,7 +491,14 @@ public class FullNode : API
             Height(this.ledger.getBlockHeight() + 1),
             &this.addBlocks);
         this.network.getUnknownTXs(this.ledger);
-        this.network.getMissingBlockSigs(this.ledger);
+        try
+        {
+            this.network.getMissingBlockSigs(this.ledger).each!(h => pushBlockHeader(h));
+        }
+        catch (Exception e)
+        {
+            log.error("Error sending updated block headers:{}", e);
+        }
     }
 
     /***************************************************************************
@@ -1060,6 +1075,39 @@ public class FullNode : API
                 {
                     log.error("Error sending block height #{} to {} :{}",
                         block.header.height, address, e);
+                }
+            });
+        }
+    }
+
+    /***************************************************************************
+
+        Push an updated block header to the `blockheader_handlers` target server
+        list set in config.
+        The blockheader can have signatures from validators added even after the
+        block has been externalized.
+
+        Convert block header data to JSON serialization and send it POST using
+        Rest.
+
+        Params:
+            header = updated block header data
+
+    ***************************************************************************/
+
+    private void pushBlockHeader (const BlockHeader header) @trusted
+    {
+        foreach (address, handler; this.block_header_handlers)
+        {
+            this.taskman.runTask({
+                try
+                {
+                    handler.pushBlockHeader(header);
+                }
+                catch (Exception e)
+                {
+                    log.error("Error sending block header at height #{} to {} :{}",
+                        header.height, address, e);
                 }
             });
         }

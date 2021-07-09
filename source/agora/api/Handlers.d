@@ -41,6 +41,25 @@ public interface BlockExternalizedHandler
 }
 
 @serializationPolicy!(Base64ArrayPolicy)
+public interface BlockHeaderUpdatedHandler
+{
+// The REST generator requires @safe methods
+@safe:
+
+    /***************************************************************************
+
+        Push an updated block header in JSON format with HTTP POST
+
+        API:
+            See config.event_handlers.block_header_updated_handler_addresses
+
+    ***************************************************************************/
+
+    @path("/")
+    public void pushBlockHeader (const BlockHeader header);
+}
+
+@serializationPolicy!(Base64ArrayPolicy)
 public interface PreImageReceivedHandler
 {
 // The REST generator requires @safe methods
