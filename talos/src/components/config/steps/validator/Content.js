@@ -34,7 +34,7 @@ const ValidatorContent = props => {
         }}
     />
     <div className={styles.container_validatorInput}>
-      <InputPopoverWrapper content={<p>This is a 56 character string starting with 'S'. See our <a href="https://bosagora.io/" target="_black">documentation</a> for more details.</p>}>
+      <InputPopoverWrapper content={<p>This is a 56 character string starting with 'S'. See our <a href="https://bosagora.io/" rel="noreferrer" target="_blank">documentation</a> for more details.</p>}>
         <InputWrapperControlled
           name="seed"
           label="Enter Secret Seed here"
