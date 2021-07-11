@@ -56,7 +56,7 @@ const AdminContent = props => {
 
       <div className={styles.address}>
         <div className={styles.container_address}>
-          <InputPopoverWrapper content={<p>The address on which your interface will be available. Make sure this is not publicly available. See our <a href="https://bosagora.io/docs/admin-interface-address" target="_blank">documentation</a> for more details</p>}>
+          <InputPopoverWrapper content={<p>The address on which your interface will be available. Make sure this is not publicly available. See our <a href="https://bosagora.io/docs/admin-interface-address" rel="noreferrer" target="_blank">documentation</a> for more details</p>}>
             <InputWrapperControlled
               name="address"
               label="Address"
