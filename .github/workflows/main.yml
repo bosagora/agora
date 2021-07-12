@@ -93,16 +93,22 @@ jobs:
     # GeoIP is required for one of the integration test
     # We cache it via the cache action, and otherwise download it,
     # but this requires a license key (which is a secret in the repository).
+    - name: 'Get the current date'
+      id: get-date
+      shell: bash
+      run: |
+        echo "::set-output name=date::$(/bin/date -u "+%Y%m")"
+
     - name: 'Load GeoIP from cache'
       id: cache-geoip
       if: runner.os != 'Windows'
       uses: actions/cache@v1
       with:
-        path: ${{ github.workspace }}/build/geoip/GeoLite2-City.mmdb
+        path: ${{ github.workspace }}/build/geoip/
         # Note: Cached data gets evicted after 7 days of being unused
-        # However, there is no way to mark data as stale or delete it,
-        # so this date might need to be bumped from time to time.
-        key: cache-geoip-2021-07-11
+        # In order to avoid being stuck with a very old MMDB,
+        # we use the month as an index to the cache.
+        key: cache-geoip-${{ steps.get-date.outputs.date }}
 
     - name: 'Download GeoIP database'
       if: runner.os != 'Windows' && steps.cache-geoip.outputs.cache-hit != 'true'
