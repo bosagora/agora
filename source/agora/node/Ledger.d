@@ -852,12 +852,8 @@ public class Ledger
         // Check that more than half have signed
         auto signed = block.header.validators.setCount;
         if (signed <= validators.length / 2)
-        {
-            log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",
-                      block.header.height, signed, validators.length,
-                      block.header.validators);
-            return "The majority of validators hasn't signed this block";
-        }
+            if (auto fail_msg = this.handleNotSignedByMajority(block.header, validators))
+                return fail_msg;
 
         log.trace("Checking signature, participants: {}/{}", signed, validators.length);
         foreach (idx, validator; validators)
@@ -909,6 +905,26 @@ public class Ledger
         }
 
         return null;
+    }
+
+    /***************************************************************************
+
+        Used to handle behaviour when less than half the validators have signed
+        the block. This is overridden in the `ValidatingLedger`
+
+        Params:
+            header = header of block we checked
+            validators = validator info for the ones that did sign
+
+    ***************************************************************************/
+
+
+    protected string handleNotSignedByMajority (in BlockHeader header,
+        in ValidatorInfo[] validators) @safe nothrow
+    {
+        log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",
+            header.height, header.validators.setCount, header.validators.count, validators);
+        return "The majority of validators hasn't signed this block";
     }
 
     /***************************************************************************
@@ -1368,6 +1384,40 @@ public class ValidatingLedger : Ledger
     {
         super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
             clock, block_timestamp_tolerance, onAcceptedBlock);
+    }
+
+    // dynamic array to keep track of blocks we are externalizing so can allow
+    //  less signatures than majority when validating
+    // TODO: We need to clear out old entries to reduce memory footprint
+    private Height[] externalizing;
+
+    public void addHeightAsExternalizing (Height height) @safe nothrow
+    {
+        this.externalizing ~= height;
+    }
+
+    /***************************************************************************
+
+        Used to handle behaviour when less than half the validators have signed
+        the block. If we are in process of externalizing blocks we ignore when
+        there is less than half signed as we are waiting to recieve the other
+        signatures.
+
+        Params:
+            header = header of block we checked
+            validators = validator info for the ones that did sign
+
+    ***************************************************************************/
+
+    protected override string handleNotSignedByMajority (in BlockHeader header,
+        in ValidatorInfo[] validators) @safe nothrow
+    {
+        if (!externalizing.canFind(header.height))
+            return super.handleNotSignedByMajority(header, validators);
+
+        log.trace("Block#{}: Externalizing so ignore Signatures are not majority: {}/{}, signers: {}.",
+            header.height, header.validators.setCount, header.validators.count, validators);
+        return null;
     }
 
     /***************************************************************************
