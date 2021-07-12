@@ -20,7 +20,12 @@ const ValidatorContent = props => {
 
   return <div className={styles.wrapValidatorContent}>
 
-    <SecondTitleBold>Secret Seed</SecondTitleBold>
+    <SecondTitleBold>Choose node type</SecondTitleBold>
+    <br/>
+    <p>You can either run a full node, which follows the network but does not create blocks, or a validator,
+      which actively participates in consensus and will earn you rewards.</p>
+    <br/>
+    <p>In order to run a validator, you need to stake at least 40,000 BOA. <a href="https://bosagora.io/">Find out more</a>.</p>
     <CardSelector
       defaultIndex={get(validator, ["stepItems", "isvalidator", "value"], true) ? 0 : 1}
       onChange={(index) => {
