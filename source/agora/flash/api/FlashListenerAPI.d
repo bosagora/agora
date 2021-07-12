@@ -14,7 +14,9 @@
 module agora.flash.api.FlashListenerAPI;
 
 import agora.common.Types;
+import agora.common.Amount;
 import agora.crypto.Key;
+import agora.consensus.data.UTXO;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
@@ -23,6 +25,16 @@ import agora.flash.Types;
 import vibe.data.serialization;
 import vibe.http.common;
 import vibe.web.rest;
+
+///
+struct FeeUTXOs
+{
+    /// UTXO hashes
+    Hash[] utxos;
+
+    /// Total value stored in `utxos`
+    Amount total_value;
+}
 
 /// This is the API that each Flash listener must implement, for example wallets
 /// or other front-ends to Agora.
@@ -88,4 +100,32 @@ public interface FlashListenerAPI
     ***************************************************************************/
 
     public void onPaymentFailure (PublicKey pk, Invoice invoice, ErrorCode error);
+
+    /***************************************************************************
+
+        Try to get a set of UTXOs enough to cover `amount`
+
+        Params:
+            pk = public key
+            amount = desired total value of the UTXOs
+
+        Returns:
+            set of UTXOs to cover `amount`, on best effort basis
+
+    ***************************************************************************/
+
+    public FeeUTXOs getFeeUTXOs (PublicKey pk, Amount amount);
+
+
+    /***************************************************************************
+
+        Params:
+            size_bytes = TX size in bytes
+
+        Returns:
+            Appropriate amount of fees
+
+    ***************************************************************************/
+
+    public Amount getEstimatedTxFee (uint size_bytes);
 }
